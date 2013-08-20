@@ -152,12 +152,14 @@ class DataInput:
     #    tupArr[i,j] = (X[i,j], Y[i,j])
         
   
-  def integrate_field(self, fn_spec, specific, fn_main, val=2e9):
+  def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
     """
     Assimilate a field with filename <fn_spec>  from DataInput object 
     <specific> into this DataInput's field with filename <fn_main>.  The
     parameter <val> should be set to the specific dataset's value for 
-    undefined regions, default is 2e9.
+    undefined regions, default is 0.0.  <r> is a parameter used to eliminate
+    border artifacts from interpolation; increase this value to eliminate edge
+    noise.
     """
     # get the dofmap to map from mesh vertex indices to function indicies :
     df    = self.func_space.dofmap()
@@ -190,18 +192,17 @@ class DataInput:
       
       # data value for closest value and square around the value in question :
       dv  = d[idy, idx] 
-      r   = 20
       db  = d[max(0,idy-r) : min(ny, idy+r),  max(0, idx-r) : min(nx, idx+r)]
       
       # if the vertex is in the domain of the specific dataset, and the value 
       # of the dataset at this point is not abov <val>, set the array value 
       # of the main file to this new specific region's value.
-      if dv <= val:
+      if dv > val:
         #print "found:", x, y, idx, idy, v.index()
         # if the values is not near an edge, make the value equal to the 
         # nearest specific region's dataset value, otherwise, use the 
         # specific region's projected value :
-        if all(db <= val):
+        if all(db > val):
           uocom[i] = uscom[i]
         else :
           uocom[i] = dv
@@ -320,7 +321,7 @@ class DataInput:
         self.ys       = ys
       def eval(self, values, x):
         if self.chg_proj:
-          xn, yn = transform(old_proj, new_proj, x[0], x[1])
+          xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
         idx       = abs(self.xs - xn).argmin()
@@ -349,7 +350,7 @@ class DataInput:
         self.chg_proj = chg_proj
       def eval(self, values, x):
         if self.chg_proj:
-          xn, yn = transform(old_proj, new_proj, x[0], x[1])
+          xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
         values[0] = spline(xn, yn)

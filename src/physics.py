@@ -165,6 +165,7 @@ class VelocityStokes(object):
     Pc            = model.Pc
     Nc            = model.Nc
     Pb            = model.Pb
+    Lsq           = model.Lsq
     beta2         = model.beta2
 
     newton_params = config['velocity']['newton_params']
@@ -286,6 +287,7 @@ class VelocityStokes(object):
     model.Pc     = Pc
     model.Nc     = Nc
     model.Pb     = Pb
+    model.Lsq    = Lsq
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -1328,10 +1330,12 @@ class AdjointVelocityBP(object):
 
     # Adjoint variable in trial function form
     Q         = model.Q
-    Q2        = model.Q2
     Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl
+    Pc        = model.Pc
+    Lsq       = model.Lsq
+    Nc        = model.Nc
     U         = model.U
     beta2     = model.beta2
     U_o       = model.U_o
@@ -1339,20 +1343,26 @@ class AdjointVelocityBP(object):
     v_o       = model.v_o
     w         = model.w
     adot      = model.adot
-
-    L         = TrialFunction(Q2)
-    Phi       = TestFunction(Q2)
-    model.Lam = Function(Q2)
-    
-    l,   mu   = split(L)
-    phi, psi  = split(Phi)
-    
-    rho       = TestFunction(Q)
-
     ds        = model.ds
 
-    # Variational principle for the forward model
-    A         = (Vd + Pe)*dx + Sl*ds(3)
+    if config['velocity']['approximation'] == 'fo':
+      Q_adj     = model.Q2
+      A         = (Vd + Pe)*dx + Sl*ds(3)
+    else:
+      Q_adj     = model.Q4
+      # Variational pinciple
+      A         = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
+
+    L         = TrialFunction(Q_adj)
+    Phi       = TestFunction(Q_adj)
+    model.Lam = Function(Q_adj)
+
+
+
+    rho       = TestFunction(Q)
+
+    
+
 
     # Derivative, with trial function l.  This is the BP equations in weak form
     # multiplied by l and integrated by parts
@@ -1688,7 +1698,7 @@ class VelocityBalance_2(object):
     solve(delt_I == 0, Ubmag, dbc, J=J)
    
     self.H        = H
-    self.S        = S 
+    self.S        = S
     self.adot     = adot
     self.R_dSdx   = R_dSdx
     self.R_dSdy   = R_dSdy

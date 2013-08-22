@@ -59,7 +59,7 @@ config = { 'mode' : 'steady',
                 'beta2' : Beta2(),
                 'r' : 0.0,
                 'E' : 1,
-                'approximation' : 'fo',
+                'approximation' : 'stokes',
                 'boundaries' : None
             },
         'enthalpy' : 

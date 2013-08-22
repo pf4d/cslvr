@@ -99,6 +99,7 @@ class IsotropicMeshRefiner(object):
     :param hmin         : Minimum diameter of the cells
     :param hmax         : Maximum diameter of the cells
     """
+    print "refining %.2f%% of max error" % (REFINE_RATIO * 100)
     mesh = self.mesh
 
     V    = FunctionSpace(mesh, "CG", 1)
@@ -152,9 +153,10 @@ class IsotropicMeshRefiner(object):
         error = h**2 * Hnorm
         e_list_calc.append(error)
       e_list.append(error)
-    
+   
     idx   = int(len(e_list_calc) * REFINE_RATIO)
     e_mid = sorted(e_list, reverse=True)[idx]
+    print "error midpoint :", e_mid
 
     cell_markers = MeshFunction("bool", mesh, mesh.topology().dim())
     for c in cells(mesh):

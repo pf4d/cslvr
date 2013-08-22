@@ -58,7 +58,7 @@ def convert_measures_projection(direc, var):
 
   cmd = 'gdalwarp ' + infile + ' ' + outfile + ' -t_srs ' + proj + ' -te ' + te
   
-  print cmd
+  print "\nExecuting :\n\n\t", cmd, "\n\n"
   os.system(cmd)
 
 

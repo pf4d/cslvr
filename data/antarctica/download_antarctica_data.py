@@ -47,18 +47,18 @@ def download_file(url, direc, folder, extract=False):
 #===============================================================================
 home = os.getcwd()
 
-#bm1  = "http://www.pangaea.de/Publications/LeBrocq_et_al_2010/ALBMAPv1.nc.zip"
-#fldr = "bedmap1"
-#download_file(bm1, home, fldr, extract=True)
+bm1  = "http://www.pangaea.de/Publications/LeBrocq_et_al_2010/ALBMAPv1.nc.zip"
+fldr = "bedmap1"
+download_file(bm1, home, fldr, extract=True)
 
 bm2  = "https://secure.antarctica.ac.uk/data/bedmap2/bedmap2_tiff.zip"
 fldr = "bedmap2"
 download_file(bm2, home, fldr, extract=True)
 
-#mea  = "ftp://sidads.colorado.edu/pub/DATASETS/" \
-#       + "nsidc0484_MEASURES_antarc_vel_V01/Antarctica_ice_velocity.nc"
-#fldr = "measures"
-#download_file(mea, home, fldr)
+mea  = "ftp://sidads.colorado.edu/pub/DATASETS/" \
+       + "nsidc0484_MEASURES_antarc_vel_V01/Antarctica_ice_velocity.nc"
+fldr = "measures"
+download_file(mea, home, fldr)
 
 
 

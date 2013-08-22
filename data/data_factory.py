@@ -1,8 +1,9 @@
 import inspect
 import os
+import sys
 from numpy    import *
 from scipy.io import loadmat, netcdf_file
-import sys
+from osgeo    import gdal
 
 class DataFactory(object):
  
@@ -73,6 +74,9 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
     
+    sys.path.append(home + '/external_import_scripts')
+    from tifffile import TiffFile
+    
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
     files    = ['sp', 'vx', 'vy']
     vara     = dict()
@@ -92,8 +96,6 @@ class DataFactory(object):
     lat_ts = '70'
     lon_0  = '-45'
     
-    sys.path.append(home + '/external_import_scripts')
-    from tifffile import TiffFile
     # retrieve data :
     for f in files:
       data    = TiffFile(direc + f + '.tif')
@@ -115,6 +117,9 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
     
+    sys.path.append(home + '/external_import_scripts')
+    from tifffile import TiffFile
+    
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
     files    = ['sp', 'vx', 'vy']
     vara     = dict()
@@ -134,8 +139,6 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
 
-    sys.path.append(home + '/external_import_scripts')
-    from tifffile import TiffFile
     # retrieve data :
     for f in files:
       data    = TiffFile(direc + f + '_new.tif')

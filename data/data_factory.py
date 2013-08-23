@@ -238,6 +238,7 @@ class DataFactory(object):
     q_geo = array(data.variables['bheatflx'][:][0]) * 60 * 60 * 24 * 365
     lat   = array(data.variables['lat'][:][0])
     lon   = array(data.variables['lon'][:][0])
+    U_sar = array(data.variables['surfvelmag'][:][0])
  
     direc = home + "/greenland/searise/smooth_target.mat" 
     U_ob  = loadmat(direc)['st']
@@ -259,8 +260,8 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
  
-    names = ['H', 'h', 'adot', 'b', 'T', 'q_geo', 'U_ob', 'lat', 'lon', 'Tn']
-    ftns  = [H, h, adot, b, T, q_geo, U_ob, lat, lon, Tn]
+    names = ['H', 'h', 'adot', 'b', 'T', 'q_geo','U_sar', 'U_ob', 'lat', 'lon', 'Tn']
+    ftns  = [H, h, adot, b, T, q_geo,U_sar, U_ob, lat, lon, Tn]
 
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f,

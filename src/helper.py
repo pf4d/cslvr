@@ -49,6 +49,7 @@ def download_file(url, direc, folder, extract=False):
   import sys
   import os
   import zipfile
+  import tarfile
   
   # make the directory if needed :
   direc = direc + '/' + folder + '/'
@@ -83,10 +84,14 @@ def download_file(url, direc, folder, extract=False):
   
   f.close()
   
-  # extract the zip file if necessary :
+  # extract the zip/tar.gz file if necessary :
   if extract:
-    zf = zipfile.ZipFile(direc + fn)
-    zf.extractall(direc)
+    ty = fn.split('.')[-1]
+    if ty == 'gz' or ty == 'tgz':
+      cf = tarfile.open(direc + fn, 'r:gz')
+    elif ty == 'zip':
+      cf = zipfile.ZipFile(direc + fn)
+    cf.extractall(direc)
     os.remove(direc + fn)
 
 

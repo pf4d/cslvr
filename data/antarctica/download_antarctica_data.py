@@ -1,50 +1,11 @@
-import urllib2
 import sys
 import os
-import zipfile
+src_directory = '../../'
+sys.path.append(src_directory)
 
-def download_file(url, direc, folder, extract=False):
-  # make the directory if needed :
-  direc = direc + '/' + folder + '/'
-  d     = os.path.dirname(direc)
-  if not os.path.exists(d):
-    os.makedirs(d)
-
-  # url file info :
-  fn   = url.split('/')[-1]
-  u    = urllib2.urlopen(url)
-  f    = open(direc + fn, 'wb')
-  meta = u.info()
-  fs   = int(meta.getheaders("Content-Length")[0])
-  
-  print "Downloading: %s Bytes: %s" % (fn, fs)
-  
-  fs_dl  = 0
-  blk_sz = 8192
-  
-  # download the file and print status :
-  while True:
-    buffer = u.read(blk_sz)
-    if not buffer:
-      break
-  
-    fs_dl += len(buffer)
-    f.write(buffer)
-    status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
-    status = status + chr(8)*(len(status)+1)
-    sys.stdout.write(status)
-    sys.stdout.flush()
-  
-  f.close()
-  
-  # extract the zip file if necessary :
-  if extract:
-    zf = zipfile.ZipFile(direc + fn)
-    zf.extractall(direc)
-    os.remove(direc + fn)
+from src.helper import download_file
 
 
-#===============================================================================
 home = os.getcwd()
 
 bm1  = "http://www.pangaea.de/Publications/LeBrocq_et_al_2010/ALBMAPv1.nc.zip"

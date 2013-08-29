@@ -40,6 +40,56 @@ from dolfin import *
 import pylab as p
 
 
+def download_file(url, direc, folder, extract=False):
+  """
+  download a file with url <url> into directory <direc>/<folder>.  If <extract>
+  is True, extract the .zip file into the directory and delete the .zip file.
+  """
+  import urllib2
+  import sys
+  import os
+  import zipfile
+  
+  # make the directory if needed :
+  direc = direc + '/' + folder + '/'
+  d     = os.path.dirname(direc)
+  if not os.path.exists(d):
+    os.makedirs(d)
+
+  # url file info :
+  fn   = url.split('/')[-1]
+  u    = urllib2.urlopen(url)
+  f    = open(direc + fn, 'wb')
+  meta = u.info()
+  fs   = int(meta.getheaders("Content-Length")[0])
+  
+  print "Downloading: %s Bytes: %s" % (fn, fs)
+  
+  fs_dl  = 0
+  blk_sz = 8192
+  
+  # download the file and print status :
+  while True:
+    buffer = u.read(blk_sz)
+    if not buffer:
+      break
+  
+    fs_dl += len(buffer)
+    f.write(buffer)
+    status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
+    status = status + chr(8)*(len(status)+1)
+    sys.stdout.write(status)
+    sys.stdout.flush()
+  
+  f.close()
+  
+  # extract the zip file if necessary :
+  if extract:
+    zf = zipfile.ZipFile(direc + fn)
+    zf.extractall(direc)
+    os.remove(direc + fn)
+
+
 def extrude_z(f, b, d, model):
   r"""
   This extrudes a function <f> defined along a boundary <b> out onto

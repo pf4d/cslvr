@@ -3,12 +3,13 @@ import os
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-from pylab             import *
-from dolfin            import *
-from src.utilities     import DataInput, DataOutput
-from src.physics       import VelocityBalance_2
-from plot.plothelp.plotting     import plotIce
-from data.data_factory import DataFactory
+from pylab                  import *
+from dolfin                 import *
+from src.utilities          import DataInput, DataOutput
+from src.physics            import VelocityBalance_2
+from plot.plothelp.plotting import plotIce
+from data.data_factory      import DataFactory
+from meshes.mesh_factory    import MeshFactory
 
 set_log_level(PROGRESS)
 

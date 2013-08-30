@@ -5,17 +5,18 @@ sys.path.append(src_directory)
 import src.model              as model
 import src.solvers            as solvers
 import src.physical_constants as pc
-from data.data_factory import DataFactory
-from src.helper        import default_nonlin_solver_params
-from src.utilities     import DataInput
-from dolfin            import *
+from data.data_factory   import DataFactory
+from meshes.mesh_factory import MeshFactory
+from src.helper          import default_nonlin_solver_params
+from src.utilities       import DataInput
+from dolfin              import *
 
 set_log_active(True)
 
 vara = DataFactory.get_searise()
 
-mesh                    = Mesh('../meshes/greenland_coarse_mesh.xml')
-flat_mesh               = Mesh('../meshes/greenland_coarse_mesh.xml')
+mesh                    = MeshFactory.get_greenland_coarse()
+flat_mesh               = MeshFactory.get_greenland_coarse()
 mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
 
 dd                 = DataInput(None, vara, mesh=mesh)

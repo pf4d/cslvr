@@ -5,23 +5,24 @@ sys.path.append(src_directory)
 import src.model              as model
 import src.solvers            as solvers
 import src.physical_constants as pc
-from data.data_factory import DataFactory
-from src.helper        import default_nonlin_solver_params
-from src.utilities     import DataInput
-from dolfin            import *
+from data.data_factory   import DataFactory
+from meshes.mesh_factory import MeshFactory
+from src.helper          import default_nonlin_solver_params
+from src.utilities       import DataInput
+from dolfin              import *
 
 set_log_active(True)
 
 var_measures = DataFactory.get_ant_measures()
-var_bedmap1 = DataFactory.get_lebrocq()
-var_bedmap2 = DataFactory.get_bedmap2()
+var_bedmap1  = DataFactory.get_lebrocq()
+var_bedmap2  = DataFactory.get_bedmap2()
 
-mesh                  = Mesh('../meshes/antarctica_50H_5l.xml')
-flat_mesh             = Mesh('../meshes/antarctica_50H_5l.xml')
+mesh         = MeshFactory.get_antarctica()
+flat_mesh    = MeshFactory.get_antarctica()
 
 dm  = DataInput(None, var_measures, mesh=mesh,flip=True)
-db1 = DataInput(None, var_bedmap1, mesh=mesh)
-db2 = DataInput(None, var_bedmap2, mesh=mesh, flip=True)
+db1 = DataInput(None, var_bedmap1,  mesh=mesh)
+db2 = DataInput(None, var_bedmap2,  mesh=mesh, flip=True)
 
 thklim = 50.0
 

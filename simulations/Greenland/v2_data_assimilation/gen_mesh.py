@@ -7,7 +7,7 @@ from src.utilities     import DataInput, MeshGenerator
 from data.data_factory import DataFactory
 
 # create meshgrid for contour :
-vara = DataFactory.get_V2()
+vara = DataFactory.get_bamber()
 
 # process the data :
 dd = DataInput(None, vara, flip=False, gen_space=False)

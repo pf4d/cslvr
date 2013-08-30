@@ -205,12 +205,12 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_V2():
+  def get_bamber():
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
    
-    direc = home + '/greenland/V2/Greenland_bedrock_topography_V2.nc' 
+    direc = home + '/greenland/bamber13/Greenland_bedrock_topography_V2.nc' 
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     

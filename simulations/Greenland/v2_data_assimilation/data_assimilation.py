@@ -18,15 +18,15 @@ set_log_active(True)
 searise  = DataFactory.get_searise()
 measure  = DataFactory.get_gre_measures()
 meas_shf = DataFactory.get_shift_gre_measures()
-v2       = DataFactory.get_V2()
+bamber   = DataFactory.get_bamber()
 
 # define the meshes :
-mesh               = Mesh('../meshes/mesh.xml')
-flat_mesh          = Mesh('../meshes/mesh.xml')
+mesh      = Mesh('../meshes/mesh.xml')
+flat_mesh = Mesh('../meshes/mesh.xml')
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
-dv2     = DataInput(None, v2,       mesh=mesh)
+dbm     = DataInput(None, bamber,   mesh=mesh)
 dms     = DataInput(None, measure,  mesh=mesh, create_proj=True, flip=True)
 dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
 dbv     = DataInput("results/", ("Ubmag_measures.mat",), mesh=mesh)
@@ -35,11 +35,11 @@ dbv     = DataInput("results/", ("Ubmag_measures.mat",), mesh=mesh)
 dms.change_projection(dsr)
 
 # set the maximum ice thickness :
-dv2.set_data_min('H', 10.0, 10.0)
+dbm.set_data_min('H', 10.0, 10.0)
 
 # get the expressions used by varglas :
-Surface            = dv2.get_spline_expression('h')
-Bed                = dv2.get_spline_expression('b')
+Surface            = dbm.get_spline_expression('h')
+Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dsr.get_spline_expression('q_geo')
 U_observed         = dbv.get_spline_expression('Ubmag_measures')

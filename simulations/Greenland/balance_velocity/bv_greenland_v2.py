@@ -35,6 +35,7 @@ S     = dsr.get_projection("h")
 adot  = dsr.get_projection("adot")
 
 prb   = VelocityBalance_2(mesh, H, S, adot, 12.0)
+prb.solve_forward()
 
 # File ouput
 do    = DataOutput('results/greenland_balance_velocity_v2/')

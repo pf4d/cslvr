@@ -14,8 +14,6 @@ B = vara['b']['map_data']
 H[S<=0] = 0.0
 vara['H']['map_data'] = H
 
-
-
 # process the data :
 dd = DataInput(None, vara, flip=False, gen_space=False)
 #dd.set_data_max('mask', 2, 0)

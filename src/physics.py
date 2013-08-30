@@ -165,6 +165,7 @@ class VelocityStokes(object):
     Pc            = model.Pc
     Nc            = model.Nc
     Pb            = model.Pb
+    Lsq           = model.Lsq
     beta2         = model.beta2
 
     newton_params = config['velocity']['newton_params']
@@ -286,6 +287,7 @@ class VelocityStokes(object):
     model.Pc     = Pc
     model.Nc     = Nc
     model.Pb     = Pb
+    model.Lsq    = Lsq
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -1328,10 +1330,12 @@ class AdjointVelocityBP(object):
 
     # Adjoint variable in trial function form
     Q         = model.Q
-    Q2        = model.Q2
     Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl
+    Pc        = model.Pc
+    Lsq       = model.Lsq
+    Nc        = model.Nc
     U         = model.U
     beta2     = model.beta2
     U_o       = model.U_o
@@ -1339,20 +1343,26 @@ class AdjointVelocityBP(object):
     v_o       = model.v_o
     w         = model.w
     adot      = model.adot
-
-    L         = TrialFunction(Q2)
-    Phi       = TestFunction(Q2)
-    model.Lam = Function(Q2)
-    
-    l,   mu   = split(L)
-    phi, psi  = split(Phi)
-    
-    rho       = TestFunction(Q)
-
     ds        = model.ds
 
-    # Variational principle for the forward model
-    A         = (Vd + Pe)*dx + Sl*ds(3)
+    if config['velocity']['approximation'] == 'fo':
+      Q_adj     = model.Q2
+      A         = (Vd + Pe)*dx + Sl*ds(3)
+    else:
+      Q_adj     = model.Q4
+      # Variational pinciple
+      A         = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
+
+    L         = TrialFunction(Q_adj)
+    Phi       = TestFunction(Q_adj)
+    model.Lam = Function(Q_adj)
+
+
+
+    rho       = TestFunction(Q)
+
+    
+
 
     # Derivative, with trial function l.  This is the BP equations in weak form
     # multiplied by l and integrated by parts
@@ -1628,11 +1638,9 @@ class VelocityBalance(object):
     self.model.v_balance.vector().set_local(v_b.vector().get_local())
     
 
-
-
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l):
+  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None):
     set_log_level(PROGRESS)
 
     Q   = FunctionSpace(mesh, "CG", 1)
@@ -1641,9 +1649,17 @@ class VelocityBalance_2(object):
     rho = 911
     g   = 9.81
 
+    if Uobs:
+      pass
+    else:
+      Uobs = Function(Q)
+
     # solution and trial functions :
     Ubmag  = Function(Q)
     dUbmag = TrialFunction(Q)
+
+    lamda = Function(Q)
+    dlamda = TrialFunction(Q)
     
     # solve for dhdx,dhdy with appropriate smoothing :
     dSdx   = Function(Q)
@@ -1679,29 +1695,51 @@ class VelocityBalance_2(object):
     cellh  = CellSize(mesh)
     U_eff  = sqrt( dot(dS * H, dS * H) + 1e-10 )
     tau    = cellh / (2 * U_eff)
+
+    if Uobs_mask:
+        dx_masked = Measure('dx')[Uobs_mask]
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1)
+    else:
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx
+
     
-    delt_I = (phi + tau*div(H*dS*phi)) * (div(Ubmag*dS*H) - adot) * dx
-    
-    J      = derivative(delt_I, Ubmag, dUbmag)
-    
-    # solve linear problem :
-    solve(delt_I == 0, Ubmag, dbc, J=J)
-   
+    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
+
+    self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
+
+    self.g_Uobs        = derivative(self.I,Uobs,phi)
+    self.g_adot        = -(lamda + tau*div(lamda*dS*H))*phi*dx
+    self.g_H           = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
+
     self.H        = H
-    self.S        = S 
+    self.S        = S
     self.adot     = adot
     self.R_dSdx   = R_dSdx
     self.R_dSdy   = R_dSdy
     self.dSdx     = dSdx
     self.dSdy     = dSdy
     self.Ubmag    = Ubmag
-    self.dUbmag   = dUbmag
-    self.delt_I   = delt_I
+    self.lamda    = lamda
     self.dbc      = dbc
-    self.J        = J
     self.slope    = slope
     self.residual = Ubmag*div(dS*H) - adot
     self.residual = project(self.residual, Q)
+    self.Uobs = Uobs
+
+  def solve_forward(self):
+    # solve linear problem :
+    solve(lhs(self.forward_model) == rhs(self.forward_model), self.Ubmag)
+    self.Ubmag.vector()[self.Ubmag.vector().array()<0] = 0.0
+
+  def solve_adjoint(self):
+    self.Uobs.vector()[self.Uobs.vector().array()<0] = 0.0
+    solve(lhs(self.adjoint_model) == rhs(self.adjoint_model), self.lamda)
+   
+  def get_gradient(self,):
+    gU = assemble(self.g_Uobs)
+    ga = assemble(self.g_adot)
+    gH = assemble(self.g_H)
+    return ((gU.array(),ga.array(),gH.array()))
 
 
 

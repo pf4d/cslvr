@@ -238,6 +238,7 @@ class Model(object):
     self.Pc            = Function(self.Q) # None
     self.Nc            = Function(self.Q) # None
     self.Pb            = Function(self.Q)
+    self.Lsq           = Function(self.Q)
     
     # Enthalpy model
     self.H_surface     = Function(self.Q)

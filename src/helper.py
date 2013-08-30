@@ -87,10 +87,10 @@ def download_file(url, direc, folder, extract=False):
   # extract the zip/tar.gz file if necessary :
   if extract:
     ty = fn.split('.')[-1]
-    if ty == 'gz' or ty == 'tgz':
-      cf = tarfile.open(direc + fn, 'r:gz')
-    elif ty == 'zip':
+    if ty == 'zip':
       cf = zipfile.ZipFile(direc + fn)
+    else:
+      cf = tarfile.open(direc + fn, 'r:gz')
     cf.extractall(direc)
     os.remove(direc + fn)
 

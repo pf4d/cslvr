@@ -14,7 +14,7 @@ set_log_active(True)
 # collect the raw data :
 searise = DataFactory.get_searise()
 measure = DataFactory.get_gre_measures()
-#v2      = DataFactory.get_V2()
+#bamber  = DataFactory.get_bamber()
 
 direc = os.path.dirname(os.path.realpath(__file__))
 
@@ -23,7 +23,7 @@ mesh    = Mesh("../meshes/mesh.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
-#dv2     = DataInput(None, v2,      mesh=mesh)
+#dbm     = DataInput(None, bamber,  mesh=mesh)
 dms     = DataInput(None, measure, mesh=mesh, create_proj=True, flip=True)
 
 dms.change_projection(dsr)

@@ -152,12 +152,14 @@ class DataInput:
     #    tupArr[i,j] = (X[i,j], Y[i,j])
         
   
-  def integrate_field(self, fn_spec, specific, fn_main, val=2e9):
+  def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
     """
     Assimilate a field with filename <fn_spec>  from DataInput object 
     <specific> into this DataInput's field with filename <fn_main>.  The
     parameter <val> should be set to the specific dataset's value for 
-    undefined regions, default is 2e9.
+    undefined regions, default is 0.0.  <r> is a parameter used to eliminate
+    border artifacts from interpolation; increase this value to eliminate edge
+    noise.
     """
     # get the dofmap to map from mesh vertex indices to function indicies :
     df    = self.func_space.dofmap()
@@ -190,18 +192,17 @@ class DataInput:
       
       # data value for closest value and square around the value in question :
       dv  = d[idy, idx] 
-      r   = 20
       db  = d[max(0,idy-r) : min(ny, idy+r),  max(0, idx-r) : min(nx, idx+r)]
       
       # if the vertex is in the domain of the specific dataset, and the value 
       # of the dataset at this point is not abov <val>, set the array value 
       # of the main file to this new specific region's value.
-      if dv <= val:
+      if dv > val:
         #print "found:", x, y, idx, idy, v.index()
         # if the values is not near an edge, make the value equal to the 
         # nearest specific region's dataset value, otherwise, use the 
         # specific region's projected value :
-        if all(db <= val):
+        if all(db > val):
           uocom[i] = uscom[i]
         else :
           uocom[i] = dv
@@ -320,7 +321,7 @@ class DataInput:
         self.ys       = ys
       def eval(self, values, x):
         if self.chg_proj:
-          xn, yn = transform(old_proj, new_proj, x[0], x[1])
+          xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
         idx       = abs(self.xs - xn).argmin()
@@ -349,7 +350,7 @@ class DataInput:
         self.chg_proj = chg_proj
       def eval(self, values, x):
         if self.chg_proj:
-          xn, yn = transform(old_proj, new_proj, x[0], x[1])
+          xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
         values[0] = spline(xn, yn)
@@ -470,6 +471,7 @@ class MeshGenerator(object):
     self.direc      = direc
     self.x, self.y  = meshgrid(dd.x, dd.y)
     self.f          = open(direc + fn + '.geo', 'w')
+    self.fieldList  = []  # list of field indexes created.
   
   def create_contour(self, var, zero_cntr, skip_pts):  
     """
@@ -490,9 +492,9 @@ class MeshGenerator(object):
         amax_ind = ind
       ind += 1
     
-    # skip points to remove problems :
+    # remove skip points and last point to avoid overlap :
     longest_cont      = cl[amax_ind]
-    self.longest_cont = longest_cont[::skip_pts,:]
+    self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
   
   def plot_contour(self):
     """
@@ -502,11 +504,10 @@ class MeshGenerator(object):
     show()
 
 
-  def eliminate_intersections(self):
+  def eliminate_intersections(self, dist=10):
     """
     Eliminate intersecting boundary elements.
     """
-    #FIXME: this results in a contour not connected at the end.
     print "Eliminating intersections, please wait."
 
     class Point:
@@ -528,7 +529,7 @@ class MeshGenerator(object):
       A = Point(*lc[ii])
       B = Point(*lc[ii+1])
       
-      for jj in range(ii,len(lc)-1):
+      for jj in range(ii, min(ii + dist, len(lc)-1)):
         
         C = Point(*lc[jj])
         D = Point(*lc[jj+1])
@@ -544,11 +545,7 @@ class MeshGenerator(object):
         new_cont[counter,:] = lc[ii,:]
         counter += 1
     
-    lc = new_cont
-    #lc = vstack((lc, array([max(self.x[0]), lc[-1][1]])))
-    #lc = vstack((lc, array([max(self.x[0]), lc[0][1]])))
-     
-    self.longest_cont = lc
+    self.longest_cont = new_cont
   
   def restart(self):
     """
@@ -558,7 +555,7 @@ class MeshGenerator(object):
     self.f = open(self.direc + self.fn + '.geo', 'w') 
     print 'Reopened \"' + self.direc + self.fn + '.geo\".'
   
-  def write_gmsh_contour(self, lc):  
+  def write_gmsh_contour(self, lc, boundary_extend=True):  
     """
     write the contour created with create_contour to the .geo file.
     """ 
@@ -575,64 +572,120 @@ class MeshGenerator(object):
 
     # write the file to .geo file :
     f.write("// Mesh spacing\n")
-    f.write("lc = " + str(lc) + ";\n")
+    f.write("lc = " + str(lc) + ";\n\n")
     
     f.write("// Points\n")
     for i in range(pts):
       f.write("Point(" + str(i) + ") = {" + str(c[i,0]) + "," \
               + str(c[i,1]) + ",0,lc};\n")
     
-    f.write("// Lines\n")
+    f.write("\n// Lines\n")
     for i in range(pts-1):
       f.write("Line(" + str(i) + ") = {" + str(i) + "," + str(i+1) + "};\n")
-    f.write("Line(" + str(pts-1) + ") = {" + str(pts-1) + "," + str(0) + "};\n")
+    f.write("Line(" + str(pts-1) + ") = {" + str(pts-1) + "," \
+            + str(0) + "};\n\n")
     
     f.write("// Line loop\n")
-    f.write("Line Loop(" + str(pts+1) + ") = {")
+    loop = ""
+    loop += "{"
     for i in range(pts-1):
-      f.write(str(i) + ",")
-    f.write(str(pts-1) + "};\n")
+      loop += str(i) + ","
+    loop += str(pts-1) + "}"
+    f.write("Line Loop(" + str(pts+1) + ") = " + loop + ";\n\n")
     
     f.write("// Surface\n")
-    surface_num = pts+2
-    f.write("Plane Surface(" + str(surface_num) + ") = {" \
-            + str(pts+1) + "};\n\n")
+    surf_num = pts+2
+    f.write("Plane Surface(" + str(surf_num) + ") = {" + str(pts+1) + "};\n\n")
+
+    if not boundary_extend:
+      f.write("Mesh.CharacteristicLengthExtendFromBoundary = 0;\n\n")
+
+    self.surf_num = surf_num
+    self.pts      = pts
+    self.loop     = loop
   
-  def add_box(self, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
+  def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
     """
     add a box to the mesh.  e.g. for Byrd Glacier data:
       
       add_box(10000, 260000, 620000, -1080000, -710100, 0, 0) 
 
     """ 
-    f = self.f
+    f  = self.f
+    fd = str(field)
 
-    f.write("Field[1]      =  Box;\n")
-    f.write("Field[1].VIn  =  " + float(vin)  + ";\n")
-    f.write("Field[1].VOut =  lc;\n")
-    f.write("Field[1].XMax =  " + float(xmax) + ";\n")
-    f.write("Field[1].XMin =  " + float(xmin) + ";\n")
-    f.write("Field[1].YMax =  " + float(ymax) + ";\n")
-    f.write("Field[1].YMin =  " + float(ymin) + ";\n")
-    f.write("Field[1].ZMax =  " + float(zmax) + ";\n")
-    f.write("Field[1].ZMin =  " + float(zmin) + ";\n\n")
+    f.write("Field[" + fd + "]      =  Box;\n")
+    f.write("Field[" + fd + "].VIn  =  " + float(vin)  + ";\n")
+    f.write("Field[" + fd + "].VOut =  lc;\n")
+    f.write("Field[" + fd + "].XMax =  " + float(xmax) + ";\n")
+    f.write("Field[" + fd + "].XMin =  " + float(xmin) + ";\n")
+    f.write("Field[" + fd + "].YMax =  " + float(ymax) + ";\n")
+    f.write("Field[" + fd + "].YMin =  " + float(ymin) + ";\n")
+    f.write("Field[" + fd + "].ZMax =  " + float(zmax) + ";\n")
+    f.write("Field[" + fd + "].ZMin =  " + float(zmin) + ";\n\n")
     
-    f.write("Background Field = 1;")
- 
-  def finish(self):
+    self.fieldList.append(field)
+
+  def add_edge_attractor(self, field):
     """
-    close the .geo file
     """
+    fd = str(field)
+    f  = self.f
+
+    f.write("Field[" + fd + "]              = Attractor;\n")
+    f.write("Field[" + fd + "].NodesList    = " + self.loop + ";\n")
+    f.write("Field[" + fd + "].NNodesByEdge = 100;\n\n")
+
+  def add_threshold(self, field, ifield, lcMin, lcMax, distMin, distMax):
+    """
+    """
+    fd = str(field)
+    f  = self.f
+
+    f.write("Field[" + fd + "]         = Threshold;\n")
+    f.write("Field[" + fd + "].IField  = " + str(ifield)  + ";\n")
+    f.write("Field[" + fd + "].LcMin   = " + str(lcMin)   + ";\n")
+    f.write("Field[" + fd + "].LcMax   = " + str(lcMax)   + ";\n")
+    f.write("Field[" + fd + "].DistMin = " + str(distMin) + ";\n")
+    f.write("Field[" + fd + "].DistMax = " + str(distMax) + ";\n\n")
+
+    self.fieldList.append(field)
+  
+  def finish(self, field):
+    """
+    figure out background field and close the .geo file.
+    """
+    f     = self.f
+    fd    = str(field)
+    flist = self.fieldList
+
+    # get a string of the fields list :
+    l = ""
+    for i,j in enumerate(flist):
+      l += str(j)
+      if i != len(flist) - 1:
+        l += ', '
+  
+    # make the background mesh size the minimum of the fields : 
+    if len(flist) > 0:
+      f.write("Field[" + fd + "]            = Min;\n")
+      f.write("Field[" + fd + "].FieldsList = {" + l + "};\n")
+      f.write("Background Field    = " + fd + ";\n\n")
+    else:
+      f.write("Background Field = " + fd + ";\n\n")
+    
     print 'finished, closing \"' + self.direc + self.fn + '.geo\".'
-    self.f.close
+    f.close
 
   def create_2D_mesh(self, outfile):
     """
     create the 2D mesh to file <outfile>.msh.
     """
     #FIXME: this fails every time, the call in the terminal does work however.
-    os.system('gmsh ' + self.direc + self.fn + '.geo -2 -o ' \
-              + self.direc + outfile + '.msh')
+    cmd = 'gmsh ' + self.direc + self.fn + '.geo -2 -o ' \
+                  + self.direc + outfile + '.msh'
+    print "\nExecuting :\n\n\t", cmd, "\n\n"
+    os.system(cmd)
 
 
   def convert_msh_to_xml(self, mshfile, xmlfile):
@@ -642,7 +695,9 @@ class MeshGenerator(object):
     msh = self.direc + mshfile + '.msh'
     xml = self.direc + xmlfile + '.xml'
 
-    os.system('dolfin-convert ' + msh + ' ' + xml)
+    cmd = 'dolfin-convert ' + msh + ' ' + xml
+    print "\nExecuting :\n\n\t", cmd, "\n\n"
+    os.system(cmd)
 
 
 

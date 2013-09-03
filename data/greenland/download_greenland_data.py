@@ -1,47 +1,9 @@
-import urllib2
 import sys
 import os
-import zipfile
+src_directory = '../../'
+sys.path.append(src_directory)
 
-def download_file(url, direc, folder, extract=False):
-  # make the directory if needed :
-  direc = direc + '/' + folder + '/'
-  d     = os.path.dirname(direc)
-  if not os.path.exists(d):
-    os.makedirs(d)
-
-  # url file info :
-  fn   = url.split('/')[-1]
-  u    = urllib2.urlopen(url)
-  f    = open(direc + fn, 'wb')
-  meta = u.info()
-  fs   = int(meta.getheaders("Content-Length")[0])
-  
-  print "Downloading: %s Bytes: %s" % (fn, fs)
-  
-  fs_dl  = 0
-  blk_sz = 8192
-  
-  # download the file and print status :
-  while True:
-    buffer = u.read(blk_sz)
-    if not buffer:
-      break
-  
-    fs_dl += len(buffer)
-    f.write(buffer)
-    status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
-    status = status + chr(8)*(len(status)+1)
-    sys.stdout.write(status)
-    sys.stdout.flush()
-  
-  f.close()
-  
-  # extract the zip file if necessary :
-  if extract:
-    zf = zipfile.ZipFile(direc + fn)
-    zf.extractall(direc)
-    os.remove(direc + fn)
+from src.helper import download_file
 
 
 def convert_measures_projection(direc, var):
@@ -58,31 +20,40 @@ def convert_measures_projection(direc, var):
 
   cmd = 'gdalwarp ' + infile + ' ' + outfile + ' -t_srs ' + proj + ' -te ' + te
   
-  print cmd
+  print "\nExecuting :\n\n\t", cmd, "\n\n"
   os.system(cmd)
 
 
 #===============================================================================
 home = os.getcwd()
 
+# measures velocity dataset :
 fldr = 'measures'
 meas = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
        'nsidc0478_MEASURES_greenland_V01/2008/' + \
        'greenland_vel_mosaic500_2008_2009'
-
 download_file(meas + '_sp.tif', home, fldr)
 download_file(meas + '_vx.tif', home, fldr)
 download_file(meas + '_vy.tif', home, fldr)
 
+# convert to searise projection via raster warp :
 convert_measures_projection(home + '/' + fldr, 'vx')
 convert_measures_projection(home + '/' + fldr, 'vy')
 convert_measures_projection(home + '/' + fldr, 'sp')
 
+# searise dataset :
 searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
 fldr    = 'searise'
-
 download_file(searise, home, fldr)
 
+# smooth target matlab matrix :
+smooth  = 'http://ubuntuone.com/1UKKXA7rNujI4j298nhrsX'
+fldr    = 'searise'
+download_file(smooth, home, fldr, extract=True)
 
+# Bamber 2013 bedrock topography dataset :
+v2      = 'http://ubuntuone.com/2b9zcV93XCYdqOjpBfbEqe'
+fldr    = 'bamber13'
+download_file(v2, home, fldr, extract=True)
 
 

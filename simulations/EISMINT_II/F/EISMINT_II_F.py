@@ -9,6 +9,7 @@ import src.physical_constants
 import pylab
 import dolfin
 import pickle
+from meshes.mesh_factory import MeshFactory
 
 dolfin.set_log_active(True)
 
@@ -118,8 +119,8 @@ config = { 'mode'                         : 'steady',
 model = src.model.Model()
 model.set_geometry(Surface(), Bed())
 
-mesh  = dolfin.Mesh('../meshes/circle.xml')
-flat_mesh = dolfin.Mesh('../meshes/circle.xml')
+mesh      = MeshFactory.get_circle()
+flat_mesh = MeshFactory.get_circle()
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 
 model.mesh.coordinates()[:,2] = model.mesh.coordinates()[:,2]/1000.0

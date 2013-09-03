@@ -1,8 +1,9 @@
 import inspect
 import os
+import sys
 from numpy    import *
 from scipy.io import loadmat, netcdf_file
-import sys
+from osgeo    import gdal
 
 class DataFactory(object):
  
@@ -73,6 +74,9 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
     
+    sys.path.append(home + '/external_import_scripts')
+    from tifffile import TiffFile
+    
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
     files    = ['sp', 'vx', 'vy']
     vara     = dict()
@@ -92,8 +96,6 @@ class DataFactory(object):
     lat_ts = '70'
     lon_0  = '-45'
     
-    sys.path.append(home + '/external_import_scripts')
-    from tifffile import TiffFile
     # retrieve data :
     for f in files:
       data    = TiffFile(direc + f + '.tif')
@@ -106,18 +108,49 @@ class DataFactory(object):
                  'standard lat'      : lat_0,
                  'standard lon'      : lon_0,
                  'lat true scale'    : lat_ts}
+    return vara
   
-    vmag = sqrt(vara['vx']['map_data']**2 + vara['vy']['map_data']**2)
+  
+  @staticmethod
+  def get_shift_gre_measures():
     
-    vara['v_mag'] = {'map_data'          : vmag,
-                     'map_western_edge'  : west, 
-                     'map_eastern_edge'  : east, 
-                     'map_southern_edge' : south, 
-                     'map_northern_edge' : north,
-                     'projection'        : proj,
-                     'standard lat'      : lat_0,
-                     'standard lon'      : lon_0,
-                     'lat true scale'    : lat_ts}
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    
+    sys.path.append(home + '/external_import_scripts')
+    from tifffile import TiffFile
+    
+    direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
+    files    = ['sp', 'vx', 'vy']
+    vara     = dict()
+     
+    # extents of domain :
+    nx    =  3010
+    ny    =  5460
+    dx    =  500
+    west  = -645000.0
+    east  =  west  + nx*dx
+    south = -3370000.0 
+    north =  south + ny*dx
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '71'
+    lon_0  = '-39'
+
+    # retrieve data :
+    for f in files:
+      data    = TiffFile(direc + f + '_new.tif')
+      vara[f] = {'map_data'          : data.asarray(),
+                 'map_western_edge'  : west,
+                 'map_eastern_edge'  : east,  
+                 'map_southern_edge' : south,
+                 'map_northern_edge' : north,
+                 'projection'        : proj,
+                 'standard lat'      : lat_0,
+                 'standard lon'      : lon_0,
+                 'lat true scale'    : lat_ts}
     return vara
   
   
@@ -172,12 +205,12 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_V2():
+  def get_bamber():
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
    
-    direc = home + '/greenland/V2/Greenland_bedrock_topography_V2.nc' 
+    direc = home + '/greenland/bamber13/Greenland_bedrock_topography_V2.nc' 
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     

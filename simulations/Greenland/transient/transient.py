@@ -9,15 +9,16 @@ import src.helper
 import pylab
 import dolfin
 import scipy.io
-from data.data_factory import DataFactory
-from src.utilities     import DataInput
+from data.data_factory   import DataFactory
+from meshes.mesh_factory import MeshFactory
+from src.utilities       import DataInput
 
 dolfin.set_log_active(True)
 
 vara = DataFactory.get_searise(thklim = 50.0)
 
-mesh                    = dolfin.Mesh('../meshes/greenland_coarse_mesh.xml')
-flat_mesh               = dolfin.Mesh('../meshes/greenland_coarse_mesh.xml')
+mesh                    = MeshFactory.get_greenland_coarse()
+flat_mesh               = MeshFactory.get_greenland_coarse() 
 mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
 
 dd                 = DataInput(None, vara, mesh=mesh)

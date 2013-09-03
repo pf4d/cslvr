@@ -479,10 +479,12 @@ class AdjointSolver(object):
       # variables of interest.
       J = assemble(self.adjoint_instance.J)
       U = project(as_vector([model.u, model.v, model.w]))
+      dSdt = project(-(model.u*model.S.dx(0) + model.v*model.S.dx(1)) + (model.w + model.adot))
       file_u_xml << U
       file_u_pvd << U
       file_b_xml << model.beta2 
       file_b_pvd << model.beta2
+      file_dSdt_pvd << dSdt
       return get_global(J)
 
     #===========================================================================
@@ -492,6 +494,7 @@ class AdjointSolver(object):
     file_b_pvd = File(path + 'beta2_opt.pvd')
     file_u_xml = File(path + 'U_opt.pvd')
     file_u_pvd = File(path + 'U_opt.xml')
+    file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:

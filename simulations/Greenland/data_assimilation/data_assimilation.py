@@ -58,10 +58,10 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 10.0,
+             'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
-             'approximation'  : 'fo',
+             'approximation'  : 'stokes',
              'boundaries'     : None
            },
            'enthalpy' : 
@@ -99,8 +99,8 @@ config = { 'mode'                         : 'steady',
            { 
              'alpha'              : 0.0,
              'beta'               : 0.0,
-             'max_fun'            : 20,
-             'objective_function' : 'logarithmic',
+             'max_fun'            : 100,
+             'objective_function' : 'kinematic',
              'bounds'             : (0,20)
            }}
 
@@ -112,21 +112,23 @@ model.set_geometry(Surface, Bed)
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
+model.eps_reg = 1e-5
 
-F = solvers.SteadySolver(model,config)
+#F = solvers.SteadySolver(model,config)
 #File('./results/beta2_opt.xml') >> model.beta2
-F.solve()
+#F.solve()
+model.adot = Smb
 
-visc    = project(model.eta)
-vel_par = config['velocity']
-vel_par['viscosity_mode']                                         = 'linear'
-vel_par['b_linear']                                               = visc
-vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
+#visc    = project(model.eta)
+#vel_par = config['velocity']
+#vel_par['viscosity_mode']                                         = 'linear'
+#vel_par['b_linear']                                               = visc
+#vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
 
 config['enthalpy']['on']        = False
 config['surface_climate']['on'] = False
 config['coupled']['on']         = False
-config['velocity']['use_T0']    = False
+config['velocity']['use_T0']    = True
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)

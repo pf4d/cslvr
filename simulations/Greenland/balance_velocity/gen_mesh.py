@@ -29,6 +29,6 @@ m.plot_contour()
 m.write_gmsh_contour(10000)
 m.finish()
 
-m.create_2D_mesh('mesh') #FIXME: fails
-m.convert_msh_to_xml('mesh', 'mesh')
+#m.create_2D_mesh('mesh') #FIXME: fails
+#m.convert_msh_to_xml('mesh', 'mesh')
 

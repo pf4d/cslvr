@@ -1344,6 +1344,7 @@ class AdjointVelocityBP(object):
     w         = model.w
     adot      = model.adot
     ds        = model.ds
+    S         = model.S
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj     = model.Q2
@@ -1382,7 +1383,7 @@ class AdjointVelocityBP(object):
                  + alpha * (beta2.dx(0)**2 + beta2.dx(1)**2) * ds(3)
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (w + adot))**2 * ds(2) \
+      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) \
                + alpha * (beta2.dx(0)**2 + beta2.dx(1)**2) * ds(3)
 
     else:
@@ -1640,7 +1641,7 @@ class VelocityBalance(object):
 
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None):
+  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None,gamma=0.0,theta=0.0):
     set_log_level(PROGRESS)
 
     Q   = FunctionSpace(mesh, "CG", 1)
@@ -1698,9 +1699,9 @@ class VelocityBalance_2(object):
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1)
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1) + 0.5*gamma*dot(grad(adot),grad(adot))*dx + 0.5*theta*dot(grad(H),grad(H))*dx
     else:
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx + 0.5*gamma*dot(grad(adot),grad(adot))*dx + 0.5*kappa*dot(grad(H),grad(H))*dx
 
     
     self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
@@ -1708,8 +1709,8 @@ class VelocityBalance_2(object):
     self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
     self.g_Uobs        = derivative(self.I,Uobs,phi)
-    self.g_adot        = -(lamda + tau*div(lamda*dS*H))*phi*dx
-    self.g_H           = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
+    self.g_adot        = -(lamda + tau*div(lamda*dS*H))*phi*dx + derivative(self.I,adot,phi)
+    self.g_H           = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx + derivative(self.I,H,phi)
 
     self.H        = H
     self.S        = S

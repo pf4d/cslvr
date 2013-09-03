@@ -44,11 +44,10 @@ insar_mask.set_all(0)
 for c in cells(mesh):
     x,y = c.midpoint().x(),c.midpoint().y()
     Uval = U_sar_spline(x,y)
-    print Uval
     if Uval>0:
         insar_mask[c]=1
 
-prb   = VelocityBalance_2(mesh, H, S, adot, 8.0,Uobs=Uobs,Uobs_mask=insar_mask)
+prb   = VelocityBalance_2(mesh, H, S, adot, 8.0,Uobs=Uobs,Uobs_mask=insar_mask,gamma=1e8,theta=0.0)
 n = len(mesh.coordinates())
 
 Uopt_file = File('results/Uopt.pvd')
@@ -79,7 +78,7 @@ def _J_fun(x):
 
     return hstack(g)
 
-from scipy.optimize import fmin_l_bfgs_b
+from scipy.optimize import fmin_l_bfgs_b,fmin_tnc
 
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),H.vector().array()))
 
@@ -87,17 +86,18 @@ Umerr = 0.2
 Uaerr = 50.0
 
 amerr = 0.25
-aaerr = 0.5
+aaerr = 1.0
 
 Hmerr = 0.1
 Haerr = 100.0
 
-Uobs_bounds = [(max(min(r-Umerr*abs(r),r-Uaerr),0),max(r+Umerr*abs(r),r+Uaerr)) for r in Uobs.vector().array()] 
+Uobs_bounds = [(max(0.8*min(r-Umerr*abs(r),r-Uaerr),0),max(r+Umerr*abs(r),r+Uaerr)) for r in Uobs.vector().array()] 
 ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) for r in adot.vector().array()] 
 H_bounds = [(max(min(r-Hmerr*abs(r),r-Haerr),0),max(r+Hmerr*abs(r),r+Haerr)) for r in H.vector().array()] 
 
 bounds = Uobs_bounds+ahat_bounds+H_bounds
 
 fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1)
+#fmin_tnc(_I_fun,x0,fprime=_J_fun,bounds=bounds,disp=5)
 
 

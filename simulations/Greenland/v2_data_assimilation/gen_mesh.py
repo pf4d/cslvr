@@ -27,6 +27,6 @@ m.add_edge_attractor(1)
 m.add_threshold(2, 1, 5000, 1000, 1, 400000)
 m.finish(4)
 
-#m.create_2D_mesh('mesh') #FIXME: fails
-#m.convert_msh_to_xml('mesh', 'mesh')
+m.create_2D_mesh('mesh') #FIXME: fails
+m.convert_msh_to_xml('mesh', 'mesh')
 

@@ -37,6 +37,9 @@ dms.change_projection(dsr)
 # set the maximum ice thickness :
 dbm.set_data_min('H', 10.0, 10.0)
 
+# set value of bed to correspond with thickness change :
+dbm.data['b'] = dbm.data['h'] - dbm.data['H']
+
 # get the expressions used by varglas :
 Surface            = dbm.get_spline_expression('h')
 Bed                = dbm.get_spline_expression('b')

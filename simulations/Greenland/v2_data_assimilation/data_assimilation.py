@@ -6,11 +6,12 @@ import src.model              as model
 import src.solvers            as solvers
 import src.physical_constants as pc
 import scipy.io
-from data.data_factory import DataFactory
-from src.helper        import default_nonlin_solver_params
-from src.utilities     import DataInput, DataOutput
-from dolfin            import *
-from pylab             import sqrt, copy
+from meshes.mesh_factory import MeshFactory
+from data.data_factory   import DataFactory
+from src.helper          import default_nonlin_solver_params
+from src.utilities       import DataInput, DataOutput
+from dolfin              import *
+from pylab               import sqrt, copy
 
 set_log_active(True)
 
@@ -18,30 +19,36 @@ set_log_active(True)
 searise  = DataFactory.get_searise()
 measure  = DataFactory.get_gre_measures()
 meas_shf = DataFactory.get_shift_gre_measures()
-bamber   = DataFactory.get_bamber()
+bamber   = DataFactory.get_bamber(thklim = 100.0)
 
 # define the meshes :
-mesh      = Mesh('../meshes/mesh.xml')
-flat_mesh = Mesh('../meshes/mesh.xml')
+#mesh      = Mesh('../meshes/mesh.xml')
+#flat_mesh = Mesh('../meshes/mesh.xml')
+
+#mesh                    = MeshFactory.get_greenland_coarse()
+#flat_mesh               = MeshFactory.get_greenland_coarse()
+#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+mesh                    = MeshFactory.get_greenland_detailed()
+flat_mesh               = MeshFactory.get_greenland_detailed()
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
 dbm     = DataInput(None, bamber,   mesh=mesh)
 dms     = DataInput(None, measure,  mesh=mesh, create_proj=True, flip=True)
 dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
-dbv     = DataInput("results/", ("Ubmag_measures.mat",), mesh=mesh)
+dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
 dms.change_projection(dsr)
 
-# set the maximum ice thickness :
-dbm.set_data_min('H', 10.0, 10.0)
+# inspect the data values :
+do      = DataOutput('results_pre/')
+#do.write_one_file('h',              dbm.get_projection('h'))
+#do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
 
-# set value of bed to correspond with thickness change :
-dbm.data['b'] = dbm.data['h'] - dbm.data['H']
 
 # get the expressions used by varglas :
-Surface            = dbm.get_spline_expression('h')
+Surface            = dbm.get_spline_expression('h_n')
 Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dsr.get_spline_expression('q_geo')

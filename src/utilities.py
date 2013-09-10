@@ -129,7 +129,8 @@ class DataInput:
              + " +lon_0="  + self.lon_0 \
              + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
              + " +towgs84=0.000,0.000,0.000 +to_meter=1"
-      self.p = Proj(proj)
+      self.proj_str = proj
+      self.p        = Proj(proj)
 
   def change_projection(self, di):
     """
@@ -138,7 +139,7 @@ class DataInput:
     create_proj = True.
     """
     self.chg_proj = True
-    self.new_p    = di.p
+    self.new_p    = Proj(di.proj_str)
 
     #n = shape(X)[0]
     #xs  = di.x

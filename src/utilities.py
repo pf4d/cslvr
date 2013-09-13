@@ -8,7 +8,7 @@ Utilities file:
 
 """
 import sys
-import os
+import subprocess
 src_directory = '../'
 sys.path.append(src_directory)
 
@@ -682,10 +682,10 @@ class MeshGenerator(object):
     create the 2D mesh to file <outfile>.msh.
     """
     #FIXME: this fails every time, the call in the terminal does work however.
-    cmd = 'gmsh ' + self.direc + self.fn + '.geo -2 -o ' \
-                  + self.direc + outfile + '.msh'
+    cmd = 'gmsh ' + '-2 ' + self.direc + self.fn + '.geo'# -2 -o ' \
+                  #+ self.direc + outfile + '.msh'
     print "\nExecuting :\n\n\t", cmd, "\n\n"
-    os.system(cmd)
+    subprocess.call(cmd.split())
 
 
   def convert_msh_to_xml(self, mshfile, xmlfile):
@@ -697,7 +697,7 @@ class MeshGenerator(object):
 
     cmd = 'dolfin-convert ' + msh + ' ' + xml
     print "\nExecuting :\n\n\t", cmd, "\n\n"
-    os.system(cmd)
+    subprocess.call(cmd.split())
 
 
 

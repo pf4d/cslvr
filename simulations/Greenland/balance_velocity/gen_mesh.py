@@ -18,7 +18,7 @@ vara['H']['map_data'] = H
 dd = DataInput(None, vara, flip=False, gen_space=False)
 #dd.set_data_max('mask', 2, 0)
 
-m = MeshGenerator(dd, 'mesh', '../meshes/')
+m = MeshGenerator(dd, 'mesh', './')
 
 m.create_contour('H', 200.0, 10)
 m.plot_contour()
@@ -27,8 +27,8 @@ m.eliminate_intersections()
 m.plot_contour()
 
 m.write_gmsh_contour(10000)
-m.finish()
+m.finish(None)
 
-#m.create_2D_mesh('mesh') #FIXME: fails
-#m.convert_msh_to_xml('mesh', 'mesh')
+m.create_2D_mesh('mesh') #FIXME: fails
+m.convert_msh_to_xml('mesh', 'mesh')
 

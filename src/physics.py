@@ -1337,7 +1337,6 @@ class AdjointVelocityBP(object):
     Lsq       = model.Lsq
     Nc        = model.Nc
     U         = model.U
-    beta2     = model.beta2
     U_o       = model.U_o
     u_o       = model.u_o
     v_o       = model.v_o
@@ -1345,6 +1344,8 @@ class AdjointVelocityBP(object):
     adot      = model.adot
     ds        = model.ds
     S         = model.S
+
+    control = config['adjoint']['control_variable']
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj     = model.Q2
@@ -1358,12 +1359,7 @@ class AdjointVelocityBP(object):
     Phi       = TestFunction(Q_adj)
     model.Lam = Function(Q_adj)
 
-
-
     rho       = TestFunction(Q)
-
-    
-
 
     # Derivative, with trial function l.  This is the BP equations in weak form
     # multiplied by l and integrated by parts
@@ -1374,22 +1370,25 @@ class AdjointVelocityBP(object):
     if config['adjoint']['objective_function'] == 'logarithmic':
       if U_o is not None:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (abs(U_o) + 1.0))**2 * ds(2) \
-                 + alpha * (beta2.dx(0)**2 + beta2.dx(1)**2) * ds(3)
+                       (abs(U_o) + 1.0))**2 * ds(2)
+        for c in control:
+          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
       else:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) \
-                 + alpha * (beta2.dx(0)**2 + beta2.dx(1)**2) * ds(3)
+                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) 
+        for c in control:
+          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) \
-               + alpha * (beta2.dx(0)**2 + beta2.dx(1)**2) * ds(3)
+      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) 
+      for c in control:
+        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
 
     else:
-      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) \
-               + alpha * (beta2.dx(0)**2 + beta2.dx(1)**2) * ds(3) \
-               + beta * beta2**2 * ds(3)
+      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) 
+      for c in control:
+        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
@@ -1409,7 +1408,9 @@ class AdjointVelocityBP(object):
 
     # Differentiation wrt to the control variable in the direction of a test 
     # function yields a vector.  Assembly of this vector yields dJ/dbeta2
-    self.J     = derivative(I_gradient, beta2, rho)
+    self.J = []
+    for c in control:
+      self.J.append(derivative(I_gradient, c, rho))
 
   def solve(self):
     """

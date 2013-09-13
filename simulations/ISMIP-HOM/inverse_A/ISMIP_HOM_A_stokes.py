@@ -86,7 +86,7 @@ for L in lengths:
                     'max_fun' : 100,
                     'objective_function' : 'kinematic',
                     'animate' : False,
-                    'bounds' : (0,5000.0)
+                    'bounds' : [(0,5000.0)]
                 },
                 'output_path' : './results_stokes/',
                 'wall_markers' : [],
@@ -108,6 +108,8 @@ for L in lengths:
     F = src.solvers.SteadySolver(model,config)
     F.solve()
     model.eps_reg = 1e-5
+
+    config['adjoint']['control_variable'] = [model.beta2]
 
     A = src.solvers.AdjointSolver(model,config)
     #model.beta2.vector()[:] = 1000.

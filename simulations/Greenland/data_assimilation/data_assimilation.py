@@ -15,9 +15,8 @@ set_log_active(True)
 
 vara = DataFactory.get_searise()
 
-mesh                    = MeshFactory.get_greenland_coarse()
-flat_mesh               = MeshFactory.get_greenland_coarse()
-mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+mesh                    = MeshFactory.get_greenland_detailed()
+flat_mesh               = MeshFactory.get_greenland_detailed()
 
 dd                 = DataInput(None, vara, mesh=mesh)
 
@@ -40,7 +39,7 @@ config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results_coarse/',
+           'output_path'                  : './results/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
            'log'                          : True,
@@ -62,7 +61,7 @@ config = { 'mode'                         : 'steady',
              'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
-             'approximation'  : 'stokes',
+             'approximation'  : 'fo',
              'boundaries'     : None
            },
            'enthalpy' : 
@@ -101,8 +100,9 @@ config = { 'mode'                         : 'steady',
              'alpha'              : 0.0,
              'beta'               : 0.0,
              'max_fun'            : 100,
-             'objective_function' : 'kinematic',
-             'bounds'             : (0,20)
+             'objective_function' : 'logarithmic',
+             'control_variable'   : None,
+             'bounds'             : [(0,20)]
            }}
 
 
@@ -115,25 +115,38 @@ model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 model.eps_reg = 1e-5
 
-#F = solvers.SteadySolver(model,config)
+F = solvers.SteadySolver(model,config)
 #File('./results/beta2_opt.xml') >> model.beta2
-#F.solve()
-model.adot = Smb
+F.solve()
+#model.adot = Smb
 
-#visc    = project(model.eta)
-#vel_par = config['velocity']
-#vel_par['viscosity_mode']                                         = 'linear'
-#vel_par['b_linear']                                               = visc
-#vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
+visc    = project(model.eta)
+vel_par = config['velocity']
+vel_par['viscosity_mode']                                         = 'linear'
+vel_par['b_linear']                                               = visc
+vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
 
 config['enthalpy']['on']        = False
 config['surface_climate']['on'] = False
 config['coupled']['on']         = False
 config['velocity']['use_T0']    = True
+config['adjoint']['control_variable']    = [model.beta2,model.U_o]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
+U_loc = model.U_o.vector().get_local()
+U_loc[U_loc<0] = 0.0
+model.U_o.vector().set_local(U_loc)
+U_o_min = Function(model.Q)
+U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
+U_o_max = Function(model.Q)
+U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
+config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
 #File('./results/beta2_opt.xml') >> model.beta2
 A.solve()
+
+
+u_flat = dolfin.Function(model.Q_flat)
+u_flat.vector().set_local(model.u.vector().get_local())
 
 

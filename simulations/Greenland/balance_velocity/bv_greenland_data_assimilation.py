@@ -19,7 +19,7 @@ measure = DataFactory.get_gre_measures()
 direc = os.path.dirname(os.path.realpath(__file__))
 
 # load a mesh :
-mesh    = Mesh("../meshes/mesh.xml")
+mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)

@@ -59,7 +59,7 @@ config = { 'mode' : 'steady',
                 'beta2' : Beta2(),
                 'r' : 0.0,
                 'E' : 1,
-                'approximation' : 'stokes',
+                'approximation' : 'fo',
                 'boundaries' : None
             },
         'enthalpy' : 
@@ -93,7 +93,8 @@ config = { 'mode' : 'steady',
                 'max_fun' : 100,
                 'objective_function' : 'linear',
                 'animate' : False,
-                'bounds' : (0,5000.0)
+                'bounds' : None,
+                'control_variable' : None
             },
             'output_path' : './results/',
             'wall_markers' : [],
@@ -115,6 +116,8 @@ F = src.solvers.SteadySolver(model,config)
 F.solve()
 
 model.eps_reg = 1e-5
+config['adjoint']['control_variable'] = [model.beta2]
+config['adjoint']['bounds'] = [(0.0,5000.0)]
 
 A = src.solvers.AdjointSolver(model,config)
 model.beta2.vector()[:] = 1000.

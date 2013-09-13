@@ -110,7 +110,8 @@ config = { 'mode' : 'steady',
                  'beta' : 0.0,
                  'max_fun' : 50,
                  'objective_function' : 'logarithmic',
-                 'bounds':(0.,20.)
+                 'bounds':None,
+                 'control_variable':None
                },
             'output_path' : './results_coarse/',
             'wall_markers' : [],
@@ -137,6 +138,8 @@ config['enthalpy']['on'] = False
 config['surface_climate']['on'] = False
 config['coupled']['on'] = False
 config['velocity']['use_T0'] = False
+config['adjoint']['control_variable'] = [model.beta2]
+config['adjoint']['bounds'] = [(0,20.)]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)

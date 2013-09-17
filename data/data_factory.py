@@ -27,7 +27,7 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    direc    = home + '/antarctica/measures/Antarctica_ice_velocity.nc' 
+    direc    = home + '/antarctica/measures/Antarctica_ice_velocity_450m.nc' 
     data     = netcdf_file(direc, mode = 'r')
     vara     = dict()
   
@@ -39,7 +39,7 @@ class DataFactory(object):
      
     # extents of domain :
     m,n   =  shape(vx)
-    dx    =  900
+    dx    =  450
     west  = -2800000.0
     east  =  west + n*dx
     north =  2800000.0
@@ -205,7 +205,7 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_bamber():
+  def get_bamber(thklim = 10.0):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -222,6 +222,10 @@ class DataFactory(object):
     H    = array(data.variables['IceThickness'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
     
+    H_n               = h - b
+    h_n               = h.copy()
+    h_n[H_n < thklim] = b[H_n < thklim] + thklim
+
     # extents of domain :
     east  = max(x)
     west  = min(x)
@@ -234,8 +238,8 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
      
-    names = ['b', 'h', 'H', 'mask']
-    ftns  = [b, h, H, mask]
+    names = ['b', 'h', 'h_n', 'H', 'H_n', 'mask']
+    ftns  = [ b,   h,   h_n,   H,   H_n,   mask]
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):
@@ -293,7 +297,8 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
  
-    names = ['H', 'h', 'adot', 'b', 'T', 'q_geo','U_sar', 'U_ob', 'lat', 'lon', 'Tn']
+    names = ['H', 'h', 'adot', 'b', 'T', 'q_geo','U_sar', \
+             'U_ob', 'lat', 'lon', 'Tn']
     ftns  = [H, h, adot, b, T, q_geo,U_sar, U_ob, lat, lon, Tn]
 
     for n, f in zip(names, ftns):

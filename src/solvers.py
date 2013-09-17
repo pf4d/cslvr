@@ -457,33 +457,43 @@ class AdjointSolver(object):
       else:
         raise TypeError, 'Unknown parameter type'
 
-    def _I_fun(beta2_array, *args):
+    def _I_fun(c_array, *args):
       """
-      Solve forward model with given beta2, calculate objective function
+      Solve forward model with given control, calculate objective function
       """
-      set_local_from_global(model.beta2, beta2_array)
+      n = len(c_array)/len(config['adjoint']['control_variable'])
+      for ii,c in enumerate(config['adjoint']['control_variable']):
+          set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
       I = assemble(self.adjoint_instance.I)
       return I
  
-    def _J_fun(x, *args):
+    def _J_fun(c_array, *args):
       """
       Solve adjoint model, calculate gradient
       """
       # dolfin.adjoint method:
-      set_local_from_global(model.beta2, x)
+      n = len(c_array)/len(config['adjoint']['control_variable'])
+      for ii,c in enumerate(config['adjoint']['control_variable']):
+          set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.adjoint_instance.solve()
 
       # This is not the best place for this, but we leave it here for now
       # so that we can see the impact of every line search update on the
       # variables of interest.
-      J = assemble(self.adjoint_instance.J)
+      Js = []
+      for JJ in self.adjoint_instance.J:
+        Js.extend(get_global(assemble(JJ)))
+      Js = array(Js)
       U = project(as_vector([model.u, model.v, model.w]))
+      dSdt = project(-(model.u*model.S.dx(0) + model.v*model.S.dx(1)) + (model.w + model.adot))
       file_u_xml << U
       file_u_pvd << U
       file_b_xml << model.beta2 
       file_b_pvd << model.beta2
-      return get_global(J)
+      file_dSdt_pvd << dSdt
+      file_uo_pvd << model.U_o
+      return Js
 
     #===========================================================================
     # Set up file I/O
@@ -492,33 +502,44 @@ class AdjointSolver(object):
     file_b_pvd = File(path + 'beta2_opt.pvd')
     file_u_xml = File(path + 'U_opt.pvd')
     file_u_pvd = File(path + 'U_opt.xml')
+    file_uo_pvd = File(path + 'U_obs.pvd')
+    file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:
     maxfun     = config['adjoint']['max_fun']
-    bounds     = config['adjoint']['bounds']
-    m_global   = get_global(model.beta2)
+    bounds_list     = config['adjoint']['bounds']
+    m_global   = []
+    for mm in config['adjoint']['control_variable']:
+      m_global.extend(get_global(mm))
+    m_global = array(m_global)
 
     # Shut up all processors but the first one.
     if MPI.process_number() != 0:
       iprint = -1
     else:
       iprint = 1
-
+    b = []
     # convert bounds to an array of tuples and serialise it in parallel environ.
-    bounds_arr = []
-    for i in range(2):
-      if type(bounds[i]) == int or type(bounds[i]) == float:
-        bounds_arr.append(bounds[i] * ones(model.beta2.vector().size()))
-      else:
-        bounds_arr.append(get_global(bounds[i]))
-    bounds = array(bounds_arr).T
+    for bounds in bounds_list:
+      bounds_arr = []
+      for i in range(2):
+        if type(bounds[i]) == int or type(bounds[i]) == float:
+          bounds_arr.append(bounds[i] * ones(model.beta2.vector().size()))
+        else:
+          bounds_arr.append(get_global(bounds[i]))
+      b.append(array(bounds_arr).T)
+    bounds = vstack(b)  
+    print bounds
+       
     
     # minimize this stuff :
     mopt, f, d = fmin_l_bfgs_b(_I_fun, m_global, fprime=_J_fun, bounds=bounds,
                                maxfun=maxfun, iprint=iprint)
-    set_local_from_global(model.beta2, mopt)
 
+    n = len(mopt)/len(config['adjoint']['control_variable'])
+    for ii,c in enumerate(config['adjoint']['control_variable']):
+      set_local_from_global(c, mopt[ii*n:(ii+1)*n])
 
 class BalanceVelocitySolver(object):
   def __init__(self, model, config):

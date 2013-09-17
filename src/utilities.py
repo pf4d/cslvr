@@ -8,7 +8,7 @@ Utilities file:
 
 """
 import sys
-import os
+import subprocess
 src_directory = '../'
 sys.path.append(src_directory)
 
@@ -129,8 +129,7 @@ class DataInput:
              + " +lon_0="  + self.lon_0 \
              + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
              + " +towgs84=0.000,0.000,0.000 +to_meter=1"
-      self.proj_str = proj
-      self.p        = Proj(proj)
+      self.p = Proj(proj)
 
   def change_projection(self, di):
     """
@@ -139,7 +138,7 @@ class DataInput:
     create_proj = True.
     """
     self.chg_proj = True
-    self.new_p    = Proj(di.proj_str)
+    self.new_p    = di.p
 
     #n = shape(X)[0]
     #xs  = di.x
@@ -683,10 +682,10 @@ class MeshGenerator(object):
     create the 2D mesh to file <outfile>.msh.
     """
     #FIXME: this fails every time, the call in the terminal does work however.
-    cmd = 'gmsh ' + self.direc + self.fn + '.geo -2 -o ' \
-                  + self.direc + outfile + '.msh'
+    cmd = 'gmsh ' + '-2 ' + self.direc + self.fn + '.geo'# -2 -o ' \
+                  #+ self.direc + outfile + '.msh'
     print "\nExecuting :\n\n\t", cmd, "\n\n"
-    os.system(cmd)
+    subprocess.call(cmd.split())
 
 
   def convert_msh_to_xml(self, mshfile, xmlfile):
@@ -698,7 +697,7 @@ class MeshGenerator(object):
 
     cmd = 'dolfin-convert ' + msh + ' ' + xml
     print "\nExecuting :\n\n\t", cmd, "\n\n"
-    os.system(cmd)
+    subprocess.call(cmd.split())
 
 
 

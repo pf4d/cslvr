@@ -25,11 +25,13 @@ bamber   = DataFactory.get_bamber(thklim = 100.0)
 #mesh      = Mesh('../meshes/mesh.xml')
 #flat_mesh = Mesh('../meshes/mesh.xml')
 
-#mesh                    = MeshFactory.get_greenland_coarse()
-#flat_mesh               = MeshFactory.get_greenland_coarse()
-#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
-mesh                    = MeshFactory.get_greenland_detailed()
-flat_mesh               = MeshFactory.get_greenland_detailed()
+mesh                    = MeshFactory.get_greenland_coarse()
+flat_mesh               = MeshFactory.get_greenland_coarse()
+mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+#mesh                    = MeshFactory.get_greenland_detailed()
+#flat_mesh               = MeshFactory.get_greenland_detailed()
+#mesh                    = MeshFactory.get_greenland_medium()
+#flat_mesh               = MeshFactory.get_greenland_medium()
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
@@ -53,6 +55,8 @@ Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dsr.get_spline_expression('q_geo')
 U_observed         = dbv.get_spline_expression('Ubmag_measures')
+beta2              = File('results_coarse/beta2_opt.pvd')
+
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
@@ -67,13 +71,13 @@ config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results_coarse/',
+           'output_path'                  : './results_medium/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
            'log'                          : True,
            'coupled' : 
            { 
-             'on'        : True,
+             'on'        : False,
              'inner_tol' : 0.0,
              'max_iter'  : 5
            },
@@ -86,7 +90,7 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 10.0,
+             'beta2'          : beta2,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -94,7 +98,7 @@ config = { 'mode'                         : 'steady',
            },
            'enthalpy' : 
            { 
-             'on'                  : True,
+             'on'                  : False,
              'use_surface_climate' : False,
              'T_surface'           : SurfaceTemperature,
              'q_geo'               : BasalHeatFlux,
@@ -142,7 +146,7 @@ model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 
 F = solvers.SteadySolver(model,config)
-#File('./results/beta2_opt.xml') >> model.beta2
+File('./results/beta2_opt.xml') >> model.beta2
 F.solve()
 
 visc    = project(model.eta)
@@ -158,7 +162,7 @@ config['velocity']['use_T0']    = False
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-#File('./results/beta2_opt.xml') >> model.beta2
+File('./results/beta2_opt.xml') >> model.beta2
 A.solve()
 
 #u = model.u.vector().get_local()

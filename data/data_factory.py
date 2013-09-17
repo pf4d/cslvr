@@ -27,7 +27,7 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    direc    = home + '/antarctica/measures/Antarctica_ice_velocity.nc' 
+    direc    = home + '/antarctica/measures/Antarctica_ice_velocity_450m.nc' 
     data     = netcdf_file(direc, mode = 'r')
     vara     = dict()
   
@@ -39,7 +39,7 @@ class DataFactory(object):
      
     # extents of domain :
     m,n   =  shape(vx)
-    dx    =  900
+    dx    =  450
     west  = -2800000.0
     east  =  west + n*dx
     north =  2800000.0

@@ -78,7 +78,7 @@ class DataFactory(object):
     from tifffile import TiffFile
     
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
-    files    = ['sp', 'vx', 'vy']
+    files    = ['sp', 'vx', 'vy', 'ex', 'ey']
     vara     = dict()
      
     # extents of domain :

@@ -27,37 +27,39 @@ def convert_measures_projection(direc, var):
 #===============================================================================
 home = os.getcwd()
 
-## measures velocity dataset :
+# measures velocity dataset :
 fldr = 'measures'
-#meas = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
-#       'nsidc0478_MEASURES_greenland_V01/2008/' + \
-#       'greenland_vel_mosaic500_2008_2009'
-#download_file(meas + '_sp.tif', home, fldr)
-#download_file(meas + '_vx.tif', home, fldr)
-#download_file(meas + '_vy.tif', home, fldr)
+meas = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
+       'nsidc0478_MEASURES_greenland_V01/2008/' + \
+       'greenland_vel_mosaic500_2008_2009'
+download_file(meas + '_sp.tif', home, fldr)
+download_file(meas + '_vx.tif', home, fldr)
+download_file(meas + '_vy.tif', home, fldr)
 
 # get errors in .tif format
 errors  = 'http://ubuntuone.com/1xgREbylePrzBUODLBoAef'
 download_file(errors, home, fldr, extract=True)
 
-## convert to searise projection via raster warp :
-#convert_measures_projection(home + '/' + fldr, 'vx')
-#convert_measures_projection(home + '/' + fldr, 'vy')
-#convert_measures_projection(home + '/' + fldr, 'sp')
-#
-## searise dataset :
-#searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
-#fldr    = 'searise'
-#download_file(searise, home, fldr)
-#
-## smooth target matlab matrix :
-#smooth  = 'http://ubuntuone.com/1UKKXA7rNujI4j298nhrsX'
-#fldr    = 'searise'
-#download_file(smooth, home, fldr, extract=True)
-#
-## Bamber 2013 bedrock topography dataset :
-#v2      = 'http://ubuntuone.com/2b9zcV93XCYdqOjpBfbEqe'
-#fldr    = 'bamber13'
-#download_file(v2, home, fldr, extract=True)
+# convert to searise projection via raster warp :
+convert_measures_projection(home + '/' + fldr, 'vx')
+convert_measures_projection(home + '/' + fldr, 'vy')
+convert_measures_projection(home + '/' + fldr, 'ex')
+convert_measures_projection(home + '/' + fldr, 'ey')
+convert_measures_projection(home + '/' + fldr, 'sp')
+
+# searise dataset :
+searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
+fldr    = 'searise'
+download_file(searise, home, fldr)
+
+# smooth target matlab matrix :
+smooth  = 'http://ubuntuone.com/1UKKXA7rNujI4j298nhrsX'
+fldr    = 'searise'
+download_file(smooth, home, fldr, extract=True)
+
+# Bamber 2013 bedrock topography dataset :
+v2      = 'http://ubuntuone.com/2b9zcV93XCYdqOjpBfbEqe'
+fldr    = 'bamber13'
+download_file(v2, home, fldr, extract=True)
 
 

@@ -34,6 +34,7 @@ S     = dbm.get_projection("h")
 adot  = dsr.get_projection("adot")
 
 prb   = VelocityBalance_2(mesh, H, S, adot, 12.0)
+prb.solve_forward()
 
 # File ouput
 do    = DataOutput('results/greenland_balance_velocity_v2/')
@@ -49,7 +50,7 @@ do.write_dict_of_files(d_out)
 do.write_dict_of_files(d_out, extension='.xml')
 do.write_one_file('sp', dms.get_projection('sp'))
 
-#do.write_matlab(dbm, prb.Ubmag, 'results/Ubmag.mat')
+do.write_matlab(dbm, prb.Ubmag, 'results/Ubmag.mat')
 
 dbv = DataInput('results/', ('Ubmag.mat',), mesh=mesh)
 
@@ -58,7 +59,7 @@ dbv.set_data_min('Ubmag', 0.0, 0.0)
 ass = dbv.integrate_field('sp', dmss, 'Ubmag', val=50)
 
 do.write_one_file('Ubmag_measures',  ass)
-#do.write_matlab(dbm, ass, 'results/Ubmag_measures.mat')
+do.write_matlab(dbm, ass, 'results/Ubmag_measures.mat')
 
 
 

@@ -67,11 +67,13 @@ nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 nonlin_solver_params['linear_solver']                            = 'mumps'
 nonlin_solver_params['preconditioner']                           = 'default'
 
+out_dir = './results_medium/'
+
 config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results_medium/',
+           'output_path'                  : out_dir,
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
            'log'                          : True,
@@ -146,7 +148,7 @@ model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 
 F = solvers.SteadySolver(model,config)
-File('./results/beta2_opt.xml') >> model.beta2
+#File(out_dir + 'beta2_opt.xml') >> model.beta2
 F.solve()
 
 visc    = project(model.eta)
@@ -162,7 +164,7 @@ config['velocity']['use_T0']    = False
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-File('./results/beta2_opt.xml') >> model.beta2
+#File(out_dir + 'beta2_opt.xml') >> model.beta2
 A.solve()
 
 #u = model.u.vector().get_local()

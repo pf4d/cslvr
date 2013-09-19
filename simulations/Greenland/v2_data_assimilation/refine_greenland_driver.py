@@ -15,7 +15,7 @@ set_log_active(True)
 parameters['allow_extrapolation'] = True
 
 # load a mesh :
-mesh = Mesh("../meshes/mesh.xml")
+mesh = Mesh("meshes/mesh.xml")
 
 dbv  = DataInput('results/', ('Ubmag.mat',), mesh=mesh)
 

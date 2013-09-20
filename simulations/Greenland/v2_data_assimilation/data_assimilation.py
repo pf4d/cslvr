@@ -25,13 +25,14 @@ bamber   = DataFactory.get_bamber(thklim = 100.0)
 #mesh      = Mesh('../meshes/mesh.xml')
 #flat_mesh = Mesh('../meshes/mesh.xml')
 
-mesh                    = MeshFactory.get_greenland_coarse()
-flat_mesh               = MeshFactory.get_greenland_coarse()
-mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
-#mesh                    = MeshFactory.get_greenland_detailed()
-#flat_mesh               = MeshFactory.get_greenland_detailed()
+#mesh                    = MeshFactory.get_greenland_coarse()
+#flat_mesh               = MeshFactory.get_greenland_coarse()
+#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+mesh                    = MeshFactory.get_greenland_detailed()
+flat_mesh               = MeshFactory.get_greenland_detailed()
 #mesh                    = MeshFactory.get_greenland_medium()
 #flat_mesh               = MeshFactory.get_greenland_medium()
+#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
@@ -54,13 +55,14 @@ Surface            = dbm.get_spline_expression('h_n')
 Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dsr.get_spline_expression('q_geo')
-U_observed         = dbv.get_spline_expression('Ubmag_measures')
-beta2              = File('results_coarse/beta2_opt.pvd')
+adot               = dsr.get_spline_expression('adot')
+U_observed         = dbv.get_spline_expression('Ubmag')
+#beta2              = File('results_coarse/beta2_opt.pvd')
 
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
+nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
@@ -79,7 +81,7 @@ config = { 'mode'                         : 'steady',
            'log'                          : True,
            'coupled' : 
            { 
-             'on'        : False,
+             'on'        : True,
              'inner_tol' : 0.0,
              'max_iter'  : 5
            },
@@ -92,7 +94,7 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : beta2,
+             'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -100,7 +102,7 @@ config = { 'mode'                         : 'steady',
            },
            'enthalpy' : 
            { 
-             'on'                  : False,
+             'on'                  : True,
              'use_surface_climate' : False,
              'T_surface'           : SurfaceTemperature,
              'q_geo'               : BasalHeatFlux,
@@ -135,7 +137,8 @@ config = { 'mode'                         : 'steady',
              'beta'               : 0.0,
              'max_fun'            : 20,
              'objective_function' : 'logarithmic',
-             'bounds'             : (0,20)
+             'control_variable'   : None,
+             'bounds'             : [(0,20)]
            }}
 
 
@@ -146,10 +149,12 @@ model.set_geometry(Surface, Bed)
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
+model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)
 #File(out_dir + 'beta2_opt.xml') >> model.beta2
 F.solve()
+#model.adot = adot
 
 visc    = project(model.eta)
 vel_par = config['velocity']
@@ -157,33 +162,28 @@ vel_par['viscosity_mode']                                         = 'linear'
 vel_par['b_linear']                                               = visc
 vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
 
-config['enthalpy']['on']        = False
-config['surface_climate']['on'] = False
-config['coupled']['on']         = False
-config['velocity']['use_T0']    = False
+config['enthalpy']['on']              = False
+config['surface_climate']['on']       = False
+config['coupled']['on']               = False
+config['velocity']['use_T0']          = True
+config['adjoint']['control_variable'] = [model.beta2,model.U_o]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-#File(out_dir + 'beta2_opt.xml') >> model.beta2
+U_loc = model.U_o.vector().get_local()
+U_loc[U_loc<0] = 0.0
+model.U_o.vector().set_local(U_loc)
+U_o_min = Function(model.Q)
+U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
+U_o_max = Function(model.Q)
+U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
+config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
+#File('./results/beta2_opt.xml') >> model.beta2
 A.solve()
 
-#u = model.u.vector().get_local()
-#v = model.v.vector().get_local()
-#u[abs(u)>5000.0] = 5000.0
-#v[abs(v)>5000.0] = 5000.0
-#model.u.vector().set_local(u)
-#model.v.vector().set_local(v)
 
-#u = model.u_o.vector().get_local()
-#v = model.v_o.vector().get_local()
-#u[abs(u)>5000.0] = 5000.0
-#v[abs(v)>5000.0] = 5000.0
-#model.u_o.vector().set_local(u)
-#model.v_o.vector().set_local(v)
+u_flat = dolfin.Function(model.Q_flat)
+u_flat.vector().set_local(model.u.vector().get_local())
 
-#unit = Function(model.Q)
-#unit.vector()[:] = 1.0
-#RMS = sqrt(assemble(((model.u-model.u_o)**2 + (model.v-model.v_o)**2)*ds(2))/assemble(unit*ds(2)))
-#print RMS
 
 

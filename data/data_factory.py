@@ -152,8 +152,86 @@ class DataFactory(object):
                  'standard lon'      : lon_0,
                  'lat true scale'    : lat_ts}
     return vara
+ 
   
+  @staticmethod
+  def get_gre_qgeo_fox_maule():
+    
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+ 
+    direc = home + "/greenland/fox_maule/Greenland_heat_flux_5km.nc"
+    data  = netcdf_file(direc, mode = 'r')
+    vara  = dict()
+    
+    # retrieve data :
+    x     = array(data.variables['x1'][:])
+    y     = array(data.variables['y1'][:])
+    q_geo = array(data.variables['bheatflx'][:][0]) * 60 * 60 * 24 * 365
+ 
+    # extents of domain :
+    east  = max(x)
+    west  = min(x)
+    north = max(y)
+    south = min(y)
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '71'
+    lon_0  = '-39'
+ 
+    vara['bheatflx'] = {'map_data'          : q_geo,
+                        'map_western_edge'  : west, 
+                        'map_eastern_edge'  : east, 
+                        'map_southern_edge' : south, 
+                        'map_northern_edge' : north,
+                        'projection'        : proj,
+                        'standard lat'      : lat_0,
+                        'standard lon'      : lon_0,
+                        'lat true scale'    : lat_ts}
+    return vara
+    
   
+  @staticmethod
+  def get_ant_qgeo_fox_maule():
+    
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+ 
+    direc = home + "/antarctica/fox_maule/Antarctica_heat_flux_5km.nc"
+    data  = netcdf_file(direc, mode = 'r')
+    vara  = dict()
+    
+    # retrieve data :
+    x     = array(data.variables['x1'][:])
+    y     = array(data.variables['y1'][:])
+    q_geo = array(data.variables['bheatflx'][:][0]) * 60 * 60 * 24 * 365
+ 
+    # extents of domain :
+    east  = max(x)
+    west  = min(x)
+    north = max(y)
+    south = min(y)
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '71'
+    lon_0  = '-39'
+ 
+    vara['bheatflx'] = {'map_data'          : q_geo,
+                        'map_western_edge'  : west, 
+                        'map_eastern_edge'  : east, 
+                        'map_southern_edge' : south, 
+                        'map_northern_edge' : north,
+                        'projection'        : proj,
+                        'standard lat'      : lat_0,
+                        'standard lon'      : lon_0,
+                        'lat true scale'    : lat_ts}
+    return vara
+  
+
   @staticmethod
   def get_lebrocq():
     

@@ -40,12 +40,17 @@ download_file(meas + '_vy.tif', home, fldr)
 errors  = 'http://ubuntuone.com/1xgREbylePrzBUODLBoAef'
 download_file(errors, home, fldr, extract=True)
 
-# convert to searise projection via raster warp :
-convert_measures_projection(home + '/' + fldr, 'vx')
-convert_measures_projection(home + '/' + fldr, 'vy')
-convert_measures_projection(home + '/' + fldr, 'ex')
-convert_measures_projection(home + '/' + fldr, 'ey')
-convert_measures_projection(home + '/' + fldr, 'sp')
+## convert to searise projection via raster warp :
+#convert_measures_projection(home + '/' + fldr, 'vx')
+#convert_measures_projection(home + '/' + fldr, 'vy')
+#convert_measures_projection(home + '/' + fldr, 'ex')
+#convert_measures_projection(home + '/' + fldr, 'ey')
+#convert_measures_projection(home + '/' + fldr, 'sp')
+
+# Fox Maule et al. (2005) basal heat flux :
+q_geo   = 'http://websrv.cs.umt.edu/isis/images/d/da/Greenland_heat_flux_5km.nc'
+fldr    = 'fox_maule'
+download_file(q_geo, home, fldr)
 
 # searise dataset :
 searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'

@@ -216,9 +216,9 @@ class DataFactory(object):
 
     #projection info :
     proj   = 'stere'
-    lat_0  = '90'
+    lat_0  = '-90'
     lat_ts = '71'
-    lon_0  = '-39'
+    lon_0  = '0'
  
     vara['bheatflx'] = {'map_data'          : q_geo,
                         'map_western_edge'  : west, 

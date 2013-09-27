@@ -37,7 +37,7 @@ download_file(meas + '_vx.tif', home, fldr)
 download_file(meas + '_vy.tif', home, fldr)
 
 # get errors in .tif format
-errors  = 'http://ubuntuone.com/1xgREbylePrzBUODLBoAef'
+errors  = 'http://ubuntuone.com/0QHkkj9R5iwOHjUXCEM8Mc'
 download_file(errors, home, fldr, extract=True)
 
 # convert to searise projection via raster warp :

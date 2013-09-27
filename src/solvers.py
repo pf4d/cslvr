@@ -463,7 +463,7 @@ class AdjointSolver(object):
       """
       n = len(c_array)/len(config['adjoint']['control_variable'])
       for ii,c in enumerate(config['adjoint']['control_variable']):
-          set_local_from_global(c, c_array[ii*n:(ii+1)*n])
+        set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
       I = assemble(self.adjoint_instance.I)
       return I
@@ -475,7 +475,7 @@ class AdjointSolver(object):
       # dolfin.adjoint method:
       n = len(c_array)/len(config['adjoint']['control_variable'])
       for ii,c in enumerate(config['adjoint']['control_variable']):
-          set_local_from_global(c, c_array[ii*n:(ii+1)*n])
+        set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.adjoint_instance.solve()
 
       # This is not the best place for this, but we leave it here for now
@@ -484,9 +484,10 @@ class AdjointSolver(object):
       Js = []
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
-      Js = array(Js)
-      U = project(as_vector([model.u, model.v, model.w]))
-      dSdt = project(-(model.u*model.S.dx(0) + model.v*model.S.dx(1)) + (model.w + model.adot))
+      Js   = array(Js)
+      U    = project(as_vector([model.u, model.v, model.w]))
+      dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
+                     + (model.w + model.adot) )
       file_u_xml << U
       file_u_pvd << U
       file_b_xml << model.beta2 

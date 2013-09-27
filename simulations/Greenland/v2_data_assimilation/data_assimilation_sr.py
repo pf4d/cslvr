@@ -5,7 +5,6 @@ sys.path.append(src_directory)
 import src.model              as model
 import src.solvers            as solvers
 import src.physical_constants as pc
-import scipy.io
 from meshes.mesh_factory import MeshFactory
 from data.data_factory   import DataFactory
 from src.helper          import default_nonlin_solver_params
@@ -15,24 +14,19 @@ from pylab               import sqrt, copy
 
 set_log_active(True)
 
+thklim = 20.0
+
 # collect the raw data :
 searise  = DataFactory.get_searise()
 measure  = DataFactory.get_gre_measures()
 meas_shf = DataFactory.get_shift_gre_measures()
-bamber   = DataFactory.get_bamber(thklim = 100.0)
+bamber   = DataFactory.get_bamber(thklim = thklim)
 
 # define the meshes :
 #mesh      = Mesh('../meshes/mesh.xml')
 #flat_mesh = Mesh('../meshes/mesh.xml')
-
-#mesh                    = MeshFactory.get_greenland_coarse()
-#flat_mesh               = MeshFactory.get_greenland_coarse()
-#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
-mesh                    = MeshFactory.get_greenland_detailed()
-flat_mesh               = MeshFactory.get_greenland_detailed()
-#mesh                    = MeshFactory.get_greenland_medium()
-#flat_mesh               = MeshFactory.get_greenland_medium()
-#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+mesh       = MeshFactory.get_greenland_detailed()
+flat_mesh  = MeshFactory.get_greenland_detailed()
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
@@ -57,7 +51,6 @@ SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dsr.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 U_observed         = dbv.get_spline_expression('Ubmag')
-#beta2              = File('results_coarse/beta2_opt.pvd')
 
 
 # specifify non-linear solver parameters :
@@ -69,7 +62,7 @@ nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 nonlin_solver_params['linear_solver']                            = 'mumps'
 nonlin_solver_params['preconditioner']                           = 'default'
 
-out_dir = './results_medium/'
+out_dir = './results_detailed_sr/'
 
 config = { 'mode'                         : 'steady',
            't_start'                      : None,
@@ -112,7 +105,7 @@ config = { 'mode'                         : 'steady',
            { 
              'on'               : False,
              'lump_mass_matrix' : True,
-             'thklim'           : 10.0,
+             'thklim'           : thklim,
              'use_pdd'          : False,
              'observed_smb'     : None,
            },  
@@ -152,9 +145,9 @@ model.initialize_variables()
 model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)
-#File(out_dir + 'beta2_opt.xml') >> model.beta2
+File(out_dir + 'beta2_opt.xml') >> model.beta2
 F.solve()
-#model.adot = adot
+model.adot = adot
 
 visc    = project(model.eta)
 vel_par = config['velocity']
@@ -165,7 +158,7 @@ vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
 config['enthalpy']['on']              = False
 config['surface_climate']['on']       = False
 config['coupled']['on']               = False
-config['velocity']['use_T0']          = True
+config['velocity']['use_T0']          = False
 config['adjoint']['control_variable'] = [model.beta2,model.U_o]
 
 A = solvers.AdjointSolver(model,config)
@@ -178,7 +171,7 @@ U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
 U_o_max = Function(model.Q)
 U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
 config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
-#File('./results/beta2_opt.xml') >> model.beta2
+File(out_dir + 'beta2_opt.xml') >> model.beta2
 A.solve()
 
 

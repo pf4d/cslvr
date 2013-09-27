@@ -5,7 +5,6 @@ sys.path.append(src_directory)
 import src.model              as model
 import src.solvers            as solvers
 import src.physical_constants as pc
-import scipy.io
 from meshes.mesh_factory import MeshFactory
 from data.data_factory   import DataFactory
 from src.helper          import default_nonlin_solver_params
@@ -14,12 +13,13 @@ from dolfin              import *
 from pylab               import sqrt, copy
 
 set_log_active(True)
+thklim = 20.0
 
 # collect the raw data :
 searise  = DataFactory.get_searise()
 measure  = DataFactory.get_gre_measures()
 meas_shf = DataFactory.get_shift_gre_measures()
-bamber   = DataFactory.get_bamber(thklim = 100.0)
+bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 
 # define the meshes :
@@ -41,6 +41,7 @@ dms.change_projection(dsr)
 
 # inspect the data values :
 do      = DataOutput('results_pre/')
+#do.write_one_file('q_geo',          dfm.get_projection('q_geo'))
 #do.write_one_file('h',              dbm.get_projection('h'))
 #do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
 
@@ -106,7 +107,7 @@ config = { 'mode'                         : 'steady',
            { 
              'on'               : False,
              'lump_mass_matrix' : True,
-             'thklim'           : 10.0,
+             'thklim'           : thklim,
              'use_pdd'          : False,
              'observed_smb'     : None,
            },  
@@ -172,7 +173,7 @@ U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
 U_o_max = Function(model.Q)
 U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
 config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
-File('./results/beta2_opt.xml') >> model.beta2
+File(out_dir + 'beta2_opt.xml') >> model.beta2
 A.solve()
 
 

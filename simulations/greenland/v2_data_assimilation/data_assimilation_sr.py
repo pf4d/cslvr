@@ -39,7 +39,7 @@ dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 dms.change_projection(dsr)
 
 # inspect the data values :
-do      = DataOutput('results_pre/')
+#do      = DataOutput('results_pre/')
 #do.write_one_file('h',              dbm.get_projection('h'))
 #do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
 
@@ -126,7 +126,7 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'              : 0.0,
+             'alpha'              : 100.0,
              'beta'               : 0.0,
              'max_fun'            : 20,
              'objective_function' : 'logarithmic',
@@ -135,48 +135,49 @@ config = { 'mode'                         : 'steady',
            }}
 
 
-
-model = model.Model()
-model.set_geometry(Surface, Bed)
-
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
-model.set_parameters(pc.IceParameters())
-model.initialize_variables()
-model.eps_reg = 1e-5
-
-F = solvers.SteadySolver(model,config)
-File(out_dir + 'beta2_opt.xml') >> model.beta2
-F.solve()
-model.adot = adot
-
-visc    = project(model.eta)
-vel_par = config['velocity']
-vel_par['viscosity_mode']                                         = 'linear'
-vel_par['b_linear']                                               = visc
-vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
-
-config['enthalpy']['on']              = False
-config['surface_climate']['on']       = False
-config['coupled']['on']               = False
-config['velocity']['use_T0']          = False
-config['adjoint']['control_variable'] = [model.beta2,model.U_o]
-
-A = solvers.AdjointSolver(model,config)
-A.set_target_velocity(U = U_observed)
-U_loc = model.U_o.vector().get_local()
-U_loc[U_loc<0] = 0.0
-model.U_o.vector().set_local(U_loc)
-U_o_min = Function(model.Q)
-U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
-U_o_max = Function(model.Q)
-U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
-config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
-File(out_dir + 'beta2_opt.xml') >> model.beta2
-A.solve()
-
-
-u_flat = dolfin.Function(model.Q_flat)
-u_flat.vector().set_local(model.u.vector().get_local())
+for i in range(8):
+  
+  model = model.Model()
+  model.set_geometry(Surface, Bed)
+  
+  model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+  model.set_parameters(pc.IceParameters())
+  model.initialize_variables()
+  model.eps_reg = 1e-5
+  
+  F = solvers.SteadySolver(model,config)
+  File(out_dir + 'beta2_opt.xml') >> model.beta2
+  F.solve()
+  model.adot = adot
+  
+  visc    = project(model.eta)
+  vel_par = config['velocity']
+  vel_par['viscosity_mode']                                         = 'linear'
+  vel_par['b_linear']                                               = visc
+  vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
+  
+  config['enthalpy']['on']              = False
+  config['surface_climate']['on']       = False
+  config['coupled']['on']               = False
+  config['velocity']['use_T0']          = False
+  config['adjoint']['control_variable'] = [model.beta2,model.U_o]
+  
+  A = solvers.AdjointSolver(model,config)
+  A.set_target_velocity(U = U_observed)
+  U_loc = model.U_o.vector().get_local()
+  U_loc[U_loc<0] = 0.0
+  model.U_o.vector().set_local(U_loc)
+  U_o_min = Function(model.Q)
+  U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
+  U_o_max = Function(model.Q)
+  U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
+  config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
+  File(out_dir + 'beta2_opt.xml') >> model.beta2
+  A.solve()
+  
+  
+  u_flat = dolfin.Function(model.Q_flat)
+  u_flat.vector().set_local(model.u.vector().get_local())
 
 
 

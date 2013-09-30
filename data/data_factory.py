@@ -298,6 +298,7 @@ class DataFactory(object):
     b    = array(data.variables['BedrockElevation'][:])
     h    = array(data.variables['SurfaceElevation'][:])
     H    = array(data.variables['IceThickness'][:])
+    Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
     
     H_n               = h - b
@@ -316,8 +317,8 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
      
-    names = ['b', 'h', 'h_n', 'H', 'H_n', 'mask']
-    ftns  = [ b,   h,   h_n,   H,   H_n,   mask]
+    names = ['b', 'h', 'h_n', 'H', 'Herr', 'H_n', 'mask']
+    ftns  = [ b,   h,   h_n,   H,   Herr,   H_n,   mask]
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):

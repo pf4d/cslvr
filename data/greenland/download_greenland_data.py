@@ -36,10 +36,21 @@ download_file(meas + '_sp.tif', home, fldr)
 download_file(meas + '_vx.tif', home, fldr)
 download_file(meas + '_vy.tif', home, fldr)
 
+# get errors in .tif format
+errors  = 'http://ubuntuone.com/0QHkkj9R5iwOHjUXCEM8Mc'
+download_file(errors, home, fldr, extract=True)
+
 # convert to searise projection via raster warp :
 convert_measures_projection(home + '/' + fldr, 'vx')
 convert_measures_projection(home + '/' + fldr, 'vy')
+convert_measures_projection(home + '/' + fldr, 'ex')
+convert_measures_projection(home + '/' + fldr, 'ey')
 convert_measures_projection(home + '/' + fldr, 'sp')
+
+# Fox Maule et al. (2005) basal heat flux :
+q_geo   = 'http://websrv.cs.umt.edu/isis/images/d/da/Greenland_heat_flux_5km.nc'
+fldr    = 'fox_maule'
+download_file(q_geo, home, fldr)
 
 # searise dataset :
 searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
@@ -55,5 +66,6 @@ download_file(smooth, home, fldr, extract=True)
 v2      = 'http://ubuntuone.com/2b9zcV93XCYdqOjpBfbEqe'
 fldr    = 'bamber13'
 download_file(v2, home, fldr, extract=True)
+
 
 

@@ -9,14 +9,19 @@ from src.helper import download_file
 home = os.getcwd()
 
 
-# detailed greenland mesh :
-fldr = 'greenland'
-url  = 'http://ubuntuone.com/36EhUdGvmSphJwmsDarn1i'
-download_file(url, home, fldr, extract=True)
-
 # coarse greenland mesh :
 fldr = 'greenland'
 url  = 'http://ubuntuone.com/6ZPTI3cSfaTyVCVkRPFQTi'
+download_file(url, home, fldr, extract=True)
+
+# medium greenland mesh :
+fldr = 'greenland'
+url  = 'http://ubuntuone.com/3PlD2d6ApRquWmGXRBHQIJ'
+download_file(url, home, fldr, extract=True)
+
+# detailed greenland mesh :
+fldr = 'greenland'
+url  = 'http://ubuntuone.com/55UQDSre2O8iZhnPLxCDuh'
 download_file(url, home, fldr, extract=True)
 
 # antarctica mesh :

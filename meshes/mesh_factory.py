@@ -11,6 +11,13 @@ class MeshFactory(object):
     home     = os.path.dirname(os.path.abspath(filename))
     mesh     = home + '/greenland/greenland_detailed_mesh.xml' 
     return Mesh(mesh)
+ 
+  @staticmethod
+  def get_greenland_medium():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = home + '/greenland/greenland_medium_mesh.xml' 
+    return Mesh(mesh)
 
 
   @staticmethod

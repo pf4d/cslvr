@@ -61,7 +61,7 @@ config = { 'mode'                         : 'steady',
              'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
-             'approximation'  : 'fo',
+             'approximation'  : 'stokes',
              'boundaries'     : None
            },
            'enthalpy' : 
@@ -129,7 +129,7 @@ vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
 config['enthalpy']['on']        = False
 config['surface_climate']['on'] = False
 config['coupled']['on']         = False
-config['velocity']['use_T0']    = True
+config['velocity']['use_T0']    = False
 config['adjoint']['control_variable']    = [model.beta2,model.U_o]
 
 A = solvers.AdjointSolver(model,config)
@@ -144,9 +144,5 @@ U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
 config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
 #File('./results/beta2_opt.xml') >> model.beta2
 A.solve()
-
-
-u_flat = dolfin.Function(model.Q_flat)
-u_flat.vector().set_local(model.u.vector().get_local())
 
 

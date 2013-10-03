@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
@@ -39,7 +40,7 @@ config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results/',
+           'output_path'                  : './results_2/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
            'log'                          : True,
@@ -116,7 +117,7 @@ model.initialize_variables()
 model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)
-#File('./results/beta2_opt.xml') >> model.beta2
+File('results/beta2_opt.xml') >> model.beta2
 F.solve()
 #model.adot = Smb
 
@@ -129,7 +130,7 @@ vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
 config['enthalpy']['on']        = False
 config['surface_climate']['on'] = False
 config['coupled']['on']         = False
-config['velocity']['use_T0']    = True
+config['velocity']['use_T0']    = False
 config['adjoint']['control_variable']    = [model.beta2,model.U_o]
 
 A = solvers.AdjointSolver(model,config)
@@ -149,4 +150,10 @@ A.solve()
 u_flat = dolfin.Function(model.Q_flat)
 u_flat.vector().set_local(model.u.vector().get_local())
 
-
+File(config['output_path']+'T'+'.pvd') << model.T
+File(config['output_path']+'Mb'+'.pvd') << model.Mb
+File(config['output_path']+'T'+'.xml') << model.T
+File(config['output_path']+'u'+'.xml') << model.u
+File(config['output_path']+'v'+'.xml') << model.v
+File(config['output_path']+'w'+'.xml') << model.w
+File(config['output_path']+'Mb'+'.xml') << model.Mb

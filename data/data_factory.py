@@ -1,9 +1,11 @@
 import inspect
 import os
 import sys
-from numpy    import *
-from scipy.io import loadmat, netcdf_file
-from osgeo    import gdal
+from numpy             import *
+from scipy.io          import loadmat, netcdf_file
+from scipy.interpolate import griddata
+from osgeo             import gdal
+from pyproj            import Proj, transform
 
 class DataFactory(object):
  
@@ -181,6 +183,57 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
  
+    vara['q_geo'] = {'map_data'          : q_geo,
+                     'map_western_edge'  : west, 
+                     'map_eastern_edge'  : east, 
+                     'map_southern_edge' : south, 
+                     'map_northern_edge' : north,
+                     'projection'        : proj,
+                     'standard lat'      : lat_0,
+                     'standard lon'      : lon_0,
+                     'lat true scale'    : lat_ts}
+    return vara
+  
+  
+  @staticmethod
+  def get_gre_qgeo_secret():
+    
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+ 
+    direc = home + "/greenland/secret_qgeo/ghf_10x10_2000_JVJ.dat"
+    data  = loadtxt(direc)
+    vara  = dict()
+    
+    # retrieve data :
+    lon   = data[:,2]
+    lat   = data[:,3]
+    q_geo = data[:,4] * 60 * 60 * 24 * 365
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '71'
+    lon_0  = '-39'
+    proj_s =   " +proj="   + proj \
+             + " +lat_0="  + lat_0 \
+             + " +lat_ts=" + lat_ts \
+             + " +lon_0="  + lon_0 \
+             + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+             + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    p      = Proj(proj_s)
+    x, y   = p(lon, lat)
+    
+    # extents of domain :
+    east  = max(x)
+    west  = min(x)
+    north = max(y)
+    south = min(y)
+    xs    = arange(west,  east,  10000)
+    ys    = arange(south, north, 10000)
+    X, Y  = meshgrid(xs, ys)
+    q_geo = griddata((x, y), q_geo, (X, Y), fill_value=0.0)
+    
     vara['q_geo'] = {'map_data'          : q_geo,
                      'map_western_edge'  : west, 
                      'map_eastern_edge'  : east, 

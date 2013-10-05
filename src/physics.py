@@ -1371,24 +1371,19 @@ class AdjointVelocityBP(object):
       if U_o is not None:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
                        (abs(U_o) + 1.0))**2 * ds(2)
-        for c in control:
-          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
       else:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
                        (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) 
-        for c in control:
-          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
     elif config['adjoint']['objective_function'] == 'kinematic':
       self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) 
-      for c in control:
-        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
 
     else:
       self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) 
-      for c in control:
-        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
+    
+    for c in control:
+      self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint

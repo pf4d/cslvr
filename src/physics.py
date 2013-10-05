@@ -1694,20 +1694,27 @@ class VelocityBalance_2(object):
     tau    = cellh / (2 * U_eff)
 
     if Uobs_mask:
-        dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1) + 0.5*gamma*dot(grad(adot),grad(adot))*dx + 0.5*theta*dot(grad(H),grad(H))*dx
+      dxm   = Measure('dx')[Uobs_mask](1)
+      greek = theta
     else:
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx + 0.5*gamma*dot(grad(adot),grad(adot))*dx + 0.5*kappa*dot(grad(H),grad(H))*dx
+      dxm   = dx
+      greek = kappa
+      
+    self.I = + ln((Ubmag+1.0) / (Uobs+1.0))**2 * dxm \
+             + 0.5 * gamma * dot(grad(adot), grad(adot)) * dx \
+             + 0.5 * greek * dot(grad(H), grad(H)) * dx
 
-    
-    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
+    self.forward_model = (phi + tau*div(H*dS*phi)) \
+                         * (div(dUbmag*dS*H) - adot) * dx   
 
-    self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
-
+    self.adjoint_model = + derivative(self.I,Ubmag,phi) \
+                         + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
     self.g_Uobs        = derivative(self.I,Uobs,phi)
-    self.g_adot        = -(lamda + tau*div(lamda*dS*H))*phi*dx + derivative(self.I,adot,phi)
-    self.g_H           = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx + derivative(self.I,H,phi)
-
+    self.g_adot        = - (lamda + tau*div(lamda*dS*H))*phi*dx \
+                         + derivative(self.I,adot,phi)
+    self.g_H           = + (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx \
+                         + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx \
+                         + derivative(self.I,H,phi)
     self.H        = H
     self.S        = S
     self.adot     = adot

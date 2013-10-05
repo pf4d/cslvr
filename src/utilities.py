@@ -294,12 +294,16 @@ class DataInput:
     if dg:
       interp = self.get_nearest_expression(fn, bool_data=bool_data)
       proj   = project(interp, self.func_space_dg)
-      return proj
     
     else:
-      interp = self.get_spline_expression(fn, kx=kx, ky=ky, bool_data=bool_data)
-      proj   = project(interp, self.func_space)
-      return proj
+      if near:
+        interp = self.get_nearest_expression(fn, bool_data=bool_data)
+        proj   = project(interp, self.func_space)
+      else:
+        interp = self.get_spline_expression(fn,kx=kx,ky=ky,bool_data=bool_data)
+        proj   = project(interp, self.func_space)
+        
+    return proj
 
   def get_nearest_expression(self, fn, bool_data=False):
     """

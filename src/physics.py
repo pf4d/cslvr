@@ -1371,24 +1371,19 @@ class AdjointVelocityBP(object):
       if U_o is not None:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
                        (abs(U_o) + 1.0))**2 * ds(2)
-        for c in control:
-          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
       else:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
                        (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) 
-        for c in control:
-          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
     elif config['adjoint']['objective_function'] == 'kinematic':
       self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) 
-      for c in control:
-        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
 
     else:
       self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) 
-      for c in control:
-        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
+    
+    for c in control:
+      self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
@@ -1699,29 +1694,19 @@ class VelocityBalance_2(object):
     tau    = cellh / (2 * U_eff)
 
     if Uobs_mask:
-      dxm   = Measure('dx')[Uobs_mask](1)
-      greek = theta
+        dx_masked = Measure('dx')[Uobs_mask]
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1) + 0.5*gamma*dot(grad(adot),grad(adot))*dx + 0.5*theta*dot(grad(H),grad(H))*dx
     else:
-      dxm   = dx
-      greek = kappa
-   
-    self.I = + ln((Ubmag+1.0) / (Uobs+1.0))**2 * dxm \
-             + 0.5 * gamma * dot(grad(adot), grad(adot)) * dx \
-             + 0.5 * greek * dot(grad(H), grad(H)) * dx
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx + 0.5*gamma*dot(grad(adot),grad(adot))*dx + 0.5*kappa*dot(grad(H),grad(H))*dx
 
     
-    self.forward_model = (phi + tau*div(H*dS*phi)) \
-                         * (div(dUbmag*dS*H) - adot) * dx
+    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
 
-    self.adjoint_model = + derivative(self.I,Ubmag,phi) \
-                         + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
+    self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
     self.g_Uobs        = derivative(self.I,Uobs,phi)
-    self.g_adot        = - (lamda + tau*div(lamda*dS*H))*phi*dx \
-                         + derivative(self.I,adot,phi)
-    self.g_H           = + (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx \
-                         + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx \
-                         + derivative(self.I,H,phi)
+    self.g_adot        = -(lamda + tau*div(lamda*dS*H))*phi*dx + derivative(self.I,adot,phi)
+    self.g_H           = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx + derivative(self.I,H,phi)
 
     self.H        = H
     self.S        = S

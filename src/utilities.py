@@ -280,8 +280,7 @@ class DataInput:
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_projection(self, fn, dg=False, near=False, 
-                     bool_data=False, kx=3, ky=3):
+  def get_projection(self, fn, dg=False, bool_data=False, kx=3, ky=3):
     """
     Return a projection of data with filname <fn> on the functionspace.
     If multiple instances of the DataInput class are present, both initialized 
@@ -295,16 +294,12 @@ class DataInput:
     if dg:
       interp = self.get_nearest_expression(fn, bool_data=bool_data)
       proj   = project(interp, self.func_space_dg)
+      return proj
     
     else:
-      if near:
-        interp = self.get_nearest_expression(fn, bool_data=bool_data)
-        proj   = project(interp, self.func_space)
-      else:
-        interp = self.get_spline_expression(fn,kx=kx,ky=ky,bool_data=bool_data)
-        proj   = project(interp, self.func_space)
-    
-    return proj
+      interp = self.get_spline_expression(fn, kx=kx, ky=ky, bool_data=bool_data)
+      proj   = project(interp, self.func_space)
+      return proj
 
   def get_nearest_expression(self, fn, bool_data=False):
     """

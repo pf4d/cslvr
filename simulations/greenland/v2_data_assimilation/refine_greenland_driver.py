@@ -25,9 +25,7 @@ U    = dbv.get_spline_expression('Ubmag')
 
 ref_iso              = IsotropicMeshRefiner(mesh, U)
 smoothing_iterations = 0
-refine_ratios        = [0.5, 0.25, 0.125, 0.0625, 0.03125]
-
-#ref_iso.refine(0.5, 100.0, 50000.0)
+refine_ratios        = [0.5, 0.25, 0.125]#, 0.0625, 0.03125]
 
 for ratio in refine_ratios:
   ref_iso.refine(ratio,1000.,40000.)
@@ -38,15 +36,7 @@ for ratio in refine_ratios:
     ref_iso.mesh.coordinates()[:,0] = new_x
     ref_iso.mesh.coordinates()[:,1] = new_y
 
-V = dolfin.FunctionSpace(ref_iso.mesh,"CG",1)
-u = dolfin.project(U,V)
+dolfin.File('./results/meshes/refined_mesh_extrude.xml') << ref_iso.mesh
+write_gmsh(ref_iso.mesh,'./results/meshes/refined_mesh_extrude.msh')
 
-dolfin.File('./results/meshes/U_refined.pvd') << u
-dolfin.File('./results/meshes/U_refined.xml') << u
-dolfin.File('./results/meshes/refined_mesh.xml') << ref_iso.mesh
-write_gmsh(ref_iso.mesh,'./results/meshes/refined_mesh.msh')
-
-
-# File ouput
-do    = DataOutput('results/greenland_balance_velocity_v2/')
-do.write_one_file('Ubmag_test', dbv.get_projection('Ubmag'))
+ref_iso.extrude(10, workspace_path="results/meshes", n_processors=2)

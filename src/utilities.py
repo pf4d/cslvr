@@ -280,6 +280,11 @@ class DataInput:
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
+  def get_interpolation(self,fn,kx=3,ky=3):
+    interp = self.get_spline_expression(fn,kx=kx,ky=ky)
+    proj   = interpolate(interp, self.func_space)
+    return proj
+
   def get_projection(self, fn, dg=False, near=False, 
                      bool_data=False, kx=3, ky=3):
     """

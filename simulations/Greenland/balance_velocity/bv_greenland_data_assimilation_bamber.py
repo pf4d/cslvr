@@ -20,7 +20,7 @@ bamber  = DataFactory.get_bamber()
 direc = os.path.dirname(os.path.realpath(__file__))
 
 # load a mesh :
-mesh    = Mesh("../meshes/mesh.xml")
+mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
@@ -96,10 +96,10 @@ from scipy.optimize import fmin_l_bfgs_b
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),H.vector().array()))
 
 Umerr = 0.05
-Uaerr = 5.0
+Uaerr = 20.0
 
-amerr = 0.15
-aaerr = 0.25
+amerr = 0.1
+aaerr = 1.0
 
 Hmerr = 0.1
 Haerr = 200.0

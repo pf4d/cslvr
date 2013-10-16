@@ -33,8 +33,8 @@ class Beta2(dolfin.Expression):
         values[0] = 1000 + 1000.*pylab.sin(2*pylab.pi*x[0]/L)*pylab.sin(2*pylab.pi*x[1]/L)
 
 nparams = src.helper.default_nonlin_solver_params()
-nparams['linear_solver'] = 'mumps'
-#nparams['preconditioner'] = 'hypre_amg'
+nparams['linear_solver'] = 'gmres'
+nparams['preconditioner'] = 'hypre_amg'
 nparams['newton_solver']['relaxation_parameter']=0.7
 nparams['newton_solver']['maximum_iterations']=20
 nparams['newton_solver']['error_on_nonconvergence']=False
@@ -88,13 +88,14 @@ config = { 'mode' : 'steady',
                 'precip': None
             },
             'adjoint' :
-            { 'alpha' : 0.0,
+            { 'alpha' : [1e4],
                 'beta' : 0.0,
-                'max_fun' : 100,
+                'max_fun' : 50,
                 'objective_function' : 'linear',
                 'animate' : False,
                 'bounds' : None,
-                'control_variable' : None
+                'control_variable' : None,
+                'regularization_type' : 'Tikhonov'
             },
             'output_path' : './results/',
             'wall_markers' : [],
@@ -104,8 +105,8 @@ config = { 'mode' : 'steady',
 model = src.model.Model()
 model.set_geometry(Surface(), Bed())
 
-nx = ny = 20
-nz = 6
+nx = ny = 40
+nz = 7
 
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,
                             generate_pbcs=True)
@@ -118,9 +119,17 @@ F.solve()
 model.eps_reg = 1e-5
 config['adjoint']['control_variable'] = [model.beta2]
 config['adjoint']['bounds'] = [(0.0,5000.0)]
+dolfin.File('results/beta2_obs.xml') << model.beta2
 
 A = src.solvers.AdjointSolver(model,config)
 model.beta2.vector()[:] = 1000.
-model.u_o.vector().set_local(model.u.vector().get_local())
-model.v_o.vector().set_local(model.v.vector().get_local())
+
+U_e = 10.0
+from scipy import random
+u_error = U_e*random.randn(len(model.u_o.vector().get_local()))
+v_error = U_e*random.randn(len(model.u_o.vector().get_local()))
+model.u_o.vector().set_local(model.u.vector().get_local()+u_error)
+model.v_o.vector().set_local(model.v.vector().get_local()+v_error)
+dolfin.File('results/U_obs.xml') << dolfin.project(dolfin.as_vector([model.u_o,model.v_o]))
+
 A.solve()

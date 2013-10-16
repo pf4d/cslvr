@@ -25,7 +25,7 @@ class Model(object):
     self.mask = mask
   
   def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, 
-                            ymin, ymax, generate_pbcs=False):
+                            ymin, ymax, generate_pbcs=False,deform=True):
     """
     Generates a uniformly spaced 3D Dolfin mesh with optional periodic boundary 
     conditions
@@ -83,20 +83,21 @@ class Model(object):
     width_y  = ymax - ymin
     offset_y = ymin
 
+    if deform:
     # Deform the square to the defined geometry :
-    for x,x0 in zip(self.mesh.coordinates(), self.flat_mesh.coordinates()):
-      # transform x :
-      x[0]  = x[0]  * width_x + offset_x
-      x0[0] = x0[0] * width_x + offset_x
+      for x,x0 in zip(self.mesh.coordinates(), self.flat_mesh.coordinates()):
+        # transform x :
+        x[0]  = x[0]  * width_x + offset_x
+        x0[0] = x0[0] * width_x + offset_x
       
-      # transform y :
-      x[1]  = x[1]  * width_y + offset_y
-      x0[1] = x0[1] * width_y + offset_y
+        # transform y :
+        x[1]  = x[1]  * width_y + offset_y
+        x0[1] = x0[1] * width_y + offset_y
     
-      # transform z :
-      # thickness = surface - base, z = thickness + base
-      x[2]  = x[2] * (self.S_ex(x[0], x[1], x[2]) - self.B_ex(x[0], x[1], x[2]))
-      x[2]  = x[2] + self.B_ex(x[0], x[1], x[2])
+        # transform z :
+        # thickness = surface - base, z = thickness + base
+        x[2]  = x[2] * (self.S_ex(x[0], x[1], x[2]) - self.B_ex(x[0], x[1], x[2]))
+        x[2]  = x[2] + self.B_ex(x[0], x[1], x[2])
 
   def set_mesh(self, mesh, flat_mesh=None, deform=True):
     """

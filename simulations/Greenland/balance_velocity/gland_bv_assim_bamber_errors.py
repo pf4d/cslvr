@@ -20,7 +20,7 @@ bamber  = DataFactory.get_bamber()
 direc = os.path.dirname(os.path.realpath(__file__))
 
 # load a mesh :
-mesh    = Mesh("../meshes/mesh.xml")
+mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
@@ -40,19 +40,27 @@ dms.set_data_min('ex',-MAX_V_ERR,NO_DATA)
 dms.set_data_max('ex',MAX_V_ERR,NO_DATA)
 dms.set_data_min('ey',-MAX_V_ERR,NO_DATA)
 dms.set_data_max('ey',MAX_V_ERR,NO_DATA)
-
+print 'H'
 H     = dbam.get_projection("H")
+print 'H0'
 H0    = dbam.get_projection("H")
+print 'S'
 S     = dbam.get_projection("h")
+print 'Herr'
 Herr  = dbam.get_projection("Herr")
 
+print 'adot'
 adot  = dsr.get_projection("adot")
 
+print 'Uobs'
 Uobs   = dms.get_projection("sp")
+print 'vxerr'
 vxerr  = dms.get_projection("ex",near=True) # no interpolation
+print 'vyerr'
 vyerr  = dms.get_projection("ey",near=True)
 
-verr = project(sqrt(vxerr*2+vyerr**2))
+print 'verr'
+verr = project(sqrt(vxerr*2+vyerr**2 + 1e-3))
 
 Uobs.vector()[Uobs.vector().array()<0] = 0.0
 
@@ -164,4 +172,4 @@ H_bounds = [(min(H_i - Herr_i,H_i-small_h), max(H_i + Herr_i,H_i+small_h)) \
 
 bounds = Uobs_bounds+ahat_bounds+H_bounds
 
-fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1)
+#fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1)

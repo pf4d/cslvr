@@ -1346,6 +1346,7 @@ class AdjointVelocityBP(object):
     S         = model.S
 
     control = config['adjoint']['control_variable']
+    alpha = config['adjoint']['alpha']
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj     = model.Q2
@@ -1365,30 +1366,32 @@ class AdjointVelocityBP(object):
     # multiplied by l and integrated by parts
     F_adjoint = derivative(A, U, L)
 
-    # Objective function.  This is a least squares on the surface plus a 
+    R = 0
+    for a,c in zip(alpha,control):
+      N = FacetNormal(model.mesh)
+      if config['adjoint']['regularization_type'] == 'TV':
+        R += a * sqrt((c.dx(0)*N[2] - c.dx(1)*N[0])**2 + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * ds(3)
+      elif config['adjoint']['regularization_type'] == 'Tikhonov':
+        R += a * ((c.dx(0)*N[2] - c.dx(1)*N[0])**2 + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
+      else:
+        print 'Valid regularizations are \'TV\' and \'Tikhonov\'.'
+    
+    #Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
     if config['adjoint']['objective_function'] == 'logarithmic':
       if U_o is not None:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (abs(U_o) + 1.0))**2 * ds(2)
-        for c in control:
-          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
+                       (abs(U_o) + 1.0))**2 * ds(2) + R
     
       else:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) 
-        for c in control:
-          self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
+                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) 
-      for c in control:
-        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
+      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) + R
 
     else:
-      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) 
-      for c in control:
-        self.I += alpha * (c.dx(0)**2 + c.dx(1)**2) * ds(3)
+      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) + R
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
@@ -1642,14 +1645,14 @@ class VelocityBalance(object):
 
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None,gamma=0.0,theta=0.0):
+  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None):
     set_log_level(PROGRESS)
 
-    Q   = FunctionSpace(mesh, "CG", 1)
+    Q = FunctionSpace(mesh, "CG", 1)
     
-    # Physical constants 
+    # Physical constants
     rho = 911
-    g   = 9.81
+    g = 9.81
 
     if Uobs:
       pass
@@ -1657,21 +1660,21 @@ class VelocityBalance_2(object):
       Uobs = Function(Q)
 
     # solution and trial functions :
-    Ubmag  = Function(Q)
+    Ubmag = Function(Q)
     dUbmag = TrialFunction(Q)
 
     lamda = Function(Q)
     dlamda = TrialFunction(Q)
     
     # solve for dhdx,dhdy with appropriate smoothing :
-    dSdx   = Function(Q)
-    dSdy   = Function(Q)
-    phi    = TestFunction(Q)
-    Nx     = TrialFunction(Q)
-    Ny     = TrialFunction(Q)
+    dSdx = Function(Q)
+    dSdy = Function(Q)
+    phi = TestFunction(Q)
+    Nx = TrialFunction(Q)
+    Ny = TrialFunction(Q)
     
     # smoothing radius :
-    kappa  = Function(Q)
+    kappa = Function(Q)
     kappa.vector()[:] = l
     
     R_dSdx = + (Nx*phi - rho*g*H*S.dx(0) * phi \
@@ -1682,58 +1685,48 @@ class VelocityBalance_2(object):
     solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx)
     solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy)
 
-    slope  = project(sqrt(dSdx**2 + dSdy**2) + 1e-10, Q)
-    dS     = as_vector([project(-dSdx / slope, Q), 
+    slope = project(sqrt(dSdx**2 + dSdy**2) + 1e-10, Q)
+    dS = as_vector([project(-dSdx / slope, Q),
                         project(-dSdy / slope, Q)])
     
     def inside(x,on_boundary):
       return on_boundary
        
-    dbc    = DirichletBC(Q, 0.0, inside)
+    dbc = DirichletBC(Q, 0.0, inside)
     
     # test function :
-    phi    = TestFunction(Q)
+    phi = TestFunction(Q)
     
-    cellh  = CellSize(mesh)
-    U_eff  = sqrt( dot(dS * H, dS * H) + 1e-10 )
-    tau    = cellh / (2 * U_eff)
+    cellh = CellSize(mesh)
+    U_eff = sqrt( dot(dS * H, dS * H) + 1e-10 )
+    tau = cellh / (2 * U_eff)
 
     if Uobs_mask:
-      dxm   = Measure('dx')[Uobs_mask](1)
-      greek = theta
+        dx_masked = Measure('dx')[Uobs_mask]
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1)
     else:
-      dxm   = dx
-      greek = kappa
-   
-    self.I = + ln((Ubmag+1.0) / (Uobs+1.0))**2 * dxm \
-             + 0.5 * gamma * dot(grad(adot), grad(adot)) * dx \
-             + 0.5 * greek * dot(grad(H), grad(H)) * dx
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx
 
     
-    self.forward_model = (phi + tau*div(H*dS*phi)) \
-                         * (div(dUbmag*dS*H) - adot) * dx
+    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
 
-    self.adjoint_model = + derivative(self.I,Ubmag,phi) \
-                         + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
+    self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
-    self.g_Uobs        = derivative(self.I,Uobs,phi)
-    self.g_adot        = - (lamda + tau*div(lamda*dS*H))*phi*dx \
-                         + derivative(self.I,adot,phi)
-    self.g_H           = + (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx \
-                         + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx \
-                         + derivative(self.I,H,phi)
+    self.g_Uobs = derivative(self.I,Uobs,phi)
+    self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx
+    self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
 
-    self.H        = H
-    self.S        = S
-    self.adot     = adot
-    self.R_dSdx   = R_dSdx
-    self.R_dSdy   = R_dSdy
-    self.dSdx     = dSdx
-    self.dSdy     = dSdy
-    self.Ubmag    = Ubmag
-    self.lamda    = lamda
-    self.dbc      = dbc
-    self.slope    = slope
+    self.H = H
+    self.S = S
+    self.adot = adot
+    self.R_dSdx = R_dSdx
+    self.R_dSdy = R_dSdy
+    self.dSdx = dSdx
+    self.dSdy = dSdy
+    self.Ubmag = Ubmag
+    self.lamda = lamda
+    self.dbc = dbc
+    self.slope = slope
     self.residual = Ubmag*div(dS*H) - adot
     self.residual = project(self.residual, Q)
     self.Uobs = Uobs
@@ -1752,6 +1745,5 @@ class VelocityBalance_2(object):
     ga = assemble(self.g_adot)
     gH = assemble(self.g_H)
     return ((gU.array(),ga.array(),gH.array()))
-
 
 

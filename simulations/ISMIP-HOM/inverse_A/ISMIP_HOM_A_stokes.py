@@ -81,7 +81,7 @@ for L in lengths:
                     'precip': None
                 },
                 'adjoint' :
-                { 'alpha' : 0.0,
+                { 'alpha' : [0.0],
                     'beta' : 0.0,
                     'max_fun' : 100,
                     'objective_function' : 'kinematic',

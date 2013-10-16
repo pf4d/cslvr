@@ -106,12 +106,13 @@ config = { 'mode' : 'steady',
                  'precip': None
                },
             'adjoint' :
-               { 'alpha' : 1e3,
+               { 'alpha' : [1e3],
                  'beta' : 0.0,
                  'max_fun' : 50,
                  'objective_function' : 'logarithmic',
                  'bounds':None,
-                 'control_variable':None
+                 'control_variable':None,
+                 'regularization_type' : 'Tikhonov'
                },
             'output_path' : './results_coarse/',
             'wall_markers' : [],

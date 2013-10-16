@@ -493,7 +493,6 @@ class AdjointSolver(object):
       file_b_xml << model.beta2 
       file_b_pvd << model.beta2
       file_dSdt_pvd << dSdt
-      file_uo_pvd << model.U_o
       return Js
 
     #===========================================================================
@@ -503,7 +502,6 @@ class AdjointSolver(object):
     file_b_pvd = File(path + 'beta2_opt.pvd')
     file_u_xml = File(path + 'U_opt.pvd')
     file_u_pvd = File(path + 'U_opt.xml')
-    file_uo_pvd = File(path + 'U_obs.pvd')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 

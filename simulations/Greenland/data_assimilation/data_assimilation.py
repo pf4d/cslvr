@@ -16,8 +16,9 @@ set_log_active(True)
 
 vara = DataFactory.get_searise()
 
-mesh                    = MeshFactory.get_greenland_detailed()
-flat_mesh               = MeshFactory.get_greenland_detailed()
+mesh                    = MeshFactory.get_greenland_medium()
+#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+flat_mesh               = MeshFactory.get_greenland_medium()
 
 dd                 = DataInput(None, vara, mesh=mesh)
 
@@ -40,7 +41,7 @@ config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results_2/',
+           'output_path'                  : './results_slippery/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
            'log'                          : True,
@@ -59,10 +60,10 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 2.0,
+             'beta2'          : 0.5,
              'r'              : 1.0,
              'E'              : 1.0,
-             'approximation'  : 'stokes',
+             'approximation'  : 'fo',
              'boundaries'     : None
            },
            'enthalpy' : 
@@ -98,12 +99,13 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'              : 0.0,
+             'alpha'              : [1e6],
              'beta'               : 0.0,
-             'max_fun'            : 100,
+             'max_fun'            : 20,
              'objective_function' : 'logarithmic',
              'control_variable'   : None,
-             'bounds'             : [(0,20)]
+             'bounds'             : [(0,20)],
+             'regularization_type' : 'Tikhonov'
            }}
 
 
@@ -117,9 +119,7 @@ model.initialize_variables()
 model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)
-File('results/beta2_opt.xml') >> model.beta2
 F.solve()
-#model.adot = Smb
 
 visc    = project(model.eta)
 vel_par = config['velocity']
@@ -131,18 +131,9 @@ config['enthalpy']['on']        = False
 config['surface_climate']['on'] = False
 config['coupled']['on']         = False
 config['velocity']['use_T0']    = False
-config['adjoint']['control_variable']    = [model.beta2,model.U_o]
+config['adjoint']['control_variable']    = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-U_loc = model.U_o.vector().get_local()
-U_loc[U_loc<0] = 0.0
-model.U_o.vector().set_local(U_loc)
-U_o_min = Function(model.Q)
-U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
-U_o_max = Function(model.Q)
-U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
-config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
-#File('./results/beta2_opt.xml') >> model.beta2
 A.solve()
 

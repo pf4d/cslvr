@@ -280,7 +280,13 @@ class DataInput:
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_projection(self, fn, dg=False, bool_data=False, kx=3, ky=3):
+  def get_interpolation(self,fn,kx=3,ky=3):
+    interp = self.get_spline_expression(fn,kx=kx,ky=ky)
+    proj   = interpolate(interp, self.func_space)
+    return proj
+
+  def get_projection(self, fn, dg=False, near=False, 
+                     bool_data=False, kx=3, ky=3):
     """
     Return a projection of data with filname <fn> on the functionspace.
     If multiple instances of the DataInput class are present, both initialized 
@@ -607,22 +613,6 @@ class MeshGenerator(object):
     self.surf_num = surf_num
     self.pts      = pts
     self.loop     = loop
-  
-  def extrude_contour(self, layers=10):
-    """
-    This function writes the refinements to the mesh to msh files and
-    extrudes the mesh
-    
-    :param n_layers         : Number of layers in the mesh
-    :param workspace_path   : Path to the location where the refined meshes
-                              will be written
-    :param int n_processors : Number of processers utilized in the extrusion
-    """    
-    f = self.f
-    s = str(self.surf_num)
-    
-    cmd = "Extrude {0,0,1} {Surface{"+ s +"}; Layers{" + str(layers) + "};}\n\n"
-    f.write(cmd)
   
   def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
     """

@@ -222,7 +222,8 @@ class IsotropicMeshRefiner(object):
     self.mesh = refine(mesh, cell_markers)
     self.U    = U
 
-  def extrude(self, n_layers, workspace_path="", n_processors=1):
+  def extrude(self, n_layers, workspace_path="../results/mesh_refinement",
+              n_processors=1):
     """
     This function writes the refinements to the mesh to msh files and
     extrudes the mesh
@@ -234,21 +235,20 @@ class IsotropicMeshRefiner(object):
     """    
     import os
     
-    write_gmsh(self.mesh, workspace_path + "/2dmesh.msh")
+    write_gmsh(self.mesh, "mesh_refinement/2dmesh.msh")
     
-    output = open(workspace_path + "/2dmesh.geo", 'w')
+    output = open("mesh_refinement/2dmesh.geo", 'w')
     
     output.write("Merge \"2dmesh.msh\";\n")
     output.write("Extrude {0,0,1} {Surface{0}; Layers{" + str(n_layers) + "};}")
     output.close()
     print "Extruding mesh (This could take a while)."
     
-    string = "mpirun -np {0:d} gmsh " + workspace_path + \
-             "/2dmesh.geo -3 -o " + \
-             workspace_path + "/3dmesh.msh -format msh -v 1"
+    string = "mpirun -np {0:d} gmsh mesh_refinement/2dmesh.geo -3 -o " + \
+             "mesh_refinement/3dmesh.msh -format msh -v 1"
     os.system(string.format(n_processors))
     
-    string = "dolfin-convert " + workspace_path + "/3dmesh.msh {0:s}"
+    string = "dolfin-convert mesh_refinement/3dmesh.msh {0:s}"
     os.system(string.format(workspace_path))
 
 

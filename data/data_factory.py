@@ -208,7 +208,7 @@ class DataFactory(object):
     # retrieve data :
     lon   = data[:,2]
     lat   = data[:,3]
-    q_geo = data[:,4] * 60 * 60 * 24 * 365
+    q_geo = data[:,4] * 60 * 60 * 24 * 365 / 1000
 
     #projection info :
     proj   = 'stere'

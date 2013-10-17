@@ -39,4 +39,4 @@ for ratio in refine_ratios:
 dolfin.File('./results/meshes/refined_mesh_extrude.xml') << ref_iso.mesh
 write_gmsh(ref_iso.mesh,'./results/meshes/refined_mesh_extrude.msh')
 
-ref_iso.extrude(10, workspace_path="results/meshes", n_processors=2)
+ref_iso.extrude(10, workspace_path="results/meshes", n_processors=32)

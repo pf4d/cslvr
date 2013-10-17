@@ -608,6 +608,22 @@ class MeshGenerator(object):
     self.pts      = pts
     self.loop     = loop
   
+  def extrude_contour(self, layers=10):
+    """
+    This function writes the refinements to the mesh to msh files and
+    extrudes the mesh
+    
+    :param n_layers         : Number of layers in the mesh
+    :param workspace_path   : Path to the location where the refined meshes
+                              will be written
+    :param int n_processors : Number of processers utilized in the extrusion
+    """    
+    f = self.f
+    s = str(self.surf_num)
+    
+    cmd = "Extrude {0,0,1} {Surface{"+ s +"}; Layers{" + str(layers) + "};}\n\n"
+    f.write(cmd)
+  
   def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
     """
     add a box to the mesh.  e.g. for Byrd Glacier data:

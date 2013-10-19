@@ -248,7 +248,7 @@ class IsotropicMeshRefiner(object):
              + workspace_path + "/3dmesh.msh -format msh -v 0"
     os.system(string.format(n_processors))
 
-    string = "dolfin-convert " + workspace_path + "/3dmesh.msh" \
+    string = "dolfin-convert " + workspace_path + "/3dmesh.msh " \
              + workspace_path + "/3dmesh.xml"
     os.system(string)
 
@@ -502,7 +502,7 @@ class AnisotropicMeshRefiner(object):
              + workspace_path + "/3dmesh.msh -format msh -v 0"
     os.system(string.format(n_processors))
 
-    string = "dolfin-convert " + workspace_path + "/3dmesh.msh" \
+    string = "dolfin-convert " + workspace_path + "/3dmesh.msh " \
              + workspace_path + "/3dmesh.xml"
     os.system(string)
 

@@ -28,8 +28,10 @@ sec_qgeo = DataFactory.get_gre_qgeo_secret()
 # define the meshes :
 #mesh      = Mesh('../meshes/mesh.xml')
 #flat_mesh = Mesh('../meshes/mesh.xml')
-mesh       = MeshFactory.get_greenland_detailed()
-flat_mesh  = MeshFactory.get_greenland_detailed()
+#mesh      = MeshFactory.get_greenland_detailed()
+#flat_mesh = MeshFactory.get_greenland_detailed()
+mesh      = Mesh('results/meshes/3dmesh.xml')
+flat_mesh = Mesh('results/meshes/3dmesh.xml')
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
@@ -55,8 +57,8 @@ do      = DataOutput('results_pre/')
 Surface            = dbm.get_spline_expression('h_n')
 Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
-#BasalHeatFlux      = dsr.get_spline_expression('q_geo')
-BasalHeatFlux      = dsq.get_spline_expression('q_geo')
+BasalHeatFlux      = dsr.get_spline_expression('q_geo')
+#BasalHeatFlux      = dsq.get_spline_expression('q_geo')
 #BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 U_observed         = dbv.get_spline_expression('Ubmag')
@@ -72,10 +74,10 @@ nonlin_solver_params['linear_solver']                            = 'mumps'
 nonlin_solver_params['preconditioner']                           = 'default'
 
 # make the directory if needed :
-i = 3
-#dir_b   = './results_detailed_sr/0'
+i = 0
+dir_b   = './results_detailed_sr/0'
 #dir_b   = './results_detailed_fm/0'
-dir_b   = './results_detailed_sq/0'
+#dir_b   = './results_detailed_sq/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'

@@ -10,11 +10,13 @@ from dolfin              import Mesh, set_log_active
 
 set_log_active(True)
 
+thklim = 20.0
+
 # collect the raw data :
 searise  = DataFactory.get_searise()
 measure  = DataFactory.get_gre_measures()
 meas_shf = DataFactory.get_shift_gre_measures()
-bamber   = DataFactory.get_bamber()
+bamber   = DataFactory.get_bamber(thklim = thklim)
 
 # load a mesh :
 mesh    = Mesh("results/meshes/refined_mesh.xml")
@@ -27,10 +29,8 @@ dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
 
 dms.change_projection(dsr)
 
-dbm.set_data_min('H', 10.0, 10.0)
-
-H     = dbm.get_projection("H")
-S     = dbm.get_projection("h")
+H     = dbm.get_projection("H_n")
+S     = dbm.get_projection("h_n")
 adot  = dsr.get_projection("adot")
 
 prb   = VelocityBalance_2(mesh, H, S, adot, 12.0)

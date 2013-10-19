@@ -1,10 +1,11 @@
 import sys
+import os
 src_directory = '../../../'
 sys.path.append(src_directory)
 
 import src.solvers            as solvers
 import src.physical_constants as pc
-from src.model           import Model
+import src.model              as model
 from meshes.mesh_factory import MeshFactory
 from data.data_factory   import DataFactory
 from src.helper          import default_nonlin_solver_params
@@ -75,7 +76,12 @@ i = 3
 #dir_b   = './results_detailed_sr/0'
 #dir_b   = './results_detailed_fm/0'
 dir_b   = './results_detailed_sq/0'
+
+# make the directory if needed :
 out_dir = dir_b + str(i) + '/'
+d       = os.path.dirname(out_dir)
+if not os.path.exists(d):
+  os.makedirs(d)
 
 config = { 'mode'                         : 'steady',
            't_start'                      : None,
@@ -100,7 +106,7 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 2.0,
+             'beta2'          : 0.5,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -139,16 +145,17 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'              : 10000,
-             'beta'               : 0.0,
-             'max_fun'            : 20,
-             'objective_function' : 'logarithmic',
-             'control_variable'   : None,
-             'bounds'             : [(0,20)]
+             'alpha'               : [1e6],
+             'beta'                : 0.0,
+             'max_fun'             : 20,
+             'objective_function'  : 'logarithmic',
+             'control_variable'    : None,
+             'bounds'              : [(0,20)],
+             'regularization_type' : 'Tikhonov'
            }}
 
 
-model = Model()
+model = model.Model()
 model.set_geometry(Surface, Bed)
 
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
@@ -171,25 +178,13 @@ config['enthalpy']['on']               = False
 config['surface_climate']['on']        = False
 config['coupled']['on']                = False
 if i !=0: config['velocity']['use_T0'] = False
-config['adjoint']['control_variable']  = [model.beta2, model.U_o]
+config['adjoint']['control_variable']  = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-U_loc = model.U_o.vector().get_local()
-U_loc[U_loc<0] = 0.0
-model.U_o.vector().set_local(U_loc)
-U_o_min = Function(model.Q)
-U_o_min.vector().set_local(model.U_o.vector().get_local()*0.8)
-U_o_max = Function(model.Q)
-U_o_max.vector().set_local(model.U_o.vector().get_local()*1.2)
-config['adjoint']['bounds'] = [(0,20),(U_o_min,U_o_max)]
 if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
 A.solve()
 
 File(dir_b + str(i) + '/Mb.pvd') << model.Mb
-
-u_flat = dolfin.Function(model.Q_flat)
-u_flat.vector().set_local(model.u.vector().get_local())
-
 
 

@@ -25,7 +25,6 @@ m.write_gmsh_contour(100000, boundary_extend=False)
 m.add_edge_attractor(1)
 #field, ifield, lcMin, lcMax, distMin, distMax
 m.add_threshold(2, 1, 10000, 20000, 1, 400000)
-m.extrude_contour()
 m.finish(4)
 
 #m.create_2D_mesh('mesh') #FIXME: fails

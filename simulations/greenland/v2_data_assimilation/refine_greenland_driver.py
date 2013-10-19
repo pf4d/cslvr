@@ -36,7 +36,7 @@ for ratio in refine_ratios:
     ref_iso.mesh.coordinates()[:,0] = new_x
     ref_iso.mesh.coordinates()[:,1] = new_y
 
-dolfin.File('./results/meshes/refined_mesh_extrude.xml') << ref_iso.mesh
-write_gmsh(ref_iso.mesh,'./results/meshes/refined_mesh_extrude.msh')
+dolfin.File('./results/meshes/2dmesh.xml') << ref_iso.mesh
+#write_gmsh(ref_iso.mesh,'./results/meshes/2dmesh.msh')
 
-ref_iso.extrude(10, workspace_path="results/meshes", n_processors=32)
+ref_iso.extrude(10, workspace_path="results/meshes", n_processors=16)

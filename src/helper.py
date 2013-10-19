@@ -222,34 +222,35 @@ class IsotropicMeshRefiner(object):
     self.mesh = refine(mesh, cell_markers)
     self.U    = U
 
-  def extrude(self, n_layers, workspace_path="../results/mesh_refinement",
-              n_processors=1):
+  def extrude(self, n_layers, workspace_path="", n_processors = 1):
     """
     This function writes the refinements to the mesh to msh files and
     extrudes the mesh
     
-    :param n_layers         : Number of layers in the mesh
-    :param workspace_path   : Path to the location where the refined meshes
-                              will be written
-    :param int n_processors : Number of processers utilized in the extrusion
-    """    
+    :param n_layers:  Number of layers in the mesh
+    :param workspace_path: Path to the location where the refined meshes
+       will be written
+    :param int n_processors: Number of processers utilized in the extrusion
+    """
     import os
-    
-    write_gmsh(self.mesh, "mesh_refinement/2dmesh.msh")
-    
-    output = open("mesh_refinement/2dmesh.geo", 'w')
-    
+    layers = str(n_layers + 1)
+
+    write_gmsh(self.mesh, workspace_path + "/2dmesh.msh")
+
+    output = open(workspace_path + "/2dmesh.geo", 'w')
+
     output.write("Merge \"2dmesh.msh\";\n")
-    output.write("Extrude {0,0,1} {Surface{0}; Layers{" + str(n_layers) + "};}")
+    output.write("Extrude {0,0,1} {Surface{0}; Layers{" + layers + "};}")
     output.close()
     print "Extruding mesh (This could take a while)."
-    
-    string = "mpirun -np {0:d} gmsh mesh_refinement/2dmesh.geo -3 -o " + \
-             "mesh_refinement/3dmesh.msh -format msh -v 1"
+
+    string = "mpirun -np {0:d} gmsh " + workspace_path + "/2dmesh.geo -3 -o " \
+             + workspace_path + "/3dmesh.msh -format msh -v 0"
     os.system(string.format(n_processors))
-    
-    string = "dolfin-convert mesh_refinement/3dmesh.msh {0:s}"
-    os.system(string.format(workspace_path))
+
+    string = "dolfin-convert " + workspace_path + "/3dmesh.msh" \
+             + workspace_path + "/3dmesh.xml"
+    os.system(string)
 
 
 class AnisotropicMeshRefiner(object):
@@ -475,7 +476,7 @@ class AnisotropicMeshRefiner(object):
     refined_mesh.order()
     self.mesh = refined_mesh 
  
-  def extrude(self,n_layers,output_path = "mesh_refinement/3dmesh.xml",n_processors = 1):
+  def extrude(self, n_layers, workspace_path="", n_processors = 1):
     """
     This function writes the refinements to the mesh to msh files and
     extrudes the mesh
@@ -484,16 +485,27 @@ class AnisotropicMeshRefiner(object):
     :param workspace_path: Path to the location where the refined meshes
        will be written
     :param int n_processors: Number of processers utilized in the extrusion
-    """  
+    """
     import os
-    write_gmsh(self.mesh,"mesh_refinement/2dmesh.msh")
-    output = open("mesh_refinement/2dmesh.geo",'w')
+    layers = str(n_layers + 1)
+
+    write_gmsh(self.mesh, workspace_path + "/2dmesh.msh")
+
+    output = open(workspace_path + "/2dmesh.geo", 'w')
+
     output.write("Merge \"2dmesh.msh\";\n")
-    output.write("Extrude {0,0,1} {Surface{0}; Layers{"+str(n_layers)+"};}")
+    output.write("Extrude {0,0,1} {Surface{0}; Layers{" + layers + "};}")
     output.close()
     print "Extruding mesh (This could take a while)."
-    os.system("mpirun -np {0:d} gmsh mesh_refinement/2dmesh.geo -3 -o mesh_refinement/3dmesh.msh -format msh -v 1".format(n_processors))
-    os.system("dolfin-convert mesh_refinement/3dmesh.msh {0:s}".format(output_path))
+
+    string = "mpirun -np {0:d} gmsh " + workspace_path + "/2dmesh.geo -3 -o " \
+             + workspace_path + "/3dmesh.msh -format msh -v 0"
+    os.system(string.format(n_processors))
+
+    string = "dolfin-convert " + workspace_path + "/3dmesh.msh" \
+             + workspace_path + "/3dmesh.xml"
+    os.system(string)
+
 
 def write_gmsh(mesh,path):
   """
@@ -530,12 +542,12 @@ def write_gmsh(mesh,path):
           "{0:d}\n".format(n_cells))
 
   for ii,cell in enumerate(cells):
-    if cell_type == 1:
-      output.write("{0:d} 1 0 {1:d} {2:d}\n".format(ii+1,int(cell[0]+1),int(cell[1]+1)))
-    elif cell_type == 2:
+    #if cell_type == 1:
+    #  output.write("{0:d} 1 0 {1:d} {2:d}\n".format(ii+1,int(cell[0]+1),int(cell[1]+1)))
+    if cell_type == 2:
       output.write("{0:d} 2 0 {1:d} {2:d} {3:d}\n".format(ii+1,int(cell[0]+1),int(cell[1]+1),int(cell[2]+1)))
-    elif cell_type == 3:
-      output.write("{0:d} 4 0 {1:d} {2:d} {3:d} {4:d}\n".format(ii+1,int(cell[0]+1),int(cell[1]+1),int(cell[2]+1),int(cell[3]+1)))
+    #elif cell_type == 3:
+    #  output.write("{0:d} 4 0 {1:d} {2:d} {3:d} {4:d}\n".format(ii+1,int(cell[0]+1),int(cell[1]+1),int(cell[2]+1),int(cell[3]+1)))
     else:
       print "Unknown cell type"
   

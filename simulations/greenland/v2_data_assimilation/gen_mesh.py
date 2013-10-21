@@ -22,7 +22,7 @@ m.eliminate_intersections(dist=10)
 #m.plot_contour()
 
 m.write_gmsh_contour(100000, boundary_extend=False)
-m.extrude(100000, 10)
+m.extrude(100000, 20)
 #m.add_edge_attractor(1)
 #field, ifield, lcMin, lcMax, distMin, distMax
 #m.add_threshold(2, 1, 20000, 100000, 1, 400000)

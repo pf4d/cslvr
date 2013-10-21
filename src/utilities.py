@@ -614,6 +614,20 @@ class MeshGenerator(object):
     self.pts      = pts
     self.loop     = loop
   
+  def extrude(self, h, n_layers):
+    """
+    Extrude the mesh please.
+    """
+    f = self.f
+    s = str(self.surf_num)
+    h = str(h)
+    layers = str(n_layers)
+    
+    f.write("Extrude {0,0," + h + "}" \
+            + "{Surface{" + s + "};" \
+            + "Layers{" + layers + "};}\n\n")
+  
+  
   def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
     """
     add a box to the mesh.  e.g. for Byrd Glacier data:

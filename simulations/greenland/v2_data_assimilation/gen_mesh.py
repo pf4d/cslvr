@@ -15,17 +15,18 @@ dd.set_data_max('mask', 2, 0)
 
 m = MeshGenerator(dd, 'mesh', 'meshes/')
 
-m.create_contour('H', 20.0, 200)
+m.create_contour('H', 200.0, 4)
 #m.plot_contour()
 
 m.eliminate_intersections(dist=10)
 #m.plot_contour()
 
 m.write_gmsh_contour(100000, boundary_extend=False)
-m.add_edge_attractor(1)
+m.extrude(100000, 10)
+#m.add_edge_attractor(1)
 #field, ifield, lcMin, lcMax, distMin, distMax
-m.add_threshold(2, 1, 20000, 100000, 1, 400000)
-m.finish(4)
+#m.add_threshold(2, 1, 20000, 100000, 1, 400000)
+#m.finish(4)
 
 #m.create_2D_mesh('mesh') #FIXME: fails
 #m.convert_msh_to_xml('mesh', 'mesh')

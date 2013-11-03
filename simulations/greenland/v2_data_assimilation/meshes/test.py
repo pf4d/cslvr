@@ -98,7 +98,7 @@ class min_field:
 #mid = m.getFields().addPythonField(m1.op)
 #m.getFields().setBackgroundFieldId(mid)
 
-a1 = attractor(data, 0.0, 1000, 50000, inv=True)
+a1 = attractor(data, 0.0, 1000, 50000/3.5, inv=True)
 #a2 = attractor(data, 5.0,  500, 25000, hard_cut=False)
 #m1 = min_field([a1.op, a2.op])
 #

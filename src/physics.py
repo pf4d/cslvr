@@ -1645,7 +1645,7 @@ class VelocityBalance(object):
 
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None):
+  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999):
     set_log_level(PROGRESS)
 
     Q = FunctionSpace(mesh, "CG", 1)
@@ -1669,11 +1669,14 @@ class VelocityBalance_2(object):
     # solve for dhdx,dhdy with appropriate smoothing :
     dSdx = Function(Q)
     dSdy = Function(Q)
+    dSdx2 = Function(Q)
+    dSdy2 = Function(Q)
     phi = TestFunction(Q)
+
     Nx = TrialFunction(Q)
     Ny = TrialFunction(Q)
     
-    # smoothing radius :
+    # smoothing radius l in init call:
     kappa = Function(Q)
     kappa.vector()[:] = l
     
@@ -1685,9 +1688,30 @@ class VelocityBalance_2(object):
     solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx)
     solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy)
 
-    slope = project(sqrt(dSdx**2 + dSdy**2) + 1e-10, Q)
-    dS = as_vector([project(-dSdx / slope, Q),
-                        project(-dSdy / slope, Q)])
+    # Replace values of slope that are known
+    # I don't think this works in parallel, but it works for now...
+    # Note I did try conditionals here, to bad effect!
+    if N_data:
+        dSdx.vector().array()[N_data[0].vector().array() != NO_DATA] =\
+            N_data[0].vector().array()[N_data[0].vector().array() != NO_DATA]
+        dSdy.vector().array()[N_data[1].vector().array() != NO_DATA] =\
+            N_data[1].vector().array()[N_data[1].vector().array() != NO_DATA]
+
+    # Smothing the merged results, using the same approach as before
+    kappa = Function(Q)
+    kappa.vector()[:] = 2 # Hard coded for development
+    
+    R_dSdx = + (Nx*phi - dSdx * phi \
+             + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
+    R_dSdy = + (Ny*phi - dSdy * phi \
+             + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
+    
+    solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx2)
+    solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy2)
+
+    slope = project(sqrt(dSdx2**2 + dSdy2**2) + 1e-10, Q)
+    dS = as_vector([project(-dSdx2 / slope, Q),
+                        project(-dSdy2 / slope, Q)])
     
     def inside(x,on_boundary):
       return on_boundary
@@ -1718,6 +1742,7 @@ class VelocityBalance_2(object):
 
     self.H = H
     self.S = S
+    self.dS = dS
     self.adot = adot
     self.R_dSdx = R_dSdx
     self.R_dSdy = R_dSdy

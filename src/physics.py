@@ -1691,6 +1691,7 @@ class VelocityBalance_2(object):
     # Replace values of slope that are known
     # I don't think this works in parallel, but it works for now...
     # Note I did try conditionals here, to bad effect!
+    # Perhaps a DG space would have been better.
     if N_data:
         dSdx.vector().array()[N_data[0].vector().array() != NO_DATA] =\
             N_data[0].vector().array()[N_data[0].vector().array() != NO_DATA]
@@ -1699,7 +1700,7 @@ class VelocityBalance_2(object):
 
     # Smothing the merged results, using the same approach as before
     kappa = Function(Q)
-    kappa.vector()[:] = 2 # Hard coded for development
+    kappa.vector()[:] = 1.5  # Hard coded for development change later
     
     R_dSdx = + (Nx*phi - dSdx * phi \
              + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
@@ -1727,9 +1728,9 @@ class VelocityBalance_2(object):
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1)
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1)
     else:
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx
 
     
     self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx

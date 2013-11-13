@@ -26,7 +26,7 @@ m.plot_contour()
 m.eliminate_intersections()
 m.plot_contour()
 
-m.write_gmsh_contour(10000)
+m.write_gmsh_contour(5000)
 m.finish(None)
 
 m.create_2D_mesh('mesh') #FIXME: fails

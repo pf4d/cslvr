@@ -88,9 +88,9 @@ config = { 'mode' : 'steady',
                 'precip': None
             },
             'adjoint' :
-            { 'alpha' : [1e4],
+            { 'alpha' : [0.0],
                 'beta' : 0.0,
-                'max_fun' : 50,
+                'max_fun' : 20,
                 'objective_function' : 'linear',
                 'animate' : False,
                 'bounds' : None,
@@ -105,8 +105,8 @@ config = { 'mode' : 'steady',
 model = src.model.Model()
 model.set_geometry(Surface(), Bed())
 
-nx = ny = 40
-nz = 7
+nx = ny = 20
+nz = 6
 
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,
                             generate_pbcs=True)
@@ -122,14 +122,16 @@ config['adjoint']['bounds'] = [(0.0,5000.0)]
 dolfin.File('results/beta2_obs.xml') << model.beta2
 
 A = src.solvers.AdjointSolver(model,config)
-model.beta2.vector()[:] = 1000.
-
+u_o = model.u.vector().get_local()
+v_o = model.v.vector().get_local()
 U_e = 10.0
 from scipy import random
-u_error = U_e*random.randn(len(model.u_o.vector().get_local()))
-v_error = U_e*random.randn(len(model.u_o.vector().get_local()))
-model.u_o.vector().set_local(model.u.vector().get_local()+u_error)
-model.v_o.vector().set_local(model.v.vector().get_local()+v_error)
-dolfin.File('results/U_obs.xml') << dolfin.project(dolfin.as_vector([model.u_o,model.v_o]))
 
-A.solve()
+for i in range(50):
+    config['output_path'] = 'results/run_'+str(i)+'/'
+    model.beta2.vector()[:] = 1000.
+    u_error = U_e*random.randn(len(u_o))
+    v_error = U_e*random.randn(len(v_o))
+    model.u_o.vector().set_local(u_o+u_error)
+    model.v_o.vector().set_local(v_o+v_error)
+    A.solve()

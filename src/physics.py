@@ -568,8 +568,8 @@ class VelocityBP(object):
     du,  dv  = split(dU)
     u,   v   = split(U)
 
-    phi_w    = TestFunction(Q)
-    wt       = TrialFunction(Q)
+    chi    = TestFunction(Q)
+    dw       = TrialFunction(Q)
 
     ds       = model.ds
     dSurf    = ds(2)
@@ -631,11 +631,8 @@ class VelocityBP(object):
     # the direction of a small perturbation in U
     self.J   = derivative(self.F, U, dU)
  
-    self.w_R = + (u.dx(0) + v.dx(1)) * phi_w * dx \
-               - phi_w.dx(2) * wt * dx \
-               + phi_w * wt * dSurf \
-               - phi_w * (U[0]*B.dx(0) + U[1]*B.dx(1)) * dGrnd
- 
+    self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - (u*B.dx(0) + v*B.dx(1) - dw)*chi*dGrnd
+    
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
@@ -1642,10 +1639,39 @@ class VelocityBalance(object):
     self.model.u_balance.vector().set_local(u_b.vector().get_local())
     self.model.v_balance.vector().set_local(v_b.vector().get_local())
     
+class FlowDirection(object):
+  def __init__(self,mesh,H,S,l=0.0):
+    self.Q = FunctionSpace(mesh,"CG",1)
+    rho = 911.0
+    g = 9.81
+# solve for dhdx,dhdy with appropriate smoothing :
+    self.dSdx = Function(self.Q)
+    self.dSdy = Function(self.Q)
+    phi = TestFunction(self.Q)
+    Nx = TrialFunction(self.Q)
+    Ny = TrialFunction(self.Q)
+    
+    # smoothing radius :
+    kappa = Function(self.Q)
+    kappa.vector()[:] = l
+    
+    self.R_dSdx = + (Nx*phi - rho*g*H*S.dx(0) * phi \
+             + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
+    self.R_dSdy = + (Ny*phi - rho*g*H*S.dx(1) * phi \
+             + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
 
+  def solve(self):
+    
+    solve(lhs(self.R_dSdx) == rhs(self.R_dSdx), self.dSdx)
+    solve(lhs(self.R_dSdy) == rhs(self.R_dSdy), self.dSdy)    
+    slope = project(sqrt(self.dSdx**2 + self.dSdy**2) + 1e-5, self.Q)
+    dS = as_vector([project(-self.dSdx / slope, self.Q),
+                        project(-self.dSdy / slope, self.Q)])
+    return dS
+    
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None):
+  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None,alpha=[0.0,0.0,0.0],dS_in=None):
     set_log_level(PROGRESS)
 
     Q = FunctionSpace(mesh, "CG", 1)
@@ -1686,8 +1712,11 @@ class VelocityBalance_2(object):
     solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy)
 
     slope = project(sqrt(dSdx**2 + dSdy**2) + 1e-10, Q)
-    dS = as_vector([project(-dSdx / slope, Q),
+    if not dS_in:
+      dS = as_vector([project(-dSdx / slope, Q),
                         project(-dSdy / slope, Q)])
+    else:
+      dS = dS_in
     
     def inside(x,on_boundary):
       return on_boundary
@@ -1703,9 +1732,10 @@ class VelocityBalance_2(object):
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1)
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     else:
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx
+        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
+
 
     
     self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
@@ -1713,8 +1743,8 @@ class VelocityBalance_2(object):
     self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
     self.g_Uobs = derivative(self.I,Uobs,phi)
-    self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx
-    self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
+    self.g_adot = derivative(self.I,adot,phi) - (lamda + tau*div(lamda*dS*H))*phi*dx
+    self.g_H = derivative(self.I,H,phi) + (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
 
     self.H = H
     self.S = S
@@ -1740,7 +1770,7 @@ class VelocityBalance_2(object):
     self.Uobs.vector()[self.Uobs.vector().array()<0] = 0.0
     solve(lhs(self.adjoint_model) == rhs(self.adjoint_model), self.lamda)
    
-  def get_gradient(self,):
+  def get_gradient(self):
     gU = assemble(self.g_Uobs)
     ga = assemble(self.g_adot)
     gH = assemble(self.g_H)

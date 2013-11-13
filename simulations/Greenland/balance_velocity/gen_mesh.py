@@ -7,7 +7,7 @@ from src.utilities     import DataInput, MeshGenerator
 from data.data_factory import DataFactory
 
 # create meshgrid for contour :
-vara = DataFactory.get_searise()
+vara = DataFactory.get_bamber()
 H = vara['H']['map_data']
 S = vara['h']['map_data']
 B = vara['b']['map_data']
@@ -20,7 +20,7 @@ dd = DataInput(None, vara, flip=False, gen_space=False)
 
 m = MeshGenerator(dd, 'mesh', './')
 
-m.create_contour('H', 200.0,10)
+m.create_contour('H', 200.0,20)
 m.plot_contour()
 
 m.eliminate_intersections()

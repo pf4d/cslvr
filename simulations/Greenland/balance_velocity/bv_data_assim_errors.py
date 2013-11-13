@@ -24,14 +24,15 @@ mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
-dbam     = DataInput(None, bamber,      mesh=mesh)
+dbam    = DataInput(None, bamber,      mesh=mesh)
 dms     = DataInput(None, measure, mesh=mesh, create_proj=True, flip=True)
 
 dms.change_projection(dsr)
 
 dbam.set_data_min('H', 200.0, 200.0)
 dbam.set_data_min('h', 1.0, 1.0)
-dms.set_data_min('sp',0.0,-2e9)
+
+dms.set_data_min('sp',0.0,-1.0)
 
 # Make velocity error data easier to handle:
 MAX_V_ERR = 500
@@ -40,71 +41,86 @@ dms.set_data_min('ex',-MAX_V_ERR,NO_DATA)
 dms.set_data_max('ex',MAX_V_ERR,NO_DATA)
 dms.set_data_min('ey',-MAX_V_ERR,NO_DATA)
 dms.set_data_max('ey',MAX_V_ERR,NO_DATA)
-print 'H'
+
+MAX_V = 1e5
+dms.set_data_min('vx',-MAX_V,NO_DATA)
+dms.set_data_max('vx',MAX_V,NO_DATA)
+dms.set_data_min('vy',-MAX_V,NO_DATA)
+dms.set_data_max('vy',MAX_V,NO_DATA)
+
+
+print "Projecting data..."
 H     = dbam.get_projection("H")
-print 'H0'
 H0    = dbam.get_projection("H")
-print 'S'
 S     = dbam.get_projection("h")
-print 'Herr'
 Herr  = dbam.get_projection("Herr")
-
-print 'adot'
 adot  = dsr.get_projection("adot")
-
-print 'Uobs'
 Uobs   = dms.get_projection("sp")
-print 'vxerr'
+vx  = dms.get_projection("vx",near=True) # no interpolation
+vy  = dms.get_projection("vy",near=True)
 vxerr  = dms.get_projection("ex",near=True) # no interpolation
-print 'vyerr'
 vyerr  = dms.get_projection("ey",near=True)
 
-print 'verr'
-verr = project(sqrt(vxerr*2+vyerr**2 + 1e-3))
+N = as_vector([vx,vy])
 
-Uobs.vector()[Uobs.vector().array()<0] = 0.0
+# Data 'pruning'
+# The following line gets a NaN error... sqrt of negative?
+verr = project(abs(sqrt(abs(vxerr*2+vyerr**2 + 1e-3))))
+
+Uobs_o = Uobs.copy() # So that we can eliminate 'no data' point in a minute
+
+# Multiply the observed velocities by a 'shape factor' to go
+# from the surface to the vertical averaged velocities.
+# I think that this can be represented pretty well with a sigmoid
+# (logistic) function:
+# |u| / |u_s| = .8 + .2 / (1 + exp(-(|u| - 50) * .25))
+#
+# Which is centered at 50 m/a and has about a 25 m/a width.
+# We might experiment with these values later.
+
+Uobs = project(Uobs * (.8 + .2 / (1 + exp(-(Uobs - 50) * .25))))
+
+Uobs.vector()[Uobs_o.vector().array()<0] = NO_DATA # Relies on copy, Uobs_o
 
 U_sar_spline = dms.get_spline_expression("sp")
-ex_spline    = dms.get_spline_expression("ex") # not sure why
 
 # Desire a mask that only uses lower error velocities and plug flow velocities
-SLIDE_THRESHOLD = 50.   # to be replaced with calculation
-V_ERROR_THRESHOLD = .05 # errors larger than this fraction ignored
+SLIDE_THRESHOLD = 1.   # Now a lower limit on credible measurements.
+V_ERROR_THRESHOLD = 0.1 # errors larger than this fraction ignored
 
 insar_mask = CellFunctionSizet(mesh)
 insar_mask.set_all(0)
 for c in cells(mesh):
     x,y = c.midpoint().x(),c.midpoint().y()
     Uval = U_sar_spline(x,y)
-    exval = ex_spline(x,y)
-    verrval = verr(x,y)
+    vxerrval = vxerr(x,y)
+    verrval  = verr(x,y)
 
-    if Uval>SLIDE_THRESHOLD and exval != NO_DATA\
+    if Uval>SLIDE_THRESHOLD and vxerrval != NO_DATA\
                             and verrval/Uval < V_ERROR_THRESHOLD:
         insar_mask[c] = 1
-        
 
 # Create a per vertex data type that has velocity errors where mask is true
 # and infinity else where
-# Seems like a lot of thrashing around, should come up with a cleaner approach
+# 'infinity' is not big, and the smaller it is, the better things seem to work.
+# I think the abrupt changes in bounds on Uobs are causing trouble elsewhere.
+# Note that NO_DATA = -1, so we need at least infinity ~ 200 to reproduce the
+# velocities in SE Greenland that are missing
 Uerr = VertexFunctionDouble(mesh)
-Uerr.set_all(500)  # This is 'infinite' error, the search is unbound
+Uerr.set_all(MAX_V_ERR)  # This is 'infinite' error, the search is unbound
 for v in vertices(mesh):
-    x,y = v.x(0), v.x(1)
-    Uval = U_sar_spline(x,y)
-    exval = ex_spline(x,y)
-    verrval = verr(x,y)
+    x,y      = v.x(0), v.x(1)
+    Uval     = U_sar_spline(x,y)
+    vxerrval = vxerr(x,y)
+    verrval  = verr(x,y)
 
-    if Uval>SLIDE_THRESHOLD and exval != NO_DATA\
+    if Uval>SLIDE_THRESHOLD and vxerrval != NO_DATA\
                             and verrval/Uval < V_ERROR_THRESHOLD:
         Uerr[v] = verrval
-
-
-#Write back to field to check output as written file
-verr.vector().array()[:] = Uerr.array()
-
+    
 # Problem definition
-prb   = VelocityBalance_2(mesh, H, S, adot, 8.0,Uobs=Uobs,Uobs_mask=insar_mask)
+prb   = VelocityBalance_2(mesh, H, S, adot, 16.0,\
+              Uobs=Uobs,Uobs_mask=insar_mask,N_data = N,NO_DATA = NO_DATA)
 
 n = len(mesh.coordinates())
 
@@ -119,8 +135,6 @@ dHdt_file = File('results/dHdt.pvd')
 delta_H_file = File('results/deltaH.pvd')
 delta_U_file = File('results/deltaU.pvd')
 Herr_file = File('results/Herr.pvd')
-ex_file = File('results/ex.pvd')
-ey_file = File('results/ey.pvd')
 
 def _I_fun(x):
     prb.Uobs.vector()[:] = x[:n]
@@ -145,10 +159,11 @@ def _J_fun(x):
     Uopt_file_xml << prb.Ubmag
 
     # Checking the error files:
-    Uerr_file << verr
+    Uerr_file << Uerr
     Herr_file << Herr
-    ex_file << vxerr
-    ey_file << vyerr
+    print "Total mass balance:"
+    print assemble(prb.adot * dx)
+
 
     prb.solve_adjoint()
     g = prb.get_gradient()
@@ -159,17 +174,17 @@ from scipy.optimize import fmin_l_bfgs_b
 
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),H.vector().array()))
 
-amerr = 0.15
+amerr = 0.5
 aaerr = 0.25
 ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) for r in adot.vector().array()] 
 
 small_u = 1. # Minimal error in velocity
 Uobs_bounds = [(min(Uobs_i - Uerr_i,Uobs_i-small_u), max(Uobs_i+Uerr_i,Uobs_i+small_u)) for Uobs_i,Uerr_i in zip(Uobs.vector().array(),Uerr.array())] 
 
-small_h = 0.1 # Minimal uncertainty: replaces Bamber's zeros.
+small_h = 30. # Minimal uncertainty: replaces Bamber's zeros. ~35 is what Morlighem used
 H_bounds = [(min(H_i - Herr_i,H_i-small_h), max(H_i + Herr_i,H_i+small_h)) \
             for H_i,Herr_i in zip(H.vector().array(),Herr.vector().array())] 
 
 bounds = Uobs_bounds+ahat_bounds+H_bounds
 
-#fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1)
+fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1)

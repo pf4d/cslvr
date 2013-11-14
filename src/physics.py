@@ -1642,7 +1642,7 @@ class VelocityBalance(object):
 
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999):
+  def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0]):
     set_log_level(PROGRESS)
 
     Q = FunctionSpace(mesh, "CG", 1)
@@ -1725,18 +1725,17 @@ class VelocityBalance_2(object):
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1)
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     else:
-        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx
-
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     
-    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
+    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot + dhdt) * dx
 
     self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
     self.g_Uobs = derivative(self.I,Uobs,phi)
-    self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx
-    self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
+    self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx + 2.*alpha[1]*dot(grad(adot),grad(phi))*dx
+    self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot + dhdt)*dx + 2.*alpha[2]*dot(grad(H),grad(phi))*dx
 
     self.H = H
     self.S = S

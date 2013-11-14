@@ -50,16 +50,21 @@ dms.set_data_max('vy',MAX_V,NO_DATA)
 
 
 print "Projecting data..."
-H     = dbam.get_projection("H")
-H0    = dbam.get_projection("H")
-S     = dbam.get_projection("h")
-Herr  = dbam.get_projection("Herr")
-adot  = dsr.get_projection("adot")
-Uobs   = dms.get_projection("sp")
-vx  = dms.get_projection("vx",near=True) # no interpolation
-vy  = dms.get_projection("vy",near=True)
-vxerr  = dms.get_projection("ex",near=True) # no interpolation
-vyerr  = dms.get_projection("ey",near=True)
+H     = dbam.get_interpolation("H",kx=1,ky=1)
+H0    = dbam.get_interpolation("H",kx=1,ky=1)
+S     = dbam.get_interpolation("h",kx=1,ky=1)
+Herr  = dbam.get_interpolation("Herr",kx=1,ky=1)
+adot  = dsr.get_interpolation("adot",kx=1,ky=1)
+Uobs   = dms.get_interpolation("sp",kx=1,ky=1)
+dhdt = dsr.get_interpolation('dhdt',kx=1,ky=1)
+#vx  = dms.get_projection("vx",near=True) # no interpolation
+#vy  = dms.get_projection("vy",near=True)
+#vxerr  = dms.get_projection("ex",near=True) # no interpolation
+#vyerr  = dms.get_projection("ey",near=True)
+vx  = dms.get_interpolation("vx",kx=1,ky=1) # no interpolation
+vy  = dms.get_interpolation("vy",kx=1,ky=1)
+vxerr  = dms.get_interpolation("ex",kx=1,ky=1) # no interpolation
+vyerr  = dms.get_interpolation("ey",kx=1,ky=1)
 
 N = as_vector([vx,vy])
 
@@ -117,10 +122,10 @@ for v in vertices(mesh):
     if Uval>SLIDE_THRESHOLD and vxerrval != NO_DATA\
                             and verrval/Uval < V_ERROR_THRESHOLD:
         Uerr[v] = verrval
-    
+ 
 # Problem definition
-prb   = VelocityBalance_2(mesh, H, S, adot, 16.0,\
-              Uobs=Uobs,Uobs_mask=insar_mask,N_data = N,NO_DATA = NO_DATA)
+prb   = VelocityBalance_2(mesh, H, S, adot, 8.0,dhdt=dhdt,\
+              Uobs=Uobs,Uobs_mask=insar_mask,N_data = N,NO_DATA = NO_DATA,alpha=[0.0,1e8,0.0])
 
 n = len(mesh.coordinates())
 
@@ -174,8 +179,8 @@ from scipy.optimize import fmin_l_bfgs_b
 
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),H.vector().array()))
 
-amerr = 0.5
-aaerr = 0.25
+amerr = 0.0
+aaerr = 1.0
 ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) for r in adot.vector().array()] 
 
 small_u = 1. # Minimal error in velocity

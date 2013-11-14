@@ -1,5 +1,6 @@
 import sys
 import os
+import numpy as numpy
 src_directory = '../../../'
 sys.path.append(src_directory)
 
@@ -50,6 +51,8 @@ dms.set_data_max('vy',MAX_V,NO_DATA)
 
 
 print "Projecting data..."
+# Change to 'get_interpolation'. Add optional kx = 1 ky =1 (linear
+# interpolation)
 H     = dbam.get_projection("H")
 H0    = dbam.get_projection("H")
 S     = dbam.get_projection("h")
@@ -85,8 +88,8 @@ Uobs.vector()[Uobs_o.vector().array()<0] = NO_DATA # Relies on copy, Uobs_o
 U_sar_spline = dms.get_spline_expression("sp")
 
 # Desire a mask that only uses lower error velocities and plug flow velocities
-SLIDE_THRESHOLD = 1.   # Now a lower limit on credible measurements.
-V_ERROR_THRESHOLD = 0.1 # errors larger than this fraction ignored
+VELOCITY_THRESHOLD = 5.   # A lower limit on credible InSAR measurements.
+V_ERROR_THRESHOLD = 0.15  # Errors larger than this fraction ignored
 
 insar_mask = CellFunctionSizet(mesh)
 insar_mask.set_all(0)
@@ -96,7 +99,7 @@ for c in cells(mesh):
     vxerrval = vxerr(x,y)
     verrval  = verr(x,y)
 
-    if Uval>SLIDE_THRESHOLD and vxerrval != NO_DATA\
+    if Uval>VELOCITY_THRESHOLD and vxerrval != NO_DATA\
                             and verrval/Uval < V_ERROR_THRESHOLD:
         insar_mask[c] = 1
 
@@ -114,12 +117,13 @@ for v in vertices(mesh):
     vxerrval = vxerr(x,y)
     verrval  = verr(x,y)
 
-    if Uval>SLIDE_THRESHOLD and vxerrval != NO_DATA\
+    if Uval>VELOCITY_THRESHOLD and vxerrval != NO_DATA\
                             and verrval/Uval < V_ERROR_THRESHOLD:
         Uerr[v] = verrval
     
 # Problem definition
-prb   = VelocityBalance_2(mesh, H, S, adot, 16.0,\
+SMOOTH_RADIUS = 15.  # How many ice thicknesses to smooth over (important)
+prb   = VelocityBalance_2(mesh, H, S, adot, SMOOTH_RADIUS,\
               Uobs=Uobs,Uobs_mask=insar_mask,N_data = N,NO_DATA = NO_DATA)
 
 n = len(mesh.coordinates())
@@ -132,8 +136,11 @@ Uerr_file = File('results/Uerr.pvd')
 H_file = File('results/H.pvd')
 adot_file = File('results/adot.pvd')
 dHdt_file = File('results/dHdt.pvd')
+
 delta_H_file = File('results/deltaH.pvd')
 delta_U_file = File('results/deltaU.pvd')
+delta_adot_file = File('results/deltaadot.pvd')
+
 Herr_file = File('results/Herr.pvd')
 
 def _I_fun(x):
@@ -150,20 +157,24 @@ def _J_fun(x):
     prb.H.vector()[:]    = x[2*n:]
     # I/O
     Uopt_file << prb.Ubmag
-    delta_U_file<<project(Uobs - prb.Ubmag)
     Uobs_file << prb.Uobs
     H_file << prb.H
     adot_file << prb.adot
+    delta_U_file<<project(prb.Ubmag - prb.Uobs,dbam.func_space)
     delta_H_file << project(prb.H - H0,dbam.func_space)
-    dHdt_file << project(prb.residual-prb.adot,dbam.func_space)
+    delta_adot_file << project(prb.adot - adot,dbam.func_space)
+    dHdt_file << prb.residual
     Uopt_file_xml << prb.Ubmag
 
-    # Checking the error files:
-    Uerr_file << Uerr
-    Herr_file << Herr
-    print "Total mass balance:"
-    print assemble(prb.adot * dx)
-
+    print "================================================================"
+    print "Total apparent mass balance (Gigatons):"
+    print assemble(prb.adot * dx) / 1.e12
+    print "RMS Error in Velocity:"
+    area_1 = Function(prb.func_space) 
+    area_1.vector()[:] = 1
+    print numpy.sqrt(assemble((prb.Ubmag - prb.Uobs)**2 * prb.dx_masked(1)) / \
+          assemble(area_1 * prb.dx_masked(1)))
+   
 
     prb.solve_adjoint()
     g = prb.get_gradient()
@@ -174,14 +185,14 @@ from scipy.optimize import fmin_l_bfgs_b
 
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),H.vector().array()))
 
-amerr = 0.5
-aaerr = 0.25
+amerr = 1.5
+aaerr = 10.0
 ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) for r in adot.vector().array()] 
 
 small_u = 1. # Minimal error in velocity
 Uobs_bounds = [(min(Uobs_i - Uerr_i,Uobs_i-small_u), max(Uobs_i+Uerr_i,Uobs_i+small_u)) for Uobs_i,Uerr_i in zip(Uobs.vector().array(),Uerr.array())] 
 
-small_h = 30. # Minimal uncertainty: replaces Bamber's zeros. ~35 is what Morlighem used
+small_h = 1. # Minimal uncertainty: replaces Bamber's zeros. ~35 is what Morlighem used
 H_bounds = [(min(H_i - Herr_i,H_i-small_h), max(H_i + Herr_i,H_i+small_h)) \
             for H_i,Herr_i in zip(H.vector().array(),Herr.vector().array())] 
 

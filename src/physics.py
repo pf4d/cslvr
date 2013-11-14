@@ -1692,13 +1692,15 @@ class VelocityBalance_2(object):
     # I don't think this works in parallel, but it works for now...
     # Note I did try conditionals here, to bad effect!
     # Perhaps a DG space would have been better.
+    # To make parallel, try:
+    # remove .array() and replace with .get_local() and .set_local()
     if N_data:
         dSdx.vector().array()[N_data[0].vector().array() != NO_DATA] =\
             N_data[0].vector().array()[N_data[0].vector().array() != NO_DATA]
         dSdy.vector().array()[N_data[1].vector().array() != NO_DATA] =\
             N_data[1].vector().array()[N_data[1].vector().array() != NO_DATA]
 
-    # Smothing the merged results, using the same approach as before
+    # Smoothing the merged results, using the same approach as before
     kappa = Function(Q)
     kappa.vector()[:] = 1.5  # Hard coded for development change later
     
@@ -1756,6 +1758,7 @@ class VelocityBalance_2(object):
     self.residual = Ubmag*div(dS*H) - adot
     self.residual = project(self.residual, Q)
     self.Uobs = Uobs
+    self.dx_masked = dx_masked
 
   def solve_forward(self):
     # solve linear problem :

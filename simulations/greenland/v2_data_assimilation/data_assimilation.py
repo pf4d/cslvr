@@ -68,7 +68,7 @@ flat_mesh.coordinates()[:,2] /= 100000.0
 
 
 # create data objects to use with varglas :
-dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
+dsr     = DataInput(None, searise,  mesh=mesh)
 dbm     = DataInput(None, bamber,   mesh=mesh)
 #dms     = DataInput(None, measure,  mesh=mesh, create_proj=True, flip=True)
 #dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)

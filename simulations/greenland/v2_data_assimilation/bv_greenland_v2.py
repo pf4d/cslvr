@@ -22,9 +22,9 @@ bamber   = DataFactory.get_bamber(thklim = thklim)
 mesh    = Mesh("results/meshes/refined_mesh.xml")
 
 # create data objects to use with varglas :
-dsr     = DataInput(None, searise,  mesh=mesh, create_proj=True)
+dsr     = DataInput(None, searise,  mesh=mesh)
 dbm     = DataInput(None, bamber,   mesh=mesh)
-dms     = DataInput(None, measure,  mesh=mesh, create_proj=True, flip=True)
+dms     = DataInput(None, measure,  mesh=mesh, flip=True)
 dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
 
 dms.change_projection(dsr)

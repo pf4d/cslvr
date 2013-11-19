@@ -47,8 +47,8 @@ sec_qgeo = DataFactory.get_gre_qgeo_secret()
 #flat_mesh = Mesh('../meshes/mesh.xml')
 #mesh      = MeshFactory.get_greenland_detailed()
 #flat_mesh = MeshFactory.get_greenland_detailed()
-#mesh      = Mesh('meshes/3dmesh_10_layers.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers.xml')
+mesh      = Mesh('meshes/3dmesh_10_layers.xml')
+flat_mesh = Mesh('meshes/3dmesh_10_layers.xml')
 #mesh      = Mesh('meshes/3dmesh_20_layers.xml')
 #flat_mesh = Mesh('meshes/3dmesh_20_layers.xml')
 #mesh      = Mesh('meshes/3dmesh_10_layers_5xGrid.xml')
@@ -79,14 +79,6 @@ dsq     = DataInput(None, sec_qgeo, mesh=mesh)
 # change the projection of the measures data to fit with other data :
 #dms.change_projection(dsr)
 
-# inspect the data values :
-do      = DataOutput('results_pre/')
-#do.write_one_file('h',              dbm.get_projection('h'))
-#do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
-#do.write_one_file('sq_qgeo',        dsq.get_projection('q_geo'))
-#do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
-#exit(0)
-
 # get the expressions used by varglas :
 Thickness          = dbm.get_spline_expression('H_n')
 Surface            = dbm.get_spline_expression('h_n')
@@ -97,6 +89,20 @@ BasalHeatFlux      = dsq.get_spline_expression('q_geo')
 #BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 U_observed         = dsr.get_spline_expression('U_ob')
+
+# inspect the data values :
+do    = DataOutput('results_pre/')
+model = model.Model()
+model.set_geometry(Surface, Bed)
+model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+model.set_parameters(pc.IceParameters())
+model.initialize_variables()
+do.write_one_file('ff', model.ff)
+#do.write_one_file('h',              dbm.get_projection('h'))
+#do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
+#do.write_one_file('sq_qgeo',        dsq.get_projection('q_geo'))
+#do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
+exit(0)
 
 
 # specifify non-linear solver parameters :

@@ -32,8 +32,7 @@ class DataInput:
        on the extents of the input data set.
   """
   def __init__(self, direc, files, flip=False, mesh=None, gen_space=True, 
-               zero_edge=False, bool_data=False, req_dg=False,
-               create_proj=False):
+               zero_edge=False, bool_data=False, req_dg=False):
     """
     The following data are used to initialize the class :
     
@@ -121,15 +120,14 @@ class DataInput:
       if req_dg:
         self.func_space_dg = FunctionSpace(self.mesh, "DG", 1)
     
-    # create projection info if required : 
-    if create_proj: 
-      proj =   " +proj="   + self.proj \
-             + " +lat_0="  + self.lat_0 \
-             + " +lat_ts=" + self.lat_ts \
-             + " +lon_0="  + self.lon_0 \
-             + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
-             + " +towgs84=0.000,0.000,0.000 +to_meter=1"
-      self.p = Proj(proj)
+    # create projection : 
+    proj =   " +proj="   + self.proj \
+           + " +lat_0="  + self.lat_0 \
+           + " +lat_ts=" + self.lat_ts \
+           + " +lon_0="  + self.lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    self.p = Proj(proj)
 
   def change_projection(self, di):
     """
@@ -140,18 +138,6 @@ class DataInput:
     self.chg_proj = True
     self.new_p    = di.p
 
-    #n = shape(X)[0]
-    #xs  = di.x
-    #ys  = di.y
-
-    #tupArr = zeros(shape(X), dtype=[('x', 'f8'),('y', 'f8')])
-    
-    ## rad stuff happens right here :
-    #for i in range(n):
-    #  for j in range(n):
-    #    tupArr[i,j] = (X[i,j], Y[i,j])
-        
-  
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
     """
     Assimilate a field with filename <fn_spec>  from DataInput object 

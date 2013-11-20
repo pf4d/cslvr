@@ -10,7 +10,7 @@
 #  10 layers 2.5xGrid |    2114880 | 01:17:34 | 01:19:21 | 01:22:38 | 01:35:02 
 #  10 layers 3xGrid   |    2680020 | 01:41:14 | 01:51:47 | 02:06:10m| 01:51:46
 #  10 layers 3.5xGrid |    3992850 |    /     |          |          | 
-#
+#  10 layers DivGrid  |    1027452 |
 #
 
 import sys
@@ -35,7 +35,7 @@ set_log_active(True)
 thklim = 200.0
 
 # collect the raw data :
-searise  = DataFactory.get_searise()
+searise  = DataFactory.get_searise(thklim = thklim)
 measure  = DataFactory.get_gre_measures()
 meas_shf = DataFactory.get_shift_gre_measures()
 bamber   = DataFactory.get_bamber(thklim = thklim)
@@ -70,7 +70,7 @@ flat_mesh.coordinates()[:,2] /= 100000.0
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)
 dbm     = DataInput(None, bamber,   mesh=mesh)
-#dms     = DataInput(None, measure,  mesh=mesh, create_proj=True, flip=True)
+#dms     = DataInput(None, measure,  mesh=mesh, flip=True)
 #dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
 dsq     = DataInput(None, sec_qgeo, mesh=mesh)

@@ -4,13 +4,14 @@
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
-#  10 layers 1xGrid   |    1187610 |          | 00:26:31 | 00:27:40 | 00:27:46 
+#  10 layers 1xGrid   |    1187610 |    NA    | 00:26:31 | 00:27:40 | 00:27:46 
 #  20 layers 1xGrid   |    2374020 | 01:13:09 | 01:18:18 | 01:17:33 | 01:18:29 
 #  30 layers 1xGrid   |    4265526 |    /     |          |          |          
 #  10 layers 2.5xGrid |    2114880 | 01:17:34 | 01:19:21 | 01:22:38 | 01:35:02 
 #  10 layers 3xGrid   |    2680020 | 01:41:14 | 01:51:47 | 02:06:10m| 01:51:46
 #  10 layers 3.5xGrid |    3992850 |    /     |          |          | 
-#  10 layers DivGrid  |    1027452 |
+#  10 layers DivGrid  |    2235810 | 00:57:36 | 01:01:16 | 01:01:15 | 01:00:03
+#  10 layers DivGrid2 |    2613600 | 01:14:20 | 01:14:20 | 01:14:11 | 01:13:47
 #
 
 import sys
@@ -47,8 +48,8 @@ sec_qgeo = DataFactory.get_gre_qgeo_secret()
 #flat_mesh = Mesh('../meshes/mesh.xml')
 #mesh      = MeshFactory.get_greenland_detailed()
 #flat_mesh = MeshFactory.get_greenland_detailed()
-mesh      = Mesh('meshes/3dmesh_10_layers.xml')
-flat_mesh = Mesh('meshes/3dmesh_10_layers.xml')
+#mesh      = Mesh('meshes/3dmesh_10_layers.xml')
+#flat_mesh = Mesh('meshes/3dmesh_10_layers.xml')
 #mesh      = Mesh('meshes/3dmesh_20_layers.xml')
 #flat_mesh = Mesh('meshes/3dmesh_20_layers.xml')
 #mesh      = Mesh('meshes/3dmesh_10_layers_5xGrid.xml')
@@ -63,6 +64,10 @@ flat_mesh = Mesh('meshes/3dmesh_10_layers.xml')
 #flat_mesh = Mesh('meshes/3dmesh_30_layers.xml')
 #mesh      = Mesh('meshes/3dmesh_10_layers_2xGrid.xml')
 #flat_mesh = Mesh('meshes/3dmesh_10_layers_2xGrid.xml')
+#mesh      = Mesh('meshes/3dmesh_10_layers_DivGrid.xml')
+#flat_mesh = Mesh('meshes/3dmesh_10_layers_DivGrid.xml')
+mesh      = Mesh('meshes/3dmesh_10_layers_DivGrid2.xml')
+flat_mesh = Mesh('meshes/3dmesh_10_layers_DivGrid2.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -97,12 +102,12 @@ model.set_geometry(Surface, Bed)
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
-do.write_one_file('ff', model.ff)
+#do.write_one_file('ff',             model.ff)
 #do.write_one_file('h',              dbm.get_projection('h'))
 #do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
 #do.write_one_file('sq_qgeo',        dsq.get_projection('q_geo'))
 #do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
-exit(0)
+#exit(0)
 
 
 # specifify non-linear solver parameters :
@@ -128,6 +133,8 @@ i = int(sys.argv[1])
 #dir_b   = './results_10_layers_alphaH2_2.5xGrid_sq/0'
 #dir_b   = './results_10_layers_alphaH2_3xGrid_sq/0'
 #dir_b   = './results_10_layers_alphaH2_3.5xGrid_sq/0'
+#dir_b   = './results_10_layers_alphaH2_DivGrid_sq/0'
+dir_b   = './results_10_layers_alphaH2_DivGrid2_sq/0'
 #dir_b   = './results_detailed_sr/0'
 #dir_b   = './results_detailed_fm/0'
 #dir_b   = './results_detailed_sq/0'
@@ -210,12 +217,6 @@ config = { 'mode'                         : 'steady',
            }}
 
 
-model = model.Model()
-model.set_geometry(Surface, Bed)
-
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
-model.set_parameters(pc.IceParameters())
-model.initialize_variables()
 model.eps_reg = 1e-5
 #config['adjoint']['alpha'] = model.S - model.B
 

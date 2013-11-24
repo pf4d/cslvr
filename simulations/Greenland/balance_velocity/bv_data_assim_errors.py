@@ -24,9 +24,9 @@ direc = os.path.dirname(os.path.realpath(__file__))
 mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
-dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
+dsr     = DataInput(None, searise, mesh=mesh)
 dbam    = DataInput(None, bamber,      mesh=mesh)
-dms     = DataInput(None, measure, mesh=mesh, create_proj=True, flip=True)
+dms     = DataInput(None, measure, mesh=mesh, flip=True)
 dms.change_projection(dsr)
 
 # Bound data to managable values
@@ -198,19 +198,20 @@ small_h = 30. # Minimal uncertainty: replaces Bamber's zeros. ~35 is what Morlig
 H_bounds = [(min(H_i - Herr_i,H_i-small_h), max(H_i + Herr_i,H_i+small_h)) \
             for H_i,Herr_i in zip(H.vector().array(),Herr.vector().array())] 
 
-Nx_err = 1. - 1. / sqrt(1+tan(deg2rad(10)**2)) # Arguement is in degrees
-Nx_bounds = [(min(Nx-Nx_err,-1.),max(Nx+Nx_err,1.)) for Nx in prb.dS[0].vector().array()] 
+tan2 = tan(deg2rad(5.))**2
+Ny_err = sqrt(tan2 / (1+tan2)) # Arguement is in degrees
+Ny_bounds = [(min(Ny-Ny_err,-1.),max(Ny+Ny_err,1.)) for Ny in prb.dS[1].vector().array()] 
 
-bounds = Uobs_bounds + ahat_bounds + H_bounds + Nx_bounds
+bounds = Uobs_bounds + ahat_bounds + H_bounds + Ny_bounds
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),\
-         H.vector().array(),prb.dS[0].vector().array()))
+         H.vector().array(),prb.dS[1].vector().array()))
 
 # Search in the direction of each gradient, sequentially
 for f in range(20):
     freeze = [(f+1)%4,(f+2)%4,(f+3)%4]
     fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1,args=(freeze),maxfun=20)
     x0 = hstack((prb.Uobs.vector().array(),prb.adot.vector().array(),\
-             prb.H.vector().array(),prb.dS[0].vector().array()))
+             prb.H.vector().array(),prb.dS[1].vector().array()))
 
 # Finish with all search directions
 freeze = []

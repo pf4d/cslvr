@@ -1746,7 +1746,7 @@ class VelocityBalance_2(object):
     self.g_Uobs = derivative(self.I,Uobs,phi)
     self.g_adot = derivative(self.I,adot,phi)
     self.g_H    = derivative(self.I,H,phi)
-    self.g_N    = derivative(self.I,dS[0],phi)
+    self.g_N    = derivative(self.I,dS[1],phi)
 
     # Gradients computed by hand.
     #self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx + 2.*alpha[1]*dot(grad(adot),grad(phi))*dx
@@ -1769,18 +1769,18 @@ class VelocityBalance_2(object):
     self.Uobs = Uobs
     self.dx_masked = dx_masked
     self.Q = Q
-    self.signs = numpy.sign(self.dS[1].vector().array().copy())
+    self.signs = numpy.sign(self.dS[0].vector().array().copy())
 
   def update_velocity_directions(self):
-      nx = self.dS[0].vector().array().copy()
+      ny = self.dS[1].vector().array().copy()
 
       # These protect against NaNs in the sqrt below
-      nx[nx>1]  =  1.
-      nx[nx<-1] = -1.
-      ny = self.signs * numpy.sqrt(1-nx**2)
+      ny[ny>1]  =  1.
+      ny[ny<-1] = -1.
+      nx = self.signs * numpy.sqrt(1-ny**2)
 
       # Maybe set_local is more parallel safe
-      self.dS[1].vector().set_local(ny)
+      self.dS[0].vector().set_local(nx)
 
 
   def solve_forward(self):

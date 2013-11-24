@@ -1,11 +1,11 @@
 import re
-from pylab import *
-
+from pylab  import *
+from dolfin import *
 
 #===============================================================================
 # parse the mesh file :
-grid    = open('3dmesh.xml',    'r')
-newGrid = open('3dmeshNew.xml', 'w')
+grid    = open('mesh.xml', 'r')
+newGrid = open('bed.xml',  'w')
 
 sv    = '^.*index="([0-9]+)"\sx="(-?[0-9]+\.[0-9]+e?[+-]?[0-9]+)"' + \
                            '\sy="(-?[0-9]+\.[0-9]+e?[+-]?[0-9]+)"' + \
@@ -100,4 +100,60 @@ print "::::FINISHED::::"
 newGrid.close()
 
 
+3dmesh = Mesh('mesh.xml')
+bed    = Mesh('bed.xml')
+Q      = FunctionSpace(3dmesh, 'CG', 1)  
+Qb     = FunctionSpace(bed,    'CG', 1)
+B2     = Function(Q)
+bedB2  = Function(Qb)
+df     = Q.dofmap()
+dfmap  = df.vertex_to_dof_map(3dmesh)
 
+File('../results_sq/beta2_opt.xml') >> B2
+
+B2a    = B2.vector().array()
+bedB2a = bedB2.vector().array()
+
+for v in vertices(3dmesh):
+  ind.append(v.index())
+
+  
+  def get_nearest(self, fn):
+    """
+    returns a dolfin Function object with values given by interpolated 
+    nearest-neighbor data <fn>.
+    """
+    #FIXME: get to work with a change of projection.
+    # get the dofmap to map from mesh vertex indices to function indicies :
+    df    = self.func_space.dofmap()
+    dfmap = df.vertex_to_dof_map(self.mesh)
+    
+    unew  = Function(self.func_space)         # existing dataset projection
+    uocom = unew.vector().array()             # mesh indexed main vertex values
+    
+    d     = float64(self.data[fn])            # original matlab spec dataset
+
+    # get arrays of x-values for specific domain
+    xs    = self.x
+    ys    = self.y
+    
+    for v in vertices(self.mesh):
+      # mesh vertex x,y coordinate :
+      i   = v.index()
+      p   = v.point()
+      x   = p.x()
+      y   = p.y()
+      
+      # indexes of closest datapoint to specific dataset's x and y domains :
+      idx = abs(xs - x).argmin()
+      idy = abs(ys - y).argmin()
+      
+      # data value for closest value :
+      dv  = d[idy, idx] 
+      if dv > 0:
+        dv = 1.0
+      uocom[i] = dv
+    
+    # set the values of the empty function's vertices to the data values :
+    unew.vector().set_local(uocom[dfmap])
+    return unew

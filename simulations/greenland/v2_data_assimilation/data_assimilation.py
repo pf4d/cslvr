@@ -44,30 +44,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-#mesh      = Mesh('../meshes/mesh.xml')
-#flat_mesh = Mesh('../meshes/mesh.xml')
-#mesh      = MeshFactory.get_greenland_detailed()
-#flat_mesh = MeshFactory.get_greenland_detailed()
-#mesh      = Mesh('meshes/3dmesh_10_layers.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers.xml')
-#mesh      = Mesh('meshes/3dmesh_20_layers.xml')
-#flat_mesh = Mesh('meshes/3dmesh_20_layers.xml')
-#mesh      = Mesh('meshes/3dmesh_10_layers_5xGrid.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers_5xGrid.xml')
-#mesh      = Mesh('meshes/3dmesh_10_layers_2.5xGrid.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers_2.5xGrid.xml')
-#mesh      = Mesh('meshes/3dmesh_10_layers_3xGrid.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers_3xGrid.xml')
-#mesh      = Mesh('meshes/3dmesh_10_layers_3.5xGrid.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers_3.5xGrid.xml')
-#mesh      = Mesh('meshes/3dmesh_30_layers.xml')
-#flat_mesh = Mesh('meshes/3dmesh_30_layers.xml')
-#mesh      = Mesh('meshes/3dmesh_10_layers_2xGrid.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers_2xGrid.xml')
-#mesh      = Mesh('meshes/3dmesh_10_layers_DivGrid.xml')
-#flat_mesh = Mesh('meshes/3dmesh_10_layers_DivGrid.xml')
-mesh      = Mesh('meshes/3dmesh_10_layers_DivGrid2.xml')
-flat_mesh = Mesh('meshes/3dmesh_10_layers_DivGrid2.xml')
+mesh      = Mesh('meshes/mesh.xml')
+flat_mesh = Mesh('meshes/mesh.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -121,23 +99,9 @@ nonlin_solver_params['preconditioner']                           = 'default'
 
 # make the directory if needed :
 i = int(sys.argv[1])
-#dir_b   = './results_new_mesh_20_layers_sr/0'
-#dir_b   = './results_new_mesh_20_layers_sq/0'
-#dir_b   = './results_new_mesh_20_layers_42/0'
-#dir_b   = './results_new_mesh_10_layers_sr/0'
-#dir_b   = './results_new_mesh_10_layers_sq/0'
-#dir_b   = './results_10_layers_alphaH2_sq/0'
-#dir_b   = './results_20_layers_alphaH2_sq/0'
-#dir_b   = './results_30_layers_alphaH2_sq/0'
-#dir_b   = './results_10_layers_alphaH2_5xGrid_sq/0'
-#dir_b   = './results_10_layers_alphaH2_2.5xGrid_sq/0'
-#dir_b   = './results_10_layers_alphaH2_3xGrid_sq/0'
-#dir_b   = './results_10_layers_alphaH2_3.5xGrid_sq/0'
-#dir_b   = './results_10_layers_alphaH2_DivGrid_sq/0'
-dir_b   = './results_10_layers_alphaH2_DivGrid2_sq/0'
-#dir_b   = './results_detailed_sr/0'
-#dir_b   = './results_detailed_fm/0'
-#dir_b   = './results_detailed_sq/0'
+#dir_b   = './results_sr/0'
+#dir_b   = './results_fm/0'
+dir_b   = './results_sq/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'

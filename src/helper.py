@@ -586,7 +586,7 @@ def calculate_vertical_average(model,u):
   ubar = project(ubar/H,model.Q)
   return ubar
 
-def extract_boundary_mesh(mesh,marker=2,variable_list = []):
+def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
   """
   This function iterates through the cells and vertces of the mesh in order
   to find the boundaries
@@ -601,14 +601,15 @@ def extract_boundary_mesh(mesh,marker=2,variable_list = []):
   from dolfin import vertices
 
   D = mesh.topology().dim()
-  surface_mesh = BoundaryMesh()
+  surface_mesh = BoundaryMesh(mesh,'exterior')
+  surface_mesh.clear()
  
   editor = MeshEditor()
   editor.open(surface_mesh,mesh.type().type2string(mesh.type().facet_type()), D-1,D-1)
 
   mesh.init(D-1,D)
 
-  exterior = mesh.parallel_data().exterior_facet()
+  #exterior = mesh.parallel_data().exterior_facet()
 
   num_vertices = mesh.num_vertices()
 
@@ -616,16 +617,12 @@ def extract_boundary_mesh(mesh,marker=2,variable_list = []):
   num_boundary_vertices = 0
   num_boundary_cells = 0
 
-  surface_facet = mesh.domains().facet_domains(mesh)
+  #surface_facet = mesh.domains().facet_domains(mesh)
   boundary_facet = MeshFunctionBool(mesh,D-1,False)
   for f in facets(mesh):
-    if surface_facet[f] == marker:
-      if exterior.size() == 0:
-        boundary_facet[f] = True
-      else:
-        if exterior[f]:
-          boundary_facet[f] = True
-    if boundary_facet[f]:
+    if surface_facet[f] == marker and f.exterior():
+      boundary_facet[f] = True
+#    if boundary_facet[f]:
       for v in vertices(f):
         v_index = v.index()
         if boundary_vertices[v_index] == num_vertices:
@@ -636,11 +633,11 @@ def extract_boundary_mesh(mesh,marker=2,variable_list = []):
   editor.init_vertices(num_boundary_vertices)
   editor.init_cells(num_boundary_cells)
 
-  vertex_map = surface_mesh.vertex_map()
+  vertex_map = surface_mesh.entity_map(0)
   if num_boundary_vertices > 0:
     vertex_map.init(surface_mesh, 0, num_boundary_vertices)
 
-  cell_map = surface_mesh.cell_map()
+  cell_map = surface_mesh.entity_map(D-1)
   if num_boundary_cells > 0:
     cell_map.init(surface_mesh, D-1, num_boundary_cells)
 
@@ -651,7 +648,7 @@ def extract_boundary_mesh(mesh,marker=2,variable_list = []):
         vertex_map[vertex_index] = v.index()
       editor.add_vertex(vertex_index,v.point())
 
-  cell = p.zeros(surface_mesh.type().num_vertices(surface_mesh.topology().dim()),dtype = p.uintc)
+  cell = p.zeros(surface_mesh.type().num_vertices(surface_mesh.topology().dim()),dtype = p.uintp)
   current_cell = 0
   for f in facets(mesh):
     if boundary_facet[f]:
@@ -670,9 +667,13 @@ def extract_boundary_mesh(mesh,marker=2,variable_list = []):
   for ii in range(len(variable_list)):
     surface_variable_list.append(Function(Q))
 
-  for ii,index in enumerate(surface_mesh.vertex_map().array()):
+  v2d_surf = vertex_to_dof_map(Q)
+  print vertex_map.array()
+  v2d_3d = vertex_to_dof_map(variable_list[0].function_space())
+
+  for ii,index in enumerate(vertex_map.array()):
     for jj,variable in enumerate(variable_list):
-      surface_variable_list[jj].vector()[ii] = variable_list[jj].vector()[index]
+      surface_variable_list[jj].vector()[v2d_surf[ii]] = variable_list[jj].vector()[v2d_3d[index]]
 
   return surface_mesh,surface_variable_list
     

@@ -13,6 +13,7 @@ from src.utilities       import DataInput
 from dolfin              import *
 
 set_log_active(True)
+parameters['form_compiler']['quadrature_degree'] = 1
 
 vara = DataFactory.get_searise()
 
@@ -30,7 +31,7 @@ BasalHeatFlux      = dd.get_spline_expression('q_geo')
 U_observed         = dd.get_spline_expression('U_ob')
 
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter'] = 0.5
+nonlin_solver_params['newton_solver']['relaxation_parameter'] = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance'] = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations'] = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
@@ -60,7 +61,7 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 0.5,
+             'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -101,7 +102,7 @@ config = { 'mode'                         : 'steady',
            { 
              'alpha'              : [1e6],
              'beta'               : 0.0,
-             'max_fun'            : 20,
+             'max_fun'            : 100,
              'objective_function' : 'logarithmic',
              'control_variable'   : None,
              'bounds'             : [(0,20)],
@@ -117,8 +118,9 @@ model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 model.eps_reg = 1e-5
-
+"""
 F = solvers.SteadySolver(model,config)
+dolfin.File('results_slippery/beta2_opt.xml') >> model.beta2
 F.solve()
 
 visc    = project(model.eta)
@@ -135,5 +137,6 @@ config['adjoint']['control_variable']    = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
+dolfin.File('results_slippery/beta2_opt.xml') >> model.beta2
 A.solve()
-
+"""

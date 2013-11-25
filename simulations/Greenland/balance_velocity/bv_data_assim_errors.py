@@ -144,7 +144,7 @@ def _I_fun(x,*args):
     prb.Uobs.vector()[:]    = x[:n]
     prb.adot.vector()[:]    = x[n:2*n]
     prb.H.vector()[:]       = x[2*n:3*n]
-    prb.dS[0].vector()[:]   = x[3*n:]
+    prb.dS[1].vector()[:]   = x[3*n:]
 
     prb.solve_forward()
     I = assemble(prb.I)
@@ -154,7 +154,7 @@ def _J_fun(x,*args):
     prb.Uobs.vector()[:]    = x[:n]
     prb.adot.vector()[:]    = x[n:2*n]
     prb.H.vector()[:]       = x[2*n:3*n]
-    prb.dS[0].vector()[:]   = x[3*n:]
+    prb.dS[1].vector()[:]   = x[3*n:]
 
     # I/O
     Uopt_file << prb.Ubmag
@@ -198,7 +198,7 @@ small_h = 30. # Minimal uncertainty: replaces Bamber's zeros. ~35 is what Morlig
 H_bounds = [(min(H_i - Herr_i,H_i-small_h), max(H_i + Herr_i,H_i+small_h)) \
             for H_i,Herr_i in zip(H.vector().array(),Herr.vector().array())] 
 
-tan2 = tan(deg2rad(5.))**2
+tan2 = tan(deg2rad(15.))**2
 Ny_err = sqrt(tan2 / (1+tan2)) # Arguement is in degrees
 Ny_bounds = [(min(Ny-Ny_err,-1.),max(Ny+Ny_err,1.)) for Ny in prb.dS[1].vector().array()] 
 

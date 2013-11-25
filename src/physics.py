@@ -1732,7 +1732,8 @@ class VelocityBalance_2(object):
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
+#        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
+        self.I = (Ubmag - Uobs)**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     else:
         self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     

@@ -23,7 +23,7 @@ File("ub.pvd") << ub
 mesh = Mesh('mesh.xml')
 V    = FunctionSpace(mesh, "CG", 1)
 u    = Function(V)
-File('../results_sq/beta2_opt.xml') >> u
+File('../results_sq/00/beta2_opt.xml') >> u
 
 bmesh   = BoundaryMesh(mesh, "exterior")
 mapping = bmesh.entity_map(1)

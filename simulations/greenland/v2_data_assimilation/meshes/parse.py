@@ -12,7 +12,11 @@ sv    = '^.*index="([0-9]+)"\sx="(-?[0-9]+\.[0-9]+e?[+-]?[0-9]+)"' + \
                            '\sz="(-?[0-9]+\.[0-9]+e?[+-]?[0-9]+)"'
 pv    = re.compile(sv)
 
-sc    = '^.*tetrahedron\sindex="([0-9]+)"\sv0="([0-9]+)"\sv1="([0-9]+)"\sv2="([0-9]+)"\sv3="([0-9]+)"'
+sc    = '^.*tetrahedron\sindex="([0-9]+)"' + \
+                       '\sv0="([0-9]+)"' + \
+                       '\sv1="([0-9]+)"' + \
+                       '\sv2="([0-9]+)"' + \
+                       '\sv2="([0-9]+)"'
 pc    = re.compile(sc)
 
 ci    = []  # cell index
@@ -98,23 +102,23 @@ newGrid.write('    </cells>\n' + \
 print "::::FINISHED::::"
 
 newGrid.close()
-
-
-3dmesh = Mesh('mesh.xml')
+  
+  
+mesh   = Mesh('mesh.xml')
 bed    = Mesh('bed.xml')
-Q      = FunctionSpace(3dmesh, 'CG', 1)  
-Qb     = FunctionSpace(bed,    'CG', 1)
+Q      = FunctionSpace(mesh, 'CG', 1)  
+Qb     = FunctionSpace(bed,  'CG', 1)
 B2     = Function(Q)
 bedB2  = Function(Qb)
 df     = Q.dofmap()
-dfmap  = df.vertex_to_dof_map(3dmesh)
+dfmap  = df.vertex_to_dof_map(mesh)
 
 File('../results_sq/beta2_opt.xml') >> B2
 
 B2a    = B2.vector().array()
 bedB2a = bedB2.vector().array()
 
-for v in vertices(3dmesh):
+for v in vertices(mesh):
   ind.append(v.index())
 
   

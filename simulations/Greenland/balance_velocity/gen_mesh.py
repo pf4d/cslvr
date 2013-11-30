@@ -21,14 +21,14 @@ dd = DataInput(None, vara, flip=False, gen_space=False)
 m = MeshGenerator(dd, 'mesh', './')
 
 # 20 works well for the last arg. below
-m.create_contour('H', 200.0,80)
+m.create_contour('H', 200.0,3)
 m.plot_contour()
 
 m.eliminate_intersections()
 m.plot_contour()
 
 # 10000 works well on the following line
-m.write_gmsh_contour(80000)
+m.write_gmsh_contour(1000)
 m.finish(None)
 
 m.create_2D_mesh('mesh') #FIXME: fails

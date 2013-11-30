@@ -1644,7 +1644,7 @@ class VelocityBalance(object):
 
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0]):
+  def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0,0.]):
 
     set_log_level(PROGRESS)
 
@@ -1717,7 +1717,7 @@ class VelocityBalance_2(object):
 
     dS = as_vector([project(-dSdx2 / slope, Q),
                         project(-dSdy2 / slope, Q)])
-    
+   
     def inside(x,on_boundary):
       return on_boundary
        
@@ -1730,12 +1730,14 @@ class VelocityBalance_2(object):
     U_eff = sqrt( dot(dS * H, dS * H) + 1e-10 )
     tau = cellh / (2 * U_eff)
 
+    adot_0 = adot.copy()
+
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-#        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
-        self.I = (Ubmag - Uobs)**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot-adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx+ alpha[3]*dot(grad(dS[1]),grad(dS[1]))*dx
+        #self.I = (Ubmag - Uobs)**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot-adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     else:
-        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot),grad(adot))*dx + alpha[2]*dot(grad(H),grad(H))*dx
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot - adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     
     self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot + dhdt) * dx
 
@@ -1752,6 +1754,7 @@ class VelocityBalance_2(object):
     # Gradients computed by hand.
     #self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx + 2.*alpha[1]*dot(grad(adot),grad(phi))*dx
     #self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot + dhdt)*dx + 2.*alpha[2]*dot(grad(H),grad(phi))*dx
+
 
     self.H = H
     self.S = S
@@ -1771,6 +1774,7 @@ class VelocityBalance_2(object):
     self.dx_masked = dx_masked
     self.Q = Q
     self.signs = numpy.sign(self.dS[0].vector().array().copy())
+    self.update_velocity_directions()
 
   def update_velocity_directions(self):
       ny = self.dS[1].vector().array().copy()
@@ -1782,6 +1786,7 @@ class VelocityBalance_2(object):
 
       # Maybe set_local is more parallel safe
       self.dS[0].vector().set_local(nx)
+      self.dS[1].vector().set_local(ny)
 
 
   def solve_forward(self):

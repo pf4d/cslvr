@@ -23,13 +23,13 @@ sys.path.append(src_directory)
 import src.solvers            as solvers
 import src.physical_constants as pc
 import src.model              as model
-from meshes.mesh_factory import MeshFactory
-from data.data_factory   import DataFactory
-from src.helper          import default_nonlin_solver_params
-from src.utilities       import DataInput, DataOutput
-from dolfin              import *
-from pylab               import sqrt, copy
-from time                import time
+from meshes.mesh_factory  import MeshFactory
+from data.data_factory    import DataFactory
+from src.helper           import default_nonlin_solver_params
+from src.utilities        import DataInput, DataOutput
+from dolfin               import *
+from pylab                import sqrt, copy
+from time                 import time
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -211,7 +211,14 @@ t02 = time()
 A.solve()
 tf2 = time()
 
+f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
+f.write(model.mesh,  'mesh')
+f.write(model.beta2, 'beta2')
+f.write(model.Mb,    'Mb')
+f.write(model.T,     'T')
+
 File(dir_b + str(i) + '/Mb.pvd') << model.Mb
+File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

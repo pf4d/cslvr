@@ -140,7 +140,7 @@ class min_field:
 
 #m.getFields().setBackgroundFieldId(mid)
 
-a   = attractor(data, 0.0, 1000, 40000, inv=True)
+a   = attractor(data, 0.0, 20000, 50000, inv=True)
 aid = m.getFields().addPythonField(a.op)
 m.getFields().setBackgroundFieldId(aid)
 

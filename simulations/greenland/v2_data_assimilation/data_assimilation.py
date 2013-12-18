@@ -14,6 +14,14 @@
 #  10 layers DivGrid2 |    2613600 | 01:14:20 | 01:14:20 | 01:14:11 | 01:13:47
 #  10 layers DivGrid3 |    2612400 | 01:07:32 | 01:12:31 | 01:12:51 | 01:12:18 
 #
+#
+# Assimilation run times (8 cores, 20 function evals):
+# =====================================================
+#
+#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
+#  -------------------+------------+----------+----------+----------+----------
+#  10 layers crude    |     370740 |  |  |  |  
+#
 
 import sys
 import os
@@ -45,8 +53,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh.xml')
-flat_mesh = Mesh('meshes/mesh.xml')
+mesh      = Mesh('meshes/crude_mesh.xml')
+flat_mesh = Mesh('meshes/crude_mesh.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -95,8 +103,9 @@ nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['linear_solver']                            = 'mumps'
-nonlin_solver_params['preconditioner']                           = 'default'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+parameters['form_compiler']['quadrature_degree']                 = 2
 
 # make the directory if needed :
 i = int(sys.argv[1])

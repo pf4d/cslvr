@@ -16,21 +16,21 @@ from src.utilities       import DataInput
 thklim = 200.0
 
 # collect the raw data :
-bamber   = DataFactory.get_bamber(thklim = thklim)
-searise  = DataFactory.get_searise(thklim = thklim)
-meas_shf = DataFactory.get_shift_gre_measures()
+measures = DataFactory.get_ant_measures()
+bedmap1  = DataFactory.get_bedmap1(thklim=thklim)
+bedmap2  = DataFactory.get_bedmap2(thklim=thklim)
 
-dbv     = DataInput("../results/", ("Ubmag_measures.mat", "Ubmag.mat"), 
-                    gen_space=False)
+dbv = DataInput("../results/", ("Ubmag.mat", ), gen_space=False)
 dbv.set_data_min('Ubmag', 0.0,   0.0)
 dbv.set_data_max('Ubmag', 500.0, 500.0)
-dsr  = DataInput(None, searise,  gen_space=False)
-dbm  = DataInput(None, bamber,   gen_space=False)
-dmss = DataInput(None, meas_shf, gen_space=False)
-dsr.change_projection(dbm)
+
+bedmap1 = DataFactory.get_bedmap1(thklim=thklim)
+bedmap2 = DataFactory.get_bedmap2(thklim=thklim)
+
+db2  = DataInput(None, bedmap2, gen_space=False)
 
 # might want to refine off of thickness :
-H   = dbm.data['H_n'].copy().T
+H   = db2.data['H_n'].copy().T
 
 # ensure that there are no values less than 1 for taking log :
 #vel = dsr.data['U_ob'].copy().T
@@ -49,8 +49,8 @@ data[2*data < k*mv] = -data[2*data < k*mv]  + k*mv
 #show()
 
 # x- and y-values for creating nearest-neighbor spline interpolation :
-xs     = dbm.x
-ys     = dbm.y
+xs     = dbv.x
+ys     = dbv.y
 spline = RectBivariateSpline(xs, ys, data, kx=1, ky=1)
 
 #===============================================================================
@@ -58,7 +58,7 @@ spline = RectBivariateSpline(xs, ys, data, kx=1, ky=1)
 
 #load the mesh into a GModel
 m = GModel.current()
-m.load("mesh.geo")
+m.load("3dmesh.geo")
 
 #boolean options are stored as floating point numbers in gmsh => 0. is False
 GmshSetOption("Mesh", "CharacteristicLengthFromPoints", 0.)
@@ -113,45 +113,11 @@ class min_field:
     return min(l)
 
 
-#lmax      = 50000
-#lmin      = 2000
-#lmin_max  = 5000
-#lmin_min  = 500
-#num_cuts  = 5
-#fmax_max  = 8.0
-#a_list    = []
-#lc_list   = linspace(lmin_max, lmin_min, num_cuts)
-#fmax_list = linspace(0, fmax_max, num_cuts)
-#for fmax, l_min in zip(fmax_list, lc_list):
-#  a = attractor(data, fmax, l_min, lmax, hard_cut=False)
-#  a_list.append(a.op)
-#  m.getFields().addPythonField(a.op)
-
-#m1  = min_field(a_list)
-#mid = m.getFields().addPythonField(m1.op)
-#m.getFields().setBackgroundFieldId(mid)
-
-#a1 = attractor(data, 0.0, 1000, 50000/3.5, inv=True)
-#a2 = attractor(data, 0.0, 1000, 50000/3.5, inv=False)
-#m1 = min_field([a1.op, a2.op])
-#aid1 = m.getFields().addPythonField(a1.op)
-#aid2 = m.getFields().addPythonField(a2.op)
-#mid  = m.getFields().addPythonField(m1.op)
-
-#m.getFields().setBackgroundFieldId(mid)
-
-a   = attractor(data, 0.0, 20000, 50000, inv=True)
+a   = attractor(data, 0.0, 30000, 100000, inv=True)
 aid = m.getFields().addPythonField(a.op)
 m.getFields().setBackgroundFieldId(aid)
 
-#m.extrude(0,0,1) #FIXME: not working, need to generate mesh within gmshpy
-
 #launch the GUI
 FlGui.instance().run()
-
-#instead of starting the GUI, we could generate the mesh and save it
-#m.mesh(2) # 2 is the dimension
-#m.save("square.msh")
-
 
 

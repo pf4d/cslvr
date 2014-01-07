@@ -103,8 +103,10 @@ nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+#nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+nonlin_solver_params['linear_solver']                            = 'mumps'
+nonlin_solver_params['preconditioner']                           = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 # make the directory if needed :
@@ -201,7 +203,7 @@ F.solve()
 tf1 = time()
 if i != 0: model.adot = adot
 
-visc    = project(model.eta)
+visc    = project(model.eta, model.Q)
 vel_par = config['velocity']
 vel_par['viscosity_mode']                                         = 'linear'
 vel_par['b_linear']                                               = visc
@@ -220,13 +222,15 @@ t02 = time()
 A.solve()
 tf2 = time()
 
-f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
-f.write(model.mesh,  'mesh')
-f.write(model.beta2, 'beta2')
-f.write(model.Mb,    'Mb')
-f.write(model.T,     'T')
+# functionality of HDF5 not completed by fenics devs :
+#f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
+#f.write(model.mesh,  'mesh')
+#f.write(model.beta2, 'beta2')
+#f.write(model.Mb,    'Mb')
+#f.write(model.T,     'T')
 
-File(dir_b + str(i) + '/Mb.pvd') << model.Mb
+File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
+File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
 File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 
 # calculate total time to compute

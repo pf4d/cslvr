@@ -13,7 +13,7 @@ from meshes.mesh_factory    import MeshFactory
 
 set_log_level(PROGRESS)
 
-bm1 = DataFactory.get_lebrocq()
+bm1 = DataFactory.get_bedmap1()
 bm2 = DataFactory.get_bedmap2()
 
 direc = os.path.dirname(os.path.realpath(__file__)) 

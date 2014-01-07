@@ -29,5 +29,9 @@ mea  = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
 fldr = "measures"
 download_file(mea, home, fldr)
 
+mea  = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
+       'nsidc0484_MEASURES_antarc_vel_V01/900m/antarctica_ice_velocity.nc'
+fldr = "measures"
+download_file(mea, home, fldr)
 
 

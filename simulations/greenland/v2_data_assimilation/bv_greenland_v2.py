@@ -24,8 +24,8 @@ mesh    = Mesh("results/meshes/refined_mesh.xml")
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)
 dbm     = DataInput(None, bamber,   mesh=mesh)
-dms     = DataInput(None, measure,  mesh=mesh, flip=True)
-dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
+dms     = DataInput(None, measure,  mesh=mesh)
+dmss    = DataInput(None, meas_shf, mesh=mesh)
 
 dms.change_projection(dsr)
 
@@ -50,7 +50,7 @@ do.write_dict_of_files(d_out)
 do.write_dict_of_files(d_out, extension='.xml')
 do.write_one_file('sp', dms.get_projection('sp'))
 
-do.write_matlab(dbm, prb.Ubmag, 'results/Ubmag.mat')
+#do.write_matlab(dbm, prb.Ubmag, 'results/Ubmag.mat')
 
 dbv = DataInput('results/', ('Ubmag.mat',), mesh=mesh)
 
@@ -59,7 +59,7 @@ dbv.set_data_min('Ubmag', 0.0, 0.0)
 ass = dbv.integrate_field('sp', dmss, 'Ubmag', val=50)
 
 do.write_one_file('Ubmag_measures',  ass)
-do.write_matlab(dbm, ass, 'results/Ubmag_measures.mat')
+#do.write_matlab(dbm, ass, 'results/Ubmag_measures.mat')
 
 
 

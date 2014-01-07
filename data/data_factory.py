@@ -24,12 +24,16 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_ant_measures():
+  def get_ant_measures(resolution=900):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    direc    = home + '/antarctica/measures/Antarctica_ice_velocity_450m.nc' 
+    if resolution == 900:
+      direc    = home + '/antarctica/measures/antarctica_ice_velocity.nc' 
+    else:
+      direc    = home + '/antarctica/measures/antarctica_ice_velocity_450m.nc' 
+
     data     = netcdf_file(direc, mode = 'r')
     vara     = dict()
   
@@ -101,7 +105,7 @@ class DataFactory(object):
     # retrieve data :
     for f in files:
       data    = TiffFile(direc + f + '.tif')
-      vara[f] = {'map_data'          : data.asarray(),
+      vara[f] = {'map_data'          : data.asarray()[::-1, :],
                  'map_western_edge'  : west,
                  'map_eastern_edge'  : east,  
                  'map_southern_edge' : south,
@@ -144,7 +148,7 @@ class DataFactory(object):
     # retrieve data :
     for f in files:
       data    = TiffFile(direc + f + '_new.tif')
-      vara[f] = {'map_data'          : data.asarray(),
+      vara[f] = {'map_data'          : data.asarray()[::-1, :],
                  'map_western_edge'  : west,
                  'map_eastern_edge'  : east,  
                  'map_southern_edge' : south,
@@ -286,7 +290,7 @@ class DataFactory(object):
   
 
   @staticmethod
-  def get_lebrocq():
+  def get_bedmap1(thklim = 10.0):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -302,10 +306,13 @@ class DataFactory(object):
     h       = array(data.variables['usrf'][:])
     adot    = array(data.variables['acca'][:])
     mask    = array(data.variables['mask'][:])
-    srfTemp = array(data.variables['temp'][:])
-    q_geo   = array(data.variables['ghffm'][:])
-    H       = h - b
+    srfTemp = array(data.variables['temp'][:]) + 273.15
+    q_geo   = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365
     
+    H_n               = h - b
+    h_n               = h.copy()
+    h_n[H_n < thklim] = b[H_n < thklim] + thklim
+
     # extents of domain :
     east    = max(x)
     west    = min(x)
@@ -318,8 +325,8 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['b', 'h', 'H', 'adot', 'q_geo', 'srfTemp']
-    ftns  = [b, h, H, adot, q_geo, srfTemp]
+    names = ['b', 'h', 'h_n', 'H_n', 'adot', 'q_geo', 'srfTemp']
+    ftns  = [ b,   h,   h_n,   H_n,   adot,   q_geo,   srfTemp]
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):
@@ -334,6 +341,72 @@ class DataFactory(object):
                  'lat true scale'    : lat_ts}
     return vara 
   
+  
+  @staticmethod
+  def get_bedmap2(thklim = 10.0):
+
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    direc    = home + '/antarctica/bedmap2/bedmap2_tiff/' 
+
+    sys.path.append(home + '/external_import_scripts')
+    from tifffile import TiffFile
+   
+    b           = TiffFile(direc + 'bedmap2_bed.tif')
+    h           = TiffFile(direc + 'bedmap2_surface.tif') 
+    H           = TiffFile(direc + 'bedmap2_thickness.tif')
+    mask        = TiffFile(direc + 'bedmap2_icemask_grounded_and_shelves.tif') 
+    rock_mask   = TiffFile(direc + 'bedmap2_rockmask.tif') 
+    b_uncert    = TiffFile(direc + 'bedmap2_grounded_bed_uncertainty.tif') 
+    coverage    = TiffFile(direc + 'bedmap2_coverage.tif')
+    gl04c_WGS84 = TiffFile(direc + 'gl04c_geiod_to_WGS84.tif')
+   
+    b           = b.asarray()
+    h           = h.asarray()
+    H           = H.asarray()
+    mask        = mask.asarray()
+    rock_mask   = rock_mask.asarray()
+    b_uncert    = b_uncert.asarray()
+    coverage    = coverage.asarray() 
+    gl04c_WGS84 = gl04c_WGS84.asarray()
+    
+    H_n               = h - b
+    h_n               = h.copy()
+    h_n[H_n < thklim] = b[H_n < thklim] + thklim
+    
+    vara        = dict()
+     
+    # extents of domain :
+    dx    =  1000
+    west  = -3333500.0
+    east  =  3333500.0
+    north =  3333500.0
+    south = -3333500.0
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '-90'
+    lat_ts = '-71'
+    lon_0  = '0'
+    
+    names = ['b', 'h', 'h_n', 'H', 'H_n', 'mask', 'rock_mask', 'b_uncert', 
+             'coverage', 'gl04c_WGS84']
+    ftns  = [b, h, h_n, H, H_n, mask, rock_mask, b_uncert, 
+             coverage, gl04c_WGS84]
+   
+    # retrieve data :
+    for n, f in zip(names, ftns):
+      vara[n] = {'map_data'          : f[::-1, :],
+                 'map_western_edge'  : west,
+                 'map_eastern_edge'  : east,  
+                 'map_southern_edge' : south,
+                 'map_northern_edge' : north,
+                 'projection'        : proj,
+                 'standard lat'      : lat_0,
+                 'standard lon'      : lon_0,
+                 'lat true scale'    : lat_ts}
+    return vara 
+
   
   @staticmethod
   def get_bamber(thklim = 10.0):
@@ -445,58 +518,5 @@ class DataFactory(object):
                  'lat true scale'    : lat_ts}
     return vara
  
-  
-  @staticmethod
-  def get_bedmap2():
-
-    filename = inspect.getframeinfo(inspect.currentframe()).filename
-    home     = os.path.dirname(os.path.abspath(filename))
-    
-    direc    = home + '/antarctica/bedmap2/bedmap2_tiff/' 
-    files    = ['bedmap2_bed',
-                'bedmap2_surface', 
-                'bedmap2_thickness',
-                'bedmap2_icemask_grounded_and_shelves', 
-                'bedmap2_rockmask', 
-                #'bedmap2_lakemask_vostok', 
-                'bedmap2_grounded_bed_uncertainty', 
-                #'bedmap2_thickness_uncertainty_5km', 
-                'bedmap2_coverage',
-                'gl04c_geiod_to_WGS84']
-    vara     = dict()
-     
-    # extents of domain :
-    dx    =  1000
-    west  = -3333500.0
-    east  =  3333500.0
-    north =  3333500.0
-    south = -3333500.0
-
-    #projection info :
-    proj   = 'stere'
-    lat_0  = '-90'
-    lat_ts = '-71'
-    lon_0  = '0'
-    
-    names = ['b', 'h', 'H', 'mask', 'rock_mask', 'b_uncert', 
-             'coverage', 'gl04c_to_WGS84']
-   
-
-    sys.path.append(home + '/external_import_scripts')
-    from tifffile import TiffFile
-    # retrieve data :
-    for n, f in zip(names, files):
-      data    = TiffFile(direc + f + '.tif')
-      vara[n] = {'map_data'          : data.asarray(),
-                 'map_western_edge'  : west,
-                 'map_eastern_edge'  : east,  
-                 'map_southern_edge' : south,
-                 'map_northern_edge' : north,
-                 'projection'        : proj,
-                 'standard lat'      : lat_0,
-                 'standard lon'      : lon_0,
-                 'lat true scale'    : lat_ts}
-    return vara 
-
 
 

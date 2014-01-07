@@ -62,24 +62,31 @@ un = Function(Vs)
 
 us.interpolate(u)
 
-m    = V.dofmap().vertex_to_dof_map(mesh)        # mesh dofmap
-b    = Vb.dofmap().vertex_to_dof_map(bmesh)      # bmesh dofmap
-s    = Vs.dofmap().vertex_to_dof_map(submesh)    # submesh dofmap
+#m    = V.dofmap().vertex_to_dof_map(mesh)        # mesh dofmap
+#b    = Vb.dofmap().vertex_to_dof_map(bmesh)      # bmesh dofmap
+#s    = Vs.dofmap().vertex_to_dof_map(submesh)    # submesh dofmap
+m    = vertex_to_dof_map(V)       # mesh dofmap
+b    = vertex_to_dof_map(Vb)      # bmesh dofmap
+s    = vertex_to_dof_map(Vs)      # submesh dofmap
 
-mi   = V.dofmap().dof_to_vertex_map(mesh)        # mesh dofmap
-bi   = Vb.dofmap().dof_to_vertex_map(bmesh)      # bmesh dofmap
-si   = Vs.dofmap().dof_to_vertex_map(submesh)    # submesh dofmap
+#mi   = V.dofmap().dof_to_vertex_map(mesh)        # mesh dofmap
+#bi   = Vb.dofmap().dof_to_vertex_map(bmesh)      # bmesh dofmap
+#si   = Vs.dofmap().dof_to_vertex_map(submesh)    # submesh dofmap
+mi   = dof_to_vertex_map(V)       # mesh dofmap
+bi   = dof_to_vertex_map(Vb)      # bmesh dofmap
+si   = dof_to_vertex_map(Vs)      # submesh dofmap
 
 u_a  = u.vector().array()                 # array form of original ftn
 ub_a = ub.vector().array()                # array form of boundary ftn
 us_a = us.vector().array()                # array form of desired ftn
 un_a = un.vector().array()                # array form of desired ftn
 
-for v in vertices(submesh):
+for v in vertices(bmesh):
   i       = v.index()
-  ub_a[i] = u_a[mi[vertmap[i]]]
+  #ub_a[i] = u_a[mi[vertmap[i]]]
+  ub_a[i] = u_a[bi[i]]
 
-ub.vector().set_local(ub_a[b])
+ub.vector().set_local(ub_a)
 File("ub_new.pvd") << ub
 
 un.vector().set_local(ub_a[b][s])

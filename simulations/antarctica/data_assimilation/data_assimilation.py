@@ -24,16 +24,16 @@ set_log_active(True)
 
 thklim = 50.0
 
-var_measures = DataFactory.get_ant_measures()
-var_bedmap1  = DataFactory.get_bedmap1(thklim=thklim)
-var_bedmap2  = DataFactory.get_bedmap2(thklim=thklim)
+measures  = DataFactory.get_ant_measures(resolution=450)
+bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
+bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
-mesh         = Mesh('meshes/3dmesh_medium.xml')
-flat_mesh    = Mesh('meshes/3dmesh_medium.xml')
+mesh      = Mesh('meshes/3dmesh_medium.xml')
+flat_mesh = Mesh('meshes/3dmesh_medium.xml')
 
-dm  = DataInput(None, var_measures, mesh=mesh,flip=True)
-db1 = DataInput(None, var_bedmap1,  mesh=mesh)
-db2 = DataInput(None, var_bedmap2,  mesh=mesh, flip=True)
+dm  = DataInput(None, measures, mesh=mesh)
+db1 = DataInput(None, bedmap1,  mesh=mesh)
+db2 = DataInput(None, bedmap2,  mesh=mesh)
 
 db2.set_data_min("H", thklim, thklim)
 db2.set_data_min("h", 0.0,0.0)
@@ -139,29 +139,6 @@ config = { 'mode'                         : 'steady',
              'bounds'             : (0.,20.)
            }}
 
-"""
-F = solvers.SteadySolver(model,config)
-#dolfin.File(dir_b + str(i) + '/beta2_opt.xml') >> model.beta2
-F.solve()
-
-visc    = project(model.eta)
-vel_par = config['velocity']
-vel_par['viscosity_mode']                                         = 'linear'
-vel_par['b_linear']                                               = visc
-vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
-
-config['enthalpy']['on']        = False
-config['surface_climate']['on'] = False
-config['coupled']['on']         = False
-config['velocity']['use_T0']    = False
-
-A = solvers.AdjointSolver(model,config)
-A.set_target_velocity(U = U_observed)
-File(dir_b + str(i) + '/U_obs.pvd') << model.U_o
-#dolfin.File(dir_b + str(i) + '/beta2_opt.xml') >> model.beta2
-A.solve()
-"""
-
 model = model.Model()
 model.set_geometry(Surface,Bed)
 
@@ -205,7 +182,6 @@ tf2 = time()
 #f.write(model.Mb,    'Mb')
 #f.write(model.T,     'T')
 
-File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
 File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
 File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 

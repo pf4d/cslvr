@@ -53,8 +53,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/crude_mesh.xml')
-flat_mesh = Mesh('meshes/crude_mesh.xml')
+mesh      = Mesh('meshes/mesh.xml')
+flat_mesh = Mesh('meshes/mesh.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -229,7 +229,6 @@ tf2 = time()
 #f.write(model.Mb,    'Mb')
 #f.write(model.T,     'T')
 
-File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
 File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
 File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 

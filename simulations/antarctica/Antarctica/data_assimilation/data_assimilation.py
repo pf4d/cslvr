@@ -17,8 +17,8 @@ var_measures = DataFactory.get_ant_measures()
 var_bedmap1  = DataFactory.get_lebrocq()
 var_bedmap2  = DataFactory.get_bedmap2()
 
-mesh         = MeshFactory.get_antarctica_detailed()
-flat_mesh    = MeshFactory.get_antarctica_detailed()
+mesh         = MeshFactory.get_antarctica_coarse()
+flat_mesh    = MeshFactory.get_antarctica_coarse()
 
 dm  = DataInput(None, var_measures, mesh=mesh,flip=True)
 db1 = DataInput(None, var_bedmap1,  mesh=mesh)

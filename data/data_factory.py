@@ -29,7 +29,7 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    direc    = home + '/antarctica/measures/Antarctica_ice_velocity_450m.nc' 
+    direc    = home + '/antarctica/measures/antarctica_ice_velocity_450m.nc' 
     data     = netcdf_file(direc, mode = 'r')
     vara     = dict()
   

@@ -120,6 +120,7 @@ class DataInput:
       if req_dg:
         self.func_space_dg = FunctionSpace(self.mesh, "DG", 1)
     
+<<<<<<< HEAD
     if direc == None and type(files) == dict:
       # create projection : 
       proj =   " +proj="   + self.proj \
@@ -129,6 +130,16 @@ class DataInput:
              + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
              + " +towgs84=0.000,0.000,0.000 +to_meter=1"
       self.p = Proj(proj)
+=======
+    # create projection : 
+    proj =   " +proj="   + self.proj \
+           + " +lat_0="  + self.lat_0 \
+           + " +lat_ts=" + self.lat_ts \
+           + " +lon_0="  + self.lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    self.p = Proj(proj)
+>>>>>>> master
 
   def change_projection(self, di):
     """

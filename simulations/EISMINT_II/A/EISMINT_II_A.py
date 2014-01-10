@@ -110,8 +110,8 @@ config = { 'mode' : 'steady',
 model = src.model.Model()
 model.set_geometry(Surface(), Bed())
 
-mesh      = MeshFactory.get_circle()
-flat_mesh = MeshFactory.get_circle()
+mesh      = dolfin.Mesh('../circle.xml')#MeshFactory.get_circle()
+flat_mesh = dolfin.Mesh('../circle.xml')#MeshFactory.get_circle()
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.mesh.coordinates()[:,2] = model.mesh.coordinates()[:,2]/1000.0
 model.set_parameters(src.physical_constants.IceParameters())

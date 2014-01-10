@@ -29,11 +29,19 @@ class MeshFactory(object):
 
 
   @staticmethod
-  def get_antarctica():
+  def get_antarctica_coarse():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
     mesh     = home + '/antarctica/antarctica_50H_5l.xml' 
     return Mesh(mesh)
+
+  @staticmethod
+  def get_antarctica_detailed():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = home + '/antarctica/antarctica_detailed_mesh.xml' 
+    return Mesh(mesh)
+
 
 
   @staticmethod

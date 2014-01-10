@@ -1,15 +1,23 @@
+import sys
+src_directory = '../../../'
+sys.path.append(src_directory)
+
+import src.model
+
 import pylab 
 import dolfin
 import pickle
 from pylab import *
 
-nx = 20
-ny = 20
-nz = 5
+nx = 40
+ny = 40
+nz = 7
 
-m = dolfin.UnitCubeMesh(nx,ny,nz)
-Q = dolfin.FunctionSpace(m,"CG",1)
-U_obs = dolfin.project(dolfin.as_vector([dolfin.Function(Q),dolfin.Function(Q),dolfin.Function(Q)]))
+model = src.model.Model()
+model.generate_uniform_mesh(nx,ny,nz,0,1,0,1,deform=False,generate_pbcs=True)
+
+Q = model.Q
+U_obs = dolfin.project(dolfin.as_vector([dolfin.Function(Q),dolfin.Function(Q)]))
 b_obs = dolfin.Function(Q)
 U_opt = dolfin.project(dolfin.as_vector([dolfin.Function(Q),dolfin.Function(Q),dolfin.Function(Q)]))
 b_opt = dolfin.Function(Q)
@@ -32,7 +40,7 @@ for L in [10000]:
     profile = pylab.linspace(0,1,100)
 
     for ii,x in enumerate(profile):
-        uu,vv,ww = U_obs(x,0.25,0.99999)
+        uu,vv = U_obs(x,0.25,0.99999)
         U_b[ii] = pylab.sqrt(uu**2 + vv**2)
         uu,vv,ww = U_opt(x,0.25,0.99999)
         U_p[ii] = pylab.sqrt(uu**2 + vv**2)
@@ -49,8 +57,8 @@ ax.plot(profile,U_b,'b.',ms=4.0)
 ax.set_ylabel('Surface Speed (m/a)')
 
 ax = axs[1]
-ax.plot(profile,b_p,'k-',label='Observed')
-ax.plot(profile,b_b,'b.',ms=4.0,label='Computed')
+ax.plot(profile,b_p,'k-',label='Computed')
+ax.plot(profile,b_b,'b.',ms=4.0,label='Known')
 ax.set_ylabel('$\\beta^2$ (Pa s/m)')
 ax.set_xlabel('Normalized x-coordinate')
 ax.legend(fontsize=12)

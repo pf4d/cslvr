@@ -41,7 +41,7 @@ nonlin_solver_params['preconditioner']                           = 'hypre_amg'
 
 config = { 'mode'                         : 'transient',
            't_start'                      : 0.0,
-           't_end'                        : 5.0,
+           't_end'                        : 50.0,
            'time_step'                    : 0.5,
            'output_path'                  : './results/',
            'wall_markers'                 : [],
@@ -49,7 +49,7 @@ config = { 'mode'                         : 'transient',
            'log'                          : True, 
            'coupled' : 
            { 
-             'on'        : True,
+             'on'        : False,
              'inner_tol' : 0.0,
              'max_iter'  : 3
            },
@@ -60,7 +60,7 @@ config = { 'mode'                         : 'transient',
              'viscosity_mode' : 'full',
              'b_linear'       : None,
              'use_T0'         : True,
-             'T0'             : 268.0,
+             'T0'             : 273.0,
              'A0'             : None,
              'beta2'          : 1.0,
              'r'              : 1.0,
@@ -70,7 +70,7 @@ config = { 'mode'                         : 'transient',
            },
            'enthalpy' : 
            { 
-             'on'                  : True,
+             'on'                  : False,
              'T_surface'           : SurfaceTemperature,
              'q_geo'               : BasalHeatFlux,
              'use_surface_climate' : False,

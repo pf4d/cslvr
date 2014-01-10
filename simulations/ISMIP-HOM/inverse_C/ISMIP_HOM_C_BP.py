@@ -33,8 +33,8 @@ class Beta2(dolfin.Expression):
         values[0] = 1000 + 1000.*pylab.sin(2*pylab.pi*x[0]/L)*pylab.sin(2*pylab.pi*x[1]/L)
 
 nparams = src.helper.default_nonlin_solver_params()
-nparams['linear_solver'] = 'mumps'
-#nparams['preconditioner'] = 'hypre_amg'
+nparams['linear_solver'] = 'gmres'
+nparams['preconditioner'] = 'hypre_amg'
 nparams['newton_solver']['relaxation_parameter']=0.7
 nparams['newton_solver']['maximum_iterations']=20
 nparams['newton_solver']['error_on_nonconvergence']=False
@@ -59,7 +59,7 @@ config = { 'mode' : 'steady',
                 'beta2' : Beta2(),
                 'r' : 0.0,
                 'E' : 1,
-                'approximation' : 'stokes',
+                'approximation' : 'fo',
                 'boundaries' : None
             },
         'enthalpy' : 
@@ -88,12 +88,14 @@ config = { 'mode' : 'steady',
                 'precip': None
             },
             'adjoint' :
-            { 'alpha' : 0.0,
+            { 'alpha' : [0.0],
                 'beta' : 0.0,
-                'max_fun' : 100,
+                'max_fun' : 20,
                 'objective_function' : 'linear',
                 'animate' : False,
-                'bounds' : (0,5000.0)
+                'bounds' : None,
+                'control_variable' : None,
+                'regularization_type' : 'Tikhonov'
             },
             'output_path' : './results/',
             'wall_markers' : [],
@@ -115,9 +117,21 @@ F = src.solvers.SteadySolver(model,config)
 F.solve()
 
 model.eps_reg = 1e-5
+config['adjoint']['control_variable'] = [model.beta2]
+config['adjoint']['bounds'] = [(0.0,5000.0)]
+dolfin.File('results/beta2_obs.xml') << model.beta2
 
 A = src.solvers.AdjointSolver(model,config)
-model.beta2.vector()[:] = 1000.
-model.u_o.vector().set_local(model.u.vector().get_local())
-model.v_o.vector().set_local(model.v.vector().get_local())
-A.solve()
+u_o = model.u.vector().get_local()
+v_o = model.v.vector().get_local()
+U_e = 10.0
+from scipy import random
+
+for i in range(50):
+    config['output_path'] = 'results/run_'+str(i)+'/'
+    model.beta2.vector()[:] = 1000.
+    u_error = U_e*random.randn(len(u_o))
+    v_error = U_e*random.randn(len(v_o))
+    model.u_o.vector().set_local(u_o+u_error)
+    model.v_o.vector().set_local(v_o+v_error)
+    A.solve()

@@ -28,6 +28,8 @@ based on lapse rates
 
 from pylab  import ndarray
 from dolfin import *
+import numpy
+import numpy.linalg as linalg
 
 
 class VelocityStokes(object):
@@ -568,8 +570,8 @@ class VelocityBP(object):
     du,  dv  = split(dU)
     u,   v   = split(U)
 
-    phi_w    = TestFunction(Q)
-    wt       = TrialFunction(Q)
+    chi    = TestFunction(Q)
+    dw       = TrialFunction(Q)
 
     ds       = model.ds
     dSurf    = ds(2)
@@ -631,11 +633,8 @@ class VelocityBP(object):
     # the direction of a small perturbation in U
     self.J   = derivative(self.F, U, dU)
  
-    self.w_R = + (u.dx(0) + v.dx(1)) * phi_w * dx \
-               - phi_w.dx(2) * wt * dx \
-               + phi_w * wt * dSurf \
-               - phi_w * (U[0]*B.dx(0) + U[1]*B.dx(1)) * dGrnd
- 
+    self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - (u*B.dx(0) + v*B.dx(1) - dw)*chi*dGrnd
+    
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
@@ -1645,9 +1644,14 @@ class VelocityBalance(object):
 
 class VelocityBalance_2(object):
 
-  def __init__(self, mesh, H, S, adot, l, Uobs=None,Uobs_mask=None):
+  def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0,0.]):
+
     set_log_level(PROGRESS)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
     Q = FunctionSpace(mesh, "CG", 1)
     
     # Physical constants
@@ -1669,7 +1673,14 @@ class VelocityBalance_2(object):
     # solve for dhdx,dhdy with appropriate smoothing :
     dSdx = Function(Q)
     dSdy = Function(Q)
+<<<<<<< HEAD
     phi = TestFunction(Q)
+=======
+    dSdx2 = Function(Q)
+    dSdy2 = Function(Q)
+    phi = TestFunction(Q)
+
+>>>>>>> master
     Nx = TrialFunction(Q)
     Ny = TrialFunction(Q)
     
@@ -1685,10 +1696,41 @@ class VelocityBalance_2(object):
     solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx)
     solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy)
 
+<<<<<<< HEAD
     slope = project(sqrt(dSdx**2 + dSdy**2) + 1e-10, Q)
     dS = as_vector([project(-dSdx / slope, Q),
                         project(-dSdy / slope, Q)])
+=======
+    # Replace values of slope that are known
+    # I don't think this works in parallel, but it works for now...
+    # Note I did try conditionals here, to bad effect!
+    # Perhaps a DG space would have been better.
+    # To make parallel, try:
+    # remove .array() and replace with .get_local() and .set_local()
+    if N_data:
+        dSdx.vector().array()[N_data[0].vector().array() != NO_DATA] =\
+            N_data[0].vector().array()[N_data[0].vector().array() != NO_DATA]
+        dSdy.vector().array()[N_data[1].vector().array() != NO_DATA] =\
+            N_data[1].vector().array()[N_data[1].vector().array() != NO_DATA]
+
+    # Smoothing the merged results, using the same approach as before
+    kappa = Function(Q)
+    kappa.vector()[:] = 2.5  # Hard coded for development change later
     
+    R_dSdx = + (Nx*phi - dSdx * phi \
+             + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
+    R_dSdy = + (Ny*phi - dSdy * phi \
+             + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
+>>>>>>> master
+    
+    solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx2)
+    solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy2)
+
+    slope = project(sqrt(dSdx2**2 + dSdy2**2) + 1e-10, Q)
+
+    dS = as_vector([project(-dSdx2 / slope, Q),
+                        project(-dSdy2 / slope, Q)])
+   
     def inside(x,on_boundary):
       return on_boundary
        
@@ -1700,24 +1742,48 @@ class VelocityBalance_2(object):
     cellh = CellSize(mesh)
     U_eff = sqrt( dot(dS * H, dS * H) + 1e-10 )
     tau = cellh / (2 * U_eff)
+<<<<<<< HEAD
+=======
+
+    adot_0 = adot.copy()
+>>>>>>> master
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx_masked(1)
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot-adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx+ alpha[3]*dot(grad(dS[1]),grad(dS[1]))*dx
+        #self.I = (Ubmag - Uobs)**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot-adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     else:
-        self.I = ln((Ubmag+1.0)/(Uobs+1.0))**2*dx
-
+        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot - adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx
     
-    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot) * dx
+    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot + dhdt) * dx
 
     self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
+<<<<<<< HEAD
     self.g_Uobs = derivative(self.I,Uobs,phi)
     self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx
     self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
 
     self.H = H
     self.S = S
+=======
+    self.I += (lamda + tau*div(H*dS*lamda)) * (div(Ubmag*dS*H) - adot + dhdt) * dx
+
+    # Switch to use AD for the gradients:
+    self.g_Uobs = derivative(self.I,Uobs,phi)
+    self.g_adot = derivative(self.I,adot,phi)
+    self.g_H    = derivative(self.I,H,phi)
+    self.g_N    = derivative(self.I,dS[1],phi)
+
+    # Gradients computed by hand.
+    #self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx + 2.*alpha[1]*dot(grad(adot),grad(phi))*dx
+    #self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot + dhdt)*dx + 2.*alpha[2]*dot(grad(H),grad(phi))*dx
+
+
+    self.H = H
+    self.S = S
+    self.dS = dS
+>>>>>>> master
     self.adot = adot
     self.R_dSdx = R_dSdx
     self.R_dSdy = R_dSdy
@@ -1730,20 +1796,48 @@ class VelocityBalance_2(object):
     self.residual = Ubmag*div(dS*H) - adot
     self.residual = project(self.residual, Q)
     self.Uobs = Uobs
+    self.dx_masked = dx_masked
+    self.Q = Q
+    self.signs = numpy.sign(self.dS[0].vector().array().copy())
+    self.update_velocity_directions()
+
+  def update_velocity_directions(self):
+      ny = self.dS[1].vector().array().copy()
+
+      # These protect against NaNs in the sqrt below
+      ny[ny>1]  =  1.
+      ny[ny<-1] = -1.
+      nx = self.signs * numpy.sqrt(1-ny**2)
+
+      # Maybe set_local is more parallel safe
+      self.dS[0].vector().set_local(nx)
+      self.dS[1].vector().set_local(ny)
+
 
   def solve_forward(self):
     # solve linear problem :
+    self.update_velocity_directions()
     solve(lhs(self.forward_model) == rhs(self.forward_model), self.Ubmag)
     self.Ubmag.vector()[self.Ubmag.vector().array()<0] = 0.0
 
   def solve_adjoint(self):
+    self.update_velocity_directions()
     self.Uobs.vector()[self.Uobs.vector().array()<0] = 0.0
     solve(lhs(self.adjoint_model) == rhs(self.adjoint_model), self.lamda)
    
-  def get_gradient(self,):
+  def get_gradient(self):
     gU = assemble(self.g_Uobs)
-    ga = assemble(self.g_adot)
     gH = assemble(self.g_H)
+<<<<<<< HEAD
     return ((gU.array(),ga.array(),gH.array()))
 
 
+=======
+    gN = assemble(self.g_N)
+    ga = assemble(self.g_adot)
+    #return ((gU.array() / linalg.norm(gU.array()) , ga.array() / linalg.norm(ga.array()),\
+    #         gH.array() / linalg.norm(gH.array()) , gN.array() / linalg.norm(gN.array())))
+
+    return ((gU.array() , ga.array() ,\
+             gH.array() , gN.array() ))
+>>>>>>> master

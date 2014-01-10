@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
@@ -12,12 +13,13 @@ from src.utilities       import DataInput
 from dolfin              import *
 
 set_log_active(True)
+parameters['form_compiler']['quadrature_degree'] = 1
 
 vara = DataFactory.get_searise()
 
-mesh                    = MeshFactory.get_greenland_coarse()
-flat_mesh               = MeshFactory.get_greenland_coarse()
-mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+mesh                    = MeshFactory.get_greenland_medium()
+#mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+flat_mesh               = MeshFactory.get_greenland_medium()
 
 dd                 = DataInput(None, vara, mesh=mesh)
 
@@ -29,7 +31,7 @@ BasalHeatFlux      = dd.get_spline_expression('q_geo')
 U_observed         = dd.get_spline_expression('U_ob')
 
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter'] = 0.5
+nonlin_solver_params['newton_solver']['relaxation_parameter'] = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance'] = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations'] = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
@@ -40,7 +42,7 @@ config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results_coarse/',
+           'output_path'                  : './results_slippery/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
            'log'                          : True,
@@ -59,7 +61,7 @@ config = { 'mode'                         : 'steady',
              'use_T0'         : True,
              'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 10.0,
+             'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -98,11 +100,13 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'              : 0.0,
+             'alpha'              : [1e6],
              'beta'               : 0.0,
-             'max_fun'            : 20,
+             'max_fun'            : 100,
              'objective_function' : 'logarithmic',
-             'bounds'             : (0,20)
+             'control_variable'   : None,
+             'bounds'             : [(0,20)],
+             'regularization_type' : 'Tikhonov'
            }}
 
 
@@ -113,9 +117,10 @@ model.set_geometry(Surface, Bed)
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
-
+model.eps_reg = 1e-5
+"""
 F = solvers.SteadySolver(model,config)
-#File('./results/beta2_opt.xml') >> model.beta2
+dolfin.File('results_slippery/beta2_opt.xml') >> model.beta2
 F.solve()
 
 visc    = project(model.eta)
@@ -128,10 +133,10 @@ config['enthalpy']['on']        = False
 config['surface_climate']['on'] = False
 config['coupled']['on']         = False
 config['velocity']['use_T0']    = False
+config['adjoint']['control_variable']    = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-#File('./results/beta2_opt.xml') >> model.beta2
+dolfin.File('results_slippery/beta2_opt.xml') >> model.beta2
 A.solve()
-
-
+"""

@@ -1647,11 +1647,7 @@ class VelocityBalance_2(object):
   def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0,0.]):
 
     set_log_level(PROGRESS)
-
-<<<<<<< HEAD
-=======
-
->>>>>>> master
+    
     Q = FunctionSpace(mesh, "CG", 1)
     
     # Physical constants
@@ -1673,14 +1669,10 @@ class VelocityBalance_2(object):
     # solve for dhdx,dhdy with appropriate smoothing :
     dSdx = Function(Q)
     dSdy = Function(Q)
-<<<<<<< HEAD
-    phi = TestFunction(Q)
-=======
     dSdx2 = Function(Q)
     dSdy2 = Function(Q)
     phi = TestFunction(Q)
 
->>>>>>> master
     Nx = TrialFunction(Q)
     Ny = TrialFunction(Q)
     
@@ -1696,11 +1688,6 @@ class VelocityBalance_2(object):
     solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx)
     solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy)
 
-<<<<<<< HEAD
-    slope = project(sqrt(dSdx**2 + dSdy**2) + 1e-10, Q)
-    dS = as_vector([project(-dSdx / slope, Q),
-                        project(-dSdy / slope, Q)])
-=======
     # Replace values of slope that are known
     # I don't think this works in parallel, but it works for now...
     # Note I did try conditionals here, to bad effect!
@@ -1721,7 +1708,6 @@ class VelocityBalance_2(object):
              + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
     R_dSdy = + (Ny*phi - dSdy * phi \
              + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
->>>>>>> master
     
     solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx2)
     solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy2)
@@ -1742,11 +1728,8 @@ class VelocityBalance_2(object):
     cellh = CellSize(mesh)
     U_eff = sqrt( dot(dS * H, dS * H) + 1e-10 )
     tau = cellh / (2 * U_eff)
-<<<<<<< HEAD
-=======
 
     adot_0 = adot.copy()
->>>>>>> master
 
     if Uobs_mask:
         dx_masked = Measure('dx')[Uobs_mask]
@@ -1759,14 +1742,6 @@ class VelocityBalance_2(object):
 
     self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
 
-<<<<<<< HEAD
-    self.g_Uobs = derivative(self.I,Uobs,phi)
-    self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx
-    self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot)*dx
-
-    self.H = H
-    self.S = S
-=======
     self.I += (lamda + tau*div(H*dS*lamda)) * (div(Ubmag*dS*H) - adot + dhdt) * dx
 
     # Switch to use AD for the gradients:
@@ -1783,7 +1758,6 @@ class VelocityBalance_2(object):
     self.H = H
     self.S = S
     self.dS = dS
->>>>>>> master
     self.adot = adot
     self.R_dSdx = R_dSdx
     self.R_dSdy = R_dSdy
@@ -1828,11 +1802,6 @@ class VelocityBalance_2(object):
   def get_gradient(self):
     gU = assemble(self.g_Uobs)
     gH = assemble(self.g_H)
-<<<<<<< HEAD
-    return ((gU.array(),ga.array(),gH.array()))
-
-
-=======
     gN = assemble(self.g_N)
     ga = assemble(self.g_adot)
     #return ((gU.array() / linalg.norm(gU.array()) , ga.array() / linalg.norm(ga.array()),\
@@ -1840,4 +1809,3 @@ class VelocityBalance_2(object):
 
     return ((gU.array() , ga.array() ,\
              gH.array() , gN.array() ))
->>>>>>> master

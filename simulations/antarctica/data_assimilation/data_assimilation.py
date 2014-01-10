@@ -4,7 +4,7 @@
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
 #  10 layers medium   |    1669740 |  |  |  |  
-#  10 layers crude    |     624210 |  |  |  |  
+#  10 layers crude    |     523710 |  |  |  |  
 #
 import os
 import sys
@@ -21,35 +21,46 @@ from src.utilities       import DataInput
 from dolfin              import *
 
 set_log_active(True)
+#set_log_level(PROGRESS)
+#set_log_level(DEBUG)
 
-thklim = 50.0
+thklim = 200.0
 
-measures  = DataFactory.get_ant_measures(resolution=450)
+measures  = DataFactory.get_ant_measures(res=450)
 bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
-mesh      = Mesh('meshes/3dmesh_medium.xml')
-flat_mesh = Mesh('meshes/3dmesh_medium.xml')
+mesh      = Mesh('meshes/3dmesh_crude.xml')
+flat_mesh = Mesh('meshes/3dmesh_crude.xml')
 
 dm  = DataInput(None, measures, mesh=mesh)
 db1 = DataInput(None, bedmap1,  mesh=mesh)
 db2 = DataInput(None, bedmap2,  mesh=mesh)
 
-db2.set_data_min("H", thklim, thklim)
-db2.set_data_min("h", 0.0,0.0)
+db2.set_data_val('H', 32767, thklim)
+db2.set_data_val('h', 32767, 0.0)
+dm.set_data_min('v_mag', 0.0, 0.0)
 
-db2.set_data_max("H",30000.,thklim)
-db2.set_data_max("h",30000.,0.0)
+#h       = db2.get_projection('h')
+#H       = db2.get_projection('H')
+#v_mag   = dm.get_projection('v_mag')
+#
+#File('tests/hf.pvd')       << h
+#File('tests/Hf.pvd')       << H
+#File('tests/v_magf.pvd')   << v_mag
 
-db2.data['b'] = db2.data['h']-db2.data['H']
-
-print "getting expressions"
-Surface            = db2.get_spline_expression("h_n")
+Surface            = db2.get_spline_expression("h")
 Bed                = db2.get_spline_expression("b")
 SurfaceTemperature = db1.get_spline_expression("srfTemp")
 BasalHeatFlux      = db1.get_spline_expression("q_geo")
 U_observed         = dm.get_spline_expression("v_mag")
-print "done"
+
+model = model.Model()
+model.set_geometry(Surface, Bed)
+
+model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+model.set_parameters(pc.IceParameters())
+model.initialize_variables()
 
 #===============================================================================
 nonlin_solver_params = default_nonlin_solver_params()
@@ -59,8 +70,9 @@ nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 nonlin_solver_params['linear_solver']                            = 'mumps'
 nonlin_solver_params['preconditioner']                           = 'default'
+parameters['form_compiler']['quadrature_degree']                 = 2
 
-# make the directory if needed :
+# output directory :
 i = int(sys.argv[1])
 dir_b   = './results/0'
 
@@ -132,19 +144,15 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'              : 1e3,
-             'beta'               : 0.0,
-             'max_fun'            : 50,
-             'objective_function' : 'logarithmic',
-             'bounds'             : (0.,20.)
+             'alpha'               : [1e3],
+             'beta'                : 0.0,
+             'max_fun'             : 20,
+             'objective_function'  : 'logarithmic',
+             'bounds'              : None,
+             'control_variable'    : None,
+             'regularization_type' : 'Tikhonov'
            }}
 
-model = model.Model()
-model.set_geometry(Surface,Bed)
-
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
-model.set_parameters(pc.IceParameters())
-model.initialize_variables()
 
 model.eps_reg = 1e-5
 #config['adjoint']['alpha'] = model.S - model.B
@@ -167,6 +175,7 @@ config['surface_climate']['on']        = False
 config['coupled']['on']                = False
 if i !=0: config['velocity']['use_T0'] = False
 config['adjoint']['control_variable']  = [model.beta2]
+config['adjoint']['bounds']            = [(0,20.)]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
@@ -183,7 +192,7 @@ tf2 = time()
 #f.write(model.T,     'T')
 
 File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
-File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
+#File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

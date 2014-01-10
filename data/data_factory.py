@@ -24,12 +24,12 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_ant_measures(resolution=900):
+  def get_ant_measures(res = 900):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    if resolution == 900:
+    if res == 900:
       direc    = home + '/antarctica/measures/antarctica_ice_velocity.nc' 
     else:
       direc    = home + '/antarctica/measures/antarctica_ice_velocity_450m.nc' 
@@ -62,7 +62,7 @@ class DataFactory(object):
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):
-      vara[n] = {'map_data'          : f,
+      vara[n] = {'map_data'          : f[::-1, :],
                  'map_western_edge'  : west, 
                  'map_eastern_edge'  : east, 
                  'map_southern_edge' : south, 
@@ -290,7 +290,7 @@ class DataFactory(object):
   
 
   @staticmethod
-  def get_bedmap1(thklim = 10.0):
+  def get_bedmap1(thklim = 0.0):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -308,11 +308,11 @@ class DataFactory(object):
     mask    = array(data.variables['mask'][:])
     srfTemp = array(data.variables['temp'][:]) + 273.15
     q_geo   = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365
+   
+    H             = h - b
+    h[H < thklim] = b[H < thklim] + thklim
+    H[H < thklim] = thklim
     
-    H_n               = h - b
-    h_n               = h.copy()
-    h_n[H_n < thklim] = b[H_n < thklim] + thklim
-
     # extents of domain :
     east    = max(x)
     west    = min(x)
@@ -325,8 +325,8 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['b', 'h', 'h_n', 'H_n', 'adot', 'q_geo', 'srfTemp']
-    ftns  = [ b,   h,   h_n,   H_n,   adot,   q_geo,   srfTemp]
+    names = ['b', 'h', 'H', 'adot', 'q_geo', 'srfTemp']
+    ftns  = [ b,   h,   H,   adot,   q_geo,   srfTemp]
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):
@@ -343,7 +343,7 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_bedmap2(thklim = 10.0):
+  def get_bedmap2(thklim = 0.0):
 
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -370,10 +370,9 @@ class DataFactory(object):
     coverage    = coverage.asarray() 
     gl04c_WGS84 = gl04c_WGS84.asarray()
     
-    H_n               = h - b
-    h_n               = h.copy()
-    h_n[H_n < thklim] = b[H_n < thklim] + thklim
-    
+    h[H < thklim] = b[H < thklim] + thklim
+    H[H < thklim] = thklim
+
     vara        = dict()
      
     # extents of domain :
@@ -389,10 +388,9 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['b', 'h', 'h_n', 'H', 'H_n', 'mask', 'rock_mask', 'b_uncert', 
+    names = ['b', 'h', 'H', 'mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
-    ftns  = [b, h, h_n, H, H_n, mask, rock_mask, b_uncert, 
-             coverage, gl04c_WGS84]
+    ftns  = [b, h, H, mask, rock_mask, b_uncert, coverage, gl04c_WGS84]
    
     # retrieve data :
     for n, f in zip(names, ftns):
@@ -409,7 +407,7 @@ class DataFactory(object):
 
   
   @staticmethod
-  def get_bamber(thklim = 10.0):
+  def get_bamber(thklim = 0.0):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -427,9 +425,8 @@ class DataFactory(object):
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
     
-    H_n               = h - b
-    h_n               = h.copy()
-    h_n[H_n < thklim] = b[H_n < thklim] + thklim
+    h[H < thklim] = b[H < thklim] + thklim
+    H[H < thklim] = thklim
 
     # extents of domain :
     east  = max(x)
@@ -443,8 +440,8 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
      
-    names = ['b', 'h', 'h_n', 'H', 'Herr', 'H_n', 'mask']
-    ftns  = [ b,   h,   h_n,   H,   Herr,   H_n,   mask]
+    names = ['b', 'h', 'H', 'Herr', 'H_n', 'mask']
+    ftns  = [ b,   h,   H,   Herr,   H_n,   mask]
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):
@@ -461,7 +458,7 @@ class DataFactory(object):
   
   
   @staticmethod
-  def get_searise(thklim = 10.0):
+  def get_searise(thklim = 0.0):
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -487,6 +484,7 @@ class DataFactory(object):
     
     H             = h - b
     h[H < thklim] = b[H < thklim] + thklim
+    H[H < thklim] = thklim
 
     Tn            = 41.83 - 6.309e-3*h - 0.7189*lat - 0.0672*lon + 273
     

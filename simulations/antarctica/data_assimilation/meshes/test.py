@@ -30,7 +30,7 @@ bedmap2 = DataFactory.get_bedmap2(thklim=thklim)
 db2  = DataInput(None, bedmap2, gen_space=False)
 
 # might want to refine off of thickness :
-H   = db2.data['H_n'].copy().T
+H   = db2.data['H'].copy().T
 
 # ensure that there are no values less than 1 for taking log :
 #vel = dsr.data['U_ob'].copy().T
@@ -113,7 +113,7 @@ class min_field:
     return min(l)
 
 
-a   = attractor(data, 0.0, 10000, 100000, inv=True)
+a   = attractor(data, 0.0, 100000, 200000, inv=True)
 aid = m.getFields().addPythonField(a.op)
 m.getFields().setBackgroundFieldId(aid)
 

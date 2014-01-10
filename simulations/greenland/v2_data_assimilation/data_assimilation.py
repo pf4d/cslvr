@@ -187,8 +187,8 @@ config = { 'mode'                         : 'steady',
              'beta'                : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
-             'control_variable'    : None,
              'bounds'              : [(0,20)],
+             'control_variable'    : None,
              'regularization_type' : 'Tikhonov'
            }}
 

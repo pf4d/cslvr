@@ -9,6 +9,7 @@ from pylab               import *
 from gmshpy              import *
 from scipy.interpolate   import RectBivariateSpline
 from src.utilities       import DataInput
+from scipy.io            import loadmat
 
 #===============================================================================
 # data preparation :
@@ -20,21 +21,25 @@ bamber   = DataFactory.get_bamber(thklim = thklim)
 searise  = DataFactory.get_searise(thklim = thklim)
 meas_shf = DataFactory.get_shift_gre_measures()
 
-dbv     = DataInput("../results/", ("Ubmag_measures.mat", "Ubmag.mat"), 
-                    gen_space=False)
-dbv.set_data_min('Ubmag', 0.0,   0.0)
-dbv.set_data_max('Ubmag', 500.0, 500.0)
+dbv  = DataInput("../results/", ("Ubmag_measures.mat", "Ubmag.mat"), 
+                 gen_space=False)
 dsr  = DataInput(None, searise,  gen_space=False)
 dbm  = DataInput(None, bamber,   gen_space=False)
 dmss = DataInput(None, meas_shf, gen_space=False)
+
+dbv.set_data_min('Ubmag', 0.0,   0.0)
+dbv.set_data_max('Ubmag', 500.0, 500.0)
+
 dsr.change_projection(dbm)
+dsr.set_data_min('U_ob', 0.0,   0.0)
+dsr.set_data_max('U_ob', 500.0, 500.0)
 
 # might want to refine off of thickness :
-H   = dbm.data['H_n'].copy().T
+H   = dbm.data['H'].copy().T
 
 # ensure that there are no values less than 1 for taking log :
-#vel = dsr.data['U_ob'].copy().T
-vel  = dbv.data['Ubmag'].copy().T
+#vel  = dbv.data['Ubmag'].copy().T
+vel  = dsr.data['U_ob'].copy().T
 vel += 1
 
 # invert the sections where the velocity is low to refine at divide :
@@ -44,13 +49,13 @@ k                   = 1
 data[2*data < k*mv] = -data[2*data < k*mv]  + k*mv
 
 # plot to check :
-#imshow(data.T[::-1,::-1])
-#colorbar()
-#show()
+imshow(data.T[::-1,::-1])
+colorbar()
+show()
 
 # x- and y-values for creating nearest-neighbor spline interpolation :
-xs     = dbm.x
-ys     = dbm.y
+xs     = dsr.x
+ys     = dsr.y
 spline = RectBivariateSpline(xs, ys, data, kx=1, ky=1)
 
 #===============================================================================
@@ -140,7 +145,7 @@ class min_field:
 
 #m.getFields().setBackgroundFieldId(mid)
 
-a   = attractor(data, 0.0, 20000, 50000, inv=True)
+a   = attractor(data, 0.0, 1000, 70000, inv=True)
 aid = m.getFields().addPythonField(a.op)
 m.getFields().setBackgroundFieldId(aid)
 

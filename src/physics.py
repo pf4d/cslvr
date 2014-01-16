@@ -633,7 +633,8 @@ class VelocityBP(object):
     # the direction of a small perturbation in U
     self.J   = derivative(self.F, U, dU)
  
-    self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - (u*B.dx(0) + v*B.dx(1) - dw)*chi*dGrnd
+    self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
+               (u*B.dx(0) + v*B.dx(1) - dw)*chi*dGrnd
     
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)

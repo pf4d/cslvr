@@ -705,3 +705,35 @@ def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
       values[0] = interpolant(x[0],x[1])
 
   return DolfinExpression
+
+
+def tau(u, mu, eta):
+  n = u.geometric_dimension()
+  return eta * mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
+
+
+def component_stress(model):
+  eta   = model.eta
+  beta2 = model.beta2
+  Q     = model.Q
+  u     = model.u
+  v     = model.v
+  w     = model.w
+
+  u_n = as_vector((u,v,w))
+  
+  V   = VectorFunctionSpace(model.mesh)
+  U_n = project(u_n, V)
+  U_t = grad(project(u_n, V))
+  
+  sig     = tau(U_n, 0.5, eta)
+  nm_n    = project(inner(U_n, U_n), Q)
+  nm_t    = project(inner(U_t, U_t), Q)
+  unit_n  = U_n / nm_n
+  unit_t  = U_t / nm_t
+  tau_lon = project(dot(sig, unit_n))
+  tau_lat = project(dot(sig, unit_t))
+
+  return sig, tau_lon, tau_lat 
+
+ 

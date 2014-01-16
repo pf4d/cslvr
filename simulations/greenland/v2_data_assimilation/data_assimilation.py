@@ -15,6 +15,14 @@
 #  10 layers DivGrid3 |    2612400 | 01:07:32 | 01:12:31 | 01:12:51 | 01:12:18 
 #
 #
+# FEniCS 1.3.0 Assimilation run times (16 cores, 20 function evals):
+# ==================================================================
+#
+#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
+#  -------------------+------------+----------+----------+----------+----------
+#  mesh_high.xml      |    2787330 |  |  |  |
+#
+#
 # Assimilation run times (8 cores, 20 function evals):
 # =====================================================
 #
@@ -53,8 +61,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh.xml')
-flat_mesh = Mesh('meshes/mesh.xml')
+mesh      = Mesh('meshes/mesh_high.xml')
+flat_mesh = Mesh('meshes/mesh_high.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -72,8 +80,8 @@ dsq     = DataInput(None, sec_qgeo, mesh=mesh)
 #dms.change_projection(dsr)
 
 # get the expressions used by varglas :
-Thickness          = dbm.get_spline_expression('H_n')
-Surface            = dbm.get_spline_expression('h_n')
+Thickness          = dbm.get_spline_expression('H')
+Surface            = dbm.get_spline_expression('h')
 Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 #BasalHeatFlux      = dsr.get_spline_expression('q_geo')
@@ -103,10 +111,8 @@ nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-#nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
-nonlin_solver_params['linear_solver']                            = 'mumps'
-nonlin_solver_params['preconditioner']                           = 'default'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 # make the directory if needed :
@@ -222,15 +228,15 @@ t02 = time()
 A.solve()
 tf2 = time()
 
-# functionality of HDF5 not completed by fenics devs :
-#f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
-#f.write(model.mesh,  'mesh')
-#f.write(model.beta2, 'beta2')
-#f.write(model.Mb,    'Mb')
-#f.write(model.T,     'T')
-
 File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
 File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
+
+# functionality of HDF5 not completed by fenics devs :
+f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
+f.write(model.mesh,  'mesh')
+f.write(model.beta2, 'beta2')
+f.write(model.Mb,    'Mb')
+f.write(model.T,     'T')
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

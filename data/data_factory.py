@@ -530,8 +530,8 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
      
-    names = ['b', 'h', 'H', 'Herr', 'H_n', 'mask']
-    ftns  = [ b,   h,   H,   Herr,   H_n,   mask]
+    names = ['b', 'h', 'H', 'Herr', 'mask']
+    ftns  = [ b,   h,   H,   Herr,   mask]
     
     # save the data in matlab format :
     for n, f in zip(names, ftns):

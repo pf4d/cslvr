@@ -41,13 +41,13 @@ db2.set_data_val('H', 32767, thklim)
 db2.set_data_val('h', 32767, 0.0)
 dm.set_data_min('v_mag', 0.0, 0.0)
 
-#h       = db2.get_projection('h')
-#H       = db2.get_projection('H')
-#v_mag   = dm.get_projection('v_mag')
-#
-#File('tests/hf.pvd')       << h
-#File('tests/Hf.pvd')       << H
-#File('tests/v_magf.pvd')   << v_mag
+h       = db2.get_projection('h')
+H       = db2.get_projection('H')
+v_mag   = dm.get_projection('v_mag')
+
+File('tests/hf.pvd')       << h
+File('tests/Hf.pvd')       << H
+File('tests/v_magf.pvd')   << v_mag
 
 Surface            = db2.get_spline_expression("h")
 Bed                = db2.get_spline_expression("b")
@@ -149,7 +149,7 @@ config = { 'mode'                         : 'steady',
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
              'bounds'              : None,
-             'control_variable'    : None,
+             'control_variable'    : [(0.0, 20.0)],
              'regularization_type' : 'Tikhonov'
            }}
 
@@ -175,7 +175,6 @@ config['surface_climate']['on']        = False
 config['coupled']['on']                = False
 if i !=0: config['velocity']['use_T0'] = False
 config['adjoint']['control_variable']  = [model.beta2]
-config['adjoint']['bounds']            = [(0,20.)]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)

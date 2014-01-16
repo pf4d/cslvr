@@ -63,6 +63,10 @@ class DataInput:
       
       else:
         d_dict = loadmat(self.directory + fn)
+        d_dict['projection']     = d_dict['projection'][0]
+        d_dict['standard lat']   = d_dict['standard lat'][0]
+        d_dict['standard lon']   = d_dict['standard lon'][0]
+        d_dict['lat true scale'] = d_dict['lat true scale'][0]
       
       d = d_dict["map_data"]
      
@@ -73,10 +77,10 @@ class DataInput:
         self.x_max      = float(d_dict['map_eastern_edge'])
         self.y_min      = float(d_dict['map_southern_edge'])
         self.y_max      = float(d_dict['map_northern_edge'])
-        self.proj       = d_dict['projection']
-        self.lat_0      = d_dict['standard lat']
-        self.lon_0      = d_dict['standard lon']
-        self.lat_ts     = d_dict['lat true scale']
+        self.proj       = str(d_dict['projection'])
+        self.lat_0      = str(d_dict['standard lat'])
+        self.lon_0      = str(d_dict['standard lon'])
+        self.lat_ts     = str(d_dict['lat true scale'])
         self.x          = linspace(self.x_min, self.x_max, self.nx)
         self.y          = linspace(self.y_min, self.y_max, self.ny)
         self.good_x     = array(ones(len(self.x)), dtype=bool)      # no NaNs

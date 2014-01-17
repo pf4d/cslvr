@@ -111,8 +111,10 @@ nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+nonlin_solver_params['linear_solver']           = 'mumps'
+nonlin_solver_params['preconditioner']          = 'default'
+#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+#nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 # make the directory if needed :

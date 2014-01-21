@@ -19,23 +19,23 @@ thklim = 200.0
 # collect the raw data :
 bamber   = DataFactory.get_bamber(thklim = thklim)
 searise  = DataFactory.get_searise(thklim = thklim)
-meas_shf = DataFactory.get_shift_gre_measures()
+#meas_shf = DataFactory.get_shift_gre_measures()
 
-dbv  = DataInput("../results/", ("Ubmag_measures.mat", "Ubmag.mat"), 
-                 gen_space=False)
+#dbv  = DataInput("../results/", ("Ubmag_measures.mat", "Ubmag.mat"), 
+#                 gen_space=False)
 dsr  = DataInput(None, searise,  gen_space=False)
 dbm  = DataInput(None, bamber,   gen_space=False)
-dmss = DataInput(None, meas_shf, gen_space=False)
+#dmss = DataInput(None, meas_shf, gen_space=False)
 
-dbv.set_data_min('Ubmag', 0.0,   0.0)
-dbv.set_data_max('Ubmag', 500.0, 500.0)
+#dbv.set_data_min('Ubmag', 0.0,   0.0)
+#dbv.set_data_max('Ubmag', 500.0, 500.0)
 
 dsr.change_projection(dbm)
-dsr.set_data_min('U_ob', 0.0,    0.0)
-#dsr.set_data_max('U_ob', 1000.0, 1000.0)
+dsr.set_data_min('U_ob', 0.0,   0.0)
+dsr.set_data_max('U_ob', 400.0, 400.0)
 
 # might want to refine off of thickness :
-H   = dbm.data['H'].copy().T
+#H   = dbm.data['H'].copy().T
 
 # ensure that there are no values less than 1 for taking log :
 #vel  = dbv.data['Ubmag'].copy().T
@@ -131,36 +131,43 @@ class max_field:
     return max(l)
 
 
-lmax      = 70000
+lmax      = 25000
 lmin      = 1000
-lmin_max  = 60000
+num_cuts  = 8
+lmin_max  = 10000
 lmin_min  = 1000
-num_cuts  = 10
-fmax_max  = log(data.max())
-a_list    = []
-lc_list   = linspace(lmin_max, lmin_min, num_cuts)
-fmax_list = linspace(0, fmax_max, num_cuts)
-for fmax, l_min in zip(fmax_list, lc_list):
-  a = attractor(data, fmax, l_min, lmax, inv=True, hard_cut=True)
-  a_list.append(a.op)
-  m.getFields().addPythonField(a.op)
+fmax_min  = log(50)
+fmax_max  = log(500)
 
-af  = attractor(data, log(1.0), lmin, lmax, inv=False, hard_cut=False)
-m.getFields().addPythonField(af.op)
-a_list.append(af.op)
+#a_list    = []
+#fmax_list = linspace(fmax_min, fmax_max, num_cuts)
+#lc_list   = linspace(lmin_max, lmin_min, num_cuts)
+#for fmax, l_min in zip(fmax_list, lc_list):
+#  a = attractor(data, fmax, l_min, lmax, inv=True, hard_cut=True)
+#  a_list.append(a.op)
+#  m.getFields().addPythonField(a.op)
+#m1  = min_field(a_list)
+#mid = m.getFields().addPythonField(m1.op)
+#m.getFields().setBackgroundFieldId(mid)
 
-m1  = min_field(a_list)
+a1   = attractor(data, log(1.0), lmin, lmax, inv=True,  hard_cut=False)
+a2   = attractor(data, log(1.0), lmin, lmax, inv=False, hard_cut=False)
+a1id = m.getFields().addPythonField(a1.op)
+a2id = m.getFields().addPythonField(a2.op)
+
+m1  = min_field([a1.op, a2.op])
 mid = m.getFields().addPythonField(m1.op)
 m.getFields().setBackgroundFieldId(mid)
+
 
 #m.extrude(0,0,1) #FIXME: not working, need to generate mesh within gmshpy
 
 #launch the GUI
-FlGui.instance().run()
+#FlGui.instance().run()
 
 #instead of starting the GUI, we could generate the mesh and save it
-#m.mesh(2) # 2 is the dimension
-#m.save("square.msh")
+m.mesh(2) # 2 is the dimension
+m.save("funky.msh")
 
 
 

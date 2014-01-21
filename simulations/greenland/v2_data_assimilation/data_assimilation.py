@@ -61,8 +61,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_high.xml')
-flat_mesh = Mesh('meshes/mesh_high.xml')
+mesh      = Mesh('meshes/mesh_funky.xml')
+flat_mesh = Mesh('meshes/mesh_funky.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -121,7 +121,7 @@ parameters['form_compiler']['quadrature_degree']                 = 2
 i = int(sys.argv[1])
 #dir_b   = './results_sr/0'
 #dir_b   = './results_fm/0'
-dir_b   = './results_sq/0'
+dir_b   = './results_sq/funky/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -191,7 +191,7 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [Thickness**2],
+             'alpha'               : [Thickness**2/10**2],
              'beta'                : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
@@ -231,14 +231,14 @@ A.solve()
 tf2 = time()
 
 File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
-File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
+#File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 
 # functionality of HDF5 not completed by fenics devs :
-f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
-f.write(model.mesh,  'mesh')
-f.write(model.beta2, 'beta2')
-f.write(model.Mb,    'Mb')
-f.write(model.T,     'T')
+#f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
+#f.write(model.mesh,  'mesh')
+#f.write(model.beta2, 'beta2')
+#f.write(model.Mb,    'Mb')
+#f.write(model.T,     'T')
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

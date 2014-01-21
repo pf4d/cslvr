@@ -31,8 +31,8 @@ dbv.set_data_min('Ubmag', 0.0,   0.0)
 dbv.set_data_max('Ubmag', 500.0, 500.0)
 
 dsr.change_projection(dbm)
-dsr.set_data_min('U_ob', 0.0,   0.0)
-dsr.set_data_max('U_ob', 500.0, 500.0)
+dsr.set_data_min('U_ob', 0.0,    0.0)
+#dsr.set_data_max('U_ob', 1000.0, 1000.0)
 
 # might want to refine off of thickness :
 H   = dbm.data['H'].copy().T
@@ -46,12 +46,12 @@ vel += 1
 data                = log(vel)
 mv                  = data.max()
 k                   = 1
-data[2*data < k*mv] = -data[2*data < k*mv]  + k*mv
+#data[2*data < k*mv] = -data[2*data < k*mv]  + k*mv
 
 # plot to check :
-imshow(data.T[::-1,::-1])
-colorbar()
-show()
+#imshow(data.T[::-1,::-1])
+#colorbar()
+#show()
 
 # x- and y-values for creating nearest-neighbor spline interpolation :
 xs     = dsr.x
@@ -117,37 +117,41 @@ class min_field:
       l.append(f(x,y,z,entity))
     return min(l)
 
+class max_field:
+  """
+  Return the minimum of a list of attactor operator fields <f_list>.
+  """
+  def __init__(self, f_list):
+    self.f_list = f_list
 
-#lmax      = 50000
-#lmin      = 2000
-#lmin_max  = 5000
-#lmin_min  = 500
-#num_cuts  = 5
-#fmax_max  = 8.0
-#a_list    = []
-#lc_list   = linspace(lmin_max, lmin_min, num_cuts)
-#fmax_list = linspace(0, fmax_max, num_cuts)
-#for fmax, l_min in zip(fmax_list, lc_list):
-#  a = attractor(data, fmax, l_min, lmax, hard_cut=False)
-#  a_list.append(a.op)
-#  m.getFields().addPythonField(a.op)
+  def op(self, x, y, z, entity):
+    l = []
+    for f in self.f_list:
+      l.append(f(x,y,z,entity))
+    return max(l)
 
-#m1  = min_field(a_list)
-#mid = m.getFields().addPythonField(m1.op)
-#m.getFields().setBackgroundFieldId(mid)
 
-#a1 = attractor(data, 0.0, 1000, 50000/3.5, inv=True)
-#a2 = attractor(data, 0.0, 1000, 50000/3.5, inv=False)
-#m1 = min_field([a1.op, a2.op])
-#aid1 = m.getFields().addPythonField(a1.op)
-#aid2 = m.getFields().addPythonField(a2.op)
-#mid  = m.getFields().addPythonField(m1.op)
+lmax      = 70000
+lmin      = 1000
+lmin_max  = 60000
+lmin_min  = 1000
+num_cuts  = 10
+fmax_max  = log(data.max())
+a_list    = []
+lc_list   = linspace(lmin_max, lmin_min, num_cuts)
+fmax_list = linspace(0, fmax_max, num_cuts)
+for fmax, l_min in zip(fmax_list, lc_list):
+  a = attractor(data, fmax, l_min, lmax, inv=True, hard_cut=True)
+  a_list.append(a.op)
+  m.getFields().addPythonField(a.op)
 
-#m.getFields().setBackgroundFieldId(mid)
+af  = attractor(data, log(1.0), lmin, lmax, inv=False, hard_cut=False)
+m.getFields().addPythonField(af.op)
+a_list.append(af.op)
 
-a   = attractor(data, 0.0, 1000, 70000, inv=True)
-aid = m.getFields().addPythonField(a.op)
-m.getFields().setBackgroundFieldId(aid)
+m1  = min_field(a_list)
+mid = m.getFields().addPythonField(m1.op)
+m.getFields().setBackgroundFieldId(mid)
 
 #m.extrude(0,0,1) #FIXME: not working, need to generate mesh within gmshpy
 

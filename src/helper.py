@@ -711,6 +711,18 @@ def tau(u, mu, eta):
   n = u.geometric_dimension()
   return eta * mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
 
+def vert_integrate(u):
+  Q   = u.function_space()
+  phi = TestFunction(Q)
+  v   = TrialFunction(Q)
+
+  bc  = DirichletBC(Q, u, 3)
+
+  a   = v.dx(2)*phi*dx
+  L   = u*phi*dx
+  v   = Function(Q)
+  solve(a == L, v, bc)
+  return v
 
 def component_stress(model):
   eta   = model.eta
@@ -734,6 +746,10 @@ def component_stress(model):
   tau_lon = project(dot(sig, unit_n))
   tau_lat = project(dot(sig, unit_t))
 
-  return sig, tau_lon, tau_lat 
+  tau_lon_int = vert_integrate(tau_lon)
+  tau_lat_int = vert_integrate(tau_lat)
+
+  return sig, tau_lon_int, tau_lat_int
+
 
  

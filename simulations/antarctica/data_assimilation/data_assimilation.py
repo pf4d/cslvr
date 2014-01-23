@@ -16,7 +16,7 @@ import src.solvers            as solvers
 import src.physical_constants as pc
 from data.data_factory   import DataFactory
 from meshes.mesh_factory import MeshFactory
-from src.helper          import default_nonlin_solver_params
+from src.helper          import *
 from src.utilities       import DataInput
 from dolfin              import *
 
@@ -32,6 +32,9 @@ bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
 mesh      = Mesh('meshes/3dmesh_crude.xml')
 flat_mesh = Mesh('meshes/3dmesh_crude.xml')
+mesh.coordinates()[:,2]      /= 100000.0
+flat_mesh.coordinates()[:,2] /= 100000.0
+
 
 dm  = DataInput(None, measures, mesh=mesh)
 db1 = DataInput(None, bedmap1,  mesh=mesh)
@@ -41,14 +44,15 @@ db2.set_data_val('H', 32767, thklim)
 db2.set_data_val('h', 32767, 0.0)
 dm.set_data_min('v_mag', 0.0, 0.0)
 
-h       = db2.get_projection('h')
-H       = db2.get_projection('H')
-v_mag   = dm.get_projection('v_mag')
+#h       = db2.get_projection('h')
+#H       = db2.get_projection('H')
+#v_mag   = dm.get_projection('v_mag')
 
-File('tests/hf.pvd')       << h
-File('tests/Hf.pvd')       << H
-File('tests/v_magf.pvd')   << v_mag
+#File('tests/hf.pvd')       << h
+#File('tests/Hf.pvd')       << H
+#File('tests/v_magf.pvd')   << v_mag
 
+Thickness          = db2.get_spline_expression("H")
 Surface            = db2.get_spline_expression("h")
 Bed                = db2.get_spline_expression("b")
 SurfaceTemperature = db1.get_spline_expression("srfTemp")
@@ -68,8 +72,10 @@ nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['linear_solver']                            = 'mumps'
-nonlin_solver_params['preconditioner']                           = 'default'
+#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+#nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+nonlin_solver_params['linear_solver']           = 'mumps'
+nonlin_solver_params['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 # output directory :
@@ -144,12 +150,12 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [1e3],
+             'alpha'               : [Thickness**2],
              'beta'                : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
-             'bounds'              : None,
-             'control_variable'    : [(0.0, 20.0)],
+             'bounds'              : [(0,20)],
+             'control_variable'    : None,
              'regularization_type' : 'Tikhonov'
            }}
 
@@ -182,6 +188,16 @@ if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
 t02 = time()
 A.solve()
 tf2 = time()
+  
+tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
+
+File(dir_b + str(i) + '/Mb.pvd')      << model.Mb
+File(dir_b + str(i) + '/tau_lon.pvd') << tau_lon 
+File(dir_b + str(i) + '/tau_lat.pvd') << tau_lat 
+File(dir_b + str(i) + '/tau_bas.pvd') << tau_bas 
+File(dir_b + str(i) + '/tau_drv.pvd') << tau_drv 
+#File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
+
 
 # functionality of HDF5 not completed by fenics devs :
 #f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
@@ -189,9 +205,6 @@ tf2 = time()
 #f.write(model.beta2, 'beta2')
 #f.write(model.Mb,    'Mb')
 #f.write(model.T,     'T')
-
-File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
-#File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

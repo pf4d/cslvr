@@ -1,6 +1,6 @@
 #
-# Assimilation run times (16 cores, 20 function evals):
-# =====================================================
+# FEniCS 1.2.0 Assimilation run times (16 cores, 20 function evals):
+# ==================================================================
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
@@ -20,7 +20,7 @@
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
-#  mesh_high.xml      |    2787330 |  |  |  |
+#  mesh_high.xml      |    3747930 |  |  |  |
 #
 #
 # Assimilation run times (8 cores, 20 function evals):
@@ -41,7 +41,7 @@ import src.physical_constants as pc
 import src.model              as model
 from meshes.mesh_factory  import MeshFactory
 from data.data_factory    import DataFactory
-from src.helper           import default_nonlin_solver_params
+from src.helper           import default_nonlin_solver_params, component_stress
 from src.utilities        import DataInput, DataOutput
 from dolfin               import *
 from pylab                import sqrt, copy
@@ -61,8 +61,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_funky.xml')
-flat_mesh = Mesh('meshes/mesh_funky.xml')
+mesh      = Mesh('meshes/mesh_high_new.xml')
+flat_mesh = Mesh('meshes/mesh_high_new.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -121,7 +121,7 @@ parameters['form_compiler']['quadrature_degree']                 = 2
 i = int(sys.argv[1])
 #dir_b   = './results_sr/0'
 #dir_b   = './results_fm/0'
-dir_b   = './results_sq/funky/0'
+dir_b   = './results_sq/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -230,8 +230,15 @@ t02 = time()
 A.solve()
 tf2 = time()
 
-File(dir_b + str(i) + '/Mb.pvd')    << model.Mb
-#File(dir_b + str(i) + '/mesh.xdmf') << model.mesh
+tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
+
+File(dir_b + str(i) + '/Mb.pvd')      << model.Mb
+File(dir_b + str(i) + '/tau_lon.pvd') << tau_lon 
+File(dir_b + str(i) + '/tau_lat.pvd') << tau_lat 
+File(dir_b + str(i) + '/tau_bas.pvd') << tau_bas
+File(dir_b + str(i) + '/tau_drv.pvd') << tau_drv
+File(dir_b + str(i) + '/Mb.pvd')      << model.Mb
+#File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
 
 # functionality of HDF5 not completed by fenics devs :
 #f = HDF5File(dir_b + str(i) + '/u.h5', 'w')

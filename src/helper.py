@@ -711,16 +711,15 @@ def tau(u, mu, eta):
   n = u.geometric_dimension()
   return eta * mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
 
-def vert_integrate(u):
-  Q   = u.function_space()
-  phi = TestFunction(Q)
-  v   = TrialFunction(Q)
-
-  bc  = DirichletBC(Q, u, 3)
-
-  a   = v.dx(2)*phi*dx
-  L   = u*phi*dx
-  v   = Function(Q)
+def vert_integrate(model, u):
+  Q      = model.Q
+  norm_u = project(sqrt(inner(u,u)), Q)
+  phi    = TestFunction(Q)
+  v      = TrialFunction(Q)
+  bc     = DirichletBC(Q, norm_u, 3)
+  a      = v.dx(2) * phi * dx
+  L      = norm_u * phi * dx
+  v      = Function(Q)
   solve(a == L, v, bc)
   return v
 
@@ -731,25 +730,24 @@ def component_stress(model):
   u     = model.u
   v     = model.v
   w     = model.w
+  S     = model.S
+  rho   = model.rho
+  g     = model.g
 
-  u_n = as_vector((u,v,w))
+  u_n = as_vector((u, v, w))
+  u_t = as_vector((v,-u, w))
   
-  V   = VectorFunctionSpace(model.mesh)
-  U_n = project(u_n, V)
-  U_t = grad(project(u_n, V))
-  
-  sig     = tau(U_n, 0.5, eta)
-  nm_n    = project(inner(U_n, U_n), Q)
-  nm_t    = project(inner(U_t, U_t), Q)
-  unit_n  = U_n / nm_n
-  unit_t  = U_t / nm_t
-  tau_lon = project(dot(sig, unit_n))
-  tau_lat = project(dot(sig, unit_t))
+  sig     = tau(u_n, 0.5, eta)
+  norm_u  = project(sqrt(inner(u_n, u_n)), Q)
+  unit_n  = u_n / norm_u
+  unit_t  = u_t / norm_u
 
-  tau_lon_int = vert_integrate(tau_lon)
-  tau_lat_int = vert_integrate(tau_lat)
+  tau_drv = project(rho*g*grad(S), Q)
+  tau_lon = vert_integrate(model, project(dot(sig, unit_n)))
+  tau_lat = vert_integrate(model, project(dot(sig, unit_t)))
+  tau_bas = project(beta2*norm_u, Q)
 
-  return sig, tau_lon_int, tau_lat_int
+  return tau_lon, tau_lat, tau_bas, tau_drv
 
 
  

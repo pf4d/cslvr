@@ -361,9 +361,15 @@ class AdjointSolver(object):
       model.v_o = project(v, Q)
 
     elif U != None:
-      Smag = project( sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q )
+      Smag   = project( sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q )
+      #Smag_a = Smag.vector().array()
+      #Smag_a[Smag_a < 0.0] = 1e-5
+      #Smag.vector().set_local(Smag_a)
      
       model.U_o.interpolate(U)
+      #U_o_a = model.U_o.vector().array()
+      #U_o_a[U_o_a < 0.0] = 0.0
+      #model.U_o.vector().set_local(U_o_a)
       model.U_o.update()
 
       model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )

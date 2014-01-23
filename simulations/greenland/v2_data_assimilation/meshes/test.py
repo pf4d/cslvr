@@ -166,8 +166,8 @@ m.getFields().setBackgroundFieldId(mid)
 #FlGui.instance().run()
 
 #instead of starting the GUI, we could generate the mesh and save it
-m.mesh(2) # 2 is the dimension
-m.save("funky.msh")
+m.mesh(3) # 2 is the dimension
+m.save("mesh_high.msh")
 
 
 

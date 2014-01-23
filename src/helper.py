@@ -707,9 +707,9 @@ def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   return DolfinExpression
 
 
-def tau(u, mu, eta):
+def tau(u, mu):
   n = u.geometric_dimension()
-  return eta * mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
+  return mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
 
 def vert_integrate(model, u):
   Q      = model.Q
@@ -724,25 +724,26 @@ def vert_integrate(model, u):
   return v
 
 def component_stress(model):
-  eta   = model.eta
   beta2 = model.beta2
   Q     = model.Q
   u     = model.u
   v     = model.v
   w     = model.w
   S     = model.S
+  B     = model.B
   rho   = model.rho
   g     = model.g
+  H     = S - B
 
   u_n = as_vector((u, v, w))
   u_t = as_vector((v,-u, w))
   
-  sig     = tau(u_n, 0.5, eta)
+  sig     = tau(u_n, 0.5)
   norm_u  = project(sqrt(inner(u_n, u_n)), Q)
   unit_n  = u_n / norm_u
   unit_t  = u_t / norm_u
 
-  tau_drv = project(rho*g*grad(S), Q)
+  tau_drv = project(rho*g*H*grad(S), Q)
   tau_lon = vert_integrate(model, project(dot(sig, unit_n)))
   tau_lat = vert_integrate(model, project(dot(sig, unit_t)))
   tau_bas = project(beta2*norm_u, Q)

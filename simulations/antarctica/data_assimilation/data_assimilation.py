@@ -26,7 +26,7 @@ set_log_active(True)
 
 thklim = 200.0
 
-measures  = DataFactory.get_ant_measures(res=450)
+measures  = DataFactory.get_ant_measures(res=900)
 bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
@@ -69,14 +69,15 @@ model.initialize_variables()
 
 #===============================================================================
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
-nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
+nonlin_solver_params['newton_solver']['relaxation_parameter']    = 1.0
+nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-14
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 #nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
 #nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
-nonlin_solver_params['linear_solver']           = 'mumps'
-nonlin_solver_params['preconditioner']          = 'default'
+nonlin_solver_params['linear_solver']                            = 'mumps'
+nonlin_solver_params['preconditioner']                           = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 # output directory :
@@ -99,7 +100,7 @@ config = { 'mode'                         : 'steady',
            'log'                          : True,
            'coupled' : 
            { 
-             'on'       : False,
+             'on'       : True,
              'inner_tol': 0.0,
              'max_iter' : 5
            },
@@ -120,7 +121,7 @@ config = { 'mode'                         : 'steady',
            },
            'enthalpy' : 
            { 
-             'on'                  : False,
+             'on'                  : True,
              'use_surface_climate' : False,
              'T_surface'           : SurfaceTemperature,
              'q_geo'               : BasalHeatFlux,
@@ -128,7 +129,7 @@ config = { 'mode'                         : 'steady',
            },
            'free_surface' :
            { 
-             'on'               : False,
+             'on'               : True,
              'lump_mass_matrix' : True,
              'thklim'           : thklim,
              'use_pdd'          : False,
@@ -151,7 +152,7 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [Thickness**2],
+             'alpha'               : [Thickness**2/10**2],
              'beta'                : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
@@ -160,8 +161,7 @@ config = { 'mode'                         : 'steady',
              'regularization_type' : 'Tikhonov'
            }}
 
-
-model.eps_reg = 1e-5
+_reg = 1e-5
 #config['adjoint']['alpha'] = model.S - model.B
 
 F = solvers.SteadySolver(model,config)
@@ -190,23 +190,25 @@ t02 = time()
 A.solve()
 tf2 = time()
 
-File(dir_b + str(i) + '/Mb.pvd')      << model.Mb
-File(dir_b + str(i) + '/S.pvd')       << model.S
-File(dir_b + str(i) + '/B.pvd')       << model.B
-File(dir_b + str(i) + '/u.pvd')       << model.u
-File(dir_b + str(i) + '/v.pvd')       << model.v
-File(dir_b + str(i) + '/w.pvd')       << model.w
-  
-tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
+File(out_dir + 'Mb.pvd')      << model.Mb
+File(out_dir + 'S.pvd')       << model.S
+File(out_dir + 'B.pvd')       << model.B
+File(out_dir + 'u.pvd')       << model.u
+File(out_dir + 'v.pvd')       << model.v
+File(out_dir + 'w.pvd')       << model.w
 
-File(dir_b + str(i) + '/tau_lon.pvd') << tau_lon 
-File(dir_b + str(i) + '/tau_lat.pvd') << tau_lat 
-File(dir_b + str(i) + '/tau_bas.pvd') << tau_bas 
-File(dir_b + str(i) + '/tau_drv.pvd') << tau_drv 
-#File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
+tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
+#tau_tot = project(tau_lon + tau_lat + tau_bas - tau_drv)
+
+File(out_dir + 'tau_lon.pvd') << tau_lon
+File(out_dir + 'tau_lat.pvd') << tau_lat
+File(out_dir + 'tau_bas.pvd') << tau_bas
+File(out_dir + 'tau_drv.pvd') << tau_drv
+#File(out_dir + 'tau_tot.pvd') << tau_tot 
+#File(out_dir + 'mesh.xdmf')   << model.mesh
 
 # functionality of HDF5 not completed by fenics devs :
-#f = HDF5File(dir_b + str(i) + '/u.h5', 'w')
+#f = HDF5File(out_dir + 'u.h5', 'w')
 #f.write(model.mesh,  'mesh')
 #f.write(model.beta2, 'beta2')
 #f.write(model.Mb,    'Mb')
@@ -219,4 +221,5 @@ h = m / 60.0
 s = s % 60
 m = m % 60
 print "Total time to compute: \r%02d:%02d:%02d" % (h,m,s)
+
 

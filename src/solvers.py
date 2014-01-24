@@ -58,21 +58,21 @@ class SteadySolver(object):
     
     # Set the initial Picard iteration (PI) parameters
     # L_\infty norm in velocity between iterations
-    inner_error = inf             
+    inner_error = inf
    
-    # number of iterations      
-    counter     = 0                    
+    # number of iterations
+    counter     = 0
    
     # previous velocity for norm calculation
     u_prev      = zeros(len(model.u.vector().array()))
     
     # set an inner tolerance for PI
-    inner_tol   = config['coupled']['inner_tol']   
+    inner_tol   = config['coupled']['inner_tol']
     max_iter    = config['coupled']['max_iter']
     
     # Initialize a temperature field for visc. calc.
     if config['velocity']['use_T0']:
-      model.T.vector().set_local( T0 * ones(len(model.T.vector().array())) )  
+      model.T.vector().set_local( T0 * ones(len(model.T.vector().array())) )
 
     # Perform a Picard iteration until the L_\infty norm of the velocity 
     # difference is less than tolerance
@@ -80,11 +80,13 @@ class SteadySolver(object):
 
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
+        print "solving surface climate"
         self.surface_climate_instance.solve()
 
       # Solve velocity
       if config['velocity']['on']:
         #self.model.u.vector()[:] = 0.0
+        print "solving velocity"
         self.velocity_instance.solve()
         uMin = model.u.vector().min()
         uMax = model.u.vector().max()
@@ -92,6 +94,7 @@ class SteadySolver(object):
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
+        print "solving enthalpy"
         self.enthalpy_instance.solve()
         Tmin = model.T.vector().min()
         Tmax = model.T.vector().max()
@@ -103,16 +106,19 @@ class SteadySolver(object):
         inner_error = diff.max()
         u_prev      = model.u.vector().array()
         counter    += 1
-        print 'inner error :', inner_error
+        print 'Picard iteration %i: inner error %f (tol %f)' \
+              % (counter, inner_error, inner_tol)
       
       else:
         inner_error = 0.0
 
     # Solve age equation
     if config['age']['on']:
+      print "solving age"
       self.age_instance.solve()
 
     if config['log']:
+      print "saving results"
       outpath = config['output_path']
       U       = project(as_vector([model.u, model.v, model.w]))
       File(outpath + 'U' + '.pvd') << U
@@ -503,18 +509,18 @@ class AdjointSolver(object):
 
     #===========================================================================
     # Set up file I/O
-    path       = config['output_path']
-    file_b_xml = File(path + 'beta2_opt.xml')
-    file_b_pvd = File(path + 'beta2_opt.pvd')
-    file_u_xml = File(path + 'U_opt.pvd')
-    file_u_pvd = File(path + 'U_opt.xml')
+    path = config['output_path']
+    file_b_xml    = File(path + 'beta2_opt.xml')
+    file_b_pvd    = File(path + 'beta2_opt.pvd')
+    file_u_xml    = File(path + 'U_opt.pvd')
+    file_u_pvd    = File(path + 'U_opt.xml')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:
-    maxfun     = config['adjoint']['max_fun']
-    bounds_list     = config['adjoint']['bounds']
-    m_global   = []
+    maxfun      = config['adjoint']['max_fun']
+    bounds_list = config['adjoint']['bounds']
+    m_global    = []
     for mm in config['adjoint']['control_variable']:
       m_global.extend(get_global(mm))
     m_global = array(m_global)

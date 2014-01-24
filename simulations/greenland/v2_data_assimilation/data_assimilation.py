@@ -61,8 +61,10 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_high_new.xml')
-flat_mesh = Mesh('meshes/mesh_high_new.xml')
+#mesh      = Mesh('meshes/mesh_high_new.xml')
+#flat_mesh = Mesh('meshes/mesh_high_new.xml')
+mesh      = Mesh('meshes/mesh_low.xml')
+flat_mesh = Mesh('meshes/mesh_low.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -107,9 +109,9 @@ model.initialize_variables()
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter']    = 1.0
-nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-14
-nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
+nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
+nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 nonlin_solver_params['linear_solver']                            = 'mumps'

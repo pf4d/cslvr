@@ -131,8 +131,8 @@ class max_field:
     return max(l)
 
 
-lmax      = 25000
-lmin      = 1000
+lmax      = 70000
+lmin      = 2000
 num_cuts  = 8
 lmin_max  = 10000
 lmin_min  = 1000
@@ -167,7 +167,7 @@ m.getFields().setBackgroundFieldId(mid)
 
 #instead of starting the GUI, we could generate the mesh and save it
 m.mesh(3) # 2 is the dimension
-m.save("mesh_high.msh")
+m.save("mesh_low.msh")
 
 
 

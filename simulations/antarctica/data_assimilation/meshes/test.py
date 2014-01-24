@@ -22,15 +22,15 @@ bedmap2  = DataFactory.get_bedmap2(thklim=thklim)
 
 dbv = DataInput("../results/", ("Ubmag.mat", ), gen_space=False)
 dbv.set_data_min('Ubmag', 0.0,   0.0)
-dbv.set_data_max('Ubmag', 500.0, 500.0)
+dbv.set_data_max('Ubmag', 800.0, 800.0)
 
-bedmap1 = DataFactory.get_bedmap1(thklim=thklim)
-bedmap2 = DataFactory.get_bedmap2(thklim=thklim)
+#bedmap1 = DataFactory.get_bedmap1(thklim=thklim)
+#bedmap2 = DataFactory.get_bedmap2(thklim=thklim)
 
-db2  = DataInput(None, bedmap2, gen_space=False)
+#db2  = DataInput(None, bedmap2, gen_space=False)
 
 # might want to refine off of thickness :
-H   = db2.data['H'].copy().T
+#H   = db2.data['H'].copy().T
 
 # ensure that there are no values less than 1 for taking log :
 #vel = dsr.data['U_ob'].copy().T
@@ -39,9 +39,9 @@ vel += 1
 
 # invert the sections where the velocity is low to refine at divide :
 data                = log(vel)
-mv                  = data.max()
-k                   = 1
-data[2*data < k*mv] = -data[2*data < k*mv]  + k*mv
+#mv                  = data.max()
+#k                   = 1
+#data[2*data < k*mv] = -data[2*data < k*mv]  + k*mv
 
 # plot to check :
 #imshow(data.T[::-1,::-1])
@@ -112,12 +112,21 @@ class min_field:
       l.append(f(x,y,z,entity))
     return min(l)
 
+lmin = 1000
+lmax = 100000
 
-a   = attractor(data, 0.0, 100000, 200000, inv=True)
-aid = m.getFields().addPythonField(a.op)
-m.getFields().setBackgroundFieldId(aid)
+a1   = attractor(data, 0.0, lmin, lmax, inv=True)
+a2   = attractor(data, 0.0, 10000,lmax, inv=False)
+m1   = min_field([a1.op, a2.op])
+aid1 = m.getFields().addPythonField(a1.op)
+aid2 = m.getFields().addPythonField(a2.op)
+mid  = m.getFields().addPythonField(m1.op)
+m.getFields().setBackgroundFieldId(mid)
 
 #launch the GUI
-FlGui.instance().run()
+#FlGui.instance().run()
 
+#instead of starting the GUI, we could generate the mesh and save it
+m.mesh(3) # 2 is the dimension
+m.save("mesh_high.msh")
 

@@ -57,6 +57,7 @@ Surface            = db2.get_spline_expression("h")
 Bed                = db2.get_spline_expression("b")
 SurfaceTemperature = db1.get_spline_expression("srfTemp")
 BasalHeatFlux      = db1.get_spline_expression("q_geo")
+adot               = db1.get_spline_expression("adot")
 U_observed         = dm.get_spline_expression("v_mag")
 
 model = model.Model()
@@ -110,8 +111,8 @@ config = { 'mode'                         : 'steady',
              'b_linear'       : None,
              'use_T0'         : True,
              'T0'             : 268.0,
-             'A0'             : 1e-16,
-             'beta2'          : 2.0,
+             'A0'             : None,
+             'beta2'          : 0.5,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -129,7 +130,7 @@ config = { 'mode'                         : 'steady',
            { 
              'on'               : False,
              'lump_mass_matrix' : True,
-             'thklim'           : 10.0,
+             'thklim'           : thklim,
              'use_pdd'          : False,
              'observed_smb'     : None,
            },  
@@ -188,16 +189,21 @@ if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
 t02 = time()
 A.solve()
 tf2 = time()
+
+File(dir_b + str(i) + '/Mb.pvd')      << model.Mb
+File(dir_b + str(i) + '/S.pvd')       << model.S
+File(dir_b + str(i) + '/B.pvd')       << model.B
+File(dir_b + str(i) + '/u.pvd')       << model.u
+File(dir_b + str(i) + '/v.pvd')       << model.v
+File(dir_b + str(i) + '/w.pvd')       << model.w
   
 tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
 
-File(dir_b + str(i) + '/Mb.pvd')      << model.Mb
 File(dir_b + str(i) + '/tau_lon.pvd') << tau_lon 
 File(dir_b + str(i) + '/tau_lat.pvd') << tau_lat 
 File(dir_b + str(i) + '/tau_bas.pvd') << tau_bas 
 File(dir_b + str(i) + '/tau_drv.pvd') << tau_drv 
 #File(dir_b + str(i) + '/mesh.xdmf')  << model.mesh
-
 
 # functionality of HDF5 not completed by fenics devs :
 #f = HDF5File(dir_b + str(i) + '/u.h5', 'w')

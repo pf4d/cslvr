@@ -735,18 +735,18 @@ def component_stress(model):
   g     = model.g
   H     = S - B
 
-  u_n = as_vector((u, v, w))
-  u_t = as_vector((v,-u, w))
+  u_n = as_vector([u, v, w])
+  u_t = as_vector([v,-u, w])
   
   sig     = tau(u_n, 0.5)
   norm_u  = project(sqrt(inner(u_n, u_n)), Q)
   unit_n  = u_n / norm_u
   unit_t  = u_t / norm_u
 
-  tau_drv = project(rho*g*H*grad(S), Q)
-  tau_lon = vert_integrate(model, project(dot(sig, unit_n)))
-  tau_lat = vert_integrate(model, project(dot(sig, unit_t)))
-  tau_bas = project(beta2*norm_u, Q)
+  tau_lon = project(dot(sig, unit_n))
+  tau_lat = project(dot(sig, unit_t))
+  tau_bas = project(beta2*norm_u)
+  tau_drv = project(rho*g*H*(S.dx(0) + S.dx(1) + S.dx(2)))
 
   return tau_lon, tau_lat, tau_bas, tau_drv
 

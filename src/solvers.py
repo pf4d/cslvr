@@ -106,8 +106,8 @@ class SteadySolver(object):
         inner_error = diff.max()
         u_prev      = model.u.vector().array()
         counter    += 1
-        print 'Picard iteration %i: inner error %f (tol %f)' \
-              % (counter, inner_error, inner_tol)
+        print 'Picard iteration %i (max %i): inner error %f (tol %f)' \
+              % (counter, max_iter, inner_error, inner_tol)
       
       else:
         inner_error = 0.0

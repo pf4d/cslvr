@@ -742,11 +742,11 @@ def component_stress(model):
   norm_u  = project(sqrt(inner(u_n, u_n)), Q)
   unit_n  = u_n / norm_u
   unit_t  = u_t / norm_u
-  dSdxMag = sqrt(S.dx(0)**2 + S.dx(1)**2 + S.dx(2)**2)
+  dSdxMag = sqrt(inner(grad(S), grad(S)))
 
   tau_lon = project(dot(sig, unit_n))
   tau_lat = project(dot(sig, unit_t))
-  tau_bas = project(beta2*norm_u)
+  tau_bas = project(inner(beta2, norm_u))
   tau_drv = project(rho*g*H*dSdxMag)
 
   return tau_lon, tau_lat, tau_bas, tau_drv

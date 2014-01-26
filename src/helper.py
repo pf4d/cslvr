@@ -728,7 +728,7 @@ def vert_integrate(u, ff, Q):
   u_norm = project(sqrt(inner(u,u)), Q)
   bc     = DirichletBC(Q, u_norm, ff, 3)
   a      = v.dx(2) * phi * dx
-  L      = sqrt(inner(u,u)) * phi * dx
+  L      = u_norm * phi * dx
   v      = Function(Q)
   solve(a == L, v, bc)
   return v

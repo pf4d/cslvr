@@ -3,6 +3,7 @@
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
+#  10 layers high     |    1860090 |  |  |  |  
 #  10 layers medium   |    1669740 |  |  |  |  
 #  10 layers crude    |     523710 |  |  |  |  
 #
@@ -44,10 +45,14 @@ db2.set_data_val('H', 32767, thklim)
 db2.set_data_val('h', 32767, 0.0)
 dm.set_data_min('v_mag', 0.0, 0.0)
 
-#h       = db2.get_projection('h')
-#H       = db2.get_projection('H')
-#v_mag   = dm.get_projection('v_mag')
+#h        = db2.get_projection('h')
+#H        = db2.get_projection('H')
+#v_mag    = dm.get_projection('v_mag')
+#surfTemp = db1.get_projection("srfTemp")
+#q_geo    = db1.get_projection("q_geo")
 
+#File('tests/q_geo.pvd')     << q_geo
+#File('tests/srfTemp.pvd')  << surfTemp
 #File('tests/hf.pvd')       << h
 #File('tests/Hf.pvd')       << H
 #File('tests/v_magf.pvd')   << v_mag
@@ -71,8 +76,8 @@ model.initialize_variables()
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
-nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e3
-nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
+nonlin_solver_params['newton_solver']['maximum_iterations']      = 15
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 #nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
 #nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
@@ -112,8 +117,8 @@ config = { 'mode'                         : 'steady',
              'b_linear'       : None,
              'use_T0'         : True,
              'T0'             : 268.0,
-             'A0'             : None,
-             'beta2'          : 0.5,
+             'A0'             : 1e-16,
+             'beta2'          : 2.0,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -133,7 +138,7 @@ config = { 'mode'                         : 'steady',
              'lump_mass_matrix' : True,
              'thklim'           : thklim,
              'use_pdd'          : False,
-             'observed_smb'     : None,
+             'observed_smb'     : adot,
            },  
            'age' : 
            { 
@@ -152,7 +157,7 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [Thickness**2/10**2],
+             'alpha'               : [Thickness**2],
              'beta'                : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
@@ -161,41 +166,34 @@ config = { 'mode'                         : 'steady',
              'regularization_type' : 'Tikhonov'
            }}
 
-_reg = 1e-5
-#config['adjoint']['alpha'] = model.S - model.B
+model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)
-if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
+if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
 t01 = time()
 F.solve()
 tf1 = time()
-if i != 0: model.adot = adot
 
-visc    = project(model.eta, model.Q)
-vel_par = config['velocity']
-vel_par['viscosity_mode']                                         = 'linear'
-vel_par['b_linear']                                               = visc
-vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
-
+config['velocity']['viscosity_mode']   = 'linear'
+config['velocity']['b_linear']         = project(model.eta, model.Q)
 config['enthalpy']['on']               = False
 config['surface_climate']['on']        = False
 config['coupled']['on']                = False
-if i !=0: config['velocity']['use_T0'] = False
+config['velocity']['use_T0']           = False
 config['adjoint']['control_variable']  = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
+if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
 t02 = time()
 A.solve()
 tf2 = time()
 
-File(out_dir + 'Mb.pvd')      << model.Mb
-File(out_dir + 'S.pvd')       << model.S
-File(out_dir + 'B.pvd')       << model.B
-File(out_dir + 'u.pvd')       << model.u
-File(out_dir + 'v.pvd')       << model.v
-File(out_dir + 'w.pvd')       << model.w
+File(out_dir + 'S.xml')       << model.S
+File(out_dir + 'B.xml')       << model.B
+File(out_dir + 'u.xml')       << model.u
+File(out_dir + 'v.xml')       << model.v
+File(out_dir + 'w.xml')       << model.w
 
 tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
 #tau_tot = project(tau_lon + tau_lat + tau_bas - tau_drv)
@@ -221,5 +219,6 @@ h = m / 60.0
 s = s % 60
 m = m % 60
 print "Total time to compute: \r%02d:%02d:%02d" % (h,m,s)
+
 
 

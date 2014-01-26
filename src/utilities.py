@@ -20,7 +20,7 @@ from pylab             import plot, show, shape, meshgrid, contour
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
 
-class DataInput:
+class DataInput(object):
   """ 
   This object brokers the relation between the driver file and a number of
   data sets. It's function is to:
@@ -398,7 +398,7 @@ class DataInput:
     return unew
 
 
-class DataOutput:
+class DataOutput(object):
   
   def __init__(self, directory):
     self.directory = directory
@@ -714,4 +714,90 @@ class MeshGenerator(object):
     subprocess.call(cmd.split())
 
 
+class MeshExtruder(object):
+    """
+    Due to extreme bugginess in the gmsh extrusion utilities, this class 
+    extrudes a 2D mesh footprint in the z direction in an arbitrary number of 
+    layers.  Its primary purpose is to facilitate mesh generation for the 
+    ice sheet model VarGlaS.  Method based on HOW TO SUBDIVIDE PYRAMIDS, PRISMS
+    AND HEXAHEDRA INTO TETRAHEDRA by Dompierre et al.
+
+    Written by Douglas Brinkerhoff 14.01.25
+    """
+
+    indirection_table = {0:[0,1,2,3,4,5],
+                         1:[1,2,0,4,5,3],
+                         2:[2,0,1,5,3,4],
+                         3:[3,5,4,0,2,1],
+                         4:[4,3,5,1,0,3],
+                         5:[5,4,3,2,1,0]}
+
+    def __init__(self,mesh):
+      # Accepts a dolfin mesh of dimension 2
+      self.mesh = mesh
+      self.n_v2 = mesh.num_vertices()
+
+      # Initialize tetrahedron array for extruded mesh
+      self.global_tets = array([-1,-1,-1,-1])
+
+    def extrude_mesh(self,l,z_offset):
+      # accepts the number of layers and the length of extrusion
+
+      # Extrude vertices
+      all_coords = []
+      for i in linspace(0,z_offset,l):
+        all_coords.append(hstack((mesh.coordinates(),i*ones((self.n_v2,1)))))
+      self.global_vertices = vstack(all_coords)
+
+      # Extrude cells (tris to tetrahedra)
+      for i in range(l-1):
+        for c in self.mesh.cells():
+          # Make a prism out of 2 stacked triangles
+          vertices = hstack((c+i*self.n_v2,c+(i+1)*self.n_v2))
+
+          # Determine prism orientation
+          smallest_vertex_index = argmin(vertices)
+
+          # Map to I-ordering of Dompierre et al.
+          mapping = self.indirection_table[smallest_vertex_index]
+
+          # Determine which subdivision scheme to use.
+          if min(vertices[mapping][[1,5]]) < min(vertices[mapping][[2,4]]):
+            local_tets = vstack((vertices[mapping][[0,1,2,5]],\
+                                 vertices[mapping][[0,1,5,4]],\
+                                 vertices[mapping][[0,4,5,3]]))
+          else:
+            local_tets = vstack((vertices[mapping][[0,1,2,4]],\
+                                 vertices[mapping][[0,4,2,5]],\
+                                 vertices[mapping][[0,4,5,3]]))
+          # Concatenate local tet to cell array
+          self.global_tets = vstack((self.global_tets,local_tets))
+
+      # Eliminate phantom initialization tet
+      self.global_tets = self.global_tets[1:,:]
+
+      # Query number of vertices and tets in new mesh
+      self.n_verts = self.global_vertices.shape[0]
+      self.n_tets = self.global_tets.shape[0]
+
+      # Initialize new dolfin mesh of dimension 3
+      self.new_mesh = Mesh()
+      m = MeshEditor()
+      m.open(self.new_mesh,3,3)
+      m.init_vertices(self.n_verts,self.n_verts)
+      m.init_cells(self.n_tets,self.n_tets)
+
+      # Copy vertex data into new mesh
+      for i,v in enumerate(self.global_vertices):
+        m.add_vertex(i,Point(*v))
+
+      # Copy cell data into new mesh
+      for j,c in enumerate(self.global_tets):
+        m.add_cell(j,*c)
+
+      m.close()
+
+    def write_mesh_to_file(self,filename):
+      # Output mesh
+      File(filename) << self.new_mesh
 

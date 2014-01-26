@@ -554,19 +554,21 @@ def write_gmsh(mesh,path):
   output.write("$EndElements\n")
   output.close()
 
+
 def default_nonlin_solver_params():
   """ 
   Returns a set of default solver parameters that yield good performance
   """
    
   stokes_params = NonlinearVariationalSolver.default_parameters()
-  stokes_params['newton_solver']['maximum_iterations'] = 100
+  stokes_params['newton_solver']['maximum_iterations']      = 100
   stokes_params['newton_solver']['error_on_nonconvergence'] = True
-  stokes_params['newton_solver']['relaxation_parameter'] = 0.8
-  stokes_params['newton_solver']['method'] = 'lu'
-  stokes_params['newton_solver']['relative_tolerance'] = 1e-3
-  stokes_params['newton_solver']['report'] = True
+  stokes_params['newton_solver']['relaxation_parameter']    = 0.8
+  stokes_params['newton_solver']['method']                  = 'lu'
+  stokes_params['newton_solver']['relative_tolerance']      = 1e-3
+  stokes_params['newton_solver']['report']                  = True
   return stokes_params
+
 
 def calculate_vertical_average(model,u):
   """
@@ -597,6 +599,7 @@ def calculate_vertical_average(model,u):
 
   ubar = project(ubar/H,model.Q)
   return ubar
+
 
 def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
   """
@@ -688,6 +691,7 @@ def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
       surface_variable_list[jj].vector()[v2d_surf[ii]] = variable_list[jj].vector()[v2d_3d[index]]
 
   return surface_mesh,surface_variable_list
+
     
 def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   """
@@ -707,24 +711,32 @@ def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   return DolfinExpression
 
 
+def print_min_max(u, title):
+  uMin = u.vector().min()
+  uMax = u.vector().max()
+  print title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+
+
 def tau(u, mu):
   n = u.geometric_dimension()
   return mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
 
-def vert_integrate(model, u):
-  Q      = model.Q
-  norm_u = project(sqrt(inner(u,u)), Q)
+
+def vert_integrate(u, ff, Q):
   phi    = TestFunction(Q)
   v      = TrialFunction(Q)
-  bc     = DirichletBC(Q, norm_u, 3)
+  u_norm = project(sqrt(inner(u,u)), Q)
+  bc     = DirichletBC(Q, u_norm, ff, 3)
   a      = v.dx(2) * phi * dx
-  L      = norm_u * phi * dx
+  L      = sqrt(inner(u,u)) * phi * dx
   v      = Function(Q)
   solve(a == L, v, bc)
   return v
 
+
 def component_stress(model):
   beta2 = model.beta2
+  ff    = model.ff
   Q     = model.Q
   u     = model.u
   v     = model.v
@@ -744,8 +756,8 @@ def component_stress(model):
   unit_t  = u_t / norm_u
   dSdxMag = sqrt(inner(grad(S), grad(S)))
 
-  tau_lon = project(dot(sig, unit_n))
-  tau_lat = project(dot(sig, unit_t))
+  tau_lon = vert_integrate(project(dot(sig, unit_n)), ff, Q)
+  tau_lat = vert_integrate(project(dot(sig, unit_t)), ff, Q)
   tau_bas = project(inner(beta2, norm_u))
   tau_drv = project(rho*g*H*dSdxMag)
 

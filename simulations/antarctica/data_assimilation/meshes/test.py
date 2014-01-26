@@ -22,7 +22,7 @@ thklim = 200.0
 
 dbv = DataInput("../results/", ("v_mag.mat", ), gen_space=False)
 dbv.set_data_min('v_mag', 0.0,   0.0)
-dbv.set_data_max('v_mag', 800.0, 800.0)
+dbv.set_data_max('v_mag', 400.0, 400.0)
 
 #db2  = DataInput(None, bedmap2, gen_space=False)
 

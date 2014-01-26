@@ -28,6 +28,7 @@ based on lapse rates
 
 from pylab  import ndarray
 from dolfin import *
+from helper import print_min_max
 import numpy
 import numpy.linalg as linalg
 
@@ -337,6 +338,7 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
+    print "::: solving velocity :::"
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
 
@@ -518,7 +520,7 @@ class VelocityBP(object):
     newton_params = config['velocity']['newton_params']
     A0            = config['velocity']['A0']
 
-    # initialize the temperature depending on input tpye :
+    # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       if   isinstance(config['velocity']['T0'], float):
         T.vector()[:] = config['velocity']['T0']
@@ -568,15 +570,15 @@ class VelocityBP(object):
 
     phi, psi = split(Phi)
     du,  dv  = split(dU)
-    u,   v   = split(U)
+    u,   v   = split(U)  # x,y velocity components
 
-    chi    = TestFunction(Q)
+    chi      = TestFunction(Q)
     dw       = TrialFunction(Q)
 
-    ds       = model.ds
-    dSurf    = ds(2)
-    dGrnd    = ds(3)
-    dFloat   = ds(6)
+    ds       = model.ds  
+    dSurf    = ds(2)      # surface
+    dGrnd    = ds(3)      # bed
+    dFloat   = ds(6)      # shelves
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -664,6 +666,7 @@ class VelocityBP(object):
     config = self.config
     
     # solve nonlinear system :
+    print "::: solving velocity :::"
     solve(self.F == 0, model.U, J = self.J,
           solver_parameters = self.newton_params)
 
@@ -672,7 +675,7 @@ class VelocityBP(object):
 
     u = project(split(model.U)[0], model.Q)
     v = project(split(model.U)[1], model.Q)
-  
+    
     model.u.vector().set_local(u.vector().array())
     model.v.vector().set_local(v.vector().array())
 
@@ -808,45 +811,45 @@ class Enthalpy(object):
     q_geo       = config['enthalpy']['q_geo']
     r           = config['velocity']['r']
 
-    mesh          = model.mesh
-    Q             = model.Q
-    Q2            = model.Q2
-    H             = model.H
-    H0            = model.H0
-    n             = model.n
-    b             = model.b
-    Tstar         = model.Tstar
-    T             = model.T
-    T0            = model.T0
-    h_i           = model.h_i
-    L             = model.L
-    C             = model.C
-    C_w           = model.C_w
-    gamma         = model.gamma
-    S             = model.S
-    B             = model.B
-    x             = model.x
-    E             = model.E
-    W             = model.W
-    R             = model.R
-    epsdot        = model.epsdot
-    eps_reg       = model.eps_reg
-    eta           = model.eta
-    rho           = model.rho
-    g             = model.g
-    beta2         = model.beta2
-    u             = model.u
-    v             = model.v
-    w             = model.w
-    cold          = model.cold
-    kappa         = model.kappa
-    k             = model.k
-    Hhat          = model.Hhat
-    uhat          = model.uhat
-    vhat          = model.vhat
-    what          = model.what
-    mhat          = model.mhat
-    ds            = model.ds
+    mesh        = model.mesh
+    Q           = model.Q
+    Q2          = model.Q2
+    H           = model.H
+    H0          = model.H0
+    n           = model.n
+    b           = model.b
+    Tstar       = model.Tstar
+    T           = model.T
+    T0          = model.T0
+    h_i         = model.h_i
+    L           = model.L
+    C           = model.C
+    C_w         = model.C_w
+    gamma       = model.gamma
+    S           = model.S
+    B           = model.B
+    x           = model.x
+    E           = model.E
+    W           = model.W
+    R           = model.R
+    epsdot      = model.epsdot
+    eps_reg     = model.eps_reg
+    eta         = model.eta
+    rho         = model.rho
+    g           = model.g
+    beta2       = model.beta2
+    u           = model.u
+    v           = model.v
+    w           = model.w
+    cold        = model.cold
+    kappa       = model.kappa
+    k           = model.k
+    Hhat        = model.Hhat
+    uhat        = model.uhat
+    vhat        = model.vhat
+    what        = model.what
+    mhat        = model.mhat
+    ds          = model.ds
     
     # If we're not using the output of the surface climate model,
     #  set the surface temperature to the constant or array that 
@@ -1086,12 +1089,11 @@ class Enthalpy(object):
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
       
     # solve the linear equation for enthalpy :
+    print "::: solving enthalpy :::"
     solve(self.a == self.L, model.H, self.bc_H, 
           solver_parameters = {"linear_solver": "lu"})
   
-    Hmin = model.H.vector().min()
-    Hmax = model.H.vector().max()
-    print "H <min, max> : <%f, %f>" % (Hmin, Hmax)
+    print_min_max(model.H, 'H')
 
     # Convert enthalpy values to temperatures and water contents
     T0_n  = project(T0,  Q)
@@ -1284,6 +1286,7 @@ class FreeSurface(object):
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
 
+    print "::: solving free-surface :::"
     if config['free_surface']['lump_mass_matrix']:
       m_l = assemble(self.lumped_mass)
       m_l = m_l.get_local()
@@ -1349,12 +1352,12 @@ class AdjointVelocityBP(object):
     alpha = config['adjoint']['alpha']
 
     if config['velocity']['approximation'] == 'fo':
-      Q_adj     = model.Q2
-      A         = (Vd + Pe)*dx + Sl*ds(3)
+      Q_adj   = model.Q2
+      A       = (Vd + Pe)*dx + Sl*ds(3)
     else:
-      Q_adj     = model.Q4
+      Q_adj   = model.Q4
       # Variational pinciple
-      A         = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
+      A       = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
 
     L         = TrialFunction(Q_adj)
     Phi       = TestFunction(Q_adj)
@@ -1370,9 +1373,11 @@ class AdjointVelocityBP(object):
     for a,c in zip(alpha,control):
       N = FacetNormal(model.mesh)
       if config['adjoint']['regularization_type'] == 'TV':
-        R += a * sqrt((c.dx(0)*N[2] - c.dx(1)*N[0])**2 + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * ds(3)
+        R += a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * ds(3)
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        R += a * ((c.dx(0)*N[2] - c.dx(1)*N[0])**2 + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
+        R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
       else:
         print 'Valid regularizations are \'TV\' and \'Tikhonov\'.'
     
@@ -1388,7 +1393,8 @@ class AdjointVelocityBP(object):
                        (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) + R
+      self.I = + 0.5*(U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) \
+               + R
 
     else:
       self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) + R
@@ -1423,6 +1429,7 @@ class AdjointVelocityBP(object):
     A = assemble(lhs(self.dI))
     l = assemble(rhs(self.dI))
 
+    print "::: solving adjoint BP velocity :::"
     solve(A, self.model.Lam.vector(), l)
 
 
@@ -1552,7 +1559,8 @@ class Age(object):
     self.bc_age = DirichletBC(model.Q, 0, model.ff, above_ela)
 
     # Solve!
-    solve(lhs(self.F) == rhs(self.F), model.A, self.bc_age)
+    print "::: solving age :::"
+    solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
 
 
 class VelocityBalance(object):
@@ -1573,7 +1581,7 @@ class VelocityBalance(object):
     S           = model.S.vector().get_local()
     dSdx        = model.dSdx
     dSdy        = model.dSdy
-    U           = model.U
+    Ub          = model.Ub
 
     phi         = TestFunction(Q_flat)
     dU          = TrialFunction(Q_flat)
@@ -1617,7 +1625,7 @@ class VelocityBalance(object):
     self.dS     = dS
 
   def solve(self):
-    U    = self.model.U
+    Ub   = self.model.Ub
     dSdx = self.model.dSdx
     dSdy = self.model.dSdy
 
@@ -1637,8 +1645,8 @@ class VelocityBalance(object):
     L_U  = assemble(rhs(self.dI))
 
     solve(a_U, U.vector(), L_U)
-    u_b = project(U * self.dS[0])
-    v_b = project(U * self.dS[1])
+    u_b = project(Ub * self.dS[0])
+    v_b = project(Ub * self.dS[1])
     self.model.u_balance.vector().set_local(u_b.vector().get_local())
     self.model.v_balance.vector().set_local(v_b.vector().get_local())
     

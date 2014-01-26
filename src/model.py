@@ -40,6 +40,8 @@ class Model(object):
     :param bool generate_pbcs : Optional argument to determine whether
                                 to create periodic boundary conditions
     """
+    print "::: generating mesh :::"
+
     self.mesh      = UnitCubeMesh(nx,ny,nz)
     self.flat_mesh = UnitCubeMesh(nx,ny,nz)
     
@@ -123,6 +125,8 @@ class Model(object):
     """
     Determines the boundaries of the current model mesh
     """
+    print "::: calculating boundaries :::"
+    
     mask = self.mask
 
     # this function contains markers which may be applied to facets of the mesh
@@ -207,20 +211,22 @@ class Model(object):
       # surface and bed :
       self.S           = interpolate(self.S_ex, self.Q)
       self.B           = interpolate(self.B_ex, self.Q)
-      self.Shat          = Function(self.Q_flat)
-      self.dSdt          = Function(self.Q_flat)
+      self.Shat        = Function(self.Q_flat)
+      self.dSdt        = Function(self.Q_flat)
+    
     else:
-
       # surface and bed :
       self.S           = interpolate(self.S_ex, self.Q_non_periodic)
       self.B           = interpolate(self.B_ex, self.Q_non_periodic)
-      self.Shat          = Function(self.Q_flat_non_periodic)
-      self.dSdt          = Function(self.Q_flat)
+      self.Shat        = Function(self.Q_flat_non_periodic)
+      self.dSdt        = Function(self.Q_flat)
+    
     # Coordinates of various types 
     self.x             = self.Q.cell().x
     self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
 
     # Velocity model
+    self.U             = Function(self.Q2)
     self.u             = Function(self.Q)
     self.v             = Function(self.Q)
     self.w             = Function(self.Q)
@@ -267,7 +273,7 @@ class Model(object):
     self.M             = Function(self.Q_flat)
     
     # Age model   
-    self.A             = Function(self.Q)
+    self.age           = Function(self.Q)
     self.a0            = Function(self.Q)
 
     # Surface climate model
@@ -285,7 +291,7 @@ class Model(object):
     # Balance Velocity model :
     self.dSdx          = Function(self.Q_flat)
     self.dSdy          = Function(self.Q_flat)
-    self.U             = Function(self.Q_flat)
+    self.Ub            = Function(self.Q_flat)
     self.u_balance     = Function(self.Q)
     self.v_balance     = Function(self.Q)
 

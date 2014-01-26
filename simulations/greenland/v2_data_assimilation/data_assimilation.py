@@ -61,10 +61,10 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-#mesh      = Mesh('meshes/mesh_high_new.xml')
-#flat_mesh = Mesh('meshes/mesh_high_new.xml')
-mesh      = Mesh('meshes/mesh_low.xml')
-flat_mesh = Mesh('meshes/mesh_low.xml')
+mesh      = Mesh('meshes/mesh_high_new.xml')
+flat_mesh = Mesh('meshes/mesh_high_new.xml')
+#mesh      = Mesh('meshes/mesh_low.xml')
+#flat_mesh = Mesh('meshes/mesh_low.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -72,8 +72,8 @@ flat_mesh.coordinates()[:,2] /= 100000.0
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)
 dbm     = DataInput(None, bamber,   mesh=mesh)
-#dms     = DataInput(None, measure,  mesh=mesh, flip=True)
-#dmss    = DataInput(None, meas_shf, mesh=mesh, flip=True)
+#dms     = DataInput(None, measure,  mesh=mesh)
+#dmss    = DataInput(None, meas_shf, mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
 dsq     = DataInput(None, sec_qgeo, mesh=mesh)
 #dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
@@ -111,7 +111,7 @@ model.initialize_variables()
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
-nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e3
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 nonlin_solver_params['linear_solver']                            = 'mumps'
@@ -124,7 +124,7 @@ parameters['form_compiler']['quadrature_degree']                 = 2
 i = int(sys.argv[1])
 #dir_b   = './results_sr/0'
 #dir_b   = './results_fm/0'
-dir_b   = './results_new/0'
+dir_b   = './results_high/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -175,7 +175,7 @@ config = { 'mode'                         : 'steady',
              'lump_mass_matrix' : True,
              'thklim'           : thklim,
              'use_pdd'          : False,
-             'observed_smb'     : None,
+             'observed_smb'     : adot,
            },  
            'age' : 
            { 
@@ -194,7 +194,7 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [Thickness**2/10**2],
+             'alpha'               : [Thickness**2],
              'beta'                : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
@@ -204,40 +204,33 @@ config = { 'mode'                         : 'steady',
            }}
 
 model.eps_reg = 1e-5
-#config['adjoint']['alpha'] = model.S - model.B
 
 F = solvers.SteadySolver(model,config)
-if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
+if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
 t01 = time()
 F.solve()
 tf1 = time()
-if i != 0: model.adot = adot
 
-visc    = project(model.eta, model.Q)
-vel_par = config['velocity']
-vel_par['viscosity_mode']                                         = 'linear'
-vel_par['b_linear']                                               = visc
-vel_par['newton_params']['newton_solver']['relaxation_parameter'] = 1.0
-
+config['velocity']['viscosity_mode']   = 'linear'
+config['velocity']['b_linear']         = project(model.eta, model.Q)
 config['enthalpy']['on']               = False
 config['surface_climate']['on']        = False
 config['coupled']['on']                = False
-if i !=0: config['velocity']['use_T0'] = False
+config['velocity']['use_T0']           = False
 config['adjoint']['control_variable']  = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-if i != 0: File(dir_b + str(i-1) + '/beta2_opt.xml') >> model.beta2
+if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
 t02 = time()
 A.solve()
 tf2 = time()
 
-File(out_dir + 'Mb.pvd')      << model.Mb
-File(out_dir + 'S.pvd')       << model.S
-File(out_dir + 'B.pvd')       << model.B
-File(out_dir + 'u.pvd')       << model.u
-File(out_dir + 'v.pvd')       << model.v
-File(out_dir + 'w.pvd')       << model.w
+File(out_dir + 'S.xml')       << model.S
+File(out_dir + 'B.xml')       << model.B
+File(out_dir + 'u.xml')       << model.u
+File(out_dir + 'v.xml')       << model.v
+File(out_dir + 'w.xml')       << model.w
 
 tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
 #tau_tot = project(tau_lon + tau_lat + tau_bas - tau_drv)

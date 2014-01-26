@@ -2,6 +2,7 @@ from pylab          import *
 from dolfin         import *
 from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
+from helper         import print_min_max
 
 class SteadySolver(object):
   """
@@ -50,11 +51,14 @@ class SteadySolver(object):
     """ 
     Solve the problem using a Picard iteration, evaluating the velocity,
     enthalpy, surface mass balance, temperature boundary condition, and
-    the age equation.
+    the age equation.  Turn off any solver by editing the appropriate config
+    dict entry to "False".  If config['coupled']['on'] is "False", solve only
+    once.
     """
-    model  = self.model
-    config = self.config
-    T0     = config['velocity']['T0']
+    model   = self.model
+    config  = self.config
+    T0      = config['velocity']['T0']
+    outpath = config['output_path']
     
     # Set the initial Picard iteration (PI) parameters
     # L_\infty norm in velocity between iterations
@@ -74,55 +78,49 @@ class SteadySolver(object):
     if config['velocity']['use_T0']:
       model.T.vector().set_local( T0 * ones(len(model.T.vector().array())) )
 
+    if not config['coupled']['on']: max_iter = 1
+    
     # Perform a Picard iteration until the L_\infty norm of the velocity 
     # difference is less than tolerance
     while inner_error > inner_tol and counter < max_iter:
-
+      
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
-        print "solving surface climate"
         self.surface_climate_instance.solve()
 
       # Solve velocity
       if config['velocity']['on']:
-        #self.model.u.vector()[:] = 0.0
-        print "solving velocity"
         self.velocity_instance.solve()
-        uMin = model.u.vector().min()
-        uMax = model.u.vector().max()
-        print 'u <min, max> : <%f, %f>' % (uMin, uMax)
+        U    = project(as_vector([model.u, model.v, model.w]))
+        Umag = project(sqrt(inner(U,U)), model.Q)
+        if config['log']: File(outpath + 'U.pvd') << U  # save vel. vector
+        print_min_max(Umag, '||U||')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
-        print "solving enthalpy"
         self.enthalpy_instance.solve()
-        Tmin = model.T.vector().min()
-        Tmax = model.T.vector().max()
-        print 'T <min, max> : <%f, %f>' % (Tmin, Tmax)
+        if config['log']: 
+          File(outpath + 'T.pvd')  << model.T   # save temperature
+          File(outpath + 'Mb.pvd') << model.Mb  # save basal water content
+        print_min_max(model.T, 'T')
 
-      # Calculate L_\infty norm
+      # Calculate L_infinity norm
       if config['coupled']['on']:
         diff        = (u_prev - model.u.vector().array())
         inner_error = diff.max()
         u_prev      = model.u.vector().array()
-        counter    += 1
-        print 'Picard iteration %i (max %i): inner error %f (tol %f)' \
-              % (counter, max_iter, inner_error, inner_tol)
       
-      else:
-        inner_error = 0.0
+      counter += 1
+      
+      print 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)' \
+            % (counter, max_iter, inner_error, inner_tol)
+
 
     # Solve age equation
     if config['age']['on']:
-      print "solving age"
       self.age_instance.solve()
+      if config['log']: File(outpath + 'age.pvd') << model.age  # save age
 
-    if config['log']:
-      print "saving results"
-      outpath = config['output_path']
-      U       = project(as_vector([model.u, model.v, model.w]))
-      File(outpath + 'U' + '.pvd') << U
-      File(outpath + 'T' + '.pvd') << model.T
 
 class TransientSolver(object):
   """
@@ -334,11 +332,13 @@ class AdjointSolver(object):
 
   def __init__(self, model, config):
     """
-    Initialize some stuff.
+    Initialize the model with a forward instance (SteadySolver) and adjoint
+    solver (AdjointVelocityBP, only adjoint currently available).
     """
     self.model  = model
     self.config = config
-    self.config['mode'] = 'steady'
+    
+    config['mode'] = 'steady' # adjoint only solves steady-state
 
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
@@ -500,21 +500,23 @@ class AdjointSolver(object):
       U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
                      + (model.w + model.adot) )
-      file_u_xml << U
-      file_u_pvd << U
-      file_b_xml << model.beta2 
-      file_b_pvd << model.beta2
+      file_u_xml    << U
+      file_u_pvd    << U
+      file_b_xml    << model.beta2 
+      file_b_pvd    << model.beta2
       file_dSdt_pvd << dSdt
+      file_Mb_pvd   << model.Mb
       return Js
 
     #===========================================================================
     # Set up file I/O
     path = config['output_path']
-    file_b_xml    = File(path + 'beta2_opt.xml')
-    file_b_pvd    = File(path + 'beta2_opt.pvd')
-    file_u_xml    = File(path + 'U_opt.pvd')
-    file_u_pvd    = File(path + 'U_opt.xml')
+    file_b_xml    = File(path + 'beta2.xml')
+    file_b_pvd    = File(path + 'beta2.pvd')
+    file_u_xml    = File(path + 'U.pvd')
+    file_u_pvd    = File(path + 'U.xml')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
+    file_Mb_pvd   = File(path + 'Mb.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:
@@ -531,7 +533,7 @@ class AdjointSolver(object):
     else:
       iprint = 1
     b = []
-    # convert bounds to an array of tuples and serialise it in parallel environ.
+    # convert bounds to an array of tuples and serialize it in parallel environ.
     for bounds in bounds_list:
       bounds_arr = []
       for i in range(2):
@@ -542,7 +544,6 @@ class AdjointSolver(object):
       b.append(array(bounds_arr).T)
     bounds = vstack(b)  
     print bounds
-       
     
     # minimize this stuff :
     mopt, f, d = fmin_l_bfgs_b(_I_fun, m_global, fprime=_J_fun, bounds=bounds,
@@ -551,6 +552,7 @@ class AdjointSolver(object):
     n = len(mopt)/len(config['adjoint']['control_variable'])
     for ii,c in enumerate(config['adjoint']['control_variable']):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
+
 
 class BalanceVelocitySolver(object):
   def __init__(self, model, config):

@@ -397,7 +397,7 @@ class DataFactory(object):
     adot    = array(data.variables['acca'][:])
     mask    = array(data.variables['mask'][:])
     srfTemp = array(data.variables['temp'][:]) + 273.15
-    q_geo   = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365
+    q_geo   = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365 / 1000
    
     H             = h - b
     h[H < thklim] = b[H < thklim] + thklim

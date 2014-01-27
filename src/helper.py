@@ -725,10 +725,9 @@ def tau(u, mu):
 def vert_integrate(u, ff, Q):
   phi    = TestFunction(Q)
   v      = TrialFunction(Q)
-  u_norm = project(sqrt(inner(u,u)), Q)
-  bc     = DirichletBC(Q, u_norm, ff, 3)
+  bc     = DirichletBC(Q, 0.0, ff, 3)
   a      = v.dx(2) * phi * dx
-  L      = u_norm * phi * dx
+  L      = u * phi * dx
   v      = Function(Q)
   solve(a == L, v, bc)
   return v
@@ -756,8 +755,11 @@ def component_stress(model):
   unit_t  = u_t / norm_u
   dSdxMag = sqrt(inner(grad(S), grad(S)))
 
-  tau_lon = vert_integrate(project(dot(sig, unit_n)), ff, Q)
-  tau_lat = vert_integrate(project(dot(sig, unit_t)), ff, Q)
+  lon_com = dot(sig, unit_n)
+  lat_com = dot(sig, unit_t)
+
+  tau_lon = vert_integrate(project(sqrt(inner(lon_com, lon_com))), ff, Q)
+  tau_lat = vert_integrate(project(sqrt(inner(lat_com, lat_com))), ff, Q)
   tau_bas = project(inner(beta2, norm_u))
   tau_drv = project(rho*g*H*dSdxMag)
 

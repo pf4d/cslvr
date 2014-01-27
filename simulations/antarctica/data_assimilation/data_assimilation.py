@@ -174,6 +174,8 @@ t01 = time()
 F.solve()
 tf1 = time()
 
+params = config['velocity']['newton_params']['newton_solver']
+params['relaxation_parameter']         = 1.0
 config['velocity']['viscosity_mode']   = 'linear'
 config['velocity']['b_linear']         = project(model.eta, model.Q)
 config['enthalpy']['on']               = False

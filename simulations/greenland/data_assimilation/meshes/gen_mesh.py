@@ -1,6 +1,6 @@
 import sys
 import os
-src_directory = '../../../'
+src_directory = '../../../../'
 sys.path.append(src_directory)
 
 from src.utilities     import DataInput, MeshGenerator
@@ -13,7 +13,7 @@ vara = DataFactory.get_bamber()
 dd = DataInput(None, vara, gen_space=False)
 dd.set_data_max('mask', 2, 0)
 
-m = MeshGenerator(dd, 'mesh', 'meshes/')
+m = MeshGenerator(dd, 'mesh', '')
 
 m.create_contour('H', 200.0, 4)
 #m.plot_contour()

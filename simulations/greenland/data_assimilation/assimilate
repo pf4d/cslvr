@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for i in {0..3}
+do
+  mpirun -np 16 python data_assimilation.py $i;
+done

@@ -339,9 +339,6 @@ class AdjointSolver(object):
     self.config = config
     
     config['mode'] = 'steady' # adjoint only solves steady-state
-
-    params = config['velocity']['newton_params']
-    params['newton_solver']['relaxation_parameter']      = 1.0
     
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)

@@ -87,7 +87,7 @@ parameters['form_compiler']['quadrature_degree']                 = 2
 
 # output directory :
 i = int(sys.argv[1])
-dir_b   = './results/0'
+dir_b   = './results_42/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -129,7 +129,7 @@ config = { 'mode'                         : 'steady',
              'on'                  : True,
              'use_surface_climate' : False,
              'T_surface'           : SurfaceTemperature,
-             'q_geo'               : BasalHeatFlux,
+             'q_geo'               : 0.042 * 60 * 60 * 24 * 365,#BasalHeatFlux,
              'lateral_boundaries'  : None
            },
            'free_surface' :

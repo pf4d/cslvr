@@ -93,7 +93,7 @@ class SteadySolver(object):
         self.velocity_instance.solve()
         U    = project(as_vector([model.u, model.v, model.w]))
         Umag = project(sqrt(inner(U,U)), model.Q)
-        if config['log']: File(outpath + 'U.pvd') << U  # save vel. vector
+        if config['log']: File(outpath + 'Umag.pvd') << Umag  # save vel. mag.
         print_min_max(Umag, '||U||')
 
       # Solve enthalpy (temperature, water content)
@@ -341,7 +341,7 @@ class AdjointSolver(object):
     config['mode'] = 'steady' # adjoint only solves steady-state
 
     params = config['velocity']['newton_params']
-    params['newton_solver']['maximum_iterations']      = 1
+    params['newton_solver']['relaxation_parameter']      = 1.0
     
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
@@ -503,8 +503,9 @@ class AdjointSolver(object):
       U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
                      + (model.w + model.adot) )
+      Umag = project(sqrt(inner(U,U)), model.Q)
       file_u_xml    << U
-      file_u_pvd    << U
+      file_u_pvd    << Umag
       file_b_xml    << model.beta2 
       file_b_pvd    << model.beta2
       file_dSdt_pvd << dSdt
@@ -516,7 +517,7 @@ class AdjointSolver(object):
     path = config['output_path']
     file_b_xml    = File(path + 'beta2.xml')
     file_b_pvd    = File(path + 'beta2.pvd')
-    file_u_xml    = File(path + 'U.pvd')
+    file_u_xml    = File(path + 'Umag.pvd')
     file_u_pvd    = File(path + 'U.xml')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
     file_Mb_pvd   = File(path + 'Mb.pvd')

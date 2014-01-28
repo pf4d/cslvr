@@ -514,8 +514,8 @@ class AdjointSolver(object):
     path = config['output_path']
     file_b_xml    = File(path + 'beta2.xml')
     file_b_pvd    = File(path + 'beta2.pvd')
-    file_u_xml    = File(path + 'Umag.pvd')
-    file_u_pvd    = File(path + 'U.xml')
+    file_u_xml    = File(path + 'U.xml')
+    file_u_pvd    = File(path + 'Umag.pvd')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
     file_Mb_pvd   = File(path + 'Mb.pvd')
 

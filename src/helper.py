@@ -95,42 +95,6 @@ def download_file(url, direc, folder, extract=False):
     os.remove(direc + fn)
 
 
-def extrude_z(f, b, d, model):
-  r"""
-  This extrudes a function <f> defined along a boundary <b> out onto
-  the domain in the direction <d> of z.  It does this by formulating a 
-  variational problem:
-
-  :Conditions: 
-  .. math::
-  \frac{\partial u}{\partial z} = 0
-  
-  u|_b = f
-
-  and solving.  
-  
-  :param f     : Dolfin function defined along a boundary
-  :param b     : Boundary condition
-  :param d     : Subdomain over which to perform differentiation
-  :param model : An instantiated 2D flowline ice :class:`~src.model.Model`
-  """
-  Q   = model.Q
-
-  # Define test and trial based on function space.
-  ffe = TrialFunction(Q)
-  phi = TestFunction(Q)
-  fe  = Function(Q)
-
-  # Linear PDE
-  ae  = ffe.dx(d) * phi * dx
-  Le  = 1e-20 * phi * dx  #1e-20 to fool the form compliler
-  bce = [DirichletBC(Q, f, b)]
-
-  # Solve and return new Function
-  solve(ae == Le, fe, bce)
-  return fe
-
-
 class IsotropicMeshRefiner(object):
   """
   In this class, the cells in the mesh are isotropically refined above a 
@@ -711,6 +675,41 @@ def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   return DolfinExpression
 
 
+def extrude(f, b, d, ff, Q):
+  r"""
+  This extrudes a function <f> defined along a boundary <b> out onto
+  the domain in the direction <d>.  It does this by formulating a 
+  variational problem:
+
+  :Conditions: 
+  .. math::
+  \frac{\partial u}{\partial d} = 0
+  
+  u|_b = f
+
+  and solving.  
+  
+  :param f  : Dolfin function defined along a boundary
+  :param b  : Boundary condition
+  :param d  : Subdomain over which to perform differentiation
+  :param ff : Subdomain FacetFunction 
+  :param Q  : FunctionSpace of domain
+  """
+  # define test and trial based on function space :
+  phi = TestFunction(Q)
+  v   = TrialFunction(Q)
+
+  # linear PDE :
+  a  = v.dx(d) * phi * dx
+  L  = DOLFIN_EPS * phi * dx  # really close to zero to fool FFC
+  bc = DirichletBC(Q, f, ff, b)
+
+  # solve and return new Function
+  v  = Function(Q)
+  solve(a == L, v, bc)
+  return v
+
+
 def print_min_max(u, title):
   uMin = u.vector().min()
   uMax = u.vector().max()
@@ -755,13 +754,21 @@ def component_stress(model):
   unit_t  = u_t / norm_u
   dSdxMag = sqrt(inner(grad(S), grad(S)))
 
+  beta2   = extrude(beta2,  3, 2, ff, Q)
+  u_bas   = extrude(norm_u, 3, 2, ff, Q)
+
   lon_com = dot(sig, unit_n)
   lat_com = dot(sig, unit_t)
 
   tau_lon = vert_integrate(project(sqrt(inner(lon_com, lon_com))), ff, Q)
   tau_lat = vert_integrate(project(sqrt(inner(lat_com, lat_com))), ff, Q)
-  tau_bas = project(inner(beta2, norm_u))
+  tau_bas = project(beta2*u_bas)
   tau_drv = project(rho*g*H*dSdxMag)
+
+  tau_lon = extrude(tau_lon, 2, 2, ff, Q)
+  tau_lat = extrude(tau_lat, 2, 2, ff, Q)
+  #tau_bas = extrude(tau_bas, 3, 2, ff, Q)
+  #tau_drv = extrude(tau_drv, 2, 2, ff, Q)
 
   return tau_lon, tau_lat, tau_bas, tau_drv
 

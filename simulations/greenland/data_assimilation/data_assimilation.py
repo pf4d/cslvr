@@ -61,8 +61,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_low.xml')
-flat_mesh = Mesh('meshes/mesh_low.xml')
+mesh      = Mesh('meshes/mesh_high_new.xml')
+flat_mesh = Mesh('meshes/mesh_high_new.xml')
 #mesh      = Mesh('meshes/mesh_low.xml')
 #flat_mesh = Mesh('meshes/mesh_low.xml')
 mesh.coordinates()[:,2]      /= 100000.0
@@ -124,7 +124,7 @@ parameters['form_compiler']['quadrature_degree']                 = 2
 i = int(sys.argv[1])
 #dir_b   = './results_sr/0'
 #dir_b   = './results_fm/0'
-dir_b   = './results_low/0'
+dir_b   = './results_high_new/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -235,13 +235,13 @@ File(out_dir + 'v.xml')       << model.v
 File(out_dir + 'w.xml')       << model.w
 
 tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
-#tau_tot = project(tau_lon + tau_lat + tau_bas - tau_drv)
+tau_tot = project(tau_lon + tau_lat + tau_bas - tau_drv)
 
 File(out_dir + 'tau_lon.pvd') << tau_lon 
 File(out_dir + 'tau_lat.pvd') << tau_lat 
 File(out_dir + 'tau_bas.pvd') << tau_bas
 File(out_dir + 'tau_drv.pvd') << tau_drv
-#File(out_dir + 'tau_tot.pvd') << tau_tot 
+File(out_dir + 'tau_tot.pvd') << tau_tot 
 #File(out_dir + 'mesh.xdmf')   << model.mesh
 
 # functionality of HDF5 not completed by fenics devs :

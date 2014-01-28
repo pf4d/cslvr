@@ -765,8 +765,8 @@ def component_stress(model):
   tau_bas = project(beta2*u_bas)
   tau_drv = project(rho*g*H*dSdxMag)
 
-  tau_lon = extrude(tau_lon, 2, 2, ff, Q)
-  tau_lat = extrude(tau_lat, 2, 2, ff, Q)
+  #tau_lon = extrude(tau_lon, 2, 2, ff, Q)
+  #tau_lat = extrude(tau_lat, 2, 2, ff, Q)
   #tau_bas = extrude(tau_bas, 3, 2, ff, Q)
   #tau_drv = extrude(tau_drv, 2, 2, ff, Q)
 

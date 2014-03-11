@@ -14,9 +14,9 @@ dd = DataInput(None, vara, gen_space=False)
 
 m = MeshGenerator(dd, '3dmesh', '')
 
-m.create_contour('mask', 0.0, 10)
+m.create_contour('mask', 1.0, 10)
 m.eliminate_intersections(dist=10)
-#m.plot_contour()
+m.plot_contour()
 
 m.write_gmsh_contour(100000, boundary_extend=False)
 m.extrude(100000, 10)

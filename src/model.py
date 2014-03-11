@@ -114,12 +114,17 @@ class Model(object):
     self.flat_mesh = flat_mesh
 
     if deform:
-      # transform z :
-      # thickness = surface - base, z = thickness + base
-      for x in mesh.coordinates():
-        x[2] = x[2] * ( self.S_ex(x[0],x[1],x[2]) - self.B_ex(x[0],x[1],x[2]) )
-        x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
+      self.deform_mesh()
 
+  def deform_mesh(self):
+    """
+    Deforms the mesh to the geometry.
+    """
+    # transform z :
+    # thickness = surface - base, z = thickness + base
+    for x in self.mesh.coordinates():
+      x[2] = x[2] * ( self.S_ex(x[0],x[1],x[2]) - self.B_ex(x[0],x[1],x[2]) )
+      x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
 
   def calculate_boundaries(self):
     """
@@ -143,9 +148,6 @@ class Model(object):
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
         tol     = 1e-3
-        mid     = f.midpoint()
-        x_m     = mid.x()
-        y_m     = mid.y()
         mask_xy = mask(x_m, y_m)
       
         if   n.z() >=  tol and f.exterior():
@@ -192,7 +194,167 @@ class Model(object):
        containing model-relavent parameters
     """
     self.params = params
+  
+  def extrude(self, f, b, d):
+    r"""
+    This extrudes a function <f> defined along a boundary <b> out onto
+    the domain in the direction <d>.  It does this by formulating a 
+    variational problem:
+  
+    :Conditions: 
+    .. math::
+    \frac{\partial u}{\partial d} = 0
     
+    u|_b = f
+  
+    and solving.  
+    
+    :param f  : Dolfin function defined along a boundary
+    :param b  : Boundary condition
+    :param d  : Subdomain over which to perform differentiation
+    """
+    Q   = self.Q
+    ff  = self.ff
+    phi = TestFunction(Q)
+    v   = TrialFunction(Q)
+    a   = v.dx(d) * phi * dx
+    L   = DOLFIN_EPS * phi * dx  # really close to zero to fool FFC
+    bc  = DirichletBC(Q, f, ff, b)
+    v   = Function(Q)
+    solve(a == L, v, bc)
+    return v
+  
+  def calc_thickness(self):
+    """
+    Calculate the continuous thickness field which increases from 0 at the 
+    surface to the actual thickness at the bed.
+    """
+    Q   = self.Q
+    ff  = self.ff
+    H   = TrialFunction(Q)
+    phi = TestFunction(Q)
+    a   = H.dx(2) * phi * dx
+    L   = -1.0 * phi * dx
+    bc  = DirichletBC(Q, 0.0, ff, 2)
+    H   = Function(Q)
+    solve(a == L, H, bc)
+    return H
+  
+  def calc_pressure(self):
+    """
+    Calculate the continuous pressure field.
+    """
+    Q   = self.Q
+    rho = self.rho
+    g   = self.g
+    H   = self.calc_thickness() 
+    P   = rho * g * H
+    return P
+  
+  def calc_sigma(self, u):
+    """
+    Calculatethe Cauchy stress tensor of velocity field <u>.
+    """
+    P   = self.calc_pressure()
+    tau = self.calc_tau(u)
+    return tau - P*Identity(3)
+  
+  def calc_tau(self, u):
+    """
+    Calculate the deviatoric stress tensor of velocity field <u>.
+    """
+    n = u.geometric_dimension()
+    eta = self.eta
+    return eta * (grad(u) + grad(u).T - 2.0/n*div(u)*Identity(n))
+ 
+  def vert_integrate(self, u):
+    """
+    Integrate <u> from the bed to the surface.
+    """
+    ff     = self.ff
+    Q      = self.Q
+    phi    = TestFunction(Q)
+    v      = TrialFunction(Q)
+    bc     = DirichletBC(Q, 0.0, ff, 3)
+    a      = v.dx(2) * phi * dx
+    L      = u * phi * dx
+    v      = Function(Q)
+    solve(a == L, v, bc)
+    return v
+  
+  def calc_component_stress(self, u):
+    """
+    Calculate the deviatoric component of stress in the direction of <u>.
+    """
+    ff     = self.ff                           # facet function for boundaries
+    Q      = self.Q                            # function space
+    sig    = self.calc_tau(u)                  # deviatoric stress tensor
+    norm_u = project(sqrt(inner(u,u)),Q)       # norm of u
+    unit_n = u / norm_u                        # unit vector of u
+    com    = dot(sig, unit_n)                  # component of stress in u-dir.
+    com_n  = project(sqrt(inner(com, com)),Q)  # magnitude of com
+    phi    = TestFunction(Q)                   # test function
+    v      = TrialFunction(Q)                  # trial function
+    bc     = DirichletBC(Q, 0.0, ff, 3)        # boundary condition
+    a      = v.dx(2) * phi * dx                # bilinear part
+    L      = com_n * phi * dx                  # linear part
+    v      = Function(Q)                       # solution function
+    solve(a == L, v, bc)                       # solve
+    dvdx   = grad(v)                           # spatial derivative
+    dvdu   = dot(dvdx, unit_n)                 # projection of dvdx onto u
+    return project(dvdu, Q)
+
+  def component_stress(self):
+    """
+    Calculate each of the component stresses which define the full stress
+    of the ice-sheet.
+    
+    RETURNS:
+      tau_lon - longitudinal stress field
+      tau_lat - lateral stress field
+      tau_bas - frictional sliding stress at the bed
+      tau_drv - driving stress of the system 
+    
+    Note: tau_drv = tau_lon + tau_lat + tau_bas
+    """
+    beta2 = self.beta2
+    eta   = self.eta
+    ff    = self.ff
+    Q     = self.Q
+    u     = self.u
+    v     = self.v
+    w     = self.w
+    S     = self.S
+    B     = self.B
+    rho   = self.rho
+    g     = self.g
+    H     = S - B
+    zero  = Constant(0)
+  
+    u_n = as_vector([u, v])
+    u_t = as_vector([v,-u])
+    
+    norm_u  = project(sqrt(inner(u_n, u_n)), Q)
+    dSdxMag = sqrt(inner(grad(S), grad(S)))
+  
+    norm_u.update()                              # eliminate ghost vertices
+  
+    beta2_e = self.extrude(beta2,  3, 2)
+    u_bas_e = self.extrude(norm_u, 3, 2)
+ 
+    tau_lon = self.calc_component_stress(u_n)
+    tau_lat = self.calc_component_stress(u_t)
+    tau_bas = project(beta2_e*H*u_bas_e, Q)
+    tau_drv = project(rho*g*H*dSdxMag,   Q)
+  
+    tau_lon.update()                             # eliminate ghost vertices 
+    tau_lat.update()                             # eliminate ghost vertices 
+  
+    tau_lon = self.extrude(tau_lon, 2, 2)
+    tau_lat = self.extrude(tau_lat, 2, 2)
+  
+    return tau_lon, tau_lat, tau_bas, tau_drv
+   
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set

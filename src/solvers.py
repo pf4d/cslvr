@@ -504,7 +504,7 @@ class AdjointSolver(object):
       file_u_xml    << U
       file_u_pvd    << Umag
       file_b_xml    << model.beta2 
-      file_b_pvd    << model.beta2
+      file_b_pvd    << model.extrude(model.beta2, 3, 2)
       file_dSdt_pvd << dSdt
       file_Mb_pvd   << model.Mb
       return Js

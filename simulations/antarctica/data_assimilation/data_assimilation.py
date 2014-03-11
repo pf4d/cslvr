@@ -25,6 +25,17 @@ set_log_active(True)
 #set_log_level(PROGRESS)
 #set_log_level(DEBUG)
 
+# output directory :
+i = int(sys.argv[1])
+dir_b   = './results_shelves/0'
+
+# make the directory if needed :
+out_dir = dir_b + str(i) + '/'
+d       = os.path.dirname(out_dir)
+if not os.path.exists(d):
+  os.makedirs(d)
+
+
 thklim = 200.0
 
 measures  = DataFactory.get_ant_measures(res=900)
@@ -33,8 +44,8 @@ bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
 mesh      = Mesh('meshes/mesh_low.xml')
 flat_mesh = Mesh('meshes/mesh_low.xml')
-mesh.coordinates()[:,2]      /= 100000.0
-flat_mesh.coordinates()[:,2] /= 100000.0
+#mesh.coordinates()[:,2]      /= 100000.0
+#flat_mesh.coordinates()[:,2] /= 100000.0
 
 
 dm  = DataInput(None, measures, mesh=mesh)
@@ -60,40 +71,33 @@ dm.set_data_min('v_mag', 0.0, 0.0)
 Thickness          = db2.get_spline_expression("H")
 Surface            = db2.get_spline_expression("h")
 Bed                = db2.get_spline_expression("b")
+Mask               = db2.get_nearest_expression("mask")
 SurfaceTemperature = db1.get_spline_expression("srfTemp")
 BasalHeatFlux      = db1.get_spline_expression("q_geo")
 adot               = db1.get_spline_expression("adot")
 U_observed         = dm.get_spline_expression("v_mag")
 
 model = model.Model()
-model.set_geometry(Surface, Bed)
+model.set_geometry(Surface, Bed, Mask)
 
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 
 #===============================================================================
+# configure parameters :
+
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 15
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-#nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
-nonlin_solver_params['linear_solver']                            = 'mumps'
-nonlin_solver_params['preconditioner']                           = 'default'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+#nonlin_solver_params['linear_solver']                            = 'mumps'
+#nonlin_solver_params['preconditioner']                           = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
-
-# output directory :
-i = int(sys.argv[1])
-dir_b   = './results_42/0'
-
-# make the directory if needed :
-out_dir = dir_b + str(i) + '/'
-d       = os.path.dirname(out_dir)
-if not os.path.exists(d):
-  os.makedirs(d)
 
 config = { 'mode'                         : 'steady',
            't_start'                      : None,
@@ -166,6 +170,8 @@ config = { 'mode'                         : 'steady',
              'regularization_type' : 'Tikhonov'
            }}
 
+#===============================================================================
+# solution process :
 model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)

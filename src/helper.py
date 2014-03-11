@@ -716,9 +716,33 @@ def print_min_max(u, title):
   print title + ' <min, max> : <%f, %f>' % (uMin, uMax)
 
 
-def tau(u, mu):
+def calc_thickness(Q, ff):
+  H   = TrialFunction(Q)
+  phi = TestFunction(Q)
+  a   = H.dx(2) * phi * dx
+  L   = 1.0 * phi * dx
+  bc  = DirichletBC(Q, 0.0, ff, 3)
+  H   = Function(Q)
+  solve(a == L, H, bc)
+  return H
+
+
+def calc_pressure(Q, ff, rho, g):
+  H   = calc_thickness(Q, ff) 
+  P   = rho * g * H
+  return P
+
+
+def calc_sigma(Q, ff, u, eta, rho, g):
+  n   = u.geometric_dimension()
+  P   = calc_pressure(Q, ff, rho, g)
+  tau = calc_tau(u, eta)
+  return tau - P*Identity(n)
+
+
+def calc_tau(u, eta):
   n = u.geometric_dimension()
-  return mu * (grad(u)+grad(u).T - 2.0/n*div(u)*Identity(n))
+  return eta * (grad(u) + grad(u).T - 2.0/n*div(u)*Identity(n))
 
 
 def vert_integrate(u, ff, Q):
@@ -731,46 +755,67 @@ def vert_integrate(u, ff, Q):
   solve(a == L, v, bc)
   return v
 
+  
+def calc_component_stress(ff, Q, u):
+  """
+  Calculate the deviatoric component of stress in the direction of <u>.
+  """
+  sig    = calc_tau(u)                       # deviatoric stress tensor
+  norm_u = project(sqrt(inner(u,u)),Q)       # norm of u
+  unit_n = u / norm_u                        # unit vector of u
+  com    = dot(sig, unit_n)                  # component of stress in u-dir.
+  com_n  = project(sqrt(inner(com, com)),Q)  # magnitude of com
+  phi    = TestFunction(Q)                   # test function
+  v      = TrialFunction(Q)                  # trial function
+  bc     = DirichletBC(Q, 0.0, ff, 3)        # boundary condition
+  a      = v.dx(2) * phi * dx                # bilinear part
+  L      = com_n * phi * dx                  # linear part
+  v      = Function(Q)                       # solution function
+  solve(a == L, v, bc)                       # solve
+  dvdx   = grad(v)                           # spatial derivative
+  dvdu   = dot(dvdx, unit_n)                 # projection of dvdx onto u
+  return project(dvdu, Q)
 
-def component_stress(model):
-  beta2 = model.beta2
-  ff    = model.ff
-  Q     = model.Q
-  u     = model.u
-  v     = model.v
-  w     = model.w
-  S     = model.S
-  B     = model.B
-  rho   = model.rho
-  g     = model.g
+
+def component_stress(params):
+  beta2 = params[0]
+  eta   = params[1]
+  ff    = params[2]
+  Q     = params[3]
+  u     = params[4]
+  v     = params[5]
+  w     = params[6]
+  S     = params[7]
+  B     = params[8]
+  rho   = params[9]
+  g     = params[10]
   H     = S - B
+
+  zero  = Constant(0)
 
   u_n = as_vector([u, v, w])
   u_t = as_vector([v,-u, w])
-  
-  sig     = tau(u_n, 0.5)
+    
   norm_u  = project(sqrt(inner(u_n, u_n)), Q)
-  unit_n  = u_n / norm_u
-  unit_t  = u_t / norm_u
   dSdxMag = sqrt(inner(grad(S), grad(S)))
+  
+  norm_u.update()                              # eliminate ghost vertices
+  
+  beta2_e = extrude(beta2,  3, 2)
+  u_bas_e = extrude(norm_u, 3, 2)
 
-  beta2   = extrude(beta2,  3, 2, ff, Q)
-  u_bas   = extrude(norm_u, 3, 2, ff, Q)
-
-  lon_com = dot(sig, unit_n)
-  lat_com = dot(sig, unit_t)
-
-  tau_lon = vert_integrate(project(sqrt(inner(lon_com, lon_com))), ff, Q)
-  tau_lat = vert_integrate(project(sqrt(inner(lat_com, lat_com))), ff, Q)
-  tau_bas = project(beta2*u_bas)
-  tau_drv = project(rho*g*H*dSdxMag)
-
-  #tau_lon = extrude(tau_lon, 2, 2, ff, Q)
-  #tau_lat = extrude(tau_lat, 2, 2, ff, Q)
-  #tau_bas = extrude(tau_bas, 3, 2, ff, Q)
-  #tau_drv = extrude(tau_drv, 2, 2, ff, Q)
-
+  tau_lon = calc_component_stress(ff, Q, u_n)
+  tau_lat = calc_component_stress(ff, Q, u_t)
+  tau_bas = project(beta2_e*H*u_bas_e, Q)
+  tau_drv = project(rho*g*H*dSdxMag,   Q)
+  
+  tau_lon.update()                             # eliminate ghost vertices 
+  tau_lat.update()                             # eliminate ghost vertices 
+  
+  tau_lon = extrude(tau_lon, 2, 2)
+  tau_lat = extrude(tau_lat, 2, 2)
+  
   return tau_lon, tau_lat, tau_bas, tau_drv
-
+  
 
  

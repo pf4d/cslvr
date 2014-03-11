@@ -41,11 +41,21 @@ import src.physical_constants as pc
 import src.model              as model
 from meshes.mesh_factory  import MeshFactory
 from data.data_factory    import DataFactory
-from src.helper           import default_nonlin_solver_params, component_stress
+from src.helper           import default_nonlin_solver_params
 from src.utilities        import DataInput, DataOutput
 from dolfin               import *
 from pylab                import sqrt, copy
 from time                 import time
+
+# make the directory if needed :
+i = int(sys.argv[1])
+dir_b   = './results_high/0'
+
+# make the directory if needed :
+out_dir = dir_b + str(i) + '/'
+d       = os.path.dirname(out_dir)
+if not os.path.exists(d):
+  os.makedirs(d)
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -114,23 +124,11 @@ nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['linear_solver']                            = 'mumps'
-nonlin_solver_params['preconditioner']                           = 'default'
-#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-#nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+#nonlin_solver_params['linear_solver']                            = 'mumps'
+#nonlin_solver_params['preconditioner']                           = 'default'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
-
-# make the directory if needed :
-i = int(sys.argv[1])
-#dir_b   = './results_sr/0'
-#dir_b   = './results_fm/0'
-dir_b   = './results_high_new/0'
-
-# make the directory if needed :
-out_dir = dir_b + str(i) + '/'
-d       = os.path.dirname(out_dir)
-if not os.path.exists(d):
-  os.makedirs(d)
 
 config = { 'mode'                         : 'steady',
            't_start'                      : None,
@@ -228,20 +226,27 @@ t02 = time()
 A.solve()
 tf2 = time()
 
-File(out_dir + 'S.xml')       << model.S
-File(out_dir + 'B.xml')       << model.B
-File(out_dir + 'u.xml')       << model.u
-File(out_dir + 'v.xml')       << model.v
-File(out_dir + 'w.xml')       << model.w
+#File(out_dir + 'S.xml')       << model.S
+#File(out_dir + 'B.xml')       << model.B
+#File(out_dir + 'u.xml')       << model.u
+#File(out_dir + 'v.xml')       << model.v
+#File(out_dir + 'w.xml')       << model.w
+#File(out_dir + 'beta2.xml')   << model.beta2
+#File(out_dir + 'eta.xml')     << model.eta
+#File(out_dir + 'ff.xml')      << model.ff
 
-tau_lon, tau_lat, tau_bas, tau_drv = component_stress(model)
-tau_tot = project(tau_lon + tau_lat + tau_bas - tau_drv)
+tau_lon, tau_lat, tau_bas, tau_drv = model.component_stress()
+tau_tot       = project(tau_lon + tau_lat + tau_bas - tau_drv)
+tau_drv_m_bas = project(tau_drv - tau_bas)
+tau_lat_p_lon = project(tau_lat + tau_lon)
 
-File(out_dir + 'tau_lon.pvd') << tau_lon 
-File(out_dir + 'tau_lat.pvd') << tau_lat 
-File(out_dir + 'tau_bas.pvd') << tau_bas
-File(out_dir + 'tau_drv.pvd') << tau_drv
-File(out_dir + 'tau_tot.pvd') << tau_tot 
+File(out_dir + 'tau_lon.pvd')       << tau_lon
+File(out_dir + 'tau_lat.pvd')       << tau_lat
+File(out_dir + 'tau_bas.pvd')       << tau_bas
+File(out_dir + 'tau_drv.pvd')       << tau_drv
+File(out_dir + 'tau_tot.pvd')       << tau_tot
+File(out_dir + 'tau_lat_p_lon.pvd') << tau_lat_p_lon
+File(out_dir + 'tau_drv_m_bas.pvd') << tau_drv_m_bas
 #File(out_dir + 'mesh.xdmf')   << model.mesh
 
 # functionality of HDF5 not completed by fenics devs :

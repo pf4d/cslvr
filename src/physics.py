@@ -513,7 +513,7 @@ class VelocityBP(object):
         self.rho_w = rho_w
         self.g     = g
       def eval(self, values, x):
-        values[0] = -self.rho_w * self.g * min(0, x[2])
+        values[0] = self.rho_w * self.g * min(0, x[2])
     pres_b = pressure_boundary(rho_w, g)
     fnorm  = FacetNormal(mesh)
     
@@ -622,10 +622,10 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = -pres_b * fnorm
+    Pb       = - pres_b * fnorm
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGrnd #+ Pb*dFloat
+    A        = (Vd + Pe)*dx + Sl*dGrnd# + Pb*dFloat
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

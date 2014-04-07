@@ -251,22 +251,48 @@ class Model(object):
     P   = rho * g * H
     return P
   
-  def calc_sigma(self, u):
+  def calc_sigma(self, U):
     """
     Calculatethe Cauchy stress tensor of velocity field <u>.
     """
+    n   = U.geometric_dimension()
     P   = self.calc_pressure()
     tau = self.calc_tau(u)
-    return tau - P*Identity(3)
+    return tau - P*Identity(n)
+ 
+  def n_d_grad(self, u):
+    """
+    """
+    n     = u.shape()[0]
+    gradu = []
+    for i in range(n):
+      graduRow = []
+      for j in range(n):
+        graduRow.append(u[i].dx(j))
+      gradu.append(graduRow)
+    gradu = as_matrix(gradu)
+    return gradu
   
-  def calc_tau(self, u):
+  def n_d_div(self, u):
+    """
+    """
+    n     = u.shape()[0]
+    divu  = 0.0
+    for i in range(n):
+      divu += u[i].dx(i)
+    return divu
+  
+  def calc_tau(self, U):
     """
     Calculate the deviatoric stress tensor of velocity field <u>.
     """
-    n = u.geometric_dimension()
-    eta = self.eta
-    return eta * (grad(u) + grad(u).T - 2.0/n*div(u)*Identity(n))
- 
+    n     = U.geometric_dimension()
+    eta   = self.eta
+    gradU = nabla_grad(U)
+    divU  = nabla_div(U)
+    tau   = eta * (gradU + gradU.T - 2.0/n * divU * Identity(n))
+    return tau
+     
   def vert_integrate(self, u):
     """
     Integrate <u> from the bed to the surface.
@@ -282,16 +308,14 @@ class Model(object):
     solve(a == L, v, bc)
     return v
   
-  def calc_component_stress(self, u):
+  def calc_component_stress(self, U, u_dir):
     """
     Calculate the deviatoric component of stress in the direction of <u>.
     """
     ff     = self.ff                           # facet function for boundaries
     Q      = self.Q                            # function space
-    sig    = self.calc_tau(u)                  # deviatoric stress tensor
-    norm_u = project(sqrt(inner(u,u)),Q)       # norm of u
-    unit_n = u / norm_u                        # unit vector of u
-    com    = dot(sig, unit_n)                  # component of stress in u-dir.
+    sig    = self.calc_tau(U)                  # deviatoric stress tensor
+    com    = dot(sig, u_dir)                   # component of stress in u-dir.
     com_n  = project(sqrt(inner(com, com)),Q)  # magnitude of com
     phi    = TestFunction(Q)                   # test function
     v      = TrialFunction(Q)                  # trial function
@@ -301,7 +325,7 @@ class Model(object):
     v      = Function(Q)                       # solution function
     solve(a == L, v, bc)                       # solve
     dvdx   = grad(v)                           # spatial derivative
-    dvdu   = dot(dvdx, unit_n)                 # projection of dvdx onto u
+    dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
     return project(dvdu, Q)
 
   def component_stress(self):
@@ -329,31 +353,37 @@ class Model(object):
     rho   = self.rho
     g     = self.g
     H     = S - B
-    zero  = Constant(0)
+    zero  = Constant(0.0)
   
-    u_n = as_vector([u, v])
-    u_t = as_vector([v,-u])
+    u_n = as_vector([u, v, zero])
+    u_t = as_vector([v,-u, zero])
+    U   = as_vector([u, v, w])
     
-    norm_u  = project(sqrt(inner(u_n, u_n)), Q)
-    dSdxMag = sqrt(inner(grad(S), grad(S)))
+    norm_U   = project(sqrt(inner(U, U)),     Q)
+    norm_u   = project(sqrt(inner(u_n, u_n)), Q)
+    gradSMag = sqrt(inner(grad(S), grad(S)))
   
     norm_u.update()                              # eliminate ghost vertices
+    norm_U.update()                              # eliminate ghost vertices
   
     beta2_e = self.extrude(beta2,  3, 2)
-    u_bas_e = self.extrude(norm_u, 3, 2)
+    u_bas_e = self.extrude(norm_U, 3, 2)
  
-    tau_lon = self.calc_component_stress(u_n)
-    tau_lat = self.calc_component_stress(u_t)
+    tau_lon = self.calc_component_stress(U, u_n/norm_u)
+    tau_lat = self.calc_component_stress(U, u_t/norm_u)
     tau_bas = project(beta2_e*H*u_bas_e, Q)
-    tau_drv = project(rho*g*H*dSdxMag,   Q)
-  
+    tau_drv = project(rho*g*H*gradSMag,  Q)
+
+    tau_bas2 = project(tau_drv - tau_lon - tau_lat)
+    beta22   = project(tau_bas2 / (H*u_bas_e))
+
     tau_lon.update()                             # eliminate ghost vertices 
     tau_lat.update()                             # eliminate ghost vertices 
   
     tau_lon = self.extrude(tau_lon, 2, 2)
     tau_lat = self.extrude(tau_lat, 2, 2)
   
-    return tau_lon, tau_lat, tau_bas, tau_drv
+    return tau_lon, tau_lat, tau_bas, tau_drv, beta22
    
   def initialize_variables(self):
     """

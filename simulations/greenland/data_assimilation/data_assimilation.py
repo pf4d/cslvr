@@ -49,7 +49,7 @@ from time                 import time
 
 # make the directory if needed :
 i = int(sys.argv[1])
-dir_b   = './results_high/0'
+dir_b   = './results_high_new_U/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -69,6 +69,7 @@ meas_shf = DataFactory.get_shift_gre_measures()
 bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 sec_qgeo = DataFactory.get_gre_qgeo_secret()
+merged   = DataFactory.get_gre_merged()
 
 # define the meshes :
 mesh      = Mesh('meshes/mesh_high_new.xml')
@@ -86,10 +87,12 @@ dbm     = DataInput(None, bamber,   mesh=mesh)
 #dmss    = DataInput(None, meas_shf, mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
 dsq     = DataInput(None, sec_qgeo, mesh=mesh)
+dmg     = DataInput(None, merged,   mesh=mesh)
 #dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
 #dms.change_projection(dsr)
+dmg.change_projection(dsr)
 
 # get the expressions used by varglas :
 Thickness          = dbm.get_spline_expression('H')
@@ -100,21 +103,24 @@ SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dsq.get_spline_expression('q_geo')
 #BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
-U_observed         = dsr.get_spline_expression('U_ob')
+#U_observed         = dsr.get_spline_expression('U_ob')
+U_observed         = dmg.get_spline_expression('v_mag')
 
 # inspect the data values :
-do    = DataOutput('results_pre/')
-model = model.Model()
-model.set_geometry(Surface, Bed)
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
-model.set_parameters(pc.IceParameters())
-model.initialize_variables()
+#do    = DataOutput('results_pre/')
+#do.write_one_file('merged_vmag',    dmg.get_projection('v_mag'))
 #do.write_one_file('ff',             model.ff)
 #do.write_one_file('h',              dbm.get_projection('h'))
 #do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
 #do.write_one_file('sq_qgeo',        dsq.get_projection('q_geo'))
 #do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
 #exit(0)
+
+model = model.Model()
+model.set_geometry(Surface, Bed)
+model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+model.set_parameters(pc.IceParameters())
+model.initialize_variables()
 
 
 # specifify non-linear solver parameters :
@@ -169,7 +175,7 @@ config = { 'mode'                         : 'steady',
            },
            'free_surface' :
            { 
-             'on'               : True,
+             'on'               : False,
              'lump_mass_matrix' : True,
              'thklim'           : thklim,
              'use_pdd'          : False,
@@ -226,27 +232,42 @@ t02 = time()
 A.solve()
 tf2 = time()
 
-#File(out_dir + 'S.xml')       << model.S
-#File(out_dir + 'B.xml')       << model.B
-#File(out_dir + 'u.xml')       << model.u
-#File(out_dir + 'v.xml')       << model.v
-#File(out_dir + 'w.xml')       << model.w
-#File(out_dir + 'beta2.xml')   << model.beta2
-#File(out_dir + 'eta.xml')     << model.eta
-#File(out_dir + 'ff.xml')      << model.ff
+File(out_dir + 'S.xml')       << model.S
+File(out_dir + 'B.xml')       << model.B
+File(out_dir + 'u.xml')       << model.u
+File(out_dir + 'v.xml')       << model.v
+File(out_dir + 'w.xml')       << model.w
+File(out_dir + 'beta2.xml')   << model.beta2
+File(out_dir + 'eta.xml')     << model.eta
 
-tau_lon, tau_lat, tau_bas, tau_drv = model.component_stress()
+out     = model.component_stress()
+tau_lon = out[0]
+tau_lat = out[1]
+tau_bas = out[2]
+tau_drv = out[3]
+beta22  = out[4]
+
 tau_tot       = project(tau_lon + tau_lat + tau_bas - tau_drv)
 tau_drv_m_bas = project(tau_drv - tau_bas)
 tau_lat_p_lon = project(tau_lat + tau_lon)
+tau_bas2      = project(tau_drv - tau_lon - tau_lat)
+tau_drv2      = project(tau_bas + tau_lon + tau_lat)
+tau_tot2      = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
+tau_drv_m_bas2 = project(tau_drv - tau_bas2)
 
-File(out_dir + 'tau_lon.pvd')       << tau_lon
-File(out_dir + 'tau_lat.pvd')       << tau_lat
-File(out_dir + 'tau_bas.pvd')       << tau_bas
-File(out_dir + 'tau_drv.pvd')       << tau_drv
-File(out_dir + 'tau_tot.pvd')       << tau_tot
-File(out_dir + 'tau_lat_p_lon.pvd') << tau_lat_p_lon
-File(out_dir + 'tau_drv_m_bas.pvd') << tau_drv_m_bas
+File(out_dir + 'tau_lon.pvd')        << tau_lon
+File(out_dir + 'tau_lat.pvd')        << tau_lat
+File(out_dir + 'tau_bas.pvd')        << tau_bas
+File(out_dir + 'tau_drv.pvd')        << tau_drv
+File(out_dir + 'tau_tot.pvd')        << tau_tot
+File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
+File(out_dir + 'tau_drv_m_bas.pvd')  << tau_drv_m_bas
+File(out_dir + 'tau_drv_m_bas2.pvd') << tau_drv_m_bas2
+File(out_dir + 'tau_bas2.pvd')       << tau_bas2
+File(out_dir + 'tau_drv2.pvd')       << tau_drv2
+File(out_dir + 'beta22.pvd')         << beta22
+File(out_dir + 'tau_tot2.pvd')       << tau_tot2
+
 #File(out_dir + 'mesh.xdmf')   << model.mesh
 
 # functionality of HDF5 not completed by fenics devs :

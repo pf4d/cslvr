@@ -67,5 +67,9 @@ v2      = 'http://ubuntuone.com/2b9zcV93XCYdqOjpBfbEqe'
 fldr    = 'bamber13'
 download_file(v2, home, fldr, extract=True)
 
+# merged 2014 velocity data :
+merged  = 'http://ubuntuone.com/4XjYqHW3rOvouxRXM0GBXv'
+fldr    = 'merged'
+download_file(merged, home, fldr, extract=True)
 
 

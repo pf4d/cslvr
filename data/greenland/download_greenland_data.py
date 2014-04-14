@@ -37,8 +37,9 @@ download_file(meas + '_vx.tif', home, fldr)
 download_file(meas + '_vy.tif', home, fldr)
 
 # get errors in .tif format
-errors  = 'https://www.dropbox.com/s/65q1wtc8mofotnz/' + \
-          'greenland_measures_error.tar.gz'
+errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
+          'greenland_measures_error.tar.gz?dl=1&token_hash=AAEp' +\
+          '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
 download_file(errors, home, fldr, extract=True)
 
 # convert to searise projection via raster warp :
@@ -59,19 +60,23 @@ fldr    = 'searise'
 download_file(searise, home, fldr)
 
 # smooth target matlab matrix :
-smooth  = 'https://www.dropbox.com/s/e8r0x37mil03hvu/smooth_target.tar.gz'
+smooth  = 'https://dl.dropboxusercontent.com/s/e8r0x37mil03hvu/' +\
+          'smooth_target.tar.gz?dl=1&token_hash=AAGafyrXdL72vZL' +\
+          'ffoBX3_kfAcEzvFhvrw8rERNx2WQShA'
 fldr    = 'searise'
 download_file(smooth, home, fldr, extract=True)
 
 # Bamber 2013 bedrock topography dataset :
-v2      = 'https://www.dropbox.com/s/qd02y99d1xrkdz3/' + \
-          'Greenland_bedrock_topography_V2.tar.gz'
+v2      = 'https://dl.dropboxusercontent.com/s/qd02y99d1xrkdz3/' + \
+          'Greenland_bedrock_topography_V2.tar.gz?dl=1&token_ha' + \
+          'sh=AAFzWa8fuvcKC2tBYqY9VzDLctRWwqX2EuN-179bJ74XEg'
 fldr    = 'bamber13'
 download_file(v2, home, fldr, extract=True)
 
 # merged 2014 velocity data :
-merged  = 'https://www.dropbox.com/s/d50xn9nwr107awv/' + \
-          'velocity_greenland_merged_15Feb2013.tar.gz'
+merged  = 'https://dl.dropboxusercontent.com/s/d50xn9nwr107awv/' + \
+          'velocity_greenland_merged_15Feb2013.tar.gz?dl=1&toke' + \
+          'n_hash=AAHz4wSf4OBzbVsVwwHvScaFTtADgTR6IO_siXZLh0BM9w'
 fldr    = 'merged'
 download_file(merged, home, fldr, extract=True)
 

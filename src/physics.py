@@ -255,6 +255,7 @@ class VelocityStokes(object):
                      + (v.dx(2) + w.dx(1))**2) \
              + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
     epsdot = 0.5 * term + eps_reg
+    eta    = b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
     Vd     = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
@@ -284,6 +285,7 @@ class VelocityStokes(object):
 
     model.A      = A
     model.epsdot = epsdot
+    model.eta    = eta
     model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl

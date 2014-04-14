@@ -1,6 +1,6 @@
 #
 # FEniCS 1.2.0 Assimilation run times (16 cores, 20 function evals):
-# ==================================================================
+# ==============================================================================
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
@@ -15,16 +15,24 @@
 #  10 layers DivGrid3 |    2612400 | 01:07:32 | 01:12:31 | 01:12:51 | 01:12:18 
 #
 #
-# FEniCS 1.3.0 Assimilation run times (16 cores, 20 function evals):
-# ==================================================================
+# FEniCS 1.3.0 'fo' assimilation run times (16 cores, 20 function evals):
+# ==============================================================================
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
 #  mesh_high.xml      |    3747930 | 02:13:59 | 02:14:34 | 02:12:27 |
 #
 #
+# FEniCS 1.3.0 'stokes' assimilation run times (16 cores, 20 function evals):
+# ==============================================================================
+#
+#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
+#  -------------------+------------+----------+----------+----------+----------
+#  mesh_high_new.xml  |    3747930 |          |          |          | 04:01:40
+#
+#
 # Assimilation run times (8 cores, 20 function evals):
-# =====================================================
+# ==============================================================================
 #
 #  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
 #  -------------------+------------+----------+----------+----------+----------
@@ -49,7 +57,7 @@ from time                 import time
 
 # make the directory if needed :
 i = int(sys.argv[1])
-dir_b   = './results_high_new_U/0'
+dir_b   = './results_high_stokes/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -210,7 +218,9 @@ config = { 'mode'                         : 'steady',
 model.eps_reg = 1e-5
 
 F = solvers.SteadySolver(model,config)
-if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
+if i != 0: 
+  File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
+  config['velocity']['approximation'] = 'stokes'
 t01 = time()
 F.solve()
 tf1 = time()

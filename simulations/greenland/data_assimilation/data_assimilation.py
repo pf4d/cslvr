@@ -1,44 +1,3 @@
-#
-# FEniCS 1.2.0 Assimilation run times (16 cores, 20 function evals):
-# ==============================================================================
-#
-#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
-#  -------------------+------------+----------+----------+----------+----------
-#  10 layers 1xGrid   |    1187610 |    NA    | 00:26:31 | 00:27:40 | 00:27:46 
-#  20 layers 1xGrid   |    2374020 | 01:13:09 | 01:18:18 | 01:17:33 | 01:18:29 
-#  30 layers 1xGrid   |    4265526 |    /     |          |          |          
-#  10 layers 2.5xGrid |    2114880 | 01:17:34 | 01:19:21 | 01:22:38 | 01:35:02 
-#  10 layers 3xGrid   |    2680020 | 01:41:14 | 01:51:47 | 02:06:10m| 01:51:46
-#  10 layers 3.5xGrid |    3992850 |    /     |          |          | 
-#  10 layers DivGrid  |    2235810 | 00:57:36 | 01:01:16 | 01:01:15 | 01:00:03
-#  10 layers DivGrid2 |    2613600 | 01:14:20 | 01:14:20 | 01:14:11 | 01:13:47
-#  10 layers DivGrid3 |    2612400 | 01:07:32 | 01:12:31 | 01:12:51 | 01:12:18 
-#
-#
-# FEniCS 1.3.0 'fo' assimilation run times (16 cores, 20 function evals):
-# ==============================================================================
-#
-#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
-#  -------------------+------------+----------+----------+----------+----------
-#  mesh_high.xml      |    3747930 | 02:13:59 | 02:14:34 | 02:12:27 |
-#
-#
-# FEniCS 1.3.0 'stokes' assimilation run times (16 cores, 20 function evals):
-# ==============================================================================
-#
-#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
-#  -------------------+------------+----------+----------+----------+----------
-#  mesh_high_new.xml  |    3747930 |          |          |          | 04:01:40
-#
-#
-# Assimilation run times (8 cores, 20 function evals):
-# ==============================================================================
-#
-#  mesh type          | # elements | run 1    | run 2    | run 3    | run 4    
-#  -------------------+------------+----------+----------+----------+----------
-#  10 layers crude    |     370740 |  |  |  |  
-#
-
 import sys
 import os
 src_directory = '../../../'
@@ -56,7 +15,7 @@ from pylab                import sqrt, copy
 from time                 import time
 
 # make the directory if needed :
-dir_b   = './results/'
+out_dir   = './results/'
 
 set_log_active(True)
 #set_log_level(PROGRESS)

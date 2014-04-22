@@ -1311,8 +1311,12 @@ class FreeSurface(object):
     else:
       m.ident_zeros()
       solve(m, model.dSdt.vector(), r)
-      
-    solve(lhs(self.A_pro) == rhs(self.A_pro), model.dSdt)
+
+    A = assemble(lhs(self.A_pro))
+    p = assemble(rhs(self.A_pro))
+    q = Vector()  
+    solve(A, q,p)
+    model.dSdt.vector()[:] = q
 
 class AdjointVelocityBP(object):
   """ 

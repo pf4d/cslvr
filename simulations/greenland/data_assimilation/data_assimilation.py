@@ -52,12 +52,11 @@ from data.data_factory    import DataFactory
 from src.helper           import default_nonlin_solver_params
 from src.utilities        import DataInput, DataOutput
 from dolfin               import *
-from pylab                import sqrt, copy
 from time                 import time
 
 # make the directory if needed :
 i = int(sys.argv[1])
-dir_b   = './results_high_stokes/0'
+dir_b   = './results_high_fo/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -220,7 +219,7 @@ model.eps_reg = 1e-5
 F = solvers.SteadySolver(model,config)
 if i != 0: 
   File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
-  config['velocity']['approximation'] = 'stokes'
+  #config['velocity']['approximation'] = 'stokes'
 t01 = time()
 F.solve()
 tf1 = time()
@@ -241,7 +240,7 @@ if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
 t02 = time()
 A.solve()
 tf2 = time()
-
+    
 File(out_dir + 'S.xml')       << model.S
 File(out_dir + 'B.xml')       << model.B
 File(out_dir + 'u.xml')       << model.u
@@ -257,14 +256,27 @@ tau_bas = out[2]
 tau_drv = out[3]
 beta22  = out[4]
 
-tau_tot       = project(tau_lon + tau_lat + tau_bas - tau_drv)
-tau_drv_m_bas = project(tau_drv - tau_bas)
-tau_lat_p_lon = project(tau_lat + tau_lon)
-tau_bas2      = project(tau_drv - tau_lon - tau_lat)
-tau_drv2      = project(tau_bas + tau_lon + tau_lat)
-tau_tot2      = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
+tau_tot        = project(tau_lon + tau_lat + tau_bas - tau_drv)
+tau_drv_m_bas  = project(tau_drv - tau_bas)
+tau_lat_p_lon  = project(tau_lat + tau_lon)
+tau_bas2       = project(tau_drv - tau_lon - tau_lat)
+tau_drv2       = project(tau_bas + tau_lon + tau_lat)
+tau_tot2       = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
 tau_drv_m_bas2 = project(tau_drv - tau_bas2)
+U              = as_vector([model.u, model.v, model.w])
+intDivU        = project(model.vert_integrate(div(U)))
+H_integral     = model.extrude(model.calc_thickness(), 3, 2)
+H_diff         = project((model.S - model.B) - H_integral)
+gradSmag       = sqrt(inner(grad(model.S), grad(model.S)))
 
+intDivU.update()
+H_integral.update()
+H_diff.update()
+
+File(out_dir + 'gradSmag.pvd')       << project(gradSmag)
+File(out_dir + 'H_diff.pvd')         << project(H_diff)
+File(out_dir + 'H_data.pvd')         << project(model.S - model.B)
+File(out_dir + 'H_integral.pvd')     << project(H_integral)
 File(out_dir + 'tau_lon.pvd')        << tau_lon
 File(out_dir + 'tau_lat.pvd')        << tau_lat
 File(out_dir + 'tau_bas.pvd')        << tau_bas
@@ -277,6 +289,7 @@ File(out_dir + 'tau_bas2.pvd')       << tau_bas2
 File(out_dir + 'tau_drv2.pvd')       << tau_drv2
 File(out_dir + 'beta22.pvd')         << beta22
 File(out_dir + 'tau_tot2.pvd')       << tau_tot2
+File(out_dir + 'intDivU.pvd')        << intDivU
 
 #File(out_dir + 'mesh.xdmf')   << model.mesh
 

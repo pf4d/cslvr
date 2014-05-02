@@ -326,7 +326,7 @@ class Model(object):
     solve(a == L, v, bc)                       # solve
     dvdx   = grad(v)                           # spatial derivative
     dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
-    return project(dvdu, Q)
+    return dvdu
 
   def component_stress(self):
     """
@@ -340,6 +340,20 @@ class Model(object):
       tau_drv - driving stress of the system 
     
     Note: tau_drv = tau_lon + tau_lat + tau_bas
+    
+    # full stokes :
+    # 3) Dissipation by sliding
+    Sl     = 0.5 * beta2 * (S - B)**r * (u**2 + v**2 + w**2)
+
+    # 4) Incompressibility constraint
+    Pc     = -P * (u.dx(0) + v.dx(1) + w.dx(2)) 
+    
+    # first order :
+    # 2) Potential energy
+    Pe     = rho * g * (u * S.dx(0) + v * S.dx(1))
+
+    # 3) Dissipation by sliding
+    Sl     = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     """
     beta2 = self.beta2
     eta   = self.eta
@@ -355,23 +369,31 @@ class Model(object):
     H     = S - B
     zero  = Constant(0.0)
   
-    u_n = as_vector([u, v, zero])
-    u_t = as_vector([v,-u, zero])
+    u_n = as_vector([u, v, 0])
+    u_t = as_vector([v,-u, 0])
     U   = as_vector([u, v, w])
     
-    norm_U   = project(sqrt(inner(U, U)),     Q)
+    norm_U   = project(sqrt(inner(U, U)), Q)
     norm_u   = project(sqrt(inner(u_n, u_n)), Q)
-    gradSMag = sqrt(inner(grad(S), grad(S)))
-  
+    gradSMag = project(sqrt(inner(grad(S), grad(S))), Q)
+ 
+    gradSMag.update() 
     norm_u.update()                              # eliminate ghost vertices
     norm_U.update()                              # eliminate ghost vertices
   
     beta2_e = self.extrude(beta2,  3, 2)
     u_bas_e = self.extrude(norm_U, 3, 2)
- 
-    tau_lon = self.calc_component_stress(U, u_n/norm_u)
-    tau_lat = self.calc_component_stress(U, u_t/norm_u)
-    tau_bas = project(beta2_e*H*u_bas_e, Q)
+
+    #H_int = self.calc_thickness()
+    #Pe = rho * g * (u * S.dx(0) + v * S.dx(1))
+    #Sl = 0.5 * beta2 * H * (u**2 + v**2)
+
+    tau_lon = project(self.calc_component_stress(U, u_n/norm_u), Q)
+    tau_lat = project(self.calc_component_stress(U, u_t/norm_u), Q)
+    #tau_bas = project(Sl)
+    #tau_drv = project(Pe)
+    #tau_bas = project(beta2_e*H*u_bas_e, Q)
+    tau_bas = project(self.vert_integrate(beta2*H*norm_U), Q)
     tau_drv = project(rho*g*H*gradSMag,  Q)
 
     tau_bas2 = project(tau_drv - tau_lon - tau_lat)
@@ -379,6 +401,8 @@ class Model(object):
 
     tau_lon.update()                             # eliminate ghost vertices 
     tau_lat.update()                             # eliminate ghost vertices 
+    tau_bas.update()                             # eliminate ghost vertices 
+    tau_drv.update()                             # eliminate ghost vertices 
   
     tau_lon = self.extrude(tau_lon, 2, 2)
     tau_lat = self.extrude(tau_lat, 2, 2)

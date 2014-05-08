@@ -61,44 +61,46 @@ model.eta.update()
 out     = model.component_stress()
 tau_lon = out[0]
 tau_lat = out[1]
-tau_bas = out[2]
-tau_drv = out[3]
-beta22  = out[4]
+tau_vrt = out[2]
+tau_bas = out[3]
+tau_drv = out[4]
 
-tau_tot        = project(tau_lon + tau_lat + tau_bas - tau_drv)
-tau_drv_m_bas  = project(tau_drv - tau_bas)
-tau_lat_p_lon  = project(tau_lat + tau_lon)
-tau_bas2       = project(tau_drv - tau_lon - tau_lat)
-tau_drv2       = project(tau_bas + tau_lon + tau_lat)
-tau_tot2       = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
-tau_drv_m_bas2 = project(tau_drv - tau_bas2)
-U              = as_vector([model.u, model.v, model.w])
-intDivU        = project(model.vert_integrate(div(U)))
-H_integral     = model.extrude(model.calc_thickness(), 3, 2)
-H_diff         = project((model.S - model.B) - H_integral)
-gradSmag       = sqrt(inner(grad(model.S), grad(model.S)))
-
-intDivU.update()
-H_integral.update()
-H_diff.update()
-
-File(out_dir + 'gradSmag.pvd')       << project(gradSmag)
-File(out_dir + 'H_diff.pvd')         << project(H_diff)
-File(out_dir + 'H_data.pvd')         << project(model.S - model.B)
-File(out_dir + 'H_integral.pvd')     << project(H_integral)
 File(out_dir + 'tau_lon.pvd')        << tau_lon
 File(out_dir + 'tau_lat.pvd')        << tau_lat
-File(out_dir + 'tau_bas.pvd')        << tau_bas
-File(out_dir + 'tau_drv.pvd')        << tau_drv
+File(out_dir + 'tau_vrt.pvd')        << tau_vrt
+
+tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2 + tau_vrt**2))
+dpb           = tau_drv + tau_bas
+tau_drv_p_bas = project(sqrt(inner(dpb, dpb)))
+tau_tot       = project(tau_drv_p_bas - tau_lat_p_lon)
+U             = as_vector([model.u, model.v, model.w])
+intDivU       = model.vert_integrate(div(U))
+w_bas_e       = model.extrude(model.w, 3, 2)
+
+w_bas_e.update()
+intDivU.update()
+
+File(out_dir + 'w_bas_e.pvd')        << project(w_bas_e)
 File(out_dir + 'tau_tot.pvd')        << tau_tot
 File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
-File(out_dir + 'tau_drv_m_bas.pvd')  << tau_drv_m_bas
-File(out_dir + 'tau_drv_m_bas2.pvd') << tau_drv_m_bas2
-File(out_dir + 'tau_bas2.pvd')       << tau_bas2
-File(out_dir + 'tau_drv2.pvd')       << tau_drv2
-File(out_dir + 'beta22.pvd')         << beta22
-File(out_dir + 'tau_tot2.pvd')       << tau_tot2
-File(out_dir + 'intDivU.pvd')        << intDivU
+File(out_dir + 'tau_drv_p_bas.pvd')  << tau_drv_p_bas
+File(out_dir + 'intDivU.pvd')        << project(intDivU)
+
+tau_drv       = project(sqrt(tau_drv[0]**2 + tau_drv[1]**2 + tau_drv[2]**2))
+tau_bas       = project(sqrt(tau_bas[2]**2 + tau_bas[1]**2 + tau_bas[2]**2))
+File(out_dir + 'tau_drv.pvd')        << tau_drv
+File(out_dir + 'tau_bas.pvd')        << tau_bas
+
+#tau_bas2       = project(tau_drv - tau_lon - tau_lat)
+#tau_drv2       = project(tau_bas + tau_lon + tau_lat)
+#tau_tot2       = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
+#tau_drv_m_bas2 = project(tau_drv - tau_bas2)
+
+#File(out_dir + 'tau_drv_m_bas2.pvd') << tau_drv_m_bas2
+#File(out_dir + 'tau_bas2.pvd')       << tau_bas2
+#File(out_dir + 'tau_drv2.pvd')       << tau_drv2
+#File(out_dir + 'beta22.pvd')         << beta22
+#File(out_dir + 'tau_tot2.pvd')       << tau_tot2
 
 
 

@@ -263,6 +263,7 @@ tau_bas2       = project(tau_drv - tau_lon - tau_lat)
 tau_drv2       = project(tau_bas + tau_lon + tau_lat)
 tau_tot2       = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
 tau_drv_m_bas2 = project(tau_drv - tau_bas2)
+
 U              = as_vector([model.u, model.v, model.w])
 intDivU        = project(model.vert_integrate(div(U)))
 H_integral     = model.extrude(model.calc_thickness(), 3, 2)
@@ -277,6 +278,7 @@ File(out_dir + 'gradSmag.pvd')       << project(gradSmag)
 File(out_dir + 'H_diff.pvd')         << project(H_diff)
 File(out_dir + 'H_data.pvd')         << project(model.S - model.B)
 File(out_dir + 'H_integral.pvd')     << project(H_integral)
+
 File(out_dir + 'tau_lon.pvd')        << tau_lon
 File(out_dir + 'tau_lat.pvd')        << tau_lat
 File(out_dir + 'tau_bas.pvd')        << tau_bas

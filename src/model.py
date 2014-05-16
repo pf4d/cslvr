@@ -482,11 +482,10 @@ class Model(object):
     B     = self.B
     H     = S - B
     eta   = self.eta
-    beta2 = self.beta2
-
-    phi   = TestFunction(Q)
-    dtau  = TrialFunction(Q)
-
+    beta2 = self.beta
+    
+    #===========================================================================
+    # convert to array and normailze the components of U :
     u_v = u.vector().array()
     v_v = v.vector().array()
     w_v = w.vector().array()
@@ -505,44 +504,60 @@ class Model(object):
     v_n.vector().set_local(v_v_n)
     w_n.vector().set_local(w_v_n)
 
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
     U_n = as_vector([u_n, v_n, 0])
     U_t = as_vector([v_n,-u_n, 0])
 
+    # directional derivatives :
     dudn = dot(grad(u), U_n)
     dvdn = dot(grad(v), U_n)
     dudt = dot(grad(u), U_t)
     dvdt = dot(grad(v), U_t)
 
+    # trial and test functions for linear solve :
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+    
+    # mass matrix :
     M = assemble(phi*dtau*dx)
-
+    
+    # integration by parts directional derivative terms :
     dphidn = dot(grad(phi), U_n)
     dphidt = dot(grad(phi), U_t)
     
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     r_tau_n1 = dphidn*eta*H*(4*dudn + 2*dvdt) * dx
     r_tau_t1 = dphidt*eta*H*(  dudt +   dvdn) * dx
     r_tau_n2 = dphidn*eta*H*(  dudt +   dvdn) * dx
     r_tau_t2 = dphidt*eta*H*(4*dvdt + 2*dudn) * dx
 
+    # assemble the vectors :
     r_tau_n1_v = assemble(r_tau_n1)
     r_tau_n2_v = assemble(r_tau_n2)
     r_tau_t1_v = assemble(r_tau_t1)
     r_tau_t2_v = assemble(r_tau_t2)
-   
+    
+    # solution functions :
     tau_n1 = Function(Q)
     tau_n2 = Function(Q)
     tau_t1 = Function(Q)
     tau_t2 = Function(Q)
     
+    # solve the linear system :
     solve(M, tau_n1.vector(), r_tau_n1_v)
     solve(M, tau_n2.vector(), r_tau_n2_v)
     solve(M, tau_t1.vector(), r_tau_t1_v)
     solve(M, tau_t2.vector(), r_tau_t2_v)
 
+    # integrate vertically and take the average of stress :
     tau_lon = self.vert_integrate(tau_n1 + tau_n2)
     tau_lon = project(self.extrude(tau_lon, 2, 2) / H, Q)
     tau_lat = self.vert_integrate(tau_t1 + tau_t2)
     tau_lat = project(self.extrude(tau_lat, 2, 2) / H, Q)
 
+    # calculate the basal shear and driving stresses :
     tau_bas = self.calc_tau_bas()
     tau_drv = self.calc_tau_drv()
 

@@ -607,10 +607,9 @@ class VelocityBP(object):
             "'isothermal', or 'full'."
 
     # second invariant of the strain rate tensor squared :
-    term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+    epsdot   = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
                +        u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2
-    epsdot   =   0.5 * term + eps_reg
-    eta      =     b * epsdot**((1.0 - n) / (2*n))
+    eta      =     0.5 * b * (epsdot + eps_reg)**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))

@@ -132,10 +132,10 @@ model.initialize_variables()
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
-nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
-nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
-nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
+nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
+nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-13
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 0.0
+nonlin_solver_params['newton_solver']['maximum_iterations']      = 50
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 #nonlin_solver_params['linear_solver']                            = 'mumps'
 #nonlin_solver_params['preconditioner']                           = 'default'
@@ -225,7 +225,10 @@ F.solve()
 tf1 = time()
 
 params = config['velocity']['newton_params']['newton_solver']
-params['relaxation_parameter']         = 1.0
+params['relaxation_parameter']         = 0.5
+params['relative_tolerance']           = 3e-12
+params['absolute_tolerance']           = 0.0
+params['maximum_iterations']           = 40
 config['velocity']['viscosity_mode']   = 'linear'
 config['velocity']['b_linear']         = project(model.eta, model.Q)
 config['enthalpy']['on']               = False
@@ -248,50 +251,6 @@ File(out_dir + 'v.xml')       << model.v
 File(out_dir + 'w.xml')       << model.w
 File(out_dir + 'beta2.xml')   << model.beta2
 File(out_dir + 'eta.xml')     << model.eta
-
-out     = model.component_stress()
-tau_lon = out[0]
-tau_lat = out[1]
-tau_bas = out[2]
-tau_drv = out[3]
-beta22  = out[4]
-
-tau_tot        = project(tau_lon + tau_lat + tau_bas - tau_drv)
-tau_drv_m_bas  = project(tau_drv - tau_bas)
-tau_lat_p_lon  = project(tau_lat + tau_lon)
-tau_bas2       = project(tau_drv - tau_lon - tau_lat)
-tau_drv2       = project(tau_bas + tau_lon + tau_lat)
-tau_tot2       = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
-tau_drv_m_bas2 = project(tau_drv - tau_bas2)
-
-U              = as_vector([model.u, model.v, model.w])
-intDivU        = project(model.vert_integrate(div(U)))
-H_integral     = model.extrude(model.calc_thickness(), 3, 2)
-H_diff         = project((model.S - model.B) - H_integral)
-gradSmag       = sqrt(inner(grad(model.S), grad(model.S)))
-
-intDivU.update()
-H_integral.update()
-H_diff.update()
-
-File(out_dir + 'gradSmag.pvd')       << project(gradSmag)
-File(out_dir + 'H_diff.pvd')         << project(H_diff)
-File(out_dir + 'H_data.pvd')         << project(model.S - model.B)
-File(out_dir + 'H_integral.pvd')     << project(H_integral)
-
-File(out_dir + 'tau_lon.pvd')        << tau_lon
-File(out_dir + 'tau_lat.pvd')        << tau_lat
-File(out_dir + 'tau_bas.pvd')        << tau_bas
-File(out_dir + 'tau_drv.pvd')        << tau_drv
-File(out_dir + 'tau_tot.pvd')        << tau_tot
-File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
-File(out_dir + 'tau_drv_m_bas.pvd')  << tau_drv_m_bas
-File(out_dir + 'tau_drv_m_bas2.pvd') << tau_drv_m_bas2
-File(out_dir + 'tau_bas2.pvd')       << tau_bas2
-File(out_dir + 'tau_drv2.pvd')       << tau_drv2
-File(out_dir + 'beta22.pvd')         << beta22
-File(out_dir + 'tau_tot2.pvd')       << tau_tot2
-File(out_dir + 'intDivU.pvd')        << intDivU
 
 #File(out_dir + 'mesh.xdmf')   << model.mesh
 

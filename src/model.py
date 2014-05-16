@@ -1,4 +1,5 @@
 from dolfin import *
+import numpy as np
 
 class Model(object):
   """ 
@@ -48,10 +49,13 @@ class Model(object):
     # generate periodic boundary conditions if required :
     if generate_pbcs:
       class PeriodicBoundary(SubDomain):
-    # Left boundary is "target domain" G
+        # Left boundary is "target domain" G
         def inside(self, x, on_boundary):
-        # return True if on left or bottom boundary AND NOT on one of the two corners (0, 1) and (1, 0)
-          return bool((near(x[0], 0) or near(x[1], 0)) and (not ((near(x[0], 0) and near(x[1], 1)) or (near(x[0], 1) and near(x[1], 0)))) and on_boundary)
+          # return True if on left or bottom boundary AND NOT on one 
+          # of the two corners (0, 1) and (1, 0)
+          return bool((near(x[0], 0) or near(x[1], 0)) and \
+                      (not ((near(x[0], 0) and near(x[1], 1)) \
+                       or (near(x[0], 1) and near(x[1], 0)))) and on_boundary)
 
         def map(self, x, y):
           if near(x[0], 1) and near(x[1], 1):
@@ -66,15 +70,15 @@ class Model(object):
             y[0] = x[0]
             y[1] = x[1] - 1.
             y[2] = x[2]
-      pBC       = PeriodicBoundary()
-      self.Q         = FunctionSpace(self.mesh, "CG", 1, 
-                                     constrained_domain = pBC)
+      pBC      = PeriodicBoundary()
+      self.Q   = FunctionSpace(self.mesh, "CG", 1, constrained_domain=pBC)
+      self.Q2  = MixedFunctionSpace([self.Q]*2)
+      self.Q4  = MixedFunctionSpace([self.Q]*4)
+      
       self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
-      self.Q_flat    = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                     constrained_domain = pBC)
+      self.Q_flat         = FunctionSpace(self.flat_mesh, "CG", 1, 
+                                          constrained_domain=pBC)
       self.Q_flat_non_periodic = FunctionSpace(self.flat_mesh,"CG",1)
-      self.Q2        = MixedFunctionSpace([self.Q]*2)
-      self.Q4        = MixedFunctionSpace([self.Q]*4)
       self.per_func_space = True
 
     # width and origin of the domain for deforming x coord :
@@ -98,7 +102,8 @@ class Model(object):
     
         # transform z :
         # thickness = surface - base, z = thickness + base
-        x[2]  = x[2] * (self.S_ex(x[0], x[1], x[2]) - self.B_ex(x[0], x[1], x[2]))
+        x[2]  = x[2] * (self.S_ex(x[0], x[1], x[2]) - \
+                        self.B_ex(x[0], x[1], x[2]))
         x[2]  = x[2] + self.B_ex(x[0], x[1], x[2])
 
   def set_mesh(self, mesh, flat_mesh=None, deform=True):
@@ -294,6 +299,22 @@ class Model(object):
     divU  = nabla_div(U)
     tau   = 2 * eta * (gradU + gradU.T - 2.0/n * divU * Identity(n))
     return tau
+  
+  def calc_tau_dukowicz(self):
+    """
+    Calculate the deviatoric stress tensor of velocity field <u>.
+    """
+    u   = self.u
+    v   = self.v
+    eta = self.eta
+    U   = as_vector([self.u, self.v, self.w])
+    
+    # second invariant of the strain rate tensor squared :
+    epsdot2 = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+              +        u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2
+    gradU   = nabla_grad(U)
+    tau     = 2 * eta * epsdot2 * (gradU + gradU.T)
+    return tau
      
   def vert_integrate(self, u):
     """
@@ -308,47 +329,36 @@ class Model(object):
     L      = u * phi * dx
     v      = Function(Q)
     solve(a == L, v, bc)
+    v.update()
     return v
-  
+
   def calc_component_stress(self, u_dir):
     """
     Calculate the deviatoric component of stress in the direction of <u>.
     """
+    print "::: calculating component stress :::"
+    Q      = self.Q                            # function space
     ff     = self.ff                           # facet function for boundaries
-    Q      = self.Q                            # function space
-    sig    = self.calc_tau()                   # deviatoric stress tensor
-    com    = dot(sig, u_dir)                   # component of stress in u-dir.
-    com_n  = project(sqrt(inner(com, com)),Q)  # magnitude of com
-    phi    = TestFunction(Q)                   # test function
-    v      = TrialFunction(Q)                  # trial function
-    bc     = DirichletBC(Q, 0.0, ff, 3)        # boundary condition
-    a      = v.dx(2) * phi * dx                # bilinear part
-    L      = com_n * phi * dx                  # linear part
-    v      = Function(Q)                       # solution function
-    solve(a == L, v, bc)                       # solve
-    v.update()                                 # update ghost-vertices 
-    v      = self.extrude(v, 2, 2)             # extrude the integral
-    dvdx   = grad(v)                           # spatial derivative
-    dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
-    return dvdu
-
-  def calc_tau_vrt(self):
-    """
-    Calculate the deviatoric component of stress in the direction of <u>.
-    """
-    u_dir  = as_vector([0,0,1])
-    Q      = self.Q                            # function space
     sig    = self.calc_tau()                   # deviatoric stress tensor
     com    = dot(sig, u_dir)                   # component of stress in u-dir.
     com_n  = project(sqrt(inner(com, com)),Q)  # magnitude of com
     dvdx   = grad(com_n)                       # spatial derivative
     dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
-    return dvdu
+    phi    = TestFunction(Q)                   # test function
+    v      = TrialFunction(Q)                  # trial function
+    bc     = DirichletBC(Q, 0.0, ff, 3)        # boundary condition
+    a      = v.dx(2) * phi * dx                # bilinear part
+    L      = dvdu * phi * dx                   # linear part
+    v      = Function(Q)                       # solution function
+    solve(a == L, v, bc)                       # solve
+    v.update()                                 # update ghost-vertices 
+    v      = self.extrude(v, 2, 2)             # extrude the integral
+    return v
 
   def calc_tau_bas(self):
     """
     """
-    print "::: CALCULATING tau_bas :::"
+    print "::: calculating tau_bas :::"
     beta2 = self.beta2
     Q     = self.Q
     u     = self.u
@@ -356,10 +366,10 @@ class Model(object):
     w     = self.w
     H     = self.S - self.B
   
-    beta2_e = self.extrude(beta2,  3, 2)
-    u_bas_e = self.extrude(u,      3, 2)
-    v_bas_e = self.extrude(v,      3, 2)
-    w_bas_e = self.extrude(w,      3, 2)
+    beta2_e = self.extrude(beta2, 3, 2)
+    u_bas_e = self.extrude(u,     3, 2)
+    v_bas_e = self.extrude(v,     3, 2)
+    w_bas_e = self.extrude(w,     3, 2)
 
     tau_bas_u = project(beta2_e*H*u_bas_e, Q)
     tau_bas_v = project(beta2_e*H*v_bas_e, Q)
@@ -374,7 +384,7 @@ class Model(object):
   def calc_tau_drv(self):
     """
     """
-    print "::: CALCULATING tau_drv :::"
+    print "::: calculating tau_drv :::"
     ff    = self.ff
     Q     = self.Q
     S     = self.S
@@ -398,7 +408,7 @@ class Model(object):
   
     return as_vector([tau_drv_u, tau_drv_v, tau_drv_w])
 
-  def component_stress(self):
+  def component_stress_old(self):
     """
     Calculate each of the component stresses which define the full stress
     of the ice-sheet.
@@ -417,20 +427,126 @@ class Model(object):
     Q     = self.Q
     u     = self.u
     v     = self.v
+    w     = self.w
   
-    u_n = as_vector([u, v, 0])
-    u_t = as_vector([v,-u, 0])
+    u_v = u.vector().array()
+    v_v = v.vector().array()
+    w_v = w.vector().array()
+
+    norm_u = np.sqrt(u_v**2 + v_v**2)
+
+    u_v_n  = u_v / norm_u
+    v_v_n  = v_v / norm_u
+    w_v_n  = w_v / norm_u
     
-    norm_u = project(sqrt(inner(u_n, u_n)), Q)
-    norm_u.update()                               # eliminate ghost vertices
+    u_n    = Function(Q)
+    v_n    = Function(Q)
+    w_n    = Function(Q)
+
+    u_n.vector().set_local(u_v_n)
+    v_n.vector().set_local(v_v_n)
+    w_n.vector().set_local(w_v_n)
     
-    tau_lon = project(self.calc_component_stress(u_n/norm_u), Q)
-    tau_lat = project(self.calc_component_stress(u_t/norm_u), Q)
-    tau_vrt = project(self.calc_tau_vrt(), Q)
+    U_n = as_vector([u_n, v_n, w_n])
+    U_t = as_vector([v_n,-u_n, w_n])
+    U_v = as_vector([0,   0,   1])
+ 
+    tau_lon = project(self.calc_component_stress(U_n), Q)
+    tau_lat = project(self.calc_component_stress(U_t), Q)
+    tau_vrt = project(self.calc_component_stress(U_v), Q)
     tau_bas = self.calc_tau_bas()
     tau_drv = self.calc_tau_drv()
 
     return tau_lon, tau_lat, tau_vrt, tau_bas, tau_drv
+
+  def component_stress(self):
+    """
+    Calculate each of the component stresses which define the full stress
+    of the ice-sheet.
+    
+    RETURNS:
+      tau_lon - longitudinal stress field
+      tau_lat - lateral stress field
+      tau_bas - frictional sliding stress at the bed
+      tau_drv - driving stress of the system 
+    
+    Note: tau_drv = tau_lon + tau_lat + tau_bas
+    
+    """
+    print "::: CALCULATING COMPONENT STRESSES :::"
+    Q     = self.Q
+    u     = self.u
+    v     = self.v
+    w     = self.w
+    S     = self.S
+    B     = self.B
+    H     = S - B
+    eta   = self.eta
+    beta2 = self.beta2
+
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+
+    u_v = u.vector().array()
+    v_v = v.vector().array()
+    w_v = w.vector().array()
+
+    norm_u = np.sqrt(u_v**2 + v_v**2)
+
+    u_v_n  = u_v / norm_u
+    v_v_n  = v_v / norm_u
+    w_v_n  = w_v / norm_u
+ 
+    u_n    = Function(Q)
+    v_n    = Function(Q)
+    w_n    = Function(Q)
+
+    u_n.vector().set_local(u_v_n)
+    v_n.vector().set_local(v_v_n)
+    w_n.vector().set_local(w_v_n)
+
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+
+    dudn = dot(grad(u), U_n)
+    dvdn = dot(grad(v), U_n)
+    dudt = dot(grad(u), U_t)
+    dvdt = dot(grad(v), U_t)
+
+    M = assemble(phi*dtau*dx)
+
+    dphidn = dot(grad(phi), U_n)
+    dphidt = dot(grad(phi), U_t)
+    
+    r_tau_n1 = dphidn*eta*H*(4*dudn + 2*dvdt) * dx
+    r_tau_t1 = dphidt*eta*H*(  dudt +   dvdn) * dx
+    r_tau_n2 = dphidn*eta*H*(  dudt +   dvdn) * dx
+    r_tau_t2 = dphidt*eta*H*(4*dvdt + 2*dudn) * dx
+
+    r_tau_n1_v = assemble(r_tau_n1)
+    r_tau_n2_v = assemble(r_tau_n2)
+    r_tau_t1_v = assemble(r_tau_t1)
+    r_tau_t2_v = assemble(r_tau_t2)
+   
+    tau_n1 = Function(Q)
+    tau_n2 = Function(Q)
+    tau_t1 = Function(Q)
+    tau_t2 = Function(Q)
+    
+    solve(M, tau_n1.vector(), r_tau_n1_v)
+    solve(M, tau_n2.vector(), r_tau_n2_v)
+    solve(M, tau_t1.vector(), r_tau_t1_v)
+    solve(M, tau_t2.vector(), r_tau_t2_v)
+
+    tau_lon = self.vert_integrate(tau_n1 + tau_n2)
+    tau_lon = project(self.extrude(tau_lon, 2, 2) / H, Q)
+    tau_lat = self.vert_integrate(tau_t1 + tau_t2)
+    tau_lat = project(self.extrude(tau_lat, 2, 2) / H, Q)
+
+    tau_bas = self.calc_tau_bas()
+    tau_drv = self.calc_tau_drv()
+
+    return tau_lon, tau_lat, tau_bas, tau_drv
    
   def initialize_variables(self):
     """

@@ -14,7 +14,7 @@ from dolfin               import *
 from time                 import time
 
 out_dir = './stress_balance/'
-in_dir  = './results_high_fo/03/'
+in_dir  = './results_high_fo/05/'
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -61,15 +61,13 @@ model.eta.update()
 out     = model.component_stress()
 tau_lon = out[0]
 tau_lat = out[1]
-tau_vrt = out[2]
-tau_bas = out[3]
-tau_drv = out[4]
+tau_bas = out[2]
+tau_drv = out[3]
 
 File(out_dir + 'tau_lon.pvd')        << tau_lon
 File(out_dir + 'tau_lat.pvd')        << tau_lat
-File(out_dir + 'tau_vrt.pvd')        << tau_vrt
 
-tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2 + tau_vrt**2))
+tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2))# + tau_vrt**2))
 dpb           = tau_drv + tau_bas
 tau_drv_p_bas = project(sqrt(inner(dpb, dpb)))
 tau_tot       = project(tau_drv_p_bas - tau_lat_p_lon)

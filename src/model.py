@@ -512,10 +512,14 @@ class Model(object):
     U   = as_vector([u,   v,   w])
 
     # directional derivatives :
-    dudn = dot(grad(dot(U, U_n)), U_n)
-    dvdn = dot(grad(dot(U, U_n)), U_n)
-    dudt = dot(grad(dot(U, U_t)), U_t)
-    dvdt = dot(grad(dot(U, U_t)), U_t)
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    gradvhat = grad(vhat)
+    graduhat = grad(uhat)
+    dudn = dot(graduhat, U_n)
+    dvdn = dot(gradvhat, U_n)
+    dudt = dot(graduhat, U_t)
+    dvdt = dot(gradvhat, U_t)
 
     # trial and test functions for linear solve :
     phi   = TestFunction(Q)

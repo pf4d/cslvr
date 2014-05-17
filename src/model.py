@@ -507,15 +507,15 @@ class Model(object):
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) in relation to the stress-tensor :
-    U_n = as_vector([u_n, v_n, w_n])
-    U_t = as_vector([v_n,-u_n, w_n])
-    U   = as_vector([u, v, w])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+    U   = as_vector([u,   v,   w])
 
     # directional derivatives :
     dudn = dot(grad(dot(U, U_n)), U_n)
     dvdn = dot(grad(dot(U, U_n)), U_n)
     dudt = dot(grad(dot(U, U_t)), U_t)
-    dvdt = dot(grad(dot(U, U_t)), U_n)
+    dvdt = dot(grad(dot(U, U_t)), U_t)
 
     # trial and test functions for linear solve :
     phi   = TestFunction(Q)

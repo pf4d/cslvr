@@ -482,7 +482,7 @@ class Model(object):
     B     = self.B
     H     = S - B
     eta   = self.eta
-    beta2 = self.beta
+    beta2 = self.beta2
     
     #===========================================================================
     # convert to array and normailze the components of U :
@@ -511,10 +511,13 @@ class Model(object):
     U_t = as_vector([v_n,-u_n, 0])
 
     # directional derivatives :
-    dudn = dot(grad(u), U_n)
-    dvdn = dot(grad(v), U_n)
-    dudt = dot(grad(u), U_t)
-    dvdt = dot(grad(v), U_t)
+    gradu = grad(u)
+    gradv = grad(v)
+    
+    dudn = dot(gradu, U_n)
+    dvdn = dot(gradv, U_n)
+    dudt = dot(gradu, U_t)
+    dvdt = dot(gradv, U_t)
 
     # trial and test functions for linear solve :
     phi   = TestFunction(Q)
@@ -528,10 +531,10 @@ class Model(object):
     dphidt = dot(grad(phi), U_t)
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    r_tau_n1 = dphidn*eta*H*(4*dudn + 2*dvdt) * dx
-    r_tau_t1 = dphidt*eta*H*(  dudt +   dvdn) * dx
-    r_tau_n2 = dphidn*eta*H*(  dudt +   dvdn) * dx
-    r_tau_t2 = dphidt*eta*H*(4*dvdt + 2*dudn) * dx
+    r_tau_n1 = dphidn*eta*(4*dudn + 2*dvdt) * dx
+    r_tau_t1 = dphidt*eta*(  dudt +   dvdn) * dx
+    r_tau_t2 = dphidt*eta*(4*dvdt + 2*dudn) * dx
+    r_tau_n2 = dphidn*eta*(  dudt +   dvdn) * dx
 
     # assemble the vectors :
     r_tau_n1_v = assemble(r_tau_n1)
@@ -551,11 +554,11 @@ class Model(object):
     solve(M, tau_t1.vector(), r_tau_t1_v)
     solve(M, tau_t2.vector(), r_tau_t2_v)
 
-    # integrate vertically and take the average of stress :
-    tau_lon = self.vert_integrate(tau_n1 + tau_n2)
-    tau_lon = project(self.extrude(tau_lon, 2, 2) / H, Q)
-    tau_lat = self.vert_integrate(tau_t1 + tau_t2)
-    tau_lat = project(self.extrude(tau_lat, 2, 2) / H, Q)
+    # integrate vertically :
+    tau_lon = self.vert_integrate(tau_n1 + tau_t1)
+    tau_lon = project(self.extrude(tau_lon, 2, 2), Q)
+    tau_lat = self.vert_integrate(tau_n2 + tau_t2)
+    tau_lat = project(self.extrude(tau_lat, 2, 2), Q)
 
     # calculate the basal shear and driving stresses :
     tau_bas = self.calc_tau_bas()

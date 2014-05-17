@@ -527,8 +527,9 @@ class Model(object):
     M = assemble(phi*dtau*dx)
     
     # integration by parts directional derivative terms :
-    dphidn = dot(grad(phi), U_n)
-    dphidt = dot(grad(phi), U_t)
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     r_tau_n1 = dphidn*eta*(4*dudn + 2*dvdt) * dx

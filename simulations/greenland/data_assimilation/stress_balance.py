@@ -67,7 +67,7 @@ tau_drv = out[3]
 File(out_dir + 'tau_lon.pvd')        << tau_lon
 File(out_dir + 'tau_lat.pvd')        << tau_lat
 
-tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2))# + tau_vrt**2))
+tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2))
 dpb           = tau_drv + tau_bas
 tau_drv_p_bas = project(sqrt(inner(dpb, dpb)))
 tau_tot       = project(tau_drv_p_bas - tau_lat_p_lon)
@@ -79,10 +79,10 @@ w_bas_e.update()
 intDivU.update()
 
 File(out_dir + 'w_bas_e.pvd')        << project(w_bas_e)
+File(out_dir + 'intDivU.pvd')        << project(intDivU)
 File(out_dir + 'tau_tot.pvd')        << tau_tot
 File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
 File(out_dir + 'tau_drv_p_bas.pvd')  << tau_drv_p_bas
-File(out_dir + 'intDivU.pvd')        << project(intDivU)
 
 tau_drv       = project(sqrt(tau_drv[0]**2 + tau_drv[1]**2 + tau_drv[2]**2))
 tau_bas       = project(sqrt(tau_bas[2]**2 + tau_bas[1]**2 + tau_bas[2]**2))

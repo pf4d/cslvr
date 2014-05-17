@@ -509,15 +509,13 @@ class Model(object):
     # direction (t) in relation to the stress-tensor :
     U_n = as_vector([u_n, v_n, 0])
     U_t = as_vector([v_n,-u_n, 0])
+    U   = as_vector([u, v, w])
 
     # directional derivatives :
-    gradu = grad(u)
-    gradv = grad(v)
-    
-    dudn = dot(gradu, U_n)
-    dvdn = dot(gradv, U_n)
-    dudt = dot(gradu, U_t)
-    dvdt = dot(gradv, U_t)
+    dudn = dot(grad(dot(U, U_n)), U_n)
+    dvdn = dot(grad(dot(U, U_n)), U_n)
+    dudt = dot(grad(dot(U, U_t)), U_t)
+    dvdt = dot(grad(dot(U, U_t)), U_n)
 
     # trial and test functions for linear solve :
     phi   = TestFunction(Q)
@@ -556,9 +554,9 @@ class Model(object):
     solve(M, tau_t2.vector(), r_tau_t2_v)
 
     # integrate vertically :
-    tau_lon = self.vert_integrate(tau_n1 + tau_t1)
+    tau_lon = self.vert_integrate(tau_n1 + tau_n2)
     tau_lon = project(self.extrude(tau_lon, 2, 2), Q)
-    tau_lat = self.vert_integrate(tau_n2 + tau_t2)
+    tau_lat = self.vert_integrate(tau_t1 + tau_t2)
     tau_lat = project(self.extrude(tau_lat, 2, 2), Q)
 
     # calculate the basal shear and driving stresses :

@@ -507,8 +507,8 @@ class Model(object):
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) in relation to the stress-tensor :
-    U_n = as_vector([u_n, v_n, 0])
-    U_t = as_vector([v_n,-u_n, 0])
+    U_n = as_vector([u_n, v_n, w_n])
+    U_t = as_vector([v_n,-u_n, w_n])
     U   = as_vector([u, v, w])
 
     # directional derivatives :

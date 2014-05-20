@@ -185,7 +185,7 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
 
-    self.ff_flat.set_values(self.ff.array())
+    self.ff_flat.set_values(self.ff.array())   #FIXME: this breaks MPI
     self.ds = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
      

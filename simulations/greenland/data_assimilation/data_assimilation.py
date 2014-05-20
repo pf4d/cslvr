@@ -32,8 +32,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 merged   = DataFactory.get_gre_merged()
 
 # define the meshes :
-mesh      = Mesh('../../../meshes/greenland/greenland_coarse_mesh.xml')
-flat_mesh = Mesh('../../../meshes/greenland/greenland_coarse_mesh.xml')
+mesh      = MeshFactory.get_greenland_coarse()
+flat_mesh = MeshFactory.get_greenland_coarse()
 mesh.coordinates()[:,2]      /= 1000.0
 flat_mesh.coordinates()[:,2] /= 1000.0
 

@@ -213,6 +213,9 @@ class TransientSolver(object):
     model.S.vector().set_local(y[v2d])
    
     if config['velocity']['on']:
+      utemp = model.U.vector().get_local()
+      utemp[:] = 0.0
+      model.U.vector().set_local(utemp)
       self.velocity_instance.solve()
 
     if config['surface_climate']['on']:
@@ -500,13 +503,10 @@ class AdjointSolver(object):
       U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
                      + (model.w + model.adot) )
-      Umag = project(sqrt(inner(U,U)), model.Q)
       file_u_xml    << U
-      file_u_pvd    << Umag
+      file_u_pvd    << U
       file_b_xml    << model.beta2 
-      file_b_pvd    << model.extrude(model.beta2, 3, 2)
-      file_dSdt_pvd << dSdt
-      file_Mb_pvd   << model.Mb
+      file_b_pvd    << model.beta2
       return Js
 
     #===========================================================================
@@ -515,9 +515,7 @@ class AdjointSolver(object):
     file_b_xml    = File(path + 'beta2.xml')
     file_b_pvd    = File(path + 'beta2.pvd')
     file_u_xml    = File(path + 'U.xml')
-    file_u_pvd    = File(path + 'Umag.pvd')
-    file_dSdt_pvd = File(path + 'dSdt.pvd')
-    file_Mb_pvd   = File(path + 'Mb.pvd')
+    file_u_pvd    = File(path + 'U.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:

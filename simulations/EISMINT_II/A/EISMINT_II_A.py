@@ -9,6 +9,9 @@ import pylab
 import dolfin
 from meshes.mesh_factory import MeshFactory
 dolfin.set_log_active(True)
+#dolfin.set_log_level(10)
+dolfin.parameters['form_compiler']['quadrature_degree'] = 2
+#dolfin.parameters['form_compiler']['optimize'] = True
 
 L = 750000.0
 S_0 = 10.0
@@ -38,15 +41,15 @@ class SurfaceTemperature(dolfin.Expression):
 nonlin_solver_params = src.helper.default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['absolute_tolerance'] = 1.0
-nonlin_solver_params['linear_solver'] = 'gmres'
-nonlin_solver_params['preconditioner'] = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver'] = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner'] = 'default'
 
 
 config = { 'mode' : 'steady',
            'coupled' : 
-               { 'on' : False,
-                 'inner_tol': 0.0,
-                 'max_iter' : 1
+               { 'on' : True,
+                 'inner_tol': 1e-3,
+                 'max_iter' : 5
                },
            't_start' : 0.0,
            't_end' : 50000.0,
@@ -76,7 +79,7 @@ config = { 'mode' : 'steady',
            'free_surface' :
                { 'on': True,
                  'lump_mass_matrix': False,
-                 'use_shock_capturing':True,
+                 'use_shock_capturing':False,
                  'thklim': 10.0,
                  'use_pdd': False,
                  'observed_smb': MassBalance(),
@@ -110,8 +113,8 @@ config = { 'mode' : 'steady',
 model = src.model.Model()
 model.set_geometry(Surface(), Bed())
 
-mesh      = dolfin.Mesh('../circle.xml')#MeshFactory.get_circle()
-flat_mesh = dolfin.Mesh('../circle.xml')#MeshFactory.get_circle()
+mesh      = dolfin.Mesh('../../../meshes/test/circle.xml')
+flat_mesh = dolfin.Mesh('../../../meshes/test/circle.xml')
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
 model.mesh.coordinates()[:,2] = model.mesh.coordinates()[:,2]/1000.0
 model.set_parameters(src.physical_constants.IceParameters())
@@ -123,8 +126,8 @@ F.solve()
 T = src.solvers.TransientSolver(model,config)
 T.solve()
 
-dolfin.File('./results/u.xml') << model.u
-dolfin.File('./results/v.xml') << model.v
-dolfin.File('./results/w.xml') << model.w
-dolfin.File('./results/S.xml') << model.S
-dolfin.File('./results/T.xml') << model.T
+#dolfin.File('./results/u.xml') << model.u
+#dolfin.File('./results/v.xml') << model.v
+#dolfin.File('./results/w.xml') << model.w
+#dolfin.File('./results/S.xml') << model.S
+#dolfin.File('./results/T.xml') << model.T

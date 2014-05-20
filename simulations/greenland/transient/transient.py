@@ -1,57 +1,83 @@
 import sys
+import os
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-import src.model
-import src.solvers
-import src.physical_constants
-import src.helper
-import pylab
-import dolfin
-import scipy.io
-from data.data_factory   import DataFactory
-from meshes.mesh_factory import MeshFactory
-from src.utilities       import DataInput
+import src.solvers            as solvers
+import src.physical_constants as pc
+import src.model              as model
+from meshes.mesh_factory  import MeshFactory
+from data.data_factory    import DataFactory
+from src.helper           import default_nonlin_solver_params
+from src.utilities        import DataInput, DataOutput
+from dolfin               import *
+from pylab                import sqrt, copy
+from time                 import time
 
-dolfin.set_log_active(True)
+# make the directory if needed :
+out_dir   = './results/'
 
-vara = DataFactory.get_searise(thklim = 50.0)
+set_log_active(True)
+#set_log_level(PROGRESS)
 
-mesh                    = MeshFactory.get_greenland_coarse()
-flat_mesh               = MeshFactory.get_greenland_coarse() 
-mesh.coordinates()[:,2] = mesh.coordinates()[:,2]/1000.0
+thklim = 10.0
 
-dd                 = DataInput(None, vara, mesh=mesh)
+# collect the raw data :
+searise  = DataFactory.get_searise(thklim = thklim)
+bamber   = DataFactory.get_bamber(thklim = thklim)
+fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 
-Surface            = dd.get_spline_expression('h')
-Bed                = dd.get_spline_expression('b')
-SMB                = dd.get_spline_expression('adot')
-SurfaceTemperature = dd.get_spline_expression('T')
-BasalHeatFlux      = dd.get_spline_expression('q_geo')
-U_observed         = dd.get_spline_expression('U_ob')
-Tn                 = vara['Tn']['map_data']
-           
-nonlin_solver_params = src.helper.default_nonlin_solver_params()
+# define the meshes :
+mesh      = Mesh('../../../meshes/greenland/greenland_coarse_mesh.xml')
+flat_mesh = Mesh('../../../meshes/greenland/greenland_coarse_mesh.xml')
+mesh.coordinates()[:,2]      /= 1000.0
+flat_mesh.coordinates()[:,2] /= 1000.0
+
+
+# create data objects to use with varglas :
+dsr     = DataInput(None, searise,  mesh=mesh)
+dbm     = DataInput(None, bamber,   mesh=mesh)
+dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
+
+# get the expressions used by varglas :
+Thickness          = dbm.get_spline_expression('H')
+Surface            = dbm.get_spline_expression('h')
+Bed                = dbm.get_spline_expression('b')
+SurfaceTemperature = dsr.get_spline_expression('T')
+BasalHeatFlux      = dfm.get_spline_expression('q_geo')
+adot               = dsr.get_spline_expression('adot')
+
+model = model.Model()
+model.set_geometry(Surface, Bed)
+model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+model.set_parameters(pc.IceParameters())
+model.initialize_variables()
+
+
+# specifify non-linear solver parameters :
+nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['linear_solver']                            = 'gmres'
-nonlin_solver_params['preconditioner']                           = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+parameters['form_compiler']['quadrature_degree']                 = 2
 
-config = { 'mode'                         : 'transient',
+config = { 'mode'                         : 'steady',
            't_start'                      : 0.0,
            't_end'                        : 50.0,
            'time_step'                    : 0.5,
-           'output_path'                  : './results/',
+           'output_path'                  : out_dir,
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : False,
-           'log'                          : True, 
+           'log'                          : True,
            'coupled' : 
            { 
-             'on'        : False,
-             'inner_tol' : 0.0,
-             'max_iter'  : 3
+             'on'       : False,
+             'inner_tol': 0.0,
+             'max_iter' : 5
            },
            'velocity' : 
            { 
@@ -60,9 +86,9 @@ config = { 'mode'                         : 'transient',
              'viscosity_mode' : 'full',
              'b_linear'       : None,
              'use_T0'         : True,
-             'T0'             : 273.0,
+             'T0'             : 268.0,
              'A0'             : None,
-             'beta2'          : 1.0,
+             'beta2'          : 4.0,
              'r'              : 1.0,
              'E'              : 1.0,
              'approximation'  : 'fo',
@@ -71,26 +97,26 @@ config = { 'mode'                         : 'transient',
            'enthalpy' : 
            { 
              'on'                  : False,
+             'use_surface_climate' : False,
              'T_surface'           : SurfaceTemperature,
              'q_geo'               : BasalHeatFlux,
-             'use_surface_climate' : False,
              'lateral_boundaries'  : None
            },
            'free_surface' :
            { 
-             'on'                         : True,
-             'observed_smb'               : SMB,
-             'lump_mass_matrix'           : True,
-             'thklim'                     : 50.0,
-             'use_pdd'                    : False,
-             'use_shock_capturing'        : False,
-             'static_boundary_conditions' : True
+             'on'               : True,
+             'lump_mass_matrix' : True,
+             'use_shock_capturing' : False,
+             'thklim'           : thklim,
+             'use_pdd'          : False,
+             'observed_smb'     : adot,
+             'static_boundary_conditions' : False
            },  
            'age' : 
            { 
-             'on'               : False,
-             'use_smb_for_ela'  : False,
-             'ela'              : None,
+             'on'              : False,
+             'use_smb_for_ela' : False,
+             'ela'             : None,
            },
            'surface_climate' : 
            { 
@@ -103,25 +129,27 @@ config = { 'mode'                         : 'transient',
            },
            'adjoint' :
            { 
-             'alpha'              : 0.0,
-             'beta'               : 100.0,
-             'max_fun'            : 20,
-             'objective_function' : 'logarithmic',
+             'alpha'               : [Thickness**2],
+             'beta'                : 0.0,
+             'max_fun'             : 20,
+             'objective_function'  : 'logarithmic',
+             'bounds'              : [(0,20)],
+             'control_variable'    : None,
+             'regularization_type' : 'Tikhonov'
            }}
 
-model = src.model.Model()
+model.eps_reg = 1e-5
 
-model.set_geometry(Surface, Bed)
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
-model.set_parameters(src.physical_constants.IceParameters())
-model.initialize_variables()
-
-F = src.solvers.SteadySolver(model,config)
+F = solvers.SteadySolver(model,config)
 F.solve()
 
-config['velocity']['use_T0'] = False
-config['velocity']['newton_params']['newton_solver']['relaxation_parameter'] = 0.8
-
-T = src.solvers.TransientSolver(model,config)
+T = solvers.TransientSolver(model,config)
 T.solve()
 
+#File(out_dir + 'S.xml')       << model.S
+#File(out_dir + 'B.xml')       << model.B
+#File(out_dir + 'u.xml')       << model.u
+#File(out_dir + 'v.xml')       << model.v
+#File(out_dir + 'w.xml')       << model.w
+#File(out_dir + 'beta2.xml')   << model.beta2
+#File(out_dir + 'eta.xml')     << model.eta

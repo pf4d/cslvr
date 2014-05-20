@@ -525,7 +525,9 @@ class VelocityBP(object):
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       if   isinstance(config['velocity']['T0'], float):
-        T.vector()[:] = config['velocity']['T0']
+        Ttemp = T.vector().get_local()
+        Ttemp[:] = config['velocity']['T0']
+        T.vector().set_local(Ttemp)
       
       elif isinstance(config['velocity']['T0'], ndarray):
         T.vector().set_local(config['velocity']['T0'])
@@ -1228,12 +1230,13 @@ class FreeSurface(object):
     mhat        = model.mhat           # mesh velocity
     dSdt        = model.dSdt           # 
     M           = model.M
-    ds          = model.ds
+    ds          = model.ds_flat
     dSurf       = ds(2)
     dBase       = ds(3)
     
-    self.static_boundary = DirichletBC(Q, 0.0, model.ff, 4)
-    h = 2*triangle.circumradius
+    self.static_boundary = DirichletBC(Q, 0.0, model.ff_flat, 4)
+#    h = 2*triangle.circumradius
+    h = CellSize(model.flat_mesh)
 
     # Upwinded trial function
     unorm       = sqrt(self.uhat**2 + self.vhat**2 + 1e-1)
@@ -1308,8 +1311,12 @@ class FreeSurface(object):
     else:
       m.ident_zeros()
       solve(m, model.dSdt.vector(), r)
-      
-    solve(lhs(self.A_pro) == rhs(self.A_pro), model.dSdt)
+
+    A = assemble(lhs(self.A_pro))
+    p = assemble(rhs(self.A_pro))
+    q = Vector()  
+    solve(A, q,p)
+    model.dSdt.vector()[:] = q
 
 class AdjointVelocityBP(object):
   """ 
@@ -1372,14 +1379,15 @@ class AdjointVelocityBP(object):
     F_adjoint = derivative(A, U, L)
 
     R = 0
+    N = FacetNormal(model.mesh)
     for a,c in zip(alpha,control):
-      N = FacetNormal(model.mesh)
       if config['adjoint']['regularization_type'] == 'TV':
         R += a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * ds(3)
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
+      
       else:
         print 'Valid regularizations are \'TV\' and \'Tikhonov\'.'
     

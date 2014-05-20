@@ -136,6 +136,7 @@ class Model(object):
 
     # this function contains markers which may be applied to facets of the mesh
     self.ff   = FacetFunction('size_t', self.mesh, 0)
+    self.ff_flat = FacetFunction('size_t',self.flat_mesh,0)
     
     # iterate through the facets and mark each if on a boundary :
     #
@@ -183,8 +184,10 @@ class Model(object):
       
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
-   
+
+    self.ff_flat.set_values(self.ff.array())
     self.ds = Measure('ds')[self.ff]
+    self.ds_flat = Measure('ds')[self.ff_flat]
      
   def set_parameters(self, params):
     """

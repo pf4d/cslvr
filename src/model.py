@@ -562,9 +562,9 @@ class Model(object):
     solve(M, tau_t2.vector(), r_tau_t2_v)
 
     # integrate vertically :
-    tau_lon = self.vert_integrate(tau_n1 + tau_n2)
+    tau_lon = self.vert_integrate(tau_n1)
     tau_lon = project(self.extrude(tau_lon, 2, 2), Q)
-    tau_lat = self.vert_integrate(tau_t1 + tau_t2)
+    tau_lat = self.vert_integrate(tau_t1)
     tau_lat = project(self.extrude(tau_lat, 2, 2), Q)
 
     # calculate the basal shear and driving stresses :

@@ -255,6 +255,7 @@ class VelocityStokes(object):
                      + (v.dx(2) + w.dx(1))**2) \
              + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
     epsdot = 0.5 * term + eps_reg
+    eta    = b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
     Vd     = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
@@ -284,6 +285,7 @@ class VelocityStokes(object):
 
     model.A      = A
     model.epsdot = epsdot
+    model.eta    = eta
     model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
@@ -609,9 +611,10 @@ class VelocityBP(object):
             "'isothermal', or 'full'."
 
     # second invariant of the strain rate tensor squared :
-    epsdot   = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+    term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
                +        u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2
-    eta      =     0.5 * b * (epsdot + eps_reg)**((1.0 - n) / (2*n))
+    epsdot   =   0.5 * term + eps_reg
+    eta      =     b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
@@ -1232,7 +1235,7 @@ class FreeSurface(object):
     dBase       = ds(3)
     
     self.static_boundary = DirichletBC(Q, 0.0, model.ff_flat, 4)
-    #h = 2*triangle.circumradius
+#    h = 2*triangle.circumradius
     h = CellSize(model.flat_mesh)
 
     # Upwinded trial function
@@ -1308,7 +1311,7 @@ class FreeSurface(object):
     else:
       m.ident_zeros()
       solve(m, model.dSdt.vector(), r)
-      
+
     A = assemble(lhs(self.A_pro))
     p = assemble(rhs(self.A_pro))
     q = Vector()  
@@ -1384,6 +1387,7 @@ class AdjointVelocityBP(object):
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
+      
       else:
         print 'Valid regularizations are \'TV\' and \'Tikhonov\'.'
     

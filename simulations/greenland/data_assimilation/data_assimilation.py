@@ -134,7 +134,7 @@ model.initialize_variables()
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
-nonlin_solver_params['newton_solver']['absolute_tolerance']      = 0.0
+nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 #nonlin_solver_params['linear_solver']                            = 'mumps'

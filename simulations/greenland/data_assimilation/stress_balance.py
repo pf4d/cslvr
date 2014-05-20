@@ -58,14 +58,13 @@ model.w.update()
 model.beta2.update()
 model.eta.update()
 
-out     = model.component_stress()
+#===============================================================================
+# calculate the "stokes-balance" stress fields :
+out     = model.component_stress_stokes()
 tau_lon = out[0]
 tau_lat = out[1]
 tau_bas = out[2]
 tau_drv = out[3]
-
-File(out_dir + 'tau_lon.pvd')        << tau_lon
-File(out_dir + 'tau_lat.pvd')        << tau_lat
 
 tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2))
 dpb           = tau_drv + tau_bas
@@ -73,32 +72,45 @@ tau_drv_p_bas = project(sqrt(inner(dpb, dpb)))
 tau_tot       = project(tau_drv_p_bas - tau_lat_p_lon)
 U             = as_vector([model.u, model.v, model.w])
 intDivU       = model.vert_integrate(div(U))
+intU          = model.vert_integrate(sqrt(inner(U,U)))
 w_bas_e       = model.extrude(model.w, 3, 2)
+tau_drv       = project(sqrt(tau_drv[0]**2 + tau_drv[1]**2 + tau_drv[2]**2))
+tau_bas       = project(sqrt(tau_bas[2]**2 + tau_bas[1]**2 + tau_bas[2]**2))
 
 w_bas_e.update()
 intDivU.update()
 
+# output diagnostics :
 File(out_dir + 'w_bas_e.pvd')        << project(w_bas_e)
 File(out_dir + 'intDivU.pvd')        << project(intDivU)
+File(out_dir + 'intU.pvd')           << project(intU)
+
+# output "stokes-balance" :
+File(out_dir + 'tau_drv.pvd')        << tau_drv
+File(out_dir + 'tau_bas.pvd')        << tau_bas
+File(out_dir + 'tau_lon.pvd')        << tau_lon
+File(out_dir + 'tau_lat.pvd')        << tau_lat
 File(out_dir + 'tau_tot.pvd')        << tau_tot
 File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
 File(out_dir + 'tau_drv_p_bas.pvd')  << tau_drv_p_bas
 
-tau_drv       = project(sqrt(tau_drv[0]**2 + tau_drv[1]**2 + tau_drv[2]**2))
-tau_bas       = project(sqrt(tau_bas[2]**2 + tau_bas[1]**2 + tau_bas[2]**2))
-File(out_dir + 'tau_drv.pvd')        << tau_drv
-File(out_dir + 'tau_bas.pvd')        << tau_bas
+#===============================================================================
+# calculate the "stress-balance" stress fields :
+out     = model.component_stress()
+tau_lon = out[0]
+tau_lat = out[1]
+tau_vrt = out[2]
+tau_bas = out[3]
+tau_drv = out[4]
 
-#tau_bas2       = project(tau_drv - tau_lon - tau_lat)
-#tau_drv2       = project(tau_bas + tau_lon + tau_lat)
-#tau_tot2       = project(tau_lon + tau_lat + tau_bas2 - tau_drv)
-#tau_drv_m_bas2 = project(tau_drv - tau_bas2)
+tau_lat_p_lon = project(sqrt(tau_lat**2 + tau_lon**2))
+tau_tot       = project(tau_drv_p_bas - tau_lat_p_lon)
 
-#File(out_dir + 'tau_drv_m_bas2.pvd') << tau_drv_m_bas2
-#File(out_dir + 'tau_bas2.pvd')       << tau_bas2
-#File(out_dir + 'tau_drv2.pvd')       << tau_drv2
-#File(out_dir + 'beta22.pvd')         << beta22
-#File(out_dir + 'tau_tot2.pvd')       << tau_tot2
-
+# output "stress-balance" :
+File(out_dir + 'tau_lon_s.pvd')        << tau_lon
+File(out_dir + 'tau_lat_s.pvd')        << tau_lat
+File(out_dir + 'tau_vrt_s.pvd')        << tau_vrt
+File(out_dir + 'tau_tot_s.pvd')        << tau_tot
+File(out_dir + 'tau_lat_p_lon_s.pvd')  << tau_lat_p_lon
 
 

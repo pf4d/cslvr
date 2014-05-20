@@ -213,6 +213,9 @@ class TransientSolver(object):
     model.S.vector().set_local(y[v2d])
    
     if config['velocity']['on']:
+      utemp = model.U.vector().get_local()
+      utemp[:] = 0.0
+      model.U.vector().set_local(utemp)
       self.velocity_instance.solve()
 
     if config['surface_climate']['on']:

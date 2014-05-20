@@ -140,7 +140,8 @@ class Model(object):
     mask = self.mask
 
     # this function contains markers which may be applied to facets of the mesh
-    self.ff   = FacetFunction('size_t', self.mesh, 0)
+    self.ff      = FacetFunction('size_t', self.mesh,      0)
+    self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
     
     # iterate through the facets and mark each if on a boundary :
     #
@@ -188,8 +189,11 @@ class Model(object):
       
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
-   
-    self.ds = Measure('ds')[self.ff]
+    
+    #self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
+    
+    self.ds      = Measure('ds')[self.ff]
+    self.ds_flat = Measure('ds')[self.ff_flat]
      
   def set_parameters(self, params):
     """
@@ -408,7 +412,7 @@ class Model(object):
   
     return as_vector([tau_drv_u, tau_drv_v, tau_drv_w])
 
-  def component_stress_old(self):
+  def component_stress(self):
     """
     Calculate each of the component stresses which define the full stress
     of the ice-sheet.
@@ -420,7 +424,7 @@ class Model(object):
       tau_bas - frictional sliding stress at the bed
       tau_drv - driving stress of the system 
     
-    Note: tau_drv = tau_lon + tau_lat + tau_vrt + tau_bas
+    Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
     print "::: CALCULATING COMPONENT STRESSES :::"
@@ -447,8 +451,8 @@ class Model(object):
     v_n.vector().set_local(v_v_n)
     w_n.vector().set_local(w_v_n)
     
-    U_n = as_vector([u_n, v_n, w_n])
-    U_t = as_vector([v_n,-u_n, w_n])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
     U_v = as_vector([0,   0,   1])
  
     tau_lon = project(self.calc_component_stress(U_n), Q)
@@ -459,7 +463,7 @@ class Model(object):
 
     return tau_lon, tau_lat, tau_vrt, tau_bas, tau_drv
 
-  def component_stress(self):
+  def component_stress_stokes(self):
     """
     Calculate each of the component stresses which define the full stress
     of the ice-sheet.
@@ -514,8 +518,8 @@ class Model(object):
     # directional derivatives :
     uhat     = dot(U, U_n)
     vhat     = dot(U, U_t)
-    gradvhat = grad(vhat)
     graduhat = grad(uhat)
+    gradvhat = grad(vhat)
     dudn = dot(graduhat, U_n)
     dvdn = dot(gradvhat, U_n)
     dudt = dot(graduhat, U_t)
@@ -535,9 +539,9 @@ class Model(object):
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     r_tau_n1 = dphidn*eta*(4*dudn + 2*dvdt) * dx
-    r_tau_t1 = dphidt*eta*(  dudt +   dvdn) * dx
-    r_tau_t2 = dphidt*eta*(4*dvdt + 2*dudn) * dx
     r_tau_n2 = dphidn*eta*(  dudt +   dvdn) * dx
+    r_tau_t1 = dphidt*eta*(4*dvdt + 2*dudn) * dx
+    r_tau_t2 = dphidt*eta*(  dudt +   dvdn) * dx
 
     # assemble the vectors :
     r_tau_n1_v = assemble(r_tau_n1)

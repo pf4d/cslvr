@@ -132,10 +132,10 @@ model.initialize_variables()
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.5
-nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-13
+nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
+nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 0.0
-nonlin_solver_params['newton_solver']['maximum_iterations']      = 50
+nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 #nonlin_solver_params['linear_solver']                            = 'mumps'
 #nonlin_solver_params['preconditioner']                           = 'default'
@@ -225,10 +225,10 @@ F.solve()
 tf1 = time()
 
 params = config['velocity']['newton_params']['newton_solver']
-params['relaxation_parameter']         = 0.5
-params['relative_tolerance']           = 3e-12
+params['relaxation_parameter']         = 1.0
+params['relative_tolerance']           = 1e-6
 params['absolute_tolerance']           = 0.0
-params['maximum_iterations']           = 40
+params['maximum_iterations']           = 12
 config['velocity']['viscosity_mode']   = 'linear'
 config['velocity']['b_linear']         = project(model.eta, model.Q)
 config['enthalpy']['on']               = False

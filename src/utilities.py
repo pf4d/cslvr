@@ -819,6 +819,8 @@ class MeshRefiner(object):
 
   def __init__(self, di, fn, gmsh_file_name):
     """
+    Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
+    Refinements are done on DataInput object <di> with data field index <fn>.
     """
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
@@ -834,6 +836,14 @@ class MeshRefiner(object):
 
   def add_attractor(self, f_max, l_min, l_max, hard_cut, inv):
     """
+    Refine the mesh with the cell radius defined as :
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+    If <inv> is True, refine off of the inverse of <field> instead.
+
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
     a   = attractor(self.spline, self.field, f_max, l_min, l_max, 
@@ -843,6 +853,7 @@ class MeshRefiner(object):
 
   def add_min_field(self, op_list):
     """
+    Create a miniumum field of attactor operator lists <op_list>.
     """
     mf  = min_field(op_list)
     mid = self.m.getFields().addPythonField(mf.op)
@@ -850,11 +861,15 @@ class MeshRefiner(object):
     
   def set_background_field(self, idn):
     """
+    Set the background field to that of field index <idn>.
     """
     self.m.getFields().setBackgroundFieldId(idn)
 
   def finish(self, gui=True, dim=3, out_file_name='mesh'):
     """
+    Finish and create the .msh file.  If <gui> is True, run the gui program, 
+    Otherwise, create the .msh file with dimension <dim> and filename
+    <out_file_name>.msh.
     """
     #launch the GUI
     if gui:

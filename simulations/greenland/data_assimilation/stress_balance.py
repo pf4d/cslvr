@@ -14,7 +14,7 @@ from dolfin               import *
 from time                 import time
 
 out_dir = './stress_balance/'
-in_dir  = './results_high_fo/05/'
+in_dir  = './results_high_stokes/04/'
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -61,10 +61,10 @@ model.eta.update()
 #===============================================================================
 # calculate the "stokes-balance" stress fields :
 out     = model.component_stress_stokes()
-tau_lon = out[1]
-tau_lat = out[2]
-tau_bas = out[3]
-tau_drv = out[4]
+tau_lon = out[0]
+tau_lat = out[1]
+tau_bas = out[2]
+tau_drv = out[3]
 
 tau_lat_p_lon = project(sqrt(tau_lon**2 + tau_lat**2))
 dpb           = tau_drv + tau_bas
@@ -74,8 +74,8 @@ U             = as_vector([model.u, model.v, model.w])
 intDivU       = model.vert_integrate(div(U))
 intU          = model.vert_integrate(sqrt(inner(U,U)))
 w_bas_e       = model.extrude(model.w, 3, 2)
-tau_drv       = project(sqrt(tau_drv[0]**2 + tau_drv[1]**2 + tau_drv[2]**2))
-tau_bas       = project(sqrt(tau_bas[2]**2 + tau_bas[1]**2 + tau_bas[2]**2))
+#tau_drv       = project(sqrt(tau_drv[0]**2 + tau_drv[1]**2 + tau_drv[2]**2))
+#tau_bas       = project(sqrt(tau_bas[2]**2 + tau_bas[1]**2 + tau_bas[2]**2))
 
 w_bas_e.update()
 intDivU.update()

@@ -539,9 +539,9 @@ class Model(object):
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     r_tau_n1 = dphidn*eta*(4*dudn + 2*dvdt) * dx
+    r_tau_t1 = dphidt*eta*(  dudt +   dvdn) * dx
     r_tau_n2 = dphidn*eta*(  dudt +   dvdn) * dx
-    r_tau_t1 = dphidt*eta*(4*dvdt + 2*dudn) * dx
-    r_tau_t2 = dphidt*eta*(  dudt +   dvdn) * dx
+    r_tau_t2 = dphidt*eta*(4*dvdt + 2*dudn) * dx
 
     # assemble the vectors :
     r_tau_n1_v = assemble(r_tau_n1)
@@ -570,6 +570,10 @@ class Model(object):
     # calculate the basal shear and driving stresses :
     tau_bas = self.calc_tau_bas()
     tau_drv = self.calc_tau_drv()
+
+    # dot product of stress with the direction of flow:
+    tau_bas = project(dot(tau_bas, U_n))
+    tau_drv = project(dot(tau_drv, U_n))
 
     return tau_lon, tau_lat, tau_bas, tau_drv
    

@@ -57,6 +57,7 @@ from time                 import time
 # make the directory if needed :
 i = int(sys.argv[1])
 dir_b   = './results_high_fo/0'
+dir_b   = './results_high_stokes/0'
 
 # make the directory if needed :
 out_dir = dir_b + str(i) + '/'
@@ -214,12 +215,12 @@ config = { 'mode'                         : 'steady',
              'regularization_type' : 'Tikhonov'
            }}
 
-model.eps_reg = 1e-5
+model.eps_reg = 1e-15
 
 F = solvers.SteadySolver(model,config)
 if i != 0: 
   File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
-  #config['velocity']['approximation'] = 'stokes'
+  config['velocity']['approximation'] = 'stokes'
 t01 = time()
 F.solve()
 tf1 = time()
@@ -251,6 +252,8 @@ File(out_dir + 'v.xml')       << model.v
 File(out_dir + 'w.xml')       << model.w
 File(out_dir + 'beta2.xml')   << model.beta2
 File(out_dir + 'eta.xml')     << model.eta
+
+File(out_dir + 'S.pvd')       << model.S
 
 #File(out_dir + 'mesh.xdmf')   << model.mesh
 

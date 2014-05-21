@@ -786,6 +786,29 @@ class attractor(object):
         ls = self.l_max
       return lc
 
+class static_attractor(object):
+  """
+  """
+  def __init__(self, spline, field, f_max, l_min, l_max, 
+               hard_cut=False, inv=True):
+    """
+    Refine the mesh off of data field <field> using spline <spline> with the 
+    cell radius defined as :
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+    If <inv> is True, refine off of the inverse of <field> instead.
+
+    """
+    self.spline   = spline
+  
+  def op(self, x, y, z, entity):
+    """
+    """
+    return self.spline(x,y)[0][0]
+
 
 class min_field(object):
   """
@@ -846,7 +869,7 @@ class MeshRefiner(object):
 
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
-    a   = attractor(self.spline, self.field, f_max, l_min, l_max, 
+    a   = static_attractor(self.spline, self.field, f_max, l_min, l_max, 
                     inv=inv, hard_cut=hard_cut)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid

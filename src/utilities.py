@@ -19,6 +19,7 @@ from dolfin            import *
 from pylab             import plot, show, shape, meshgrid, contour
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
+from gmshpy            import *
 
 class DataInput(object):
   """ 
@@ -461,10 +462,11 @@ class DataOutput(object):
 class MeshGenerator(object):
   """
   generate a mesh.
-  
   """ 
   def __init__(self, dd, fn, direc):
     """
+    Generate a mesh with DataInput object <dd>, output filename <fn>, and 
+    output directory <direc>.
     """
     self.dd         = dd
     self.fn         = fn
@@ -475,6 +477,9 @@ class MeshGenerator(object):
   
   def create_contour(self, var, zero_cntr, skip_pts):  
     """
+    Create a contour of the data field with index <var> of <dd> provided at 
+    initialization.  <zero_cntr> is the value of <var> to contour, <skip_pts>
+    is the number of points to skip in the contour, needed to prevent overlap. 
     """
     # create contour :
     field  = self.dd.data[var]
@@ -498,17 +503,18 @@ class MeshGenerator(object):
   
   def plot_contour(self):
     """
+    Plot the contour created with the "create_contour" method.
     """
     lc = self.longest_cont
     plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
     show()
 
-
   def eliminate_intersections(self, dist=10):
     """
-    Eliminate intersecting boundary elements.
+    Eliminate intersecting boundary elements. <dist> is an integer specifiying 
+    how far forward to look to eliminate intersections.
     """
-    print "Eliminating intersections, please wait."
+    print "::: eliminating intersections, please wait :::"
 
     class Point:
       def __init__(self,x,y):
@@ -557,7 +563,9 @@ class MeshGenerator(object):
   
   def write_gmsh_contour(self, lc, boundary_extend=True):  
     """
-    write the contour created with create_contour to the .geo file.
+    write the contour created with create_contour to the .geo file with mesh
+    spacing <lc>.  If <boundary_extend> is true, the spacing in the interior 
+    of the domain will be the same as the distance between nodes on the contour.
     """ 
     #FIXME: sporadic results when used with ipython, does not stops writing the
     #       file after a certain point.  calling restart() then write again 
@@ -606,7 +614,7 @@ class MeshGenerator(object):
   
   def extrude(self, h, n_layers):
     """
-    Extrude the mesh please.
+    Extrude the mesh <h> units with <n_layers> number of layers.
     """
     f = self.f
     s = str(self.surf_num)
@@ -689,7 +697,14 @@ class MeshGenerator(object):
       f.write("Background Field = " + fd + ";\n\n")
     
     print 'finished, closing \"' + self.direc + self.fn + '.geo\".'
-    f.close
+    f.close()
+  
+  def close_file(self):
+    """
+    close the .geo file down for further editing.
+    """
+    self.f.close()
+
 
   def create_2D_mesh(self, outfile):
     """
@@ -714,90 +729,277 @@ class MeshGenerator(object):
     subprocess.call(cmd.split())
 
 
+class linear_attractor(object):
+  """
+  Create an attractor object which refines with min and max cell radius <l_min>,
+  <l_max> over data field <field>.  The <f_max> parameter specifies a max value
+  for which to apply the minimum cell size such that if <field>_i is less than 
+  <f_max>, the cell size in this region will be <l_max>.  If <hard_cut> is true,
+  the values of <field> above <f_max> will be set to <l_min>, otherwise regular
+  interpolation based on <field> is performed.  If <inv> = True the object 
+  refines on the inverse of the data field <field>.
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+  """
+  def __init__(self, spline, field, f_max, l_min, l_max, 
+               hard_cut=False, inv=True):
+    """
+    Refine the mesh off of data field <field> using spline <spline> with the 
+    cell radius defined as :
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+    If <inv> is True, refine off of the inverse of <field> instead.
+
+    """
+    self.spline   = spline
+    self.field    = field
+    self.l_min    = l_min
+    self.l_max    = l_max
+    self.f_max    = f_max
+    self.hard_cut = hard_cut
+    self.inv      = inv
+    self.c        = (self.l_max - self.l_min) / self.field.max()
+  
+  def op(self, x, y, z, entity):
+    """
+    """
+    v = self.spline(x,y)[0][0]
+    if v > self.f_max:
+      if self.hard_cut:
+        return self.l_min
+      else:
+        if self.inv:
+          lc = self.l_max - self.c * v
+        else:
+          lc = self.l_min + self.c * v
+        return lc
+    else:
+      if self.inv:
+        lc = self.l_min
+      else:
+        ls = self.l_max
+      return lc
+
+class static_attractor(object):
+  """
+  """
+  def __init__(self, spline):
+    """
+    Refine the mesh off of data field <spline> with the cell radius 
+    defined as :
+
+    cell_h_i = spline(x,y)
+
+    """
+    self.spline   = spline
+  
+  def op(self, x, y, z, entity):
+    """
+    """
+    return self.spline(x,y)[0][0]
+
+
+class min_field(object):
+  """
+  Return the minimum of a list of attactor operator fields <f_list>.
+  """
+  def __init__(self, f_list):
+    self.f_list = f_list
+
+  def op(self, x, y, z, entity):
+    l = []
+    for f in self.f_list:
+      l.append(f(x,y,z,entity))
+    return min(l)
+
+
+class max_field(object):
+  """
+  Return the minimum of a list of attactor operator fields <f_list>.
+  """
+  def __init__(self, f_list):
+    self.f_list = f_list
+
+  def op(self, x, y, z, entity):
+    l = []
+    for f in self.f_list:
+      l.append(f(x,y,z,entity))
+    return max(l)
+
+
+class MeshRefiner(object):
+
+  def __init__(self, di, fn, gmsh_file_name):
+    """
+    Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
+    Refinements are done on DataInput object <di> with data field index <fn>.
+    """
+    self.field  = di.data[fn].T
+    self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
+    
+    #load the mesh into a GModel
+    self.m = GModel.current()
+    self.m.load(gmsh_file_name + '.geo')
+
+    # set some parameters :
+    GmshSetOption("Mesh", "CharacteristicLengthFromPoints", 0.0)
+    GmshSetOption("Mesh", "CharacteristicLengthExtendFromBoundary", 0.0)
+    GmshSetOption("Mesh", "Smoothing", 100.0)
+
+  def add_linear_attractor(self, f_max, l_min, l_max, hard_cut, inv):
+    """
+    Refine the mesh with the cell radius defined as :
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+    If <inv> is True, refine off of the inverse of <field> instead.
+
+    """
+    # field, f_max, l_min, l_max, hard_cut=false, inv=true
+    a   = linear_attractor(self.spline, self.field, f_max, l_min, l_max, 
+                           inv=inv, hard_cut=hard_cut)
+    aid = self.m.getFields().addPythonField(a.op)
+    return a,aid
+
+  def add_static_attractor(self):
+    """
+    Refine the mesh with the cell radius defined as :
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+    If <inv> is True, refine off of the inverse of <field> instead.
+
+    """
+    # field, f_max, l_min, l_max, hard_cut=false, inv=true
+    a   = static_attractor(self.spline)
+    aid = self.m.getFields().addPythonField(a.op)
+    return a,aid
+
+  def add_min_field(self, op_list):
+    """
+    Create a miniumum field of attactor operator lists <op_list>.
+    """
+    mf  = min_field(op_list)
+    mid = self.m.getFields().addPythonField(mf.op)
+    return mid
+    
+  def set_background_field(self, idn):
+    """
+    Set the background field to that of field index <idn>.
+    """
+    self.m.getFields().setBackgroundFieldId(idn)
+
+  def finish(self, gui=True, dim=3, out_file_name='mesh'):
+    """
+    Finish and create the .msh file.  If <gui> is True, run the gui program, 
+    Otherwise, create the .msh file with dimension <dim> and filename
+    <out_file_name>.msh.
+    """
+    #launch the GUI
+    if gui:
+      FlGui.instance().run()
+
+    # instead of starting the GUI, we could generate the mesh and save it
+    else:
+      self.m.mesh(dim)
+      self.m.save(out_file_name + ".msh")
+   
+
+
 class MeshExtruder(object):
-    """
-    Due to extreme bugginess in the gmsh extrusion utilities, this class 
-    extrudes a 2D mesh footprint in the z direction in an arbitrary number of 
-    layers.  Its primary purpose is to facilitate mesh generation for the 
-    ice sheet model VarGlaS.  Method based on HOW TO SUBDIVIDE PYRAMIDS, PRISMS
-    AND HEXAHEDRA INTO TETRAHEDRA by Dompierre et al.
+  """
+  Due to extreme bugginess in the gmsh extrusion utilities, this class 
+  extrudes a 2D mesh footprint in the z direction in an arbitrary number of 
+  layers.  Its primary purpose is to facilitate mesh generation for the 
+  ice sheet model VarGlaS.  Method based on HOW TO SUBDIVIDE PYRAMIDS, PRISMS
+  AND HEXAHEDRA INTO TETRAHEDRA by Dompierre et al.
 
-    Written by Douglas Brinkerhoff 14.01.25
-    """
+  Written by Douglas Brinkerhoff 14.01.25
+  """
 
-    indirection_table = {0:[0,1,2,3,4,5],
-                         1:[1,2,0,4,5,3],
-                         2:[2,0,1,5,3,4],
-                         3:[3,5,4,0,2,1],
-                         4:[4,3,5,1,0,3],
-                         5:[5,4,3,2,1,0]}
+  indirection_table = {0:[0,1,2,3,4,5],
+                       1:[1,2,0,4,5,3],
+                       2:[2,0,1,5,3,4],
+                       3:[3,5,4,0,2,1],
+                       4:[4,3,5,1,0,3],
+                       5:[5,4,3,2,1,0]}
 
-    def __init__(self,mesh):
-      # Accepts a dolfin mesh of dimension 2
-      self.mesh = mesh
-      self.n_v2 = mesh.num_vertices()
+  def __init__(self,mesh):
+    # Accepts a dolfin mesh of dimension 2
+    self.mesh = mesh
+    self.n_v2 = mesh.num_vertices()
 
-      # Initialize tetrahedron array for extruded mesh
-      self.global_tets = array([-1,-1,-1,-1])
+    # Initialize tetrahedron array for extruded mesh
+    self.global_tets = array([-1,-1,-1,-1])
 
-    def extrude_mesh(self,l,z_offset):
-      # accepts the number of layers and the length of extrusion
+  def extrude_mesh(self,l,z_offset):
+    # accepts the number of layers and the length of extrusion
 
-      # Extrude vertices
-      all_coords = []
-      for i in linspace(0,z_offset,l):
-        all_coords.append(hstack((mesh.coordinates(),i*ones((self.n_v2,1)))))
-      self.global_vertices = vstack(all_coords)
+    # Extrude vertices
+    all_coords = []
+    for i in linspace(0,z_offset,l):
+      all_coords.append(hstack((mesh.coordinates(),i*ones((self.n_v2,1)))))
+    self.global_vertices = vstack(all_coords)
 
-      # Extrude cells (tris to tetrahedra)
-      for i in range(l-1):
-        for c in self.mesh.cells():
-          # Make a prism out of 2 stacked triangles
-          vertices = hstack((c+i*self.n_v2,c+(i+1)*self.n_v2))
+    # Extrude cells (tris to tetrahedra)
+    for i in range(l-1):
+      for c in self.mesh.cells():
+        # Make a prism out of 2 stacked triangles
+        vertices = hstack((c+i*self.n_v2,c+(i+1)*self.n_v2))
 
-          # Determine prism orientation
-          smallest_vertex_index = argmin(vertices)
+        # Determine prism orientation
+        smallest_vertex_index = argmin(vertices)
 
-          # Map to I-ordering of Dompierre et al.
-          mapping = self.indirection_table[smallest_vertex_index]
+        # Map to I-ordering of Dompierre et al.
+        mapping = self.indirection_table[smallest_vertex_index]
 
-          # Determine which subdivision scheme to use.
-          if min(vertices[mapping][[1,5]]) < min(vertices[mapping][[2,4]]):
-            local_tets = vstack((vertices[mapping][[0,1,2,5]],\
-                                 vertices[mapping][[0,1,5,4]],\
-                                 vertices[mapping][[0,4,5,3]]))
-          else:
-            local_tets = vstack((vertices[mapping][[0,1,2,4]],\
-                                 vertices[mapping][[0,4,2,5]],\
-                                 vertices[mapping][[0,4,5,3]]))
-          # Concatenate local tet to cell array
-          self.global_tets = vstack((self.global_tets,local_tets))
+        # Determine which subdivision scheme to use.
+        if min(vertices[mapping][[1,5]]) < min(vertices[mapping][[2,4]]):
+          local_tets = vstack((vertices[mapping][[0,1,2,5]],\
+                               vertices[mapping][[0,1,5,4]],\
+                               vertices[mapping][[0,4,5,3]]))
+        else:
+          local_tets = vstack((vertices[mapping][[0,1,2,4]],\
+                               vertices[mapping][[0,4,2,5]],\
+                               vertices[mapping][[0,4,5,3]]))
+        # Concatenate local tet to cell array
+        self.global_tets = vstack((self.global_tets,local_tets))
 
-      # Eliminate phantom initialization tet
-      self.global_tets = self.global_tets[1:,:]
+    # Eliminate phantom initialization tet
+    self.global_tets = self.global_tets[1:,:]
 
-      # Query number of vertices and tets in new mesh
-      self.n_verts = self.global_vertices.shape[0]
-      self.n_tets = self.global_tets.shape[0]
+    # Query number of vertices and tets in new mesh
+    self.n_verts = self.global_vertices.shape[0]
+    self.n_tets = self.global_tets.shape[0]
 
-      # Initialize new dolfin mesh of dimension 3
-      self.new_mesh = Mesh()
-      m = MeshEditor()
-      m.open(self.new_mesh,3,3)
-      m.init_vertices(self.n_verts,self.n_verts)
-      m.init_cells(self.n_tets,self.n_tets)
+    # Initialize new dolfin mesh of dimension 3
+    self.new_mesh = Mesh()
+    m = MeshEditor()
+    m.open(self.new_mesh,3,3)
+    m.init_vertices(self.n_verts,self.n_verts)
+    m.init_cells(self.n_tets,self.n_tets)
 
-      # Copy vertex data into new mesh
-      for i,v in enumerate(self.global_vertices):
-        m.add_vertex(i,Point(*v))
+    # Copy vertex data into new mesh
+    for i,v in enumerate(self.global_vertices):
+      m.add_vertex(i,Point(*v))
 
-      # Copy cell data into new mesh
-      for j,c in enumerate(self.global_tets):
-        m.add_cell(j,*c)
+    # Copy cell data into new mesh
+    for j,c in enumerate(self.global_tets):
+      m.add_cell(j,*c)
 
-      m.close()
+    m.close()
 
-    def write_mesh_to_file(self,filename):
-      # Output mesh
-      File(filename) << self.new_mesh
+  def write_mesh_to_file(self,filename):
+    # Output mesh
+    File(filename) << self.new_mesh
 

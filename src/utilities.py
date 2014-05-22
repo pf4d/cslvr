@@ -729,7 +729,7 @@ class MeshGenerator(object):
     subprocess.call(cmd.split())
 
 
-class attractor(object):
+class linear_attractor(object):
   """
   Create an attractor object which refines with min and max cell radius <l_min>,
   <l_max> over data field <field>.  The <f_max> parameter specifies a max value
@@ -789,17 +789,12 @@ class attractor(object):
 class static_attractor(object):
   """
   """
-  def __init__(self, spline, field, f_max, l_min, l_max, 
-               hard_cut=False, inv=True):
+  def __init__(self, spline):
     """
-    Refine the mesh off of data field <field> using spline <spline> with the 
-    cell radius defined as :
-  
-               {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
-               {field_i,   otherwise 
+    Refine the mesh off of data field <spline> with the cell radius 
+    defined as :
 
-    If <inv> is True, refine off of the inverse of <field> instead.
+    cell_h_i = spline(x,y)
 
     """
     self.spline   = spline
@@ -857,7 +852,7 @@ class MeshRefiner(object):
     GmshSetOption("Mesh", "CharacteristicLengthExtendFromBoundary", 0.0)
     GmshSetOption("Mesh", "Smoothing", 100.0)
 
-  def add_attractor(self, f_max, l_min, l_max, hard_cut, inv):
+  def add_linear_attractor(self, f_max, l_min, l_max, hard_cut, inv):
     """
     Refine the mesh with the cell radius defined as :
   
@@ -869,8 +864,24 @@ class MeshRefiner(object):
 
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
-    a   = static_attractor(self.spline, self.field, f_max, l_min, l_max, 
-                    inv=inv, hard_cut=hard_cut)
+    a   = linear_attractor(self.spline, self.field, f_max, l_min, l_max, 
+                           inv=inv, hard_cut=hard_cut)
+    aid = self.m.getFields().addPythonField(a.op)
+    return a,aid
+
+  def add_static_attractor(self):
+    """
+    Refine the mesh with the cell radius defined as :
+  
+               {l_min,     field_i > f_max
+    cell_h_i = {l_max,     field_i < f_max and hard_cut
+               {field_i,   otherwise 
+
+    If <inv> is True, refine off of the inverse of <field> instead.
+
+    """
+    # field, f_max, l_min, l_max, hard_cut=false, inv=true
+    a   = static_attractor(self.spline)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 

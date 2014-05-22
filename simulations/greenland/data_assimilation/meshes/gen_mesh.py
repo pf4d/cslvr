@@ -73,19 +73,22 @@ ref_bm = MeshRefiner(dbm, 'H',    gmsh_file_name='mesh')   # thickness
 #fmax_list = linspace(fmax_min, fmax_max, num_cuts)
 #lc_list   = linspace(lmin_max, lmin_min, num_cuts)
 #for fmax, l_min in zip(fmax_list, lc_list):
-#  a,aid = ref_sr.add_attractor(fmax, l_min, lmax, hard_cut=True, inv=True)
+#  a,aid = ref_sr.add_linear_attractor(fmax, l_min, lmax, hard_cut=True, 
+#                                      inv=True)
 #  a_list.append(a.op)
 #m1  = ref_sr.add_min_field(a_list)
 #ref_sr.set_background_field(m1)
 
 
 #===============================================================================
-## refine on velocity and divide :
+## refine on velocity and divide using inverse option :
 #lmax = 70000
 #lmin = 2000
 #
-#a1,a1id = ref_sr.add_attractor(log(1.0), lmin, lmax, inv=True,  hard_cut=False)
-#a2,a2id = ref_sr.add_attractor(log(1.0), lmin, lmax, inv=False, hard_cut=False)
+#a1,a1id = ref_sr.add_linear_attractor(log(1.0), lmin, lmax, inv=True, 
+#                                      hard_cut=False)
+#a2,a2id = ref_sr.add_linear_attractor(log(1.0), lmin, lmax, inv=False, 
+#                                      hard_cut=False)
 #
 #m1  = ref_sr.add_min_field([a1.op, a2.op])
 #ref_sr.set_background_field(mid)
@@ -93,8 +96,9 @@ ref_bm = MeshRefiner(dbm, 'H',    gmsh_file_name='mesh')   # thickness
 
 #===============================================================================
 # refine on thickness :
-# field, f_max, l_min, l_max, hard_cut=false, inv=true
-a,aid = ref_bm.add_attractor(0, H.min(), H.max(), inv=False, hard_cut=False)
+a,aid = ref_bm.add_static_attractor()
+#a,aid = ref_bm.add_linear_attractor(0, H.min(), H.max(), inv=False, 
+#                                    hard_cut=False)
 ref_bm.set_background_field(aid)
 
 

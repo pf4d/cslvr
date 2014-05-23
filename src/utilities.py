@@ -19,7 +19,6 @@ from dolfin            import *
 from pylab             import plot, show, shape, meshgrid, contour
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
-from gmshpy            import *
 
 class DataInput(object):
   """ 
@@ -840,6 +839,7 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
+    from gmshpy import *
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
     

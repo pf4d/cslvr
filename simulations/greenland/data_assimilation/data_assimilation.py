@@ -80,8 +80,8 @@ sec_qgeo = DataFactory.get_gre_qgeo_secret()
 merged   = DataFactory.get_gre_merged()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_high_new.xml')
-flat_mesh = Mesh('meshes/mesh_high_new.xml')
+mesh      = MeshFactory.get_greenland_detailed()
+flat_mesh = MeshFactory.get_greenland_detailed()
 #mesh      = Mesh('meshes/mesh_low.xml')
 #flat_mesh = Mesh('meshes/mesh_low.xml')
 mesh.coordinates()[:,2]      /= 100000.0

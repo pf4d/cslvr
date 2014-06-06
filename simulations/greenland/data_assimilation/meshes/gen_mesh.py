@@ -6,7 +6,6 @@ sys.path.append(src_directory)
 from src.utilities       import DataInput, MeshGenerator, MeshRefiner
 from data.data_factory   import DataFactory
 from pylab               import *
-from gmshpy              import *
 
 
 #===============================================================================
@@ -26,17 +25,17 @@ dbm  = DataInput(None, bamber,  gen_space=False)
 # generate the contour :
 m = MeshGenerator(dbm, 'mesh', '')
 
-m.create_contour('H', 200.0, 1)
+m.create_contour('H', 200.0, 4)
 m.eliminate_intersections(dist=10)
 m.plot_contour()
 m.write_gmsh_contour(100000, boundary_extend=False)
-#m.extrude(100000, 10)
+m.extrude(100000, 10)
 m.close_file()
 
 
 #===============================================================================
 # refine :
-thklim = 200.0
+thklim = 1000.0
 dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
 dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
 dbm.set_data_min('H',    boundary=thklim, val=thklim)
@@ -96,7 +95,7 @@ ref_bm = MeshRefiner(dbm, 'H',    gmsh_file_name='mesh')   # thickness
 
 #===============================================================================
 # refine on thickness :
-a,aid = ref_bm.add_static_attractor()
+a,aid = ref_bm.add_static_attractor(5)
 #a,aid = ref_bm.add_linear_attractor(0, H.min(), H.max(), inv=False, 
 #                                    hard_cut=False)
 ref_bm.set_background_field(aid)

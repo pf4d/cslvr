@@ -1829,3 +1829,110 @@ class VelocityBalance_2(object):
 
     return ((gU.array() , ga.array() ,\
              gH.array() , gN.array() ))
+
+
+class StokesBalance(object):
+
+  def __init__(self, model, config):
+    """
+    """
+    #Q       = FunctionSpace(model.mesh, 'CG', 2)
+    Q       = model.Q
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    eta     = model.eta
+    beta2   = model.beta2
+    
+    # get the values at the bed :
+    beta2_e = model.beta2_e
+    u_b_e   = model.u_b_e
+    v_b_e   = model.v_b_e
+    
+    # vertically average :
+    etabar = model.etabar
+    ubar   = model.ubar
+    vbar   = model.vbar
+
+    # create functions used to solve for velocity :
+    V        = MixedFunctionSpace([Q,Q])
+    dU       = TrialFunction(V)
+    du, dv   = split(dU)
+    Phi      = TestFunction(V)
+    phi, psi = split(Phi)
+    U_s      = Function(V)
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    U_n  = model.normalize_vector(as_vector([ubar,vbar]), Q)
+    u_n  = U_n[0]
+    v_n  = U_n[1]
+    U_n  = as_vector([u_n,  v_n,  0])
+    U_t  = as_vector([v_n, -u_n,  0])
+    U    = as_vector([du,   dv,   0])
+    Ubar = as_vector([ubar, vbar, 0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+    gradpsi = grad(psi)
+    dpsidn  = dot(gradpsi, U_n)
+    dpsidt  = dot(gradpsi, U_t)
+
+    # driving stres :
+    tau_d   = model.tau_d
+    
+    # calc basal drag : 
+    u_c     = ubar - u_b_e
+    v_c     = vbar - v_b_e
+    tau_b_u = beta2_e * H * (du - u_c)
+    tau_b_v = beta2_e * H * (dv - v_c)
+    tau_b   = as_vector([tau_b_u, tau_b_v, 0])
+
+    # dot product of stress with the direction along (n) and across (t) flow :
+    tau_bn = phi * dot(tau_b, U_n) * dx
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_bt = psi * dot(tau_b, U_t) * dx
+    tau_dt = psi * dot(tau_d, U_t) * dx
+
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
+    tau_tn = - dpsidn * H * etabar * (  dudt +   dvdn) * dx
+    tau_tt = - dpsidt * H * etabar * (4*dvdt + 2*dudn) * dx
+  
+    # form residual in mixed space :
+    rn = tau_nn + tau_nt - tau_bn - tau_dn
+    rt = tau_tn + tau_tt - tau_bt - tau_dt
+    r  = rn + rt
+
+    # make the variables available to solve :
+    self.r   = r
+    self.U_s = U_s
+    
+  def solve(self):
+    """
+    """
+    solve(lhs(self.r) == rhs(self.r), self.U_s)
+    
+    u_s,v_s    = split(self.U_s)
+    model.ubar = u_s
+    model.vbar = v_s
+
+
+

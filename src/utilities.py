@@ -482,7 +482,10 @@ class MeshGenerator(object):
     """
     # create contour :
     field  = self.dd.data[var]
-    self.c = contour(self.x, self.y, field, [zero_cntr])
+    fig = figure()
+    self.ax = fig.add_subplot(111)
+    self.ax.set_aspect('equal') 
+    self.c = self.ax.contour(self.x, self.y, field, [zero_cntr])
     
     # Get longest contour:
     cl       = self.c.allsegs[0]
@@ -504,8 +507,9 @@ class MeshGenerator(object):
     """
     Plot the contour created with the "create_contour" method.
     """
-    lc = self.longest_cont
-    plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
+    ax = self.ax
+    lc  = self.longest_cont
+    ax.plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
     show()
 
   def eliminate_intersections(self, dist=10):
@@ -835,14 +839,13 @@ class max_field(object):
 
 class MeshRefiner(object):
 
-  from gmshpy import GModel, GmshSetOption, FlGui
-
   def __init__(self, di, fn, gmsh_file_name):
     """
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
-    from gmshpy import *
+    from gmshpy import GModel, GmshSetOption
+
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
     
@@ -872,19 +875,15 @@ class MeshRefiner(object):
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 
-  def add_static_attractor(self):
+  def add_static_attractor(self, c=1):
     """
     Refine the mesh with the cell radius defined as :
   
-               {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
-               {field_i,   otherwise 
-
-    If <inv> is True, refine off of the inverse of <field> instead.
+    cell_h_i = c * field_i
 
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
-    a   = static_attractor(self.spline)
+    a   = static_attractor(self.spline, c)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 
@@ -910,6 +909,7 @@ class MeshRefiner(object):
     """
     #launch the GUI
     if gui:
+      from gmshpy import FlGui
       FlGui.instance().run()
 
     # instead of starting the GUI, we could generate the mesh and save it

@@ -54,16 +54,15 @@ from src.utilities        import DataInput, DataOutput
 from dolfin               import *
 from time                 import time
 
-# make the directory if needed :
-i = int(sys.argv[1])
-dir_b   = './results_high_fo/0'
-dir_b   = './results_high_stokes/0'
 
-# make the directory if needed :
+# get the input args :
+i = int(sys.argv[2])           # assimilation number
+dir_b = sys.argv[1] + '/0'     # directory to save
+#dir_b   = './results_high_fo/0'
+#dir_b   = './results_high_stokes/0'
+
+# set the output directory :
 out_dir = dir_b + str(i) + '/'
-d       = os.path.dirname(out_dir)
-if not os.path.exists(d):
-  os.makedirs(d)
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -72,16 +71,16 @@ thklim = 200.0
 
 # collect the raw data :
 searise  = DataFactory.get_searise(thklim = thklim)
-measure  = DataFactory.get_gre_measures()
-meas_shf = DataFactory.get_shift_gre_measures()
+#measure  = DataFactory.get_gre_measures()
+#meas_shf = DataFactory.get_shift_gre_measures()
 bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
-sec_qgeo = DataFactory.get_gre_qgeo_secret()
+#sec_qgeo = DataFactory.get_gre_qgeo_secret()
 merged   = DataFactory.get_gre_merged()
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_high_new.xml')
-flat_mesh = Mesh('meshes/mesh_high_new.xml')
+mesh      = MeshFactory.get_greenland_coarse()
+flat_mesh = MeshFactory.get_greenland_coarse()
 #mesh      = Mesh('meshes/mesh_low.xml')
 #flat_mesh = Mesh('meshes/mesh_low.xml')
 mesh.coordinates()[:,2]      /= 100000.0
@@ -94,7 +93,7 @@ dbm     = DataInput(None, bamber,   mesh=mesh)
 #dms     = DataInput(None, measure,  mesh=mesh)
 #dmss    = DataInput(None, meas_shf, mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
-dsq     = DataInput(None, sec_qgeo, mesh=mesh)
+#dsq     = DataInput(None, sec_qgeo, mesh=mesh)
 dmg     = DataInput(None, merged,   mesh=mesh)
 #dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 
@@ -108,8 +107,8 @@ Surface            = dbm.get_spline_expression('h')
 Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 #BasalHeatFlux      = dsr.get_spline_expression('q_geo')
-BasalHeatFlux      = dsq.get_spline_expression('q_geo')
-#BasalHeatFlux      = dfm.get_spline_expression('q_geo')
+#BasalHeatFlux      = dsq.get_spline_expression('q_geo')
+BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 #U_observed         = dsr.get_spline_expression('U_ob')
 U_observed         = dmg.get_spline_expression('v_mag')
@@ -138,8 +137,6 @@ nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-#nonlin_solver_params['linear_solver']                            = 'mumps'
-#nonlin_solver_params['preconditioner']                           = 'default'
 nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
 nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2

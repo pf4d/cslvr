@@ -576,6 +576,7 @@ class VelocityBP(object):
     du,  dv  = split(dU)
     u,   v   = split(U)  # x,y velocity components
 
+    # vertical velocity components :
     chi      = TestFunction(Q)
     dw       = TrialFunction(Q)
 

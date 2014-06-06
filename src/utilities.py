@@ -14,12 +14,11 @@ sys.path.append(src_directory)
 
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline, NearestNDInterpolator
-from numpy             import *
-from dolfin            import *
-from pylab             import plot, show, shape, meshgrid, contour
+from pylab             import *
+from dolfin            import interpolate, project, Expression, Function, \
+                              vertices, Mesh, MeshEditor, FunctionSpace
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
-from gmshpy            import *
 
 class DataInput(object):
   """ 
@@ -789,20 +788,21 @@ class linear_attractor(object):
 class static_attractor(object):
   """
   """
-  def __init__(self, spline):
+  def __init__(self, spline, c):
     """
     Refine the mesh off of data field <spline> with the cell radius 
     defined as :
 
-    cell_h_i = spline(x,y)
+    cell_h_i = c * spline(x,y)
 
     """
-    self.spline   = spline
+    self.spline = spline
+    self.c      = c
   
   def op(self, x, y, z, entity):
     """
     """
-    return self.spline(x,y)[0][0]
+    return self.c * self.spline(x,y)[0][0]
 
 
 class min_field(object):
@@ -834,6 +834,8 @@ class max_field(object):
 
 
 class MeshRefiner(object):
+
+  from gmshpy import GModel, GmshSetOption, FlGui
 
   def __init__(self, di, fn, gmsh_file_name):
     """

@@ -708,7 +708,7 @@ class Model(object):
     """
     print "::: calculating 'stokes-balance' :::"
     out_dir = self.out_dir
-    Q       = FunctionSpace(self.mesh, 'CG', 2)#self.Q
+    Q       = self.Q#FunctionSpace(self.mesh, 'CG', 2)
     u       = self.u
     v       = self.v
     w       = self.w
@@ -807,7 +807,8 @@ class Model(object):
     r  = rn + rt
 
     # solve for vertically averaged u and v : 
-    solve(lhs(r) == rhs(r), U_s)
+    #solve(lhs(r) == rhs(r), U_s)
+    solve(r == 0, U_s)
     
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 

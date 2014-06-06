@@ -1836,6 +1836,9 @@ class StokesBalance(object):
   def __init__(self, model, config):
     """
     """
+    self.model  = model
+    self.config = config
+
     #Q       = FunctionSpace(model.mesh, 'CG', 2)
     Q       = model.Q
     u       = model.u
@@ -1853,9 +1856,9 @@ class StokesBalance(object):
     v_b_e   = model.v_b_e
     
     # vertically average :
-    etabar = model.etabar
-    ubar   = model.ubar
-    vbar   = model.vbar
+    etabar  = model.etabar
+    ubar    = model.ubar
+    vbar    = model.vbar
 
     # create functions used to solve for velocity :
     V        = MixedFunctionSpace([Q,Q])
@@ -1922,17 +1925,21 @@ class StokesBalance(object):
     r  = rn + rt
 
     # make the variables available to solve :
+    self.Q   = Q
     self.r   = r
     self.U_s = U_s
     
   def solve(self):
     """
     """
+    model = self.model
+
+    print "::: solving 'stokes-balance' :::"
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
     u_s,v_s    = split(self.U_s)
-    model.ubar = u_s
-    model.vbar = v_s
+    model.ubar = project(u_s, self.Q)
+    model.vbar = project(v_s, self.Q)
 
 
 

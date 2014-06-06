@@ -58,9 +58,14 @@ model.w.update()
 model.beta2.update()
 model.eta.update()
 
+config = {'output_path' : out_dir}
+
+F = solvers.StokesBalanceSolver(model, config)
+F.solve()
+
 #===============================================================================
 # calculate the "stokes-balance" stress fields :
-out      = model.component_stress_stokes()
+out      = F.component_stress_stokes()
 tau_lon  = out[0]
 tau_lat  = out[1]
 tau_bas  = out[2]

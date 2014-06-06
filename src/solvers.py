@@ -602,7 +602,7 @@ class StokesBalanceSolver(object):
     v_b_e   = model.extrude(v,     3, 2, Q)
     
     # vertically average :
-    etabar = model.vert_integrate(etabar, Q)
+    etabar = model.vert_integrate(eta, Q)
     etabar = project(model.extrude(etabar, 2, 2, Q) / H)
     ubar   = model.vert_integrate(u, Q)
     ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
@@ -617,17 +617,20 @@ class StokesBalanceSolver(object):
     model.ubar    = ubar
     model.vbar    = vbar
     
-    # calculate the driving stress once :
+    # calculate the driving stress and basal drag once :
     model.tau_d   = model.calc_tau_drv(Q)
+    model.tau_b   = model.calc_tau_bas(Q)
+    
+    self.Q = Q
 
     self.stress_balance_instance = StokesBalance(model, config)
 
-  def solve(model):
+  def solve(self):
     """ 
     """
     model   = self.model
     config  = self.config
-    outpath = config['output_path']
+    outpath = self.config['output_path']
     
     # Set the initial Picard iteration (PI) parameters
     # L_\infty norm in velocity between iterations
@@ -637,7 +640,7 @@ class StokesBalanceSolver(object):
     counter = 0
    
     # set an inner tolerance for PI
-    max_iter = 5#config['coupled']['max_iter']
+    max_iter = 2#config['coupled']['max_iter']
    
     # previous velocity for norm calculation
     u_prev   = zeros(len(model.ubar.vector().array()))
@@ -651,11 +654,6 @@ class StokesBalanceSolver(object):
       
       self.stress_balance_instance.solve()
       
-      U    = project(as_vector([model.ubar, model.vbar, model.wbar]))
-      Umag = project(sqrt(inner(U,U)), model.Q)
-      if config['log']: File(outpath + 'Ubar.pvd') << Umag  # save vel. mag.
-      print_min_max(Umag, '||Ubar||')
-
       # Calculate L_infinity norm
       ubar_v      = model.ubar.vector().array()
       vbar_v      = model.vbar.vector().array()
@@ -672,12 +670,21 @@ class StokesBalanceSolver(object):
   def component_stress_stokes(self):  
     """
     """
+    model = self.model
+
+    outpath = self.config['output_path']
+    Q       = self.Q
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    etabar  = model.etabar
+    
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) in relation to the stress-tensor :
-    u_s = project(u_s, Q)
-    v_s = project(v_s, Q)
- 
+    u_s = project(model.ubar, Q)
+    v_s = project(model.vbar, Q)
+    
     U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
     u_n = U[0]
     v_n = U[1]
@@ -695,8 +702,9 @@ class StokesBalanceSolver(object):
     dudt     = dot(graduhat, U_t)
     dvdt     = dot(gradvhat, U_t)
 
-    # calculate basal drag (driving stress calc'd above) : 
-    tau_b = model.calc_tau_bas(Q)
+    # get driving stress and basal drag : 
+    tau_d = model.tau_d
+    tau_b = model.tau_b
     
     # trial and test functions for linear solve :
     phi   = TestFunction(Q)
@@ -711,10 +719,10 @@ class StokesBalanceSolver(object):
     dphidt  = dot(gradphi, U_t)
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    tau_nn = - dphidn * H * eta * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * H * eta * (  dudt +   dvdn) * dx
-    tau_tn = - dphidn * H * eta * (  dudt +   dvdn) * dx
-    tau_tt = - dphidt * H * eta * (4*dvdt + 2*dudn) * dx
+    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
+    tau_tn = - dphidn * H * etabar * (  dudt +   dvdn) * dx
+    tau_tt = - dphidt * H * etabar * (4*dvdt + 2*dudn) * dx
     
     # dot product of stress with the direction along (n) and across (t) flow :
     tau_bn = phi * dot(tau_b, U_n) * dx
@@ -755,14 +763,14 @@ class StokesBalanceSolver(object):
     tau_dn = project(dot(tau_d, U_n))
 
     # output the files to the specified directory :
-    File(out_dir + 'tau_dn.pvd')   << tau_dn
-    File(out_dir + 'tau_bn.pvd')   << tau_bn
-    File(out_dir + 'tau_nn.pvd')   << tau_nn
-    File(out_dir + 'tau_nt.pvd')   << tau_nt
-    File(out_dir + 'tau_totn.pvd') << tau_totn
-    File(out_dir + 'tau_tott.pvd') << tau_tott
-    File(out_dir + 'u_s.pvd')      << u_s
-    File(out_dir + 'v_s.pvd')      << v_s
+    File(outpath + 'tau_dn.pvd')   << tau_dn
+    File(outpath + 'tau_bn.pvd')   << tau_bn
+    File(outpath + 'tau_nn.pvd')   << tau_nn
+    File(outpath + 'tau_nt.pvd')   << tau_nt
+    File(outpath + 'tau_totn.pvd') << tau_totn
+    File(outpath + 'tau_tott.pvd') << tau_tott
+    File(outpath + 'u_s.pvd')      << u_s
+    File(outpath + 'v_s.pvd')      << v_s
    
     # return the functions for further analysis :
     return tau_nn, tau_nt, tau_bn, tau_dn, tau_totn, tau_tott, u_s, v_s

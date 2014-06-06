@@ -640,7 +640,7 @@ class StokesBalanceSolver(object):
     counter = 0
    
     # set an inner tolerance for PI
-    max_iter = 2#config['coupled']['max_iter']
+    max_iter = 1#config['coupled']['max_iter']
    
     # previous velocity for norm calculation
     u_prev   = zeros(len(model.ubar.vector().array()))

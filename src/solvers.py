@@ -386,7 +386,7 @@ class AdjointSolver(object):
 
       model.u_o.update()
       model.v_o.update()
-      
+
   def solve(self):
     r""" 
     Perform the optimization.

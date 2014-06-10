@@ -60,30 +60,30 @@ model.eta.update()
 
 config = {'output_path' : out_dir}
 
-#F = solvers.StokesBalanceSolver(model, config)
-#F.solve()
+F = solvers.StokesBalanceSolver(model, config)
+F.solve()
 
 
 #===============================================================================
 # calculate the "stokes-balance" stress fields :
-#out  = F.component_stress_stokes()
+out  = F.component_stress_stokes()
 
 ## calculate the cartesian "stokes-balance" stress fields :
 #out  = model.component_stress_stokes_c()
 
-XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
-
-# functionality of HDF5 not completed by fenics devs :
-f = HDF5File(out_dir + '3D_5H_stokes.h5', 'w')
-f.write(model.mesh,  'mesh')
-f.write(model.beta2, 'beta2')
-f.write(model.T,     'T')
-f.write(model.S,     'S')
-f.write(model.B,     'B')
-f.write(model.u,     'u')
-f.write(model.v,     'v')
-f.write(model.w,     'w')
-f.write(model.eta,   'eta')
+#XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
+#
+## functionality of HDF5 not completed by fenics devs :
+#f = HDF5File(out_dir + '3D_5H_stokes.h5', 'w')
+#f.write(model.mesh,  'mesh')
+#f.write(model.beta2, 'beta2')
+#f.write(model.T,     'T')
+#f.write(model.S,     'S')
+#f.write(model.B,     'B')
+#f.write(model.u,     'u')
+#f.write(model.v,     'v')
+#f.write(model.w,     'w')
+#f.write(model.eta,   'eta')
 
 
 #===============================================================================

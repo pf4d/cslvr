@@ -334,7 +334,6 @@ class VelocityStokes(object):
       model.u.update()
       model.v.update()
       model.w.update()
-
       self.bcs.append(DirichletBC(Q4.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), model.v, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
@@ -884,7 +883,7 @@ class Enthalpy(object):
 
     q_geo.update()
     T.update()
-
+    
     # Define test and trial functions       
     psi = TestFunction(Q)
     dH  = TrialFunction(Q)
@@ -1084,7 +1083,7 @@ class Enthalpy(object):
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
-    H_surface.update() 
+    H_surface.update()
     model.H_surface = H_surface
     
     self.bc_H = []
@@ -1104,7 +1103,7 @@ class Enthalpy(object):
     T0_n  = project(T0,  Q)
     h_i_n = project(h_i, Q)
 
-    T0_n.update()  
+    T0_n.update()
     h_i_n.update()
     
     # Calculate temperature
@@ -1115,7 +1114,7 @@ class Enthalpy(object):
     T_n.update()
     W_n.update() 
     Mb_n.update()
-    
+
     # update temperature (Adjust for polythermal stuff) :
     Ta = T_n.vector().array()
     Ts = T0_n.vector().array()

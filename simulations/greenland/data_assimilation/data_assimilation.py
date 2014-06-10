@@ -78,16 +78,8 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 #sec_qgeo = DataFactory.get_gre_qgeo_secret()
 rignot   = DataFactory.get_gre_rignot()
 
-# define the meshes :
-#mesh      = MeshFactory.get_greenland_detailed()
-#flat_mesh = MeshFactory.get_greenland_detailed()
-#mesh      = Mesh('meshes/mesh_low.xml')
-#flat_mesh = Mesh('meshes/mesh_low.xml')
-mesh      = Mesh('meshes/5H_3D_greenland.xml')
-flat_mesh = Mesh('meshes/5H_3D_greenland.xml')
-mesh.coordinates()[:,2]      /= 100000.0
-flat_mesh.coordinates()[:,2] /= 100000.0
-
+# define the mesh :
+mesh      = MeshFactory.get_greenland_coarse()
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)
@@ -96,12 +88,12 @@ dbm     = DataInput(None, bamber,   mesh=mesh)
 #dmss    = DataInput(None, meas_shf, mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
 #dsq     = DataInput(None, sec_qgeo, mesh=mesh)
-dmg     = DataInput(None, rignot,   mesh=mesh)
+drg     = DataInput(None, rignot,   mesh=mesh)
 #dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
 #dms.change_projection(dsr)
-dmg.change_projection(dsr)
+drg.change_projection(dsr)
 
 # get the expressions used by varglas :
 Thickness          = dbm.get_spline_expression('H')
@@ -113,21 +105,19 @@ SurfaceTemperature = dsr.get_spline_expression('T')
 BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 #U_observed         = dsr.get_spline_expression('U_ob')
-U_observed         = dmg.get_spline_expression('v_mag')
+U_observed         = drg.get_spline_expression('v_mag')
 
 # inspect the data values :
 #do    = DataOutput('results_pre/')
-#do.write_one_file('merged_vmag',    dmg.get_projection('v_mag'))
-#do.write_one_file('ff',             model.ff)
+#do.write_one_file('vmag',           drg.get_projection('v_mag'))
 #do.write_one_file('h',              dbm.get_projection('h'))
 #do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
-#do.write_one_file('sq_qgeo',        dsq.get_projection('q_geo'))
 #do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
 #exit(0)
 
 model = model.Model()
 model.set_geometry(Surface, Bed)
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+model.set_mesh(mesh)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 
@@ -252,20 +242,20 @@ File(out_dir + 'w.xml')       << model.w
 File(out_dir + 'beta2.xml')   << model.beta2
 File(out_dir + 'eta.xml')     << model.eta
 
-XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
-
-# save the state of the model :
-if i !=0: rw = 'a':
-else:     rw = 'w':
-f = HDF5File(out_dir + '3D_5H_stokes.h5', rw)
-f.write(model.mesh,  'mesh')
-f.write(model.beta2, 'beta2')
-f.write(model.Mb,    'Mb')
-f.write(model.T,     'T')
-f.write(model.S,     'S')
-f.write(model.B,     'B')
-f.write(model.U,     'U')
-f.write(model.eta,   'eta')
+#XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
+#
+## save the state of the model :
+#if i !=0: rw = 'a'
+#else:     rw = 'w'
+#f = HDF5File(out_dir + '3D_5H_stokes.h5', rw)
+#f.write(model.mesh,  'mesh')
+#f.write(model.beta2, 'beta2')
+#f.write(model.Mb,    'Mb')
+#f.write(model.T,     'T')
+#f.write(model.S,     'S')
+#f.write(model.B,     'B')
+#f.write(model.U,     'U')
+#f.write(model.eta,   'eta')
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

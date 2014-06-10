@@ -107,7 +107,7 @@ class Model(object):
                         self.B_ex(x[0], x[1], x[2]))
         x[2]  = x[2] + self.B_ex(x[0], x[1], x[2])
 
-  def set_mesh(self, mesh, flat_mesh=None, deform=True):
+  def set_mesh(self, mesh, deform=True):
     """
     Overwrites the previous mesh with a new one
     
@@ -117,7 +117,7 @@ class Model(object):
                          provided by the set_geometry method.
     """
     self.mesh      = mesh
-    self.flat_mesh = flat_mesh
+    self.flat_mesh = Mesh(mesh)
 
     if deform:
       self.deform_mesh()
@@ -339,7 +339,7 @@ class Model(object):
     L      = u * phi * dx                  # lhs
     v      = Function(Q)                   # solution function
     solve(a == L, v, bc)                   # solve
-    v.update()                             # update ghost verticies 
+    v.update()                             # update ghost verticies
     return v
 
   def rotate(self, M, theta):
@@ -411,7 +411,7 @@ class Model(object):
     L      = com_n * phi * dx                  # linear part
     v      = Function(Q)                       # solution function
     solve(a == L, v, bc)                       # solve
-    v.update()                                 # update ghost-vertices 
+    v.update()                                 # update ghost verticies
     v      = self.extrude(v, 2, 2)             # extrude the integral
     dvdx   = grad(v)                           # spatial derivative
     dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
@@ -437,7 +437,7 @@ class Model(object):
     L      = com * phi * dx                    # linear part
     v      = Function(Q)                       # solution function
     solve(a == L, v, bc)                       # solve
-    v.update()                                 # update ghost-vertices 
+    v.update()                                 # update ghost verticies
     v      = self.extrude(v, 2, 2)             # extrude the integral
     dvdx   = v.dx(y)                           # derivative w.r.t. 2nd comp.
     return dvdx
@@ -466,7 +466,7 @@ class Model(object):
     tau_bas_u.update()                             # eliminate ghost vertices 
     tau_bas_v.update()                             # eliminate ghost vertices 
     tau_bas_w.update()                             # eliminate ghost vertices 
-  
+
     return as_vector([tau_bas_u, tau_bas_v, tau_bas_w]) 
 
   def calc_tau_drv(self, Q='self'):
@@ -494,7 +494,7 @@ class Model(object):
     tau_drv_u.update()                             # eliminate ghost vertices 
     tau_drv_v.update()                             # eliminate ghost vertices 
     tau_drv_w.update()                             # eliminate ghost vertices 
-  
+
     return as_vector([tau_drv_u, tau_drv_v, tau_drv_w])
 
   def component_stress(self):
@@ -759,7 +759,7 @@ class Model(object):
       self.dSdt        = Function(self.Q_flat)
     
     # Coordinates of various types 
-    self.x             = self.Q.cell().x
+    self.x             = SpatialCoordinate(self.mesh)
     self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
 
     # Velocity model

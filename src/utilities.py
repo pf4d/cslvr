@@ -314,7 +314,8 @@ class DataInput(object):
       old_proj = self.p
 
     class nearestExpression(Expression):
-      def __init__(self, xs, ys, data, chg_proj):
+      def __init__(self, xs, ys, data, chg_proj, element):
+        self._ufl_element = element
         self.data     = data
         self.chg_proj = chg_proj
         self.xs       = xs
@@ -328,7 +329,8 @@ class DataInput(object):
         idy       = abs(self.ys - yn).argmin()
         values[0] = self.data[idy, idx]
 
-    return nearestExpression(self.x, self.y, data, self.chg_proj)
+    return nearestExpression(self.x, self.y, data, self.chg_proj,
+                             self.func_space.ufl_element())
 
   def get_spline_expression(self, fn, kx=3, ky=3, bool_data=False):
     """
@@ -344,18 +346,20 @@ class DataInput(object):
       old_proj = self.p
   
     spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)
+    chg_proj = self.chg_proj
     
     class newExpression(Expression):
-      def __init__(self, chg_proj):
+      def __init__(self, chg_proj, element):
+        self._ufl_element = element
         self.chg_proj = chg_proj
       def eval(self, values, x):
-        if self.chg_proj:
+        if chg_proj:
           xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
         values[0] = spline(xn, yn)
   
-    return newExpression(self.chg_proj)
+    return newExpression(chg_proj, self.func_space.ufl_element())
   
   def get_nearest(self, fn):
     """

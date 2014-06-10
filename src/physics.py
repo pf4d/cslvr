@@ -237,7 +237,6 @@ class VelocityStokes(object):
     
     elif config['velocity']['viscosity_mode'] == 'linear':
       b = config['velocity']['b_linear']
-      b.update()
       n = 1.0
     
     else:
@@ -331,10 +330,6 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
       
     if config['velocity']['boundaries'] == 'solution':
-      model.u.update()
-      model.v.update()
-      model.w.update()
-
       self.bcs.append(DirichletBC(Q4.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), model.v, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
@@ -592,10 +587,6 @@ class VelocityBP(object):
     
     elif config['velocity']['viscosity_mode'] == 'linear':
       b = config['velocity']['b_linear']
-      try:
-        b.update()
-      except:
-        pass
       n = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'full':
@@ -882,9 +873,6 @@ class Enthalpy(object):
     q_geo     = model.q_geo
     T_surface = model.T_surface
 
-    q_geo.update()
-    T.update()
-
     # Define test and trial functions       
     psi = TestFunction(Q)
     dH  = TrialFunction(Q)
@@ -1084,7 +1072,6 @@ class Enthalpy(object):
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
-    H_surface.update() 
     model.H_surface = H_surface
     
     self.bc_H = []
@@ -1104,18 +1091,11 @@ class Enthalpy(object):
     T0_n  = project(T0,  Q)
     h_i_n = project(h_i, Q)
 
-    T0_n.update()  
-    h_i_n.update()
-    
     # Calculate temperature
     T_n  = project( ((H - h_i_n) / C + T0_n), Q)
     W_n  = project( ((H - h_i_n) / L),        Q)
     Mb_n = project( self.Mb,                  Q)
 
-    T_n.update()
-    W_n.update() 
-    Mb_n.update()
-    
     # update temperature (Adjust for polythermal stuff) :
     Ta = T_n.vector().array()
     Ts = T0_n.vector().array()

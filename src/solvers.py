@@ -379,14 +379,10 @@ class AdjointSolver(object):
       #U_o_a = model.U_o.vector().array()
       #U_o_a[U_o_a < 0.0] = 0.0
       #model.U_o.vector().set_local(U_o_a)
-      model.U_o.update()
 
       model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )
       model.v_o = project( -model.U_o * S.dx(1) / Smag, Q )      
 
-      model.u_o.update()
-      model.v_o.update()
-      
   def solve(self):
     r""" 
     Perform the optimization.

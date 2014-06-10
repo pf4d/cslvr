@@ -1,6 +1,11 @@
 #!/bin/bash
 
-for i in {0..3}
-do
-  mpirun -np 16 python data_assimilation.py $i;
+# first arg  : number of iterations
+# second arg : number of processors
+# third arg  : output directory
+
+for ((i=0; i <= $1; i++)); do
+  mkdir -p $3/0$i;
+  rm -rf $3/0$i/*.*;
+  mpirun -np $2 python data_assimilation.py $3 $i;
 done

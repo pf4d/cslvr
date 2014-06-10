@@ -91,10 +91,10 @@ class SteadySolver(object):
       # Solve velocity
       if config['velocity']['on']:
         self.velocity_instance.solve()
-        U    = project(as_vector([model.u, model.v, model.w]))
-        Umag = project(sqrt(inner(U,U)), model.Q)
-        if config['log']: File(outpath + 'Umag.pvd') << Umag  # save vel. mag.
-        print_min_max(Umag, '||U||')
+        if config['log']: 
+          U = project(as_vector([model.u, model.v, model.w]))
+          File(outpath + 'U.pvd') << U
+        print_min_max(model.u, 'u')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -182,7 +182,7 @@ class TransientSolver(object):
 
     # Set up files for logging time dependent solutions to paraview files.
     if config['log']:
-      self.file_u  = File(self.config['output_path']+'U.pvd')
+      self.file_U  = File(self.config['output_path']+'U.pvd')
       self.file_T  = File(self.config['output_path']+'T.pvd')
       self.file_S  = File(self.config['output_path']+'S.pvd')
       self.dheight = []
@@ -303,7 +303,7 @@ class TransientSolver(object):
       # Store velocity, temperature, and age to vtk files
       if self.config['log']:
         U = project(as_vector([u, v, w]))
-        self.file_u << (U, t)
+        self.file_U << (U, t)
         self.file_T << (T, t)
         self.file_S << (S, t)
         self.t_log.append(t)
@@ -504,9 +504,10 @@ class AdjointSolver(object):
       dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
                      + (model.w + model.adot) )
       file_u_xml    << U
-      file_u_pvd    << U
       file_b_xml    << model.beta2 
-      file_b_pvd    << model.beta2
+      file_b_pvd    << model.extrude(model.beta2, 3, 2)
+      file_dSdt_pvd << dSdt
+      file_Mb_pvd   << model.Mb
       return Js
 
     #===========================================================================
@@ -515,7 +516,8 @@ class AdjointSolver(object):
     file_b_xml    = File(path + 'beta2.xml')
     file_b_pvd    = File(path + 'beta2.pvd')
     file_u_xml    = File(path + 'U.xml')
-    file_u_pvd    = File(path + 'U.pvd')
+    file_dSdt_pvd = File(path + 'dSdt.pvd')
+    file_Mb_pvd   = File(path + 'Mb.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:
@@ -561,6 +563,215 @@ class BalanceVelocitySolver(object):
     self.bv_instance.solve()
 
 
+class StokesBalanceSolver(object):
+
+  def __init__(self, model, config):
+    """
+    Calculate each of the component stresses which define the full stress
+    of the ice-sheet.
+    
+    RETURNS:
+      tau_lon - longitudinal stress field
+      tau_lat - lateral stress field
+      tau_bas - frictional sliding stress at the bed
+      tau_drv - driving stress of the system 
+    
+    Note: tau_drv = tau_lon + tau_lat + tau_bas
+    
+    """
+    print "::: initializing 'stokes-balance' solver :::"
+    self.model  = model
+    self.config = config
+    
+    Q       = model.Q
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    eta     = model.eta
+    beta2   = model.beta2
+    
+    # get the values at the bed :
+    beta2_e = model.extrude(beta2, 3, 2, Q)
+    u_b_e   = model.extrude(u,     3, 2, Q)
+    v_b_e   = model.extrude(v,     3, 2, Q)
+    
+    # vertically average :
+    etabar = model.vert_integrate(eta, Q)
+    etabar = project(model.extrude(etabar, 2, 2, Q) / H)
+    ubar   = model.vert_integrate(u, Q)
+    ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
+    vbar   = model.vert_integrate(v, Q)
+    vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
+
+    # set the model variables so the physics object can solve it :
+    model.beta2_e = beta2_e
+    model.u_b_e   = u_b_e
+    model.v_b_e   = v_b_e
+    model.etabar  = etabar
+    model.ubar    = ubar
+    model.vbar    = vbar
+    
+    # calculate the driving stress and basal drag once :
+    model.tau_d   = model.calc_tau_drv(Q)
+    model.tau_b   = model.calc_tau_bas(Q)
+    
+    self.Q = Q
+
+    self.stress_balance_instance = StokesBalance(model, config)
+
+  def solve(self):
+    """ 
+    """
+    model   = self.model
+    config  = self.config
+    outpath = self.config['output_path']
+    
+    # Set the initial Picard iteration (PI) parameters
+    # L_\infty norm in velocity between iterations
+    inner_error = inf
+    
+    # number of iterations
+    counter = 0
+   
+    # set an inner tolerance for PI
+    max_iter = 1
+   
+    # previous velocity for norm calculation
+    u_prev   = zeros(len(model.ubar.vector().array()))
+    
+    # tolerance to stop solving :
+    inner_tol = 0.0
+    
+    # Perform a Picard iteration until the L_\infty norm of the velocity 
+    # difference is less than tolerance
+    while counter < max_iter and inner_error > inner_tol:
+      
+      self.stress_balance_instance.solve()
+      
+      # Calculate L_infinity norm
+      ubar_v      = model.ubar.vector().array()
+      vbar_v      = model.vbar.vector().array()
+      ubar_n      = np.sqrt(ubar_v**2 + vbar_v**2)
+      diff        = abs(u_prev - ubar_n)
+      inner_error = diff.max()
+      u_prev      = ubar_n
+      
+      counter += 1
+      
+      print 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)' \
+            % (counter, max_iter, inner_error, inner_tol)
+
+  def component_stress_stokes(self):  
+    """
+    """
+    print "solving 'stokes-balance' for stress terms :::" 
+    model = self.model
+
+    outpath = self.config['output_path']
+    Q       = self.Q
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    etabar  = model.etabar
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    u_s = project(model.ubar, Q)
+    v_s = project(model.vbar, Q)
+    
+    U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
+    u_n = U[0]
+    v_n = U[1]
+    U   = as_vector([u_s, v_s, 0])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+
+    # get driving stress and basal drag : 
+    tau_d = model.tau_d
+    tau_b = model.tau_b
+    
+    # trial and test functions for linear solve :
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+    
+    # mass matrix :
+    M = assemble(phi*dtau*dx)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+    
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
+    tau_tn = - dphidn * H * etabar * (  dudt +   dvdn) * dx
+    tau_tt = - dphidt * H * etabar * (4*dvdt + 2*dudn) * dx
+    
+    # dot product of stress with the direction along (n) and across (t) flow :
+    tau_bn = phi * dot(tau_b, U_n) * dx
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_bt = phi * dot(tau_b, U_t) * dx
+    tau_dt = phi * dot(tau_d, U_t) * dx
+    
+    # the residuals :
+    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
+    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
+
+    # assemble the vectors :
+    tau_nn_v   = assemble(tau_nn)
+    tau_nt_v   = assemble(tau_nt)
+    tau_tn_v   = assemble(tau_tn)
+    tau_tt_v   = assemble(tau_tt)
+    tau_totn_v = assemble(tau_totn)
+    tau_tott_v = assemble(tau_tott)
+    
+    # solution functions :
+    tau_nn   = Function(Q)
+    tau_nt   = Function(Q)
+    tau_tn   = Function(Q)
+    tau_tt   = Function(Q)
+    tau_totn = Function(Q)
+    tau_tott = Function(Q)
+    
+    # solve the linear system :
+    solve(M, tau_nn.vector(),   tau_nn_v)
+    solve(M, tau_nt.vector(),   tau_nt_v)
+    solve(M, tau_tn.vector(),   tau_tn_v)
+    solve(M, tau_tt.vector(),   tau_tt_v)
+    solve(M, tau_totn.vector(), tau_totn_v)
+    solve(M, tau_tott.vector(), tau_tott_v)
+
+    # give the stress balance terms :
+    tau_bn = project(dot(tau_b, U_n))
+    tau_dn = project(dot(tau_d, U_n))
+
+    # output the files to the specified directory :
+    File(outpath + 'tau_dn.pvd')   << tau_dn
+    File(outpath + 'tau_bn.pvd')   << tau_bn
+    File(outpath + 'tau_nn.pvd')   << tau_nn
+    File(outpath + 'tau_nt.pvd')   << tau_nt
+    File(outpath + 'tau_totn.pvd') << tau_totn
+    File(outpath + 'tau_tott.pvd') << tau_tott
+    File(outpath + 'u_s.pvd')      << u_s
+    File(outpath + 'v_s.pvd')      << v_s
+   
+    # return the functions for further analysis :
+    return tau_nn, tau_nt, tau_bn, tau_dn, tau_totn, tau_tott, u_s, v_s
 
 
 

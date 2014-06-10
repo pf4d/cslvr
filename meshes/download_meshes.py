@@ -26,8 +26,15 @@ download_file(url, home, fldr, extract=True)
 # detailed greenland mesh :
 fldr = 'greenland'
 url  = 'https://dl.dropboxusercontent.com/s/hz2ih2qpfpm5htb/' + \
-       'greenland_detailed_mesh.tar.gz?dl=1&token_hash=AAFGb' + \
-       'lkOky6jsSzefFFb19R2Fk5GR8zV2LXK6kRKiEMGCQ'
+       'greenland_detailed_mesh.tar.gz?dl=1&token_hash=AAGtX' + \
+       'NVrgZiNsiJ_ixg5wxXKPscwH4xFzDQP387tbGQc9w&expiry=1400783674'
+download_file(url, home, fldr, extract=True)
+
+# 1 ice-thickness 2D greenland mesh :
+fldr = 'greenland'
+url  = 'https://dl.dropboxusercontent.com/s/2wkfzkha7jtjyxq/' + \
+       'greenland_2D_1H_mesh.tar.gz?dl=1&token_hash=AAFTj-T2' + \
+       '4idxuG7Jv5CYlhSVxnGNLcjZoj_IiObdkHDmPQ&expiry=1400783547'
 download_file(url, home, fldr, extract=True)
 
 # antarctica mesh :

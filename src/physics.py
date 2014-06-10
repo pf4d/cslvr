@@ -1839,7 +1839,6 @@ class StokesBalance(object):
     self.model  = model
     self.config = config
 
-    #Q       = FunctionSpace(model.mesh, 'CG', 2)
     Q       = model.Q
     u       = model.u
     v       = model.v
@@ -1934,7 +1933,7 @@ class StokesBalance(object):
     """
     model = self.model
 
-    print "::: solving 'stokes-balance' :::"
+    print "::: solving 'stokes-balance' for ubar, vbar :::"
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
     u_s,v_s    = split(self.U_s)

@@ -118,12 +118,12 @@ class DataFactory(object):
  
   
   @staticmethod
-  def get_gre_merged():
+  def get_gre_rignot():
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    direc = home + '/greenland/merged/velocity_greenland_merged_15Feb2013.nc'
+    direc = home + '/greenland/rignot/velocity_greenland_merged_15Feb2013.nc'
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     

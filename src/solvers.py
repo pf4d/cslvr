@@ -91,10 +91,10 @@ class SteadySolver(object):
       # Solve velocity
       if config['velocity']['on']:
         self.velocity_instance.solve()
-        U    = project(as_vector([model.u, model.v, model.w]))
-        Umag = project(sqrt(inner(U,U)), model.Q)
-        if config['log']: File(outpath + 'Umag.pvd') << Umag  # save vel. mag.
-        print_min_max(Umag, '||U||')
+        if config['log']: 
+          U = project(as_vector([model.u, model.v, model.w]))
+          File(outpath + 'U.pvd') << U
+        print_min_max(model.u, 'u')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -182,7 +182,7 @@ class TransientSolver(object):
 
     # Set up files for logging time dependent solutions to paraview files.
     if config['log']:
-      self.file_u  = File(self.config['output_path']+'U.pvd')
+      self.file_U  = File(self.config['output_path']+'U.pvd')
       self.file_T  = File(self.config['output_path']+'T.pvd')
       self.file_S  = File(self.config['output_path']+'S.pvd')
       self.dheight = []
@@ -303,7 +303,7 @@ class TransientSolver(object):
       # Store velocity, temperature, and age to vtk files
       if self.config['log']:
         U = project(as_vector([u, v, w]))
-        self.file_u << (U, t)
+        self.file_U << (U, t)
         self.file_T << (T, t)
         self.file_S << (S, t)
         self.t_log.append(t)
@@ -503,9 +503,7 @@ class AdjointSolver(object):
       U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
                      + (model.w + model.adot) )
-      Umag = project(sqrt(inner(U,U)), model.Q)
       file_u_xml    << U
-      file_u_pvd    << Umag
       file_b_xml    << model.beta2 
       file_b_pvd    << model.extrude(model.beta2, 3, 2)
       file_dSdt_pvd << dSdt
@@ -518,7 +516,6 @@ class AdjointSolver(object):
     file_b_xml    = File(path + 'beta2.xml')
     file_b_pvd    = File(path + 'beta2.pvd')
     file_u_xml    = File(path + 'U.xml')
-    file_u_pvd    = File(path + 'Umag.pvd')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
     file_Mb_pvd   = File(path + 'Mb.pvd')
 
@@ -582,10 +579,10 @@ class StokesBalanceSolver(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
+    print "::: initializing 'stokes-balance' solver :::"
     self.model  = model
     self.config = config
     
-    #Q       = FunctionSpace(model.mesh, 'CG', 2)
     Q       = model.Q
     u       = model.u
     v       = model.v
@@ -640,7 +637,7 @@ class StokesBalanceSolver(object):
     counter = 0
    
     # set an inner tolerance for PI
-    max_iter = 1#config['coupled']['max_iter']
+    max_iter = 1
    
     # previous velocity for norm calculation
     u_prev   = zeros(len(model.ubar.vector().array()))
@@ -670,6 +667,7 @@ class StokesBalanceSolver(object):
   def component_stress_stokes(self):  
     """
     """
+    print "solving 'stokes-balance' for stress terms :::" 
     model = self.model
 
     outpath = self.config['output_path']

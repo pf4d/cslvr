@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# first arg  = number of iterations
-# second arg = number of processors
-# third arg  = output directory
+# first arg  : number of iterations
+# second arg : number of processors
+# third arg  : output directory
 
 for ((i=0; i <= $1; i++)); do
   mkdir -p $3/0$i;

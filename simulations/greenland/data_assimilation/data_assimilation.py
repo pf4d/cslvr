@@ -76,13 +76,15 @@ searise  = DataFactory.get_searise(thklim = thklim)
 bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 #sec_qgeo = DataFactory.get_gre_qgeo_secret()
-merged   = DataFactory.get_gre_merged()
+rignot   = DataFactory.get_gre_rignot()
 
 # define the meshes :
-mesh      = MeshFactory.get_greenland_coarse()
-flat_mesh = MeshFactory.get_greenland_coarse()
+#mesh      = MeshFactory.get_greenland_detailed()
+#flat_mesh = MeshFactory.get_greenland_detailed()
 #mesh      = Mesh('meshes/mesh_low.xml')
 #flat_mesh = Mesh('meshes/mesh_low.xml')
+mesh      = Mesh('meshes/5H_3D_greenland.xml')
+flat_mesh = Mesh('meshes/5H_3D_greenland.xml')
 mesh.coordinates()[:,2]      /= 100000.0
 flat_mesh.coordinates()[:,2] /= 100000.0
 
@@ -94,7 +96,7 @@ dbm     = DataInput(None, bamber,   mesh=mesh)
 #dmss    = DataInput(None, meas_shf, mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
 #dsq     = DataInput(None, sec_qgeo, mesh=mesh)
-dmg     = DataInput(None, merged,   mesh=mesh)
+dmg     = DataInput(None, rignot,   mesh=mesh)
 #dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
@@ -250,16 +252,20 @@ File(out_dir + 'w.xml')       << model.w
 File(out_dir + 'beta2.xml')   << model.beta2
 File(out_dir + 'eta.xml')     << model.eta
 
-File(out_dir + 'S.pvd')       << model.S
+XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
 
-#File(out_dir + 'mesh.xdmf')   << model.mesh
-
-# functionality of HDF5 not completed by fenics devs :
-#f = HDF5File(out_dir + 'u.h5', 'w')
-#f.write(model.mesh,  'mesh')
-#f.write(model.beta2, 'beta2')
-#f.write(model.Mb,    'Mb')
-#f.write(model.T,     'T')
+# save the state of the model :
+if i !=0: rw = 'a':
+else:     rw = 'w':
+f = HDF5File(out_dir + '3D_5H_stokes.h5', rw)
+f.write(model.mesh,  'mesh')
+f.write(model.beta2, 'beta2')
+f.write(model.Mb,    'Mb')
+f.write(model.T,     'T')
+f.write(model.S,     'S')
+f.write(model.B,     'B')
+f.write(model.U,     'U')
+f.write(model.eta,   'eta')
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

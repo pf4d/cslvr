@@ -13,8 +13,8 @@ from src.helper           import *
 from dolfin               import *
 from time                 import time
 
-out_dir = './stress_balance_solve/'
-in_dir  = './results_high_stokes/04/'
+out_dir = './stress_balance_stokes_5H/'
+in_dir  = './results_stokes_5H/03/'
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -25,8 +25,8 @@ thklim = 200.0
 bamber   = DataFactory.get_bamber(thklim = thklim)
 
 # define the meshes :
-mesh      = Mesh('meshes/mesh_high_new.xml')
-flat_mesh = Mesh('meshes/mesh_high_new.xml')
+mesh      = Mesh('meshes/5H_3D_greenland.xml')
+flat_mesh = Mesh('meshes/5H_3D_greenland.xml')
 #mesh      = Mesh('meshes/mesh_low.xml')
 #flat_mesh = Mesh('meshes/mesh_low.xml')
 mesh.coordinates()[:,2]      /= 100000.0
@@ -60,38 +60,35 @@ model.eta.update()
 
 config = {'output_path' : out_dir}
 
-F = solvers.StokesBalanceSolver(model, config)
-F.solve()
+#F = solvers.StokesBalanceSolver(model, config)
+#F.solve()
+
 
 #===============================================================================
 # calculate the "stokes-balance" stress fields :
-out      = F.component_stress_stokes()
-tau_lon  = out[0]
-tau_lat  = out[1]
-tau_bas  = out[2]
-tau_drv  = out[3]
-tau_tot1 = out[4]
-tau_tot2 = out[5]
-u_s      = out[6]
-v_s      = out[7]
-#
-#U       = as_vector([model.u, model.v, model.w])
-#intDivU = model.vert_integrate(div(U))
-#intU    = model.vert_integrate(sqrt(inner(U,U)))
-#w_bas_e = model.extrude(model.w, 3, 2)
-#
-#w_bas_e.update()
-#intDivU.update()
-#
-## output diagnostics :
-#File(out_dir + 'w_bas_e.pvd') << project(w_bas_e)
-#File(out_dir + 'intDivU.pvd') << project(intDivU)
-#File(out_dir + 'intU.pvd')    << project(intU)
+#out  = F.component_stress_stokes()
+
+## calculate the cartesian "stokes-balance" stress fields :
+#out  = model.component_stress_stokes_c()
+
+XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
+
+# functionality of HDF5 not completed by fenics devs :
+f = HDF5File(out_dir + '3D_5H_stokes.h5', 'w')
+f.write(model.mesh,  'mesh')
+f.write(model.beta2, 'beta2')
+f.write(model.T,     'T')
+f.write(model.S,     'S')
+f.write(model.B,     'B')
+f.write(model.u,     'u')
+f.write(model.v,     'v')
+f.write(model.w,     'w')
+f.write(model.eta,   'eta')
 
 
 #===============================================================================
 ## calculate the "stress-balance" stress fields :
-#out     = model.component_stress()
+#out  = model.component_stress()
 #tau_lon = out[0]
 #tau_lat = out[1]
 #tau_bas = out[2]

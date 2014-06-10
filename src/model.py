@@ -191,7 +191,7 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
     
-    #self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
+    self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
@@ -289,9 +289,10 @@ class Model(object):
     epsdot   = gradU + gradU.T
     epsdot00 = 2*epsdot[0,0] + epsdot[1,1]
     epsdot11 = 2*epsdot[1,1] + epsdot[0,0]
-    epsdot   = as_matrix([[epsdot00,    epsdot[0,1], epsdot[0,2]],
-                          [epsdot[1,0], epsdot11,    epsdot[1,2]],
-                          [epsdot[2,0], epsdot[2,1], epsdot[2,2]]])
+    
+    epsdot   = as_matrix([[epsdot00,     epsdot[0,1],  epsdot[0,2]],
+                          [epsdot[1,0],  epsdot11,     epsdot[1,2]],
+                          [epsdot[2,0],  epsdot[2,1],  epsdot[2,2]]])
     return eta * epsdot
      
   def extrude(self, f, b, d, Q='self'):
@@ -453,10 +454,10 @@ class Model(object):
     w     = self.w
     H     = self.S - self.B
   
-    beta2_e = self.extrude(beta2, 3, 2)
-    u_bas_e = self.extrude(u,     3, 2)
-    v_bas_e = self.extrude(v,     3, 2)
-    w_bas_e = self.extrude(w,     3, 2)
+    beta2_e = self.extrude(beta2, 3, 2, Q)
+    u_bas_e = self.extrude(u,     3, 2, Q)
+    v_bas_e = self.extrude(v,     3, 2, Q)
+    w_bas_e = self.extrude(w,     3, 2, Q)
 
     tau_bas_u = project(beta2_e*H*u_bas_e, Q)
     tau_bas_v = project(beta2_e*H*v_bas_e, Q)
@@ -646,6 +647,10 @@ class Model(object):
     tau_xy_v   = assemble(tau_xy)
     tau_yx_v   = assemble(tau_yx)
     tau_yy_v   = assemble(tau_yy)
+    tau_bx_v   = assemble(tau_bx)
+    tau_by_v   = assemble(tau_by)
+    tau_dx_v   = assemble(tau_dx)
+    tau_dy_v   = assemble(tau_dy)
     tau_totx_v = assemble(tau_totx)
     tau_toty_v = assemble(tau_toty)
     
@@ -654,6 +659,10 @@ class Model(object):
     tau_xy   = Function(Q)
     tau_yx   = Function(Q)
     tau_yy   = Function(Q)
+    tau_bx   = Function(Q)
+    tau_by   = Function(Q)
+    tau_dx   = Function(Q)
+    tau_dy   = Function(Q)
     tau_totx = Function(Q)
     tau_toty = Function(Q)
     
@@ -662,10 +671,14 @@ class Model(object):
     solve(M, tau_xy.vector(),   tau_xy_v)
     solve(M, tau_yx.vector(),   tau_yx_v)
     solve(M, tau_yy.vector(),   tau_yy_v)
+    solve(M, tau_bx.vector(),   tau_bx_v)
+    solve(M, tau_by.vector(),   tau_by_v)
+    solve(M, tau_dx.vector(),   tau_dx_v)
+    solve(M, tau_dy.vector(),   tau_dy_v)
     solve(M, tau_totx.vector(), tau_totx_v)
     solve(M, tau_toty.vector(), tau_toty_v)
 
-    # integrate vertically :
+    # integrate vertically and extrude the result :
     tau_xx = self.vert_integrate(tau_xx)
     tau_xx = project(self.extrude(tau_xx, 2, 2))
     tau_xy = self.vert_integrate(tau_xy)
@@ -674,236 +687,48 @@ class Model(object):
     tau_yx = project(self.extrude(tau_yx, 2, 2))
     tau_yy = self.vert_integrate(tau_yy)
     tau_yy = project(self.extrude(tau_yy, 2, 2))
+    tau_bx = self.vert_integrate(tau_bx)
+    tau_bx = project(self.extrude(tau_bx, 2, 2))
+    tau_by = self.vert_integrate(tau_by)
+    tau_by = project(self.extrude(tau_by, 2, 2))
+    tau_dx = self.vert_integrate(tau_dx)
+    tau_dx = project(self.extrude(tau_dx, 2, 2))
+    tau_dy = self.vert_integrate(tau_dy)
+    tau_dy = project(self.extrude(tau_dy, 2, 2))
     tau_totx = self.vert_integrate(tau_totx)
     tau_totx = project(self.extrude(tau_totx, 2, 2))
     tau_toty = self.vert_integrate(tau_toty)
     tau_toty = project(self.extrude(tau_toty, 2, 2))
+
+    # calculate the magnitudes :
+    tau_lon = project(sqrt(tau_xx**2 + tau_yy**2))
+    tau_lat = project(sqrt(tau_xy**2 + tau_yx**2))
+    tau_drv = project(sqrt(tau_dx**2 + tau_dy**2))
+    tau_bas = project(sqrt(tau_bx**2 + tau_by**2))
+
+    # output calculated fields :
+    File(out_dir + 'tau_lon.pvd')  << tau_lon
+    File(out_dir + 'tau_lat.pvd')  << tau_lat
+    File(out_dir + 'tau_drv.pvd')  << tau_drv
+    File(out_dir + 'tau_bas.pvd')  << tau_bas
 
     # output the files to the specified directory :
     File(out_dir + 'tau_xx.pvd')   << tau_xx
     File(out_dir + 'tau_xy.pvd')   << tau_xy
     File(out_dir + 'tau_yx.pvd')   << tau_yx
     File(out_dir + 'tau_yy.pvd')   << tau_yy
+    File(out_dir + 'tau_bx.pvd')   << tau_bx
+    File(out_dir + 'tau_dx.pvd')   << tau_dx
     File(out_dir + 'tau_totx.pvd') << tau_totx
     File(out_dir + 'tau_toty.pvd') << tau_toty
     File(out_dir + 'u_s.pvd')      << u_s
     File(out_dir + 'v_s.pvd')      << v_s
+
+    output = (tau_xx, tau_xy, tau_yx, tau_yy, tau_bx, tau_by, tau_dx, tau_by,
+              tau_totx, tau_toty)
    
     # return the functions for further analysis :
-    return tau_xx, tau_xy, tau_bx, tau_dx, tau_totx, tau_toty, u_s, v_s
-
-  def component_stress_stokes(self):
-    """
-    Calculate each of the component stresses which define the full stress
-    of the ice-sheet.
-    
-    RETURNS:
-      tau_lon - longitudinal stress field
-      tau_lat - lateral stress field
-      tau_bas - frictional sliding stress at the bed
-      tau_drv - driving stress of the system 
-    
-    Note: tau_drv = tau_lon + tau_lat + tau_bas
-    
-    """
-    print "::: calculating 'stokes-balance' :::"
-    out_dir = self.out_dir
-    Q       = self.Q#FunctionSpace(self.mesh, 'CG', 2)
-    u       = self.u
-    v       = self.v
-    w       = self.w
-    S       = self.S
-    B       = self.B
-    H       = S - B
-    eta     = self.eta
-    beta2   = self.beta2
-    
-    # get the values at the bed :
-    beta2_e = self.extrude(beta2, 3, 2, Q)
-    u_bas_e = self.extrude(u,     3, 2, Q)
-    v_bas_e = self.extrude(v,     3, 2, Q)
-    w_bas_e = self.extrude(w,     3, 2, Q)
-    
-    # vertically average :
-    eta  = self.vert_integrate(eta, Q)
-    eta  = project(self.extrude(eta, 2, 2, Q) / H)
-    ubar = self.vert_integrate(u, Q)
-    ubar = project(self.extrude(ubar, 2, 2, Q) / H)
-    vbar = self.vert_integrate(v, Q)
-    vbar = project(self.extrude(vbar, 2, 2, Q) / H)
-    wbar = self.vert_integrate(w, Q)
-    wbar = project(self.extrude(wbar, 2, 2, Q) / H)
-
-    ## output to check :
-    #File(out_dir + 'ubar.pvd') << ubar
-    #File(out_dir + 'vbar.pvd') << vbar
-    #File(out_dir + 'u.pvd') << project(u)
-    #File(out_dir + 'v.pvd') << project(v)
-
-    # create functions used to solve for velocity :
-    V        = MixedFunctionSpace([Q,Q])
-    dU       = TrialFunction(V)
-    du, dv   = split(dU)
-    Phi      = TestFunction(V)
-    phi, psi = split(Phi)
-    U_s      = Function(V)
-    u_s,v_s  = split(U_s)
-    
-    #===========================================================================
-    # form the stokes equations in the normal direction (n) and tangential 
-    # direction (t) in relation to the stress-tensor :
-    U_n  = self.normalize_vector(as_vector([ubar,vbar]), Q)
-    u_n  = U_n[0]
-    v_n  = U_n[1]
-    U_n  = as_vector([u_n,  v_n,  0])
-    U_t  = as_vector([v_n, -u_n,  0])
-    U    = as_vector([du,   dv,   0])
-    Ubar = as_vector([ubar, vbar, 0])
-
-    # directional derivatives :
-    uhat     = dot(U, U_n)
-    vhat     = dot(U, U_t)
-    graduhat = grad(uhat)
-    gradvhat = grad(vhat)
-    dudn     = dot(graduhat, U_n)
-    dvdn     = dot(gradvhat, U_n)
-    dudt     = dot(graduhat, U_t)
-    dvdt     = dot(gradvhat, U_t)
-    
-    # integration by parts directional derivative terms :
-    gradphi = grad(phi)
-    dphidn  = dot(gradphi, U_n)
-    dphidt  = dot(gradphi, U_t)
-    gradpsi = grad(psi)
-    dpsidn  = dot(gradpsi, U_n)
-    dpsidt  = dot(gradpsi, U_t)
-
-    # calculate the basal shear and driving stresses :
-    #tau_bas = self.calc_tau_bas(Q)
-    tau_d   = self.calc_tau_drv(Q)
-    
-    # calc basal drag : 
-    u_c     = ubar - u_bas_e
-    v_c     = vbar - v_bas_e
-    tau_b_u = beta2_e * H * (du - u_c)
-    tau_b_v = beta2_e * H * (dv - v_c)
-    tau_b   = as_vector([tau_b_u, tau_b_v, 0])
-
-    # dot product of stress with the direction along (n) and across (t) flow :
-    tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
-    tau_bt = psi * dot(tau_b, U_t) * dx
-    tau_dt = psi * dot(tau_d, U_t) * dx
-
-    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    tau_nn = - dphidn * H * eta * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * H * eta * (  dudt +   dvdn) * dx
-    tau_tn = - dpsidn * H * eta * (  dudt +   dvdn) * dx
-    tau_tt = - dpsidt * H * eta * (4*dvdt + 2*dudn) * dx
-  
-    # form residual in mixed space :
-    rn = tau_nn + tau_nt - tau_bn - tau_dn
-    rt = tau_tn + tau_tt - tau_bt - tau_dt
-    r  = rn + rt
-
-    # solve for vertically averaged u and v : 
-    #solve(lhs(r) == rhs(r), U_s)
-    solve(r == 0, U_s)
-    
-    #===========================================================================
-    # form the stokes equations in the normal direction (n) and tangential 
-    # direction (t) in relation to the stress-tensor :
-    u_s = project(u_s, Q)
-    v_s = project(v_s, Q)
- 
-    U   = self.normalize_vector(as_vector([u_s, v_s]), Q)
-    u_n = U[0]
-    v_n = U[1]
-    U   = as_vector([u_s, v_s, 0])
-    U_n = as_vector([u_n, v_n, 0])
-    U_t = as_vector([v_n,-u_n, 0])
-
-    # directional derivatives :
-    uhat     = dot(U, U_n)
-    vhat     = dot(U, U_t)
-    graduhat = grad(uhat)
-    gradvhat = grad(vhat)
-    dudn     = dot(graduhat, U_n)
-    dvdn     = dot(gradvhat, U_n)
-    dudt     = dot(graduhat, U_t)
-    dvdt     = dot(gradvhat, U_t)
-
-    # calculate basal drag (driving stress calc'd above) : 
-    tau_b = self.calc_tau_bas(Q)
-    
-    # trial and test functions for linear solve :
-    phi   = TestFunction(Q)
-    dtau  = TrialFunction(Q)
-    
-    # mass matrix :
-    M = assemble(phi*dtau*dx)
-    
-    # integration by parts directional derivative terms :
-    gradphi = grad(phi)
-    dphidn  = dot(gradphi, U_n)
-    dphidt  = dot(gradphi, U_t)
-    
-    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    tau_nn = - dphidn * H * eta * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * H * eta * (  dudt +   dvdn) * dx
-    tau_tn = - dphidn * H * eta * (  dudt +   dvdn) * dx
-    tau_tt = - dphidt * H * eta * (4*dvdt + 2*dudn) * dx
-    
-    # dot product of stress with the direction along (n) and across (t) flow :
-    tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
-    tau_bt = phi * dot(tau_b, U_t) * dx
-    tau_dt = phi * dot(tau_d, U_t) * dx
-    
-    # the residuals :
-    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
-    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
-
-    # assemble the vectors :
-    tau_nn_v   = assemble(tau_nn)
-    tau_nt_v   = assemble(tau_nt)
-    tau_tn_v   = assemble(tau_tn)
-    tau_tt_v   = assemble(tau_tt)
-    tau_totn_v = assemble(tau_totn)
-    tau_tott_v = assemble(tau_tott)
-    
-    # solution functions :
-    tau_nn   = Function(Q)
-    tau_nt   = Function(Q)
-    tau_tn   = Function(Q)
-    tau_tt   = Function(Q)
-    tau_totn = Function(Q)
-    tau_tott = Function(Q)
-    
-    # solve the linear system :
-    solve(M, tau_nn.vector(),   tau_nn_v)
-    solve(M, tau_nt.vector(),   tau_nt_v)
-    solve(M, tau_tn.vector(),   tau_tn_v)
-    solve(M, tau_tt.vector(),   tau_tt_v)
-    solve(M, tau_totn.vector(), tau_totn_v)
-    solve(M, tau_tott.vector(), tau_tott_v)
-
-    # give the stress balance terms :
-    tau_bn = project(dot(tau_b, U_n))
-    tau_dn = project(dot(tau_d, U_n))
-
-    # output the files to the specified directory :
-    File(out_dir + 'tau_dn.pvd')   << tau_dn
-    File(out_dir + 'tau_bn.pvd')   << tau_bn
-    File(out_dir + 'tau_nn.pvd')   << tau_nn
-    File(out_dir + 'tau_nt.pvd')   << tau_nt
-    File(out_dir + 'tau_totn.pvd') << tau_totn
-    File(out_dir + 'tau_tott.pvd') << tau_tott
-    File(out_dir + 'u_s.pvd')      << u_s
-    File(out_dir + 'v_s.pvd')      << v_s
-   
-    # return the functions for further analysis :
-    return tau_nn, tau_nt, tau_bn, tau_dn, tau_totn, tau_tott, u_s, v_s
+    return output
 
   def initialize_variables(self):
     """

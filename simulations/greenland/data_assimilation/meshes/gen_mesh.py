@@ -25,9 +25,9 @@ dbm  = DataInput(None, bamber,  gen_space=False)
 # generate the contour :
 m = MeshGenerator(dbm, 'mesh', '')
 
-m.create_contour('H', 200.0, 4)
+m.create_contour('H', 200.0, 2)
 m.eliminate_intersections(dist=10)
-m.plot_contour()
+#m.plot_contour()
 m.write_gmsh_contour(100000, boundary_extend=False)
 m.extrude(100000, 10)
 m.close_file()
@@ -103,7 +103,7 @@ ref_bm.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
-ref_bm.finish(gui=True)
+ref_bm.finish(gui=False)
 
 
 

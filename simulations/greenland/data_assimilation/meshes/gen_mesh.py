@@ -27,7 +27,7 @@ m = MeshGenerator(dbm, 'mesh', '')
 
 m.create_contour('H', 200.0, 2)
 m.eliminate_intersections(dist=10)
-#m.plot_contour()
+m.plot_contour()
 m.write_gmsh_contour(100000, boundary_extend=False)
 m.extrude(100000, 10)
 m.close_file()
@@ -35,7 +35,7 @@ m.close_file()
 
 #===============================================================================
 # refine :
-thklim = 1000.0
+thklim = 200.0
 dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
 dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
 dbm.set_data_min('H',    boundary=thklim, val=thklim)
@@ -103,7 +103,7 @@ ref_bm.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
-ref_bm.finish(gui=False)
+ref_bm.finish(gui=True)
 
 
 

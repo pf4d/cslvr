@@ -237,7 +237,7 @@ class VelocityStokes(object):
     
     elif config['velocity']['viscosity_mode'] == 'linear':
       b = config['velocity']['b_linear']
-      b.update()
+      #b.update()
       n = 1.0
     
     else:
@@ -293,6 +293,10 @@ class VelocityStokes(object):
     model.Nc     = Nc
     model.Pb     = Pb
     model.Lsq    = Lsq
+    model.u      = u
+    model.v      = v
+    model.w      = w
+    model.P      = P
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -331,9 +335,9 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
       
     if config['velocity']['boundaries'] == 'solution':
-      model.u.update()
-      model.v.update()
-      model.w.update()
+      #model.u.update()
+      #model.v.update()
+      #model.w.update()
       self.bcs.append(DirichletBC(Q4.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), model.v, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
@@ -343,18 +347,6 @@ class VelocityStokes(object):
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
 
-    # Project velocity field from physics-level vector variable, 
-    # to scalar model variables
-    u = project(model.U[0], Q)
-    v = project(model.U[1], Q)
-    w = project(model.U[2], Q)
-    P = project(model.U[3], Q)
-
-    model.u.vector().set_local(u.vector().array())
-    model.v.vector().set_local(v.vector().array())
-    model.w.vector().set_local(w.vector().array())
-    model.P.vector().set_local(P.vector().array())
- 
 
 class VelocityBP(object):
   r"""				
@@ -524,9 +516,7 @@ class VelocityBP(object):
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       if   isinstance(config['velocity']['T0'], float):
-        Ttemp = T.vector().get_local()
-        Ttemp[:] = config['velocity']['T0']
-        T.vector().set_local(Ttemp)
+        T.vector()[:] = config['velocity']['T0']
       
       elif isinstance(config['velocity']['T0'], ndarray):
         T.vector().set_local(config['velocity']['T0'])
@@ -591,10 +581,10 @@ class VelocityBP(object):
     
     elif config['velocity']['viscosity_mode'] == 'linear':
       b = config['velocity']['b_linear']
-      try:
-        b.update()
-      except:
-        pass
+      #try:
+      #  b.update()
+      #except:
+      #  pass
       n = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'full':
@@ -646,8 +636,6 @@ class VelocityBP(object):
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
 
-    self.delta_U = Function(Q)
-
     model.eta   = eta
     model.Vd    = Vd
     model.Pe    = Pe
@@ -657,7 +645,8 @@ class VelocityBP(object):
     model.T     = T
     model.beta2 = beta2
     model.E     = E
-
+    model.u     = u
+    model.v     = v
 
   def solve(self, maxiter=50):
     """ 
@@ -676,12 +665,6 @@ class VelocityBP(object):
 
     # solve for vertical velocity :
     solve(self.aw == self.Lw, model.w)
-
-    u = project(split(model.U)[0], model.Q)
-    v = project(split(model.U)[1], model.Q)
-    
-    model.u.vector().set_local(u.vector().array())
-    model.v.vector().set_local(v.vector().array())
 
 
 class Enthalpy(object):
@@ -825,6 +808,7 @@ class Enthalpy(object):
     Tstar       = model.Tstar
     T           = model.T
     T0          = model.T0
+    Mb          = model.Mb
     h_i         = model.h_i
     L           = model.L
     C           = model.C
@@ -881,8 +865,8 @@ class Enthalpy(object):
     q_geo     = model.q_geo
     T_surface = model.T_surface
 
-    q_geo.update()
-    T.update()
+    #q_geo.update()
+    #T.update()
     
     # Define test and trial functions       
     psi = TestFunction(Q)
@@ -967,9 +951,9 @@ class Enthalpy(object):
     kappa_melt = conditional( ge(H, h_i), 0, kappa)
 
     # Form representing the basal melt rate
-    vec     = as_vector([B.dx(0), B.dx(1), -1])
-    term    = q_geo - (rho * kappa_melt * dot(grad(H), vec))
-    self.Mb = (q_friction + term) / (L * rho)
+    vec   = as_vector([B.dx(0), B.dx(1), -1])
+    term  = q_geo - (rho * kappa_melt * dot(grad(H), vec))
+    Mb    = (q_friction + term) / (L * rho)
 
     model.T_surface = T_surface
     model.q_geo     = q_geo
@@ -977,6 +961,7 @@ class Enthalpy(object):
     model.h_i       = h_i
     model.cold      = cold
     model.kappa     = kappa
+    self.Mb         = Mb        # need this to project after solving
      
   
   def solve(self, H0=None, Hhat=None, uhat=None, 
@@ -1077,13 +1062,13 @@ class Enthalpy(object):
     h_i       = model.h_i
     T         = model.T
     W         = model.W
-    Mb        = model.Mb
+    Mb        = self.Mb
     L         = model.L
     cold      = model.cold
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
-    H_surface.update()
+    #H_surface.update()
     model.H_surface = H_surface
     
     self.bc_H = []
@@ -1103,17 +1088,17 @@ class Enthalpy(object):
     T0_n  = project(T0,  Q)
     h_i_n = project(h_i, Q)
 
-    T0_n.update()
-    h_i_n.update()
+    #T0_n.update()
+    #h_i_n.update()
     
     # Calculate temperature
     T_n  = project( ((H - h_i_n) / C + T0_n), Q)
     W_n  = project( ((H - h_i_n) / L),        Q)
-    Mb_n = project( self.Mb,                  Q)
+    Mb_n = project( Mb,                       Q)
 
-    T_n.update()
-    W_n.update() 
-    Mb_n.update()
+    #T_n.update()
+    #W_n.update() 
+    #Mb_n.update()
 
     # update temperature (Adjust for polythermal stuff) :
     Ta = T_n.vector().array()
@@ -1123,17 +1108,14 @@ class Enthalpy(object):
     T.vector().set_local(Ta)
 
     # update water content :
-    WW = W_n.vector().get_local()
+    WW = W_n.vector().array()
     WW[WW < 0]    = 0
     WW[WW > 0.01] = 0.01
     W.vector().set_local(WW)
 
     # update basal melt rate :
-    Mb.vector().set_local(Mb_n.vector().get_local())
+    model.Mb = Mb_n
 
-    model.T  = T
-    model.W  = W
-    model.Mb = Mb
 
 class FreeSurface(object):
   r""" 
@@ -1557,11 +1539,11 @@ class Age(object):
 
     # Assign values to midpoint quantities and mesh velocity
     if ahat:
-      model.ahat.vector()[:] = ahat.vector().array()
-      model.a0.vector()[:]   = a0.vector().array()
-      model.uhat.vector()[:] = uhat.vector().array()
-      model.what.vector()[:] = what.vector().array()
-      model.vhat.vector()[:] = vhat.vector().array()
+      model.ahat.vector().set_local(ahat.vector().array())
+      model.a0.vector().set_local(a0.vector().array())
+      model.uhat.vector().set_local(uhat.vector().array())
+      model.what.vector().set_local(what.vector().array())
+      model.vhat.vector().set_local(vhat.vector().array())
 
     def above_ela(x,on_boundary):
       return (x[2]>config['age']['ela']) and on_boundary

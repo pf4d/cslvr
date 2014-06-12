@@ -68,16 +68,16 @@ class SteadySolver(object):
     counter     = 0
    
     # previous velocity for norm calculation
-    u_prev      = zeros(len(model.u.vector().array()))
+    u_prev      = project(model.u, model.Q).vector().array()
     
     # set an inner tolerance for PI
     inner_tol   = config['coupled']['inner_tol']
     max_iter    = config['coupled']['max_iter']
-    
+
     # Initialize a temperature field for visc. calc.
     if config['velocity']['use_T0']:
       model.T.vector().set_local( T0 * ones(len(model.T.vector().array())) )
-
+    
     if not config['coupled']['on']: max_iter = 1
     
     # Perform a Picard iteration until the L_\infty norm of the velocity 
@@ -91,10 +91,10 @@ class SteadySolver(object):
       # Solve velocity
       if config['velocity']['on']:
         self.velocity_instance.solve()
+        U = project(as_vector([model.u, model.v, model.w]))
         if config['log']: 
-          U = project(as_vector([model.u, model.v, model.w]))
           File(outpath + 'U.pvd') << U
-        print_min_max(model.u, 'u')
+        print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -106,9 +106,10 @@ class SteadySolver(object):
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
-        diff        = (u_prev - model.u.vector().array())
+        u_new       = project(model.u, model.Q).vector().array()
+        diff        = (u_prev - u_new)
         inner_error = diff.max()
-        u_prev      = model.u.vector().array()
+        u_prev      = u_new
       
       counter += 1
       
@@ -379,13 +380,13 @@ class AdjointSolver(object):
       #U_o_a = model.U_o.vector().array()
       #U_o_a[U_o_a < 0.0] = 0.0
       #model.U_o.vector().set_local(U_o_a)
-      model.U_o.update()
+      #model.U_o.update()
 
       model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )
       model.v_o = project( -model.U_o * S.dx(1) / Smag, Q )      
 
-      model.u_o.update()
-      model.v_o.update()
+      #model.u_o.update()
+      #model.v_o.update()
 
   def solve(self):
     r""" 
@@ -500,14 +501,14 @@ class AdjointSolver(object):
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
+      # FIXME: project and extrude ruin the output for paraview
       U    = project(as_vector([model.u, model.v, model.w]))
-      dSdt = project(- ( model.u*model.S.dx(0) + model.v*model.S.dx(1) ) \
-                     + (model.w + model.adot) )
-      file_u_xml    << U
+      dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+                     + model.w + model.adot )
       file_b_xml    << model.beta2 
-      file_b_pvd    << model.extrude(model.beta2, 3, 2)
+      file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
+      file_u_xml    << U
       file_dSdt_pvd << dSdt
-      file_Mb_pvd   << model.Mb
       return Js
 
     #===========================================================================
@@ -517,7 +518,6 @@ class AdjointSolver(object):
     file_b_pvd    = File(path + 'beta2.pvd')
     file_u_xml    = File(path + 'U.xml')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
-    file_Mb_pvd   = File(path + 'Mb.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
     # in the dolfin-adjoint optimize.py file:

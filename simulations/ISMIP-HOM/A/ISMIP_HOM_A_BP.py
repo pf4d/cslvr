@@ -112,8 +112,7 @@ for L in lengths:
    
   newt_params = config['velocity']['newton_params']
   if L in [5000,10000,20000,40000]:
-    newt_params['linear_solver']                         = 'lu'
-    newt_params['preconditioner']                        = 'default'
+    newt_params['newton_solver']['preconditioner']       = 'default'
     newt_params['newton_solver']['relaxation_parameter'] = 0.7
   else:
     newt_params['linear_solver']                         = 'gmres'

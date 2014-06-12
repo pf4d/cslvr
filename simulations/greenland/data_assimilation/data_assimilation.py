@@ -121,7 +121,6 @@ model.set_mesh(mesh)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 
-
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
@@ -129,7 +128,7 @@ nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
 nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
@@ -220,7 +219,7 @@ params['relative_tolerance']           = 1e-6
 params['absolute_tolerance']           = 0.0
 params['maximum_iterations']           = 12
 config['velocity']['viscosity_mode']   = 'linear'
-config['velocity']['b_linear']         = project(model.eta, model.Q)
+config['velocity']['b_linear']         = model.eta
 config['enthalpy']['on']               = False
 config['surface_climate']['on']        = False
 config['coupled']['on']                = False
@@ -236,11 +235,11 @@ tf2 = time()
     
 File(out_dir + 'S.xml')       << model.S
 File(out_dir + 'B.xml')       << model.B
-File(out_dir + 'u.xml')       << model.u
-File(out_dir + 'v.xml')       << model.v
-File(out_dir + 'w.xml')       << model.w
+File(out_dir + 'u.xml')       << project(model.u, model.Q)
+File(out_dir + 'v.xml')       << project(model.v, model.Q)
+File(out_dir + 'w.xml')       << project(model.w, model.Q)
 File(out_dir + 'beta2.xml')   << model.beta2
-File(out_dir + 'eta.xml')     << model.eta
+File(out_dir + 'eta.xml')     << project(model.eta, model.Q)
 
 #XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
 #

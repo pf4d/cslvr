@@ -504,7 +504,7 @@ class AdjointSolver(object):
       # FIXME: project and extrude ruin the output for paraview
       U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                     + model.w + model.adot )
+                     + model.w + model.adot)
       file_b_xml    << model.beta2 
       file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
       file_u_xml    << U

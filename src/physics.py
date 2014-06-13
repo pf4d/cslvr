@@ -237,7 +237,6 @@ class VelocityStokes(object):
     
     elif config['velocity']['viscosity_mode'] == 'linear':
       b = config['velocity']['b_linear']
-      #b.update()
       n = 1.0
     
     else:
@@ -335,9 +334,6 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
       
     if config['velocity']['boundaries'] == 'solution':
-      #model.u.update()
-      #model.v.update()
-      #model.w.update()
       self.bcs.append(DirichletBC(Q4.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), model.v, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
@@ -581,10 +577,6 @@ class VelocityBP(object):
     
     elif config['velocity']['viscosity_mode'] == 'linear':
       b = config['velocity']['b_linear']
-      #try:
-      #  b.update()
-      #except:
-      #  pass
       n = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'full':
@@ -865,9 +857,6 @@ class Enthalpy(object):
     q_geo     = model.q_geo
     T_surface = model.T_surface
 
-    #q_geo.update()
-    #T.update()
-    
     # Define test and trial functions       
     psi = TestFunction(Q)
     dH  = TrialFunction(Q)
@@ -1088,17 +1077,10 @@ class Enthalpy(object):
     T0_n  = project(T0,  Q)
     h_i_n = project(h_i, Q)
 
-    #T0_n.update()
-    #h_i_n.update()
-    
     # Calculate temperature
     T_n  = project( ((H - h_i_n) / C + T0_n), Q)
     W_n  = project( ((H - h_i_n) / L),        Q)
     Mb_n = project( Mb,                       Q)
-
-    #T_n.update()
-    #W_n.update() 
-    #Mb_n.update()
 
     # update temperature (Adjust for polythermal stuff) :
     Ta = T_n.vector().array()
@@ -1106,12 +1088,14 @@ class Enthalpy(object):
     #cold.vector().set_local((Ts > Ta).astype('float'))
     Ta[Ta > Ts] = Ts[Ta > Ts]
     T.vector().set_local(Ta)
+    T.vector().apply('')
 
     # update water content :
     WW = W_n.vector().array()
     WW[WW < 0]    = 0
     WW[WW > 0.01] = 0.01
     W.vector().set_local(WW)
+    W.vector().apply('')
 
     # update basal melt rate :
     model.Mb = Mb_n
@@ -1217,7 +1201,6 @@ class FreeSurface(object):
     dBase       = ds(3)
     
     self.static_boundary = DirichletBC(Q, 0.0, model.ff_flat, 4)
-#    h = 2*triangle.circumradius
     h = CellSize(model.flat_mesh)
 
     # Upwinded trial function

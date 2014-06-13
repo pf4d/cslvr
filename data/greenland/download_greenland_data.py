@@ -77,7 +77,7 @@ download_file(v2, home, fldr, extract=True)
 merged  = 'https://dl.dropboxusercontent.com/s/d50xn9nwr107awv/' + \
           'velocity_greenland_merged_15Feb2013.tar.gz?dl=1&toke' + \
           'n_hash=AAHz4wSf4OBzbVsVwwHvScaFTtADgTR6IO_siXZLh0BM9w'
-fldr    = 'merged'
+fldr    = 'rignot'
 download_file(merged, home, fldr, extract=True)
 
 

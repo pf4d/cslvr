@@ -30,6 +30,18 @@ url  = 'https://dl.dropboxusercontent.com/s/hz2ih2qpfpm5htb/' + \
        'NVrgZiNsiJ_ixg5wxXKPscwH4xFzDQP387tbGQc9w&expiry=1400783674'
 download_file(url, home, fldr, extract=True)
 
+<<<<<<< HEAD
+=======
+# 3D 5H greenland mesh :
+fldr = 'greenland'
+url  = 'https://www.dropbox.com/meta_dl/eyJzdWJfcGF0aCI6ICIi' + \
+       'LCAidGVzdF9saW5rIjogZmFsc2UsICJzZXJ2ZXIiOiAiZGwuZHJv' + \
+       'cGJveHVzZXJjb250ZW50LmNvbSIsICJpdGVtX2lkIjogbnVsbCwg' + \
+       'ImlzX2RpciI6IGZhbHNlLCAidGtleSI6ICJ5aW9mOTJ6MzRjY2pi' + \
+       'YmUifQ/AAOH6yHhNbX1NfSr2oGfE3KutInG2MkPgtqkXqDpU_SL-Q?dl=1'
+download_file(url, home, fldr, extract=True)
+
+>>>>>>> evan
 # 1 ice-thickness 2D greenland mesh :
 fldr = 'greenland'
 url  = 'https://dl.dropboxusercontent.com/s/2wkfzkha7jtjyxq/' + \

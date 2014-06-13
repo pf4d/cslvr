@@ -208,10 +208,13 @@ class TransientSolver(object):
     B                 = model.B.compute_vertex_values()
     y[(y-B) < thklim] = thklim + B[(y-B) < thklim]
     if config['periodic_boundary_conditions']:
-      v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
+      #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
+      v2d = vertex_to_dof_map(model.Q_non_periodic)
     else:
-      v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
+      #v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
+      v2d = vertex_to_dof_map(model.Q)
     model.S.vector().set_local(y[v2d])
+    model.S.vector().apply('')
    
     if config['velocity']['on']:
       utemp = model.U.vector().get_local()
@@ -246,25 +249,18 @@ class TransientSolver(object):
     smb    = model.smb
     sigma  = model.sigma
 
-    H      = model.H
-    u      = model.u
-    v      = model.v
-    w      = model.w
-    mhat   = model.mhat
-    A      = model.A
-    T      = model.T
     S      = model.S
     B      = model.B
  
-
     smb.interpolate(config['free_surface']['observed_smb'])
 
     import time
     if config['periodic_boundary_conditions']:
-      v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.mesh)
+      #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.mesh)
+      v2d = vertex_to_dof_map(model.Q_non_periodic)
       mhat_non = Function(model.Q_non_periodic)
     else:
-      v2d = model.Q.dofmap().vertex_to_dof_map(model.mesh)
+      v2d = vertex_to_dof_map(model.Q)
 
     # Loop over all times
     while t <= t_end:
@@ -279,34 +275,49 @@ class TransientSolver(object):
       S_1 = S_0 + dt*f_0
       S_1[(S_1-B_a) < thklim] = thklim + B_a[(S_1-B_a) < thklim]
       S.vector().set_local(S_1[v2d])
+      S.vector().apply('')
 
       f_1                     = self.rhs_func_explicit(t, S_1)
       S_2                     = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
       S_2[(S_2-B_a) < thklim] = thklim + B_a[(S_2-B_a) < thklim] 
       S.vector().set_local(S_2[v2d])
-      
-      mesh.coordinates()[:, 2]  = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
+      S.vector().apply('')
+     
+      mesh.coordinates()[:, 2] = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
       if config['periodic_boundary_conditions']:
-        mhat_non.vector().set_local((S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local())
+        temp = (S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local()
+        mhat_non.vector().set_local(temp)
+        mhat_non.vector().apply('')
         m_temp = project(mhat_non,model.Q)
         mhat.vector().set_local(m_temp.vector().get_local())
+        mhat.vector().apply('')
       else:
-        mhat.vector().set_local((S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local())
+        temp = (S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local()
+        model.mhat.vector().set_local(temp)
+        model.mhat.vector().apply('')
       # Calculate enthalpy update
       if self.config['enthalpy']['on']:
-        self.enthalpy_instance.solve(H0=H, Hhat=H, uhat=u, vhat=v, what=w, 
-                                     mhat=mhat)
+        self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
+                                   vhat=model.v, what=model.w, mhat=model.mhat)
 
       # Calculate age update
       if self.config['age']['on']:
-        self.age_instance.solve(A0=A, Ahat=A, uhat=u, vhat=v, what=w, mhat=mhat)
+        self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
+                                vhat=model.v, what=model.w, mhat=model.mhat)
 
       # Store velocity, temperature, and age to vtk files
       if self.config['log']:
+<<<<<<< HEAD
         U = project(as_vector([u, v, w]))
         self.file_U << (U, t)
         self.file_T << (T, t)
         self.file_S << (S, t)
+=======
+        U = project(as_vector([model.u, model.v, model.w]))
+        self.file_U << (U, t)
+        self.file_T << (model.T, t)
+        self.file_S << (model.S, t)
+>>>>>>> evan
         self.t_log.append(t)
         M = assemble(self.surface_instance.M)
         self.mass.append(M)
@@ -372,11 +383,8 @@ class AdjointSolver(object):
 
     elif U != None:
       Smag   = project( sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q )
-      #Smag_a = Smag.vector().array()
-      #Smag_a[Smag_a < 0.0] = 1e-5
-      #Smag.vector().set_local(Smag_a)
-     
       model.U_o.interpolate(U)
+<<<<<<< HEAD
       #U_o_a = model.U_o.vector().array()
       #U_o_a[U_o_a < 0.0] = 0.0
       #model.U_o.vector().set_local(U_o_a)
@@ -388,6 +396,11 @@ class AdjointSolver(object):
       #model.u_o.update()
       #model.v_o.update()
 
+=======
+      model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )
+      model.v_o = project( -model.U_o * S.dx(1) / Smag, Q )      
+
+>>>>>>> evan
   def solve(self):
     r""" 
     Perform the optimization.
@@ -502,6 +515,7 @@ class AdjointSolver(object):
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
       # FIXME: project and extrude ruin the output for paraview
+<<<<<<< HEAD
       U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                      + model.w + model.adot)
@@ -509,14 +523,25 @@ class AdjointSolver(object):
       file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
       file_u_xml    << U
       file_dSdt_pvd << dSdt
+=======
+      #U    = project(as_vector([model.u, model.v, model.w]))
+      #dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+      #               + model.w + model.adot)
+      #file_b_pvd    << model.extrude(model.beta2, 3, 2)
+      #file_u_pvd    << U
+      #file_dSdt_pvd << dSdt
+>>>>>>> evan
       return Js
 
     #===========================================================================
     # Set up file I/O
     path = config['output_path']
-    file_b_xml    = File(path + 'beta2.xml')
     file_b_pvd    = File(path + 'beta2.pvd')
+<<<<<<< HEAD
     file_u_xml    = File(path + 'U.xml')
+=======
+    file_u_pvd    = File(path + 'U.pvd')
+>>>>>>> evan
     file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
@@ -553,6 +578,13 @@ class AdjointSolver(object):
     n = len(mopt)/len(config['adjoint']['control_variable'])
     for ii,c in enumerate(config['adjoint']['control_variable']):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
+      
+    U    = project(as_vector([model.u, model.v, model.w]))
+    dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+                   + model.w + model.adot)
+    file_b_pvd    << model.extrude(model.beta2, 3, 2)
+    file_u_pvd    << U
+    file_dSdt_pvd << dSdt
 
 
 class BalanceVelocitySolver(object):

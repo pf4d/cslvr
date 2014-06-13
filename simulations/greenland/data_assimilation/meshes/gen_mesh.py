@@ -12,6 +12,7 @@ from pylab               import *
 # data preparation :
 
 thklim = 0.0
+<<<<<<< HEAD
 
 # collect the raw data :
 bamber   = DataFactory.get_bamber(thklim = thklim)
@@ -21,13 +22,28 @@ dsr  = DataInput(None, searise, gen_space=False)
 dbm  = DataInput(None, bamber,  gen_space=False)
 
 
+=======
+
+# collect the raw data :
+bamber   = DataFactory.get_bamber(thklim = thklim)
+searise  = DataFactory.get_searise(thklim = thklim)
+
+dsr  = DataInput(None, searise, gen_space=False)
+dbm  = DataInput(None, bamber,  gen_space=False)
+
+
+>>>>>>> evan
 #===============================================================================
 # generate the contour :
 m = MeshGenerator(dbm, 'mesh', '')
 
 m.create_contour('H', 200.0, 2)
 m.eliminate_intersections(dist=10)
+<<<<<<< HEAD
 m.plot_contour()
+=======
+#m.plot_contour()
+>>>>>>> evan
 m.write_gmsh_contour(100000, boundary_extend=False)
 m.extrude(100000, 10)
 m.close_file()
@@ -35,7 +51,11 @@ m.close_file()
 
 #===============================================================================
 # refine :
+<<<<<<< HEAD
 thklim = 200.0
+=======
+thklim = 1000.0
+>>>>>>> evan
 dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
 dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
 dbm.set_data_min('H',    boundary=thklim, val=thklim)
@@ -103,7 +123,11 @@ ref_bm.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
+<<<<<<< HEAD
 ref_bm.finish(gui=True)
+=======
+ref_bm.finish(gui=False)
+>>>>>>> evan
 
 
 

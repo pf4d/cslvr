@@ -6,12 +6,12 @@ from src.model              import Model
 from src.solvers            import SteadySolver
 from src.physical_constants import IceParameters
 from src.helper             import default_nonlin_solver_params
-from dolfin                 import set_log_active, File, Expression, pi
-from pylab                  import sin, tan, deg2rad
+from dolfin                 import set_log_active, File, Expression, pi, \
+                                   sin, tan
 
 set_log_active(True)
 
-alpha   = deg2rad(0.5)
+alpha   = 0.5 * pi / 180 
 lengths = [40000]
 for L in lengths:
 
@@ -112,8 +112,12 @@ for L in lengths:
    
   newt_params = config['velocity']['newton_params']
   if L in [5000,10000,20000,40000]:
+<<<<<<< HEAD
     newt_params['newton_solver']['linear_solver']                         = 'lu'
     newt_params['newton_solver']['preconditioner']                        = 'default'
+=======
+    newt_params['newton_solver']['preconditioner']       = 'default'
+>>>>>>> evan
     newt_params['newton_solver']['relaxation_parameter'] = 0.7
   else:
     newt_params['newton_solver']['linear_solver']                         = 'gmres'

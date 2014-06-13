@@ -72,6 +72,7 @@ class MeshFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
     mesh     = Mesh(home + '/test/circle.xml')
+    mesh.coordinates()[:,2] /= 1000.0
     return mesh
 
 

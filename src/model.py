@@ -101,12 +101,6 @@ class Model(object):
         x[1]  = x[1]  * width_y + offset_y
         x0[1] = x0[1] * width_y + offset_y
     
-        # transform z :
-        # thickness = surface - base, z = thickness + base
-        x[2]  = x[2] * (self.S_ex(x[0], x[1], x[2]) - \
-                        self.B_ex(x[0], x[1], x[2]))
-        x[2]  = x[2] + self.B_ex(x[0], x[1], x[2])
-
   def set_mesh(self, mesh, deform=True):
     """
     Overwrites the previous mesh with a new one
@@ -118,11 +112,12 @@ class Model(object):
     """
     self.mesh      = mesh
     self.flat_mesh = Mesh(mesh)
+    self.Q         = FunctionSpace(mesh, "CG", 1)
 
     if deform:
-      self.deform_mesh()
+      self.deform_mesh_to_geometry()
 
-  def deform_mesh(self):
+  def deform_mesh_to_geometry(self):
     """
     Deforms the mesh to the geometry.
     """
@@ -191,10 +186,10 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
     
-    #self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
+    self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
     
     self.ds      = Measure('ds')[self.ff]
-    self.ds_flat = Measure('ds')[self.ff]#_flat]
+    self.ds_flat = Measure('ds')[self.ff_flat]
      
   def set_parameters(self, params):
     """

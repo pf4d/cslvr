@@ -342,6 +342,10 @@ class VelocityStokes(object):
     print "::: solving velocity :::"
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
+    
+    model.u = project(model.u)
+    model.v = project(model.v)
+    model.w = project(model.w)
 
 
 class VelocityBP(object):
@@ -657,6 +661,9 @@ class VelocityBP(object):
 
     # solve for vertical velocity :
     solve(self.aw == self.Lw, model.w)
+    
+    model.u = project(model.u, model.Q)
+    model.v = project(model.v, model.Q)
 
 
 class Enthalpy(object):
@@ -1437,6 +1444,7 @@ class SurfaceClimate(object):
     
     # Apply the lapse rate to the surface boundary condition
     model.T_surface.vector().set_local(T_ma(S, lat) + 273.0)
+    model.T_surface.vector().apply('')
 
 
 class Age(object):

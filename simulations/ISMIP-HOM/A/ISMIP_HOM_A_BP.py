@@ -102,7 +102,7 @@ for L in lengths:
 
   nx = 20
   ny = 20 
-  nz = 10
+  nz = 5
 
   model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, 
                               ymin=0, ymax=L, generate_pbcs=True)
@@ -112,16 +112,11 @@ for L in lengths:
    
   newt_params = config['velocity']['newton_params']
   if L in [5000,10000,20000,40000]:
-<<<<<<< HEAD
-    newt_params['newton_solver']['linear_solver']                         = 'lu'
-    newt_params['newton_solver']['preconditioner']                        = 'default'
-=======
     newt_params['newton_solver']['preconditioner']       = 'default'
->>>>>>> evan
     newt_params['newton_solver']['relaxation_parameter'] = 0.7
   else:
-    newt_params['newton_solver']['linear_solver']                         = 'gmres'
-    newt_params['newton_solver']['preconditioner']                        = 'hypre_amg'
+    newt_params['linear_solver']                         = 'gmres'
+    newt_params['preconditioner']                        = 'hypre_amg'
     newt_params['newton_solver']['relaxation_parameter'] = 0.8
 
   F = SteadySolver(model, config)

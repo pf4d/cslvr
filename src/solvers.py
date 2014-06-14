@@ -307,17 +307,10 @@ class TransientSolver(object):
 
       # Store velocity, temperature, and age to vtk files
       if self.config['log']:
-<<<<<<< HEAD
-        U = project(as_vector([u, v, w]))
-        self.file_U << (U, t)
-        self.file_T << (T, t)
-        self.file_S << (S, t)
-=======
         U = project(as_vector([model.u, model.v, model.w]))
         self.file_U << (U, t)
         self.file_T << (model.T, t)
         self.file_S << (model.S, t)
->>>>>>> evan
         self.t_log.append(t)
         M = assemble(self.surface_instance.M)
         self.mass.append(M)
@@ -384,23 +377,9 @@ class AdjointSolver(object):
     elif U != None:
       Smag   = project( sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q )
       model.U_o.interpolate(U)
-<<<<<<< HEAD
-      #U_o_a = model.U_o.vector().array()
-      #U_o_a[U_o_a < 0.0] = 0.0
-      #model.U_o.vector().set_local(U_o_a)
-      #model.U_o.update()
-
       model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )
       model.v_o = project( -model.U_o * S.dx(1) / Smag, Q )      
 
-      #model.u_o.update()
-      #model.v_o.update()
-
-=======
-      model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )
-      model.v_o = project( -model.U_o * S.dx(1) / Smag, Q )      
-
->>>>>>> evan
   def solve(self):
     r""" 
     Perform the optimization.
@@ -515,33 +494,19 @@ class AdjointSolver(object):
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
       # FIXME: project and extrude ruin the output for paraview
-<<<<<<< HEAD
-      U    = project(as_vector([model.u, model.v, model.w]))
-      dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                     + model.w + model.adot)
-      file_b_xml    << model.beta2 
-      file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
-      file_u_xml    << U
-      file_dSdt_pvd << dSdt
-=======
       #U    = project(as_vector([model.u, model.v, model.w]))
       #dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
       #               + model.w + model.adot)
       #file_b_pvd    << model.extrude(model.beta2, 3, 2)
       #file_u_pvd    << U
       #file_dSdt_pvd << dSdt
->>>>>>> evan
       return Js
 
     #===========================================================================
     # Set up file I/O
     path = config['output_path']
     file_b_pvd    = File(path + 'beta2.pvd')
-<<<<<<< HEAD
-    file_u_xml    = File(path + 'U.xml')
-=======
     file_u_pvd    = File(path + 'U.pvd')
->>>>>>> evan
     file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 

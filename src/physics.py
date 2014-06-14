@@ -661,12 +661,9 @@ class VelocityBP(object):
 
     # solve for vertical velocity :
     solve(self.aw == self.Lw, model.w)
-<<<<<<< HEAD
-=======
     
     model.u = project(model.u, model.Q)
     model.v = project(model.v, model.Q)
->>>>>>> evan
 
 
 class Enthalpy(object):

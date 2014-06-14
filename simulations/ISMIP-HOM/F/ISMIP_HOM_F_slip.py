@@ -36,8 +36,8 @@ class SMB(dolfin.Expression):
 nonlin_solver_params = src.helper.default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance'] = 1.0
-nonlin_solver_params['newton_solver']['linear_solver'] = 'gmres'
-nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
+nonlin_solver_params['linear_solver'] = 'gmres'
+nonlin_solver_params['preconditioner'] = 'hypre_amg'
 
 config = { 'mode' : 'transient',
            'coupled' : 

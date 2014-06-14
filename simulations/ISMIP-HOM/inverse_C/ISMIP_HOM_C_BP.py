@@ -33,8 +33,8 @@ class Beta2(dolfin.Expression):
         values[0] = 1000 + 1000.*pylab.sin(2*pylab.pi*x[0]/L)*pylab.sin(2*pylab.pi*x[1]/L)
 
 nparams = src.helper.default_nonlin_solver_params()
-nparams['newton_solver']['linear_solver'] = 'mumps'
-nparams['newton_solver']['preconditioner'] = 'default'
+nparams['linear_solver'] = 'gmres'
+nparams['preconditioner'] = 'hypre_amg'
 nparams['newton_solver']['relaxation_parameter']=0.7
 nparams['newton_solver']['maximum_iterations']=20
 nparams['newton_solver']['error_on_nonconvergence']=False
@@ -88,7 +88,7 @@ config = { 'mode' : 'steady',
                 'precip': None
             },
             'adjoint' :
-            { 'alpha' : [0.000000001],
+            { 'alpha' : [0.0],
                 'beta' : 0.0,
                 'max_fun' : 20,
                 'objective_function' : 'linear',
@@ -127,7 +127,7 @@ v_o = model.v.vector().get_local()
 U_e = 10.0
 from scipy import random
 
-for i in range(5):
+for i in range(50):
     config['output_path'] = 'results/run_'+str(i)+'/'
     model.beta2.vector()[:] = 1000.
     u_error = U_e*random.randn(len(u_o))

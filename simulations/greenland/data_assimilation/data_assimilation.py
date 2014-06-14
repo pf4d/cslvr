@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 #
 # FEniCS 1.2.0 Assimilation run times (16 cores, 20 function evals):
 # ==============================================================================
@@ -41,7 +39,6 @@
 #  10 layers crude    |     370740 |  |  |  |  
 #
 
->>>>>>> evan
 import sys
 import os
 src_directory = '../../../'
@@ -61,11 +58,8 @@ from time                 import time
 # get the input args :
 i = int(sys.argv[2])           # assimilation number
 dir_b = sys.argv[1] + '/0'     # directory to save
-<<<<<<< HEAD
-=======
 #dir_b   = './results_high_fo/0'
 #dir_b   = './results_high_stokes/0'
->>>>>>> evan
 
 # set the output directory :
 out_dir = dir_b + str(i) + '/'
@@ -83,15 +77,6 @@ bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 #sec_qgeo = DataFactory.get_gre_qgeo_secret()
 rignot   = DataFactory.get_gre_rignot()
-<<<<<<< HEAD
-
-# define the meshes :
-mesh      = meshfactory.get_greenland_3D_1H()
-flat_mesh = meshfactory.get_greenland_3D_1H()
-mesh.coordinates()[:,2]      /= 100000.0
-flat_mesh.coordinates()[:,2] /= 100000.0
-=======
->>>>>>> evan
 
 # define the mesh :
 mesh      = MeshFactory.get_greenland_coarse()
@@ -102,12 +87,8 @@ dbm     = DataInput(None, bamber,   mesh=mesh)
 #dms     = DataInput(None, measure,  mesh=mesh)
 #dmss    = DataInput(None, meas_shf, mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
-<<<<<<< HEAD
-dmg     = DataInput(None, rignot,   mesh=mesh)
-=======
 #dsq     = DataInput(None, sec_qgeo, mesh=mesh)
 drg     = DataInput(None, rignot,   mesh=mesh)
->>>>>>> evan
 #dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
@@ -120,16 +101,13 @@ Surface            = dbm.get_spline_expression('h')
 Bed                = dbm.get_spline_expression('b')
 SurfaceTemperature = dsr.get_spline_expression('T')
 #BasalHeatFlux      = dsr.get_spline_expression('q_geo')
-<<<<<<< HEAD
-=======
 #BasalHeatFlux      = dsq.get_spline_expression('q_geo')
->>>>>>> evan
 BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 #U_observed         = dsr.get_spline_expression('U_ob')
 U_observed         = drg.get_spline_expression('v_mag')
 
-# inspect the data values if you would like :
+# inspect the data values :
 #do    = DataOutput('results_pre/')
 #do.write_one_file('vmag',           drg.get_projection('v_mag'))
 #do.write_one_file('h',              dbm.get_projection('h'))
@@ -150,11 +128,7 @@ nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-<<<<<<< HEAD
-nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-=======
 #nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
->>>>>>> evan
 nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
@@ -259,22 +233,6 @@ t02 = time()
 A.solve()
 tf2 = time()
     
-<<<<<<< HEAD
-XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
-
-# save the state of the model :
-if i !=0: rw = 'a':
-else:     rw = 'w':
-f = HDF5File(out_dir + '3D_5H_stokes.h5', rw)
-f.write(model.mesh,  'mesh')
-f.write(model.beta2, 'beta2')
-f.write(model.Mb,    'Mb')
-f.write(model.T,     'T')
-f.write(model.S,     'S')
-f.write(model.B,     'B')
-f.write(model.U,     'U')
-f.write(model.eta,   'eta')
-=======
 File(out_dir + 'S.xml')       << model.S
 File(out_dir + 'B.xml')       << model.B
 File(out_dir + 'u.xml')       << project(model.u, model.Q)
@@ -297,7 +255,6 @@ File(out_dir + 'eta.xml')     << project(model.eta, model.Q)
 #f.write(model.B,     'B')
 #f.write(model.U,     'U')
 #f.write(model.eta,   'eta')
->>>>>>> evan
 
 # calculate total time to compute
 s = (tf1 - t01) + (tf2 - t02)

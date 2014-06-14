@@ -27,41 +27,26 @@ class MeshFactory(object):
   def get_greenland_coarse():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
-<<<<<<< HEAD
-    mesh     = home + '/greenland/greenland_coarse_mesh.xml' 
-    return Mesh(mesh)
-=======
     mesh     = Mesh(home + '/greenland/greenland_coarse_mesh.xml')
     mesh.coordinates()[:,2] /= 1000.0
     return mesh
->>>>>>> evan
   
   
   @staticmethod
   def get_greenland_2D_1H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
-<<<<<<< HEAD
-    mesh     = home + '/greenland/greenland_2D_1H_mesh.xml' 
-    return Mesh(mesh)
-=======
     mesh     = Mesh(home + '/greenland/greenland_2D_1H_mesh.xml')
     return mesh
->>>>>>> evan
  
   
   @staticmethod
   def get_greenland_3D_5H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
-<<<<<<< HEAD
-    mesh     = home + '/greenland/greenland_3D_5H_mesh.xml' 
-    return Mesh(mesh)
-=======
     mesh     = Mesh(home + '/greenland/greenland_3D_5H_mesh.xml')
     mesh.coordinates()[:,2] /= 100000.0
     return mesh
->>>>>>> evan
 
 
   @staticmethod
@@ -80,6 +65,7 @@ class MeshFactory(object):
     mesh     = Mesh(home + '/antarctica/antarctica_detailed_mesh.xml')
     mesh.coordinates()[:,2] /= 1000.0
     return mesh
+
 
   @staticmethod
   def get_circle():

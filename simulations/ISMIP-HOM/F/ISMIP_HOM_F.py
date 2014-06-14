@@ -37,8 +37,8 @@ class SMB(Expression):
 nonlin_solver_params = src.helper.default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
-nonlin_solver_params['newton_solver']['linear_solver']                         = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']                        = 'default'
+nonlin_solver_params['linear_solver']                         = 'mumps'
+nonlin_solver_params['preconditioner']                        = 'default'
 
 config = { 'mode'                         : 'transient',
            'output_path'                  : './results/',

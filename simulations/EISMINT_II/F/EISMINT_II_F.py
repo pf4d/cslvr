@@ -12,7 +12,6 @@ import pickle
 from meshes.mesh_factory import MeshFactory
 
 dolfin.set_log_active(True)
-dolfin.parameters['form_compiler']['quadrature_degree'] = 2
 
 L = 750000.0
 S_0 = 10.0
@@ -42,8 +41,8 @@ class SurfaceTemperature(dolfin.Expression):
 nonlin_solver_params = src.helper.default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['absolute_tolerance'] = 1.0
-nonlin_solver_params['newton_solver']['linear_solver'] = 'gmres'
-nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
+nonlin_solver_params['linear_solver'] = 'gmres'
+nonlin_solver_params['preconditioner'] = 'hypre_amg'
 
 
 config = { 'mode'                         : 'steady',

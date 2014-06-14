@@ -101,15 +101,6 @@ class Model(object):
         x[1]  = x[1]  * width_y + offset_y
         x0[1] = x0[1] * width_y + offset_y
     
-<<<<<<< HEAD
-        # transform z :
-        # thickness = surface - base, z = thickness + base
-        x[2]  = x[2] * (self.S_ex(x[0], x[1], x[2]) - \
-                        self.B_ex(x[0], x[1], x[2]))
-        x[2]  = x[2] + self.B_ex(x[0], x[1], x[2])
-
-=======
->>>>>>> evan
   def set_mesh(self, mesh, deform=True):
     """
     Overwrites the previous mesh with a new one
@@ -121,10 +112,7 @@ class Model(object):
     """
     self.mesh      = mesh
     self.flat_mesh = Mesh(mesh)
-<<<<<<< HEAD
-=======
     self.Q         = FunctionSpace(mesh, "CG", 1)
->>>>>>> evan
 
     if deform:
       self.deform_mesh_to_geometry()
@@ -198,17 +186,10 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
     
-<<<<<<< HEAD
-    #self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
-    
-    self.ds      = Measure('ds')[self.ff]
-    self.ds_flat = Measure('ds')[self.ff]#_flat]
-=======
     self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
->>>>>>> evan
      
   def set_parameters(self, params):
     """
@@ -340,7 +321,6 @@ class Model(object):
     return v
   
   def vert_integrate(self, u, Q='self'):
-<<<<<<< HEAD
     """
     Integrate <u> from the bed to the surface.
     """
@@ -373,40 +353,6 @@ class Model(object):
     """
     Create a normalized vector of the UFL vector <U>.
     """
-=======
-    """
-    Integrate <u> from the bed to the surface.
-    """
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff     = self.ff                       # facet function defines boundaries
-    phi    = TestFunction(Q)               # test function
-    v      = TrialFunction(Q)              # trial function
-    bc     = DirichletBC(Q, 0.0, ff, 3)    # integral is zero on bed (ff = 3) 
-    a      = v.dx(2) * phi * dx            # rhs
-    L      = u * phi * dx                  # lhs
-    v      = Function(Q)                   # solution function
-    solve(a == L, v, bc)                   # solve
-    #v.update()                             # update ghost verticies
-    return v
-
-  def rotate(self, M, theta):
-    """
-    rotate the tensor <M> about the z axes by angle <theta>.
-    """
-    c  = cos(theta)
-    s  = sin(theta)
-    Rz = as_matrix([[c, -s, 0],
-                    [s,  c, 0],
-                    [0,  0, 1]])
-    R  = dot(Rz, dot(M, Rz.T))
-    return R
-
-  def normalize_vector(self, U, Q='self'):
-    """
-    Create a normalized vector of the UFL vector <U>.
-    """
->>>>>>> evan
     if type(Q) != FunctionSpace:
       Q = self.Q
 
@@ -435,17 +381,10 @@ class Model(object):
     return as_vector(U_f)
 
   def calc_component_stress(self, u_dir, Q='self'):
-<<<<<<< HEAD
     """
     Calculate the deviatoric component of stress in the direction of 
     the UFL vector <u_dir>.
     """
-=======
-    """
-    Calculate the deviatoric component of stress in the direction of 
-    the UFL vector <u_dir>.
-    """
->>>>>>> evan
     print "::: calculating component stress :::"
     if type(Q) != FunctionSpace:
       Q = self.Q

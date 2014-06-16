@@ -35,11 +35,11 @@ m.close_file()
 
 #===============================================================================
 # refine :
-thklim = 1000.0
-dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
-dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
+thklim = 200.0
+#dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
+#dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
 dbm.set_data_min('H',    boundary=thklim, val=thklim)
-dbm.set_data_max('mask', 2, 0)
+#dbm.set_data_max('mask', 2, 0)
 
 # might want to refine off of thickness :
 H    = dbm.data['H']

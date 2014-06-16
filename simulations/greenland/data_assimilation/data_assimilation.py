@@ -10,7 +10,7 @@ from meshes.mesh_factory  import MeshFactory
 from data.data_factory    import DataFactory
 from src.helper           import default_nonlin_solver_params
 from src.utilities        import DataInput, DataOutput
-from dolfin               import *
+from fenics               import *
 from time                 import time
 
 

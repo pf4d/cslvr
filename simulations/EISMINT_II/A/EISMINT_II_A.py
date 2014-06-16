@@ -7,7 +7,7 @@ from src.helper             import default_nonlin_solver_params
 from src.solvers            import SteadySolver, TransientSolver
 from src.physical_constants import IceParameters
 from dolfin                 import Expression, sqrt, set_log_active, \
-                                   parameters, Constant
+                                   parameters, Constant, File
 from meshes.mesh_factory    import MeshFactory
 
 set_log_active(True)
@@ -54,7 +54,7 @@ parameters['form_compiler']['quadrature_degree']              = 2
 
 config = { 'mode'                         : 'steady',
            't_start'                      : 0.0,
-           't_end'                        : 50000.0,
+           't_end'                        : 100.0,
            'time_step'                    : 10.0,
            'output_path'                  : './results/',
            'wall_markers'                 : [],

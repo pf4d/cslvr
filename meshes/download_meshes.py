@@ -37,6 +37,7 @@ url  = 'https://www.dropbox.com/meta_dl/eyJzdWJfcGF0aCI6ICIi' + \
        'cGJveHVzZXJjb250ZW50LmNvbSIsICJpdGVtX2lkIjogbnVsbCwg' + \
        'ImlzX2RpciI6IGZhbHNlLCAidGtleSI6ICJ5aW9mOTJ6MzRjY2pi' + \
        'YmUifQ/AAOH6yHhNbX1NfSr2oGfE3KutInG2MkPgtqkXqDpU_SL-Q?dl=1'
+url  = 'https://www.dropbox.com/s/yiof92z34ccjbbe/greenland_3D_5H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # 1 ice-thickness 2D greenland mesh :

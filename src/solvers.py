@@ -193,27 +193,27 @@ class TransientSolver(object):
     self.step_time = []
     self.M_prev    = 1.0
 
-  def rhs_func_explicit(self, t, y, *f_args):
+  def rhs_func_explicit(self, t, S, *f_args):
     """
     This function calculates the change in height of the surface of the
     ice sheet.
     
     :param t : Time
-    :param y : Current height of the ice sheet
+    :param S : Current height of the ice sheet
     :rtype   : Array containing rate of change of the ice surface values
     """
     model             = self.model
     config            = self.config
     thklim            = config['free_surface']['thklim']
     B                 = model.B.compute_vertex_values()
-    y[(y-B) < thklim] = thklim + B[(y-B) < thklim]
+    S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
     if config['periodic_boundary_conditions']:
       #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
       v2d = vertex_to_dof_map(model.Q_non_periodic)
     else:
       #v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
       v2d = vertex_to_dof_map(model.Q)
-    model.S.vector().set_local(y[v2d])
+    model.S.vector().set_local(S[v2d])
     model.S.vector().apply('')
    
     if config['velocity']['on']:

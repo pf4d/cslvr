@@ -576,6 +576,7 @@ class MeshGenerator(object):
     #       file after a certain point.  calling restart() then write again 
     #       results in correct .geo file written.  However, running the script 
     #       outside of ipython works.
+    print "::: writing gmsh contour :::"
     c   = self.longest_cont
     f   = self.f
     x   = self.x
@@ -840,7 +841,7 @@ class max_field(object):
 
 
 class MeshRefiner(object):
-
+  
   def __init__(self, di, fn, gmsh_file_name):
     """
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.

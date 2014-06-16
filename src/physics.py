@@ -346,6 +346,7 @@ class VelocityStokes(object):
     model.u = project(model.u)
     model.v = project(model.v)
     model.w = project(model.w)
+    model.P = project(model.P)
 
 
 class VelocityBP(object):

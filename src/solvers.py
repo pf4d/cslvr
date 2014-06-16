@@ -212,7 +212,7 @@ class TransientSolver(object):
       v2d = vertex_to_dof_map(model.Q_non_periodic)
     else:
       #v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
-      v2d = vertex_to_dof_map(model.Q)
+      v2d = vertex_to_dof_map(model.Q)  #FIXME: does not work in parallel
     model.S.vector().set_local(S[v2d])
     model.S.vector().apply('')
    

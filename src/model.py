@@ -334,7 +334,6 @@ class Model(object):
     L      = u * phi * dx                  # lhs
     v      = Function(Q)                   # solution function
     solve(a == L, v, bc)                   # solve
-    #v.update()                             # update ghost verticies
     return v
 
   def rotate(self, M, theta):
@@ -406,7 +405,6 @@ class Model(object):
     L      = com_n * phi * dx                  # linear part
     v      = Function(Q)                       # solution function
     solve(a == L, v, bc)                       # solve
-    #v.update()                                 # update ghost verticies
     v      = self.extrude(v, 2, 2)             # extrude the integral
     dvdx   = grad(v)                           # spatial derivative
     dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
@@ -432,7 +430,6 @@ class Model(object):
     L      = com * phi * dx                    # linear part
     v      = Function(Q)                       # solution function
     solve(a == L, v, bc)                       # solve
-    #v.update()                                 # update ghost verticies
     v      = self.extrude(v, 2, 2)             # extrude the integral
     dvdx   = v.dx(y)                           # derivative w.r.t. 2nd comp.
     return dvdx
@@ -458,10 +455,6 @@ class Model(object):
     tau_bas_v = project(beta2_e*H*v_bas_e, Q)
     tau_bas_w = project(beta2_e*H*w_bas_e, Q)
 
-    #tau_bas_u.update()                             # eliminate ghost vertices 
-    #tau_bas_v.update()                             # eliminate ghost vertices 
-    #tau_bas_w.update()                             # eliminate ghost vertices 
-
     return as_vector([tau_bas_u, tau_bas_v, tau_bas_w]) 
 
   def calc_tau_drv(self, Q='self'):
@@ -485,10 +478,6 @@ class Model(object):
     tau_drv_u = project(rho*g*H*gradS_u, Q)
     tau_drv_v = project(rho*g*H*gradS_v, Q)
     tau_drv_w = project(rho*g*H*gradS_w, Q)
-
-    #tau_drv_u.update()                             # eliminate ghost vertices 
-    #tau_drv_v.update()                             # eliminate ghost vertices 
-    #tau_drv_w.update()                             # eliminate ghost vertices 
 
     return as_vector([tau_drv_u, tau_drv_v, tau_drv_w])
 

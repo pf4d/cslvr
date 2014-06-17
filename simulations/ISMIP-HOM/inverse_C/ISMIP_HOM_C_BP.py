@@ -2,42 +2,42 @@ import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-import src.model
-import src.solvers
-import src.physical_constants
-import src.helper
-import pylab
-import dolfin
+from src.model              import Model
+from src.solvers            import SteadySolver, AdjointSolver
+from src.physical_constants import IceParameters
+from src.helper             import default_nonlin_solver_params
+from dolfin                 import set_log_active, pi, Expression, tan, sin, pi, File, as_vector
+from scipy                  import random
 
-dolfin.set_log_active(True)
+set_log_active(True)
 
-alpha = pylab.deg2rad(0.1)
+alpha = 0.1 * pi / 180
 L=80000
 
-class Surface(dolfin.Expression):
+class Surface(Expression):
     def __init__(self):
         pass
     def eval(self,values,x):
-        values[0] = -x[0]*pylab.tan(alpha)
+        values[0] = -x[0]*tan(alpha)
 
-class Bed(dolfin.Expression):
+class Bed(Expression):
     def __init__(self):
         pass
     def eval(self,values,x):
-        values[0] = -x[0]*pylab.tan(alpha) - 1000.0
+        values[0] = -x[0]*tan(alpha) - 1000.0
 
-class Beta2(dolfin.Expression):
+class Beta2(Expression):
     def __init__(self):
         pass
     def eval(self,values,x):
-        values[0] = 1000 + 1000.*pylab.sin(2*pylab.pi*x[0]/L)*pylab.sin(2*pylab.pi*x[1]/L)
+        values[0] = 1000 + 1000.*sin(2*pi*x[0]/L)*sin(2*pi*x[1]/L)
 
-nparams = src.helper.default_nonlin_solver_params()
-nparams['linear_solver'] = 'gmres'
-nparams['preconditioner'] = 'hypre_amg'
-nparams['newton_solver']['relaxation_parameter']=0.7
-nparams['newton_solver']['maximum_iterations']=20
-nparams['newton_solver']['error_on_nonconvergence']=False
+nparams = default_nonlin_solver_params()
+nparams['newton_solver']['linear_solver']           = 'gmres'
+nparams['newton_solver']['preconditioner']          = 'hypre_amg'
+nparams['newton_solver']['relaxation_parameter']    = 0.7
+nparams['newton_solver']['maximum_iterations']      = 20
+nparams['newton_solver']['error_on_nonconvergence'] = False
 
 config = { 'mode' : 'steady',
         'coupled' : 
@@ -102,7 +102,7 @@ config = { 'mode' : 'steady',
             'periodic_boundary_conditions' : True,
             'log': True }
 
-model = src.model.Model()
+model = Model()
 model.set_geometry(Surface(), Bed())
 
 nx = ny = 20
@@ -110,22 +110,21 @@ nz = 6
 
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,
                             generate_pbcs=True)
-model.set_parameters(src.physical_constants.IceParameters())
+model.set_parameters(IceParameters())
 model.initialize_variables()
 
-F = src.solvers.SteadySolver(model,config)
+F = SteadySolver(model,config)
 F.solve()
 
 model.eps_reg = 1e-5
 config['adjoint']['control_variable'] = [model.beta2]
 config['adjoint']['bounds'] = [(0.0,5000.0)]
-dolfin.File('results/beta2_obs.xml') << model.beta2
+File('results/beta2_obs.xml') << model.beta2
 
-A = src.solvers.AdjointSolver(model,config)
+A = AdjointSolver(model,config)
 u_o = model.u.vector().get_local()
 v_o = model.v.vector().get_local()
 U_e = 10.0
-from scipy import random
 
 for i in range(50):
     config['output_path'] = 'results/run_'+str(i)+'/'

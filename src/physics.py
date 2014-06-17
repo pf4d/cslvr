@@ -292,10 +292,6 @@ class VelocityStokes(object):
     model.Nc     = Nc
     model.Pb     = Pb
     model.Lsq    = Lsq
-    model.u      = u
-    model.v      = v
-    model.w      = w
-    model.P      = P
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -343,10 +339,10 @@ class VelocityStokes(object):
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
     
-    model.u = project(model.u)
-    model.v = project(model.v)
-    model.w = project(model.w)
-    model.P = project(model.P)
+    model.u = project(model.U[0])
+    model.v = project(model.U[1])
+    model.w = project(model.U[2])
+    model.P = project(model.U[3])
 
 
 class VelocityBP(object):
@@ -642,8 +638,6 @@ class VelocityBP(object):
     model.T     = T
     model.beta2 = beta2
     model.E     = E
-    model.u     = u
-    model.v     = v
 
   def solve(self, maxiter=50):
     """ 
@@ -663,8 +657,8 @@ class VelocityBP(object):
     # solve for vertical velocity :
     solve(self.aw == self.Lw, model.w)
     
-    model.u = project(model.u, model.Q)
-    model.v = project(model.v, model.Q)
+    model.u = project(model.U[0], model.Q)
+    model.v = project(model.U[1], model.Q)
 
 
 class Enthalpy(object):
@@ -1325,7 +1319,6 @@ class AdjointVelocityBP(object):
     U_o       = model.U_o
     u_o       = model.u_o
     v_o       = model.v_o
-    w         = model.w
     adot      = model.adot
     ds        = model.ds
     S         = model.S
@@ -1362,7 +1355,7 @@ class AdjointVelocityBP(object):
                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
       
       else:
-        print 'Valid regularizations are \'TV\' and \'Tikhonov\'.'
+        print "Valid regularizations are 'TV' and 'Tikhonov'."
     
     #Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
@@ -1414,7 +1407,7 @@ class AdjointVelocityBP(object):
 
     print "::: solving adjoint BP velocity :::"
     solve(A, self.model.Lam.vector(), l)
-
+    
 
 class SurfaceClimate(object):
 

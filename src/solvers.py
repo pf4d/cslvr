@@ -418,7 +418,7 @@ class AdjointSolver(object):
         return a
      
       # return a numPy array of values of a FEniCS function : 
-      elif type(m) == (function.Function, functions.function.Function):
+      elif type(m) in (function.Function, functions.function.Function):
         m_v = m.vector()
         m_a = DoubleArray(m.vector().size())
      
@@ -521,7 +521,7 @@ class AdjointSolver(object):
     m_global = array(m_global)
 
     # Shut up all processors but the first one.
-    if MPI.process_number() != 0:
+    if MPI.rank(mpi_comm_world()) != 0:
       iprint = -1
     else:
       iprint = 1

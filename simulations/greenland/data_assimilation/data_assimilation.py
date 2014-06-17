@@ -35,8 +35,9 @@ rignot   = DataFactory.get_gre_rignot()
 
 # define the mesh :
 #mesh      = MeshFactory.get_greenland_3D_5H()
-mesh     = Mesh('meshes/greenland_3D_5H.xml')
-mesh.coordinates()[:,2] /= 100000.0
+mesh      = MeshFactory.get_greenland_coarse()
+#mesh     = Mesh('meshes/greenland_3D_5H.xml')
+#mesh.coordinates()[:,2] /= 100000.0
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)

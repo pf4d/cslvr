@@ -117,9 +117,10 @@ F = SteadySolver(model,config)
 F.solve()
 
 model.eps_reg = 1e-5
-config['adjoint']['control_variable'] = [model.beta2]
-config['adjoint']['bounds'] = [(0.0,5000.0)]
+config['adjoint']['control_variable']  = [model.beta2]
+config['adjoint']['bounds']            = [(0.0,5000.0)]
 File('results/beta2_obs.xml') << model.beta2
+File('results/beta2_obs.pvd') << model.beta2
 
 A = AdjointSolver(model,config)
 u_o = model.u.vector().get_local()

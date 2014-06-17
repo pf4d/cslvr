@@ -335,7 +335,7 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
-    print "::: solving velocity :::"
+    print "::: solving full-stokes velocity :::"
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
     
@@ -650,7 +650,7 @@ class VelocityBP(object):
     config = self.config
     
     # solve nonlinear system :
-    print "::: solving velocity :::"
+    print "::: solving BP velocity :::"
     solve(self.F == 0, model.U, J = self.J,
           solver_parameters = self.newton_params)
 

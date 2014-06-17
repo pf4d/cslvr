@@ -475,7 +475,7 @@ class AdjointSolver(object):
       for ii,c in enumerate(config['adjoint']['control_variable']):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
-      I = assemble(self.adjoint_instance.I)
+      I = assemble(self.adjoint_instance.I)  #FIXME: ISMIP_HOM inverse C fails
       return I
  
     def _J_fun(c_array, *args):

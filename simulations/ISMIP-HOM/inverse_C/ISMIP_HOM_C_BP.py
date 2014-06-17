@@ -6,7 +6,8 @@ from src.model              import Model
 from src.solvers            import SteadySolver, AdjointSolver
 from src.physical_constants import IceParameters
 from src.helper             import default_nonlin_solver_params
-from dolfin                 import set_log_active, pi, Expression, tan, sin, pi, File, as_vector
+from dolfin                 import set_log_active, pi, Expression, tan, sin, \
+                                   pi, File, as_vector, parameters
 from scipy                  import random
 
 set_log_active(True)
@@ -38,6 +39,7 @@ nparams['newton_solver']['preconditioner']          = 'hypre_amg'
 nparams['newton_solver']['relaxation_parameter']    = 0.7
 nparams['newton_solver']['maximum_iterations']      = 20
 nparams['newton_solver']['error_on_nonconvergence'] = False
+parameters['form_compiler']['quadrature_degree']    = 2
 
 config = { 'mode' : 'steady',
         'coupled' : 

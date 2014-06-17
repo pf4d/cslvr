@@ -1913,5 +1913,123 @@ class StokesBalance(object):
     model.ubar = project(u_s, self.Q)
     model.vbar = project(v_s, self.Q)
 
+  def component_stress_stokes(self):  
+    """
+    """
+    print "solving 'stokes-balance' for stress terms :::" 
+    model = self.model
+
+    outpath = self.config['output_path']
+    Q       = self.Q
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    etabar  = model.etabar
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    u_s = project(model.ubar, Q)
+    v_s = project(model.vbar, Q)
+    
+    U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
+    u_n = U[0]
+    v_n = U[1]
+    U   = as_vector([u_s, v_s, 0])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+
+    # get driving stress and basal drag : 
+    tau_d = model.tau_d
+    tau_b = model.tau_b
+    
+    # trial and test functions for linear solve :
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+    
+    # mass matrix :
+    M = assemble(phi*dtau*dx)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+    
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
+    tau_tn = - dphidn * H * etabar * (  dudt +   dvdn) * dx
+    tau_tt = - dphidt * H * etabar * (4*dvdt + 2*dudn) * dx
+    
+    # dot product of stress with the direction along (n) and across (t) flow :
+    tau_bn = phi * dot(tau_b, U_n) * dx
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_bt = phi * dot(tau_b, U_t) * dx
+    tau_dt = phi * dot(tau_d, U_t) * dx
+    
+    # the residuals :
+    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
+    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
+
+    # assemble the vectors :
+    tau_nn_v   = assemble(tau_nn)
+    tau_nt_v   = assemble(tau_nt)
+    tau_tn_v   = assemble(tau_tn)
+    tau_tt_v   = assemble(tau_tt)
+    tau_totn_v = assemble(tau_totn)
+    tau_tott_v = assemble(tau_tott)
+    
+    # solution functions :
+    tau_nn   = Function(Q)
+    tau_nt   = Function(Q)
+    tau_tn   = Function(Q)
+    tau_tt   = Function(Q)
+    tau_totn = Function(Q)
+    tau_tott = Function(Q)
+    
+    # solve the linear system :
+    solve(M, tau_nn.vector(),   tau_nn_v)
+    solve(M, tau_nt.vector(),   tau_nt_v)
+    solve(M, tau_tn.vector(),   tau_tn_v)
+    solve(M, tau_tt.vector(),   tau_tt_v)
+    solve(M, tau_totn.vector(), tau_totn_v)
+    solve(M, tau_tott.vector(), tau_tott_v)
+
+    # give the stress balance terms :
+    tau_bn = project(dot(tau_b, U_n))
+    tau_dn = project(dot(tau_d, U_n))
+
+    # output the files to the specified directory :
+    File(outpath + 'tau_dn.pvd')   << tau_dn
+    File(outpath + 'tau_bn.pvd')   << tau_bn
+    File(outpath + 'tau_nn.pvd')   << tau_nn
+    File(outpath + 'tau_nt.pvd')   << tau_nt
+    File(outpath + 'tau_totn.pvd') << tau_totn
+    File(outpath + 'tau_tott.pvd') << tau_tott
+    File(outpath + 'u_s.pvd')      << u_s
+    File(outpath + 'v_s.pvd')      << v_s
+
+    # attach the results to the model :
+    model.tau_nn = tau_nn
+    model.tau_nt = tau_nt
+    model.tau_tn = tau_tn
+    model.tau_tt = tau_tt
+    model.tau_bn = tau_bn
+    model.tau_dn = tau_dn
+    model.tau_totn = tau_totn
+    model.tau_tott = tau_tott
+    model.u_s      = u_s
+    model.v_s      = v_s
+
 
 

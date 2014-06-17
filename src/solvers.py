@@ -1,8 +1,11 @@
-from pylab          import array
-from fenics         import *
+from pylab          import inf, ones, zeros, array, arange, vstack
+from fenics         import project, File, vertex_to_dof_map, Function, \
+                           assemble, sqrt, DoubleArray, Constant, function
 from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
 from helper         import print_min_max
+from time           import time
+import numpy as np
 
 class SteadySolver(object):
   """
@@ -254,7 +257,6 @@ class TransientSolver(object):
  
     smb.interpolate(config['free_surface']['observed_smb'])
 
-    import time
     if config['periodic_boundary_conditions']:
       #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.mesh)
       v2d = vertex_to_dof_map(model.Q_non_periodic)
@@ -268,7 +270,7 @@ class TransientSolver(object):
       B_a = B.compute_vertex_values()
       S_v = S.compute_vertex_values()
       
-      tic = time.time()
+      tic = time()
 
       S_0 = S_v
       f_0 = self.rhs_func_explicit(t, S_0)
@@ -316,13 +318,13 @@ class TransientSolver(object):
         self.mass.append(M)
 
       # Increment time step
-      if MPI.process_number()==0:
+      if MPI.rank(mpi_comm_world())==0:
         string = 'Time: {0}, CPU time for last time step: {1}, Mass: {2}'
-        print string.format(t, time.time()-tic, M/self.M_prev)
+        print string.format(t, time()-tic, M/self.M_prev)
 
       self.M_prev = M
       t          += dt
-      self.step_time.append(time.time() - tic)
+      self.step_time.append(time() - tic)
 
 class AdjointSolver(object):
   """
@@ -416,7 +418,7 @@ class AdjointSolver(object):
         return a
      
       # return a numPy array of values of a FEniCS function : 
-      elif type(m) in (function.Function, functions.function.Function):
+      elif type(m) == (function.Function, functions.function.Function):
         m_v = m.vector()
         m_a = DoubleArray(m.vector().size())
      
@@ -660,115 +662,8 @@ class StokesBalanceSolver(object):
       
       print 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)' \
             % (counter, max_iter, inner_error, inner_tol)
-
-  def component_stress_stokes(self):  
-    """
-    """
-    print "solving 'stokes-balance' for stress terms :::" 
-    model = self.model
-
-    outpath = self.config['output_path']
-    Q       = self.Q
-    S       = model.S
-    B       = model.B
-    H       = S - B
-    etabar  = model.etabar
-    
-    #===========================================================================
-    # form the stokes equations in the normal direction (n) and tangential 
-    # direction (t) in relation to the stress-tensor :
-    u_s = project(model.ubar, Q)
-    v_s = project(model.vbar, Q)
-    
-    U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
-    u_n = U[0]
-    v_n = U[1]
-    U   = as_vector([u_s, v_s, 0])
-    U_n = as_vector([u_n, v_n, 0])
-    U_t = as_vector([v_n,-u_n, 0])
-
-    # directional derivatives :
-    uhat     = dot(U, U_n)
-    vhat     = dot(U, U_t)
-    graduhat = grad(uhat)
-    gradvhat = grad(vhat)
-    dudn     = dot(graduhat, U_n)
-    dvdn     = dot(gradvhat, U_n)
-    dudt     = dot(graduhat, U_t)
-    dvdt     = dot(gradvhat, U_t)
-
-    # get driving stress and basal drag : 
-    tau_d = model.tau_d
-    tau_b = model.tau_b
-    
-    # trial and test functions for linear solve :
-    phi   = TestFunction(Q)
-    dtau  = TrialFunction(Q)
-    
-    # mass matrix :
-    M = assemble(phi*dtau*dx)
-    
-    # integration by parts directional derivative terms :
-    gradphi = grad(phi)
-    dphidn  = dot(gradphi, U_n)
-    dphidt  = dot(gradphi, U_t)
-    
-    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
-    tau_tn = - dphidn * H * etabar * (  dudt +   dvdn) * dx
-    tau_tt = - dphidt * H * etabar * (4*dvdt + 2*dudn) * dx
-    
-    # dot product of stress with the direction along (n) and across (t) flow :
-    tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
-    tau_bt = phi * dot(tau_b, U_t) * dx
-    tau_dt = phi * dot(tau_d, U_t) * dx
-    
-    # the residuals :
-    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
-    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
-
-    # assemble the vectors :
-    tau_nn_v   = assemble(tau_nn)
-    tau_nt_v   = assemble(tau_nt)
-    tau_tn_v   = assemble(tau_tn)
-    tau_tt_v   = assemble(tau_tt)
-    tau_totn_v = assemble(tau_totn)
-    tau_tott_v = assemble(tau_tott)
-    
-    # solution functions :
-    tau_nn   = Function(Q)
-    tau_nt   = Function(Q)
-    tau_tn   = Function(Q)
-    tau_tt   = Function(Q)
-    tau_totn = Function(Q)
-    tau_tott = Function(Q)
-    
-    # solve the linear system :
-    solve(M, tau_nn.vector(),   tau_nn_v)
-    solve(M, tau_nt.vector(),   tau_nt_v)
-    solve(M, tau_tn.vector(),   tau_tn_v)
-    solve(M, tau_tt.vector(),   tau_tt_v)
-    solve(M, tau_totn.vector(), tau_totn_v)
-    solve(M, tau_tott.vector(), tau_tott_v)
-
-    # give the stress balance terms :
-    tau_bn = project(dot(tau_b, U_n))
-    tau_dn = project(dot(tau_d, U_n))
-
-    # output the files to the specified directory :
-    File(outpath + 'tau_dn.pvd')   << tau_dn
-    File(outpath + 'tau_bn.pvd')   << tau_bn
-    File(outpath + 'tau_nn.pvd')   << tau_nn
-    File(outpath + 'tau_nt.pvd')   << tau_nt
-    File(outpath + 'tau_totn.pvd') << tau_totn
-    File(outpath + 'tau_tott.pvd') << tau_tott
-    File(outpath + 'u_s.pvd')      << u_s
-    File(outpath + 'v_s.pvd')      << v_s
    
-    # return the functions for further analysis :
-    return tau_nn, tau_nt, tau_bn, tau_dn, tau_totn, tau_tott, u_s, v_s
-
-
+    # solve for the stress balance given the appropriate vertically 
+    # averaged velocities :
+    self.stress_balance_instance.component_stress_stokes()
 

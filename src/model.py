@@ -1,4 +1,4 @@
-from dolfin import *
+from fenics import *
 import numpy as np
 
 class Model(object):
@@ -186,7 +186,7 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
     
-    self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI
+    self.ff_flat.set_values(self.ff.array())
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]

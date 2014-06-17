@@ -65,9 +65,6 @@ F.solve()
 
 
 #===============================================================================
-# calculate the "stokes-balance" stress fields :
-out  = F.component_stress_stokes()
-
 ## calculate the cartesian "stokes-balance" stress fields :
 #out  = model.component_stress_stokes_c()
 

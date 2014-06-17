@@ -25,17 +25,17 @@ dbm  = DataInput(None, bamber,  gen_space=False)
 # generate the contour :
 m = MeshGenerator(dbm, 'mesh', '')
 
-m.create_contour('H', 200.0, 3)
-m.eliminate_intersections(dist=10)
+m.create_contour('H', zero_cntr=200.0, skip_pts=2)
+m.eliminate_intersections(dist=40)
 #m.plot_contour()
-m.write_gmsh_contour(100000, boundary_extend=False)
-m.extrude(100000, 10)
+m.write_gmsh_contour(boundary_extend=False)
+m.extrude(h=100000, n_layers=10)
 m.close_file()
 
 
 #===============================================================================
 # refine :
-thklim = 200.0
+thklim = 250.0
 #dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
 #dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
 dbm.set_data_min('H',    boundary=thklim, val=thklim)

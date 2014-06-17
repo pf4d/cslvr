@@ -17,7 +17,7 @@ from scipy.interpolate import RectBivariateSpline, NearestNDInterpolator
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
                               argmin
-from gmshpy            import GModel, GmshSetOption, FlGui
+#from gmshpy            import GModel, GmshSetOption, FlGui
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
                               RectangleMesh
@@ -570,7 +570,7 @@ class MeshGenerator(object):
     self.f = open(self.direc + self.fn + '.geo', 'w') 
     print 'Reopened \"' + self.direc + self.fn + '.geo\".'
   
-  def write_gmsh_contour(self, lc, boundary_extend=True):  
+  def write_gmsh_contour(self, lc=100000, boundary_extend=True):  
     """
     write the contour created with create_contour to the .geo file with mesh
     spacing <lc>.  If <boundary_extend> is true, the spacing in the interior 

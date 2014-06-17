@@ -1,5 +1,5 @@
-from pylab          import *
-from dolfin         import *
+from pylab          import array
+from fenics         import *
 from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
 from helper         import print_min_max

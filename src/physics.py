@@ -27,9 +27,9 @@ based on lapse rates
 """
 
 from pylab  import ndarray
-from dolfin import *
+from fenics import *
 from helper import print_min_max
-import numpy
+import numpy as np
 import numpy.linalg as linalg
 
 
@@ -1765,7 +1765,7 @@ class VelocityBalance_2(object):
     self.Uobs = Uobs
     self.dx_masked = dx_masked
     self.Q = Q
-    self.signs = numpy.sign(self.dS[0].vector().array().copy())
+    self.signs = np.sign(self.dS[0].vector().array().copy())
     self.update_velocity_directions()
 
   def update_velocity_directions(self):
@@ -1774,7 +1774,7 @@ class VelocityBalance_2(object):
       # These protect against NaNs in the sqrt below
       ny[ny>1]  =  1.
       ny[ny<-1] = -1.
-      nx = self.signs * numpy.sqrt(1-ny**2)
+      nx = self.signs * np.sqrt(1-ny**2)
 
       # Maybe set_local is more parallel safe
       self.dS[0].vector().set_local(nx)

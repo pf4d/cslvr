@@ -295,8 +295,8 @@ class TransientSolver(object):
         mhat_non.vector().set_local(temp)
         mhat_non.vector().apply('')
         m_temp = project(mhat_non,model.Q)
-        mhat.vector().set_local(m_temp.vector().get_local())
-        mhat.vector().apply('')
+        model.mhat.vector().set_local(m_temp.vector().get_local())
+        model.mhat.vector().apply('')
       else:
         temp = (S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local()
         model.mhat.vector().set_local(temp)

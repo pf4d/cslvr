@@ -252,6 +252,8 @@ class TransientSolver(object):
     smb    = model.smb
     sigma  = model.sigma
 
+    mhat   = model.mhat
+
     S      = model.S
     B      = model.B
  

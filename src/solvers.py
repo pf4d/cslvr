@@ -95,8 +95,11 @@ class SteadySolver(object):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         U = project(as_vector([model.u, model.v, model.w]))
-        if config['log']: 
+        if config['log']:
           File(outpath + 'U.pvd') << U
+          # if the velocity solve is full-stokes, save pressure too : 
+          if config['velocity']['approximation'] == 'stokes':
+            File(outpath + 'P.pvd') << model.P
         print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
@@ -104,7 +107,8 @@ class SteadySolver(object):
         self.enthalpy_instance.solve()
         if config['log']: 
           File(outpath + 'T.pvd')  << model.T   # save temperature
-          File(outpath + 'Mb.pvd') << model.Mb  # save basal water content
+          File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
+          File(outpath + 'W.pvd')  << model.Mb  # save water content
         print_min_max(model.T, 'T')
 
       # Calculate L_infinity norm

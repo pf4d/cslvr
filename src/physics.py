@@ -1059,7 +1059,6 @@ class Enthalpy(object):
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
-    #H_surface.update()
     model.H_surface = H_surface
     
     self.bc_H = []
@@ -1902,9 +1901,8 @@ class StokesBalance(object):
     print "::: solving 'stokes-balance' for ubar, vbar :::"
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
-    u_s,v_s    = split(self.U_s)
-    model.ubar = project(u_s, self.Q)
-    model.vbar = project(v_s, self.Q)
+    model.ubar = project(self.U_s[0], self.Q)
+    model.vbar = project(self.U_s[1], self.Q)
 
   def component_stress_stokes(self):  
     """
@@ -1922,8 +1920,8 @@ class StokesBalance(object):
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) in relation to the stress-tensor :
-    u_s = project(model.ubar, Q)
-    v_s = project(model.vbar, Q)
+    u_s = model.ubar
+    v_s = model.vbar
     
     U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
     u_n = U[0]

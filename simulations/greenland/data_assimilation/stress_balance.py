@@ -25,12 +25,8 @@ thklim = 200.0
 bamber   = DataFactory.get_bamber(thklim = thklim)
 
 # define the meshes :
-mesh      = Mesh('meshes/5H_3D_greenland.xml')
-flat_mesh = Mesh('meshes/5H_3D_greenland.xml')
-#mesh      = Mesh('meshes/mesh_low.xml')
-#flat_mesh = Mesh('meshes/mesh_low.xml')
-mesh.coordinates()[:,2]      /= 100000.0
-flat_mesh.coordinates()[:,2] /= 100000.0
+mesh     = Mesh('meshes/greenland_3D_5H.xml')
+mesh.coordinates()[:,2] /= 100000.0
 
 # create data objects to use with varglas :
 dbm     = DataInput(None, bamber, mesh=mesh)
@@ -41,7 +37,7 @@ Bed     = dbm.get_spline_expression('b')
 
 model = model.Model(out_dir = out_dir)
 model.set_geometry(Surface, Bed)
-model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
+model.set_mesh(mesh, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 parameters['form_compiler']['quadrature_degree'] = 2
@@ -51,12 +47,6 @@ File(in_dir + 'v.xml')     >>  model.v
 File(in_dir + 'w.xml')     >>  model.w
 File(in_dir + 'beta2.xml') >>  model.beta2
 File(in_dir + 'eta.xml')   >>  model.eta
-
-model.u.update()
-model.v.update()
-model.w.update()
-model.beta2.update()
-model.eta.update()
 
 config = {'output_path' : out_dir}
 

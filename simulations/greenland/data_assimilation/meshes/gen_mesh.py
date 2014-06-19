@@ -35,7 +35,7 @@ m.close_file()
 
 #===============================================================================
 # refine :
-thklim = 250.0
+thklim = 1250.0
 #dsr.set_data_min('U_ob', boundary=0.0,    val=0.0)
 #dsr.set_data_max('U_ob', boundary=400.0,  val=400.0)
 dbm.set_data_min('H',    boundary=thklim, val=thklim)
@@ -95,7 +95,7 @@ ref_bm = MeshRefiner(dbm, 'H',    gmsh_file_name='mesh')   # thickness
 
 #===============================================================================
 # refine on thickness :
-a,aid = ref_bm.add_static_attractor(5)
+a,aid = ref_bm.add_static_attractor()
 #a,aid = ref_bm.add_linear_attractor(0, H.min(), H.max(), inv=False, 
 #                                    hard_cut=False)
 ref_bm.set_background_field(aid)

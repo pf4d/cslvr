@@ -34,7 +34,7 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 rignot   = DataFactory.get_gre_rignot()
 
 # define the mesh :
-mesh     = Mesh('meshes/greenland_3D_5H.xml')
+mesh     = Mesh('meshes/greenland_3D_1H.xml')
 mesh.coordinates()[:,2] /= 100000.0
 
 # create data objects to use with varglas :

@@ -374,6 +374,7 @@ class Model(object):
     for u_v in U_v:
       u_f = Function(Q)
       u_f.vector().set_local(u_v)
+      u_f.vector().apply('insert')
       U_f.append(u_f)
 
     # return a UFL vector :

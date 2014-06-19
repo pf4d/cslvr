@@ -2,43 +2,53 @@ import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-import src.model
-import src.solvers
-import src.physical_constants
-import src.helper
-from pylab  import sin, cos, exp, deg2rad
-from dolfin import Expression, File, set_log_active
+from src.model              import Model
+from src.solvers            import TransientSolver
+from src.physical_constants import IceParameters
+from src.helper             import default_nonlin_solver_params
+from dolfin                 import set_log_active, File, Expression, pi, \
+                                   sin, tan, cos, exp
 
 set_log_active(True)
 
-theta = deg2rad(-3.0)
+theta = -3.0 * pi / 180
 L     = 100000.
 H     = 1000.0
 a0    = 100
 sigma = 10000
 
-class Surface(Expression):
-  def __init__(self):
-    pass
-  def eval(self, values, x):
-    values[0] = sin(theta) / cos(theta) * x[0]
+nx = 50
+ny = 50
+nz = 10
 
+model = Model()
+model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,
+                            generate_pbcs = True)
+
+Surface = Expression('tan(theta) * x[0]', theta=theta,
+                     element=model.Q.ufl_element())
 class Bed(Expression):
-  def __init__(self):
+  def __init__(self, element=None):
     pass
   def eval(self, values, x):
     y_0       = -H + a0 * (exp(-((x[0]-L/2.)**2 + (x[1]-L/2.)**2) / sigma**2))
-    values[0] = sin(theta)/cos(theta) * (x[0] + sin(theta)*y_0) + cos(theta)*y_0
+    values[0] = sin(theta)/cos(theta) * (x[0] + sin(theta)*y_0) \
+                + cos(theta)*y_0
+Bed = Bed(element=model.Q.ufl_element())
 
-class SMB(Expression):
-  def eval(self, values, x):
-    values[0] = 0.0
+SMB = Expression('0.0', element=model.Q.ufl_element())
 
-nonlin_solver_params = src.helper.default_nonlin_solver_params()
+model.set_geometry(Surface, Bed, deform=True)
+
+model.set_parameters(IceParameters())
+model.initialize_variables()
+model.n = 1.0
+
+nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
-nonlin_solver_params['linear_solver']                         = 'mumps'
-nonlin_solver_params['preconditioner']                        = 'default'
+nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
 
 config = { 'mode'                         : 'transient',
            'output_path'                  : './results/',
@@ -82,7 +92,7 @@ config = { 'mode'                         : 'transient',
              'use_shock_capturing'        : False,
              'thklim'                     : 10.0,
              'use_pdd'                    : False,
-             'observed_smb'               : SMB(),
+             'observed_smb'               : SMB,
              'static_boundary_conditions' : False
            },  
            'age' : 
@@ -109,24 +119,8 @@ config = { 'mode'                         : 'transient',
              'animate'            : False
            }}
 
-model = src.model.Model()
-model.set_geometry(Surface(), Bed())
-
-nx = 20
-ny = 20
-nz = 5
-
-model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,
-                            generate_pbcs = True)
-model.set_parameters(src.physical_constants.IceParameters())
-model.initialize_variables()
-model.n = 1.0
-
-T = src.solvers.TransientSolver(model, config)
+T = TransientSolver(model, config)
 T.solve()
 
-File('./results/u.xml') << model.u
-File('./results/v.xml') << model.v
-File('./results/w.xml') << model.w
 File('./results/S.xml') << model.S
 

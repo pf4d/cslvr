@@ -6,8 +6,9 @@ sys.path.append(src_directory)
 from src.utilities     import DataInput,DataOutput
 from data.data_factory import DataFactory
 from src.physics       import VelocityBalance_2
-from pylab import *
+from pylab             import *
 from dolfin            import *
+from scipy.optimize    import fmin_l_bfgs_b
 import os
 
 set_log_active(True)
@@ -24,7 +25,7 @@ mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
-dbam     = DataInput(None, bamber,      mesh=mesh)
+dbam    = DataInput(None, bamber,  mesh=mesh)
 dms     = DataInput(None, measure, mesh=mesh, create_proj=True, flip=True)
 
 dms.change_projection(dsr)
@@ -91,8 +92,6 @@ def _J_fun(x):
 
     return hstack(g)
 
-from scipy.optimize import fmin_l_bfgs_b
-
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),H.vector().array()))
 
 Umerr = 0.05
@@ -104,9 +103,12 @@ aaerr = 1.0
 Hmerr = 0.1
 Haerr = 200.0
 
-Uobs_bounds = [(max(min(r-Umerr*abs(r),r-Uaerr),0),max(r+Umerr*abs(r),r+Uaerr)) for r in Uobs.vector().array()] 
-ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) for r in adot.vector().array()] 
-H_bounds = [(max(min(r-Hmerr*abs(r),r-Haerr),0),max(r+Hmerr*abs(r),r+Haerr)) for r in H.vector().array()] 
+Uobs_bounds = [(max(min(r-Umerr*abs(r),r-Uaerr),0),max(r+Umerr*abs(r), \
+                r+Uaerr)) for r in Uobs.vector().array()] 
+ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) \ 
+                for r in adot.vector().array()] 
+H_bounds = [(max(min(r-Hmerr*abs(r),r-Haerr),0),max(r+Hmerr*abs(r),r+Haerr)) \
+             for r in H.vector().array()] 
 
 bounds = Uobs_bounds+ahat_bounds+H_bounds
 

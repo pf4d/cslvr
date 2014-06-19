@@ -2,13 +2,14 @@ import sys
 import os
 src_directory = '../../../'
 sys.path.append(src_directory)
+
 from src.utilities     import DataInput,DataOutput
 from data.data_factory import DataFactory
 from src.physics       import VelocityBalance_2
-import numpy as numpy
+from numpy             import sqrt
 from pylab             import *
 from dolfin            import *
-from scipy.optimize import fmin_l_bfgs_b
+from scipy.optimize    import fmin_l_bfgs_b
 import os
 
 set_log_active(True)
@@ -25,7 +26,7 @@ mesh    = Mesh("./mesh_5km.xml")
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise, mesh=mesh)
-dbam    = DataInput(None, bamber,      mesh=mesh)
+dbam    = DataInput(None, bamber, mesh=mesh)
 dms     = DataInput(None, measure, mesh=mesh, flip=True)
 dms.change_projection(dsr)
 
@@ -181,7 +182,7 @@ def _J_fun(x,*args):
     print assemble(prb.adot * dx) / 1.e12
     print "================================================================"
     print "RMS Error in Velocity:"
-    print numpy.sqrt(assemble((prb.Ubmag - prb.Uobs)**2 * prb.dx_masked(1)) / \
+    print sqrt(assemble((prb.Ubmag - prb.Uobs)**2 * prb.dx_masked(1)) / \
           assemble(project(Constant(1),prb.Q) * prb.dx_masked(1)))
     print "================================================================"
 
@@ -196,12 +197,16 @@ def _J_fun(x,*args):
 
 amerr = 1.0
 aaerr = 40.0
-ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) for r in adot.vector().array()] 
+ahat_bounds = [(min(r-amerr*abs(r),r-aaerr),max(r+amerr*abs(r),r+aaerr)) \
+              for r in adot.vector().array()] 
 
 small_u = VELOCITY_THRESHOLD/2. # Minimal error in velocity
-Uobs_bounds = [(min(Uobs_i - Uerr_i,Uobs_i-small_u), max(Uobs_i+Uerr_i,Uobs_i+small_u)) for Uobs_i,Uerr_i in zip(Uobs.vector().array(),Uerr.array())] 
+Uobs_bounds = [(min(Uobs_i - Uerr_i,Uobs_i-small_u), max(Uobs_i+Uerr_i, \
+                Uobs_i+small_u)) for Uobs_i,Uerr_i in \
+                zip(Uobs.vector().array(),Uerr.array())] 
 
-small_h = 35. # Minimal uncertainty: replaces Bamber's zeros. ~35 is what Morlighem used
+small_h = 35. # Minimal uncertainty: replaces Bamber's zeros. 
+              # ~35 is what Morlighem used
 H_bounds = [(min(H_i - Herr_i,H_i-small_h), max(H_i + Herr_i,H_i+small_h)) \
             for H_i,Herr_i in zip(H.vector().array(),Herr.vector().array())] 
 
@@ -209,10 +214,12 @@ tan2 = tan(deg2rad(10.))**2
 Ny_err = sqrt(tan2 / (1+tan2)) # Arguement is in degrees
 
 prb.solve_forward() # To assure the following has values to refer to:
-Ny_err = project(Constant(Ny_err) * (.1 + (1. / (1 + exp(-(prb.Ubmag - 50.) * .25)))),prb.Q)
+Ny_err = project(Constant(Ny_err) * (.1 + (1. / (1 + exp(-(prb.Ubmag - 50.) * \
+                 .25)))),prb.Q)
 
 
-Ny_bounds = [(min(Ny-Ny_err_i,-1.),max(Ny+Ny_err_i,1.)) for Ny,Ny_err_i in zip(prb.dS[1].vector().array(),Ny_err.vector().array())] 
+Ny_bounds = [(min(Ny-Ny_err_i,-1.),max(Ny+Ny_err_i,1.)) for Ny,Ny_err_i \
+              in zip(prb.dS[1].vector().array(),Ny_err.vector().array())] 
 
 bounds = Uobs_bounds + ahat_bounds + H_bounds + Ny_bounds
 x0 = hstack((Uobs.vector().array(),adot.vector().array(),\
@@ -221,7 +228,8 @@ x0 = hstack((Uobs.vector().array(),adot.vector().array(),\
 # Search in the direction of each gradient, sequentially
 for f in range(20):
     freeze = [(f)%4,(f+1)%4,(f+2)%4]
-    fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1,args=(freeze),maxfun=20)
+    fmin_l_bfgs_b(_I_fun,x0,fprime=_J_fun,bounds=bounds,iprint=1, \
+                  args=(freeze),maxfun=20)
     x0 = hstack((prb.Uobs.vector().array(),prb.adot.vector().array(),\
              prb.H.vector().array(),prb.dS[1].vector().array()))
 

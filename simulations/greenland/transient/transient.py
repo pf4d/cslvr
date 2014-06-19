@@ -2,18 +2,18 @@ import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-import src.model
-import src.solvers
-import src.physical_constants
-import src.helper
-import pylab
-import dolfin
-import scipy.io
-from data.data_factory   import DataFactory
-from meshes.mesh_factory import MeshFactory
-from src.utilities       import DataInput
+from data.data_factory      import DataFactory
+from meshes.mesh_factory    import MeshFactory
+from src.utilities          import DataInput
+from src.model              import Model
+from src.solvers            import SteadySolver, TransientSolver
+from src.physical_constants import IceParameters
+from src.helper             import default_nonlin_solver_params
+from pylb                   import *
+from dolfin                 import set_log_active
+from scipy.io               import *
 
-dolfin.set_log_active(True)
+set_log_active(True)
 
 vara = DataFactory.get_searise(thklim = 50.0)
 
@@ -31,13 +31,13 @@ BasalHeatFlux      = dd.get_spline_expression('q_geo')
 U_observed         = dd.get_spline_expression('U_ob')
 Tn                 = vara['Tn']['map_data']
            
-nonlin_solver_params = src.helper.default_nonlin_solver_params()
+nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 20
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['linear_solver']                            = 'gmres'
-nonlin_solver_params['preconditioner']                           = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'
 
 config = { 'mode'                         : 'transient',
            't_start'                      : 0.0,
@@ -109,19 +109,19 @@ config = { 'mode'                         : 'transient',
              'objective_function' : 'logarithmic',
            }}
 
-model = src.model.Model()
+model = Model()
 
 model.set_geometry(Surface, Bed)
 model.set_mesh(mesh, flat_mesh=flat_mesh, deform=True)
-model.set_parameters(src.physical_constants.IceParameters())
+model.set_parameters(IceParameters())
 model.initialize_variables()
 
-F = src.solvers.SteadySolver(model,config)
+F = SteadySolver(model,config)
 F.solve()
 
 config['velocity']['use_T0'] = False
 config['velocity']['newton_params']['newton_solver']['relaxation_parameter'] = 0.8
 
-T = src.solvers.TransientSolver(model,config)
+T = TransientSolver(model,config)
 T.solve()
 

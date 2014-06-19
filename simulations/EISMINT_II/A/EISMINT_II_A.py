@@ -21,7 +21,6 @@ M_max = 0.5
 T_min = 238.15
 S_T = 1.67e-5
 
-
 class MassBalance(Expression):
   def eval(self,values,x):
     values[0] = min(M_max,S_b*(R_el-sqrt(x[0]**2 + x[1]**2))) 

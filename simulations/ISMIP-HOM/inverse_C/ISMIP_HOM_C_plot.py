@@ -2,25 +2,22 @@ import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-import src.model
-
-import pylab 
-import dolfin
-import pickle
-from pylab import *
+from src.model import Model
+from pylab     import zeros, linspace, sqrt
+from dolfin    import project, Function, File, as_vector
 
 nx = 40
 ny = 40
 nz = 7
 
-model = src.model.Model()
+model = Model()
 model.generate_uniform_mesh(nx,ny,nz,0,1,0,1,deform=False,generate_pbcs=True)
 
 Q = model.Q
-U_obs = dolfin.project(dolfin.as_vector([dolfin.Function(Q),dolfin.Function(Q)]))
-b_obs = dolfin.Function(Q)
-U_opt = dolfin.project(dolfin.as_vector([dolfin.Function(Q),dolfin.Function(Q),dolfin.Function(Q)]))
-b_opt = dolfin.Function(Q)
+U_obs = project(dolfin.as_vector([Function(Q),Function(Q)]))
+b_obs = Function(Q)
+U_opt = project(as_vector([Function(Q),Function(Q),Function(Q)]))
+b_opt = Function(Q)
 
 rcParams['text.usetex']=True
 rcParams['font.size'] = 12
@@ -28,25 +25,24 @@ rcParams['font.family'] = 'serif'
 
 for L in [10000]:
     
-    dolfin.File('./results/U_obs.xml') >> U_obs
-    dolfin.File('./results/U_opt.xml') >> U_opt
-    dolfin.File('./results/beta2_obs.xml') >> b_obs
-    dolfin.File('./results/beta2_opt.xml') >> b_opt
+    File('./results/U_obs.xml') >> U_obs
+    File('./results/U_opt.xml') >> U_opt
+    File('./results/beta2_obs.xml') >> b_obs
+    File('./results/beta2_opt.xml') >> b_opt
 
-    U_b = pylab.zeros(100)
-    U_p = pylab.zeros(100)
-    b_b = pylab.zeros(100)
-    b_p = pylab.zeros(100)
-    profile = pylab.linspace(0,1,100)
+    U_b = zeros(100)
+    U_p = zeros(100)
+    b_b = zeros(100)
+    b_p = zeros(100)
+    profile = linspace(0,1,100)
 
     for ii,x in enumerate(profile):
         uu,vv = U_obs(x,0.25,0.99999)
-        U_b[ii] = pylab.sqrt(uu**2 + vv**2)
+        U_b[ii] = sqrt(uu**2 + vv**2)
         uu,vv,ww = U_opt(x,0.25,0.99999)
-        U_p[ii] = pylab.sqrt(uu**2 + vv**2)
+        U_p[ii] = sqrt(uu**2 + vv**2)
         b_b[ii] = b_obs(x,0.25,0.0)
         b_p[ii] = b_opt(x,0.25,0.0)
-
 
 fig,axs = subplots(2,1,sharex=True)
 fig.set_size_inches(8,4)

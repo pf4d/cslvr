@@ -180,6 +180,7 @@ class VelocityStokes(object):
     
     elif isinstance(config['velocity']['beta2'], ndarray):
       beta2.vector().set_local(config['velocity']['beta2'])
+      beta2.vector().apply('insert')
     
     elif isinstance(config['velocity']['beta2'], Expression):
       beta2.interpolate(config['velocity']['beta2'])
@@ -190,6 +191,7 @@ class VelocityStokes(object):
     
     elif isinstance(config['velocity']['E'], ndarray):
       E.vector().set_local(config['velocity']['E'])
+      E.vector().apply('insert')
     
     elif isinstance(config['velocity']['E'], Expression):
       E.interpolate(config['velocity']['E'])
@@ -517,6 +519,7 @@ class VelocityBP(object):
       
       elif isinstance(config['velocity']['T0'], ndarray):
         T.vector().set_local(config['velocity']['T0'])
+        T.vector().apply('insert')
       
       elif isinstance(config['velocity']['T0'], Expression):
         T.interpolate(config['velocity']['T0'])
@@ -527,6 +530,7 @@ class VelocityBP(object):
     
     elif isinstance(config['velocity']['beta2'], ndarray):
       beta2.vector().set_local(config['velocity']['beta2'])
+      beta2.vector().apply('insert')
     
     elif isinstance(config['velocity']['beta2'], Expression):
       beta2.interpolate(config['velocity']['beta2'])
@@ -537,6 +541,7 @@ class VelocityBP(object):
     
     elif isinstance(config['velocity']['E'], ndarray):
       E.vector().set_local(config['velocity']['E'])
+      E.vector().apply('insert')
     
     elif isinstance(config['velocity']['E'], Expression):
       E.interpolate(config['velocity']['E'])
@@ -842,6 +847,7 @@ class Enthalpy(object):
       
       elif isinstance(T_surface, ndarray):
         model.T_surface.vector().set_local(T_surface)
+        model.T_surface.vector().apply('insert')
       
       elif isinstance(T_surface, Expression):
         model.T_surface.interpolate(T_surface)
@@ -852,6 +858,7 @@ class Enthalpy(object):
     
     elif isinstance(q_geo, ndarray):
       model.q_geo.vector().set_local(q_geo)
+      model.q_geo.vector().apply('insert')
     
     elif isinstance(q_geo, Expression):
       model.q_geo.interpolate(q_geo) 
@@ -1036,6 +1043,13 @@ class Enthalpy(object):
       model.vhat.vector().set_local(vhat.vector().array())
       model.what.vector().set_local(what.vector().array())
       model.mhat.vector().set_local(mhat.vector().array())
+      
+      model.H0.vector().apply('insert')
+      model.Hhat.vector().apply('insert')
+      model.uhat.vector().apply('insert')
+      model.vhat.vector().apply('insert')
+      model.what.vector().apply('insert')
+      model.mhat.vector().apply('insert')
     
     lat_bc    = config['enthalpy']['lateral_boundaries']
     T0        = model.T0
@@ -1089,14 +1103,14 @@ class Enthalpy(object):
     #cold.vector().set_local((Ts > Ta).astype('float'))
     Ta[Ta > Ts] = Ts[Ta > Ts]
     T.vector().set_local(Ta)
-    T.vector().apply('')
+    T.vector().apply('insert')
 
     # update water content :
     WW = W_n.vector().array()
     WW[WW < 0]    = 0
     WW[WW > 0.01] = 0.01
     W.vector().set_local(WW)
-    W.vector().apply('')
+    W.vector().apply('insert')
 
     # update basal melt rate :
     model.Mb = Mb_n
@@ -1253,6 +1267,11 @@ class FreeSurface(object):
     self.uhat.vector().set_local(uhat.vector().get_local())
     self.vhat.vector().set_local(vhat.vector().get_local())
     self.what.vector().set_local(what.vector().get_local())
+    self.Shat.vector().apply('insert') 
+    self.ahat.vector().apply('insert') 
+    self.uhat.vector().apply('insert') 
+    self.vhat.vector().apply('insert') 
+    self.what.vector().apply('insert') 
 
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
@@ -1274,6 +1293,7 @@ class FreeSurface(object):
 
     if config['free_surface']['lump_mass_matrix']:
       model.dSdt.vector().set_local(m_l_inv * r.get_local())
+      model.dSdt.vector().apply('insert')
     else:
       m.ident_zeros()
       solve(m, model.dSdt.vector(), r)
@@ -1528,6 +1548,11 @@ class Age(object):
       model.uhat.vector().set_local(uhat.vector().array())
       model.what.vector().set_local(what.vector().array())
       model.vhat.vector().set_local(vhat.vector().array())
+      model.ahat.vector().apply('insert')
+      model.a0.vector().apply('insert')
+      model.uhat.vector().apply('insert')
+      model.what.vector().apply('insert')
+      model.vhat.vector().apply('insert')
 
     def above_ela(x,on_boundary):
       return (x[2]>config['age']['ela']) and on_boundary
@@ -1571,7 +1596,9 @@ class VelocityBalance(object):
     ds          = model.ds
     
     H_.vector().set_local(S - B)
+    H_.vector().apply('insert')
     S_.vector().set_local(S)
+    S_.vector().apply('insert')
 
     R_dSdx = + Nx * phi * ds(2) \
              - rho * g * H_ * S_.dx(0) * phi * ds(2) \
@@ -1625,6 +1652,8 @@ class VelocityBalance(object):
     v_b = project(Ub * self.dS[1])
     self.model.u_balance.vector().set_local(u_b.vector().get_local())
     self.model.v_balance.vector().set_local(v_b.vector().get_local())
+    self.model.u_balance.vector().apply('insert') 
+    self.model.v_balance.vector().apply('insert') 
     
 
 class VelocityBalance_2(object):
@@ -1771,6 +1800,8 @@ class VelocityBalance_2(object):
       # Maybe set_local is more parallel safe
       self.dS[0].vector().set_local(nx)
       self.dS[1].vector().set_local(ny)
+      self.dS[0].vector().apply('insert')
+      self.dS[1].vector().apply('insert')
 
 
   def solve_forward(self):

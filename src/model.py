@@ -13,7 +13,7 @@ class Model(object):
     self.per_func_space = False  # function space is undefined
     self.out_dir        = out_dir
 
-  def set_geometry(self, sur, bed, mask=None):
+  def set_geometry(self, sur, bed, deform=True, mask=None):
     """
     Sets the geometry of the surface and bed of the ice sheet.
     
@@ -25,6 +25,9 @@ class Model(object):
     self.S_ex = sur
     self.B_ex = bed
     self.mask = mask
+    
+    if deform:
+      self.deform_mesh_to_geometry()
   
   def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, 
                             ymin, ymax, generate_pbcs=False,deform=True):
@@ -45,7 +48,7 @@ class Model(object):
     print "::: generating mesh :::"
 
     self.mesh      = UnitCubeMesh(nx,ny,nz)
-    self.flat_mesh = UnitCubeMesh(nx,ny,nz)
+    self.flat_mesh = Mesh(self.mesh)
     
     # generate periodic boundary conditions if required :
     if generate_pbcs:
@@ -186,10 +189,11 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
     
-    self.ff_flat.set_values(self.ff.array())
+    # needed for free surface : 
+    #self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI 
     
     self.ds      = Measure('ds')[self.ff]
-    self.ds_flat = Measure('ds')[self.ff_flat]
+    self.ds_flat = Measure('ds')[self.ff]#_flat]
      
   def set_parameters(self, params):
     """

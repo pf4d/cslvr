@@ -2,10 +2,10 @@ import sys
 src_directory = '../../../'
 sys.path.append(src_directory)
 
-from src.utilities     import DataInput,DataOutput
-from data.data_factory import DataFactory
-from src.physics       import VelocityBalance_2
-from dolfin            import Mesh, set_log_active
+from src.utilities          import DataInput,DataOutput
+from data.data_factory      import DataFactory
+from src.physics            import VelocityBalance_2
+from dolfin                 import Mesh, set_log_active
 from plot.plothelp.plotting import plotIce
 import os
 

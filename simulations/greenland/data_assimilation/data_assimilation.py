@@ -34,8 +34,7 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 rignot   = DataFactory.get_gre_rignot()
 
 # define the mesh :
-mesh     = Mesh('meshes/greenland_3D_1H.xml')
-mesh.coordinates()[:,2] /= 100000.0
+mesh = MeshFactory.get_greenland_coarse()
 
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)
@@ -50,26 +49,26 @@ drg.change_projection(dsr)
 
 # get the expressions used by varglas :
 Thickness          = dbm.get_spline_expression('H')
-Surface            = dbm.get_spline_expression('h')
-Bed                = dbm.get_spline_expression('b')
+Surface            = dbm.get_spline_expression('S')
+Bed                = dbm.get_spline_expression('B')
 SurfaceTemperature = dsr.get_spline_expression('T')
 #BasalHeatFlux      = dsr.get_spline_expression('q_geo')
 BasalHeatFlux      = dfm.get_spline_expression('q_geo')
 adot               = dsr.get_spline_expression('adot')
 #U_observed         = dsr.get_spline_expression('U_ob')
-U_observed         = drg.get_spline_expression('v_mag')
+U_observed         = drg.get_spline_expression('U_ob')
 
 # inspect the data values :
 #do    = DataOutput('results_pre/')
-#do.write_one_file('vmag',           drg.get_projection('v_mag'))
-#do.write_one_file('h',              dbm.get_projection('h'))
+#do.write_one_file('vmag',           drg.get_projection('U_ob'))
+#do.write_one_file('h',              dbm.get_projection('H'))
 #do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
 #do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
 #exit(0)
 
 model = model.Model()
-model.set_geometry(Surface, Bed)
 model.set_mesh(mesh)
+model.set_geometry(Surface, Bed, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
 
@@ -80,8 +79,8 @@ nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
 nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-#nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 config = { 'mode'                         : 'steady',
@@ -94,24 +93,24 @@ config = { 'mode'                         : 'steady',
            'log'                          : True,
            'coupled' : 
            { 
-             'on'       : True,
-             'inner_tol': 0.0,
-             'max_iter' : 5
-           },
-           'velocity' : 
-           { 
-             'on'             : True,
-             'newton_params'  : nonlin_solver_params,
-             'viscosity_mode' : 'full',
-             'b_linear'       : None,
-             'use_T0'         : True,
-             'T0'             : 268.0,
-             'A0'             : None,
-             'beta2'          : 0.5,
-             'r'              : 1.0,
-             'E'              : 1.0,
-             'approximation'  : 'fo',
-             'boundaries'     : None
+             'on'                  : True,
+             'inner_tol'           : 0.0,
+             'max_iter'            : 5
+           },                      
+           'velocity' :            
+           {                       
+             'on'                  : True,
+             'newton_params'       : nonlin_solver_params,
+             'viscosity_mode'      : 'full',
+             'b_linear'            : None,
+             'use_T0'              : True,
+             'T0'                  : 268.0,
+             'A0'                  : None,
+             'beta2'               : 0.5,
+             'r'                   : 1.0,
+             'E'                   : 1.0,
+             'approximation'       : 'fo',
+             'boundaries'          : None
            },
            'enthalpy' : 
            { 
@@ -123,26 +122,26 @@ config = { 'mode'                         : 'steady',
            },
            'free_surface' :
            { 
-             'on'               : False,
-             'lump_mass_matrix' : True,
-             'thklim'           : thklim,
-             'use_pdd'          : False,
-             'observed_smb'     : adot,
+             'on'                  : False,
+             'lump_mass_matrix'    : True,
+             'thklim'              : thklim,
+             'use_pdd'             : False,
+             'observed_smb'        : adot,
            },  
            'age' : 
            { 
-             'on'              : False,
-             'use_smb_for_ela' : False,
-             'ela'             : None,
+             'on'                  : False,
+             'use_smb_for_ela'     : False,
+             'ela'                 : None,
            },
            'surface_climate' : 
            { 
-             'on'     : False,
-             'T_ma'   : None,
-             'T_ju'   : None,
-             'beta_w' : None,
-             'sigma'  : None,
-             'precip' : None
+             'on'                  : False,
+             'T_ma'                : None,
+             'T_ju'                : None,
+             'beta_w'              : None,
+             'sigma'               : None,
+             'precip'              : None
            },
            'adjoint' :
            { 

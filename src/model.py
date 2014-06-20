@@ -29,8 +29,8 @@ class Model(object):
     if deform:
       self.deform_mesh_to_geometry()
   
-  def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, 
-                            ymin, ymax, generate_pbcs=False,deform=True):
+  def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, ymin, ymax, 
+                            generate_pbcs=False):
     """
     Generates a uniformly spaced 3D Dolfin mesh with optional periodic boundary 
     conditions
@@ -47,7 +47,9 @@ class Model(object):
     """
     print "::: generating mesh :::"
 
-    self.mesh      = UnitCubeMesh(nx,ny,nz)
+    #self.mesh      = UnitCubeMesh(nx,ny,nz)
+    #self.flat_mesh = Mesh(self.mesh)
+    self.mesh      = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
     self.flat_mesh = Mesh(self.mesh)
     
     # generate periodic boundary conditions if required :
@@ -85,26 +87,7 @@ class Model(object):
       self.Q_flat_non_periodic = FunctionSpace(self.flat_mesh,"CG",1)
       self.per_func_space = True
 
-    # width and origin of the domain for deforming x coord :
-    width_x  = xmax - xmin
-    offset_x = xmin
-    
-    # width and origin of the domain for deforming y coord :
-    width_y  = ymax - ymin
-    offset_y = ymin
-
-    if deform:
-    # Deform the square to the defined geometry :
-      for x,x0 in zip(self.mesh.coordinates(), self.flat_mesh.coordinates()):
-        # transform x :
-        x[0]  = x[0]  * width_x + offset_x
-        x0[0] = x0[0] * width_x + offset_x
-      
-        # transform y :
-        x[1]  = x[1]  * width_y + offset_y
-        x0[1] = x0[1] * width_y + offset_y
-    
-  def set_mesh(self, mesh, deform=True):
+  def set_mesh(self, mesh):
     """
     Overwrites the previous mesh with a new one
     
@@ -117,13 +100,12 @@ class Model(object):
     self.flat_mesh = Mesh(mesh)
     self.Q         = FunctionSpace(mesh, "CG", 1)
 
-    if deform:
-      self.deform_mesh_to_geometry()
-
   def deform_mesh_to_geometry(self):
     """
     Deforms the mesh to the geometry.
     """
+    print "::: deforming mesh to geometry :::"
+
     # transform z :
     # thickness = surface - base, z = thickness + base
     for x in self.mesh.coordinates():
@@ -153,6 +135,8 @@ class Model(object):
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
         tol     = 1e-3
+        x_m     = f.midpoint().x()
+        y_m     = f.midpoint().y()
         mask_xy = mask(x_m, y_m)
       
         if   n.z() >=  tol and f.exterior():
@@ -169,6 +153,26 @@ class Model(object):
             self.ff[f] = 6
           else:
             self.ff[f] = 4
+      
+      for f in facets(self.flat_mesh):
+        n       = f.normal()    # unit normal vector to facet f
+        tol     = 1e-3
+        mask_xy = mask(x_m, y_m)
+      
+        if   n.z() >=  tol and f.exterior():
+          self.ff_flat[f] = 2
+      
+        elif n.z() <= -tol and f.exterior():
+          if mask_xy > 0:
+            self.ff_flat[f] = 5
+          else:
+            self.ff_flat[f] = 3
+      
+        elif n.z() >  -tol and n.z() < tol and f.exterior():
+          if mask_xy > 0:
+            self.ff_flat[f] = 6
+          else:
+            self.ff_flat[f] = 4
 
     # iterate through the facets and mark each if on a boundary :
     #
@@ -189,11 +193,21 @@ class Model(object):
         elif n.z() >  -tol and n.z() < tol and f.exterior():
           self.ff[f] = 4
     
-    # needed for free surface : 
-    #self.ff_flat.set_values(self.ff.array())  #FIXME: breaks MPI 
+      for f in facets(self.flat_mesh):
+        n       = f.normal()    # unit normal vector to facet f
+        tol     = 1e-3
+      
+        if   n.z() >=  tol and f.exterior():
+          self.ff_flat[f] = 2
+      
+        elif n.z() <= -tol and f.exterior():
+          self.ff_flat[f] = 3
+      
+        elif n.z() >  -tol and n.z() < tol and f.exterior():
+          self.ff_flat[f] = 4
     
     self.ds      = Measure('ds')[self.ff]
-    self.ds_flat = Measure('ds')[self.ff]#_flat]
+    self.ds_flat = Measure('ds')[self.ff_flat]
      
   def set_parameters(self, params):
     """
@@ -738,14 +752,12 @@ class Model(object):
       self.S           = interpolate(self.S_ex, self.Q)
       self.B           = interpolate(self.B_ex, self.Q)
       self.Shat        = Function(self.Q_flat)
-      self.dSdt        = Function(self.Q_flat)
     
     else:
       # surface and bed :
       self.S           = interpolate(self.S_ex, self.Q_non_periodic)
       self.B           = interpolate(self.B_ex, self.Q_non_periodic)
       self.Shat        = Function(self.Q_flat_non_periodic)
-      self.dSdt        = Function(self.Q_flat)
     
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
@@ -792,6 +804,7 @@ class Model(object):
     self.kappa         = Function(self.Q) # None
 
     # free surface model :
+    self.dSdt          = Function(self.Q_flat)
     self.ahat          = Function(self.Q_flat)
     self.uhat_f        = Function(self.Q_flat)
     self.vhat_f        = Function(self.Q_flat)

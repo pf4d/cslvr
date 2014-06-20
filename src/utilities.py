@@ -58,15 +58,23 @@ class DataInput(object):
     self.chg_proj   = False     # change to other projection flag
     
     first = True  # initialize domain by first file's extents
+
+    if direc == None and type(files) == dict:
+      self.name = files.pop('dataset')
+    elif direc != None:
+      self.name = direc
+    
+    print "::: creating %s DataInput object :::" % self.name
     
     # process the data files :
     for fn in files:
      
       if direc == None and type(files) == dict:
         d_dict = files[fn]
+    
       
-      else:
-        d_dict = loadmat(self.directory + fn)
+      elif direc != None:
+        d_dict = loadmat(direc + fn)
         d_dict['projection']     = d_dict['projection'][0]
         d_dict['standard lat']   = d_dict['standard lat'][0]
         d_dict['standard lon']   = d_dict['standard lon'][0]
@@ -155,6 +163,7 @@ class DataInput(object):
     border artifacts from interpolation; increase this value to eliminate edge
     noise.
     """
+    print "::: integrating %s field from %s :::" % (fn_spec, specific.name)
     # get the dofmap to map from mesh vertex indices to function indicies :
     df    = self.func_space.dofmap()
     dfmap = df.vertex_to_dof_map(self.mesh)
@@ -212,6 +221,8 @@ class DataInput(object):
     happens when the data from multiple GIS databases don't quite align on 
     whatever the desired grid is.
     """
+    #print "::: DataInput identifying NaNs for %s :::" % fn
+
     good_x = ~all(isnan(data), axis=0) & self.good_x  # good cols
     good_y = ~all(isnan(data), axis=1) & self.good_y  # good rows
     
@@ -291,6 +302,8 @@ class DataInput(object):
 
     If <bool_data> is True, convert all values > 0 to 1.
     """
+    print "::: getting %s projection :::" % fn
+
     if dg:
       interp = self.get_nearest_expression(fn, bool_data=bool_data)
       proj   = project(interp, self.func_space_dg)
@@ -310,6 +323,8 @@ class DataInput(object):
     Returns a dolfin expression using a nearest-neighbor interpolant of data 
     <fn>.  If <bool_data> is True, convert to boolean.
     """
+    print "::: getting %s nearest expression from %s :::" % (fn, self.name)
+    
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
     
@@ -341,6 +356,8 @@ class DataInput(object):
     arguments <kx> and <ky> determine order of approximation in x and y
     directions (default cubic).  If <bool_data> is True, convert to boolean.
     """
+    print "::: getting %s spline expression from %s :::" % (fn, self.name)
+
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
     

@@ -22,7 +22,7 @@ nz = 10
 
 model = Model()
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L, 
-                            deform=True, generate_pbcs=True)
+                            generate_pbcs=True)
 
 Surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                      element=model.Q.ufl_element())
@@ -42,6 +42,7 @@ nparams['newton_solver']['preconditioner']          = 'hypre_amg'
 nparams['newton_solver']['relaxation_parameter']    = 0.7
 nparams['newton_solver']['maximum_iterations']      = 20
 nparams['newton_solver']['error_on_nonconvergence'] = False
+parameters['form_compiler']['quadrature_degree']    = 2
 
 config = { 'mode'                         : 'steady',
            't_start'                      : None,
@@ -128,7 +129,6 @@ v_o = model.v.vector().get_local()
 U_e = 10.0
 
 for i in range(50):
-  config['output_path'] = 'results/run_'+str(i)+'/'
   model.beta2.vector()[:] = 1000.
   u_error = U_e*random.randn(len(u_o))
   v_error = U_e*random.randn(len(v_o))

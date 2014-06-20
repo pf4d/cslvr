@@ -1108,12 +1108,13 @@ class Enthalpy(object):
     # update water content :
     WW = W_n.vector().array()
     WW[WW < 0]    = 0
-    WW[WW > 0.01] = 0.01
     W.vector().set_local(WW)
     W.vector().apply('insert')
 
-    # update basal melt rate :
+    # update variables :
+    model.T  = T
     model.Mb = Mb_n
+    model.W  = W
 
 
 class FreeSurface(object):
@@ -1196,7 +1197,6 @@ class FreeSurface(object):
     self.model  = model
     self.config = config
 
-    mesh   = model.mesh
     Q_flat = model.Q_flat
     Q      = model.Q
 
@@ -1209,7 +1209,7 @@ class FreeSurface(object):
     self.vhat   = model.vhat_f         # horizontal velocity perp. to uhat
     self.what   = model.what_f         # vertical velocity
     mhat        = model.mhat           # mesh velocity
-    dSdt        = model.dSdt           # 
+    dSdt        = model.dSdt           # surface height change
     M           = model.M
     ds          = model.ds_flat
     dSurf       = ds(2)
@@ -1218,7 +1218,7 @@ class FreeSurface(object):
     self.static_boundary = DirichletBC(Q, 0.0, model.ff_flat, 4)
     h = CellSize(model.flat_mesh)
 
-    # Upwinded trial function
+    # upwinded trial function :
     unorm       = sqrt(self.uhat**2 + self.vhat**2 + 1e-1)
     upwind_term = h/(2.*unorm)*(self.uhat*phi.dx(0) + self.vhat*phi.dx(1))
     phihat      = phi + upwind_term
@@ -1250,7 +1250,7 @@ class FreeSurface(object):
     self.lumped_mass            = lumped_mass
     self.A_pro                  = A_pro
     
-  def solve(self, uhat, vhat, what, Shat, ahat):
+  def solve(self):
     """
     :param uhat : Horizontal velocity
     :param vhat : Horizontal velocity perpendicular to :attr:`uhat`
@@ -1261,17 +1261,17 @@ class FreeSurface(object):
     """
     model  = self.model
     config = self.config
-
-    self.Shat.vector().set_local(Shat.vector().get_local())
-    self.ahat.vector().set_local(ahat.vector().get_local())
-    self.uhat.vector().set_local(uhat.vector().get_local())
-    self.vhat.vector().set_local(vhat.vector().get_local())
-    self.what.vector().set_local(what.vector().get_local())
-    self.Shat.vector().apply('insert') 
-    self.ahat.vector().apply('insert') 
+    
+    self.uhat.vector().set_local(model.u.vector().get_local())
+    self.vhat.vector().set_local(model.v.vector().get_local())
+    self.what.vector().set_local(model.w.vector().get_local())
+    self.Shat.vector().set_local(model.S.vector().get_local())
+    self.ahat.vector().set_local(model.smb.vector().get_local())
     self.uhat.vector().apply('insert') 
     self.vhat.vector().apply('insert') 
     self.what.vector().apply('insert') 
+    self.Shat.vector().apply('insert') 
+    self.ahat.vector().apply('insert') 
 
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
@@ -1350,7 +1350,6 @@ class AdjointVelocityBP(object):
       A       = (Vd + Pe)*dx + Sl*ds(3)
     else:
       Q_adj   = model.Q4
-      # Variational pinciple
       A       = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
 
     L         = TrialFunction(Q_adj)

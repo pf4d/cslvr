@@ -108,7 +108,7 @@ class SteadySolver(object):
         if config['log']: 
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
-          File(outpath + 'W.pvd')  << model.Mb  # save water content
+          File(outpath + 'W.pvd')  << model.W   # save water content
         print_min_max(model.T, 'T')
 
       # Calculate L_infinity norm
@@ -122,7 +122,6 @@ class SteadySolver(object):
       
       print 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)' \
             % (counter, max_iter, inner_error, inner_tol)
-
 
     # Solve age equation
     if config['age']['on']:
@@ -193,6 +192,7 @@ class TransientSolver(object):
       self.file_U  = File(self.config['output_path']+'U.pvd')
       self.file_T  = File(self.config['output_path']+'T.pvd')
       self.file_S  = File(self.config['output_path']+'S.pvd')
+      self.file_a  = File(self.config['output_path']+'age.pvd')
       self.dheight = []
       self.mass    = []
       self.t_log   = []
@@ -216,25 +216,30 @@ class TransientSolver(object):
     S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
     if config['periodic_boundary_conditions']:
       #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
-      v2d = vertex_to_dof_map(model.Q_non_periodic)
+      d2v = dof_to_vertex_map(model.Q_non_periodic)
     else:
       #v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
-      v2d = vertex_to_dof_map(model.Q)  #FIXME: does not work in parallel
-    model.S.vector().set_local(S[v2d])
-    model.S.vector().apply('')
+      d2v = dof_to_vertex_map(model.Q)
+    model.S.vector().set_local(S[d2v])
+    model.S.vector().apply('insert')
    
     if config['velocity']['on']:
       utemp = model.U.vector().get_local()
       utemp[:] = 0.0
       model.U.vector().set_local(utemp)
+      model.U.vector().apply('insert')
       self.velocity_instance.solve()
+      if self.config['log']:
+        U = project(as_vector([model.u, model.v, model.w]))
+        self.file_U << (U, t)
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
    
     if config['free_surface']['on']:
-      self.surface_instance.solve(model.u, model.v, model.w, 
-                                         model.S, model.smb)
+      self.surface_instance.solve()
+      if self.config['log']:
+        self.file_S << (model.S, t)
  
     return model.dSdt.compute_vertex_values()
 
@@ -262,11 +267,10 @@ class TransientSolver(object):
     smb.interpolate(config['free_surface']['observed_smb'])
 
     if config['periodic_boundary_conditions']:
-      #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.mesh)
-      v2d = vertex_to_dof_map(model.Q_non_periodic)
+      d2v = dof_to_vertex_map(model.Q_non_periodic)
       mhat_non = Function(model.Q_non_periodic)
     else:
-      v2d = vertex_to_dof_map(model.Q)
+      d2v = dof_to_vertex_map(model.Q)
 
     # Loop over all times
     while t <= t_end:
@@ -280,43 +284,43 @@ class TransientSolver(object):
       f_0 = self.rhs_func_explicit(t, S_0)
       S_1 = S_0 + dt*f_0
       S_1[(S_1-B_a) < thklim] = thklim + B_a[(S_1-B_a) < thklim]
-      S.vector().set_local(S_1[v2d])
+      S.vector().set_local(S_1[d2v])
       S.vector().apply('')
 
       f_1                     = self.rhs_func_explicit(t, S_1)
       S_2                     = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
       S_2[(S_2-B_a) < thklim] = thklim + B_a[(S_2-B_a) < thklim] 
-      S.vector().set_local(S_2[v2d])
+      S.vector().set_local(S_2[d2v])
       S.vector().apply('')
      
       mesh.coordinates()[:, 2] = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
       if config['periodic_boundary_conditions']:
-        temp = (S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local()
+        temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
         mhat_non.vector().set_local(temp)
         mhat_non.vector().apply('')
         m_temp = project(mhat_non,model.Q)
         model.mhat.vector().set_local(m_temp.vector().get_local())
         model.mhat.vector().apply('')
       else:
-        temp = (S_2[v2d] - S_0[v2d])/dt * sigma.vector().get_local()
+        temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
         model.mhat.vector().set_local(temp)
         model.mhat.vector().apply('')
       # Calculate enthalpy update
       if self.config['enthalpy']['on']:
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
+        if self.config['log']:
+          self.file_T << (model.T, t)
 
       # Calculate age update
       if self.config['age']['on']:
         self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
                                 vhat=model.v, what=model.w, mhat=model.mhat)
+        if config['log']: 
+          self.file_a << (model.age, t)
 
       # Store velocity, temperature, and age to vtk files
       if self.config['log']:
-        U = project(as_vector([model.u, model.v, model.w]))
-        self.file_U << (U, t)
-        self.file_T << (model.T, t)
-        self.file_S << (model.S, t)
         self.t_log.append(t)
         M = assemble(self.surface_instance.M)
         self.mass.append(M)
@@ -381,10 +385,10 @@ class AdjointSolver(object):
       model.v_o = project(v, Q)
 
     elif U != None:
-      Smag   = project( sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q )
+      Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
       model.U_o.interpolate(U)
-      model.u_o = project( -model.U_o * S.dx(0) / Smag, Q )
-      model.v_o = project( -model.U_o * S.dx(1) / Smag, Q )      
+      model.u_o = project(-model.U_o * S.dx(0) / Smag, Q)
+      model.v_o = project(-model.U_o * S.dx(1) / Smag, Q)      
 
   def solve(self):
     r""" 
@@ -471,7 +475,7 @@ class AdjointSolver(object):
       else:
         raise TypeError, 'Unknown parameter type'
 
-    def _I_fun(c_array, *args):
+    def I(c_array, *args):
       """
       Solve forward model with given control, calculate objective function
       """
@@ -482,7 +486,7 @@ class AdjointSolver(object):
       I = assemble(self.adjoint_instance.I)  #FIXME: ISMIP_HOM inverse C fails
       return I
  
-    def _J_fun(c_array, *args):
+    def J(c_array, *args):
       """
       Solve adjoint model, calculate gradient
       """
@@ -499,13 +503,14 @@ class AdjointSolver(object):
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
-      # FIXME: project and extrude ruin the output for paraview
-      #U    = project(as_vector([model.u, model.v, model.w]))
-      #dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-      #               + model.w + model.adot)
-      #file_b_pvd    << model.extrude(model.beta2, 3, 2)
-      #file_u_pvd    << U
-      #file_dSdt_pvd << dSdt
+      # FIXME: project and extrude ruin the output for paraview, we just 
+      #        save when finished for now.
+      U    = project(as_vector([model.u, model.v, model.w]))
+      dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+                     + model.w + model.adot)
+      file_b_pvd    << model.extrude(model.beta2, 3, 2)
+      file_u_pvd    << U
+      file_dSdt_pvd << dSdt
       return Js
 
     #===========================================================================
@@ -519,10 +524,10 @@ class AdjointSolver(object):
     # in the dolfin-adjoint optimize.py file:
     maxfun      = config['adjoint']['max_fun']
     bounds_list = config['adjoint']['bounds']
-    m_global    = []
+    beta_0      = []
     for mm in config['adjoint']['control_variable']:
-      m_global.extend(get_global(mm))
-    m_global = array(m_global)
+      beta_0.extend(get_global(mm))
+    beta_0 = array(beta_0)
 
     # Shut up all processors but the first one.
     if MPI.rank(mpi_comm_world()) != 0:
@@ -542,20 +547,20 @@ class AdjointSolver(object):
     bounds = vstack(b)  
     print bounds
     
-    # minimize this stuff :
-    mopt, f, d = fmin_l_bfgs_b(_I_fun, m_global, fprime=_J_fun, bounds=bounds,
+    # minimize I with initial guess beta_0 and gradient J :
+    mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
                                maxfun=maxfun, iprint=iprint)
 
     n = len(mopt)/len(config['adjoint']['control_variable'])
     for ii,c in enumerate(config['adjoint']['control_variable']):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
-    U    = project(as_vector([model.u, model.v, model.w]))
-    dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                   + model.w + model.adot)
-    file_b_pvd    << model.extrude(model.beta2, 3, 2)
-    file_u_pvd    << U
-    file_dSdt_pvd << dSdt
+    #U    = project(as_vector([model.u, model.v, model.w]))
+    #dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+    #               + model.w + model.adot)
+    #file_b_pvd    << model.extrude(model.beta2, 3, 2)
+    #file_u_pvd    << U
+    #file_dSdt_pvd << dSdt
 
 
 class BalanceVelocitySolver(object):

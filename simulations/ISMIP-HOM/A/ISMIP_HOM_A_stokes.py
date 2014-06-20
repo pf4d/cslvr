@@ -91,7 +91,7 @@ for L in lengths:
 
   model = Model()
   model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L, 
-                              deform=True, generate_pbcs=True)
+                              generate_pbcs=True)
   
   Surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                        element=model.Q.ufl_element())

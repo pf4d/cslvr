@@ -17,9 +17,9 @@ H     = 1000.0
 a0    = 100
 sigma = 10000
 
-nx = 50
-ny = 50
-nz = 10
+nx = 10
+ny = 10
+nz = 5
 
 model = Model()
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,
@@ -60,30 +60,30 @@ config = { 'mode'                         : 'transient',
            'log'                          : True,
            'coupled' : 
            { 
-             'on'        : False,
-             'inner_tol' : 0.0,
-             'max_iter'  : 1
-           },
-           'velocity' : 
-           { 
-             'on'             : True,
-             'newton_params'  : nonlin_solver_params,
-             'viscosity_mode' : 'isothermal',
-             'b_linear'       : None,
-             'use_T0'         : False,
-             'T0'             : None,
-             'A0'             : 2.140373e-7,
-             'beta2'          : 1e3,
-             'r'              : 1.0,
-             'E'              : 1,
-             'approximation'  : 'stokes',
-             'boundaries'     : None
+             'on'                         : False,
+             'inner_tol'                  : 0.0,
+             'max_iter'                   : 1
+           },                             
+           'velocity' :                   
+           {                              
+             'on'                         : True,
+             'newton_params'              : nonlin_solver_params,
+             'viscosity_mode'             : 'isothermal',
+             'b_linear'                   : None,
+             'use_T0'                     : False,
+             'T0'                         : None,
+             'A0'                         : 2.140373e-7,
+             'beta2'                      : 1e3,
+             'r'                          : 1.0,
+             'E'                          : 1,
+             'approximation'              : 'stokes',
+             'boundaries'                 : None
            },
            'enthalpy' : 
            { 
-             'on'                  : False,
-             'use_surface_climate' : False,
-             'T_surface'           : None,
+             'on'                         : False,
+             'use_surface_climate'        : False,
+             'T_surface'                  : None,
            },
            'free_surface' :
            { 
@@ -97,30 +97,30 @@ config = { 'mode'                         : 'transient',
            },  
            'age' : 
            { 
-             'on'              : False,
-             'use_smb_for_ela' : False,
-             'ela'             : None,
-           },
-           'surface_climate' : 
-           { 
-             'on'     : False,
-             'T_ma'   : None,
-             'T_ju'   : None,
-             'beta_w' : None,
-             'sigma'  : None,
-             'precip' : None
-           },
-           'adjoint' :
-           { 
-             'alpha'              : None,
-             'beta'               : None,
-             'max_fun'            : None,
-             'objective_function' : 'logarithmic',
-             'animate'            : False
+             'on'                         : False,
+             'use_smb_for_ela'            : False,
+             'ela'                        : None,
+           },                             
+           'surface_climate' :            
+           {                              
+             'on'                         : False,
+             'T_ma'                       : None,
+             'T_ju'                       : None,
+             'beta_w'                     : None,
+             'sigma'                      : None,
+             'precip'                     : None
+           },                             
+           'adjoint' :                    
+           {                              
+             'alpha'                      : None,
+             'beta'                       : None,
+             'max_fun'                    : None,
+             'objective_function'         : 'logarithmic',
+             'animate'                    : False
            }}
 
 T = TransientSolver(model, config)
 T.solve()
 
-File('./results/S.xml') << model.S
+
 

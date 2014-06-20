@@ -57,10 +57,11 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['vx', 'vy', 'v_err', 'v_mag']
+    names = ['vx', 'vy', 'v_err', 'U_ob']
     ftns  = [vx, vy, err, vmag]
     
     # save the data in matlab format :
+    vara['dataset'] = 'measures'
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f[::-1, :],
                  'map_western_edge'  : west, 
@@ -103,6 +104,7 @@ class DataFactory(object):
     lon_0  = '-45'
     
     # retrieve data :
+    vara['dataset'] = 'measures'
     for f in files:
       data    = TiffFile(direc + f + '.tif')
       vara[f] = {'map_data'          : data.asarray()[::-1, :],
@@ -147,10 +149,11 @@ class DataFactory(object):
     lat_ts = '70'
     lon_0  = '-45'
     
-    names = ['vx', 'vy', 'v_err', 'v_mag']
+    names = ['vx', 'vy', 'v_err', 'U_ob']
     ftns  = [vx, vy, err, vmag]
     
     # save the data in matlab format :
+    vara['dataset'] = 'Rignot'
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f[::-1, :],
                  'map_western_edge'  : west, 
@@ -193,6 +196,7 @@ class DataFactory(object):
     lon_0  = '-39'
 
     # retrieve data :
+    vara['dataset'] = 'sft measures'
     for f in files:
       data    = TiffFile(direc + f + '_new.tif')
       vara[f] = {'map_data'          : data.asarray()[::-1, :],
@@ -234,6 +238,7 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
  
+    vara['dataset'] = 'Fox Maule'
     vara['q_geo'] = {'map_data'          : q_geo,
                      'map_western_edge'  : west, 
                      'map_eastern_edge'  : east, 
@@ -285,6 +290,7 @@ class DataFactory(object):
     X, Y  = meshgrid(xs, ys)
     q_geo = griddata((x, y), q_geo, (X, Y), fill_value=0.0)
     
+    vara['dataset'] = 'secret'
     vara['q_geo'] = {'map_data'          : q_geo,
                      'map_western_edge'  : west, 
                      'map_eastern_edge'  : east, 
@@ -324,6 +330,7 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '0'
  
+    vara['dataset'] = 'Fox Maule'
     vara['q_geo'] = {'map_data'          : q_geo,
                      'map_western_edge'  : west, 
                      'map_eastern_edge'  : east, 
@@ -375,6 +382,7 @@ class DataFactory(object):
     X, Y  = meshgrid(xs, ys)
     q_geo = griddata((x, y), q_geo, (X, Y), fill_value=0.0)
     
+    vara['dataset'] = 'secret'
     vara['q_geo'] = {'map_data'          : q_geo,
                      'map_western_edge'  : west, 
                      'map_eastern_edge'  : east, 
@@ -414,6 +422,7 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '0'
  
+    vara['dataset'] = 'Fox Maule'
     vara['q_geo'] = {'map_data'          : q_geo,
                      'map_western_edge'  : west, 
                      'map_eastern_edge'  : east, 
@@ -462,10 +471,11 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['b', 'h', 'H', 'adot', 'q_geo', 'srfTemp']
+    names = ['B', 'S', 'H', 'adot', 'q_geo', 'srfTemp']
     ftns  = [ b,   h,   H,   adot,   q_geo,   srfTemp]
     
     # save the data in matlab format :
+    vara['dataset'] = 'bedmap 1'
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f,
                  'map_western_edge'  : west, 
@@ -525,11 +535,12 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['b', 'h', 'H', 'mask', 'rock_mask', 'b_uncert', 
+    names = ['B', 'S', 'H', 'mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
     ftns  = [b, h, H, mask, rock_mask, b_uncert, coverage, gl04c_WGS84]
    
     # retrieve data :
+    vara['dataset'] = 'bedmap 2'
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f[::-1, :],
                  'map_western_edge'  : west,
@@ -577,10 +588,11 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
      
-    names = ['b', 'h', 'H', 'Herr', 'mask']
+    names = ['B', 'S', 'H', 'Herr', 'mask']
     ftns  = [ b,   h,   H,   Herr,   mask]
     
     # save the data in matlab format :
+    vara['dataset'] = 'Bamber'
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f,
                  'map_western_edge'  : west, 
@@ -638,10 +650,11 @@ class DataFactory(object):
     lat_ts = '71'
     lon_0  = '-39'
  
-    names = ['H', 'h', 'adot', 'b', 'T', 'q_geo','U_sar', \
+    names = ['H', 'S', 'adot', 'B', 'T', 'q_geo','U_sar', \
              'U_ob', 'lat', 'lon', 'Tn','dhdt']
     ftns  = [H, h, adot, b, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
 
+    vara['dataset'] = 'searise'
     for n, f in zip(names, ftns):
       vara[n] = {'map_data'          : f,
                  'map_western_edge'  : west, 

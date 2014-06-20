@@ -244,6 +244,8 @@ class DataInput(object):
     remove extra rows/cols from data where NaNs were identified and set the 
     extents to those of the good x and y values.
     """
+    print "::: removing NaNs from %s :::" % self.name
+    
     self.x     = self.x[self.good_x]
     self.y     = self.y[self.good_y]
     self.x_min = self.x.min()
@@ -253,7 +255,6 @@ class DataInput(object):
     self.nx    = len(self.x)
     self.ny    = len(self.y)
     
-    print "::::::::REMOVING NaNs::::::::"
     for i in self.data.keys():
       self.data[i] = self.data[i][self.good_y, :          ]
       self.data[i] = self.data[i][:,           self.good_x]

@@ -1105,16 +1105,17 @@ class Enthalpy(object):
     T.vector().set_local(Ta)
     T.vector().apply('insert')
 
-    # update water content :
-    WW = W_n.vector().array()
-    WW[WW < 0]    = 0
-    W.vector().set_local(WW)
-    W.vector().apply('insert')
+    ## update water content :
+    #WW = W_n.vector().array()
+    #WW[WW < 0]    = 0
+    #WW[WW > 0.01] = 0.01
+    #W.vector().set_local(WW)
+    #W.vector().apply('insert')
 
     # update variables :
     model.T  = T
     model.Mb = Mb_n
-    model.W  = W
+    model.W  = W_n
 
 
 class FreeSurface(object):

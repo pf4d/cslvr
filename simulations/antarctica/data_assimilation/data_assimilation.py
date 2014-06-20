@@ -57,12 +57,13 @@ model.initialize_variables()
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
-nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-6
-nonlin_solver_params['newton_solver']['absolute_tolerance']      = 1e2
-nonlin_solver_params['newton_solver']['maximum_iterations']      = 25
+nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
+nonlin_solver_params['newton_solver']['maximum_iterations']      = 12
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
-nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'
+#nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
+#nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
 
@@ -100,7 +101,7 @@ config = { 'mode'                         : 'steady',
              'on'                  : True,
              'use_surface_climate' : False,
              'T_surface'           : SurfaceTemperature,
-             'q_geo'               : 0.042 * 60 * 60 * 24 * 365,#BasalHeatFlux,
+             'q_geo'               : BasalHeatFlux,# 0.042*60*60*24*365,
              'lateral_boundaries'  : None
            },
            'free_surface' :
@@ -149,9 +150,6 @@ tf1 = time()
 
 params = config['velocity']['newton_params']['newton_solver']
 params['relaxation_parameter']         = 1.0
-params['relative_tolerance']           = 1e-6
-params['absolute_tolerance']           = 0.0
-params['maximum_iterations']           = 12
 config['velocity']['viscosity_mode']   = 'linear'
 config['velocity']['b_linear']         = model.eta
 config['enthalpy']['on']               = False

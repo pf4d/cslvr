@@ -105,12 +105,22 @@ class Model(object):
     Deforms the mesh to the geometry.
     """
     print "::: deforming mesh to geometry :::"
-
+    
     # transform z :
     # thickness = surface - base, z = thickness + base
+    # Get the height of the mesh, assumes that the base is at z=0
+    max_height = self.mesh.coordinates()[:,2].max()
+    min_height = self.mesh.coordinates()[:,2].min()
+    mesh_height = max_height - min_height
+    
     for x in self.mesh.coordinates():
-      x[2] = x[2] * ( self.S_ex(x[0],x[1],x[2]) - self.B_ex(x[0],x[1],x[2]) )
+      x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
+                                      - self.B_ex(x[0],x[1],x[2]) )
+    
+      #print("x[2] - height above bed",x[2])
+      #print("Bed height",self.B_ex(x[0], x[1], x[2]))
       x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
+
 
   def calculate_boundaries(self):
     """

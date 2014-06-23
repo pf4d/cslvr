@@ -319,13 +319,13 @@ class TransientSolver(object):
         if config['log']: 
           self.file_a << (model.age, t)
 
-      # Store velocity, temperature, and age to vtk files
+      # store information : 
       if self.config['log']:
         self.t_log.append(t)
         M = assemble(self.surface_instance.M)
         self.mass.append(M)
 
-      # Increment time step
+      # increment time step :
       if MPI.rank(mpi_comm_world())==0:
         string = 'Time: {0}, CPU time for last time step: {1}, Mass: {2}'
         print string.format(t, time()-tic, M/self.M_prev)
@@ -503,9 +503,9 @@ class AdjointSolver(object):
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
-      # FIXME: project and extrude ruin the output for paraview, we just 
-      #        save when finished for now.
-      U    = project(as_vector([model.u, model.v, model.w]))
+      
+      # save the output for this iteration of l_bfgs_b :
+      U    = project(as_vector([model.u, model.v, model.w]), model.Q)
       dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                      + model.w + model.adot)
       file_b_pvd    << model.extrude(model.beta2, 3, 2)
@@ -555,13 +555,6 @@ class AdjointSolver(object):
     for ii,c in enumerate(config['adjoint']['control_variable']):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
-    #U    = project(as_vector([model.u, model.v, model.w]))
-    #dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-    #               + model.w + model.adot)
-    #file_b_pvd    << model.extrude(model.beta2, 3, 2)
-    #file_u_pvd    << U
-    #file_dSdt_pvd << dSdt
-
 
 class BalanceVelocitySolver(object):
   def __init__(self, model, config):

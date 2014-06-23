@@ -1,13 +1,9 @@
-import sys
-src_directory = '../../../'
-sys.path.append(src_directory)
-
-from src.model              import Model
-from src.solvers            import SteadySolver
-from src.physical_constants import IceParameters
-from src.helper             import default_nonlin_solver_params
-from dolfin                 import set_log_active, File, Expression, pi, \
-                                   sin, tan
+from varglas.model              import Model
+from varglas.solvers            import SteadySolver
+from varglas.physical_constants import IceParameters
+from varglas.helper             import default_nonlin_solver_params
+from fenics                     import set_log_active, File, Expression, pi, \
+                                       sin, tan
 
 set_log_active(True)
 

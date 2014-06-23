@@ -1,16 +1,13 @@
-import os
 import sys
-src_directory = '../../../'
-sys.path.append(src_directory)
-
-import src.model              as model
-import src.solvers            as solvers
-import src.physical_constants as pc
-from data.data_factory   import DataFactory
-from meshes.mesh_factory import MeshFactory
-from src.helper          import *
-from src.utilities       import DataInput
-from dolfin              import *
+import varglas.solvers            as solvers
+import varglas.physical_constants as pc
+import varglas.model              as model
+from varglas.mesh.mesh_factory    import MeshFactory
+from varglas.data.data_factory    import DataFactory
+from varglas.helper               import default_nonlin_solver_params
+from varglas.utilities            import DataInput, DataOutput
+from fenics                       import *
+from time                         import time
 
 
 # get the input args :

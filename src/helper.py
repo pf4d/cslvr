@@ -36,7 +36,7 @@ The Hessian of the velocity norm is used in calculating error metrics of the
 meshes used in the simulations.
 """
 
-from dolfin import *
+from fenics import *
 import pylab as p
 
 

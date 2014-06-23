@@ -1,15 +1,11 @@
-import sys
-src_directory = '../../../'
-sys.path.append(src_directory)
-
-from src.model              import Model
-from src.helper             import default_nonlin_solver_params
-from src.solvers            import SteadySolver, TransientSolver
-from src.physical_constants import IceParameters
-from dolfin                 import Expression, set_log_active, \
-                                   parameters, Constant, File
-from meshes.mesh_factory    import MeshFactory
-from pylab                  import sqrt
+from varglas.model              import Model
+from varglas.solvers            import SteadySolver, TransientSolver
+from varglas.physical_constants import IceParameters
+from varglas.helper             import default_nonlin_solver_params
+from scipy                      import random
+from mesh_factory               import MeshFactory
+from fenics                     import Expression, sqrt, set_log_active, \
+                                       parameters, Constant, File
 
 set_log_active(True)
 

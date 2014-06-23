@@ -7,10 +7,7 @@ Utilities file:
   basis functions.
 
 """
-import sys
 import subprocess
-src_directory = '../'
-sys.path.append(src_directory)
 
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline, NearestNDInterpolator

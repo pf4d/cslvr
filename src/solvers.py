@@ -214,6 +214,7 @@ class TransientSolver(object):
     thklim            = config['free_surface']['thklim']
     B                 = model.B.compute_vertex_values()
     S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
+    # the surface is never on a periodic FunctionSpace :
     if config['periodic_boundary_conditions']:
       #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
       d2v = dof_to_vertex_map(model.Q_non_periodic)
@@ -224,14 +225,15 @@ class TransientSolver(object):
     model.S.vector().apply('insert')
    
     if config['velocity']['on']:
-      utemp = model.U.vector().get_local()
-      utemp[:] = 0.0
-      model.U.vector().set_local(utemp)
-      model.U.vector().apply('insert')
+      #utemp = model.U.vector().get_local()
+      #utemp[:] = 0.0
+      #model.U.vector().set_local(utemp)
+      #model.U.vector().apply('insert')
+      model.U.vector()[:] = 0.0
       self.velocity_instance.solve()
       if self.config['log']:
         U = project(as_vector([model.u, model.v, model.w]))
-        self.file_U << (U, t)
+        self.file_U << U
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
@@ -239,7 +241,7 @@ class TransientSolver(object):
     if config['free_surface']['on']:
       self.surface_instance.solve()
       if self.config['log']:
-        self.file_S << (model.S, t)
+        self.file_S << model.S
  
     return model.dSdt.compute_vertex_values()
 
@@ -310,14 +312,14 @@ class TransientSolver(object):
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
         if self.config['log']:
-          self.file_T << (model.T, t)
+          self.file_T << model.T
 
       # Calculate age update
       if self.config['age']['on']:
         self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
-          self.file_a << (model.age, t)
+          self.file_a << model.age
 
       # store information : 
       if self.config['log']:
@@ -505,7 +507,7 @@ class AdjointSolver(object):
       Js   = array(Js)
       
       # save the output for this iteration of l_bfgs_b :
-      U    = project(as_vector([model.u, model.v, model.w]), model.Q)
+      U    = project(as_vector([model.u, model.v, model.w]))
       dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                      + model.w + model.adot)
       file_b_pvd    << model.extrude(model.beta2, 3, 2)

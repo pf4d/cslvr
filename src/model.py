@@ -45,11 +45,10 @@ class Model(object):
     :param bool generate_pbcs : Optional argument to determine whether
                                 to create periodic boundary conditions
     """
-    print "::: generating mesh :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: generating mesh :::"
 
-    #self.mesh      = UnitCubeMesh(nx,ny,nz)
-    #self.flat_mesh = Mesh(self.mesh)
-    self.mesh      = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
+    self.mesh      = UnitCubeMesh(nx,ny,nz)
     self.flat_mesh = Mesh(self.mesh)
     
     # generate periodic boundary conditions if required :
@@ -86,6 +85,25 @@ class Model(object):
                                           constrained_domain=pBC)
       self.Q_flat_non_periodic = FunctionSpace(self.flat_mesh,"CG",1)
       self.per_func_space = True
+   
+    # width and origin of the domain for deforming x coord :
+    width_x  = xmax - xmin
+    offset_x = xmin
+    
+    # width and origin of the domain for deforming y coord :
+    width_y  = ymax - ymin
+    offset_y = ymin
+
+    # Deform the square to the defined geometry :
+    for x,x0 in zip(self.mesh.coordinates(), self.flat_mesh.coordinates()):
+      # transform x :
+      x[0]  = x[0]  * width_x + offset_x
+      x0[0] = x0[0] * width_x + offset_x
+    
+      # transform y :
+      x[1]  = x[1]  * width_y + offset_y
+      x0[1] = x0[1] * width_y + offset_y
+    
 
   def set_mesh(self, mesh):
     """
@@ -104,7 +122,8 @@ class Model(object):
     """
     Deforms the mesh to the geometry.
     """
-    print "::: deforming mesh to geometry :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: deforming mesh to geometry :::"
     
     # transform z :
     # thickness = surface - base, z = thickness + base
@@ -126,7 +145,8 @@ class Model(object):
     """
     Determines the boundaries of the current model mesh
     """
-    print "::: calculating boundaries :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating boundaries :::"
     
     mask = self.mask
 
@@ -280,7 +300,7 @@ class Model(object):
   
   def n_d_div(self, u):
     """
-   0"""
+    """
     n     = u.shape()[0]
     divu  = 0.0
     for i in range(n):
@@ -413,7 +433,8 @@ class Model(object):
     Calculate the deviatoric component of stress in the direction of 
     the UFL vector <u_dir>.
     """
-    print "::: calculating component stress :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating component stress :::"
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff     = self.ff                           # facet function for boundaries
@@ -443,7 +464,8 @@ class Model(object):
     """
     Calculate the deviatoric component of stress in the direction of U.
     """
-    print "::: calculating component stress :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating component stress :::"
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff     = self.ff                           # facet function for boundaries
@@ -466,7 +488,8 @@ class Model(object):
   def calc_tau_bas(self, Q='self'):
     """
     """
-    print "::: calculating tau_bas :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating tau_bas :::"
     if type(Q) != FunctionSpace:
       Q = self.Q
     beta2 = self.beta2
@@ -489,7 +512,8 @@ class Model(object):
   def calc_tau_drv(self, Q='self'):
     """
     """
-    print "::: calculating tau_drv :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating tau_drv :::"
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff    = self.ff
@@ -525,7 +549,8 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    print "::: calculating 'stress-balance' :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating 'stress-balance' :::"
     out_dir = self.out_dir
     Q       = self.Q
     u       = self.u
@@ -584,7 +609,8 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    print "::: calculating 'stokes-balance' :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: calculating 'stokes-balance' :::"
     out_dir = self.out_dir
     Q       = self.Q
     u       = self.u

@@ -337,14 +337,15 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
-    print "::: solving full-stokes velocity :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving full-stokes velocity :::"
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
     
-    model.u = project(model.U[0])
-    model.v = project(model.U[1])
-    model.w = project(model.U[2])
-    model.P = project(model.U[3])
+    model.u = project(model.U[0], model.Q)
+    model.v = project(model.U[1], model.Q)
+    model.w = project(model.U[2], model.Q)
+    model.P = project(model.U[3], model.Q)
 
 
 class VelocityBP(object):
@@ -655,7 +656,8 @@ class VelocityBP(object):
     config = self.config
     
     # solve nonlinear system :
-    print "::: solving BP velocity :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving BP velocity :::"
     solve(self.F == 0, model.U, J = self.J,
           solver_parameters = self.newton_params)
 
@@ -1082,7 +1084,8 @@ class Enthalpy(object):
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
       
     # solve the linear equation for enthalpy :
-    print "::: solving enthalpy :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving enthalpy :::"
     solve(self.a == self.L, model.H, self.bc_H, 
           solver_parameters = {"linear_solver": "lu"})
   
@@ -1277,7 +1280,8 @@ class FreeSurface(object):
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
 
-    print "::: solving free-surface :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving free-surface :::"
     if config['free_surface']['lump_mass_matrix']:
       m_l = assemble(self.lumped_mass)
       m_l = m_l.get_local()
@@ -1424,7 +1428,8 @@ class AdjointVelocityBP(object):
     A = assemble(lhs(self.dI))
     l = assemble(rhs(self.dI))
 
-    print "::: solving adjoint BP velocity :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving adjoint BP velocity :::"
     solve(A, self.model.Lam.vector(), l)
     
 
@@ -1448,6 +1453,8 @@ class SurfaceClimate(object):
     Calculates PDD, surface temperature given current model geometry
 
     """
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving surface climate :::"
     model  = self.model
     config = self.config
 
@@ -1560,7 +1567,8 @@ class Age(object):
     self.bc_age = DirichletBC(model.Q, 0, model.ff, above_ela)
 
     # Solve!
-    print "::: solving age :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving age :::"
     solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
 
 
@@ -1929,7 +1937,8 @@ class StokesBalance(object):
     """
     model = self.model
 
-    print "::: solving 'stokes-balance' for ubar, vbar :::"
+    if MPI.rank(mpi_comm_world())==0:
+      print "::: solving 'stokes-balance' for ubar, vbar :::"
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
     model.ubar = project(self.U_s[0], self.Q)
@@ -1938,7 +1947,8 @@ class StokesBalance(object):
   def component_stress_stokes(self):  
     """
     """
-    print "solving 'stokes-balance' for stress terms :::" 
+    if MPI.rank(mpi_comm_world())==0:
+      print "solving 'stokes-balance' for stress terms :::" 
     model = self.model
 
     outpath = self.config['output_path']

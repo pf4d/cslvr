@@ -35,7 +35,9 @@ for L in [40000]:
   model.initialize_variables()
   
   nonlin_solver_params = default_nonlin_solver_params()
-  nonlin_solver_params['newton_solver']['linear_solver'] = 'mumps'
+  #nonlin_solver_params['newton_solver']['linear_solver'] = 'mumps'
+  nonlin_solver_params['newton_solver']['linear_solver']  = 'gmres'
+  nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
   
   config = { 'mode'                         : 'steady',
              'output_path'                  : './results_BP_L'+str(L)+'/',

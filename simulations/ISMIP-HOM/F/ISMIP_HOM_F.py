@@ -17,8 +17,8 @@ H     = 1000.0
 a0    = 100
 sigma = 10000
 
-nx = 10
-ny = 10
+nx = 20
+ny = 20
 nz = 5
 
 model = Model()
@@ -48,7 +48,8 @@ nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
 nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
+#nonlin_solver_params['newton_solver']['linear_solver']        = 'gmres'
+#nonlin_solver_params['newton_solver']['preconditioner']       = 'hypre_amg'
 
 config = { 'mode'                         : 'transient',
            'output_path'                  : './results/',

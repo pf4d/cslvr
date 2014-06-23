@@ -23,13 +23,14 @@ for L in [40000]:
   model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L, 
                               generate_pbcs=True)
   
+  
   Surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                        element=model.Q.ufl_element())
   Bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha, 
                        element=model.Q.ufl_element())
   Beta2   = Expression(  '1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
                        alpha=alpha, L=L, element=model.Q.ufl_element())
-  
+
   model.set_geometry(Surface, Bed, deform=True)
   model.set_parameters(IceParameters())
   model.initialize_variables()
@@ -49,7 +50,7 @@ for L in [40000]:
              { 
                'on'                  : False,
                'inner_tol'           : 0.0,
-               'max_iter'            : 2
+               'max_iter'            : 1
              },                      
              'velocity' :            
              {                       
@@ -105,4 +106,5 @@ for L in [40000]:
 
   F = SteadySolver(model,config)
   F.solve()
+
 

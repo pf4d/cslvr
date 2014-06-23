@@ -16,7 +16,7 @@ lengths = [40000]
 for L in lengths:
 
   nonlin_solver_params = default_nonlin_solver_params()
-  nonlin_solver_params['newton_solver']['linear_solver'] = 'mumps'
+  nonlin_solver_params['newton_solver']['linear_solver']  = 'mumps'
 
   config = { 'mode'                         : 'steady',
              't_start'                      : None,

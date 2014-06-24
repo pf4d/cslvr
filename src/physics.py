@@ -26,9 +26,9 @@ based on lapse rates
 :class:`~src.physics.VelocityBP` -- Blatter-Pattyn momentum balance
 """
 
-from pylab  import ndarray
-from fenics import *
-from helper import print_min_max
+from pylab     import ndarray
+from fenics    import *
+from termcolor import colored, cprint
 import numpy as np
 import numpy.linalg as linalg
 
@@ -338,7 +338,9 @@ class VelocityStokes(object):
        
     # Solve the nonlinear equations via Newton's method
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving full-stokes velocity :::"
+      s    = "::: solving full-stokes velocity :::"
+      text = colored(s, 'cyan')
+      print text
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
     
@@ -657,7 +659,9 @@ class VelocityBP(object):
     
     # solve nonlinear system :
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving BP velocity :::"
+      s    = "::: solving BP velocity :::"
+      text = colored(s, 'cyan')
+      print text
     solve(self.F == 0, model.U, J = self.J,
           solver_parameters = self.newton_params)
 
@@ -1085,11 +1089,14 @@ class Enthalpy(object):
       
     # solve the linear equation for enthalpy :
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving enthalpy :::"
+      s    = "::: solving enthalpy :::"
+      text = colored(s, 'cyan')
+      print text
     solve(self.a == self.L, model.H, self.bc_H, 
           solver_parameters = {"linear_solver": "lu"})
   
-    print_min_max(model.H, 'H')
+    if MPI.rank(mpi_comm_world())==0:
+      model.print_min_max(model.H, 'H')
 
     # Convert enthalpy values to temperatures and water contents
     T0_n  = project(T0,  Q)
@@ -1281,7 +1288,9 @@ class FreeSurface(object):
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
 
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving free-surface :::"
+      s    = "::: solving free-surface :::"
+      text = colored(s, 'cyan')
+      print text
     if config['free_surface']['lump_mass_matrix']:
       m_l = assemble(self.lumped_mass)
       m_l = m_l.get_local()
@@ -1429,7 +1438,9 @@ class AdjointVelocityBP(object):
     l = assemble(rhs(self.dI))
 
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving adjoint BP velocity :::"
+      s    = "::: solving adjoint BP velocity :::"
+      text = colored(s, 'cyan')
+      print text
     solve(A, self.model.Lam.vector(), l)
     
 
@@ -1454,7 +1465,9 @@ class SurfaceClimate(object):
 
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving surface climate :::"
+      s    = "::: solving surface climate :::"
+      text = colored(s, 'cyan')
+      print text
     model  = self.model
     config = self.config
 
@@ -1568,7 +1581,9 @@ class Age(object):
 
     # Solve!
     if MPI.rank(mpi_comm_world())==0:
-      print "::: solving age :::"
+      s    = "::: solving age :::"
+      text = colored(s, 'cyan')
+      print text
     solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
 
 
@@ -1948,7 +1963,9 @@ class StokesBalance(object):
     """
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "solving 'stokes-balance' for stress terms :::" 
+      s    = "solving 'stokes-balance' for stress terms :::" 
+      text = colored(s, 'cyan')
+      print text
     model = self.model
 
     outpath = self.config['output_path']

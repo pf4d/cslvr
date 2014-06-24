@@ -1,10 +1,11 @@
 from pylab          import inf, ones, zeros, array, arange, vstack
 from fenics         import project, File, vertex_to_dof_map, Function, \
-                           assemble, sqrt, DoubleArray, Constant, function
+                           assemble, sqrt, DoubleArray, Constant, function, MPI
 from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
-from helper         import print_min_max
 from time           import time
+from termcolor      import colored, cprint
+import sys
 import numpy as np
 
 class SteadySolver(object):
@@ -58,6 +59,10 @@ class SteadySolver(object):
     dict entry to "False".  If config['coupled']['on'] is "False", solve only
     once.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = '::: solving SteadySolver :::'
+      text = colored(s, 'blue')
+      print text
     model   = self.model
     config  = self.config
     T0      = config['velocity']['T0']
@@ -100,7 +105,8 @@ class SteadySolver(object):
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
             File(outpath + 'P.pvd') << model.P
-        print_min_max(U, 'U')
+        if MPI.rank(mpi_comm_world())==0:
+          model.print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -109,7 +115,8 @@ class SteadySolver(object):
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
-        print_min_max(model.T, 'T')
+        if MPI.rank(mpi_comm_world())==0:
+          model.print_min_max(model.T, 'T')
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -120,8 +127,10 @@ class SteadySolver(object):
       
       counter += 1
       
-      print 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)' \
-            % (counter, max_iter, inner_error, inner_tol)
+      if MPI.rank(mpi_comm_world())==0:
+        s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
+        text = colored(s, 'blue')
+        print text % (counter, max_iter, inner_error, inner_tol)
 
     # Solve age equation
     if config['age']['on']:
@@ -251,6 +260,10 @@ class TransientSolver(object):
     well as storing the velocity, temperature, and the age in vtk files.
 
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = '::: solving TransientSolver :::'
+      text = colored(s, 'blue')
+      print text
     model  = self.model
     config = self.config
     
@@ -329,8 +342,9 @@ class TransientSolver(object):
 
       # increment time step :
       if MPI.rank(mpi_comm_world())==0:
-        string = 'Time: {0}, CPU time for last time step: {1}, Mass: {2}'
-        print string.format(t, time()-tic, M/self.M_prev)
+        s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<'
+        text = colored(s, 'red', attrs=['bold'])
+        print text % (t, time()-tic, M/self.M_prev)
 
       self.M_prev = M
       t          += dt
@@ -410,6 +424,10 @@ class AdjointSolver(object):
        .. math::
         \beta_{2} > 0
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = '::: solving AdjointSolver :::'
+      text = colored(s, 'blue')
+      print text
     model  = self.model
     config = self.config
     
@@ -547,7 +565,9 @@ class AdjointSolver(object):
           bounds_arr.append(get_global(bounds[i]))
       b.append(array(bounds_arr).T)
     bounds = vstack(b)  
-    print bounds
+    if MPI.rank(mpi_comm_world())==0:
+      text = colored(bounds, 'red', attrs=['bold'])
+      print text
     
     # minimize I with initial guess beta_0 and gradient J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
@@ -664,8 +684,10 @@ class StokesBalanceSolver(object):
       
       counter += 1
       
-      print 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)' \
-            % (counter, max_iter, inner_error, inner_tol)
+      if MPI.rank(mpi_comm_world())==0:
+        s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
+        text = colored(s, 'blue')
+        print text % (counter, max_iter, inner_error, inner_tol)
    
     # solve for the stress balance given the appropriate vertically 
     # averaged velocities :

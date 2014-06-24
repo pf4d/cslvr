@@ -1,4 +1,5 @@
-from fenics import *
+from fenics    import *
+from termcolor import colored, cprint
 import numpy as np
 
 class Model(object):
@@ -46,35 +47,49 @@ class Model(object):
                                 to create periodic boundary conditions
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: generating mesh :::"
+      s    = "::: generating mesh :::"
+      text = colored(s, 'magenta')
+      print text
 
-    self.mesh      = UnitCubeMesh(nx,ny,nz)
+    self.mesh      = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
     self.flat_mesh = Mesh(self.mesh)
     
     # generate periodic boundary conditions if required :
     if generate_pbcs:
       class PeriodicBoundary(SubDomain):
-        # Left boundary is "target domain" G
+        
         def inside(self, x, on_boundary):
-          # return True if on left or bottom boundary AND NOT on one 
-          # of the two corners (0, 1) and (1, 0)
-          return bool((near(x[0], 0) or near(x[1], 0)) and \
-                      (not ((near(x[0], 0) and near(x[1], 1)) \
-                       or (near(x[0], 1) and near(x[1], 0)))) and on_boundary)
+          """
+          Return True if on left or bottom boundary AND NOT on one 
+          of the two corners (0, 1) and (1, 0).
+          """
+          return bool((near(x[0], xmin) or near(x[1], ymin)) and \
+                      (not ((near(x[0], xmin) and near(x[1], ymax)) \
+                       or (near(x[0], xmax) and near(x[1], ymin)))) \
+                       and on_boundary)
 
         def map(self, x, y):
-          if near(x[0], 1) and near(x[1], 1):
-            y[0] = x[0] - 1.
-            y[1] = x[1] - 1.
+          """
+          Remap the values on the top and right sides to the bottom and left
+          sides.
+          """
+          if near(x[0], xmax) and near(x[1], ymax):
+            y[0] = x[0] - xmax
+            y[1] = x[1] - ymax
             y[2] = x[2]
-          elif near(x[0], 1):
-            y[0] = x[0] - 1.
+          elif near(x[0], xmax):
+            y[0] = x[0] - xmax
             y[1] = x[1]
             y[2] = x[2]
-          else:   # near(x[1], 1)
+          elif near(x[1], ymax):
             y[0] = x[0]
-            y[1] = x[1] - 1.
+            y[1] = x[1] - ymax
             y[2] = x[2]
+          else:
+            y[0] = x[0]
+            y[1] = x[1]
+            y[2] = x[2]
+
       pBC      = PeriodicBoundary()
       self.Q   = FunctionSpace(self.mesh, "CG", 1, constrained_domain=pBC)
       self.Q2  = MixedFunctionSpace([self.Q]*2)
@@ -86,25 +101,6 @@ class Model(object):
       self.Q_flat_non_periodic = FunctionSpace(self.flat_mesh,"CG",1)
       self.per_func_space = True
    
-    # width and origin of the domain for deforming x coord :
-    width_x  = xmax - xmin
-    offset_x = xmin
-    
-    # width and origin of the domain for deforming y coord :
-    width_y  = ymax - ymin
-    offset_y = ymin
-
-    # Deform the square to the defined geometry :
-    for x,x0 in zip(self.mesh.coordinates(), self.flat_mesh.coordinates()):
-      # transform x :
-      x[0]  = x[0]  * width_x + offset_x
-      x0[0] = x0[0] * width_x + offset_x
-    
-      # transform y :
-      x[1]  = x[1]  * width_y + offset_y
-      x0[1] = x0[1] * width_y + offset_y
-    
-
   def set_mesh(self, mesh):
     """
     Overwrites the previous mesh with a new one
@@ -123,7 +119,9 @@ class Model(object):
     Deforms the mesh to the geometry.
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: deforming mesh to geometry :::"
+      s    = "::: deforming mesh to geometry :::"
+      text = colored(s, 'magenta')
+      print text
     
     # transform z :
     # thickness = surface - base, z = thickness + base
@@ -146,7 +144,9 @@ class Model(object):
     Determines the boundaries of the current model mesh
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating boundaries :::"
+      s    = "::: calculating boundaries :::"
+      text = colored(s, 'magenta')
+      print text
     
     mask = self.mask
 
@@ -434,7 +434,9 @@ class Model(object):
     the UFL vector <u_dir>.
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating component stress :::"
+      s    = "::: calculating component stress :::"
+      text = colored(s, 'magenta')
+      print text
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff     = self.ff                           # facet function for boundaries
@@ -465,7 +467,9 @@ class Model(object):
     Calculate the deviatoric component of stress in the direction of U.
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating component stress :::"
+      s    = "::: calculating component stress :::"
+      text = colored(s, 'magenta')
+      print text
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff     = self.ff                           # facet function for boundaries
@@ -489,7 +493,9 @@ class Model(object):
     """
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating tau_bas :::"
+      s    = "::: calculating tau_bas :::"
+      text = colored(s, 'magenta')
+      print text
     if type(Q) != FunctionSpace:
       Q = self.Q
     beta2 = self.beta2
@@ -513,7 +519,9 @@ class Model(object):
     """
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating tau_drv :::"
+      s    = "::: calculating tau_drv :::"
+      text = colored(s, 'magenta')
+      print text
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff    = self.ff
@@ -550,7 +558,9 @@ class Model(object):
     
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating 'stress-balance' :::"
+      s    = "::: calculating 'stress-balance' :::"
+      text = colored(s, 'magenta')
+      print text
     out_dir = self.out_dir
     Q       = self.Q
     u       = self.u
@@ -610,7 +620,9 @@ class Model(object):
     
     """
     if MPI.rank(mpi_comm_world())==0:
-      print "::: calculating 'stokes-balance' :::"
+      s    = "::: calculating 'stokes-balance' :::"
+      text = colored(s, 'magenta')
+      print text
     out_dir = self.out_dir
     Q       = self.Q
     u       = self.u
@@ -768,6 +780,13 @@ class Model(object):
    
     # return the functions for further analysis :
     return output
+
+  def print_min_max(self, u, title):
+    uMin = u.vector().array().min()
+    uMax = u.vector().array().max()
+    s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+    text = colored(s, 'yellow')
+    print text
 
   def initialize_variables(self):
     """

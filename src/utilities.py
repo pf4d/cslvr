@@ -20,6 +20,7 @@ from fenics            import interpolate, project, Expression, Function, \
                               RectangleMesh
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
+from termcolor         import colored, cprint
 
 class DataInput(object):
   """ 
@@ -60,8 +61,11 @@ class DataInput(object):
       self.name = files.pop('dataset')
     elif direc != None:
       self.name = direc
-    
-    print "::: creating %s DataInput object :::" % self.name
+       
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: creating %s DataInput object :::" % self.name
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
     
     # process the data files :
     for fn in files:
@@ -160,7 +164,10 @@ class DataInput(object):
     border artifacts from interpolation; increase this value to eliminate edge
     noise.
     """
-    print "::: integrating %s field from %s :::" % (fn_spec, specific.name)
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: integrating %s field from %s :::" % (fn_spec, specific.name)
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
     # get the dofmap to map from mesh vertex indices to function indicies :
     df    = self.func_space.dofmap()
     dfmap = df.vertex_to_dof_map(self.mesh)
@@ -241,7 +248,10 @@ class DataInput(object):
     remove extra rows/cols from data where NaNs were identified and set the 
     extents to those of the good x and y values.
     """
-    print "::: removing NaNs from %s :::" % self.name
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: removing NaNs from %s :::" % self.name
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
     
     self.x     = self.x[self.good_x]
     self.y     = self.y[self.good_y]
@@ -300,7 +310,10 @@ class DataInput(object):
 
     If <bool_data> is True, convert all values > 0 to 1.
     """
-    print "::: getting %s projection :::" % fn
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: getting %s projection :::" % fn
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
 
     if dg:
       interp = self.get_nearest_expression(fn, bool_data=bool_data)
@@ -321,7 +334,10 @@ class DataInput(object):
     Returns a dolfin expression using a nearest-neighbor interpolant of data 
     <fn>.  If <bool_data> is True, convert to boolean.
     """
-    print "::: getting %s nearest expression from %s :::" % (fn, self.name)
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: getting %s nearest expression from %s :::" % (fn, self.name)
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
     
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
@@ -352,7 +368,10 @@ class DataInput(object):
     arguments <kx> and <ky> determine order of approximation in x and y
     directions (default cubic).  If <bool_data> is True, convert to boolean.
     """
-    print "::: getting %s spline expression from %s :::" % (fn, self.name)
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: getting %s spline expression from %s :::" % (fn, self.name)
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
 
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
@@ -534,7 +553,10 @@ class MeshGenerator(object):
     Eliminate intersecting boundary elements. <dist> is an integer specifiying 
     how far forward to look to eliminate intersections.
     """
-    print "::: eliminating intersections, please wait :::"
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: eliminating intersections, please wait :::"
+      text = colored(s, 'green')
+      print text % (counter, max_iter, inner_error, inner_tol)
 
     class Point:
       def __init__(self,x,y):

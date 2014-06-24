@@ -8,14 +8,14 @@ from fenics                     import set_log_active, File, Expression, pi, \
 set_log_active(True)
 
 theta = -3.0 * pi / 180
-L     = 100000.
+L     = 100000.0
 H     = 1000.0
 a0    = 100
 sigma = 10000
 
-nx = 20
-ny = 20
-nz = 5
+nx = 50
+ny = 50
+nz = 10
 
 model = Model()
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L,

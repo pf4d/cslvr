@@ -36,7 +36,8 @@ The Hessian of the velocity norm is used in calculating error metrics of the
 meshes used in the simulations.
 """
 
-from fenics import *
+from fenics    import *
+from termcolor import colored, cprint
 import pylab as p
 
 
@@ -64,7 +65,9 @@ def download_file(url, direc, folder, extract=False):
   meta = u.info()
   fs   = int(meta.getheaders("Content-Length")[0])
   
-  print "Downloading: %s Bytes: %s" % (fn, fs)
+  s    = "Downloading: %s Bytes: %s" % (fn, fs)
+  text = colored(s, 'green')
+  print text % (counter, max_iter, inner_error, inner_tol)
   
   fs_dl  = 0
   blk_sz = 8192
@@ -708,12 +711,6 @@ def extrude(f, b, d, ff, Q):
   v  = Function(Q)
   solve(a == L, v, bc)
   return v
-
-
-def print_min_max(u, title):
-  uMin = u.vector().min()
-  uMax = u.vector().max()
-  print title + ' <min, max> : <%f, %f>' % (uMin, uMax)
 
 
 

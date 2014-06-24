@@ -44,17 +44,16 @@ nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
 nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
 #nonlin_solver_params['newton_solver']['linear_solver']        = 'gmres'
 #nonlin_solver_params['newton_solver']['preconditioner']       = 'hypre_amg'
 
 config = { 'mode'                         : 'transient',
-           't_start'                      : 0.0,
-           't_end'                        : 500.0,
-           'time_step'                    : 2.0,
            'output_path'                  : './results/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : True,
+           't_start'                      : 0.0,
+           't_end'                        : 500.0,
+           'time_step'                    : 2.0,
            'log'                          : True,
            'coupled' : 
            { 
@@ -82,7 +81,6 @@ config = { 'mode'                         : 'transient',
              'on'                         : False,
              'use_surface_climate'        : False,
              'T_surface'                  : None,
-             
            },
            'free_surface' :
            { 
@@ -118,8 +116,8 @@ config = { 'mode'                         : 'transient',
              'animate'                    : False
            }}
 
-T = TransientSolver(model,config)
+T = TransientSolver(model, config)
 T.solve()
 
-File('./results_stokes/S.xml') << model.S
+
 

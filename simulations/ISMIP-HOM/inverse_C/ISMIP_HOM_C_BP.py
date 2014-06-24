@@ -4,7 +4,7 @@ from varglas.physical_constants import IceParameters
 from varglas.helper             import default_nonlin_solver_params
 from scipy                      import random
 from fenics                     import set_log_active, File, Expression, pi, \
-                                       sin, tan
+                                       sin, tan, parameters
 
 set_log_active(True)
 

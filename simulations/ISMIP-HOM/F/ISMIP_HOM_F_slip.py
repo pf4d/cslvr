@@ -43,10 +43,10 @@ model.n = 1.0
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
-#nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
-#nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
-nonlin_solver_params['newton_solver']['linear_solver']        = 'gmres'
-nonlin_solver_params['newton_solver']['preconditioner']       = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
+#nonlin_solver_params['newton_solver']['linear_solver']        = 'gmres'
+#nonlin_solver_params['newton_solver']['preconditioner']       = 'hypre_amg'
 
 config = { 'mode'                         : 'transient',
            't_start'                      : 0.0,

@@ -58,7 +58,7 @@ File(out_dir + 'ff.pvd') << model.ff
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
-nonlin_solver_params['newton_solver']['maximum_iterations']      = 12
+nonlin_solver_params['newton_solver']['maximum_iterations']      = 16
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
 #nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
 #nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'

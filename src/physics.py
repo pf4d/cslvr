@@ -1094,9 +1094,6 @@ class Enthalpy(object):
       print text
     solve(self.a == self.L, model.H, self.bc_H, 
           solver_parameters = {"linear_solver": "lu"})
-  
-    if MPI.rank(mpi_comm_world())==0:
-      model.print_min_max(model.H, 'H')
 
     # Convert enthalpy values to temperatures and water contents
     T0_n  = project(T0,  Q)
@@ -1115,17 +1112,15 @@ class Enthalpy(object):
     T.vector().set_local(Ta)
     T.vector().apply('insert')
 
-    ## update water content :
-    #WW = W_n.vector().array()
-    #WW[WW < 0]    = 0
-    #WW[WW > 0.01] = 0.01
-    #W.vector().set_local(WW)
-    #W.vector().apply('insert')
+    # update water content :
+    WW = W_n.vector().array()
+    WW[WW < 0]    = 0
+    WW[WW > 0.01] = 0.01
+    W.vector().set_local(WW)
+    W.vector().apply('insert')
 
-    # update variables :
-    model.T  = T
+    # update melt-rate :
     model.Mb = Mb_n
-    model.W  = W_n
 
 
 class FreeSurface(object):
@@ -1302,8 +1297,9 @@ class FreeSurface(object):
 
     if config['free_surface']['use_shock_capturing']:
       k = assemble(self.diffusion_matrix)
-      print 'r <min, max> : <%f, %f>' % (r.array().min(), r.array().max())
       r -= k
+      if MPI.rank(mpi_comm_world())==0:
+        model.print_min_max(r, 'D')
 
     if config['free_surface']['lump_mass_matrix']:
       model.dSdt.vector().set_local(m_l_inv * r.get_local())

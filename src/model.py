@@ -133,9 +133,6 @@ class Model(object):
     for x in self.mesh.coordinates():
       x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
                                       - self.B_ex(x[0],x[1],x[2]) )
-    
-      #print("x[2] - height above bed",x[2])
-      #print("Bed height",self.B_ex(x[0], x[1], x[2]))
       x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
 
 
@@ -782,8 +779,18 @@ class Model(object):
     return output
 
   def print_min_max(self, u, title):
-    uMin = u.vector().array().min()
-    uMax = u.vector().array().max()
+    """
+    Print the minimum and maximum values of <u>, a Vector, Function, or array.
+    """
+    if type(u) == Vector:
+      uMin = u.array().min()
+      uMax = u.array().max()
+    elif type(u) == Function: 
+      uMin = u.vector().array().min()
+      uMax = u.vector().array().max()
+    elif type(u) == array:
+      uMin = u.min()
+      uMax = u.max()
     s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
     text = colored(s, 'yellow')
     print text

@@ -116,7 +116,10 @@ class SteadySolver(object):
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
         if MPI.rank(mpi_comm_world())==0:
-          model.print_min_max(model.T, 'T')
+          model.print_min_max(model.H,  'H')
+          model.print_min_max(model.T,  'T')
+          model.print_min_max(model.Mb, 'Mb')
+          model.print_min_max(model.W,  'W')
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -243,6 +246,8 @@ class TransientSolver(object):
       if self.config['log']:
         U = project(as_vector([model.u, model.v, model.w]))
         self.file_U << U
+      if MPI.rank(mpi_comm_world())==0:
+        model.print_min_max(U, 'U')
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
@@ -251,6 +256,8 @@ class TransientSolver(object):
       self.surface_instance.solve()
       if self.config['log']:
         self.file_S << model.S
+      if MPI.rank(mpi_comm_world())==0:
+        model.print_min_max(model.S, 'S')
  
     return model.dSdt.compute_vertex_values()
 
@@ -326,6 +333,11 @@ class TransientSolver(object):
                                    vhat=model.v, what=model.w, mhat=model.mhat)
         if self.config['log']:
           self.file_T << model.T
+        if MPI.rank(mpi_comm_world())==0:
+          model.print_min_max(model.H,  'H')
+          model.print_min_max(model.T,  'T')
+          model.print_min_max(model.Mb, 'Mb')
+          model.print_min_max(model.W,  'W')
 
       # Calculate age update
       if self.config['age']['on']:
@@ -333,6 +345,8 @@ class TransientSolver(object):
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
           self.file_a << model.age
+        if MPI.rank(mpi_comm_world())==0:
+          model.print_min_max(model.age, 'age')
 
       # store information : 
       if self.config['log']:

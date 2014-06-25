@@ -1,21 +1,16 @@
-import sys
-import os
-src_directory = '../../../'
-sys.path.append(src_directory)
-
-from src.utilities     import DataInput, MeshGenerator
-from data.data_factory import DataFactory
+from varglas.utilities         import DataInput, MeshGenerator
+from varglas.data.data_factory import DataFactory
 
 # create meshgrid for contour :
 vara = DataFactory.get_bamber()
 H = vara['H']['map_data']
-S = vara['h']['map_data']
-B = vara['b']['map_data']
+S = vara['S']['map_data']
+B = vara['B']['map_data']
 H[S<=0] = 0.0
 vara['H']['map_data'] = H
 
 # process the data :
-dd = DataInput(None, vara, flip=False, gen_space=False)
+dd = DataInput(None, vara, gen_space=False)
 #dd.set_data_max('mask', 2, 0)
 
 m = MeshGenerator(dd, 'mesh', './')

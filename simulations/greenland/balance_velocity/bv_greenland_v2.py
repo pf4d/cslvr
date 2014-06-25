@@ -1,37 +1,34 @@
-import sys
-src_directory = '../../../'
-sys.path.append(src_directory)
-
-from src.utilities          import DataInput,DataOutput
-from data.data_factory      import DataFactory
-from src.physics            import VelocityBalance_2
-from dolfin                 import Mesh, set_log_active
-from plot.plothelp.plotting import plotIce
+from varglas.utilities              import DataInput,DataOutput
+from varglas.data.data_factory      import DataFactory
+from varglas.mesh.mesh_factory      import MeshFactory
+from varglas.physics                import VelocityBalance_2
+from fenics                         import Mesh, set_log_active
 import os
 
 set_log_active(True)
 
+thklim = 10.0
+
 # collect the raw data :
-searise = DataFactory.get_searise()
-measure = DataFactory.get_gre_measures()
-#bamber  = DataFactory.get_bamber()
+searise = DataFactory.get_searise(thklim = thklim)
+rignot  = DataFactory.get_gre_rignot()
+bamber  = DataFactory.get_bamber(thklim = thklim)
 
 direc = os.path.dirname(os.path.realpath(__file__))
 
 # load a mesh :
-mesh    = Mesh("../meshes/mesh.xml")
+mesh  = MeshFactory.get_greenland_coarse()
 
 # create data objects to use with varglas :
-dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
-#dbm     = DataInput(None, bamber,  mesh=mesh)
-dms     = DataInput(None, measure, mesh=mesh, create_proj=True, flip=True)
+dsr   = DataInput(None, searise, mesh=mesh)
+drg   = DataInput(None, rignot,  mesh=mesh)
+dbm   = DataInput(None, bamber,   mesh=mesh)
 
-dms.change_projection(dsr)
+# change the projection of the measures data to fit with other data :
+drg.change_projection(dsr)
 
-dsr.set_data_min('H', 10.0, 10.0)
-
-H     = dsr.get_projection("H")
-S     = dsr.get_projection("h")
+H     = dbm.get_projection("H")
+S     = dbm.get_projection("S")
 adot  = dsr.get_projection("adot")
 
 prb   = VelocityBalance_2(mesh, H, S, adot, 12.0)
@@ -49,11 +46,6 @@ d_out = {'Ubmag' : prb.Ubmag,
 
 do.write_dict_of_files(d_out)
 do.write_dict_of_files(d_out, extension='.xml')
-
-#Plotting not quite working with Greenland.
-#plotIce(prb.Ubmag, direc, 'jet', scale='log', name='BVmag', units='m/a', 
-#        numLvls=100, plot_type='tripcolor')
-
 
 
 

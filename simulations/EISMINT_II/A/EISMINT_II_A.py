@@ -14,9 +14,8 @@ S_0   = 10.0
 S_b   = 1e-5
 R_el  = 450000.0
 M_max = 0.5
-
 T_min = 238.15
-S_T = 1.67e-5
+S_T   = 1.67e-5
 
 mesh  = MeshFactory.get_circle()
 
@@ -26,13 +25,12 @@ model.set_mesh(mesh)
 class MassBalance(Expression):
   def eval(self,values,x):
     values[0] = min(M_max, S_b*(R_el - sqrt(x[0]**2 + x[1]**2)))
-SMB = MassBalance(element=model.Q.ufl_element())
-
-T_s = Expression('T_min + S_T*sqrt(pow(x[0],2) + pow(x[1],2))',
-                  T_min=T_min, S_T=S_T, element=model.Q.ufl_element())
 
 Surface = Expression('S_0', S_0=S_0, element=model.Q.ufl_element())
 Bed     = Expression('0.0', element=model.Q.ufl_element())
+T_s     = Expression('T_min + S_T*sqrt(pow(x[0],2) + pow(x[1],2))',
+                      T_min=T_min, S_T=S_T, element=model.Q.ufl_element())
+SMB     = MassBalance(element=model.Q.ufl_element())
 
 model.set_geometry(Surface, Bed, deform=True)
 
@@ -51,7 +49,7 @@ parameters['form_compiler']['quadrature_degree']              = 2
 
 config = { 'mode'                         : 'steady',
            't_start'                      : 0.0,
-           't_end'                        : 100.0,
+           't_end'                        : 50000.0,
            'time_step'                    : 10.0,
            'output_path'                  : './results/',
            'wall_markers'                 : [],
@@ -85,7 +83,6 @@ config = { 'mode'                         : 'steady',
              'T_surface'                  : T_s,
              'q_geo'                      : 0.042*60**2*24*365,
              'lateral_boundaries'         : None
-             
            },
            'free_surface' :
            { 
@@ -121,10 +118,10 @@ config = { 'mode'                         : 'steady',
              'animate'                    : False
            }}
 
-F = SteadySolver(model,config)
+F = SteadySolver(model, config)
 F.solve()
 
-T = TransientSolver(model,config)
+T = TransientSolver(model, config)
 T.solve()
 
 

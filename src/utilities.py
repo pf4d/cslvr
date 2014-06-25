@@ -17,7 +17,7 @@ from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
 #from gmshpy            import GModel, GmshSetOption, FlGui
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
-                              RectangleMesh
+                              RectangleMesh, MPI, mpi_comm_world
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
 from termcolor         import colored, cprint
@@ -65,7 +65,7 @@ class DataInput(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: creating %s DataInput object :::" % self.name
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
     
     # process the data files :
     for fn in files:
@@ -167,7 +167,7 @@ class DataInput(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: integrating %s field from %s :::" % (fn_spec, specific.name)
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
     # get the dofmap to map from mesh vertex indices to function indicies :
     df    = self.func_space.dofmap()
     dfmap = df.vertex_to_dof_map(self.mesh)
@@ -225,8 +225,6 @@ class DataInput(object):
     happens when the data from multiple GIS databases don't quite align on 
     whatever the desired grid is.
     """
-    #print "::: DataInput identifying NaNs for %s :::" % fn
-
     good_x = ~all(isnan(data), axis=0) & self.good_x  # good cols
     good_y = ~all(isnan(data), axis=1) & self.good_y  # good rows
     
@@ -251,7 +249,7 @@ class DataInput(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: removing NaNs from %s :::" % self.name
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
     
     self.x     = self.x[self.good_x]
     self.y     = self.y[self.good_y]
@@ -313,7 +311,7 @@ class DataInput(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: getting %s projection :::" % fn
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
 
     if dg:
       interp = self.get_nearest_expression(fn, bool_data=bool_data)
@@ -337,7 +335,7 @@ class DataInput(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: getting %s nearest expression from %s :::" % (fn, self.name)
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
     
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
@@ -371,7 +369,7 @@ class DataInput(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: getting %s spline expression from %s :::" % (fn, self.name)
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
 
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
@@ -556,7 +554,7 @@ class MeshGenerator(object):
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: eliminating intersections, please wait :::"
       text = colored(s, 'green')
-      print text % (counter, max_iter, inner_error, inner_tol)
+      print text
 
     class Point:
       def __init__(self,x,y):

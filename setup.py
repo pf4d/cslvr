@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-setup( name        ='varglas',
+setup( name        ='VarGlaS',
        version     ='1.0',
        description ='Variational Glacier Simulator (VarGlaS)',
        author      ='Douglas Brinkerhoff',
@@ -10,11 +10,13 @@ setup( name        ='varglas',
                      'varglas.mesh', 
                      'varglas.data',
                      'varglas.data.greenland',
-                     'varglas.data.antarctica'],
+                     'varglas.data.antarctica',
+                     'tifffile'],
        package_dir ={'varglas'                 : 'src',
                      'varglas.plot'            : 'src/plot', 
                      'varglas.mesh'            : 'src/mesh', 
                      'varglas.data'            : 'src/data',
                      'varglas.data.greenland'  : 'src/data/greenland',
-                     'varglas.data.antarctica' : 'src/data/antarctica'}
+                     'varglas.data.antarctica' : 'src/data/antarctica',
+                     'tifffile'                : 'src/ext_scripts'}
      )

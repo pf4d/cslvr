@@ -1,11 +1,6 @@
-import sys
-import os
-src_directory = '../../../../'
-sys.path.append(src_directory)
-
-from src.utilities       import DataInput, MeshGenerator, MeshRefiner
-from data.data_factory   import DataFactory
-from pylab               import *
+from varglas.utilities         import DataInput, MeshGenerator, MeshRefiner
+from varglas.data.data_factory import DataFactory
+from pylab                     import *
 
 
 #===============================================================================

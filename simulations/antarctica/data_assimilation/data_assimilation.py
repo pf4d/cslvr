@@ -26,7 +26,8 @@ measures  = DataFactory.get_ant_measures(res=900)
 bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
-mesh = MeshFactory.get_antarctica_coarse()
+#mesh = MeshFactory.get_antarctica_coarse()
+mesh = Mesh('meshes/antarctica_3D_50H_mesh.xml')
 
 dm  = DataInput(None, measures, mesh=mesh)
 db1 = DataInput(None, bedmap1,  mesh=mesh)
@@ -47,9 +48,11 @@ U_observed         = dm.get_spline_expression("U_ob")
 
 model = model.Model()
 model.set_mesh(mesh)
-model.set_geometry(Surface, Bed, deform=True)
+model.set_geometry(Surface, Bed, mask=Mask, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
+
+File(out_dir + 'ff.pvd') << model.ff
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()

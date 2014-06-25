@@ -354,9 +354,9 @@ class DataInput(object):
           xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
-        idx       = abs(self.xs - xn).argmin()
-        idy       = abs(self.ys - yn).argmin()
-        values[0] = self.data[idy, idx]
+        idx       = abs(xs - xn).argmin()
+        idy       = abs(ys - yn).argmin()
+        values[0] = data[idy, idx]
 
     return newExpression(element = self.func_space.ufl_element())
 
@@ -552,7 +552,7 @@ class MeshGenerator(object):
     how far forward to look to eliminate intersections.
     """
     if MPI.rank(mpi_comm_world())==0:
-      s    = "::: eliminating intersections, please wait :::"
+      s    = "::: eliminating intersections :::"
       text = colored(s, 'green')
       print text
 
@@ -611,7 +611,10 @@ class MeshGenerator(object):
     #       file after a certain point.  calling restart() then write again 
     #       results in correct .geo file written.  However, running the script 
     #       outside of ipython works.
-    print "::: writing gmsh contour :::"
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: writing gmsh contour :::"
+      text = colored(s, 'green')
+      print text
     c   = self.longest_cont
     f   = self.f
     x   = self.x
@@ -657,6 +660,10 @@ class MeshGenerator(object):
     """
     Extrude the mesh <h> units with <n_layers> number of layers.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: extruding gmsh contour :::"
+      text = colored(s, 'green')
+      print text
     f = self.f
     s = str(self.surf_num)
     h = str(h)
@@ -744,6 +751,10 @@ class MeshGenerator(object):
     """
     close the .geo file down for further editing.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: closing geo file :::"
+      text = colored(s, 'green')
+      print text
     self.f.close()
 
 
@@ -882,6 +893,10 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: initializing MeshRefiner on '%s.geo' :::" % gmsh_file_name
+      text = colored(s, 'green')
+      print text
 
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
@@ -946,10 +961,18 @@ class MeshRefiner(object):
     """
     #launch the GUI
     if gui:
+      if MPI.rank(mpi_comm_world())==0:
+        s    = "::: opening GUI :::"
+        text = colored(s, 'green')
+        print text
       FlGui.instance().run()
 
     # instead of starting the GUI, we could generate the mesh and save it
     else:
+      if MPI.rank(mpi_comm_world())==0:
+        s    = "::: writing %s.msh :::" % out_file_name
+        text = colored(s, 'green')
+        print text
       self.m.mesh(dim)
       self.m.save(out_file_name + ".msh")
    

@@ -145,8 +145,6 @@ class Model(object):
       text = colored(s, 'magenta')
       print text
     
-    mask = self.mask
-
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh,      0)
     self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
@@ -158,13 +156,14 @@ class Model(object):
     #   4 = low slope, upward or downward facing ..... sides
     #   5 = floating ................................. base
     #   6 = floating ................................. sides
-    if mask != None:
+    if self.mask != None:
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
         tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
-        mask_xy = mask(x_m, y_m)
+        z_m     = f.midpoint().z()
+        mask_xy = self.mask(x_m, y_m, z_m)
       
         if   n.z() >=  tol and f.exterior():
           self.ff[f] = 2
@@ -184,7 +183,10 @@ class Model(object):
       for f in facets(self.flat_mesh):
         n       = f.normal()    # unit normal vector to facet f
         tol     = 1e-3
-        mask_xy = mask(x_m, y_m)
+        x_m     = f.midpoint().x()
+        y_m     = f.midpoint().y()
+        z_m     = f.midpoint().z()
+        mask_xy = self.mask(x_m, y_m, z_m)
       
         if   n.z() >=  tol and f.exterior():
           self.ff_flat[f] = 2

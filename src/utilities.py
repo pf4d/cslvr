@@ -10,11 +10,11 @@ Utilities file:
 import subprocess
 
 from scipy.io          import loadmat, savemat
-from scipy.interpolate import RectBivariateSpline, NearestNDInterpolator
+from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
                               argmin
-#from gmshpy            import GModel, GmshSetOption, FlGui
+from gmshpy            import GModel, GmshSetOption, FlGui
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
                               RectangleMesh, MPI, mpi_comm_world
@@ -154,6 +154,13 @@ class DataInput(object):
     """
     self.chg_proj = True
     self.new_p    = di.p
+
+      
+  def get_xy(self,lon,lat):
+    """
+    Returns the (x,y) flat map coordinates corresponding to a given (lon,lat) 
+    coordinate pair using the DataInput object's current projection."""
+    return self.p(lon,lat)
 
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
     """
@@ -536,7 +543,15 @@ class MeshGenerator(object):
     # remove skip points and last point to avoid overlap :
     longest_cont      = cl[amax_ind]
     self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
-  
+    
+  def set_contour(self,cont_array):
+    """ This is an alternative to the create_contour method that allows you to 
+    manually specify contour points.
+    Inputs:
+    cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...])) 
+    """
+    self.longest_cont = cont_array
+    
   def plot_contour(self):
     """
     Plot the contour created with the "create_contour" method.
@@ -893,10 +908,15 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
+<<<<<<< HEAD
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: initializing MeshRefiner on '%s.geo' :::" % gmsh_file_name
       text = colored(s, 'green')
       print text
+=======
+    
+    from gmshpy import GModel, GmshSetOption
+>>>>>>> jake
 
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)

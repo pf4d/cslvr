@@ -155,6 +155,13 @@ class DataInput(object):
     self.chg_proj = True
     self.new_p    = di.p
 
+      
+  def get_xy(self,lon,lat):
+    """
+    Returns the (x,y) flat map coordinates corresponding to a given (lon,lat) 
+    coordinate pair using the DataInput object's current projection."""
+    return self.p(lon,lat)
+
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
     """
     Assimilate a field with filename <fn_spec>  from DataInput object 
@@ -536,7 +543,15 @@ class MeshGenerator(object):
     # remove skip points and last point to avoid overlap :
     longest_cont      = cl[amax_ind]
     self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
-  
+    
+  def set_contour(self,cont_array):
+    """ This is an alternative to the create_contour method that allows you to 
+    manually specify contour points.
+    Inputs:
+    cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...])) 
+    """
+    self.longest_cont = cont_array
+    
   def plot_contour(self):
     """
     Plot the contour created with the "create_contour" method.

@@ -10,11 +10,11 @@ Utilities file:
 import subprocess
 
 from scipy.io          import loadmat, savemat
-from scipy.interpolate import RectBivariateSpline, NearestNDInterpolator
+from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
                               argmin
-#from gmshpy            import GModel, GmshSetOption, FlGui
+from gmshpy            import GModel, GmshSetOption, FlGui
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
                               RectangleMesh, MPI, mpi_comm_world
@@ -897,6 +897,8 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
+    
+    from gmshpy import GModel, GmshSetOption
 
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)

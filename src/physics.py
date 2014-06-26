@@ -614,10 +614,10 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = rho_w * g * (u + v) * pres_b
+    Pb       = - rho_w * g * (u + v) * pres_b * fnorm
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGrnd + Pb*dFloat
+    A        = (Vd + Pe)*dx + Sl*dGrnd# + Pb*dFloat
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

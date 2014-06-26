@@ -26,8 +26,7 @@ measures  = DataFactory.get_ant_measures(res=900)
 bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
-#mesh = MeshFactory.get_antarctica_coarse()
-mesh = Mesh('meshes/antarctica_3D_50H_mesh.xml')
+mesh = MeshFactory.get_antarctica_coarse()
 
 dm  = DataInput(None, measures, mesh=mesh)
 db1 = DataInput(None, bedmap1,  mesh=mesh)
@@ -36,6 +35,8 @@ db2 = DataInput(None, bedmap2,  mesh=mesh)
 db2.set_data_val('H',   32767, thklim)
 db2.set_data_val('S',   32767, 0.0)
 dm.set_data_min('U_ob', 0.0,   0.0)
+
+db2.data['B'] = db2.data['S'] - db2.data['H']
 
 Thickness          = db2.get_spline_expression("H")
 Surface            = db2.get_spline_expression("S")

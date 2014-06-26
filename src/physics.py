@@ -573,7 +573,7 @@ class VelocityBP(object):
 
     ds       = model.ds  
     dSurf    = ds(2)      # surface
-    dGrnd    = ds(3)      # bed
+    dGrnd    = ds(3) + ds(6)      # bed
     dFloat   = ds(6)      # shelves
 
     # Set the value of b, the temperature dependent ice hardness parameter,
@@ -617,7 +617,7 @@ class VelocityBP(object):
     Pb       = rho_w * g * (u + v) * pres_b
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGrnd + Pb*dFloat
+    A        = (Vd + Pe)*dx + Sl*dGrnd# + Pb*dFloat
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

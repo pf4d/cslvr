@@ -56,7 +56,7 @@ ref_bm = MeshRefiner(dbm, 'H', gmsh_file_name='mesh')   # thickness
 
 #===============================================================================
 # refine on thickness :
-a,aid = ref_bm.add_static_attractor(50)
+a,aid = ref_bm.add_static_attractor(100)
 #H     = dbm.data['H']
 #a,aid = ref_bm.add_linear_attractor(0, H.min(), H.max(), inv=False, 
 #                                    hard_cut=False)
@@ -65,7 +65,7 @@ ref_bm.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
-ref_bm.finish(gui=True)
+ref_bm.finish(gui=False)
 
 
 

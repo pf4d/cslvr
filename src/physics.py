@@ -572,9 +572,9 @@ class VelocityBP(object):
     dw       = TrialFunction(Q)
 
     ds       = model.ds  
-    dSurf    = ds(2)      # surface
-    dGrnd    = ds(3)      # bed
-    dFloat   = ds(6)      # shelves
+    dSurf    = ds(2)          # surface
+    dGrnd    = ds(3) + ds(5)  # bed 
+    dFloat   = ds(6)          # shelf sides
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.

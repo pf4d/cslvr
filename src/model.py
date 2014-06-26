@@ -163,7 +163,7 @@ class Model(object):
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
-        mask_xy = self.mask(x_m, y_m, z_m)
+        mask_xy = self.mask(x_m, y_m)
       
         if   n.z() >=  tol and f.exterior():
           self.ff[f] = 2
@@ -186,7 +186,7 @@ class Model(object):
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
-        mask_xy = self.mask(x_m, y_m, z_m)
+        mask_xy = self.mask(x_m, y_m)
       
         if   n.z() >=  tol and f.exterior():
           self.ff_flat[f] = 2

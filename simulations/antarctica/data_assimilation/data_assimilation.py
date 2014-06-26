@@ -10,12 +10,8 @@ from fenics                       import *
 from time                         import time
 
 
-# get the input args :
-i = int(sys.argv[2])           # assimilation number
-dir_b = sys.argv[1] + '/0'     # directory to save
-
 # set the output directory :
-out_dir = dir_b + str(i) + '/'
+out_dir = 'results/'
 
 set_log_active(True)
 #set_log_level(PROGRESS)
@@ -142,9 +138,6 @@ config = { 'mode'                         : 'steady',
 model.eps_reg = 1e-15
 
 F = solvers.SteadySolver(model,config)
-if i != 0: 
-  File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
-  config['velocity']['approximation'] = 'stokes'
 t01 = time()
 F.solve()
 tf1 = time()
@@ -161,19 +154,10 @@ config['adjoint']['control_variable']  = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
 A.set_target_velocity(U = U_observed)
-if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
 t02 = time()
 A.solve()
 tf2 = time()
     
-File(out_dir + 'S.xml')       << model.S
-File(out_dir + 'B.xml')       << model.B
-File(out_dir + 'u.xml')       << project(model.u, model.Q)
-File(out_dir + 'v.xml')       << project(model.v, model.Q)
-File(out_dir + 'w.xml')       << project(model.w, model.Q)
-File(out_dir + 'beta2.xml')   << model.beta2
-File(out_dir + 'eta.xml')     << project(model.eta, model.Q)
-
 #XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
 #
 ## save the state of the model :

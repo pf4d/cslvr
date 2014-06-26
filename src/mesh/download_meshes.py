@@ -97,11 +97,17 @@ url  = 'https://dl.dropboxusercontent.com/s/2wkfzkha7jtjyxq/' + \
        '4idxuG7Jv5CYlhSVxnGNLcjZoj_IiObdkHDmPQ&expiry=1400783547'
 download_file(url, home, fldr, extract=True)
 
-# antarctica mesh :
+# coarse, no-shelf antarctica mesh :
 fldr = 'antarctica'
 url  = 'https://dl.dropboxusercontent.com/s/n99zjixyzo2c2i8/' + \
        'antarctica.tar.gz?dl=1&token_hash=AAGFYWbn7p4JOywM4G' + \
        'NzNbUhCPhM4oGfg0KV7HX0ACXN8w'
+download_file(url, home, fldr, extract=True)
+
+# 50H, shelf, antarctica mesh :
+fldr = 'antarctica'
+url  = 'https://www.dropbox.com/s/yjkpimym57d6inl/antarctica' + \
+       '_3D_50H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # circle mesh :

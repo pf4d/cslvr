@@ -54,10 +54,10 @@ class MeshFactory(object):
 
   
   @staticmethod
-  def get_antarctica_detailed():
+  def get_antarctica_3D_50H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
-    mesh     = Mesh(home + '/antarctica/antarctica_detailed_mesh.xml')
+    mesh     = Mesh(home + '/antarctica/antarctica_3D_50H_mesh.xml')
     return mesh
 
 

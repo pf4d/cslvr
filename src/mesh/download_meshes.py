@@ -90,11 +90,17 @@ url  = 'https://www.dropbox.com/meta_dl/eyJzdWJfcGF0aCI6ICIi' + \
 url  = 'https://www.dropbox.com/s/yiof92z34ccjbbe/greenland_3D_5H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
-# 1 ice-thickness 2D greenland mesh :
+# 2D 1H greenland mesh :
 fldr = 'greenland'
 url  = 'https://dl.dropboxusercontent.com/s/2wkfzkha7jtjyxq/' + \
        'greenland_2D_1H_mesh.tar.gz?dl=1&token_hash=AAFTj-T2' + \
        '4idxuG7Jv5CYlhSVxnGNLcjZoj_IiObdkHDmPQ&expiry=1400783547'
+download_file(url, home, fldr, extract=True)
+
+# 2D 5H greenland mesh :
+fldr = 'greenland'
+url  = 'https://www.dropbox.com/s/pyclc3p1caxx85n/greenland_' + \
+       '2D_5H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # coarse, no-shelf antarctica mesh :

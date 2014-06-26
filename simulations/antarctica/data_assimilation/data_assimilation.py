@@ -76,7 +76,7 @@ config = { 'mode'                         : 'steady',
            { 
              'on'                  : True,
              'inner_tol'           : 0.0,
-             'max_iter'            : 5
+             'max_iter'            : 2
            },
            'velocity' : 
            { 

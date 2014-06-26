@@ -505,9 +505,8 @@ class VelocityBP(object):
     # pressure boundary :
     class pressure_boundary(Expression):
       def eval(self, values, x):
-        values[0] = min(0, x[2])
+        values[0] = abs(min(0, x[2]))
     pres_b = pressure_boundary(element=Q.ufl_element())
-    fnorm  = FacetNormal(mesh)
     
     newton_params = config['velocity']['newton_params']
     A0            = config['velocity']['A0']
@@ -572,9 +571,11 @@ class VelocityBP(object):
     dw       = TrialFunction(Q)
 
     ds       = model.ds  
-    dSurf    = ds(2)          # surface
-    dGrnd    = ds(3) + ds(5)  # bed 
-    dFloat   = ds(6)          # shelf sides
+    dSrf     = ds(2)        # surface
+    dGnd     = ds(3)        # grounded bed 
+    dFlt     = ds(5)        # floating bed
+    dFltS    = ds(6)        # marine terminating sides
+    dBed     = dGnd + dFlt  # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -614,10 +615,10 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = - rho_w * g * (u + v) * pres_b * fnorm
+    Pb       = - rho_w * g * (u + v) * pres_b
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGrnd# + Pb*dFloat
+    A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -628,7 +629,7 @@ class VelocityBP(object):
     self.J   = derivative(self.F, U, dU)
  
     self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
-               (u*B.dx(0) + v*B.dx(1) - dw)*chi*dGrnd
+               (u*B.dx(0) + v*B.dx(1) - dw)*chi*dBed
     
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)
@@ -815,6 +816,7 @@ class Enthalpy(object):
     L           = model.L
     C           = model.C
     C_w         = model.C_w
+    T_w         = model.T_w
     gamma       = model.gamma
     S           = model.S
     B           = model.B
@@ -874,7 +876,7 @@ class Enthalpy(object):
     dH  = TrialFunction(Q)
 
     # Pressure melting point
-    T0  = 273.0 - gamma * (S - x[2])
+    T0  = T_w - gamma * (S - x[2])
 
     # Pressure melting enthalpy
     h_i = -L + C_w * T0
@@ -1055,6 +1057,7 @@ class Enthalpy(object):
       model.mhat.vector().apply('insert')
     
     lat_bc    = config['enthalpy']['lateral_boundaries']
+    T_w       = model.T_w
     T0        = model.T0
     Q         = model.Q
     H         = model.H
@@ -1076,10 +1079,12 @@ class Enthalpy(object):
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
+    H_float   = project( (T_w - T0) * C + h_i )
     model.H_surface = H_surface
     
     self.bc_H = []
     self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 2) )
+    self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
     
     if config['enthalpy']['lateral_boundaries'] is not None:
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
@@ -1338,6 +1343,7 @@ class AdjointVelocityBP(object):
     Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl
+    Pb        = model.Pb
     Pc        = model.Pc
     Lsq       = model.Lsq
     Nc        = model.Nc
@@ -1349,15 +1355,21 @@ class AdjointVelocityBP(object):
     ds        = model.ds
     S         = model.S
 
+    dSrf     = ds(2)        # surface
+    dGnd     = ds(3)        # grounded bed 
+    dFlt     = ds(5)        # floating bed
+    dFltS    = ds(6)        # marine terminating sides
+    dBed     = dGnd + dFlt  # bed
+
     control = config['adjoint']['control_variable']
     alpha = config['adjoint']['alpha']
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = (Vd + Pe)*dx + Sl*ds(3)
+      A       = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
     else:
       Q_adj   = model.Q4
-      A       = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
+      A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
 
     L         = TrialFunction(Q_adj)
     Phi       = TestFunction(Q_adj)
@@ -1374,10 +1386,10 @@ class AdjointVelocityBP(object):
     for a,c in zip(alpha,control):
       if config['adjoint']['regularization_type'] == 'TV':
         R += a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * ds(3)
+                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
+                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       
       else:
         print "Valid regularizations are 'TV' and 'Tikhonov'."
@@ -1387,18 +1399,18 @@ class AdjointVelocityBP(object):
     if config['adjoint']['objective_function'] == 'logarithmic':
       if U_o is not None:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (abs(U_o) + 1.0))**2 * ds(2) + R
+                       (abs(U_o) + 1.0))**2 * dSrf + R
     
       else:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) + R
+                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5*(U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) \
+      self.I = + 0.5*(U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dSrf \
                + R
 
     else:
-      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) + R
+      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
@@ -1465,11 +1477,12 @@ class SurfaceClimate(object):
     config = self.config
 
     T_ma  = config['surface_climate']['T_ma']
+    T_w   = model.T_w
     S     = model.S.vector().array()
     lat   = model.lat.vector().array()
     
     # Apply the lapse rate to the surface boundary condition
-    model.T_surface.vector().set_local(T_ma(S, lat) + 273.0)
+    model.T_surface.vector().set_local(T_ma(S, lat) + T_w)
     model.T_surface.vector().apply('')
 
 

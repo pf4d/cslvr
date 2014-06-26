@@ -152,9 +152,9 @@ class Model(object):
     # iterate through the facets and mark each if on a boundary :
     #
     #   2 = high slope, upward facing ................ surface
-    #   3 = high slope, downward facing .............. base
+    #   3 = grounded high slope, downward facing ..... grounded base
     #   4 = low slope, upward or downward facing ..... sides
-    #   5 = floating ................................. base
+    #   5 = floating ................................. floating base
     #   6 = floating ................................. sides
     if self.mask != None:
       for f in facets(self.mesh):

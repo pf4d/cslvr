@@ -68,6 +68,7 @@ class IceParameters(object):
      'gamma'  : (8.71e-4, 'pressure melting point depth dependence','K m^{-1}'),
      'nu'     : (3.5e3,   'moisture diffusivity','kg m^{-1} a^{-1}'),
      'C_w'    : (4217.6,  'Heat capacity of water at 273K','J Kg^{-1} K^{-1}'),
+     'T_w'    : (273.15,  'Triple point of water','K'),
      'E'      : (1.,      'Enhancement Factor','')}
 
     return d_params

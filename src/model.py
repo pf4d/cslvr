@@ -162,7 +162,6 @@ class Model(object):
         tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
-        z_m     = f.midpoint().z()
         mask_xy = self.mask(x_m, y_m)
       
         if   n.z() >=  tol and f.exterior():
@@ -185,7 +184,6 @@ class Model(object):
         tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
-        z_m     = f.midpoint().z()
         mask_xy = self.mask(x_m, y_m)
       
         if   n.z() >=  tol and f.exterior():

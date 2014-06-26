@@ -537,14 +537,6 @@ class AdjointSolver(object):
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
-      
-      # save the output for this iteration of l_bfgs_b :
-      U    = project(as_vector([model.u, model.v, model.w]))
-      dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                     + model.w + model.adot)
-      file_b_pvd    << model.extrude(model.beta2, 3, 2)
-      file_u_pvd    << U
-      file_dSdt_pvd << dSdt
       return Js
 
     #===========================================================================
@@ -591,6 +583,14 @@ class AdjointSolver(object):
     for ii,c in enumerate(config['adjoint']['control_variable']):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
+    # save the output for this iteration of l_bfgs_b :
+    U    = project(as_vector([model.u, model.v, model.w]))
+    dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+                   + model.w + model.adot)
+    file_b_pvd    << model.extrude(model.beta2, 3, 2)
+    file_u_pvd    << U
+    file_dSdt_pvd << dSdt
+
 
 class BalanceVelocitySolver(object):
   def __init__(self, model, config):

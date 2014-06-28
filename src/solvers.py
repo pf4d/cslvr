@@ -237,10 +237,6 @@ class TransientSolver(object):
     model.S.vector().apply('insert')
    
     if config['velocity']['on']:
-      #utemp = model.U.vector().get_local()
-      #utemp[:] = 0.0
-      #model.U.vector().set_local(utemp)
-      #model.U.vector().apply('insert')
       model.U.vector()[:] = 0.0
       self.velocity_instance.solve()
       if self.config['log']:

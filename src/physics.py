@@ -503,10 +503,16 @@ class VelocityBP(object):
     beta2         = model.beta2
 
     # pressure boundary :
-    class pressure_boundary(Expression):
+    class Depth(Expression):
       def eval(self, values, x):
         values[0] = abs(min(0, x[2]))
-    pres_b = pressure_boundary(element=Q.ufl_element())
+        #if x[2] < 0:
+        #  values[0] = 1 
+        #else:
+        #  values[0] = 0
+        #values[0] = abs( min(0, model.B_ex(x[0],x[1],x[2])) )
+    D = Depth(element=Q.ufl_element())
+    N = FacetNormal(mesh)
     
     newton_params = config['velocity']['newton_params']
     A0            = config['velocity']['A0']
@@ -615,7 +621,7 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = - rho_w * g * (u + v) * pres_b
+    Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u*N[0] + v*N[1]) 
 
     # Variational principle
     A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
@@ -1366,8 +1372,8 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
-    else:
+      A       = (Vd + Pe)*dx + Sl*dBed + Pb*dFltS
+    elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
 
@@ -1386,21 +1392,19 @@ class AdjointVelocityBP(object):
     for a,c in zip(alpha,control):
       if config['adjoint']['regularization_type'] == 'TV':
         R += a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
-      
+                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
       else:
         print "Valid regularizations are 'TV' and 'Tikhonov'."
     
-    #Objective function.  This is a least squares on the surface plus a 
+    # Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
     if config['adjoint']['objective_function'] == 'logarithmic':
       if U_o is not None:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
                        (abs(U_o) + 1.0))**2 * dSrf + R
-    
       else:
         self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
                        (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R

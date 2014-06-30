@@ -616,7 +616,7 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = (rho*g*(S - B) + rho_w*g*B) * (u + v) 
+    Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
 
     # Variational principle
     A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
@@ -1337,7 +1337,6 @@ class AdjointVelocityBP(object):
 
     # the weight of the Tikhonov regularization
     alpha     = config['adjoint']['alpha'] 
-    beta      = config['adjoint']['beta']
 
     # Adjoint variable in trial function form
     Q         = model.Q
@@ -1365,6 +1364,11 @@ class AdjointVelocityBP(object):
     control = config['adjoint']['control_variable']
     alpha = config['adjoint']['alpha']
 
+    if type(control) != list:
+      control = [control]
+    if type(alpha) != list:
+      alpha = [alpha]
+
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
       A       = (Vd + Pe)*dx + Sl*dBed + Pb*dFltS
@@ -1389,10 +1393,10 @@ class AdjointVelocityBP(object):
         a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
         R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
         print "Valid regularizations are 'TV' and 'Tikhonov'."
         R = Constant(0.0) * dBed

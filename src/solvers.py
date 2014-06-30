@@ -509,8 +509,8 @@ class AdjointSolver(object):
       """
       Solve forward model with given control, calculate objective function
       """
-      n = len(c_array)/len(config['adjoint']['control_variable'])
-      for ii,c in enumerate(config['adjoint']['control_variable']):
+      n = len(c_array)/len(control)
+      for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
       I = assemble(self.adjoint_instance.I)
@@ -521,8 +521,8 @@ class AdjointSolver(object):
       Solve adjoint model, calculate gradient
       """
       # dolfin.adjoint method:
-      n = len(c_array)/len(config['adjoint']['control_variable'])
-      for ii,c in enumerate(config['adjoint']['control_variable']):
+      n = len(c_array)/len(control)
+      for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.adjoint_instance.solve()
 
@@ -543,8 +543,15 @@ class AdjointSolver(object):
     # in the dolfin-adjoint optimize.py file:
     maxfun      = config['adjoint']['max_fun']
     bounds_list = config['adjoint']['bounds']
+    control     = config['adjoint']['control_variable']
+
+    if type(bounds_list) != list:
+      bounds_list = [bounds_list]
+    if type(control) != list:
+      control = [control] 
+
     beta_0      = []
-    for mm in config['adjoint']['control_variable']:
+    for mm in control:
       beta_0.extend(get_global(mm))
     beta_0 = array(beta_0)
 
@@ -553,8 +560,9 @@ class AdjointSolver(object):
       iprint = -1
     else:
       iprint = 1
-    b = []
+    
     # convert bounds to an array of tuples and serialize it in parallel environ.
+    b = []
     for bounds in bounds_list:
       bounds_arr = []
       for i in range(2):
@@ -563,7 +571,9 @@ class AdjointSolver(object):
         else:
           bounds_arr.append(get_global(bounds[i]))
       b.append(array(bounds_arr).T)
-    bounds = vstack(b)  
+    bounds = vstack(b)
+    
+    # print the bounds :
     if self.model.MPI_rank==0:
       text = colored(bounds, 'red', attrs=['bold'])
       print text
@@ -572,8 +582,8 @@ class AdjointSolver(object):
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
                                maxfun=maxfun, iprint=iprint)
 
-    n = len(mopt)/len(config['adjoint']['control_variable'])
-    for ii,c in enumerate(config['adjoint']['control_variable']):
+    n = len(mopt)/len(control)
+    for ii,c in enumerate(control):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
     # save the output :

@@ -31,8 +31,11 @@ class DataFactory(object):
  
     if res == 900:
       direc    = home + '/antarctica/measures/antarctica_ice_velocity.nc' 
-    else:
+    elif res == 450:
       direc    = home + '/antarctica/measures/antarctica_ice_velocity_450m.nc' 
+    else:
+      print "get_ant_measures() 'res' arg must be either 900 or 450"
+      exit(0)
 
     data     = netcdf_file(direc, mode = 'r')
     vara     = dict()
@@ -45,7 +48,7 @@ class DataFactory(object):
      
     # extents of domain :
     m,n   =  shape(vx)
-    dx    =  450
+    dx    =  res
     west  = -2800000.0
     east  =  west + n*dx
     north =  2800000.0

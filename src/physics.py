@@ -337,7 +337,7 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving full-stokes velocity :::"
       text = colored(s, 'cyan')
       print text
@@ -506,11 +506,6 @@ class VelocityBP(object):
     class Depth(Expression):
       def eval(self, values, x):
         values[0] = abs(min(0, x[2]))
-        #if x[2] < 0:
-        #  values[0] = 1 
-        #else:
-        #  values[0] = 0
-        #values[0] = abs( min(0, model.B_ex(x[0],x[1],x[2])) )
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
     
@@ -621,7 +616,7 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u*N[0] + v*N[1]) 
+    Pb       = Constant(0.0) * (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
 
     # Variational principle
     A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
@@ -662,7 +657,7 @@ class VelocityBP(object):
     config = self.config
     
     # solve nonlinear system :
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving BP velocity :::"
       text = colored(s, 'cyan')
       print text
@@ -1096,7 +1091,7 @@ class Enthalpy(object):
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
       
     # solve the linear equation for enthalpy :
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving enthalpy :::"
       text = colored(s, 'cyan')
       print text
@@ -1290,7 +1285,7 @@ class FreeSurface(object):
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
 
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving free-surface :::"
       text = colored(s, 'cyan')
       print text
@@ -1306,7 +1301,7 @@ class FreeSurface(object):
     if config['free_surface']['use_shock_capturing']:
       k = assemble(self.diffusion_matrix)
       r -= k
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         model.print_min_max(r, 'D')
 
     if config['free_surface']['lump_mass_matrix']:
@@ -1413,7 +1408,7 @@ class AdjointVelocityBP(object):
       self.I = + 0.5*(U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dSrf \
                + R
 
-    else:
+    elif config['adjoint']['objective_function'] == 'linear':
       self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
     
     # Objective function constrained to obey the forward model
@@ -1446,7 +1441,7 @@ class AdjointVelocityBP(object):
     A = assemble(lhs(self.dI))
     l = assemble(rhs(self.dI))
 
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving adjoint BP velocity :::"
       text = colored(s, 'cyan')
       print text
@@ -1473,7 +1468,7 @@ class SurfaceClimate(object):
     Calculates PDD, surface temperature given current model geometry
 
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving surface climate :::"
       text = colored(s, 'cyan')
       print text
@@ -1590,7 +1585,7 @@ class Age(object):
     self.bc_age = DirichletBC(model.Q, 0, model.ff, above_ela)
 
     # Solve!
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving age :::"
       text = colored(s, 'cyan')
       print text
@@ -1962,7 +1957,7 @@ class StokesBalance(object):
     """
     model = self.model
 
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       print "::: solving 'stokes-balance' for ubar, vbar :::"
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
@@ -1972,7 +1967,7 @@ class StokesBalance(object):
   def component_stress_stokes(self):  
     """
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "solving 'stokes-balance' for stress terms :::" 
       text = colored(s, 'cyan')
       print text

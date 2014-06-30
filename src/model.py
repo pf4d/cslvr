@@ -13,6 +13,7 @@ class Model(object):
   def __init__(self, out_dir='./'):
     self.per_func_space = False  # function space is undefined
     self.out_dir        = out_dir
+    self.MPI_rank       = MPI.rank(mpi_comm_world())
 
   def set_geometry(self, sur, bed, deform=True, mask=None):
     """
@@ -46,7 +47,7 @@ class Model(object):
     :param bool generate_pbcs : Optional argument to determine whether
                                 to create periodic boundary conditions
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: generating mesh :::"
       text = colored(s, 'magenta')
       print text
@@ -118,7 +119,7 @@ class Model(object):
     """
     Deforms the mesh to the geometry.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: deforming mesh to geometry :::"
       text = colored(s, 'magenta')
       print text
@@ -140,7 +141,7 @@ class Model(object):
     """
     Determines the boundaries of the current model mesh
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating boundaries :::"
       text = colored(s, 'magenta')
       print text
@@ -432,7 +433,7 @@ class Model(object):
     Calculate the deviatoric component of stress in the direction of 
     the UFL vector <u_dir>.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating component stress :::"
       text = colored(s, 'magenta')
       print text
@@ -465,7 +466,7 @@ class Model(object):
     """
     Calculate the deviatoric component of stress in the direction of U.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating component stress :::"
       text = colored(s, 'magenta')
       print text
@@ -491,7 +492,7 @@ class Model(object):
   def calc_tau_bas(self, Q='self'):
     """
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating tau_bas :::"
       text = colored(s, 'magenta')
       print text
@@ -517,7 +518,7 @@ class Model(object):
   def calc_tau_drv(self, Q='self'):
     """
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating tau_drv :::"
       text = colored(s, 'magenta')
       print text
@@ -556,7 +557,7 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating 'stress-balance' :::"
       text = colored(s, 'magenta')
       print text
@@ -618,7 +619,7 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating 'stokes-balance' :::"
       text = colored(s, 'magenta')
       print text

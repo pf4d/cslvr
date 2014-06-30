@@ -59,7 +59,7 @@ class SteadySolver(object):
     dict entry to "False".  If config['coupled']['on'] is "False", solve only
     once.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = '::: solving SteadySolver :::'
       text = colored(s, 'blue')
       print text
@@ -105,7 +105,7 @@ class SteadySolver(object):
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
             File(outpath + 'P.pvd') << model.P
-        if MPI.rank(mpi_comm_world())==0:
+        if self.model.MPI_rank==0:
           model.print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
@@ -115,7 +115,7 @@ class SteadySolver(object):
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
-        if MPI.rank(mpi_comm_world())==0:
+        if self.model.MPI_rank==0:
           model.print_min_max(model.H,  'H')
           model.print_min_max(model.T,  'T')
           model.print_min_max(model.Mb, 'Mb')
@@ -130,7 +130,7 @@ class SteadySolver(object):
       
       counter += 1
       
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
         text = colored(s, 'blue')
         print text % (counter, max_iter, inner_error, inner_tol)
@@ -242,7 +242,7 @@ class TransientSolver(object):
       if self.config['log']:
         U = project(as_vector([model.u, model.v, model.w]))
         self.file_U << U
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         model.print_min_max(U, 'U')
 
     if config['surface_climate']['on']:
@@ -252,7 +252,7 @@ class TransientSolver(object):
       self.surface_instance.solve()
       if self.config['log']:
         self.file_S << model.S
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         model.print_min_max(model.S, 'S')
  
     return model.dSdt.compute_vertex_values()
@@ -263,7 +263,7 @@ class TransientSolver(object):
     well as storing the velocity, temperature, and the age in vtk files.
 
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = '::: solving TransientSolver :::'
       text = colored(s, 'blue')
       print text
@@ -329,7 +329,7 @@ class TransientSolver(object):
                                    vhat=model.v, what=model.w, mhat=model.mhat)
         if self.config['log']:
           self.file_T << model.T
-        if MPI.rank(mpi_comm_world())==0:
+        if self.model.MPI_rank==0:
           model.print_min_max(model.H,  'H')
           model.print_min_max(model.T,  'T')
           model.print_min_max(model.Mb, 'Mb')
@@ -341,7 +341,7 @@ class TransientSolver(object):
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
           self.file_a << model.age
-        if MPI.rank(mpi_comm_world())==0:
+        if self.model.MPI_rank==0:
           model.print_min_max(model.age, 'age')
 
       # store information : 
@@ -351,7 +351,7 @@ class TransientSolver(object):
         self.mass.append(M)
 
       # increment time step :
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<'
         text = colored(s, 'red', attrs=['bold'])
         print text % (t, time()-tic, M/self.M_prev)
@@ -434,7 +434,7 @@ class AdjointSolver(object):
        .. math::
         \beta_{2} > 0
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = '::: solving AdjointSolver :::'
       text = colored(s, 'blue')
       print text
@@ -513,7 +513,7 @@ class AdjointSolver(object):
       for ii,c in enumerate(config['adjoint']['control_variable']):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
-      I = assemble(self.adjoint_instance.I)  #FIXME: ISMIP_HOM inverse C fails
+      I = assemble(self.adjoint_instance.I)
       return I
  
     def J(c_array, *args):
@@ -526,9 +526,6 @@ class AdjointSolver(object):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.adjoint_instance.solve()
 
-      # This is not the best place for this, but we leave it here for now
-      # so that we can see the impact of every line search update on the
-      # variables of interest.
       Js = []
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
@@ -539,7 +536,7 @@ class AdjointSolver(object):
     # Set up file I/O
     path = config['output_path']
     file_b_pvd    = File(path + 'beta2.pvd')
-    file_u_pvd    = File(path + 'U.pvd')
+    file_u_pvd    = File(path + 'U_adj.pvd')
     file_dSdt_pvd = File(path + 'dSdt.pvd')
 
     # Switching over to the parallel version of the optimization that is found 
@@ -552,7 +549,7 @@ class AdjointSolver(object):
     beta_0 = array(beta_0)
 
     # Shut up all processors but the first one.
-    if MPI.rank(mpi_comm_world()) != 0:
+    if self.model.MPI_rank != 0:
       iprint = -1
     else:
       iprint = 1
@@ -567,11 +564,11 @@ class AdjointSolver(object):
           bounds_arr.append(get_global(bounds[i]))
       b.append(array(bounds_arr).T)
     bounds = vstack(b)  
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       text = colored(bounds, 'red', attrs=['bold'])
       print text
     
-    # minimize I with initial guess beta_0 and gradient J :
+    # minimize function I with initial guess beta_0 and gradient function J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
                                maxfun=maxfun, iprint=iprint)
 
@@ -579,7 +576,7 @@ class AdjointSolver(object):
     for ii,c in enumerate(config['adjoint']['control_variable']):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
-    # save the output for this iteration of l_bfgs_b :
+    # save the output :
     U    = project(as_vector([model.u, model.v, model.w]))
     dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                    + model.w + model.adot)
@@ -694,7 +691,7 @@ class StokesBalanceSolver(object):
       
       counter += 1
       
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
         text = colored(s, 'blue')
         print text % (counter, max_iter, inner_error, inner_tol)

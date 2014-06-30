@@ -616,7 +616,7 @@ class VelocityBP(object):
     Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = Constant(0.0) * (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
+    Pb       = (rho*g*(S - B) + rho_w*g*B) * (u + v) 
 
     # Variational principle
     A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
@@ -1378,21 +1378,24 @@ class AdjointVelocityBP(object):
 
     rho       = TestFunction(Q)
 
-    # Derivative, with trial function l.  This is the BP equations in weak form
-    # multiplied by l and integrated by parts
+    # Derivative, with trial function L.  This is the BP equations in weak form
+    # multiplied by L and integrated by parts
     F_adjoint = derivative(A, U, L)
 
-    R = 0
+    # form regularization term 'R' :
     N = FacetNormal(model.mesh)
     for a,c in zip(alpha,control):
+      if isinstance(a, (float,int)):
+        a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
-        R += a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
+        R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
+        R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
       else:
         print "Valid regularizations are 'TV' and 'Tikhonov'."
+        R = Constant(0.0) * dBed
     
     # Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
@@ -1405,18 +1408,18 @@ class AdjointVelocityBP(object):
                        (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5*(U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dSrf \
-               + R
+      self.I = + Constant(0.5) * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
+                                  - (U[2] + adot))**2 * dSrf + R
 
     elif config['adjoint']['objective_function'] == 'linear':
-      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
+      self.I = + Constant(0.5) * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
 
     # Gradient of this with respect to u in the direction of a test 
-    #function yields a bilinear residual which, when solved yields the 
-    #value of the adjoint variable
+    # function yields a bilinear residual which, when solved yields the 
+    # value of the adjoint variable
     self.dI    = derivative(I_adjoint, U, Phi)
 
     # Instead of treating the Lagrange multiplier as a trial function, treat 

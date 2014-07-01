@@ -1331,12 +1331,11 @@ class AdjointVelocityBP(object):
                   attributes such as velocties, age, and surface climate
   """
   def __init__(self, model, config):
-    """ Setup. """
+    """ 
+    Setup.
+    """
     self.model  = model
     self.config = config
-
-    # the weight of the Tikhonov regularization
-    alpha     = config['adjoint']['alpha'] 
 
     # Adjoint variable in trial function form
     Q         = model.Q
@@ -1348,7 +1347,6 @@ class AdjointVelocityBP(object):
     Lsq       = model.Lsq
     Nc        = model.Nc
     U         = model.U
-    U_o       = model.U_o
     u_o       = model.u_o
     v_o       = model.v_o
     adot      = model.adot
@@ -1361,13 +1359,9 @@ class AdjointVelocityBP(object):
     dFltS    = ds(6)        # marine terminating sides
     dBed     = dGnd + dFlt  # bed
 
-    control = config['adjoint']['control_variable']
-    alpha = config['adjoint']['alpha']
 
-    if type(control) != list:
-      control = [control]
-    if type(alpha) != list:
-      alpha = [alpha]
+    control = config['adjoint']['control_variable']
+    alpha   = config['adjoint']['alpha']
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
@@ -1398,18 +1392,15 @@ class AdjointVelocityBP(object):
         R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
-        print "Valid regularizations are 'TV' and 'Tikhonov'."
+        print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
+              + " defaulting to no regularization."
         R = Constant(0.0) * dBed
     
     # Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
     if config['adjoint']['objective_function'] == 'logarithmic':
-      if U_o is not None:
-        self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (abs(U_o) + 1.0))**2 * dSrf + R
-      else:
-        self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
+      self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                     (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
       self.I = + Constant(0.5) * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
@@ -1417,6 +1408,11 @@ class AdjointVelocityBP(object):
 
     elif config['adjoint']['objective_function'] == 'linear':
       self.I = + Constant(0.5) * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
+
+    else:
+      print   "adjoint objection function may be 'linear', 'logarithmic', or" \
+            + " 'kinematic'."
+      exit(1)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint

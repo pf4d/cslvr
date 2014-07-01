@@ -888,7 +888,6 @@ class Model(object):
     # Adjoint model
     self.u_o           = Function(self.Q)
     self.v_o           = Function(self.Q)
-    self.U_o           = Function(self.Q)
     self.lam           = Function(self.Q)
     self.adot          = Function(self.Q)
 

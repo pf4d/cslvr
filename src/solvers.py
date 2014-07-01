@@ -384,6 +384,27 @@ class AdjointSolver(object):
     
     config['mode'] = 'steady' # adjoint only solves steady-state
     
+    # Set up file I/O
+    self.path          = config['output_path']
+    self.file_b_pvd    = File(self.path + 'beta2.pvd')
+    self.file_u_pvd    = File(self.path + 'U_adj.pvd')
+    self.file_dSdt_pvd = File(self.path + 'dSdt.pvd')
+   
+    # ensure that we have lists : 
+    if type(config['adjoint']['bounds']) != list:
+      config['adjoint']['bounds'] = [config['adjoint']['bounds']]
+    if type(config['adjoint']['control_variable']) != list:
+      cv = config['adjoint']['control_variable']
+      config['adjoint']['control_variable'] = [cv]
+    if type(config['adjoint']['alpha']) != list:
+      config['adjoint']['alpha'] = [config['adjoint']['alpha']]
+
+    # Switching over to the parallel version of the optimization that is found 
+    # in the dolfin-adjoint optimize.py file:
+    self.maxfun      = config['adjoint']['max_fun']
+    self.bounds_list = config['adjoint']['bounds']
+    self.control     = config['adjoint']['control_variable']
+    
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
     self.adjoint_instance = AdjointVelocityBP(model, config)
@@ -407,12 +428,11 @@ class AdjointSolver(object):
     Q     = model.Q
     
     if u != None and v != None:
-      model.u_o = project(u, Q)
-      model.v_o = project(v, Q)
+      model.u_o.interpolate(u)
+      model.v_o.interpolate(v)
 
     elif U != None:
       Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
-      model.U_o.interpolate(U)
       model.u_o = project(-model.U_o * S.dx(0) / Smag, Q)
       model.v_o = project(-model.U_o * S.dx(1) / Smag, Q)      
 
@@ -438,8 +458,11 @@ class AdjointSolver(object):
       s    = '::: solving AdjointSolver :::'
       text = colored(s, 'blue')
       print text
-    model  = self.model
-    config = self.config
+    model       = self.model
+    config      = self.config
+    bounds_list = self.bounds_list
+    control     = self.control
+    maxfun      = self.maxfun
     
     def get_global(m):
       """
@@ -533,29 +556,15 @@ class AdjointSolver(object):
       return Js
 
     #===========================================================================
-    # Set up file I/O
-    path = config['output_path']
-    file_b_pvd    = File(path + 'beta2.pvd')
-    file_u_pvd    = File(path + 'U_adj.pvd')
-    file_dSdt_pvd = File(path + 'dSdt.pvd')
+    # begin the optimization :
 
-    # Switching over to the parallel version of the optimization that is found 
-    # in the dolfin-adjoint optimize.py file:
-    maxfun      = config['adjoint']['max_fun']
-    bounds_list = config['adjoint']['bounds']
-    control     = config['adjoint']['control_variable']
-
-    if type(bounds_list) != list:
-      bounds_list = [bounds_list]
-    if type(control) != list:
-      control = [control] 
-
+    # form the initial guess :
     beta_0      = []
-    for mm in control:
-      beta_0.extend(get_global(mm))
+    for c in control:
+      beta_0.extend(get_global(c))
     beta_0 = array(beta_0)
 
-    # Shut up all processors but the first one.
+    # shut up all processors but the first one :
     if self.model.MPI_rank != 0:
       iprint = -1
     else:
@@ -590,9 +599,9 @@ class AdjointSolver(object):
     U    = project(as_vector([model.u, model.v, model.w]))
     dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                    + model.w + model.adot)
-    file_b_pvd    << model.extrude(model.beta2, 3, 2)
-    file_u_pvd    << U
-    file_dSdt_pvd << dSdt
+    self.file_b_pvd    << model.extrude(model.beta2, 3, 2)
+    self.file_u_pvd    << U
+    self.file_dSdt_pvd << dSdt
 
 
 class BalanceVelocitySolver(object):

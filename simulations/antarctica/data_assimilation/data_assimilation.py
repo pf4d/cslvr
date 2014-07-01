@@ -8,13 +8,14 @@ from varglas.helper               import default_nonlin_solver_params
 from varglas.utilities            import DataInput, DataOutput
 from fenics                       import *
 from time                         import time
+from termcolor                    import colored, cprint
 
+t0 = time()
 
 # set the output directory :
 out_dir = 'results/'
 
 set_log_active(True)
-#set_log_level(PROGRESS)
 
 thklim = 200.0
 
@@ -30,26 +31,25 @@ db2 = DataInput(None, bedmap2,  mesh=mesh)
 
 db2.set_data_val('H',   32767, thklim)
 db2.set_data_val('S',   32767, 0.0)
-dm.set_data_min('U_ob', 0.0,   0.0)
 
 db2.data['B'] = db2.data['S'] - db2.data['H']
 
-Thickness          = db2.get_spline_expression("H")
-Surface            = db2.get_spline_expression("S")
-Bed                = db2.get_spline_expression("B")
-Mask               = db2.get_nearest_expression("mask")
-SurfaceTemperature = db1.get_spline_expression("srfTemp")
-BasalHeatFlux      = db1.get_spline_expression("q_geo")
-adot               = db1.get_spline_expression("adot")
-U_observed         = dm.get_spline_expression("U_ob")
+H      = db2.get_spline_expression("H")
+S      = db2.get_spline_expression("S")
+B      = db2.get_spline_expression("B")
+M      = db2.get_nearest_expression("mask")
+T_s    = db1.get_spline_expression("srfTemp")
+q_geo  = db1.get_spline_expression("q_geo")
+#q_geo = Expression('0.042*60*60*24*365', element=model.Q.ufl_element())
+adot   = db1.get_spline_expression("adot")
+u      = dm.get_spline_expression("vx")
+v      = dm.get_spline_expression("vy")
 
 model = model.Model()
 model.set_mesh(mesh)
-model.set_geometry(Surface, Bed, mask=Mask, deform=True)
+model.set_geometry(S, B, mask=M, deform=True)
 model.set_parameters(pc.IceParameters())
 model.initialize_variables()
-
-File(out_dir + 'ff.pvd') << model.ff
 
 # specifify non-linear solver parameters :
 nonlin_solver_params = default_nonlin_solver_params()
@@ -57,8 +57,6 @@ nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
 nonlin_solver_params['newton_solver']['maximum_iterations']      = 16
 nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-#nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
-#nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'
 nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
 nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
 parameters['form_compiler']['quadrature_degree']                 = 2
@@ -97,8 +95,8 @@ config = { 'mode'                         : 'steady',
            { 
              'on'                  : True,
              'use_surface_climate' : False,
-             'T_surface'           : SurfaceTemperature,
-             'q_geo'               : BasalHeatFlux,# 0.042*60*60*24*365,
+             'T_surface'           : T_s,
+             'q_geo'               : q_geo,
              'lateral_boundaries'  : None
            },
            'free_surface' :
@@ -126,21 +124,16 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [Thickness**2],
-             'beta'                : 0.0,
+             'alpha'               : H**2,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
-             'bounds'              : [(0,20)],
-             'control_variable'    : None,
+             'bounds'              : (0,20),
+             'control_variable'    : model.beta2,
              'regularization_type' : 'Tikhonov'
            }}
 
-model.eps_reg = 1e-15
-
 F = solvers.SteadySolver(model,config)
-t01 = time()
 F.solve()
-tf1 = time()
 
 params = config['velocity']['newton_params']['newton_solver']
 params['relaxation_parameter']         = 1.0
@@ -150,20 +143,15 @@ config['enthalpy']['on']               = False
 config['surface_climate']['on']        = False
 config['coupled']['on']                = False
 config['velocity']['use_T0']           = False
-config['adjoint']['control_variable']  = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
-A.set_target_velocity(U = U_observed)
-t02 = time()
+A.set_target_velocity(u=u, v=v)
 A.solve()
-tf2 = time()
     
 #XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
 #
 ## save the state of the model :
-#if i !=0: rw = 'a'
-#else:     rw = 'w'
-#f = HDF5File(out_dir + '3D_5H_stokes.h5', rw)
+#f = HDF5File(out_dir + '3D_5H_stokes.h5', 'w')
 #f.write(model.mesh,  'mesh')
 #f.write(model.beta2, 'beta2')
 #f.write(model.Mb,    'Mb')
@@ -173,11 +161,18 @@ tf2 = time()
 #f.write(model.U,     'U')
 #f.write(model.eta,   'eta')
 
+tf = time()
+
 # calculate total time to compute
-s = (tf1 - t01) + (tf2 - t02)
+s = tf - t0
 m = s / 60.0
 h = m / 60.0
 s = s % 60
 m = m % 60
-print "Total time to compute: \r%02d:%02d:%02d" % (h,m,s)
+if model.MPI_rank == 0:
+  s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+  text = colored(s, 'red', attrs=['bold'])
+  print text
+
+
 

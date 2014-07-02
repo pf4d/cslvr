@@ -523,6 +523,10 @@ class VelocityBP(object):
       
       elif isinstance(config['velocity']['T0'], Expression):
         T.interpolate(config['velocity']['T0'])
+      
+      elif isinstance(config['velocity']['T0'], Function):
+        model.T = config['velocity']['T0']
+        T       = config['velocity']['T0']
 
     # initialize the bed friction coefficient :
     if   isinstance(config['velocity']['beta2'], float):
@@ -619,7 +623,7 @@ class VelocityBP(object):
     Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
+    A        = (Vd + Pe)*dx + Sl*dBed + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -1387,10 +1391,10 @@ class AdjointVelocityBP(object):
         a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
         R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
       else:
         print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to no regularization."

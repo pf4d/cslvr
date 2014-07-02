@@ -505,7 +505,8 @@ class VelocityBP(object):
     # pressure boundary :
     class Depth(Expression):
       def eval(self, values, x):
-        values[0] = abs(min(0, x[2]))
+        b         = model.B_ex(x[0], x[1], x[2])
+        values[0] = abs(min(0, b))
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
     

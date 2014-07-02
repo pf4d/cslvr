@@ -118,6 +118,12 @@ url  = 'https://www.dropbox.com/s/20dovwv32v7clde/antarctica' + \
        '_3D_100H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
+# gradS, shelf, antarctica mesh :
+fldr = 'antarctica'
+url  = 'https://www.dropbox.com/s/7b8nh5c68f500wh/antarctica' + \
+       '_3D_gradS_mesh.tar.gz?dl=1'
+download_file(url, home, fldr, extract=True)
+
 # circle mesh :
 fldr = 'test'
 url  = 'https://dl.dropboxusercontent.com/s/hk63j3l9fhx6zty/' + \

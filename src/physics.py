@@ -294,6 +294,10 @@ class VelocityStokes(object):
     model.Nc     = Nc
     model.Pb     = Pb
     model.Lsq    = Lsq
+    model.u     = U.sub(0)
+    model.v     = U.sub(1)
+    model.w     = U.sub(2)
+    model.P     = U.sub(4)
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -343,11 +347,6 @@ class VelocityStokes(object):
       print text
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
-    
-    model.u = project(model.U[0], model.Q)
-    model.v = project(model.U[1], model.Q)
-    model.w = project(model.U[2], model.Q)
-    model.P = project(model.U[3], model.Q)
 
 
 class VelocityBP(object):
@@ -650,6 +649,8 @@ class VelocityBP(object):
     model.T     = T
     model.beta2 = beta2
     model.E     = E
+    model.u     = U.sub(0)
+    model.v     = U.sub(1)
 
   def solve(self, maxiter=50):
     """ 
@@ -663,18 +664,19 @@ class VelocityBP(object):
     
     # solve nonlinear system :
     if self.model.MPI_rank==0:
-      s    = "::: solving BP velocity :::"
+      s    = "::: solving BP horizontal velocity :::"
       text = colored(s, 'cyan')
       print text
     solve(self.F == 0, model.U, J = self.J,
           solver_parameters = self.newton_params)
 
     # solve for vertical velocity :
+    if self.model.MPI_rank==0:
+      s    = "::: solving BP vertical velocity :::"
+      text = colored(s, 'cyan')
+      print text
     solve(self.aw == self.Lw, model.w)
     
-    model.u.interpolate(Expression('f', f=model.U[0], element=model.Q.ufl_element()))
-    model.v.interpolate(Expression('f', f=model.U[1], element=model.Q.ufl_element()))
-
 
 class Enthalpy(object):
   r""" 
@@ -1969,8 +1971,8 @@ class StokesBalance(object):
       print "::: solving 'stokes-balance' for ubar, vbar :::"
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
-    model.ubar = project(self.U_s[0], self.Q)
-    model.vbar = project(self.U_s[1], self.Q)
+    model.ubar = U_s.sub(0)
+    model.vbar = U_s.sub(1)
 
   def component_stress_stokes(self):  
     """

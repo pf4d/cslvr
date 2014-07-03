@@ -672,8 +672,8 @@ class VelocityBP(object):
     # solve for vertical velocity :
     solve(self.aw == self.Lw, model.w)
     
-    model.u = project(model.U[0], model.Q)
-    model.v = project(model.U[1], model.Q)
+    model.u.interpolate(Expression('f', f=model.U[0], element=model.Q.ufl_element()))
+    model.v.interpolate(Expression('f', f=model.U[1], element=model.Q.ufl_element()))
 
 
 class Enthalpy(object):

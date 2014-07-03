@@ -432,7 +432,7 @@ class AdjointSolver(object):
       model.v_o.interpolate(v)
 
     elif U != None:
-      Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
+      Smag      = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
       model.u_o = project(-model.U_o * S.dx(0) / Smag, Q)
       model.v_o = project(-model.U_o * S.dx(1) / Smag, Q)      
 

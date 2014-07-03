@@ -463,7 +463,7 @@ class AdjointSolver(object):
     bounds_list = self.bounds_list
     control     = self.control
     maxfun      = self.maxfun
-    
+   
     def get_global(m):
       """
       Takes a distributed object and returns a numpy array that
@@ -548,6 +548,10 @@ class AdjointSolver(object):
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.adjoint_instance.solve()
+
+      for i,c in enumerate(control):
+        if model.MPI_rank==0:
+          model.print_min_max(c, 'c_' + str(i))
 
       Js = []
       for JJ in self.adjoint_instance.J:

@@ -11,9 +11,9 @@ set_log_active(True)
 alpha = 0.1 * pi / 180
 L=80000
 
-nx = 50
-ny = 50 
-nz = 10
+nx = 20
+ny = 20 
+nz = 5
 
 
 model = Model()
@@ -32,10 +32,9 @@ model.set_parameters(IceParameters())
 model.initialize_variables()
 
 nparams = default_nonlin_solver_params()
-nparams['newton_solver']['linear_solver']           = 'gmres'
-nparams['newton_solver']['preconditioner']          = 'hypre_amg'
-#nparams['newton_solver']['linear_solver']           = 'mumps'
-nparams['newton_solver']['relaxation_parameter']    = 0.7
+nparams['newton_solver']['linear_solver']           = 'mumps'
+nparams['newton_solver']['preconditioner']          = 'default'
+nparams['newton_solver']['relaxation_parameter']    = 0.8
 nparams['newton_solver']['maximum_iterations']      = 20
 nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
@@ -100,23 +99,20 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [0.0],
-             'beta'                : 0.0,
+             'alpha'               : 0.0,
              'max_fun'             : 20,
              'objective_function'  : 'linear',
              'animate'             : False,
-             'bounds'              : None,
-             'control_variable'    : None,
+             'bounds'              : (0.0, 4000.0),
+             'control_variable'    : model.beta2,
              'regularization_type' : 'Tikhonov'
            }}
+
+model.eps_reg = 1e-5
 
 F = SteadySolver(model,config)
 F.solve()
 
-model.eps_reg = 1e-5
-config['adjoint']['control_variable'] = [model.beta2]
-config['adjoint']['bounds']           = [(0.0,5000.0)]
-File('results/beta2_obs.xml') << model.beta2
 File('results/beta2_obs.pvd') << model.beta2
 
 A = AdjointSolver(model,config)
@@ -125,11 +121,14 @@ v_o = model.v.vector().get_local()
 U_e = 10.0
 
 for i in range(50):
-  model.beta2.vector()[:] = 1000.
+  model.beta2.vector()[:] = 1000.0
   u_error = U_e*random.randn(len(u_o))
   v_error = U_e*random.randn(len(v_o))
-  model.u_o.vector().set_local(u_o+u_error)
-  model.v_o.vector().set_local(v_o+v_error)
+  model.u_o.vector().set_local(u_o + u_error)
+  model.v_o.vector().set_local(v_o + v_error)
   model.u_o.vector().apply('insert')
   model.v_o.vector().apply('insert')
   A.solve()
+
+
+

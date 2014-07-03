@@ -912,7 +912,7 @@ class Enthalpy(object):
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
       try:
-        U    = as_vector([model.U[0], model.U[1], w])
+        U    = as_vector([u, v, w])
       except NameError:
         print "No velocity field found.  Defaulting to no velocity"
         U    = 0.0

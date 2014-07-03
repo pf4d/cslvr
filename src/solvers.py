@@ -603,7 +603,7 @@ class AdjointSolver(object):
     U    = project(as_vector([model.u, model.v, model.w]))
     dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                    + model.w + model.adot)
-    self.file_b_pvd    << model.extrude(model.beta2, 3, 2)
+    self.file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
     self.file_u_pvd    << U
     self.file_dSdt_pvd << dSdt
 

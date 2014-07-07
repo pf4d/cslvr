@@ -4,17 +4,15 @@ from varglas.physical_constants import IceParameters
 from varglas.helper             import default_nonlin_solver_params
 from scipy                      import random
 from fenics                     import set_log_active, File, Expression, pi, \
-                                       sin, tan, parameters
+                                       sin, tan, parameters, project
 
 set_log_active(True)
 
 alpha = 0.1 * pi / 180
-L=80000
-
-nx = 20
-ny = 20 
-nz = 5
-
+L     = 80000
+nx    = 50
+ny    = 50 
+nz    = 10
 
 model = Model()
 model.generate_uniform_mesh(nx, ny, nz, xmin=0, xmax=L, ymin=0, ymax=L, 
@@ -36,6 +34,7 @@ nparams['newton_solver']['linear_solver']           = 'mumps'
 nparams['newton_solver']['preconditioner']          = 'default'
 nparams['newton_solver']['relaxation_parameter']    = 0.8
 nparams['newton_solver']['maximum_iterations']      = 20
+nparams['newton_solver']['relative_tolerance']      = 1e-8
 nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
 
@@ -43,7 +42,7 @@ config = { 'mode'                         : 'steady',
            't_start'                      : None,
            't_end'                        : None,
            'time_step'                    : None,
-           'output_path'                  : './results/',
+           'output_path'                  : './results/initial/',
            'wall_markers'                 : [],
            'periodic_boundary_conditions' : True,
            'log': True,
@@ -115,19 +114,27 @@ F.solve()
 
 File('results/beta2_obs.pvd') << model.beta2
 
-A = AdjointSolver(model,config)
-u_o = model.u.vector().get_local()
-v_o = model.v.vector().get_local()
+u_o = project(model.u, model.Q).vector().array()
+v_o = project(model.v, model.Q).vector().array()
 U_e = 10.0
 
+model.print_min_max(u_o, 'u_o')
+model.print_min_max(v_o, 'v_o')
+
+nparams = config['velocity']['newton_params']['newton_solver']
+nparams['relaxation_parameter']    = 1.0
+config['output_path']              = './results/00/'
+
+A = AdjointSolver(model,config)
+
 for i in range(50):
+  config['output_path']   = './results/%02i/' % i
   model.beta2.vector()[:] = 1000.0
   u_error = U_e*random.randn(len(u_o))
   v_error = U_e*random.randn(len(v_o))
-  model.u_o.vector().set_local(u_o + u_error)
-  model.v_o.vector().set_local(v_o + v_error)
-  model.u_o.vector().apply('insert')
-  model.v_o.vector().apply('insert')
+  u_obs   = u_o + u_error
+  v_obs   = v_o + v_error
+  A.set_target_velocity(u=u_obs, v=v_obs)
   A.solve()
 
 

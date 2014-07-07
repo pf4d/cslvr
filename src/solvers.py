@@ -105,8 +105,7 @@ class SteadySolver(object):
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
             File(outpath + 'P.pvd') << model.P
-        if self.model.MPI_rank==0:
-          model.print_min_max(U, 'U')
+        model.print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -115,11 +114,10 @@ class SteadySolver(object):
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
-        if self.model.MPI_rank==0:
-          model.print_min_max(model.H,  'H')
-          model.print_min_max(model.T,  'T')
-          model.print_min_max(model.Mb, 'Mb')
-          model.print_min_max(model.W,  'W')
+        model.print_min_max(model.H,  'H')
+        model.print_min_max(model.T,  'T')
+        model.print_min_max(model.Mb, 'Mb')
+        model.print_min_max(model.W,  'W')
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -242,8 +240,7 @@ class TransientSolver(object):
       if self.config['log']:
         U = project(as_vector([model.u, model.v, model.w]))
         self.file_U << U
-      if self.model.MPI_rank==0:
-        model.print_min_max(U, 'U')
+      model.print_min_max(U, 'U')
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
@@ -252,8 +249,7 @@ class TransientSolver(object):
       self.surface_instance.solve()
       if self.config['log']:
         self.file_S << model.S
-      if self.model.MPI_rank==0:
-        model.print_min_max(model.S, 'S')
+      model.print_min_max(model.S, 'S')
  
     return model.dSdt.compute_vertex_values()
 
@@ -329,11 +325,10 @@ class TransientSolver(object):
                                    vhat=model.v, what=model.w, mhat=model.mhat)
         if self.config['log']:
           self.file_T << model.T
-        if self.model.MPI_rank==0:
-          model.print_min_max(model.H,  'H')
-          model.print_min_max(model.T,  'T')
-          model.print_min_max(model.Mb, 'Mb')
-          model.print_min_max(model.W,  'W')
+        model.print_min_max(model.H,  'H')
+        model.print_min_max(model.T,  'T')
+        model.print_min_max(model.Mb, 'Mb')
+        model.print_min_max(model.W,  'W')
 
       # Calculate age update
       if self.config['age']['on']:
@@ -341,8 +336,7 @@ class TransientSolver(object):
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
           self.file_a << model.age
-        if self.model.MPI_rank==0:
-          model.print_min_max(model.age, 'age')
+        model.print_min_max(model.age, 'age')
 
       # store information : 
       if self.config['log']:
@@ -387,7 +381,7 @@ class AdjointSolver(object):
     # Set up file I/O
     self.path          = config['output_path']
     self.file_b_pvd    = File(self.path + 'beta2.pvd')
-    self.file_u_pvd    = File(self.path + 'U_adj.pvd')
+    self.file_u_pvd    = File(self.path + 'U_obs.pvd')
     self.file_dSdt_pvd = File(self.path + 'dSdt.pvd')
    
     # ensure that we have lists : 
@@ -428,8 +422,27 @@ class AdjointSolver(object):
     Q     = model.Q
     
     if u != None and v != None:
-      model.u_o.interpolate(u)
-      model.v_o.interpolate(v)
+      if type(u) == Function     and type(v) == Function:
+        model.u_o = u
+        model.v_o = v
+      elif type(u) == Expression and type(v) == Expression:
+        model.u_o.interpolate(u)
+        model.v_o.interpolate(v)
+      elif type(u) == Vector     and type(v) == Vector:
+        model.u_o.vector().set_local(u.array())
+        model.v_o.vector().set_local(v.array())
+        model.u_o.vector().apply('insert')
+        model.v_o.vector().apply('insert')
+      elif (type(u) == np.ndarray and type(v) == np.ndarray) or \
+           (type(u) == np.array   and type(v) == np.array):
+        model.u_o.vector().set_local(u)
+        model.v_o.vector().set_local(v)
+        model.u_o.vector().apply('insert')
+        model.v_o.vector().apply('insert')
+      else:
+        print "u and v may be a Function, Expression, Vector, or array, " \
+              + "not %s" % type(u)
+        exit(1)
 
     elif U != None:
       Smag      = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
@@ -550,8 +563,7 @@ class AdjointSolver(object):
       self.adjoint_instance.solve()
 
       for i,c in enumerate(control):
-        if model.MPI_rank==0:
-          model.print_min_max(c, 'c_' + str(i))
+        model.print_min_max(c, 'c_' + str(i))
 
       Js = []
       for JJ in self.adjoint_instance.J:
@@ -600,11 +612,11 @@ class AdjointSolver(object):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
     # save the output :
-    U    = project(as_vector([model.u, model.v, model.w]))
-    dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                   + model.w + model.adot)
+    U_obs = project(sqrt(model.u_o**2 + model.v_o**2))
+    dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+                    + model.w + model.adot)
     self.file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
-    self.file_u_pvd    << U
+    self.file_u_pvd    << U_obs
     self.file_dSdt_pvd << dSdt
 
 

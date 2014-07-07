@@ -294,10 +294,10 @@ class VelocityStokes(object):
     model.Nc     = Nc
     model.Pb     = Pb
     model.Lsq    = Lsq
-    model.u     = U.sub(0)
-    model.v     = U.sub(1)
-    model.w     = U.sub(2)
-    model.P     = U.sub(4)
+    model.u      = u
+    model.v      = v
+    model.w      = w
+    model.P      = P
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -649,8 +649,8 @@ class VelocityBP(object):
     model.T     = T
     model.beta2 = beta2
     model.E     = E
-    model.u     = U.sub(0)
-    model.v     = U.sub(1)
+    model.u     = u
+    model.v     = v
 
   def solve(self, maxiter=50):
     """ 
@@ -1308,8 +1308,7 @@ class FreeSurface(object):
     if config['free_surface']['use_shock_capturing']:
       k = assemble(self.diffusion_matrix)
       r -= k
-      if self.model.MPI_rank==0:
-        model.print_min_max(r, 'D')
+      model.print_min_max(r, 'D')
 
     if config['free_surface']['lump_mass_matrix']:
       model.dSdt.vector().set_local(m_l_inv * r.get_local())

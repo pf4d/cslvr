@@ -785,18 +785,23 @@ class Model(object):
     """
     Print the minimum and maximum values of <u>, a Vector, Function, or array.
     """
-    if type(u) == Vector:
-      uMin = u.array().min()
-      uMax = u.array().max()
-    elif type(u) == Function: 
-      uMin = u.vector().array().min()
-      uMax = u.vector().array().max()
-    elif type(u) == array:
-      uMin = u.min()
-      uMax = u.max()
-    s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-    text = colored(s, 'yellow')
-    print text
+    if self.MPI_rank==0:
+      if type(u) == Vector:
+        uMin = u.array().min()
+        uMax = u.array().max()
+      elif type(u) == Function: 
+        uMin = u.vector().array().min()
+        uMax = u.vector().array().max()
+      elif type(u) == np.ndarray:
+        uMin = u.min()
+        uMax = u.max()
+      else:
+        print "print_min_max function requires a Vector, Function, or array," \
+              + " not %s." % type(u)
+        exit(1)
+      s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+      text = colored(s, 'yellow')
+      print text
 
   def initialize_variables(self):
     """

@@ -1941,8 +1941,8 @@ class StokesBalance(object):
 
     # dot product of stress with the direction along (n) and across (t) flow :
     tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
     tau_bt = psi * dot(tau_b, U_t) * dx
+    tau_dn = phi * dot(tau_d, U_n) * dx
     tau_dt = psi * dot(tau_d, U_t) * dx
 
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
@@ -1967,7 +1967,9 @@ class StokesBalance(object):
     model = self.model
 
     if self.model.MPI_rank==0:
-      print "::: solving 'stokes-balance' for ubar, vbar :::"
+      s    = "::: solving 'stokes-balance' for ubar, vbar :::"
+      text = colored(s, 'cyan')
+      print text
     solve(lhs(self.r) == rhs(self.r), self.U_s)
     
     model.ubar = U_s.sub(0)

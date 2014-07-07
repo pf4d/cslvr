@@ -422,13 +422,13 @@ class AdjointSolver(object):
     Q     = model.Q
     
     if u != None and v != None:
-      if type(u) == Function     and type(v) == Function:
+      if type(u) == Function and type(v) == Function:
         model.u_o = u
         model.v_o = v
-      elif type(u) == Expression and type(v) == Expression:
+      elif isinstance(u, Expression) and isinstance(v, Expression):
         model.u_o.interpolate(u)
         model.v_o.interpolate(v)
-      elif type(u) == Vector     and type(v) == Vector:
+      elif type(u) == Vector and type(v) == Vector:
         model.u_o.vector().set_local(u.array())
         model.v_o.vector().set_local(v.array())
         model.u_o.vector().apply('insert')
@@ -612,10 +612,10 @@ class AdjointSolver(object):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
     # save the output :
-    U_obs = project(sqrt(model.u_o**2 + model.v_o**2))
+    U_obs = project(as_vector([model.u_o, model.v_o, 0]))
     dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                     + model.w + model.adot)
-    self.file_b_pvd    << model.beta2#model.extrude(model.beta2, 3, 2)
+    self.file_b_pvd    << model.beta2
     self.file_u_pvd    << U_obs
     self.file_dSdt_pvd << dSdt
 

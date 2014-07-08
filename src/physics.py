@@ -175,7 +175,7 @@ class VelocityStokes(object):
     A0            = config['velocity']['A0']
     
     # initialize bed friction coefficient :
-    model.assign_variable(beta2, config['velocity']['beta2']
+    model.assign_variable(beta2, config['velocity']['beta2'])
    
     # initialize enhancement factor :
     model.assign_variable(E, config['velocity']['E'])

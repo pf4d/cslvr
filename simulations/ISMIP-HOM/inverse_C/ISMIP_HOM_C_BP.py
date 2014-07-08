@@ -102,7 +102,7 @@ config = { 'mode'                         : 'steady',
              'max_fun'             : 20,
              'objective_function'  : 'linear',
              'animate'             : False,
-             'bounds'              : (0.0, 4000.0),
+             'bounds'              : (0.0, 5000.0),
              'control_variable'    : model.beta2,
              'regularization_type' : 'Tikhonov'
            }}
@@ -127,7 +127,7 @@ config['output_path']              = './results/00/'
 
 A = AdjointSolver(model,config)
 
-for i in range(50):
+for i in range(1):
   config['output_path']   = './results/%02i/' % i
   model.beta2.vector()[:] = 1000.0
   u_error = U_e*random.randn(len(u_o))

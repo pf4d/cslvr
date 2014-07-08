@@ -34,7 +34,7 @@ nparams['newton_solver']['linear_solver']           = 'mumps'
 nparams['newton_solver']['preconditioner']          = 'default'
 nparams['newton_solver']['relaxation_parameter']    = 0.8
 nparams['newton_solver']['maximum_iterations']      = 20
-nparams['newton_solver']['relative_tolerance']      = 1e-8
+nparams['newton_solver']['relative_tolerance']      = 1e-5
 nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
 
@@ -121,15 +121,13 @@ U_e = 10.0
 model.print_min_max(u_o, 'u_o')
 model.print_min_max(v_o, 'v_o')
 
-nparams = config['velocity']['newton_params']['newton_solver']
-nparams['relaxation_parameter']    = 1.0
-config['output_path']              = './results/00/'
+config['output_path'] = './results/00/'
 
 A = AdjointSolver(model,config)
 
 for i in range(1):
   config['output_path']   = './results/%02i/' % i
-  model.beta2.vector()[:] = 1000.0
+  model.assign_variable(model.beta2, 1000.0)
   u_error = U_e*random.randn(len(u_o))
   v_error = U_e*random.randn(len(v_o))
   u_obs   = u_o + u_error

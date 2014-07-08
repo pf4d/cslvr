@@ -850,7 +850,7 @@ class linear_attractor(object):
       if self.inv:
         lc = self.l_min
       else:
-        ls = self.l_max
+        lc = self.l_max
       return lc
 
 class static_attractor(object):

@@ -84,7 +84,7 @@ class SteadySolver(object):
 
     # Initialize a temperature field for visc. calc.
     if config['velocity']['use_T0']:
-      model.T.vector().set_local( T0 * ones(len(model.T.vector().array())) )
+      model.assign_variable(model.T, T0 * ones(len(model.T.vector().array())) )
     
     if not config['coupled']['on']: max_iter = 1
     
@@ -224,15 +224,14 @@ class TransientSolver(object):
     thklim            = config['free_surface']['thklim']
     B                 = model.B.compute_vertex_values()
     S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
+    
     # the surface is never on a periodic FunctionSpace :
     if config['periodic_boundary_conditions']:
-      #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
       d2v = dof_to_vertex_map(model.Q_non_periodic)
     else:
-      #v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
       d2v = dof_to_vertex_map(model.Q)
-    model.S.vector().set_local(S[d2v])
-    model.S.vector().apply('insert')
+    
+    model.assign_variable(model.S, S[d2v])
    
     if config['velocity']['on']:
       model.U.vector()[:] = 0.0
@@ -298,27 +297,22 @@ class TransientSolver(object):
       f_0 = self.rhs_func_explicit(t, S_0)
       S_1 = S_0 + dt*f_0
       S_1[(S_1-B_a) < thklim] = thklim + B_a[(S_1-B_a) < thklim]
-      S.vector().set_local(S_1[d2v])
-      S.vector().apply('')
+      model.assign_variable(S, S_1[d2v])
 
       f_1                     = self.rhs_func_explicit(t, S_1)
       S_2                     = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
       S_2[(S_2-B_a) < thklim] = thklim + B_a[(S_2-B_a) < thklim] 
-      S.vector().set_local(S_2[d2v])
-      S.vector().apply('')
+      model.assign_variable(S, S_2[d2v])
      
       mesh.coordinates()[:, 2] = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
       if config['periodic_boundary_conditions']:
         temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
-        mhat_non.vector().set_local(temp)
-        mhat_non.vector().apply('')
+        model.assign_variable(mhat_non, temp)
         m_temp = project(mhat_non,model.Q)
-        model.mhat.vector().set_local(m_temp.vector().get_local())
-        model.mhat.vector().apply('')
+        model.assign_variable(mhat, m_temp.vector())
       else:
         temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
-        model.mhat.vector().set_local(temp)
-        model.mhat.vector().apply('')
+        model.assign_variable(mhat, temp)
       # Calculate enthalpy update
       if self.config['enthalpy']['on']:
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
@@ -422,32 +416,15 @@ class AdjointSolver(object):
     Q     = model.Q
     
     if u != None and v != None:
-      if type(u) == Function and type(v) == Function:
-        model.u_o = u
-        model.v_o = v
-      elif isinstance(u, Expression) and isinstance(v, Expression):
-        model.u_o.interpolate(u)
-        model.v_o.interpolate(v)
-      elif type(u) == Vector and type(v) == Vector:
-        model.u_o.vector().set_local(u.array())
-        model.v_o.vector().set_local(v.array())
-        model.u_o.vector().apply('insert')
-        model.v_o.vector().apply('insert')
-      elif (type(u) == np.ndarray and type(v) == np.ndarray) or \
-           (type(u) == np.array   and type(v) == np.array):
-        model.u_o.vector().set_local(u)
-        model.v_o.vector().set_local(v)
-        model.u_o.vector().apply('insert')
-        model.v_o.vector().apply('insert')
-      else:
-        print "u and v may be a Function, Expression, Vector, or array, " \
-              + "not %s" % type(u)
-        exit(1)
+      model.assign_variable(model.u_o, u)
+      model.assign_variable(model.v_o, v)
 
     elif U != None:
-      Smag      = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
-      model.u_o = project(-model.U_o * S.dx(0) / Smag, Q)
-      model.v_o = project(-model.U_o * S.dx(1) / Smag, Q)      
+      Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
+      u_n    = project(-U * S.dx(0) / Smag, Q)
+      v_n    = project(-U * S.dx(1) / Smag, Q)      
+      model.assign_variable(model.u_o, u_n)
+      model.assign_variable(model.v_o, v_n)
 
   def solve(self):
     r""" 
@@ -535,8 +512,7 @@ class AdjointSolver(object):
       elif type(m) in (function.Function, functions.function.Function):
         begin, end = m.vector().local_range()
         m_a_local  = m_global_array[begin : end]
-        m.vector().set_local(m_a_local)
-        m.vector().apply('insert')
+        model.assign_variable(m, m_a_local)
       
       else:
         raise TypeError, 'Unknown parameter type'

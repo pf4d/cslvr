@@ -421,8 +421,7 @@ class Model(object):
     U_f = []
     for u_v in U_v:
       u_f = Function(Q)
-      u_f.vector().set_local(u_v)
-      u_f.vector().apply('insert')
+      self.assign_variable(u_f, u_v)
       U_f.append(u_f)
 
     # return a UFL vector :
@@ -802,6 +801,25 @@ class Model(object):
       s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
       text = colored(s, 'yellow')
       print text
+
+  def assign_variable(self, u, var):
+    """
+    Manually assign the values from <var> to Function <u>.  <var> may be an
+    array, float, Expression, or Function.
+    """
+    if   isinstance(var, float):
+      u.vector()[:] = var
+    
+    elif isinstance(var, ndarray):
+      u.vector().set_local(var)
+      u.vector().apply('insert')
+    
+    elif isinstance(var, Expression):
+      u.interpolate(var)
+
+    elif isinstance(var, Function):
+      u = var
+
 
   def initialize_variables(self):
     """

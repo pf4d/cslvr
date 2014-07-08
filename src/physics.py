@@ -175,26 +175,10 @@ class VelocityStokes(object):
     A0            = config['velocity']['A0']
     
     # initialize bed friction coefficient :
-    if   isinstance(config['velocity']['beta2'], float):
-      beta2.vector()[:] = config['velocity']['beta2']
-    
-    elif isinstance(config['velocity']['beta2'], ndarray):
-      beta2.vector().set_local(config['velocity']['beta2'])
-      beta2.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['beta2'], Expression):
-      beta2.interpolate(config['velocity']['beta2'])
+    model.assign_variable(beta2, config['velocity']['beta2']
    
     # initialize enhancement factor :
-    if   isinstance(config['velocity']['E'], float):
-      E.vector()[:] = config['velocity']['E']
-    
-    elif isinstance(config['velocity']['E'], ndarray):
-      E.vector().set_local(config['velocity']['E'])
-      E.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['E'], Expression):
-      E.interpolate(config['velocity']['E'])
+    model.assign_variable(E, config['velocity']['E'])
 
     # pressure boundary :
     class pressure_boundary(Expression):
@@ -514,41 +498,13 @@ class VelocityBP(object):
 
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
-      if   isinstance(config['velocity']['T0'], float):
-        T.vector()[:] = config['velocity']['T0']
-      
-      elif isinstance(config['velocity']['T0'], ndarray):
-        T.vector().set_local(config['velocity']['T0'])
-        T.vector().apply('insert')
-      
-      elif isinstance(config['velocity']['T0'], Expression):
-        T.interpolate(config['velocity']['T0'])
-      
-      elif isinstance(config['velocity']['T0'], Function):
-        model.T = config['velocity']['T0']
-        T       = config['velocity']['T0']
+      model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if   isinstance(config['velocity']['beta2'], float):
-      beta2.vector()[:] = config['velocity']['beta2']
-    
-    elif isinstance(config['velocity']['beta2'], ndarray):
-      beta2.vector().set_local(config['velocity']['beta2'])
-      beta2.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['beta2'], Expression):
-      beta2.interpolate(config['velocity']['beta2'])
+    model.assign_variable(beta2, config['velocity']['beta2'])
    
     # initialize the enhancement factor :
-    if   isinstance(config['velocity']['E'], float):
-      E.vector()[:] = config['velocity']['E']
-    
-    elif isinstance(config['velocity']['E'], ndarray):
-      E.vector().set_local(config['velocity']['E'])
-      E.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['E'], Expression):
-      E.interpolate(config['velocity']['E'])
+    model.assign_variable(E, config['velocity']['E'])
 
     # Check if there are non-linear solver parameters defined.  If not, set 
     # them to dolfin's default.  The default is not likely to converge if 
@@ -623,7 +579,7 @@ class VelocityBP(object):
     Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dBed + Pb*dFltS
+    A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -855,26 +811,10 @@ class Enthalpy(object):
     #  set the surface temperature to the constant or array that 
     #  was passed in.
     if not config['enthalpy']['use_surface_climate']:
-      if   isinstance(T_surface, float):
-        model.T_surface.vector()[:] = T_surface
-      
-      elif isinstance(T_surface, ndarray):
-        model.T_surface.vector().set_local(T_surface)
-        model.T_surface.vector().apply('insert')
-      
-      elif isinstance(T_surface, Expression):
-        model.T_surface.interpolate(T_surface)
+      model.assign_variable(model.T_surface, T_surface)
 
     # initialize basal heat term :
-    if   isinstance(q_geo, float):
-      model.q_geo.vector()[:] = q_geo
-    
-    elif isinstance(q_geo, ndarray):
-      model.q_geo.vector().set_local(q_geo)
-      model.q_geo.vector().apply('insert')
-    
-    elif isinstance(q_geo, Expression):
-      model.q_geo.interpolate(q_geo) 
+    model.assign_variable(model.q_geo, q_geo)
     
     q_geo     = model.q_geo
     T_surface = model.T_surface
@@ -1050,20 +990,13 @@ class Enthalpy(object):
     
     # Assign values for H0,u,w, and mesh velocity
     if H0 is not None:
-      model.H0.vector().set_local(H0.vector().array())
-      model.Hhat.vector().set_local(Hhat.vector().array())
-      model.uhat.vector().set_local(uhat.vector().array())
-      model.vhat.vector().set_local(vhat.vector().array())
-      model.what.vector().set_local(what.vector().array())
-      model.mhat.vector().set_local(mhat.vector().array())
+      model.assign_variable(model.H0,   H0)
+      model.assign_variable(model.Hhat, Hhat)
+      model.assign_variable(model.uhat, uhat)
+      model.assign_variable(model.vhat, vhat)
+      model.assign_variable(model.what, what)
+      model.assign_variable(model.mhat, mhat)
       
-      model.H0.vector().apply('insert')
-      model.Hhat.vector().apply('insert')
-      model.uhat.vector().apply('insert')
-      model.vhat.vector().apply('insert')
-      model.what.vector().apply('insert')
-      model.mhat.vector().apply('insert')
-    
     lat_bc    = config['enthalpy']['lateral_boundaries']
     T_w       = model.T_w
     T0        = model.T0
@@ -1119,18 +1052,16 @@ class Enthalpy(object):
     Ts = T0_n.vector().array()
     #cold.vector().set_local((Ts > Ta).astype('float'))
     Ta[Ta > Ts] = Ts[Ta > Ts]
-    T.vector().set_local(Ta)
-    T.vector().apply('insert')
+    model.assign_variable(T, Ta)
 
     # update water content :
     WW = W_n.vector().array()
     WW[WW < 0]    = 0
     WW[WW > 0.01] = 0.01
-    W.vector().set_local(WW)
-    W.vector().apply('insert')
+    model.assign_variable(W, WW)
 
     # update melt-rate :
-    model.Mb = Mb_n
+    model.assign_variable(model.Mb, Mb_n)
 
 
 class FreeSurface(object):
@@ -1277,17 +1208,12 @@ class FreeSurface(object):
     """
     model  = self.model
     config = self.config
-    
-    self.uhat.vector().set_local(model.u.vector().get_local())
-    self.vhat.vector().set_local(model.v.vector().get_local())
-    self.what.vector().set_local(model.w.vector().get_local())
-    self.Shat.vector().set_local(model.S.vector().get_local())
-    self.ahat.vector().set_local(model.smb.vector().get_local())
-    self.uhat.vector().apply('insert') 
-    self.vhat.vector().apply('insert') 
-    self.what.vector().apply('insert') 
-    self.Shat.vector().apply('insert') 
-    self.ahat.vector().apply('insert') 
+   
+    model.assign_variable(self.uhat, model.u.vector()) 
+    model.assign_variable(self.vhat, model.v.vector()) 
+    model.assign_variable(self.what, model.w.vector()) 
+    model.assign_variable(self.Shat, model.S.vector()) 
+    model.assign_variable(self.ahat, model.smb.vector()) 
 
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
@@ -1311,8 +1237,7 @@ class FreeSurface(object):
       model.print_min_max(r, 'D')
 
     if config['free_surface']['lump_mass_matrix']:
-      model.dSdt.vector().set_local(m_l_inv * r.get_local())
-      model.dSdt.vector().apply('insert')
+      model.assign_variable(model.dSdt, m_l_inv * r.get_local())
     else:
       m.ident_zeros()
       solve(m, model.dSdt.vector(), r)
@@ -1320,8 +1245,8 @@ class FreeSurface(object):
     A = assemble(lhs(self.A_pro))
     p = assemble(rhs(self.A_pro))
     q = Vector()  
-    solve(A, q,p)
-    model.dSdt.vector()[:] = q
+    solve(A, q, p)
+    model.assign_variable(model.dSdt, q)
 
 class AdjointVelocityBP(object):
   """ 
@@ -1393,14 +1318,14 @@ class AdjointVelocityBP(object):
         a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
         R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
         print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to no regularization."
-        R = Constant(0.0) * dBed
+        R = Constant(0.0) * dGnd
     
     # Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
@@ -1490,8 +1415,7 @@ class SurfaceClimate(object):
     lat   = model.lat.vector().array()
     
     # Apply the lapse rate to the surface boundary condition
-    model.T_surface.vector().set_local(T_ma(S, lat) + T_w)
-    model.T_surface.vector().apply('')
+    model.assign_variable(model.T_surface, T_ma(S, lat) + T_w)
 
 
 class Age(object):
@@ -1577,16 +1501,11 @@ class Age(object):
 
     # Assign values to midpoint quantities and mesh velocity
     if ahat:
-      model.ahat.vector().set_local(ahat.vector().array())
-      model.a0.vector().set_local(a0.vector().array())
-      model.uhat.vector().set_local(uhat.vector().array())
-      model.what.vector().set_local(what.vector().array())
-      model.vhat.vector().set_local(vhat.vector().array())
-      model.ahat.vector().apply('insert')
-      model.a0.vector().apply('insert')
-      model.uhat.vector().apply('insert')
-      model.what.vector().apply('insert')
-      model.vhat.vector().apply('insert')
+      model.assign_variable(model.ahat, ahat.vector())
+      model.assign_variable(model.a0,   a0.vector())
+      model.assign_variable(model.uhat, uhat.vector())
+      model.assign_variable(model.vhat, vhat.vector())
+      model.assign_variable(model.what, what.vector())
 
     def above_ela(x,on_boundary):
       return (x[2]>config['age']['ela']) and on_boundary
@@ -1631,11 +1550,9 @@ class VelocityBalance(object):
     smb_        = project(smb, Q_flat)
     
     ds          = model.ds
-    
-    H_.vector().set_local(S - B)
-    H_.vector().apply('insert')
-    S_.vector().set_local(S)
-    S_.vector().apply('insert')
+   
+    model.assign_variable(H_, S-B) 
+    model.assign_variable(S_, S) 
 
     R_dSdx = + Nx * phi * ds(2) \
              - rho * g * H_ * S_.dx(0) * phi * ds(2) \
@@ -1687,10 +1604,8 @@ class VelocityBalance(object):
     solve(a_U, U.vector(), L_U)
     u_b = project(Ub * self.dS[0])
     v_b = project(Ub * self.dS[1])
-    self.model.u_balance.vector().set_local(u_b.vector().get_local())
-    self.model.v_balance.vector().set_local(v_b.vector().get_local())
-    self.model.u_balance.vector().apply('insert') 
-    self.model.v_balance.vector().apply('insert') 
+    self.model.assign_variable(self.model.u_balance, u_b.vector())
+    self.model.assign_variable(self.model.v_balance, v_b.vector())
     
 
 class VelocityBalance_2(object):

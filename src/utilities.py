@@ -839,7 +839,10 @@ class linear_attractor(object):
     v = self.spline(x,y)[0][0]
     if v > self.f_max:
       if self.hard_cut:
-        return self.l_min
+        if self.inv:
+          return self.l_min
+        else:
+          return self.l_max
       else:
         if self.inv:
           lc = self.l_max - self.c * v

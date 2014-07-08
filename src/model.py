@@ -810,7 +810,7 @@ class Model(object):
     if   isinstance(var, float):
       u.vector()[:] = var
     
-    elif isinstance(var, ndarray):
+    elif isinstance(var, np.ndarray):
       u.vector().set_local(var)
       u.vector().apply('insert')
     

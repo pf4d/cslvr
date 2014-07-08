@@ -856,7 +856,7 @@ class linear_attractor(object):
 class static_attractor(object):
   """
   """
-  def __init__(self, spline, c):
+  def __init__(self, spline, c, inv=False):
     """
     Refine the mesh off of data field <spline> with the cell radius 
     defined as :
@@ -866,11 +866,16 @@ class static_attractor(object):
     """
     self.spline = spline
     self.c      = c
+    self.inv    = inv
   
   def op(self, x, y, z, entity):
     """
     """
-    return self.c * self.spline(x,y)[0][0]
+    if not self.inv:
+      lc = self.c * self.spline(x,y)[0][0]
+    else:
+      lc = self.c * 1/self.spline(x,y)[0][0]
+    return lc 
 
 
 class min_field(object):
@@ -944,7 +949,7 @@ class MeshRefiner(object):
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 
-  def add_static_attractor(self, c=1):
+  def add_static_attractor(self, c=1, inv=False):
     """
     Refine the mesh with the cell radius defined as :
   
@@ -952,7 +957,7 @@ class MeshRefiner(object):
 
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
-    a   = static_attractor(self.spline, c)
+    a   = static_attractor(self.spline, c, inv)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 

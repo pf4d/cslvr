@@ -152,11 +152,12 @@ class Model(object):
     
     # iterate through the facets and mark each if on a boundary :
     #
-    #   2 = high slope, upward facing ................ surface
+    #   2 = high slope, upward facing ................ grounded surface
     #   3 = grounded high slope, downward facing ..... grounded base
-    #   4 = low slope, upward or downward facing ..... sides
+    #   4 = low slope, upward or downward facing ..... grounded sides
     #   5 = floating ................................. floating base
-    #   6 = floating ................................. sides
+    #   6 = floating ................................. floating sides
+    #   7 = floating ................................. floating surface
     if self.mask != None:
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
@@ -167,7 +168,10 @@ class Model(object):
         mask_xy = self.mask(x_m, y_m, z_m)
       
         if   n.z() >=  tol and f.exterior():
-          self.ff[f] = 2
+          if mask_xy > 0:
+            self.ff[f] = 7
+          else:
+            self.ff[f] = 2
       
         elif n.z() <= -tol and f.exterior():
           if mask_xy > 0:
@@ -190,7 +194,10 @@ class Model(object):
         mask_xy = self.mask(x_m, y_m, z_m)
       
         if   n.z() >=  tol and f.exterior():
-          self.ff_flat[f] = 2
+          if mask_xy > 0:
+            self.ff_flat[f] = 7
+          else:
+            self.ff_flat[f] = 2
       
         elif n.z() <= -tol and f.exterior():
           if mask_xy > 0:
@@ -238,6 +245,19 @@ class Model(object):
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
+  
+  def set_subdomain(self, mesh, flat_mesh, ff, ff_flat):
+    """
+    Sets the mesh to be Mesh <mesh> and flat_mest to be Mesh <flat_mesh>,
+    and sets the subdomains of the mesh and flat mesh to FacetFunction <ff> and
+    <ff_flat> respectively.
+    """
+    self.mesh      = mesh
+    self.flat_mesh = flat_mesh
+    self.ff        = ff
+    self.ff_flat   = ff_flat
+    self.ds        = Measure('ds')[self.ff]
+    self.ds_flat   = Measure('ds')[self.ff_flat]
      
   def set_parameters(self, params):
     """

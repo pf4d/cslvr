@@ -1284,7 +1284,7 @@ class AdjointVelocityBP(object):
     ds        = model.ds
     S         = model.S
 
-    dSrf     = ds(2)        # surface
+    dSrf     = ds(7)        # surface
     dGnd     = ds(3)        # grounded bed 
     dFlt     = ds(5)        # floating bed
     dFltS    = ds(6)        # marine terminating sides

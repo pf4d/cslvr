@@ -847,7 +847,6 @@ class Model(object):
     by the individually created model.
     """
     self.params.globalize_parameters(self) # make all the variables available 
-    self.calculate_boundaries()            # calculate the boundaries
 
     # Function Space
     if self.per_func_space == False:

@@ -298,8 +298,20 @@ class DataInput(object):
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_interpolation(self,fn,kx=3,ky=3):
-    interp = self.get_spline_expression(fn,kx=kx,ky=ky)
+  def get_interpolation(self, fn, near=False, kx=3, ky=3):
+    """
+    return the interpolation of data field <fn>.
+    """
+    if near:
+      interp = self.get_nearest_expression(fn, bool_data=bool_data)
+    else:
+      interp = self.get_spline_expression(fn,kx=kx,ky=ky)
+    
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: getting %s interpolation :::" % fn
+      text = colored(s, 'green')
+      print text
+
     proj   = interpolate(interp, self.func_space)
     return proj
 
@@ -801,24 +813,21 @@ class linear_attractor(object):
   Create an attractor object which refines with min and max cell radius <l_min>,
   <l_max> over data field <field>.  The <f_max> parameter specifies a max value
   for which to apply the minimum cell size such that if <field>_i is less than 
-  <f_max>, the cell size in this region will be <l_max>.  If <hard_cut> is true,
-  the values of <field> above <f_max> will be set to <l_min>, otherwise regular
-  interpolation based on <field> is performed.  If <inv> = True the object 
-  refines on the inverse of the data field <field>.
+  <f_max>, the cell size in this region will be <l_max>.  If <inv> = True 
+  the object refines on the inverse of the data field <field>.
   
                {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
+    cell_h_i = {l_max,     field_i < f_max
                {field_i,   otherwise 
 
   """
-  def __init__(self, spline, field, f_max, l_min, l_max, 
-               hard_cut=False, inv=True):
+  def __init__(self, spline, field, f_max, l_min, l_max, inv=True):
     """
     Refine the mesh off of data field <field> using spline <spline> with the 
     cell radius defined as :
   
                {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
+    cell_h_i = {l_max,     field_i < f_max
                {field_i,   otherwise 
 
     If <inv> is True, refine off of the inverse of <field> instead.
@@ -829,32 +838,26 @@ class linear_attractor(object):
     self.l_min    = l_min
     self.l_max    = l_max
     self.f_max    = f_max
-    self.hard_cut = hard_cut
     self.inv      = inv
-    self.c        = (self.l_max - self.l_min) / self.field.max()
   
   def op(self, x, y, z, entity):
     """
     """
-    v = self.spline(x,y)[0][0]
-    if v > self.f_max:
-      if self.hard_cut:
-        if self.inv:
-          return self.l_min
-        else:
-          return self.l_max
+    l_min = self.l_min
+    l_max = self.l_max
+    f     = self.field
+    v     = self.spline(x,y)[0][0]
+    if self.inv:
+      if v < self.f_max:
+        lc = l_max - (l_max - l_min) / (f.max() - f.min()) * v
       else:
-        if self.inv:
-          lc = self.l_max - self.c * v
-        else:
-          lc = self.l_min + self.c * v
-        return lc
+        lc = l_min
     else:
-      if self.inv:
-        lc = self.l_min
+      if v < self.f_max:
+        lc = l_min + (l_max - l_min) / f.max() * v
       else:
-        lc = self.l_max
-      return lc
+        lc = l_max
+    return lc
 
 class static_attractor(object):
   """
@@ -935,12 +938,12 @@ class MeshRefiner(object):
     GmshSetOption("Mesh", "CharacteristicLengthExtendFromBoundary", 0.0)
     GmshSetOption("Mesh", "Smoothing", 100.0)
 
-  def add_linear_attractor(self, f_max, l_min, l_max, hard_cut, inv):
+  def add_linear_attractor(self, f_max, l_min, l_max, inv):
     """
     Refine the mesh with the cell radius defined as :
   
                {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
+    cell_h_i = {l_max,     field_i < f_max
                {field_i,   otherwise 
 
     If <inv> is True, refine off of the inverse of <field> instead.
@@ -948,7 +951,7 @@ class MeshRefiner(object):
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
     a   = linear_attractor(self.spline, self.field, f_max, l_min, l_max, 
-                           inv=inv, hard_cut=hard_cut)
+                           inv=inv)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 

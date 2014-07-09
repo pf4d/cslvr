@@ -849,7 +849,7 @@ class linear_attractor(object):
     v     = self.spline(x,y)[0][0]
     if self.inv:
       if v < self.f_max:
-        lc = l_max - (l_max - l_min) / (f.max() - f.min()) * v
+        lc = l_max - (l_max - l_min) / f.max() * v
       else:
         lc = l_min
     else:

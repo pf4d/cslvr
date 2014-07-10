@@ -23,7 +23,7 @@ measures  = DataFactory.get_ant_measures(res=900)
 bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
 
-mesh = MeshFactory.get_antarctica_gradS_crude()
+mesh = MeshFactory.get_antarctica_3D_gradS_crude()
 
 dm  = DataInput(None, measures, mesh=mesh)
 db1 = DataInput(None, bedmap1,  mesh=mesh)
@@ -49,7 +49,7 @@ model = model.Model()
 model.set_mesh(mesh)
 model.set_geometry(S, B, mask=M, deform=True)
 model.set_parameters(pc.IceParameters())
-model.calculate_variables()
+model.calculate_boundaries()
 model.initialize_variables()
 
 # specifify non-linear solver parameters :
@@ -110,9 +110,9 @@ config = { 'mode'                         : 'steady',
            },  
            'age' : 
            { 
-             'on'                  : False,
+             'on'                  : True,
              'use_smb_for_ela'     : False,
-             'ela'                 : None,
+             'ela'                 : 500.0,
            },
            'surface_climate' : 
            { 

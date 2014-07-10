@@ -58,6 +58,7 @@ model = model.Model()
 model.set_mesh(mesh)
 model.set_geometry(S, B, deform=True)
 model.set_parameters(pc.IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 
 # specifify non-linear solver parameters :

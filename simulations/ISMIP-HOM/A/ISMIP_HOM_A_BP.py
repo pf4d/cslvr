@@ -11,7 +11,6 @@ alpha   = 0.5 * pi / 180
 L       = 40000
 
 nonlin_solver_params = default_nonlin_solver_params()
-#nonlin_solver_params['newton_solver']['linear_solver']  = 'mumps'
 nonlin_solver_params['newton_solver']['linear_solver']   = 'gmres'
 nonlin_solver_params['newton_solver']['preconditioner']  = 'hypre_amg'
 
@@ -100,6 +99,7 @@ Bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
 
 model.set_geometry(Surface, Bed, deform=True)
 model.set_parameters(IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
  
 F = SteadySolver(model, config)

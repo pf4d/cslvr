@@ -101,9 +101,17 @@ class SteadySolver(object):
         self.velocity_instance.solve()
         U = project(as_vector([model.u, model.v, model.w]))
         if config['log']:
+          if self.model.MPI_rank==0:
+            s    = '::: saving velocity U.pvd file :::'
+            text = colored(s, 'blue')
+            print text
           File(outpath + 'U.pvd') << U
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
+            if self.model.MPI_rank==0:
+              s    = '::: saving pressure P.pvd file :::'
+              text = colored(s, 'blue')
+              print text
             File(outpath + 'P.pvd') << model.P
         model.print_min_max(U, 'U')
 
@@ -111,6 +119,10 @@ class SteadySolver(object):
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['log']: 
+          if self.model.MPI_rank==0:
+            s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
+            text = colored(s, 'blue')
+            print text
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
@@ -136,7 +148,12 @@ class SteadySolver(object):
     # Solve age equation
     if config['age']['on']:
       self.age_instance.solve()
-      if config['log']: File(outpath + 'age.pvd') << model.age  # save age
+      if config['log']: 
+        if self.model.MPI_rank==0:
+          s    = '::: saving age age.pvd file :::'
+          text = colored(s, 'blue')
+          print text
+        File(outpath + 'age.pvd') << model.age  # save age
 
 
 class TransientSolver(object):
@@ -238,6 +255,10 @@ class TransientSolver(object):
       self.velocity_instance.solve()
       if self.config['log']:
         U = project(as_vector([model.u, model.v, model.w]))
+        if self.model.MPI_rank==0:
+          s    = '::: saving velocity U.pvd file :::'
+          text = colored(s, 'blue')
+          print text
         self.file_U << U
       model.print_min_max(U, 'U')
 
@@ -247,6 +268,10 @@ class TransientSolver(object):
     if config['free_surface']['on']:
       self.surface_instance.solve()
       if self.config['log']:
+        if self.model.MPI_rank==0:
+          s    = '::: saving surface S.pvd file :::'
+          text = colored(s, 'blue')
+          print text
         self.file_S << model.S
       model.print_min_max(model.S, 'S')
  
@@ -309,15 +334,19 @@ class TransientSolver(object):
         temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
         model.assign_variable(mhat_non, temp)
         m_temp = project(mhat_non,model.Q)
-        model.assign_variable(mhat, m_temp.vector())
+        model.assign_variable(model.mhat, m_temp.vector().get_local())
       else:
         temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
-        model.assign_variable(mhat, temp)
+        model.assign_variable(model.mhat, temp)
       # Calculate enthalpy update
       if self.config['enthalpy']['on']:
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
         if self.config['log']:
+          if self.model.MPI_rank==0:
+            s    = '::: saving temperature T.pvd file :::'
+            text = colored(s, 'blue')
+            print text
           self.file_T << model.T
         model.print_min_max(model.H,  'H')
         model.print_min_max(model.T,  'T')
@@ -329,6 +358,10 @@ class TransientSolver(object):
         self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
+          if self.model.MPI_rank==0:
+            s    = '::: saving age age.pvd file :::'
+            text = colored(s, 'blue')
+            print text
           self.file_a << model.age
         model.print_min_max(model.age, 'age')
 
@@ -588,6 +621,10 @@ class AdjointSolver(object):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
     # save the output :
+    if self.model.MPI_rank==0:
+      s    = '::: saving adjoint beta2, U_obs, and DSdt .pvd files :::'
+      text = colored(s, 'blue')
+      print text
     U_obs = project(as_vector([model.u_o, model.v_o, 0]))
     dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                     + model.w + model.adot)

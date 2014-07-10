@@ -1022,11 +1022,16 @@ class Enthalpy(object):
     H_surface = project( (T_surface - T0) * C + h_i )
     H_float   = project( (T_w - T0) * C + h_i )
     model.H_surface = H_surface
-    
+   
+    # surface boundary condition : 
     self.bc_H = []
     self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 2) )
-    self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
     
+    # apply T_w conditions of portion of ice in contact with water :
+    if model.mask != None:
+      self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
+   
+    # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
       
@@ -1209,11 +1214,11 @@ class FreeSurface(object):
     model  = self.model
     config = self.config
    
-    model.assign_variable(self.uhat, model.u.vector()) 
-    model.assign_variable(self.vhat, model.v.vector()) 
-    model.assign_variable(self.what, model.w.vector()) 
-    model.assign_variable(self.Shat, model.S.vector()) 
-    model.assign_variable(self.ahat, model.smb.vector()) 
+    model.assign_variable(self.Shat, model.S) 
+    model.assign_variable(self.ahat, model.smb) 
+    model.assign_variable(self.uhat, model.u) 
+    model.assign_variable(self.vhat, model.v) 
+    model.assign_variable(self.what, model.w) 
 
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)

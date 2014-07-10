@@ -1,4 +1,5 @@
 from fenics    import *
+from ufl.indexed import Indexed
 from termcolor import colored, cprint
 import numpy as np
 
@@ -252,6 +253,10 @@ class Model(object):
     and sets the subdomains of the mesh and flat mesh to FacetFunction <ff> and
     <ff_flat> respectively.
     """
+    if self.MPI_rank==0:
+      s    = "::: setting subdomains :::"
+      text = colored(s, 'magenta')
+      print text
     self.mesh      = mesh
     self.flat_mesh = flat_mesh
     self.ff        = ff
@@ -827,7 +832,7 @@ class Model(object):
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
     """
-    if   isinstance(var, float):
+    if   isinstance(var, float) or isinstance(var, int):
       u.vector()[:] = var
     
     elif isinstance(var, np.ndarray):
@@ -837,8 +842,22 @@ class Model(object):
     elif isinstance(var, Expression):
       u.interpolate(var)
 
+    elif isinstance(var, GenericVector):
+      u.vector().set_local(var.array())
+      u.vector().apply('insert')
+
     elif isinstance(var, Function):
-      u = var
+      u.vector().set_local(var.vector().array())
+      u.vector().apply('insert')
+    
+    elif isinstance(var, Indexed):
+      u.vector().set_local(project(var, self.Q).vector().array())
+      u.vector().apply('insert')
+
+    else:
+      print "assign_variable() function requires a Function, array, float," + \
+            " int, Vector, Expression, or Indexed not %s" % type(var)
+      exit(1)
 
 
   def initialize_variables(self):
@@ -846,6 +865,11 @@ class Model(object):
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
+    if self.MPI_rank==0:
+      s    = "::: initializing variables :::"
+      text = colored(s, 'magenta')
+      print text
+    
     self.params.globalize_parameters(self) # make all the variables available 
 
     # Function Space
@@ -883,10 +907,10 @@ class Model(object):
     self.eta           = Function(self.Q)
     self.P             = Function(self.Q)
     self.Tstar         = Function(self.Q)
-    self.W             = Function(self.Q) 
-    self.Vd            = Function(self.Q) 
-    self.Pe            = Function(self.Q) 
-    self.Sl            = Function(self.Q) 
+    self.W             = Function(self.Q)
+    self.Vd            = Function(self.Q)
+    self.Pe            = Function(self.Q)
+    self.Sl            = Function(self.Q)
     self.Pc            = Function(self.Q)
     self.Nc            = Function(self.Q)
     self.Pb            = Function(self.Q)

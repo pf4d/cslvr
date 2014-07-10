@@ -1506,16 +1506,22 @@ class Age(object):
 
     # Assign values to midpoint quantities and mesh velocity
     if ahat:
-      model.assign_variable(model.ahat, ahat.vector())
-      model.assign_variable(model.a0,   a0.vector())
-      model.assign_variable(model.uhat, uhat.vector())
-      model.assign_variable(model.vhat, vhat.vector())
-      model.assign_variable(model.what, what.vector())
+      model.assign_variable(model.ahat, ahat)
+      model.assign_variable(model.a0,   a0)
+      model.assign_variable(model.uhat, uhat)
+      model.assign_variable(model.vhat, vhat)
+      model.assign_variable(model.what, what)
+   
+    if config['age']['use_smb_for_ela']:
+      adot = config['age']['observed_smb']
+      def above_ela(x,on_boundary):
+        return adot(x[0], x[1], x[2]) > 0 and on_boundary
+    
+    else:
+      def above_ela(x,on_boundary):
+        return (x[2]>config['age']['ela']) and on_boundary
 
-    def above_ela(x,on_boundary):
-      return (x[2]>config['age']['ela']) and on_boundary
-
-    self.bc_age = DirichletBC(model.Q, 0, model.ff, above_ela)
+    self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
     # Solve!
     if self.model.MPI_rank==0:

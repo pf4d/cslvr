@@ -16,7 +16,7 @@ class Model(object):
     self.out_dir        = out_dir
     self.MPI_rank       = MPI.rank(mpi_comm_world())
 
-  def set_geometry(self, sur, bed, deform=True, mask=None):
+  def set_geometry(self, sur, bed, deform=True):
     """
     Sets the geometry of the surface and bed of the ice sheet.
     
@@ -27,7 +27,6 @@ class Model(object):
     """
     self.S_ex = sur
     self.B_ex = bed
-    self.mask = mask
     
     if deform:
       self.deform_mesh_to_geometry()
@@ -138,10 +137,13 @@ class Model(object):
       x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
 
 
-  def calculate_boundaries(self):
+  def calculate_boundaries(self, mask=None, adot=None):
     """
     Determines the boundaries of the current model mesh
     """
+    self.mask = mask
+    self.adot = adot
+    
     if self.MPI_rank==0:
       s    = "::: calculating boundaries :::"
       text = colored(s, 'magenta')
@@ -149,6 +151,7 @@ class Model(object):
     
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh,      0)
+    self.ff_acc  = FacetFunction('size_t', self.mesh,      0)
     self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
     
     # iterate through the facets and mark each if on a boundary :
@@ -246,7 +249,21 @@ class Model(object):
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
-  
+
+    # iterate through the facets and mark each if positive accumulation :
+    #
+    #   1 = high slope, upward facing ................ positive adot
+    if self.adot != None:
+      for f in facets(self.mesh):
+        n       = f.normal()    # unit normal vector to facet f
+        tol     = 1e-3
+        x_m     = f.midpoint().x()
+        y_m     = f.midpoint().y()
+        z_m     = f.midpoint().z()
+        adot_xy = self.adot(x_m, y_m, z_m)
+        if n.z() >= tol and f.exterior() and adot_xy > 0:
+          self.ff_acc[f] = 1
+      
   def set_subdomain(self, mesh, flat_mesh, ff, ff_flat):
     """
     Sets the mesh to be Mesh <mesh> and flat_mest to be Mesh <flat_mesh>,

@@ -49,7 +49,7 @@ model = model.Model()
 model.set_mesh(mesh)
 model.set_geometry(S, B, mask=M, deform=True)
 model.set_parameters(pc.IceParameters())
-model.calculate_boundaries()
+model.calculate_boundaries(mask=M, adot=adot)
 model.initialize_variables()
 
 # specifify non-linear solver parameters :
@@ -111,8 +111,8 @@ config = { 'mode'                         : 'steady',
            'age' : 
            { 
              'on'                  : True,
-             'use_smb_for_ela'     : False,
-             'ela'                 : 500.0,
+             'use_smb_for_ela'     : True,
+             'ela'                 : None,
            },
            'surface_climate' : 
            { 

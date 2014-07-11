@@ -1029,7 +1029,7 @@ class Enthalpy(object):
     
     # apply T_w conditions of portion of ice in contact with water :
     if model.mask != None:
-      self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
+      self.bc_H.append( DirichletBC(Q, H_float, model.ff, 5) )
    
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
@@ -1513,15 +1513,12 @@ class Age(object):
       model.assign_variable(model.what, what)
    
     if config['age']['use_smb_for_ela']:
-      adot = config['age']['observed_smb']
-      def above_ela(x,on_boundary):
-        return adot(x[0], x[1], x[2]) > 0 and on_boundary
+      self.bc_age = DirichletBC(model.Q, 0.0, model.ff_acc, 1)
     
     else:
       def above_ela(x,on_boundary):
-        return (x[2]>config['age']['ela']) and on_boundary
-
-    self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
+        return x[2] > config['age']['ela'] and on_boundary
+      self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
     # Solve!
     if self.model.MPI_rank==0:

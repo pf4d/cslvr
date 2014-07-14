@@ -73,7 +73,8 @@ config = { 'mode'                         : 'transient',
              'r'                          : 0.0,
              'E'                          : 1,
              'approximation'              : 'fo',
-             'boundaries'                 : None
+             'boundaries'                 : None,
+             'log'                        : True
            },                             
            'enthalpy' :                   
            {                              

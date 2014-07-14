@@ -21,7 +21,7 @@ thklim = 200.0
 
 measures  = DataFactory.get_ant_measures(res=900)
 bedmap1   = DataFactory.get_bedmap1(thklim=thklim)
-bedmap2   = DataFactory.get_bedmap2(thklim=thklim)
+bedmap   = DataFactory.get_bedmap2(thklim=thklim)
 
 mesh = MeshFactory.get_antarctica_3D_gradS_crude()
 
@@ -90,7 +90,8 @@ config = { 'mode'                         : 'steady',
              'r'                   : 1.0,
              'E'                   : 1.0,
              'approximation'       : 'fo',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 
@@ -98,7 +99,8 @@ config = { 'mode'                         : 'steady',
              'use_surface_climate' : False,
              'T_surface'           : T_s,
              'q_geo'               : q_geo,
-             'lateral_boundaries'  : None
+             'lateral_boundaries'  : None,
+             'log'                 : True
            },
            'free_surface' :
            { 

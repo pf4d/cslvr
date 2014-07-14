@@ -40,7 +40,8 @@ config = { 'mode'                         : 'steady',
              'r'                   : 1.0,
              'E'                   : 1,
              'approximation'       : 'stokes',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 

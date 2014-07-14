@@ -99,7 +99,8 @@ config = { 'mode'                         : 'steady',
              'r'                   : 1.0,
              'E'                   : 1.0,
              'approximation'       : 'fo',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 
@@ -107,7 +108,8 @@ config = { 'mode'                         : 'steady',
              'use_surface_climate' : False,
              'T_surface'           : T_s,
              'q_geo'               : q_geo,
-             'lateral_boundaries'  : None
+             'lateral_boundaries'  : None,
+             'log'                 : True
            },
            'free_surface' :
            { 

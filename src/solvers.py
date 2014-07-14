@@ -100,7 +100,7 @@ class SteadySolver(object):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         U = project(as_vector([model.u, model.v, model.w]))
-        if config['log']:
+        if config['velocity']['log']:
           if self.model.MPI_rank==0:
             s    = '::: saving velocity U.pvd file :::'
             text = colored(s, 'blue')
@@ -118,7 +118,7 @@ class SteadySolver(object):
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
-        if config['log']: 
+        if config['enthalpy']['log']: 
           if self.model.MPI_rank==0:
             s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
             text = colored(s, 'blue')
@@ -253,7 +253,7 @@ class TransientSolver(object):
     if config['velocity']['on']:
       model.U.vector()[:] = 0.0
       self.velocity_instance.solve()
-      if self.config['log']:
+      if config['velocity']['log']:
         U = project(as_vector([model.u, model.v, model.w]))
         if self.model.MPI_rank==0:
           s    = '::: saving velocity U.pvd file :::'
@@ -342,7 +342,7 @@ class TransientSolver(object):
       if self.config['enthalpy']['on']:
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
-        if self.config['log']:
+        if self.config['enthalpy']['log']:
           if self.model.MPI_rank==0:
             s    = '::: saving temperature T.pvd file :::'
             text = colored(s, 'blue')

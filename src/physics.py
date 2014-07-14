@@ -181,14 +181,12 @@ class VelocityStokes(object):
     model.assign_variable(E, config['velocity']['E'])
 
     # pressure boundary :
-    class pressure_boundary(Expression):
-      def __init__(self, rho_w, g):
-        self.rho_w = rho_w
-        self.g     = g
+    class Depth(Expression):
       def eval(self, values, x):
-        values[0] = -self.rho_w * self.g * min(0, x[2])
-    pres_b = pressure_boundary(rho_w, g)
-    fnorm  = FacetNormal(mesh)
+        b         = model.B_ex(x[0], x[1], x[2])
+        values[0] = abs(min(0, b))
+    D = Depth(element=Q.ufl_element())
+    N = FacetNormal(mesh)
     
     # Check if there are non-linear solver parameters defined.  If not, set 
     # them to dolfin's default.  The default is not likely to converge if 
@@ -212,9 +210,12 @@ class VelocityStokes(object):
     u,   v,   w,   P     = split(U)
 
     # set up surfaces to integrate :
-    ds     = model.ds
-    dGrnd  = ds(3)
-    dFloat = ds(5) + ds(6)
+    ds       = model.ds  
+    dSrf     = ds(2)        # surface
+    dGnd     = ds(3)        # grounded bed 
+    dFlt     = ds(5)        # floating bed
+    dFltS    = ds(6)        # marine terminating sides
+    dBed     = dGnd + dFlt  # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
 		# using the most recently calculated temperature field, if expected.
@@ -257,8 +258,8 @@ class VelocityStokes(object):
     # 5) Impenetrability constraint
     Nc     = P * (u*B.dx(0) + v*B.dx(1) - w)
 
-    # 6) pressure constraint :
-    Pb     = -P * fnorm 
+    # 6) pressure boundary
+    Pb     = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v + w) 
 
     g      = Constant((0.0, 0.0, g))
     h      = CellSize(mesh)
@@ -266,7 +267,7 @@ class VelocityStokes(object):
     Lsq    = -tau * dot( (grad(P) + rho*g), (grad(P) + rho*g) )
     
     # Variational principle
-    A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGrnd + Nc*dGrnd# + Pb*dFloat
+    A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dFltS
 
     model.A      = A
     model.epsdot = epsdot
@@ -579,7 +580,7 @@ class VelocityBP(object):
     Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dBed + Pb*dFltS
+    A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -1301,7 +1302,7 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = (Vd + Pe)*dx + Sl*dBed + Pb*dFltS
+      A       = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
@@ -1323,10 +1324,10 @@ class AdjointVelocityBP(object):
         a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
         R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dBed
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dBed
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
         print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to no regularization."

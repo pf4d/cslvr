@@ -41,7 +41,8 @@ config = { 'mode'                         : 'steady',
              'r'                   : 1,
              'E'                   : 1,
              'approximation'       : 'fo',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 

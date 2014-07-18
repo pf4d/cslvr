@@ -1,23 +1,21 @@
 import sys
-import os
-src_directory = '../../../'
-sys.path.append(src_directory)
+import varglas.solvers            as solvers
+import varglas.physical_constants as pc
+import varglas.model              as model
+from varglas.mesh.mesh_factory    import MeshFactory
+from varglas.data.data_factory    import DataFactory
+from varglas.helper               import default_nonlin_solver_params
+from varglas.utilities            import DataInput, DataOutput
+from fenics                       import *
+from time                         import time
+from termcolor                    import colored, cprint
 
-import src.solvers            as solvers
-import src.physical_constants as pc
-import src.model              as model
-from meshes.mesh_factory  import MeshFactory
-from data.data_factory    import DataFactory
-from src.utilities        import DataInput, DataOutput
-from src.helper           import *
-from dolfin               import *
-from time                 import time
+t0 = time()
 
 out_dir = './stress_balance_stokes_5H/'
-in_dir  = './results_stokes_5H/03/'
+in_dir  = './stokes_5H/'
 
 set_log_active(True)
-#set_log_level(PROGRESS)
 
 thklim = 200.0
 
@@ -25,20 +23,21 @@ thklim = 200.0
 bamber   = DataFactory.get_bamber(thklim = thklim)
 
 # define the meshes :
-mesh     = Mesh('meshes/greenland_3D_5H.xml')
-mesh.coordinates()[:,2] /= 100000.0
+mesh      = Mesh('meshes/greenland_3D_5H.xml')
+#mesh     = MeshFactory.get_greenland_3D_5H()
 
 # create data objects to use with varglas :
 dbm     = DataInput(None, bamber, mesh=mesh)
 
 # get the expressions used by varglas :
-Surface = dbm.get_spline_expression('h')
-Bed     = dbm.get_spline_expression('b')
+Surface = dbm.get_spline_expression('H')
+Bed     = dbm.get_spline_expression('B')
 
 model = model.Model(out_dir = out_dir)
-model.set_geometry(Surface, Bed)
-model.set_mesh(mesh, deform=True)
+model.set_mesh(mesh)
+model.set_geometry(Surface, Bed, deform=True)
 model.set_parameters(pc.IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 parameters['form_compiler']['quadrature_degree'] = 2
 
@@ -89,6 +88,19 @@ F.solve()
 #File(out_dir + 'tau_tot_s.pvd')      << tau_tot
 #File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
 #File(out_dir + 'tau_drv_p_bas.pvd')  << tau_drv_p_bas
+
+tf = time()
+
+# calculate total time to compute
+s = tf - t0
+m = s / 60.0
+h = m / 60.0
+s = s % 60
+m = m % 60
+if model.MPI_rank == 0:
+  s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+  text = colored(s, 'red', attrs=['bold'])
+  print text
 
 
 

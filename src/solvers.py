@@ -1,4 +1,4 @@
-from pylab          import inf, ones, zeros, array, arange, vstack
+from pylab          import inf, ones, zeros, array, arange, vstack, unique
 from fenics         import project, File, vertex_to_dof_map, Function, \
                            assemble, sqrt, DoubleArray, Constant, function, MPI
 from physics        import *
@@ -609,7 +609,12 @@ class AdjointSolver(object):
     
     # print the bounds :
     if self.model.MPI_rank==0:
-      text = colored(bounds, 'red', attrs=['bold'])
+      """
+      find the unique values of each row of array <S>.
+      """
+      unq = unique(bounds.view(bounds.dtype.descr * bounds.shape[1]))
+      unq = unq.view(bounds.dtype).reshape(-1, bounds.shape[1])
+      text = colored("unique bounds:\n" + str(unq), 'red', attrs=['bold'])
       print text
     
     # minimize function I with initial guess beta_0 and gradient function J :
@@ -657,48 +662,50 @@ class StokesBalanceSolver(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    print "::: initializing 'stokes-balance' solver :::"
     self.model  = model
     self.config = config
     
-    Q       = model.Q
-    u       = model.u
-    v       = model.v
-    w       = model.w
-    S       = model.S
-    B       = model.B
-    H       = S - B
-    eta     = model.eta
-    beta2   = model.beta2
+    if self.model.MPI_rank==0:
+      s    = "::: initializing 'stokes-balance' solver :::"
+      text = colored(s, 'blue')
+      print text
     
-    # get the values at the bed :
-    beta2_e = model.extrude(beta2, 3, 2, Q)
-    u_b_e   = model.extrude(u,     3, 2, Q)
-    v_b_e   = model.extrude(v,     3, 2, Q)
-    
-    # vertically average :
-    etabar = model.vert_integrate(eta, Q)
-    etabar = project(model.extrude(etabar, 2, 2, Q) / H)
-    ubar   = model.vert_integrate(u, Q)
-    ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
-    vbar   = model.vert_integrate(v, Q)
-    vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
+    #Q       = model.Q
+    #u       = model.u
+    #v       = model.v
+    #w       = model.w
+    #S       = model.S
+    #B       = model.B
+    #H       = S - B
+    #eta     = model.eta
+    #beta2   = model.beta2
+    #
+    ## get the values at the bed :
+    #beta2_e = model.extrude(beta2, 3, 2, Q)
+    #u_b_e   = model.extrude(u,     3, 2, Q)
+    #v_b_e   = model.extrude(v,     3, 2, Q)
+    #
+    ## vertically average :
+    #etabar = model.vert_integrate(eta, Q)
+    #etabar = project(model.extrude(etabar, 2, 2, Q) / H)
+    #ubar   = model.vert_integrate(u, Q)
+    #ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
+    #vbar   = model.vert_integrate(v, Q)
+    #vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
 
-    # set the model variables so the physics object can solve it :
-    model.beta2_e = beta2_e
-    model.u_b_e   = u_b_e
-    model.v_b_e   = v_b_e
-    model.etabar  = etabar
-    model.ubar    = ubar
-    model.vbar    = vbar
-    
-    # calculate the driving stress and basal drag once :
-    model.tau_d   = model.calc_tau_drv(Q)
-    model.tau_b   = model.calc_tau_bas(Q)
-    
-    self.Q = Q
+    ## set the model variables so the physics object can solve it :
+    #model.beta2_e = beta2_e
+    #model.u_b_e   = u_b_e
+    #model.v_b_e   = v_b_e
+    #model.etabar  = etabar
+    #model.ubar    = ubar
+    #model.vbar    = vbar
+    #
+    ## calculate the driving stress and basal drag once :
+    #model.tau_d   = model.calc_tau_drv(Q)
+    #model.tau_b   = model.calc_tau_bas(Q)
 
-    self.stress_balance_instance = StokesBalance(model, config)
+    self.stress_balance_instance = StokesBalance3D(model, config)
 
   def solve(self):
     """ 
@@ -707,44 +714,29 @@ class StokesBalanceSolver(object):
     config  = self.config
     outpath = self.config['output_path']
     
-    # Set the initial Picard iteration (PI) parameters
-    # L_\infty norm in velocity between iterations
-    inner_error = inf
+    model.print_min_max(model.u, 'u')
+    model.print_min_max(model.v, 'v')
     
-    # number of iterations
-    counter = 0
-   
-    # set an inner tolerance for PI
-    max_iter = 1
-   
-    # previous velocity for norm calculation
-    u_prev   = zeros(len(model.ubar.vector().array()))
+    # calculate ubar, vbar :
+    self.stress_balance_instance.solve()
+    model.print_min_max(model.ubar, 'ubar')
+    model.print_min_max(model.vbar, 'vbar')
     
-    # tolerance to stop solving :
-    inner_tol = 0.0
-    
-    # Perform a Picard iteration until the L_\infty norm of the velocity 
-    # difference is less than tolerance
-    while counter < max_iter and inner_error > inner_tol:
-      
-      self.stress_balance_instance.solve()
-      
-      # Calculate L_infinity norm
-      ubar_v      = model.ubar.vector().array()
-      vbar_v      = model.vbar.vector().array()
-      ubar_n      = np.sqrt(ubar_v**2 + vbar_v**2)
-      diff        = abs(u_prev - ubar_n)
-      inner_error = diff.max()
-      u_prev      = ubar_n
-      
-      counter += 1
-      
-      if self.model.MPI_rank==0:
-        s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
-        text = colored(s, 'blue')
-        print text % (counter, max_iter, inner_error, inner_tol)
-   
     # solve for the stress balance given the appropriate vertically 
     # averaged velocities :
     self.stress_balance_instance.component_stress_stokes()
+    model.print_min_max(model.tau_dn,   'tau_dn')
+    model.print_min_max(model.tau_dt,   'tau_dt')
+    model.print_min_max(model.tau_bn,   'tau_bn')
+    model.print_min_max(model.tau_bt,   'tau_bt')
+    model.print_min_max(model.tau_nn,   'tau_nn')
+    model.print_min_max(model.tau_nt,   'tau_nt')
+    model.print_min_max(model.tau_tn,   'tau_tn')
+    model.print_min_max(model.tau_tt,   'tau_tt')
+    model.print_min_max(model.tau_totn, 'tau_totn')
+    model.print_min_max(model.tau_tott, 'tau_tott')
+    model.print_min_max(model.u_s,      'u_s')
+    model.print_min_max(model.v_s,      'v_s')
+
+
 

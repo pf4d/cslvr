@@ -1,7 +1,7 @@
-from fenics    import *
+from fenics      import *
 from ufl.indexed import Indexed
-from termcolor import colored, cprint
-import numpy as np
+from termcolor   import colored, cprint
+import numpy         as np
 
 class Model(object):
   """ 
@@ -827,15 +827,19 @@ class Model(object):
     Print the minimum and maximum values of <u>, a Vector, Function, or array.
     """
     if self.MPI_rank==0:
-      if type(u) == Vector:
+      if isinstance(u, GenericVector):
         uMin = u.array().min()
         uMax = u.array().max()
-      elif type(u) == Function: 
+      elif isinstance(u, Function):
         uMin = u.vector().array().min()
         uMax = u.vector().array().max()
-      elif type(u) == np.ndarray:
+      elif isinstance(u, np.ndarray):
         uMin = u.min()
         uMax = u.max()
+      elif isinstance(u, Indexed):
+        u_n  = project(u, self.Q)
+        uMin = u_n.vector().array().min()
+        uMax = u_n.vector().array().max()
       else:
         print "print_min_max function requires a Vector, Function, or array," \
               + " not %s." % type(u)

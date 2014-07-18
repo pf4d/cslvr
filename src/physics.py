@@ -292,12 +292,9 @@ class VelocityStokes(object):
     # the direction of a small perturbation in U
     self.J = derivative(self.F, U, dU)
 
-  def solve(self, maxiter=50):
+  def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
-
-    :param maxiter: (Optional) Maximum number of iterations to perform when 
-                    calculating a solution        
     """
     # Note that for solving the full Stokes functional, the edges of the 
     # domain require some sort of boundary condition other than homogeneous 
@@ -470,6 +467,7 @@ class VelocityBP(object):
     gamma         = model.gamma
     S             = model.S
     B             = model.B
+    H             = S - B
     x             = model.x
     E             = model.E
     W             = model.W
@@ -484,7 +482,7 @@ class VelocityBP(object):
     Pe            = model.Pe
     Sl            = model.Sl
     Pb            = model.Pb
-    beta2         = model.beta2
+    beta          = model.beta2
 
     # pressure boundary :
     class Depth(Expression):
@@ -502,7 +500,16 @@ class VelocityBP(object):
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    model.assign_variable(beta2, config['velocity']['beta2'])
+    if config['velocity']['init_beta_from_U_ob']:
+      U_ob   = config['velocity']['U_ob']
+      U_mag  = sqrt(inner(U_ob, U_ob))
+      S_mag  = sqrt(inner(grad(S), grad(S)))
+      beta_0 = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag + 0.1)), Q)
+      beta_0_v               = beta_0.vector().array()
+      beta_0_v[beta_0_v < 0] = DOLFIN_EPS
+      model.assign_variable(beta, beta_0_v)
+    else:
+      model.assign_variable(beta2, config['velocity']['beta2'])
    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -574,10 +581,10 @@ class VelocityBP(object):
     Pe       = rho * g * (u * S.dx(0) + v * S.dx(1))
 
     # 3) Dissipation by sliding
-    Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
+    Sl       = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v) 
+    Pb       = (rho*g*H + rho_w*g*B) / H * (u + v) 
 
     # Variational principle
     A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
@@ -604,17 +611,14 @@ class VelocityBP(object):
     model.Pb    = Pb
     model.A     = A
     model.T     = T
-    model.beta2 = beta2
+    model.beta2 = beta
     model.E     = E
     model.u     = u
     model.v     = v
 
-  def solve(self, maxiter=50):
+  def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
-    
-    :param maxiter : (Optional) Maximum number of iterations to perform when 
-                     calculating a solution
     """
     model  = self.model
     config = self.config
@@ -1290,7 +1294,7 @@ class AdjointVelocityBP(object):
     ds        = model.ds
     S         = model.S
 
-    dSrf     = ds(7)        # surface
+    dSrf     = ds(2)        # surface
     dGnd     = ds(3)        # grounded bed 
     dFlt     = ds(5)        # floating bed
     dFltS    = ds(6)        # marine terminating sides
@@ -1320,31 +1324,43 @@ class AdjointVelocityBP(object):
     # form regularization term 'R' :
     N = FacetNormal(model.mesh)
     for a,c in zip(alpha,control):
+      t = Constant(0.5)
       if isinstance(a, (float,int)):
         a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
-        R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+        R = a * t * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
+        R = a * t * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
         print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to no regularization."
-        R = Constant(0.0) * dBed
+        R = Constant(0.0) * dGnd
     
     # Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
     if config['adjoint']['objective_function'] == 'logarithmic':
-      self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                     (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
+      a      = Constant(0.5)
+      self.I = a * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + Constant(0.5) * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
-                                  - (U[2] + adot))**2 * dSrf + R
+      a      = Constant(0.5)
+      self.I = a * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
+                    - (U[2] + adot))**2 * dSrf + R
 
     elif config['adjoint']['objective_function'] == 'linear':
-      self.I = + Constant(0.5) * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
+      a      = Constant(0.5)
+      self.I = a * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
+    
+    elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
+      g1     = Constant(0.5 * config['adjoint']['gamma1'])
+      g2     = Constant(0.5 * config['adjoint']['gamma2'])
+      self.I = + g1 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf \
+               + g2 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                          (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf \
+               + R
 
     else:
       print   "adjoint objection function may be 'linear', 'logarithmic', or" \
@@ -1823,6 +1839,7 @@ class StokesBalance(object):
     Phi      = TestFunction(V)
     phi, psi = split(Phi)
     U_s      = Function(V)
+    u_s, v_s = split(U_s)
     
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
@@ -1884,6 +1901,8 @@ class StokesBalance(object):
     self.Q   = Q
     self.r   = r
     self.U_s = U_s
+    model.ubar = u_s
+    model.vbar = v_s
     
   def solve(self):
     """
@@ -1895,9 +1914,6 @@ class StokesBalance(object):
       text = colored(s, 'cyan')
       print text
     solve(lhs(self.r) == rhs(self.r), self.U_s)
-    
-    model.ubar = U_s.sub(0)
-    model.vbar = U_s.sub(1)
 
   def component_stress_stokes(self):  
     """
@@ -1918,8 +1934,8 @@ class StokesBalance(object):
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) in relation to the stress-tensor :
-    u_s = model.ubar
-    v_s = model.vbar
+    u_s = project(model.ubar, Q)
+    v_s = project(model.vbar, Q)
     
     U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
     u_n = U[0]
@@ -2021,4 +2037,244 @@ class StokesBalance(object):
     model.v_s      = v_s
 
 
+class StokesBalance3D(object):
+
+  def __init__(self, model, config):
+    """
+    """
+    self.model  = model
+    self.config = config
+
+    Q       = model.Q
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    beta2   = model.beta2
+    eta     = model.eta
+    rho     = model.rho
+    g       = model.g
+    ds      = model.ds  
+    dSrf    = ds(2)        # surface
+    dGnd    = ds(3)        # grounded bed 
+    dFlt    = ds(5)        # floating bed
+    dFltS   = ds(6)        # marine terminating sides
+    dBed    = dGnd + dFlt  # bed
+    
+    # create functions used to solve for velocity :
+    V        = MixedFunctionSpace([Q,Q])
+    dU       = TrialFunction(V)
+    du, dv   = split(dU)
+    Phi      = TestFunction(V)
+    phi, psi = split(Phi)
+    U_s      = Function(V)
+    u_s, v_s = split(U_s)
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    U_n  = model.normalize_vector(as_vector([u,v]), Q)
+    u_n  = U_n[0]
+    v_n  = U_n[1]
+    U_n  = as_vector([u_n,  v_n,  0])
+    U_t  = as_vector([v_n, -u_n,  0])
+    U    = as_vector([du,   dv,   0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+    dSdn     = dot(grad(S),  U_n)
+    dSdt     = dot(grad(S),  U_t)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+    gradpsi = grad(psi)
+    dpsidn  = dot(gradpsi, U_n)
+    dpsidt  = dot(gradpsi, U_t)
+
+    # driving stres :
+    tau_d  = rho * g * grad(S)
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_dt = psi * dot(tau_d, U_t) * dx
+    
+    # calc basal drag : 
+    tau_bn = - beta2 * uhat * H * phi * dBed
+    tau_bt = - beta2 * vhat * H * psi * dBed
+
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
+    tau_tn = - dpsidn * eta * (  dudt +   dvdn) * dx
+    tau_tt = - dpsidt * eta * (4*dvdt + 2*dudn) * dx
+  
+    # form residual in mixed space :
+    rn = tau_nn + tau_nt - tau_bn - tau_dn
+    rt = tau_tn + tau_tt - tau_bt - tau_dt
+    r  = rn + rt
+
+    # make the variables available to solve :
+    self.Q     = Q
+    self.r     = r
+    self.U_s   = U_s
+    model.ubar = u_s
+    model.vbar = v_s
+    
+  def solve(self):
+    """
+    """
+    if self.model.MPI_rank==0:
+      s    = "::: solving 3D 'stokes-balance' for ubar, vbar :::"
+      text = colored(s, 'cyan')
+      print text
+    solve(lhs(self.r) == rhs(self.r), self.U_s)
+
+  def component_stress_stokes(self):  
+    """
+    """
+    model = self.model
+    
+    if model.MPI_rank==0:
+      s    = "solving 3D 'stokes-balance' for stress terms :::" 
+      text = colored(s, 'cyan')
+      print text
+
+    outpath = self.config['output_path']
+    Q       = self.Q
+    beta2   = model.beta2
+    eta     = model.eta
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    rho     = model.rho
+    g       = model.g
+    ds      = model.ds  
+    dSrf    = ds(2)        # surface
+    dGnd    = ds(3)        # grounded bed 
+    dFlt    = ds(5)        # floating bed
+    dFltS   = ds(6)        # marine terminating sides
+    dBed    = dGnd + dFlt  # bed
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    u_s = project(model.u, Q)
+    v_s = project(model.v, Q)
+    
+    U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
+    u_n = U[0]
+    v_n = U[1]
+    U   = as_vector([u_s, v_s, 0])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+
+    # trial and test functions for linear solve :
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+
+    # driving stres :
+    tau_d  = rho * g * grad(S)
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_dt = phi * dot(tau_d, U_t) * dx
+    
+    # calc basal drag : 
+    tau_bn = beta2 * uhat * H * phi * dBed
+    tau_bt = beta2 * vhat * H * phi * dBed
+    
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
+    tau_tn = - dphidn * eta * (  dudt +   dvdn) * dx
+    tau_tt = - dphidt * eta * (4*dvdt + 2*dudn) * dx
+    
+    # the residuals :
+    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
+    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
+    
+    # mass matrix :
+    M = assemble(phi*dtau*dx)
+
+    # assemble the vectors :
+    tau_dn_v   = assemble(tau_dn)
+    tau_dt_v   = assemble(tau_dt)
+    tau_bn_v   = assemble(tau_bn)
+    tau_bt_v   = assemble(tau_bt)
+    tau_nn_v   = assemble(tau_nn)
+    tau_nt_v   = assemble(tau_nt)
+    tau_tn_v   = assemble(tau_tn)
+    tau_tt_v   = assemble(tau_tt)
+    tau_totn_v = assemble(tau_totn)
+    tau_tott_v = assemble(tau_tott)
+    
+    # solution functions :
+    tau_dn   = Function(Q)
+    tau_dt   = Function(Q)
+    tau_bn   = Function(Q)
+    tau_bt   = Function(Q)
+    tau_nn   = Function(Q)
+    tau_nt   = Function(Q)
+    tau_tn   = Function(Q)
+    tau_tt   = Function(Q)
+    tau_totn = Function(Q)
+    tau_tott = Function(Q)
+    
+    # solve the linear system :
+    solve(M, tau_dn.vector(),   tau_dn_v)
+    solve(M, tau_dt.vector(),   tau_dt_v)
+    #solve(M, tau_bn.vector(),   tau_bn_v)
+    #solve(M, tau_bt.vector(),   tau_bt_v)
+    solve(M, tau_nn.vector(),   tau_nn_v)
+    solve(M, tau_nt.vector(),   tau_nt_v)
+    solve(M, tau_tn.vector(),   tau_tn_v)
+    solve(M, tau_tt.vector(),   tau_tt_v)
+    #solve(M, tau_totn.vector(), tau_totn_v)
+    #solve(M, tau_tott.vector(), tau_tott_v)
+
+    # output the files to the specified directory :
+    File(outpath + 'tau_dn.pvd')   << tau_dn
+    File(outpath + 'tau_bn.pvd')   << tau_bn
+    File(outpath + 'tau_nn.pvd')   << tau_nn
+    File(outpath + 'tau_nt.pvd')   << tau_nt
+    File(outpath + 'tau_totn.pvd') << tau_totn
+    File(outpath + 'tau_tott.pvd') << tau_tott
+    File(outpath + 'u_s.pvd')      << u_s
+    File(outpath + 'v_s.pvd')      << v_s
+
+    # attach the results to the model :
+    model.tau_dn   = tau_dn
+    model.tau_dt   = tau_dt
+    model.tau_bn   = tau_bn
+    model.tau_bt   = tau_bt
+    model.tau_nn   = tau_nn
+    model.tau_nt   = tau_nt
+    model.tau_tn   = tau_tn
+    model.tau_tt   = tau_tt
+    model.tau_totn = tau_totn
+    model.tau_tott = tau_tott
+    model.u_s      = u_s
+    model.v_s      = v_s
 

@@ -335,6 +335,13 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), model.v, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
+      
+    if config['velocity']['boundaries'] == 'user_defined':
+      u_t = config['velocity']['u_lat_boundary']
+      v_t = config['velocity']['v_lat_boundary']
+      self.bcs.append(DirichletBC(Q4.sub(0), u_t, model.ff, 4))
+      self.bcs.append(DirichletBC(Q4.sub(1), v_t, model.ff, 4))
+      self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
     if MPI.rank(mpi_comm_world())==0:
@@ -657,14 +664,31 @@ class VelocityBP(object):
     model  = self.model
     config = self.config
     
+    # List of boundary conditions
+    self.bcs = []
+
+    # Add any user defined boundary conditions    
+    for i in range(len(model.boundary_values)) :
+      # Get the value in the facet function for this boundary
+      marker_val = model.boundary_values[i]
+      # The u component of velocity on the boundary
+      bound_u = model.boundary_u[i]
+      # The v component of velocity on the boundary
+      bound_v = model.boundary_v[i]
+      
+      # Add the Direchlet boundary condition
+      self.bcs.append(DirichletBC(model.Q2.sub(0), bound_u, model.ff, marker_val))
+      self.bcs.append(DirichletBC(model.Q2.sub(1), bound_v, model.ff, marker_val))
+    
     # solve nonlinear system :
     if MPI.rank(mpi_comm_world())==0:
       s    = "::: solving BP velocity :::"
       text = colored(s, 'cyan')
       print text
     solve(self.F == 0, model.U, J = self.J,
-          solver_parameters = self.newton_params)
+          solver_parameters = self.newton_params, bcs = self.bcs)
 
+    
     # solve for vertical velocity :
     solve(self.aw == self.Lw, model.w)
     

@@ -1,4 +1,4 @@
-from pylab          import inf, ones, zeros, array, arange, vstack
+from pylab          import inf, ones, zeros, array, arange, vstack, unique
 from fenics         import project, File, vertex_to_dof_map, Function, \
                            assemble, sqrt, DoubleArray, Constant, function, MPI
 from physics        import *
@@ -59,7 +59,7 @@ class SteadySolver(object):
     dict entry to "False".  If config['coupled']['on'] is "False", solve only
     once.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = '::: solving SteadySolver :::'
       text = colored(s, 'blue')
       print text
@@ -84,7 +84,7 @@ class SteadySolver(object):
 
     # Initialize a temperature field for visc. calc.
     if config['velocity']['use_T0']:
-      model.T.vector().set_local( T0 * ones(len(model.T.vector().array())) )
+      model.assign_variable(model.T, T0 * ones(len(model.T.vector().array())) )
     
     if not config['coupled']['on']: max_iter = 1
     
@@ -100,26 +100,36 @@ class SteadySolver(object):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         U = project(as_vector([model.u, model.v, model.w]))
-        if config['log']:
+        if config['velocity']['log']:
+          if self.model.MPI_rank==0:
+            s    = '::: saving velocity U.pvd file :::'
+            text = colored(s, 'blue')
+            print text
           File(outpath + 'U.pvd') << U
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
+            if self.model.MPI_rank==0:
+              s    = '::: saving pressure P.pvd file :::'
+              text = colored(s, 'blue')
+              print text
             File(outpath + 'P.pvd') << model.P
-        if MPI.rank(mpi_comm_world())==0:
-          model.print_min_max(U, 'U')
+        model.print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
-        if config['log']: 
+        if config['enthalpy']['log']: 
+          if self.model.MPI_rank==0:
+            s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
+            text = colored(s, 'blue')
+            print text
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
-        if MPI.rank(mpi_comm_world())==0:
-          model.print_min_max(model.H,  'H')
-          model.print_min_max(model.T,  'T')
-          model.print_min_max(model.Mb, 'Mb')
-          model.print_min_max(model.W,  'W')
+        model.print_min_max(model.H,  'H')
+        model.print_min_max(model.T,  'T')
+        model.print_min_max(model.Mb, 'Mb')
+        model.print_min_max(model.W,  'W')
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -130,7 +140,7 @@ class SteadySolver(object):
       
       counter += 1
       
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
         text = colored(s, 'blue')
         print text % (counter, max_iter, inner_error, inner_tol)
@@ -138,7 +148,12 @@ class SteadySolver(object):
     # Solve age equation
     if config['age']['on']:
       self.age_instance.solve()
-      if config['log']: File(outpath + 'age.pvd') << model.age  # save age
+      if config['log']: 
+        if self.model.MPI_rank==0:
+          s    = '::: saving age age.pvd file :::'
+          text = colored(s, 'blue')
+          print text
+        File(outpath + 'age.pvd') << model.age  # save age
 
 
 class TransientSolver(object):
@@ -226,28 +241,26 @@ class TransientSolver(object):
     thklim            = config['free_surface']['thklim']
     B                 = model.B.compute_vertex_values()
     S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
+    
     # the surface is never on a periodic FunctionSpace :
     if config['periodic_boundary_conditions']:
-      #v2d = model.Q_non_periodic.dofmap().vertex_to_dof_map(model.flat_mesh)
       d2v = dof_to_vertex_map(model.Q_non_periodic)
     else:
-      #v2d = model.Q.dofmap().vertex_to_dof_map(model.flat_mesh)
       d2v = dof_to_vertex_map(model.Q)
-    model.S.vector().set_local(S[d2v])
-    model.S.vector().apply('insert')
+    
+    model.assign_variable(model.S, S[d2v])
    
     if config['velocity']['on']:
-      #utemp = model.U.vector().get_local()
-      #utemp[:] = 0.0
-      #model.U.vector().set_local(utemp)
-      #model.U.vector().apply('insert')
       model.U.vector()[:] = 0.0
       self.velocity_instance.solve()
-      if self.config['log']:
+      if config['velocity']['log']:
         U = project(as_vector([model.u, model.v, model.w]))
+        if self.model.MPI_rank==0:
+          s    = '::: saving velocity U.pvd file :::'
+          text = colored(s, 'blue')
+          print text
         self.file_U << U
-      if MPI.rank(mpi_comm_world())==0:
-        model.print_min_max(U, 'U')
+      model.print_min_max(U, 'U')
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
@@ -255,9 +268,12 @@ class TransientSolver(object):
     if config['free_surface']['on']:
       self.surface_instance.solve()
       if self.config['log']:
+        if self.model.MPI_rank==0:
+          s    = '::: saving surface S.pvd file :::'
+          text = colored(s, 'blue')
+          print text
         self.file_S << model.S
-      if MPI.rank(mpi_comm_world())==0:
-        model.print_min_max(model.S, 'S')
+      model.print_min_max(model.S, 'S')
  
     return model.dSdt.compute_vertex_values()
 
@@ -267,7 +283,7 @@ class TransientSolver(object):
     well as storing the velocity, temperature, and the age in vtk files.
 
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = '::: solving TransientSolver :::'
       text = colored(s, 'blue')
       print text
@@ -306,47 +322,48 @@ class TransientSolver(object):
       f_0 = self.rhs_func_explicit(t, S_0)
       S_1 = S_0 + dt*f_0
       S_1[(S_1-B_a) < thklim] = thklim + B_a[(S_1-B_a) < thklim]
-      S.vector().set_local(S_1[d2v])
-      S.vector().apply('')
+      model.assign_variable(S, S_1[d2v])
 
       f_1                     = self.rhs_func_explicit(t, S_1)
       S_2                     = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
       S_2[(S_2-B_a) < thklim] = thklim + B_a[(S_2-B_a) < thklim] 
-      S.vector().set_local(S_2[d2v])
-      S.vector().apply('')
+      model.assign_variable(S, S_2[d2v])
      
       mesh.coordinates()[:, 2] = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
       if config['periodic_boundary_conditions']:
         temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
-        mhat_non.vector().set_local(temp)
-        mhat_non.vector().apply('')
+        model.assign_variable(mhat_non, temp)
         m_temp = project(mhat_non,model.Q)
-        model.mhat.vector().set_local(m_temp.vector().get_local())
-        model.mhat.vector().apply('')
+        model.assign_variable(model.mhat, m_temp.vector().get_local())
       else:
         temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
-        model.mhat.vector().set_local(temp)
-        model.mhat.vector().apply('')
+        model.assign_variable(model.mhat, temp)
       # Calculate enthalpy update
       if self.config['enthalpy']['on']:
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
-        if self.config['log']:
+        if self.config['enthalpy']['log']:
+          if self.model.MPI_rank==0:
+            s    = '::: saving temperature T.pvd file :::'
+            text = colored(s, 'blue')
+            print text
           self.file_T << model.T
-        if MPI.rank(mpi_comm_world())==0:
-          model.print_min_max(model.H,  'H')
-          model.print_min_max(model.T,  'T')
-          model.print_min_max(model.Mb, 'Mb')
-          model.print_min_max(model.W,  'W')
+        model.print_min_max(model.H,  'H')
+        model.print_min_max(model.T,  'T')
+        model.print_min_max(model.Mb, 'Mb')
+        model.print_min_max(model.W,  'W')
 
       # Calculate age update
       if self.config['age']['on']:
         self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
+          if self.model.MPI_rank==0:
+            s    = '::: saving age age.pvd file :::'
+            text = colored(s, 'blue')
+            print text
           self.file_a << model.age
-        if MPI.rank(mpi_comm_world())==0:
-          model.print_min_max(model.age, 'age')
+        model.print_min_max(model.age, 'age')
 
       # store information : 
       if self.config['log']:
@@ -355,7 +372,7 @@ class TransientSolver(object):
         self.mass.append(M)
 
       # increment time step :
-      if MPI.rank(mpi_comm_world())==0:
+      if self.model.MPI_rank==0:
         s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<'
         text = colored(s, 'red', attrs=['bold'])
         print text % (t, time()-tic, M/self.M_prev)
@@ -388,6 +405,27 @@ class AdjointSolver(object):
     
     config['mode'] = 'steady' # adjoint only solves steady-state
     
+    # Set up file I/O
+    self.path          = config['output_path']
+    self.file_b_pvd    = File(self.path + 'beta2.pvd')
+    self.file_u_pvd    = File(self.path + 'U_obs.pvd')
+    self.file_dSdt_pvd = File(self.path + 'dSdt.pvd')
+   
+    # ensure that we have lists : 
+    if type(config['adjoint']['bounds']) != list:
+      config['adjoint']['bounds'] = [config['adjoint']['bounds']]
+    if type(config['adjoint']['control_variable']) != list:
+      cv = config['adjoint']['control_variable']
+      config['adjoint']['control_variable'] = [cv]
+    if type(config['adjoint']['alpha']) != list:
+      config['adjoint']['alpha'] = [config['adjoint']['alpha']]
+
+    # Switching over to the parallel version of the optimization that is found 
+    # in the dolfin-adjoint optimize.py file:
+    self.maxfun      = config['adjoint']['max_fun']
+    self.bounds_list = config['adjoint']['bounds']
+    self.control     = config['adjoint']['control_variable']
+    
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
     self.adjoint_instance = AdjointVelocityBP(model, config)
@@ -411,14 +449,15 @@ class AdjointSolver(object):
     Q     = model.Q
     
     if u != None and v != None:
-      model.u_o = project(u, Q)
-      model.v_o = project(v, Q)
+      model.assign_variable(model.u_o, u)
+      model.assign_variable(model.v_o, v)
 
     elif U != None:
       Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
-      model.U_o.interpolate(U)
-      model.u_o = project(-model.U_o * S.dx(0) / Smag, Q)
-      model.v_o = project(-model.U_o * S.dx(1) / Smag, Q)      
+      u_n    = project(-U * S.dx(0) / Smag, Q)
+      v_n    = project(-U * S.dx(1) / Smag, Q)      
+      model.assign_variable(model.u_o, u_n)
+      model.assign_variable(model.v_o, v_n)
 
   def solve(self):
     r""" 
@@ -438,13 +477,16 @@ class AdjointSolver(object):
        .. math::
         \beta_{2} > 0
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = '::: solving AdjointSolver :::'
       text = colored(s, 'blue')
       print text
-    model  = self.model
-    config = self.config
-    
+    model       = self.model
+    config      = self.config
+    bounds_list = self.bounds_list
+    control     = self.control
+    maxfun      = self.maxfun
+   
     def get_global(m):
       """
       Takes a distributed object and returns a numpy array that
@@ -503,8 +545,7 @@ class AdjointSolver(object):
       elif type(m) in (function.Function, functions.function.Function):
         begin, end = m.vector().local_range()
         m_a_local  = m_global_array[begin : end]
-        m.vector().set_local(m_a_local)
-        m.vector().apply('insert')
+        model.assign_variable(m, m_a_local)
       
       else:
         raise TypeError, 'Unknown parameter type'
@@ -513,11 +554,11 @@ class AdjointSolver(object):
       """
       Solve forward model with given control, calculate objective function
       """
-      n = len(c_array)/len(config['adjoint']['control_variable'])
-      for ii,c in enumerate(config['adjoint']['control_variable']):
+      n = len(c_array)/len(control)
+      for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
-      I = assemble(self.adjoint_instance.I)  #FIXME: ISMIP_HOM inverse C fails
+      I = assemble(self.adjoint_instance.I)
       return I
  
     def J(c_array, *args):
@@ -525,51 +566,37 @@ class AdjointSolver(object):
       Solve adjoint model, calculate gradient
       """
       # dolfin.adjoint method:
-      n = len(c_array)/len(config['adjoint']['control_variable'])
-      for ii,c in enumerate(config['adjoint']['control_variable']):
+      n = len(c_array)/len(control)
+      for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.adjoint_instance.solve()
 
-      # This is not the best place for this, but we leave it here for now
-      # so that we can see the impact of every line search update on the
-      # variables of interest.
+      for i,c in enumerate(control):
+        model.print_min_max(c, 'c_' + str(i))
+
       Js = []
       for JJ in self.adjoint_instance.J:
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
-      
-      # save the output for this iteration of l_bfgs_b :
-      U    = project(as_vector([model.u, model.v, model.w]))
-      dSdt = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                     + model.w + model.adot)
-      file_b_pvd    << model.extrude(model.beta2, 3, 2)
-      file_u_pvd    << U
-      file_dSdt_pvd << dSdt
       return Js
 
     #===========================================================================
-    # Set up file I/O
-    path = config['output_path']
-    file_b_pvd    = File(path + 'beta2.pvd')
-    file_u_pvd    = File(path + 'U.pvd')
-    file_dSdt_pvd = File(path + 'dSdt.pvd')
+    # begin the optimization :
 
-    # Switching over to the parallel version of the optimization that is found 
-    # in the dolfin-adjoint optimize.py file:
-    maxfun      = config['adjoint']['max_fun']
-    bounds_list = config['adjoint']['bounds']
+    # form the initial guess :
     beta_0      = []
-    for mm in config['adjoint']['control_variable']:
-      beta_0.extend(get_global(mm))
+    for c in control:
+      beta_0.extend(get_global(c))
     beta_0 = array(beta_0)
 
-    # Shut up all processors but the first one.
-    if MPI.rank(mpi_comm_world()) != 0:
+    # shut up all processors but the first one :
+    if self.model.MPI_rank != 0:
       iprint = -1
     else:
       iprint = 1
-    b = []
+    
     # convert bounds to an array of tuples and serialize it in parallel environ.
+    b = []
     for bounds in bounds_list:
       bounds_arr = []
       for i in range(2):
@@ -578,19 +605,38 @@ class AdjointSolver(object):
         else:
           bounds_arr.append(get_global(bounds[i]))
       b.append(array(bounds_arr).T)
-    bounds = vstack(b)  
-    if MPI.rank(mpi_comm_world())==0:
-      text = colored(bounds, 'red', attrs=['bold'])
-      print text
+    bounds = vstack(b)
     
-    # minimize I with initial guess beta_0 and gradient J :
+    # print the bounds :
+    if self.model.MPI_rank==0:
+      """
+      find the unique values of each row of array <S>.
+      """
+      """unq = unique(bounds.view(bounds.dtype.descr * bounds.shape[1]))
+      unq = unq.view(bounds.dtype).reshape(-1, bounds.shape[1])
+      text = colored("unique bounds:\n" + str(unq), 'red', attrs=['bold'])
+      print text"""
+    
+    # minimize function I with initial guess beta_0 and gradient function J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
                                maxfun=maxfun, iprint=iprint)
 
-    n = len(mopt)/len(config['adjoint']['control_variable'])
-    for ii,c in enumerate(config['adjoint']['control_variable']):
+    n = len(mopt)/len(control)
+    for ii,c in enumerate(control):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
+    # save the output :
+    if self.model.MPI_rank==0:
+      s    = '::: saving adjoint beta2, U_obs, and DSdt .pvd files :::'
+      text = colored(s, 'blue')
+      print text
+    U_obs = project(as_vector([model.u_o, model.v_o, 0]))
+    dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
+                    + model.w + model.adot)
+    self.file_b_pvd    << model.beta2
+    self.file_u_pvd    << U_obs
+    self.file_dSdt_pvd << dSdt
+
 
 class BalanceVelocitySolver(object):
   def __init__(self, model, config):
@@ -616,48 +662,50 @@ class StokesBalanceSolver(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    print "::: initializing 'stokes-balance' solver :::"
     self.model  = model
     self.config = config
     
-    Q       = model.Q
-    u       = model.u
-    v       = model.v
-    w       = model.w
-    S       = model.S
-    B       = model.B
-    H       = S - B
-    eta     = model.eta
-    beta2   = model.beta2
+    if self.model.MPI_rank==0:
+      s    = "::: initializing 'stokes-balance' solver :::"
+      text = colored(s, 'blue')
+      print text
     
-    # get the values at the bed :
-    beta2_e = model.extrude(beta2, 3, 2, Q)
-    u_b_e   = model.extrude(u,     3, 2, Q)
-    v_b_e   = model.extrude(v,     3, 2, Q)
-    
-    # vertically average :
-    etabar = model.vert_integrate(eta, Q)
-    etabar = project(model.extrude(etabar, 2, 2, Q) / H)
-    ubar   = model.vert_integrate(u, Q)
-    ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
-    vbar   = model.vert_integrate(v, Q)
-    vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
+    #Q       = model.Q
+    #u       = model.u
+    #v       = model.v
+    #w       = model.w
+    #S       = model.S
+    #B       = model.B
+    #H       = S - B
+    #eta     = model.eta
+    #beta2   = model.beta2
+    #
+    ## get the values at the bed :
+    #beta2_e = model.extrude(beta2, 3, 2, Q)
+    #u_b_e   = model.extrude(u,     3, 2, Q)
+    #v_b_e   = model.extrude(v,     3, 2, Q)
+    #
+    ## vertically average :
+    #etabar = model.vert_integrate(eta, Q)
+    #etabar = project(model.extrude(etabar, 2, 2, Q) / H)
+    #ubar   = model.vert_integrate(u, Q)
+    #ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
+    #vbar   = model.vert_integrate(v, Q)
+    #vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
 
-    # set the model variables so the physics object can solve it :
-    model.beta2_e = beta2_e
-    model.u_b_e   = u_b_e
-    model.v_b_e   = v_b_e
-    model.etabar  = etabar
-    model.ubar    = ubar
-    model.vbar    = vbar
-    
-    # calculate the driving stress and basal drag once :
-    model.tau_d   = model.calc_tau_drv(Q)
-    model.tau_b   = model.calc_tau_bas(Q)
-    
-    self.Q = Q
+    ## set the model variables so the physics object can solve it :
+    #model.beta2_e = beta2_e
+    #model.u_b_e   = u_b_e
+    #model.v_b_e   = v_b_e
+    #model.etabar  = etabar
+    #model.ubar    = ubar
+    #model.vbar    = vbar
+    #
+    ## calculate the driving stress and basal drag once :
+    #model.tau_d   = model.calc_tau_drv(Q)
+    #model.tau_b   = model.calc_tau_bas(Q)
 
-    self.stress_balance_instance = StokesBalance(model, config)
+    self.stress_balance_instance = StokesBalance3D(model, config)
 
   def solve(self):
     """ 
@@ -666,44 +714,29 @@ class StokesBalanceSolver(object):
     config  = self.config
     outpath = self.config['output_path']
     
-    # Set the initial Picard iteration (PI) parameters
-    # L_\infty norm in velocity between iterations
-    inner_error = inf
+    model.print_min_max(model.u, 'u')
+    model.print_min_max(model.v, 'v')
     
-    # number of iterations
-    counter = 0
-   
-    # set an inner tolerance for PI
-    max_iter = 1
-   
-    # previous velocity for norm calculation
-    u_prev   = zeros(len(model.ubar.vector().array()))
+    # calculate ubar, vbar :
+    self.stress_balance_instance.solve()
+    model.print_min_max(model.ubar, 'ubar')
+    model.print_min_max(model.vbar, 'vbar')
     
-    # tolerance to stop solving :
-    inner_tol = 0.0
-    
-    # Perform a Picard iteration until the L_\infty norm of the velocity 
-    # difference is less than tolerance
-    while counter < max_iter and inner_error > inner_tol:
-      
-      self.stress_balance_instance.solve()
-      
-      # Calculate L_infinity norm
-      ubar_v      = model.ubar.vector().array()
-      vbar_v      = model.vbar.vector().array()
-      ubar_n      = np.sqrt(ubar_v**2 + vbar_v**2)
-      diff        = abs(u_prev - ubar_n)
-      inner_error = diff.max()
-      u_prev      = ubar_n
-      
-      counter += 1
-      
-      if MPI.rank(mpi_comm_world())==0:
-        s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
-        text = colored(s, 'blue')
-        print text % (counter, max_iter, inner_error, inner_tol)
-   
     # solve for the stress balance given the appropriate vertically 
     # averaged velocities :
     self.stress_balance_instance.component_stress_stokes()
+    model.print_min_max(model.tau_dn,   'tau_dn')
+    model.print_min_max(model.tau_dt,   'tau_dt')
+    model.print_min_max(model.tau_bn,   'tau_bn')
+    model.print_min_max(model.tau_bt,   'tau_bt')
+    model.print_min_max(model.tau_nn,   'tau_nn')
+    model.print_min_max(model.tau_nt,   'tau_nt')
+    model.print_min_max(model.tau_tn,   'tau_tn')
+    model.print_min_max(model.tau_tt,   'tau_tt')
+    model.print_min_max(model.tau_totn, 'tau_totn')
+    model.print_min_max(model.tau_tott, 'tau_tott')
+    model.print_min_max(model.u_s,      'u_s')
+    model.print_min_max(model.v_s,      'v_s')
+
+
 

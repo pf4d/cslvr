@@ -35,15 +35,14 @@ SMB     = MassBalance(element=model.Q.ufl_element())
 model.set_geometry(Surface, Bed, deform=True)
 
 model.set_parameters(IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['absolute_tolerance']   = 1.0
-#nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
-#nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
-nonlin_solver_params['newton_solver']['linear_solver']        = 'gmres'
-nonlin_solver_params['newton_solver']['preconditioner']       = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
+nonlin_solver_params['newton_solver']['preconditioner']       = 'default'
 parameters['form_compiler']['quadrature_degree']              = 2
 
 
@@ -68,7 +67,8 @@ config = { 'mode'                         : 'steady',
              'r'                          : 1.0,
              'E'                          : 1.0,
              'approximation'              : 'fo',
-             'boundaries'                 : None
+             'boundaries'                 : None,
+             'log'                        : True
            },
            'coupled' : 
            { 
@@ -82,7 +82,8 @@ config = { 'mode'                         : 'steady',
              'use_surface_climate'        : False,
              'T_surface'                  : T_s,
              'q_geo'                      : 0.042*60**2*24*365,
-             'lateral_boundaries'         : None
+             'lateral_boundaries'         : None,
+             'log'                        : True
            },
            'free_surface' :
            { 

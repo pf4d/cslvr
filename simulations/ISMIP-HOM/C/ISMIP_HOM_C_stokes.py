@@ -28,12 +28,11 @@ Beta2   = Expression(  '1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
 
 model.set_geometry(Surface, Bed, deform=True)
 model.set_parameters(IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['linear_solver'] = 'mumps'
-#nonlin_solver_params['newton_solver']['linear_solver']  = 'gmres'
-#nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
 
 config = { 'mode'                         : 'steady',
            'output_path'                  : './results_stokes_L'+str(L)+'/',
@@ -62,7 +61,8 @@ config = { 'mode'                         : 'steady',
              'r'                   : 0.0,
              'E'                   : 1,
              'approximation'       : 'stokes',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 

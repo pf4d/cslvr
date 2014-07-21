@@ -175,36 +175,18 @@ class VelocityStokes(object):
     A0            = config['velocity']['A0']
     
     # initialize bed friction coefficient :
-    if   isinstance(config['velocity']['beta2'], float):
-      beta2.vector()[:] = config['velocity']['beta2']
-    
-    elif isinstance(config['velocity']['beta2'], ndarray):
-      beta2.vector().set_local(config['velocity']['beta2'])
-      beta2.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['beta2'], Expression):
-      beta2.interpolate(config['velocity']['beta2'])
+    model.assign_variable(beta2, config['velocity']['beta2'])
    
     # initialize enhancement factor :
-    if   isinstance(config['velocity']['E'], float):
-      E.vector()[:] = config['velocity']['E']
-    
-    elif isinstance(config['velocity']['E'], ndarray):
-      E.vector().set_local(config['velocity']['E'])
-      E.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['E'], Expression):
-      E.interpolate(config['velocity']['E'])
+    model.assign_variable(E, config['velocity']['E'])
 
     # pressure boundary :
-    class pressure_boundary(Expression):
-      def __init__(self, rho_w, g):
-        self.rho_w = rho_w
-        self.g     = g
+    class Depth(Expression):
       def eval(self, values, x):
-        values[0] = -self.rho_w * self.g * min(0, x[2])
-    pres_b = pressure_boundary(rho_w, g)
-    fnorm  = FacetNormal(mesh)
+        b         = model.B_ex(x[0], x[1], x[2])
+        values[0] = abs(min(0, b))
+    D = Depth(element=Q.ufl_element())
+    N = FacetNormal(mesh)
     
     # Check if there are non-linear solver parameters defined.  If not, set 
     # them to dolfin's default.  The default is not likely to converge if 
@@ -228,9 +210,12 @@ class VelocityStokes(object):
     u,   v,   w,   P     = split(U)
 
     # set up surfaces to integrate :
-    ds     = model.ds
-    dGrnd  = ds(3)
-    dFloat = ds(5) + ds(6)
+    ds       = model.ds  
+    dSrf     = ds(2)        # surface
+    dGnd     = ds(3)        # grounded bed 
+    dFlt     = ds(5)        # floating bed
+    dFltS    = ds(6)        # marine terminating sides
+    dBed     = dGnd + dFlt  # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
 		# using the most recently calculated temperature field, if expected.
@@ -273,8 +258,8 @@ class VelocityStokes(object):
     # 5) Impenetrability constraint
     Nc     = P * (u*B.dx(0) + v*B.dx(1) - w)
 
-    # 6) pressure constraint :
-    Pb     = -P * fnorm 
+    # 6) pressure boundary
+    Pb     = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v + w) 
 
     g      = Constant((0.0, 0.0, g))
     h      = CellSize(mesh)
@@ -282,7 +267,7 @@ class VelocityStokes(object):
     Lsq    = -tau * dot( (grad(P) + rho*g), (grad(P) + rho*g) )
     
     # Variational principle
-    A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGrnd + Nc*dGrnd# + Pb*dFloat
+    A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dFltS
 
     model.A      = A
     model.epsdot = epsdot
@@ -294,6 +279,10 @@ class VelocityStokes(object):
     model.Nc     = Nc
     model.Pb     = Pb
     model.Lsq    = Lsq
+    model.u      = u
+    model.v      = v
+    model.w      = w
+    model.P      = P
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -303,12 +292,9 @@ class VelocityStokes(object):
     # the direction of a small perturbation in U
     self.J = derivative(self.F, U, dU)
 
-  def solve(self, maxiter=50):
+  def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
-
-    :param maxiter: (Optional) Maximum number of iterations to perform when 
-                    calculating a solution        
     """
     # Note that for solving the full Stokes functional, the edges of the 
     # domain require some sort of boundary condition other than homogeneous 
@@ -344,17 +330,12 @@ class VelocityStokes(object):
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving full-stokes velocity :::"
       text = colored(s, 'cyan')
       print text
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
-    
-    model.u = project(model.U[0], model.Q)
-    model.v = project(model.U[1], model.Q)
-    model.w = project(model.U[2], model.Q)
-    model.P = project(model.U[3], model.Q)
 
 
 class VelocityBP(object):
@@ -493,6 +474,7 @@ class VelocityBP(object):
     gamma         = model.gamma
     S             = model.S
     B             = model.B
+    H             = S - B
     x             = model.x
     E             = model.E
     W             = model.W
@@ -507,54 +489,37 @@ class VelocityBP(object):
     Pe            = model.Pe
     Sl            = model.Sl
     Pb            = model.Pb
-    beta2         = model.beta2
+    beta          = model.beta2
 
     # pressure boundary :
-    class pressure_boundary(Expression):
-      def __init__(self, rho_w, g):
-        self.rho_w = rho_w
-        self.g     = g
+    class Depth(Expression):
       def eval(self, values, x):
-        values[0] = self.rho_w * self.g * min(0, x[2])
-    pres_b = pressure_boundary(rho_w, g)
-    fnorm  = FacetNormal(mesh)
+        b         = model.B_ex(x[0], x[1], x[2])
+        values[0] = abs(min(0, b))
+    D = Depth(element=Q.ufl_element())
+    N = FacetNormal(mesh)
     
     newton_params = config['velocity']['newton_params']
     A0            = config['velocity']['A0']
 
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
-      if   isinstance(config['velocity']['T0'], float):
-        T.vector()[:] = config['velocity']['T0']
-      
-      elif isinstance(config['velocity']['T0'], ndarray):
-        T.vector().set_local(config['velocity']['T0'])
-        T.vector().apply('insert')
-      
-      elif isinstance(config['velocity']['T0'], Expression):
-        T.interpolate(config['velocity']['T0'])
+      model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if   isinstance(config['velocity']['beta2'], float):
-      beta2.vector()[:] = config['velocity']['beta2']
-    
-    elif isinstance(config['velocity']['beta2'], ndarray):
-      beta2.vector().set_local(config['velocity']['beta2'])
-      beta2.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['beta2'], Expression):
-      beta2.interpolate(config['velocity']['beta2'])
+    if config['velocity']['init_beta_from_U_ob']:
+      U_ob   = config['velocity']['U_ob']
+      U_mag  = sqrt(inner(U_ob, U_ob))
+      S_mag  = sqrt(inner(grad(S), grad(S)))
+      beta_0 = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag + 0.1)), Q)
+      beta_0_v               = beta_0.vector().array()
+      beta_0_v[beta_0_v < 0] = DOLFIN_EPS
+      model.assign_variable(beta, beta_0_v)
+    else:
+      model.assign_variable(beta2, config['velocity']['beta2'])
    
     # initialize the enhancement factor :
-    if   isinstance(config['velocity']['E'], float):
-      E.vector()[:] = config['velocity']['E']
-    
-    elif isinstance(config['velocity']['E'], ndarray):
-      E.vector().set_local(config['velocity']['E'])
-      E.vector().apply('insert')
-    
-    elif isinstance(config['velocity']['E'], Expression):
-      E.interpolate(config['velocity']['E'])
+    model.assign_variable(E, config['velocity']['E'])
 
     # Check if there are non-linear solver parameters defined.  If not, set 
     # them to dolfin's default.  The default is not likely to converge if 
@@ -582,9 +547,11 @@ class VelocityBP(object):
     dw       = TrialFunction(Q)
 
     ds       = model.ds  
-    dSurf    = ds(2)      # surface
-    dGrnd    = ds(3)      # bed
-    dFloat   = ds(6)      # shelves
+    dSrf     = ds(2)        # surface
+    dGnd     = ds(3)        # grounded bed 
+    dFlt     = ds(5)        # floating bed
+    dFltS    = ds(6)        # marine terminating sides
+    dBed     = dGnd + dFlt  # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -621,13 +588,13 @@ class VelocityBP(object):
     Pe       = rho * g * (u * S.dx(0) + v * S.dx(1))
 
     # 3) Dissipation by sliding
-    Sl       = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
+    Sl       = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = - pres_b * fnorm
+    Pb       = (rho*g*H + rho_w*g*B) / H * (u + v) 
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGrnd# + Pb*dFloat
+    A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -638,7 +605,7 @@ class VelocityBP(object):
     self.J   = derivative(self.F, U, dU)
  
     self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
-               (u*B.dx(0) + v*B.dx(1) - dw)*chi*dGrnd
+               (u*B.dx(0) + v*B.dx(1) - dw)*chi*dBed
     
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)
@@ -651,15 +618,14 @@ class VelocityBP(object):
     model.Pb    = Pb
     model.A     = A
     model.T     = T
-    model.beta2 = beta2
+    model.beta2 = beta
     model.E     = E
+    model.u     = u
+    model.v     = v
 
-  def solve(self, maxiter=50):
+  def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
-    
-    :param maxiter : (Optional) Maximum number of iterations to perform when 
-                     calculating a solution
     """
     model  = self.model
     config = self.config
@@ -681,8 +647,8 @@ class VelocityBP(object):
       self.bcs.append(DirichletBC(model.Q2.sub(1), bound_v, model.ff, marker_val))
     
     # solve nonlinear system :
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: solving BP velocity :::"
+    if self.model.MPI_rank==0:
+      s    = "::: solving BP horizontal velocity :::"
       text = colored(s, 'cyan')
       print text
     solve(self.F == 0, model.U, J = self.J,
@@ -690,11 +656,12 @@ class VelocityBP(object):
 
     
     # solve for vertical velocity :
+    if self.model.MPI_rank==0:
+      s    = "::: solving BP vertical velocity :::"
+      text = colored(s, 'cyan')
+      print text
     solve(self.aw == self.Lw, model.w)
     
-    model.u = project(model.U[0], model.Q)
-    model.v = project(model.U[1], model.Q)
-
 
 class Enthalpy(object):
   r""" 
@@ -842,6 +809,7 @@ class Enthalpy(object):
     L           = model.L
     C           = model.C
     C_w         = model.C_w
+    T_w         = model.T_w
     gamma       = model.gamma
     S           = model.S
     B           = model.B
@@ -872,26 +840,10 @@ class Enthalpy(object):
     #  set the surface temperature to the constant or array that 
     #  was passed in.
     if not config['enthalpy']['use_surface_climate']:
-      if   isinstance(T_surface, float):
-        model.T_surface.vector()[:] = T_surface
-      
-      elif isinstance(T_surface, ndarray):
-        model.T_surface.vector().set_local(T_surface)
-        model.T_surface.vector().apply('insert')
-      
-      elif isinstance(T_surface, Expression):
-        model.T_surface.interpolate(T_surface)
+      model.assign_variable(model.T_surface, T_surface)
 
     # initialize basal heat term :
-    if   isinstance(q_geo, float):
-      model.q_geo.vector()[:] = q_geo
-    
-    elif isinstance(q_geo, ndarray):
-      model.q_geo.vector().set_local(q_geo)
-      model.q_geo.vector().apply('insert')
-    
-    elif isinstance(q_geo, Expression):
-      model.q_geo.interpolate(q_geo) 
+    model.assign_variable(model.q_geo, q_geo)
     
     q_geo     = model.q_geo
     T_surface = model.T_surface
@@ -901,7 +853,7 @@ class Enthalpy(object):
     dH  = TrialFunction(Q)
 
     # Pressure melting point
-    T0  = 273.0 - gamma * (S - x[2])
+    T0  = T_w - gamma * (S - x[2])
 
     # Pressure melting enthalpy
     h_i = -L + C_w * T0
@@ -929,7 +881,7 @@ class Enthalpy(object):
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
       try:
-        U    = as_vector([model.U[0], model.U[1], w])
+        U    = as_vector([u, v, w])
       except NameError:
         print "No velocity field found.  Defaulting to no velocity"
         U    = 0.0
@@ -1067,21 +1019,15 @@ class Enthalpy(object):
     
     # Assign values for H0,u,w, and mesh velocity
     if H0 is not None:
-      model.H0.vector().set_local(H0.vector().array())
-      model.Hhat.vector().set_local(Hhat.vector().array())
-      model.uhat.vector().set_local(uhat.vector().array())
-      model.vhat.vector().set_local(vhat.vector().array())
-      model.what.vector().set_local(what.vector().array())
-      model.mhat.vector().set_local(mhat.vector().array())
+      model.assign_variable(model.H0,   H0)
+      model.assign_variable(model.Hhat, Hhat)
+      model.assign_variable(model.uhat, uhat)
+      model.assign_variable(model.vhat, vhat)
+      model.assign_variable(model.what, what)
+      model.assign_variable(model.mhat, mhat)
       
-      model.H0.vector().apply('insert')
-      model.Hhat.vector().apply('insert')
-      model.uhat.vector().apply('insert')
-      model.vhat.vector().apply('insert')
-      model.what.vector().apply('insert')
-      model.mhat.vector().apply('insert')
-    
     lat_bc    = config['enthalpy']['lateral_boundaries']
+    T_w       = model.T_w
     T0        = model.T0
     Q         = model.Q
     H         = model.H
@@ -1103,16 +1049,23 @@ class Enthalpy(object):
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
+    H_float   = project( (T_w - T0) * C + h_i )
     model.H_surface = H_surface
-    
+   
+    # surface boundary condition : 
     self.bc_H = []
     self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 2) )
     
+    # apply T_w conditions of portion of ice in contact with water :
+    if model.mask != None:
+      self.bc_H.append( DirichletBC(Q, H_float, model.ff, 5) )
+   
+    # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
       
     # solve the linear equation for enthalpy :
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving enthalpy :::"
       text = colored(s, 'cyan')
       print text
@@ -1133,18 +1086,16 @@ class Enthalpy(object):
     Ts = T0_n.vector().array()
     #cold.vector().set_local((Ts > Ta).astype('float'))
     Ta[Ta > Ts] = Ts[Ta > Ts]
-    T.vector().set_local(Ta)
-    T.vector().apply('insert')
+    model.assign_variable(T, Ta)
 
     # update water content :
     WW = W_n.vector().array()
     WW[WW < 0]    = 0
     WW[WW > 0.01] = 0.01
-    W.vector().set_local(WW)
-    W.vector().apply('insert')
+    model.assign_variable(W, WW)
 
     # update melt-rate :
-    model.Mb = Mb_n
+    model.assign_variable(model.Mb, Mb_n)
 
 
 class FreeSurface(object):
@@ -1291,22 +1242,17 @@ class FreeSurface(object):
     """
     model  = self.model
     config = self.config
-    
-    self.uhat.vector().set_local(model.u.vector().get_local())
-    self.vhat.vector().set_local(model.v.vector().get_local())
-    self.what.vector().set_local(model.w.vector().get_local())
-    self.Shat.vector().set_local(model.S.vector().get_local())
-    self.ahat.vector().set_local(model.smb.vector().get_local())
-    self.uhat.vector().apply('insert') 
-    self.vhat.vector().apply('insert') 
-    self.what.vector().apply('insert') 
-    self.Shat.vector().apply('insert') 
-    self.ahat.vector().apply('insert') 
+   
+    model.assign_variable(self.Shat, model.S) 
+    model.assign_variable(self.ahat, model.smb) 
+    model.assign_variable(self.uhat, model.u) 
+    model.assign_variable(self.vhat, model.v) 
+    model.assign_variable(self.what, model.w) 
 
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
 
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving free-surface :::"
       text = colored(s, 'cyan')
       print text
@@ -1322,12 +1268,10 @@ class FreeSurface(object):
     if config['free_surface']['use_shock_capturing']:
       k = assemble(self.diffusion_matrix)
       r -= k
-      if MPI.rank(mpi_comm_world())==0:
-        model.print_min_max(r, 'D')
+      model.print_min_max(r, 'D')
 
     if config['free_surface']['lump_mass_matrix']:
-      model.dSdt.vector().set_local(m_l_inv * r.get_local())
-      model.dSdt.vector().apply('insert')
+      model.assign_variable(model.dSdt, m_l_inv * r.get_local())
     else:
       m.ident_zeros()
       solve(m, model.dSdt.vector(), r)
@@ -1335,8 +1279,8 @@ class FreeSurface(object):
     A = assemble(lhs(self.A_pro))
     p = assemble(rhs(self.A_pro))
     q = Vector()  
-    solve(A, q,p)
-    model.dSdt.vector()[:] = q
+    solve(A, q, p)
+    model.assign_variable(model.dSdt, q)
 
 class AdjointVelocityBP(object):
   """ 
@@ -1352,39 +1296,44 @@ class AdjointVelocityBP(object):
                   attributes such as velocties, age, and surface climate
   """
   def __init__(self, model, config):
-    """ Setup. """
+    """ 
+    Setup.
+    """
     self.model  = model
     self.config = config
-
-    # the weight of the Tikhonov regularization
-    alpha     = config['adjoint']['alpha'] 
-    beta      = config['adjoint']['beta']
 
     # Adjoint variable in trial function form
     Q         = model.Q
     Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl
+    Pb        = model.Pb
     Pc        = model.Pc
     Lsq       = model.Lsq
     Nc        = model.Nc
     U         = model.U
-    U_o       = model.U_o
     u_o       = model.u_o
     v_o       = model.v_o
     adot      = model.adot
     ds        = model.ds
     S         = model.S
 
+    dSrf     = ds(2)        # surface
+    dGnd     = ds(3)        # grounded bed 
+    dFlt     = ds(5)        # floating bed
+    dFltS    = ds(6)        # marine terminating sides
+    dBed     = dGnd + dFlt  # bed
+
+
     control = config['adjoint']['control_variable']
-    alpha = config['adjoint']['alpha']
+    alpha   = config['adjoint']['alpha']
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = (Vd + Pe)*dx + Sl*ds(3)
-    else:
+      A       = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
+    elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
-      A       = (Vd + Pe + Pc + Lsq)*dx + Sl*ds(3) + Nc*ds(3)
+      A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
 
     L         = TrialFunction(Q_adj)
     Phi       = TestFunction(Q_adj)
@@ -1392,47 +1341,62 @@ class AdjointVelocityBP(object):
 
     rho       = TestFunction(Q)
 
-    # Derivative, with trial function l.  This is the BP equations in weak form
-    # multiplied by l and integrated by parts
+    # Derivative, with trial function L.  This is the BP equations in weak form
+    # multiplied by L and integrated by parts
     F_adjoint = derivative(A, U, L)
 
-    R = 0
+    # form regularization term 'R' :
     N = FacetNormal(model.mesh)
     for a,c in zip(alpha,control):
+      t = Constant(0.5)
+      if isinstance(a, (float,int)):
+        a = Constant(a)
       if config['adjoint']['regularization_type'] == 'TV':
-        R += a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                       + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * ds(3)
+        R = a * t * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        R += a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * ds(3)
-      
+        R = a * t * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
-        print "Valid regularizations are 'TV' and 'Tikhonov'."
+        print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
+              + " defaulting to no regularization."
+        R = Constant(0.0) * dGnd
     
-    #Objective function.  This is a least squares on the surface plus a 
+    # Objective function.  This is a least squares on the surface plus a 
     # regularization term penalizing wiggles in beta2
     if config['adjoint']['objective_function'] == 'logarithmic':
-      if U_o is not None:
-        self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (abs(U_o) + 1.0))**2 * ds(2) + R
-    
-      else:
-        self.I = + ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * ds(2) + R
+      a      = Constant(0.5)
+      self.I = a * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = + 0.5*(U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * ds(2) \
+      a      = Constant(0.5)
+      self.I = a * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
+                    - (U[2] + adot))**2 * dSrf + R
+
+    elif config['adjoint']['objective_function'] == 'linear':
+      a      = Constant(0.5)
+      self.I = a * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
+    
+    elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
+      g1     = Constant(0.5 * config['adjoint']['gamma1'])
+      g2     = Constant(0.5 * config['adjoint']['gamma2'])
+      self.I = + g1 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf \
+               + g2 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                          (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf \
                + R
 
     else:
-      self.I = + 0.5 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * ds(2) + R
+      print   "adjoint objection function may be 'linear', 'logarithmic', or" \
+            + " 'kinematic'."
+      exit(1)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
 
     # Gradient of this with respect to u in the direction of a test 
-    #function yields a bilinear residual which, when solved yields the 
-    #value of the adjoint variable
+    # function yields a bilinear residual which, when solved yields the 
+    # value of the adjoint variable
     self.dI    = derivative(I_adjoint, U, Phi)
 
     # Instead of treating the Lagrange multiplier as a trial function, treat 
@@ -1457,7 +1421,7 @@ class AdjointVelocityBP(object):
     A = assemble(lhs(self.dI))
     l = assemble(rhs(self.dI))
 
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving adjoint BP velocity :::"
       text = colored(s, 'cyan')
       print text
@@ -1484,7 +1448,7 @@ class SurfaceClimate(object):
     Calculates PDD, surface temperature given current model geometry
 
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving surface climate :::"
       text = colored(s, 'cyan')
       print text
@@ -1492,12 +1456,12 @@ class SurfaceClimate(object):
     config = self.config
 
     T_ma  = config['surface_climate']['T_ma']
+    T_w   = model.T_w
     S     = model.S.vector().array()
     lat   = model.lat.vector().array()
     
     # Apply the lapse rate to the surface boundary condition
-    model.T_surface.vector().set_local(T_ma(S, lat) + 273.0)
-    model.T_surface.vector().apply('')
+    model.assign_variable(model.T_surface, T_ma(S, lat) + T_w)
 
 
 class Age(object):
@@ -1583,24 +1547,22 @@ class Age(object):
 
     # Assign values to midpoint quantities and mesh velocity
     if ahat:
-      model.ahat.vector().set_local(ahat.vector().array())
-      model.a0.vector().set_local(a0.vector().array())
-      model.uhat.vector().set_local(uhat.vector().array())
-      model.what.vector().set_local(what.vector().array())
-      model.vhat.vector().set_local(vhat.vector().array())
-      model.ahat.vector().apply('insert')
-      model.a0.vector().apply('insert')
-      model.uhat.vector().apply('insert')
-      model.what.vector().apply('insert')
-      model.vhat.vector().apply('insert')
-
-    def above_ela(x,on_boundary):
-      return (x[2]>config['age']['ela']) and on_boundary
-
-    self.bc_age = DirichletBC(model.Q, 0, model.ff, above_ela)
+      model.assign_variable(model.ahat, ahat)
+      model.assign_variable(model.a0,   a0)
+      model.assign_variable(model.uhat, uhat)
+      model.assign_variable(model.vhat, vhat)
+      model.assign_variable(model.what, what)
+   
+    if config['age']['use_smb_for_ela']:
+      self.bc_age = DirichletBC(model.Q, 0.0, model.ff_acc, 1)
+    
+    else:
+      def above_ela(x,on_boundary):
+        return x[2] > config['age']['ela'] and on_boundary
+      self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
     # Solve!
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "::: solving age :::"
       text = colored(s, 'cyan')
       print text
@@ -1637,11 +1599,9 @@ class VelocityBalance(object):
     smb_        = project(smb, Q_flat)
     
     ds          = model.ds
-    
-    H_.vector().set_local(S - B)
-    H_.vector().apply('insert')
-    S_.vector().set_local(S)
-    S_.vector().apply('insert')
+   
+    model.assign_variable(H_, S-B) 
+    model.assign_variable(S_, S) 
 
     R_dSdx = + Nx * phi * ds(2) \
              - rho * g * H_ * S_.dx(0) * phi * ds(2) \
@@ -1693,10 +1653,8 @@ class VelocityBalance(object):
     solve(a_U, U.vector(), L_U)
     u_b = project(Ub * self.dS[0])
     v_b = project(Ub * self.dS[1])
-    self.model.u_balance.vector().set_local(u_b.vector().get_local())
-    self.model.v_balance.vector().set_local(v_b.vector().get_local())
-    self.model.u_balance.vector().apply('insert') 
-    self.model.v_balance.vector().apply('insert') 
+    self.model.assign_variable(self.model.u_balance, u_b.vector())
+    self.model.assign_variable(self.model.v_balance, v_b.vector())
     
 
 class VelocityBalance_2(object):
@@ -1905,6 +1863,7 @@ class StokesBalance(object):
     Phi      = TestFunction(V)
     phi, psi = split(Phi)
     U_s      = Function(V)
+    u_s, v_s = split(U_s)
     
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
@@ -1947,8 +1906,8 @@ class StokesBalance(object):
 
     # dot product of stress with the direction along (n) and across (t) flow :
     tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
     tau_bt = psi * dot(tau_b, U_t) * dx
+    tau_dn = phi * dot(tau_d, U_n) * dx
     tau_dt = psi * dot(tau_d, U_t) * dx
 
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
@@ -1966,23 +1925,24 @@ class StokesBalance(object):
     self.Q   = Q
     self.r   = r
     self.U_s = U_s
+    model.ubar = u_s
+    model.vbar = v_s
     
   def solve(self):
     """
     """
     model = self.model
 
-    if MPI.rank(mpi_comm_world())==0:
-      print "::: solving 'stokes-balance' for ubar, vbar :::"
+    if self.model.MPI_rank==0:
+      s    = "::: solving 'stokes-balance' for ubar, vbar :::"
+      text = colored(s, 'cyan')
+      print text
     solve(lhs(self.r) == rhs(self.r), self.U_s)
-    
-    model.ubar = project(self.U_s[0], self.Q)
-    model.vbar = project(self.U_s[1], self.Q)
 
   def component_stress_stokes(self):  
     """
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.model.MPI_rank==0:
       s    = "solving 'stokes-balance' for stress terms :::" 
       text = colored(s, 'cyan')
       print text
@@ -1998,8 +1958,8 @@ class StokesBalance(object):
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) in relation to the stress-tensor :
-    u_s = model.ubar
-    v_s = model.vbar
+    u_s = project(model.ubar, Q)
+    v_s = project(model.vbar, Q)
     
     U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
     u_n = U[0]
@@ -2101,4 +2061,244 @@ class StokesBalance(object):
     model.v_s      = v_s
 
 
+class StokesBalance3D(object):
+
+  def __init__(self, model, config):
+    """
+    """
+    self.model  = model
+    self.config = config
+
+    Q       = model.Q
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    beta2   = model.beta2
+    eta     = model.eta
+    rho     = model.rho
+    g       = model.g
+    ds      = model.ds  
+    dSrf    = ds(2)        # surface
+    dGnd    = ds(3)        # grounded bed 
+    dFlt    = ds(5)        # floating bed
+    dFltS   = ds(6)        # marine terminating sides
+    dBed    = dGnd + dFlt  # bed
+    
+    # create functions used to solve for velocity :
+    V        = MixedFunctionSpace([Q,Q])
+    dU       = TrialFunction(V)
+    du, dv   = split(dU)
+    Phi      = TestFunction(V)
+    phi, psi = split(Phi)
+    U_s      = Function(V)
+    u_s, v_s = split(U_s)
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    U_n  = model.normalize_vector(as_vector([u,v]), Q)
+    u_n  = U_n[0]
+    v_n  = U_n[1]
+    U_n  = as_vector([u_n,  v_n,  0])
+    U_t  = as_vector([v_n, -u_n,  0])
+    U    = as_vector([du,   dv,   0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+    dSdn     = dot(grad(S),  U_n)
+    dSdt     = dot(grad(S),  U_t)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+    gradpsi = grad(psi)
+    dpsidn  = dot(gradpsi, U_n)
+    dpsidt  = dot(gradpsi, U_t)
+
+    # driving stres :
+    tau_d  = rho * g * grad(S)
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_dt = psi * dot(tau_d, U_t) * dx
+    
+    # calc basal drag : 
+    tau_bn = - beta2 * uhat * H * phi * dBed
+    tau_bt = - beta2 * vhat * H * psi * dBed
+
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
+    tau_tn = - dpsidn * eta * (  dudt +   dvdn) * dx
+    tau_tt = - dpsidt * eta * (4*dvdt + 2*dudn) * dx
+  
+    # form residual in mixed space :
+    rn = tau_nn + tau_nt - tau_bn - tau_dn
+    rt = tau_tn + tau_tt - tau_bt - tau_dt
+    r  = rn + rt
+
+    # make the variables available to solve :
+    self.Q     = Q
+    self.r     = r
+    self.U_s   = U_s
+    model.ubar = u_s
+    model.vbar = v_s
+    
+  def solve(self):
+    """
+    """
+    if self.model.MPI_rank==0:
+      s    = "::: solving 3D 'stokes-balance' for ubar, vbar :::"
+      text = colored(s, 'cyan')
+      print text
+    solve(lhs(self.r) == rhs(self.r), self.U_s)
+
+  def component_stress_stokes(self):  
+    """
+    """
+    model = self.model
+    
+    if model.MPI_rank==0:
+      s    = "solving 3D 'stokes-balance' for stress terms :::" 
+      text = colored(s, 'cyan')
+      print text
+
+    outpath = self.config['output_path']
+    Q       = self.Q
+    beta2   = model.beta2
+    eta     = model.eta
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    rho     = model.rho
+    g       = model.g
+    ds      = model.ds  
+    dSrf    = ds(2)        # surface
+    dGnd    = ds(3)        # grounded bed 
+    dFlt    = ds(5)        # floating bed
+    dFltS   = ds(6)        # marine terminating sides
+    dBed    = dGnd + dFlt  # bed
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    u_s = project(model.u, Q)
+    v_s = project(model.v, Q)
+    
+    U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
+    u_n = U[0]
+    v_n = U[1]
+    U   = as_vector([u_s, v_s, 0])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+
+    # trial and test functions for linear solve :
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+
+    # driving stres :
+    tau_d  = rho * g * grad(S)
+    tau_dn = phi * dot(tau_d, U_n) * dx
+    tau_dt = phi * dot(tau_d, U_t) * dx
+    
+    # calc basal drag : 
+    tau_bn = beta2 * uhat * H * phi * dBed
+    tau_bt = beta2 * vhat * H * phi * dBed
+    
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
+    tau_tn = - dphidn * eta * (  dudt +   dvdn) * dx
+    tau_tt = - dphidt * eta * (4*dvdt + 2*dudn) * dx
+    
+    # the residuals :
+    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
+    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
+    
+    # mass matrix :
+    M = assemble(phi*dtau*dx)
+
+    # assemble the vectors :
+    tau_dn_v   = assemble(tau_dn)
+    tau_dt_v   = assemble(tau_dt)
+    tau_bn_v   = assemble(tau_bn)
+    tau_bt_v   = assemble(tau_bt)
+    tau_nn_v   = assemble(tau_nn)
+    tau_nt_v   = assemble(tau_nt)
+    tau_tn_v   = assemble(tau_tn)
+    tau_tt_v   = assemble(tau_tt)
+    tau_totn_v = assemble(tau_totn)
+    tau_tott_v = assemble(tau_tott)
+    
+    # solution functions :
+    tau_dn   = Function(Q)
+    tau_dt   = Function(Q)
+    tau_bn   = Function(Q)
+    tau_bt   = Function(Q)
+    tau_nn   = Function(Q)
+    tau_nt   = Function(Q)
+    tau_tn   = Function(Q)
+    tau_tt   = Function(Q)
+    tau_totn = Function(Q)
+    tau_tott = Function(Q)
+    
+    # solve the linear system :
+    solve(M, tau_dn.vector(),   tau_dn_v)
+    solve(M, tau_dt.vector(),   tau_dt_v)
+    #solve(M, tau_bn.vector(),   tau_bn_v)
+    #solve(M, tau_bt.vector(),   tau_bt_v)
+    solve(M, tau_nn.vector(),   tau_nn_v)
+    solve(M, tau_nt.vector(),   tau_nt_v)
+    solve(M, tau_tn.vector(),   tau_tn_v)
+    solve(M, tau_tt.vector(),   tau_tt_v)
+    #solve(M, tau_totn.vector(), tau_totn_v)
+    #solve(M, tau_tott.vector(), tau_tott_v)
+
+    # output the files to the specified directory :
+    File(outpath + 'tau_dn.pvd')   << tau_dn
+    File(outpath + 'tau_bn.pvd')   << tau_bn
+    File(outpath + 'tau_nn.pvd')   << tau_nn
+    File(outpath + 'tau_nt.pvd')   << tau_nt
+    File(outpath + 'tau_totn.pvd') << tau_totn
+    File(outpath + 'tau_tott.pvd') << tau_tott
+    File(outpath + 'u_s.pvd')      << u_s
+    File(outpath + 'v_s.pvd')      << v_s
+
+    # attach the results to the model :
+    model.tau_dn   = tau_dn
+    model.tau_dt   = tau_dt
+    model.tau_bn   = tau_bn
+    model.tau_bt   = tau_bt
+    model.tau_nn   = tau_nn
+    model.tau_nt   = tau_nt
+    model.tau_tn   = tau_tn
+    model.tau_tt   = tau_tt
+    model.tau_totn = tau_totn
+    model.tau_tott = tau_tott
+    model.u_s      = u_s
+    model.v_s      = v_s
 

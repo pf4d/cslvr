@@ -8,17 +8,14 @@ from varglas.helper               import default_nonlin_solver_params
 from varglas.utilities            import DataInput, DataOutput
 from fenics                       import *
 from time                         import time
+from termcolor                    import colored, cprint
 
-
-# get the input args :
-i = int(sys.argv[2])           # assimilation number
-dir_b = sys.argv[1] + '/0'     # directory to save
+t0 = time()
 
 # set the output directory :
-out_dir = dir_b + str(i) + '/'
+out_dir = 'results/'
 
 set_log_active(True)
-#set_log_level(PROGRESS)
 
 thklim = 200.0
 
@@ -26,7 +23,6 @@ thklim = 200.0
 searise  = DataFactory.get_searise(thklim = thklim)
 bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
-#measure  = DataFactory.get_gre_measures()
 rignot   = DataFactory.get_gre_rignot()
 
 # define the mesh :
@@ -35,37 +31,34 @@ mesh = MeshFactory.get_greenland_coarse()
 # create data objects to use with varglas :
 dsr     = DataInput(None, searise,  mesh=mesh)
 dbm     = DataInput(None, bamber,   mesh=mesh)
-#dms     = DataInput(None, measure,  mesh=mesh)
 dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
 drg     = DataInput(None, rignot,   mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
-#dms.change_projection(dsr)
 drg.change_projection(dsr)
 
 # get the expressions used by varglas :
-Thickness          = dbm.get_spline_expression('H')
-Surface            = dbm.get_spline_expression('S')
-Bed                = dbm.get_spline_expression('B')
-SurfaceTemperature = dsr.get_spline_expression('T')
-#BasalHeatFlux      = dsr.get_spline_expression('q_geo')
-BasalHeatFlux      = dfm.get_spline_expression('q_geo')
-adot               = dsr.get_spline_expression('adot')
-#U_observed         = dsr.get_spline_expression('U_ob')
-U_observed         = drg.get_spline_expression('U_ob')
+H      = dbm.get_spline_expression('H')
+S      = dbm.get_spline_expression('S')
+B      = dbm.get_spline_expression('B')
+T_s    = dsr.get_spline_expression('T')
+#q_geo = dsr.get_spline_expression('q_geo')
+q_geo  = dfm.get_spline_expression('q_geo')
+adot   = dsr.get_spline_expression('adot')
+u      = drg.get_spline_expression('vx')
+v      = drg.get_spline_expression('vy')
 
 # inspect the data values :
 #do    = DataOutput('results_pre/')
-#do.write_one_file('vmag',           drg.get_projection('U_ob'))
-#do.write_one_file('h',              dbm.get_projection('H'))
-#do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
+#do.write_one_file('H',              dbm.get_projection('H'))
 #do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
 #exit(0)
 
 model = model.Model()
 model.set_mesh(mesh)
-model.set_geometry(Surface, Bed, deform=True)
+model.set_geometry(S, B, deform=True)
 model.set_parameters(pc.IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 
 # specifify non-linear solver parameters :
@@ -106,15 +99,17 @@ config = { 'mode'                         : 'steady',
              'r'                   : 1.0,
              'E'                   : 1.0,
              'approximation'       : 'fo',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 
              'on'                  : True,
              'use_surface_climate' : False,
-             'T_surface'           : SurfaceTemperature,
-             'q_geo'               : BasalHeatFlux,
-             'lateral_boundaries'  : None
+             'T_surface'           : T_s,
+             'q_geo'               : q_geo,
+             'lateral_boundaries'  : None,
+             'log'                 : True
            },
            'free_surface' :
            { 
@@ -141,24 +136,16 @@ config = { 'mode'                         : 'steady',
            },
            'adjoint' :
            { 
-             'alpha'               : [Thickness**2],
-             'beta'                : 0.0,
+             'alpha'               : H**2,
              'max_fun'             : 20,
              'objective_function'  : 'logarithmic',
-             'bounds'              : [(0,20)],
-             'control_variable'    : None,
+             'bounds'              : (0,20),
+             'control_variable'    : model.beta2,
              'regularization_type' : 'Tikhonov'
            }}
 
-model.eps_reg = 1e-15
-
 F = solvers.SteadySolver(model,config)
-if i != 0: 
-  File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
-  config['velocity']['approximation'] = 'stokes'
-t01 = time()
 F.solve()
-tf1 = time()
 
 params = config['velocity']['newton_params']['newton_solver']
 params['relaxation_parameter']         = 1.0
@@ -171,29 +158,15 @@ config['enthalpy']['on']               = False
 config['surface_climate']['on']        = False
 config['coupled']['on']                = False
 config['velocity']['use_T0']           = False
-config['adjoint']['control_variable']  = [model.beta2]
 
 A = solvers.AdjointSolver(model,config)
-A.set_target_velocity(U = U_observed)
-if i != 0: File(dir_b + str(i-1) + '/beta2.xml') >> model.beta2
-t02 = time()
+A.set_target_velocity(u=u, v=v)
 A.solve()
-tf2 = time()
     
-File(out_dir + 'S.xml')       << model.S
-File(out_dir + 'B.xml')       << model.B
-File(out_dir + 'u.xml')       << project(model.u, model.Q)
-File(out_dir + 'v.xml')       << project(model.v, model.Q)
-File(out_dir + 'w.xml')       << project(model.w, model.Q)
-File(out_dir + 'beta2.xml')   << model.beta2
-File(out_dir + 'eta.xml')     << project(model.eta, model.Q)
-
 #XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
 #
 ## save the state of the model :
-#if i !=0: rw = 'a'
-#else:     rw = 'w'
-#f = HDF5File(out_dir + '3D_5H_stokes.h5', rw)
+#f = HDF5File(mesh.mpi_comm(), out_dir + '3D_5H_stokes.h5', 'w')
 #f.write(model.mesh,  'mesh')
 #f.write(model.beta2, 'beta2')
 #f.write(model.Mb,    'Mb')
@@ -203,11 +176,18 @@ File(out_dir + 'eta.xml')     << project(model.eta, model.Q)
 #f.write(model.U,     'U')
 #f.write(model.eta,   'eta')
 
+tf = time()
+
 # calculate total time to compute
-s = (tf1 - t01) + (tf2 - t02)
+s = tf - t0
 m = s / 60.0
 h = m / 60.0
 s = s % 60
 m = m % 60
-print "Total time to compute: \r%02d:%02d:%02d" % (h,m,s)
+if model.MPI_rank == 0:
+  s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+  text = colored(s, 'red', attrs=['bold'])
+  print text
+
+
 

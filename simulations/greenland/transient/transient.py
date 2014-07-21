@@ -109,6 +109,7 @@ model = Model()
 model.set_mesh(mesh)
 model.set_geometry(Surface, Bed, deform=True)
 model.set_parameters(IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 
 F = SteadySolver(model, config)

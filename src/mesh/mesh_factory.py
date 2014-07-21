@@ -38,6 +38,14 @@ class MeshFactory(object):
  
   
   @staticmethod
+  def get_greenland_2D_5H():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/greenland/greenland_2D_5H_mesh.xml')
+    return mesh
+ 
+  
+  @staticmethod
   def get_greenland_3D_5H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -54,10 +62,34 @@ class MeshFactory(object):
 
   
   @staticmethod
-  def get_antarctica_detailed():
+  def get_antarctica_3D_50H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
-    mesh     = Mesh(home + '/antarctica/antarctica_detailed_mesh.xml')
+    mesh     = Mesh(home + '/antarctica/antarctica_3D_50H_mesh.xml')
+    return mesh
+ 
+  
+  @staticmethod
+  def get_antarctica_3D_100H():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/antarctica/antarctica_3D_100H_mesh.xml')
+    return mesh
+ 
+  
+  @staticmethod
+  def get_antarctica_3D_gradS_detailed():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/antarctica/antarctica_3D_gradS_mesh_detailed.xml')
+    return mesh
+ 
+  
+  @staticmethod
+  def get_antarctica_3D_gradS_crude():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/antarctica/antarctica_3D_gradS_mesh_crude.xml')
     return mesh
 
 

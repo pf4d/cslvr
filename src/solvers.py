@@ -612,10 +612,10 @@ class AdjointSolver(object):
       """
       find the unique values of each row of array <S>.
       """
-      """unq = unique(bounds.view(bounds.dtype.descr * bounds.shape[1]))
+      unq = unique(bounds.view(bounds.dtype.descr * bounds.shape[1]))
       unq = unq.view(bounds.dtype).reshape(-1, bounds.shape[1])
       text = colored("unique bounds:\n" + str(unq), 'red', attrs=['bold'])
-      print text"""
+      print text
     
     # minimize function I with initial guess beta_0 and gradient function J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,

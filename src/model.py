@@ -1,6 +1,7 @@
-from fenics    import *
-from termcolor import colored, cprint
-import numpy as np
+from fenics      import *
+from ufl.indexed import Indexed
+from termcolor   import colored, cprint
+import numpy         as np
 from abc import ABCMeta, abstractmethod
 
 class Model(object):
@@ -14,8 +15,9 @@ class Model(object):
   def __init__(self, out_dir='./'):
     self.per_func_space = False  # function space is undefined
     self.out_dir        = out_dir
+    self.MPI_rank       = MPI.rank(mpi_comm_world())
     
-    # A list of BoundaryMarker objects for defining the boundaries
+  def set_geometry(self, sur, bed, deform=True):
     self.boundary_markers = []
     # Contains the u, v, and w components of the velocity values for each boundary
     self.boundary_u = []
@@ -36,7 +38,6 @@ class Model(object):
     """
     self.S_ex = sur
     self.B_ex = bed
-    self.mask = mask
     
     if deform:
       self.deform_mesh_to_geometry()
@@ -57,7 +58,7 @@ class Model(object):
     :param bool generate_pbcs : Optional argument to determine whether
                                 to create periodic boundary conditions
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: generating mesh :::"
       text = colored(s, 'magenta')
       print text
@@ -129,7 +130,7 @@ class Model(object):
     """
     Deforms the mesh to the geometry.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: deforming mesh to geometry :::"
       text = colored(s, 'magenta')
       print text
@@ -147,38 +148,45 @@ class Model(object):
       x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
 
 
-  def calculate_boundaries(self):
+  def calculate_boundaries(self, mask=None, adot=None):
     """
     Determines the boundaries of the current model mesh
     """
-    if MPI.rank(mpi_comm_world())==0:
+    self.mask = mask
+    self.adot = adot
+    
+    if self.MPI_rank==0:
       s    = "::: calculating boundaries :::"
       text = colored(s, 'magenta')
       print text
     
-    mask = self.mask
-
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh,      0)
+    self.ff_acc  = FacetFunction('size_t', self.mesh,      0)
     self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
     
     # iterate through the facets and mark each if on a boundary :
     #
-    #   2 = high slope, upward facing ................ surface
-    #   3 = high slope, downward facing .............. base
-    #   4 = low slope, upward or downward facing ..... sides
-    #   5 = floating ................................. base
-    #   6 = floating ................................. sides
-    if mask != None:
+    #   2 = high slope, upward facing ................ grounded surface
+    #   3 = grounded high slope, downward facing ..... grounded base
+    #   4 = low slope, upward or downward facing ..... grounded sides
+    #   5 = floating ................................. floating base
+    #   6 = floating ................................. floating sides
+    #   7 = floating ................................. floating surface
+    if self.mask != None:
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
         tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
-        mask_xy = mask(x_m, y_m)
+        z_m     = f.midpoint().z()
+        mask_xy = self.mask(x_m, y_m, z_m)
       
         if   n.z() >=  tol and f.exterior():
-          self.ff[f] = 2
+          if mask_xy > 0:
+            self.ff[f] = 7
+          else:
+            self.ff[f] = 2
       
         elif n.z() <= -tol and f.exterior():
           if mask_xy > 0:
@@ -195,10 +203,16 @@ class Model(object):
       for f in facets(self.flat_mesh):
         n       = f.normal()    # unit normal vector to facet f
         tol     = 1e-3
-        mask_xy = mask(x_m, y_m)
+        x_m     = f.midpoint().x()
+        y_m     = f.midpoint().y()
+        z_m     = f.midpoint().z()
+        mask_xy = self.mask(x_m, y_m, z_m)
       
         if   n.z() >=  tol and f.exterior():
-          self.ff_flat[f] = 2
+          if mask_xy > 0:
+            self.ff_flat[f] = 7
+          else:
+            self.ff_flat[f] = 2
       
         elif n.z() <= -tol and f.exterior():
           if mask_xy > 0:
@@ -265,6 +279,37 @@ class Model(object):
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
+
+    # iterate through the facets and mark each if positive accumulation :
+    #
+    #   1 = high slope, upward facing ................ positive adot
+    if self.adot != None:
+      for f in facets(self.mesh):
+        n       = f.normal()    # unit normal vector to facet f
+        tol     = 1e-3
+        x_m     = f.midpoint().x()
+        y_m     = f.midpoint().y()
+        z_m     = f.midpoint().z()
+        adot_xy = self.adot(x_m, y_m, z_m)
+        if n.z() >= tol and f.exterior() and adot_xy > 0:
+          self.ff_acc[f] = 1
+      
+  def set_subdomain(self, mesh, flat_mesh, ff, ff_flat):
+    """
+    Sets the mesh to be Mesh <mesh> and flat_mest to be Mesh <flat_mesh>,
+    and sets the subdomains of the mesh and flat mesh to FacetFunction <ff> and
+    <ff_flat> respectively.
+    """
+    if self.MPI_rank==0:
+      s    = "::: setting subdomains :::"
+      text = colored(s, 'magenta')
+      print text
+    self.mesh      = mesh
+    self.flat_mesh = flat_mesh
+    self.ff        = ff
+    self.ff_flat   = ff_flat
+    self.ds        = Measure('ds')[self.ff]
+    self.ds_flat   = Measure('ds')[self.ff_flat]
      
   def set_parameters(self, params):
     """
@@ -448,8 +493,7 @@ class Model(object):
     U_f = []
     for u_v in U_v:
       u_f = Function(Q)
-      u_f.vector().set_local(u_v)
-      u_f.vector().apply('insert')
+      self.assign_variable(u_f, u_v)
       U_f.append(u_f)
 
     # return a UFL vector :
@@ -460,7 +504,7 @@ class Model(object):
     Calculate the deviatoric component of stress in the direction of 
     the UFL vector <u_dir>.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating component stress :::"
       text = colored(s, 'magenta')
       print text
@@ -493,7 +537,7 @@ class Model(object):
     """
     Calculate the deviatoric component of stress in the direction of U.
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating component stress :::"
       text = colored(s, 'magenta')
       print text
@@ -519,7 +563,7 @@ class Model(object):
   def calc_tau_bas(self, Q='self'):
     """
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating tau_bas :::"
       text = colored(s, 'magenta')
       print text
@@ -545,7 +589,7 @@ class Model(object):
   def calc_tau_drv(self, Q='self'):
     """
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating tau_drv :::"
       text = colored(s, 'magenta')
       print text
@@ -584,7 +628,7 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating 'stress-balance' :::"
       text = colored(s, 'magenta')
       print text
@@ -646,7 +690,7 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    if MPI.rank(mpi_comm_world())==0:
+    if self.MPI_rank==0:
       s    = "::: calculating 'stokes-balance' :::"
       text = colored(s, 'magenta')
       print text
@@ -812,26 +856,72 @@ class Model(object):
     """
     Print the minimum and maximum values of <u>, a Vector, Function, or array.
     """
-    if type(u) == Vector:
-      uMin = u.array().min()
-      uMax = u.array().max()
-    elif type(u) == Function: 
-      uMin = u.vector().array().min()
-      uMax = u.vector().array().max()
-    elif type(u) == array:
-      uMin = u.min()
-      uMax = u.max()
-    s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-    text = colored(s, 'yellow')
-    print text
+    if self.MPI_rank==0:
+      if isinstance(u, GenericVector):
+        uMin = u.array().min()
+        uMax = u.array().max()
+      elif isinstance(u, Function):
+        uMin = u.vector().array().min()
+        uMax = u.vector().array().max()
+      elif isinstance(u, np.ndarray):
+        uMin = u.min()
+        uMax = u.max()
+      elif isinstance(u, Indexed):
+        u_n  = project(u, self.Q)
+        uMin = u_n.vector().array().min()
+        uMax = u_n.vector().array().max()
+      else:
+        print "print_min_max function requires a Vector, Function, or array," \
+              + " not %s." % type(u)
+        exit(1)
+      s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+      text = colored(s, 'yellow')
+      print text
+
+  def assign_variable(self, u, var):
+    """
+    Manually assign the values from <var> to Function <u>.  <var> may be an
+    array, float, Expression, or Function.
+    """
+    if   isinstance(var, float) or isinstance(var, int):
+      u.vector()[:] = var
+    
+    elif isinstance(var, np.ndarray):
+      u.vector().set_local(var)
+      u.vector().apply('insert')
+    
+    elif isinstance(var, Expression):
+      u.interpolate(var)
+
+    elif isinstance(var, GenericVector):
+      u.vector().set_local(var.array())
+      u.vector().apply('insert')
+
+    elif isinstance(var, Function):
+      u.vector().set_local(var.vector().array())
+      u.vector().apply('insert')
+    
+    elif isinstance(var, Indexed):
+      u.vector().set_local(project(var, self.Q).vector().array())
+      u.vector().apply('insert')
+
+    else:
+      print "assign_variable() function requires a Function, array, float," + \
+            " int, Vector, Expression, or Indexed not %s" % type(var)
+      exit(1)
+
 
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
+    if self.MPI_rank==0:
+      s    = "::: initializing variables :::"
+      text = colored(s, 'magenta')
+      print text
+    
     self.params.globalize_parameters(self) # make all the variables available 
-    self.calculate_boundaries()            # calculate the boundaries
 
     # Function Space
     if self.per_func_space == False:
@@ -868,10 +958,10 @@ class Model(object):
     self.eta           = Function(self.Q)
     self.P             = Function(self.Q)
     self.Tstar         = Function(self.Q)
-    self.W             = Function(self.Q) 
-    self.Vd            = Function(self.Q) 
-    self.Pe            = Function(self.Q) 
-    self.Sl            = Function(self.Q) 
+    self.W             = Function(self.Q)
+    self.Vd            = Function(self.Q)
+    self.Pe            = Function(self.Q)
+    self.Sl            = Function(self.Q)
     self.Pc            = Function(self.Q)
     self.Nc            = Function(self.Q)
     self.Pb            = Function(self.Q)
@@ -915,7 +1005,6 @@ class Model(object):
     # Adjoint model
     self.u_o           = Function(self.Q)
     self.v_o           = Function(self.Q)
-    self.U_o           = Function(self.Q)
     self.lam           = Function(self.Q)
     self.adot          = Function(self.Q)
 

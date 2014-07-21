@@ -40,7 +40,8 @@ config = { 'mode'                         : 'steady',
              'r'                   : 1.0,
              'E'                   : 1,
              'approximation'       : 'stokes',
-             'boundaries'          : None
+             'boundaries'          : None,
+             'log'                 : True
            },
            'enthalpy' : 
            { 
@@ -96,6 +97,7 @@ Bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
 
 model.set_geometry(Surface, Bed, deform=True)
 model.set_parameters(IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
  
 F = SteadySolver(model, config)

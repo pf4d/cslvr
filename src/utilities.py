@@ -10,7 +10,7 @@ Utilities file:
 import subprocess
 
 from scipy.io          import loadmat, savemat
-from scipy.interpolate import RectBivariateSpline, NearestNDInterpolator
+from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
                               argmin
@@ -298,8 +298,20 @@ class DataInput(object):
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_interpolation(self,fn,kx=3,ky=3):
-    interp = self.get_spline_expression(fn,kx=kx,ky=ky)
+  def get_interpolation(self, fn, near=False, kx=3, ky=3):
+    """
+    return the interpolation of data field <fn>.
+    """
+    if near:
+      interp = self.get_nearest_expression(fn, bool_data=bool_data)
+    else:
+      interp = self.get_spline_expression(fn,kx=kx,ky=ky)
+    
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: getting %s interpolation :::" % fn
+      text = colored(s, 'green')
+      print text
+
     proj   = interpolate(interp, self.func_space)
     return proj
 
@@ -361,9 +373,9 @@ class DataInput(object):
           xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
-        idx       = abs(self.xs - xn).argmin()
-        idy       = abs(self.ys - yn).argmin()
-        values[0] = self.data[idy, idx]
+        idx       = abs(xs - xn).argmin()
+        idy       = abs(ys - yn).argmin()
+        values[0] = data[idy, idx]
 
     return newExpression(element = self.func_space.ufl_element())
 
@@ -567,7 +579,7 @@ class MeshGenerator(object):
     how far forward to look to eliminate intersections.
     """
     if MPI.rank(mpi_comm_world())==0:
-      s    = "::: eliminating intersections, please wait :::"
+      s    = "::: eliminating intersections :::"
       text = colored(s, 'green')
       print text
 
@@ -626,7 +638,10 @@ class MeshGenerator(object):
     #       file after a certain point.  calling restart() then write again 
     #       results in correct .geo file written.  However, running the script 
     #       outside of ipython works.
-    print "::: writing gmsh contour :::"
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: writing gmsh contour :::"
+      text = colored(s, 'green')
+      print text
     c   = self.longest_cont
     f   = self.f
     x   = self.x
@@ -672,6 +687,10 @@ class MeshGenerator(object):
     """
     Extrude the mesh <h> units with <n_layers> number of layers.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: extruding gmsh contour :::"
+      text = colored(s, 'green')
+      print text
     f = self.f
     s = str(self.surf_num)
     h = str(h)
@@ -759,6 +778,10 @@ class MeshGenerator(object):
     """
     close the .geo file down for further editing.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: closing geo file :::"
+      text = colored(s, 'green')
+      print text
     self.f.close()
 
 
@@ -790,24 +813,21 @@ class linear_attractor(object):
   Create an attractor object which refines with min and max cell radius <l_min>,
   <l_max> over data field <field>.  The <f_max> parameter specifies a max value
   for which to apply the minimum cell size such that if <field>_i is less than 
-  <f_max>, the cell size in this region will be <l_max>.  If <hard_cut> is true,
-  the values of <field> above <f_max> will be set to <l_min>, otherwise regular
-  interpolation based on <field> is performed.  If <inv> = True the object 
-  refines on the inverse of the data field <field>.
+  <f_max>, the cell size in this region will be <l_max>.  If <inv> = True 
+  the object refines on the inverse of the data field <field>.
   
                {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
+    cell_h_i = {l_max,     field_i < f_max
                {field_i,   otherwise 
 
   """
-  def __init__(self, spline, field, f_max, l_min, l_max, 
-               hard_cut=False, inv=True):
+  def __init__(self, spline, field, f_max, l_min, l_max, inv=True):
     """
     Refine the mesh off of data field <field> using spline <spline> with the 
     cell radius defined as :
   
                {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
+    cell_h_i = {l_max,     field_i < f_max
                {field_i,   otherwise 
 
     If <inv> is True, refine off of the inverse of <field> instead.
@@ -818,34 +838,31 @@ class linear_attractor(object):
     self.l_min    = l_min
     self.l_max    = l_max
     self.f_max    = f_max
-    self.hard_cut = hard_cut
     self.inv      = inv
-    self.c        = (self.l_max - self.l_min) / self.field.max()
   
   def op(self, x, y, z, entity):
     """
     """
-    v = self.spline(x,y)[0][0]
-    if v > self.f_max:
-      if self.hard_cut:
-        return self.l_min
+    l_min = self.l_min
+    l_max = self.l_max
+    f     = self.field
+    v     = self.spline(x,y)[0][0]
+    if self.inv:
+      if v < self.f_max:
+        lc = l_max - (l_max - l_min) / f.max() * v
       else:
-        if self.inv:
-          lc = self.l_max - self.c * v
-        else:
-          lc = self.l_min + self.c * v
-        return lc
+        lc = l_min
     else:
-      if self.inv:
-        lc = self.l_min
+      if v < self.f_max:
+        lc = l_min + (l_max - l_min) / f.max() * v
       else:
-        ls = self.l_max
-      return lc
+        lc = l_max
+    return lc
 
 class static_attractor(object):
   """
   """
-  def __init__(self, spline, c):
+  def __init__(self, spline, c, inv=False):
     """
     Refine the mesh off of data field <spline> with the cell radius 
     defined as :
@@ -855,11 +872,16 @@ class static_attractor(object):
     """
     self.spline = spline
     self.c      = c
+    self.inv    = inv
   
   def op(self, x, y, z, entity):
     """
     """
-    return self.c * self.spline(x,y)[0][0]
+    if not self.inv:
+      lc = self.c * self.spline(x,y)[0][0]
+    else:
+      lc = self.c * 1/self.spline(x,y)[0][0]
+    return lc 
 
 
 class min_field(object):
@@ -897,6 +919,12 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
+    if MPI.rank(mpi_comm_world())==0:
+      s    = "::: initializing MeshRefiner on '%s.geo' :::" % gmsh_file_name
+      text = colored(s, 'green')
+      print text
+    
+    from gmshpy import GModel, GmshSetOption
 
     self.field  = di.data[fn].T
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
@@ -910,12 +938,12 @@ class MeshRefiner(object):
     GmshSetOption("Mesh", "CharacteristicLengthExtendFromBoundary", 0.0)
     GmshSetOption("Mesh", "Smoothing", 100.0)
 
-  def add_linear_attractor(self, f_max, l_min, l_max, hard_cut, inv):
+  def add_linear_attractor(self, f_max, l_min, l_max, inv):
     """
     Refine the mesh with the cell radius defined as :
   
                {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max and hard_cut
+    cell_h_i = {l_max,     field_i < f_max
                {field_i,   otherwise 
 
     If <inv> is True, refine off of the inverse of <field> instead.
@@ -923,11 +951,11 @@ class MeshRefiner(object):
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
     a   = linear_attractor(self.spline, self.field, f_max, l_min, l_max, 
-                           inv=inv, hard_cut=hard_cut)
+                           inv=inv)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 
-  def add_static_attractor(self, c=1):
+  def add_static_attractor(self, c=1, inv=False):
     """
     Refine the mesh with the cell radius defined as :
   
@@ -935,7 +963,7 @@ class MeshRefiner(object):
 
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
-    a   = static_attractor(self.spline, c)
+    a   = static_attractor(self.spline, c, inv)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
 
@@ -961,10 +989,18 @@ class MeshRefiner(object):
     """
     #launch the GUI
     if gui:
+      if MPI.rank(mpi_comm_world())==0:
+        s    = "::: opening GUI :::"
+        text = colored(s, 'green')
+        print text
       FlGui.instance().run()
 
     # instead of starting the GUI, we could generate the mesh and save it
     else:
+      if MPI.rank(mpi_comm_world())==0:
+        s    = "::: writing %s.msh :::" % out_file_name
+        text = colored(s, 'green')
+        print text
       self.m.mesh(dim)
       self.m.save(out_file_name + ".msh")
    

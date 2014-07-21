@@ -37,6 +37,7 @@ SMB = Expression('0.0', element=model.Q.ufl_element())
 model.set_geometry(Surface, Bed, deform=True)
 
 model.set_parameters(IceParameters())
+model.calculate_boundaries()
 model.initialize_variables()
 model.n = 1.0
 
@@ -44,8 +45,6 @@ nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
 nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
-#nonlin_solver_params['newton_solver']['linear_solver']        = 'gmres'
-#nonlin_solver_params['newton_solver']['preconditioner']       = 'hypre_amg'
 
 config = { 'mode'                         : 'transient',
            'output_path'                  : './results/',
@@ -74,7 +73,8 @@ config = { 'mode'                         : 'transient',
              'r'                          : 0.0,
              'E'                          : 1,
              'approximation'              : 'fo',
-             'boundaries'                 : None
+             'boundaries'                 : None,
+             'log'                        : True
            },                             
            'enthalpy' :                   
            {                              

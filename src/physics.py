@@ -516,7 +516,7 @@ class VelocityBP(object):
       beta_0_v[beta_0_v < 0] = DOLFIN_EPS
       model.assign_variable(beta, beta_0_v)
     else:
-      model.assign_variable(beta2, config['velocity']['beta2'])
+      model.assign_variable(beta, config['velocity']['beta2'])
    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])

@@ -25,9 +25,9 @@ bedmap   = DataFactory.get_bedmap2(thklim=thklim)
 
 mesh = MeshFactory.get_antarctica_3D_gradS_crude()
 
-dm  = DataInput(None, measures, mesh=mesh)
-db1 = DataInput(None, bedmap1,  mesh=mesh)
-db2 = DataInput(None, bedmap2,  mesh=mesh)
+dm  = DataInput(measures, mesh=mesh)
+db1 = DataInput(bedmap1,  mesh=mesh)
+db2 = DataInput(bedmap2,  mesh=mesh)
 
 db2.set_data_val('H',   32767, thklim)
 db2.set_data_val('S',   32767, 0.0)

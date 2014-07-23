@@ -24,9 +24,9 @@ direc = os.path.dirname(os.path.realpath(__file__))
 mesh    = Mesh("./mesh.xml")
 
 # create data objects to use with varglas :
-dsr     = DataInput(None, searise, mesh=mesh, create_proj=True)
-dbam    = DataInput(None, bamber,  mesh=mesh)
-dms     = DataInput(None, measure, mesh=mesh, create_proj=True, flip=True)
+dsr     = DataInput(searise, mesh=mesh, create_proj=True)
+dbam    = DataInput(bamber,  mesh=mesh)
+dms     = DataInput(measure, mesh=mesh, create_proj=True)
 
 dms.change_projection(dsr)
 

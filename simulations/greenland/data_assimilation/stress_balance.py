@@ -23,11 +23,11 @@ thklim = 200.0
 bamber   = DataFactory.get_bamber(thklim = thklim)
 
 # define the meshes :
-mesh      = Mesh('meshes/greenland_3D_5H.xml')
-#mesh     = MeshFactory.get_greenland_3D_5H()
+#mesh    = Mesh('meshes/greenland_3D_5H.xml')
+mesh     = MeshFactory.get_greenland_3D_5H()
 
 # create data objects to use with varglas :
-dbm     = DataInput(None, bamber, mesh=mesh)
+dbm     = DataInput(bamber, mesh=mesh)
 
 # get the expressions used by varglas :
 Surface = dbm.get_spline_expression('H')

@@ -5,7 +5,7 @@ from varglas.data.data_factory import DataFactory
 vara = DataFactory.get_bedmap2()
 
 # process the data :
-dd = DataInput(None, vara, gen_space=False)
+dd = DataInput(vara, gen_space=False)
 #dd.set_data_max('mask', 2, 0)
 
 m = MeshGenerator(dd, 'mesh', '../meshes/') 

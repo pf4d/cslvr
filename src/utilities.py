@@ -33,7 +33,7 @@ class DataInput(object):
     3) Project the data onto a finite element mesh that is generated based
        on the extents of the input data set.
   """
-  def __init__(self, direc, files, flip=False, mesh=None, gen_space=True, 
+  def __init__(self, files, direc=None, flip=False, mesh=None, gen_space=True, 
                zero_edge=False, bool_data=False, req_dg=False):
     """
     The following data are used to initialize the class :

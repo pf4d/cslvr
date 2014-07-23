@@ -154,6 +154,13 @@ class Model(object):
     self.ff_acc  = FacetFunction('size_t', self.mesh,      0)
     self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
     
+    self.cf      = CellFunction('size_t',  self.mesh,      0)
+    dofmap       = self.Q.dofmap()
+    shf_dofs     = []
+    gnd_dofs     = []
+    
+    tol = 1e-3
+    
     # iterate through the facets and mark each if on a boundary :
     #
     #   2 = high slope, upward facing ................ grounded surface
@@ -163,9 +170,13 @@ class Model(object):
     #   6 = floating ................................. floating sides
     #   7 = floating ................................. floating surface
     if self.mask != None:
+
+      if self.MPI_rank==0:
+        s    = "    - iterating through facets - "
+        text = colored(s, 'magenta')
+        print text
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
-        tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
@@ -191,7 +202,6 @@ class Model(object):
       
       for f in facets(self.flat_mesh):
         n       = f.normal()    # unit normal vector to facet f
-        tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
@@ -214,6 +224,27 @@ class Model(object):
             self.ff_flat[f] = 6
           else:
             self.ff_flat[f] = 4
+      
+      if self.MPI_rank==0:
+        s    = "    - iterating through cells - "
+        text = colored(s, 'magenta')
+        print text
+      for c in cells(self.mesh):
+        x_m     = c.midpoint().x()
+        y_m     = c.midpoint().y()
+        z_m     = c.midpoint().z()
+        mask_xy = self.mask(x_m, y_m, z_m)
+
+        if mask_xy > 0:
+          self.cf[c] = 1
+          shf_dofs.extend(dofmap.cell_dofs(c.index()))
+        else:
+          self.cf[c] = 0
+          gnd_dofs.extend(dofmap.cell_dofs(c.index()))
+
+      self.shf_dofs = list(set(shf_dofs))
+      self.gnd_dofs = list(set(gnd_dofs))
+
 
     # iterate through the facets and mark each if on a boundary :
     #
@@ -223,7 +254,6 @@ class Model(object):
     else:
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
-        tol     = 1e-3
       
         if   n.z() >=  tol and f.exterior():
           self.ff[f] = 2
@@ -236,7 +266,6 @@ class Model(object):
     
       for f in facets(self.flat_mesh):
         n       = f.normal()    # unit normal vector to facet f
-        tol     = 1e-3
       
         if   n.z() >=  tol and f.exterior():
           self.ff_flat[f] = 2
@@ -249,6 +278,7 @@ class Model(object):
     
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
+    self.dx      = Measure('dx')[self.cf]
 
     # iterate through the facets and mark each if positive accumulation :
     #
@@ -256,14 +286,13 @@ class Model(object):
     if self.adot != None:
       for f in facets(self.mesh):
         n       = f.normal()    # unit normal vector to facet f
-        tol     = 1e-3
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
         adot_xy = self.adot(x_m, y_m, z_m)
         if n.z() >= tol and f.exterior() and adot_xy > 0:
           self.ff_acc[f] = 1
-      
+ 
   def set_subdomain(self, mesh, flat_mesh, ff, ff_flat):
     """
     Sets the mesh to be Mesh <mesh> and flat_mest to be Mesh <flat_mesh>,

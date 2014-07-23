@@ -12,7 +12,7 @@ thklim = 0.0
 bedmap2 = DataFactory.get_bedmap2()
 
 # process the data :
-dbm = DataInput(None, bedmap2, gen_space=False)
+dbm = DataInput(bedmap2, gen_space=False)
 dbm.set_data_val("H", 32767, thklim)
 
 

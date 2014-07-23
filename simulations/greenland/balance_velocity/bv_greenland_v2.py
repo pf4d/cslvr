@@ -20,9 +20,9 @@ direc = os.path.dirname(os.path.realpath(__file__))
 mesh  = MeshFactory.get_greenland_coarse()
 
 # create data objects to use with varglas :
-dsr   = DataInput(None, searise, mesh=mesh)
-drg   = DataInput(None, rignot,  mesh=mesh)
-dbm   = DataInput(None, bamber,   mesh=mesh)
+dsr   = DataInput(searise, mesh=mesh)
+drg   = DataInput(rignot,  mesh=mesh)
+dbm   = DataInput(bamber,   mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
 drg.change_projection(dsr)

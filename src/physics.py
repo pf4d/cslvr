@@ -539,21 +539,37 @@ class VelocityBP(object):
     chi      = TestFunction(Q)
     dw       = TrialFunction(Q)
 
+    dx       = model.dx
+    dx_s     = dx(1)
+    dx_g     = dx(0)
+    dx       = dx(1) + dx(0) # entire internal
     ds       = model.ds  
-    dSrf     = ds(2)        # surface
-    dGnd     = ds(3)        # grounded bed 
-    dFlt     = ds(5)        # floating bed
-    dFltS    = ds(6)        # marine terminating sides
-    dBed     = dGnd + dFlt  # bed
+    dSrf     = ds(2)         # surface
+    dGnd     = ds(3)         # grounded bed
+    dFlt     = ds(5)         # floating bed
+    dFltS    = ds(6)         # marine terminating sides
+    dBed     = dGnd + dFlt   # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      b = A0**(-1/n)
+      b     = A0**(-1/n)
+      b_gnd = b
+      b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b = config['velocity']['b_linear']
-      n = 1.0
+      b     = config['velocity']['b_linear']
+      b_gnd = b
+      b_shf = b
+      n     = 1.0
+    
+    elif config['velocity']['viscosity_mode'] == 'shelf_control':
+      b_shf   = config['velocity']['b_linear_shf']
+      b_gnd   = config['velocity']['b_linear_gnd']
+      b       = Function(Q)
+      b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
+      b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
+      n       = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define pressure corrected temperature
@@ -563,6 +579,8 @@ class VelocityBP(object):
       a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(Tstar, 263.15), 6e4,13.9e4)
       b     = ( E * (a_T * (1 + 181.25*W)) * exp( -Q_T / (R * Tstar)) )**(-1/n)
+      b_gnd = b
+      b_shf = b
     
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
@@ -575,6 +593,8 @@ class VelocityBP(object):
     eta      =     b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
+    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
@@ -587,7 +607,7 @@ class VelocityBP(object):
     Pb       = (rho*g*H + rho_w*g*B) / H * (u + v) 
 
     # Variational principle
-    A        = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
+    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -604,17 +624,18 @@ class VelocityBP(object):
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
 
-    model.eta   = eta
-    model.Vd    = Vd
-    model.Pe    = Pe
-    model.Sl    = Sl
-    model.Pb    = Pb
-    model.A     = A
-    model.T     = T
-    model.beta2 = beta
-    model.E     = E
-    model.u     = u
-    model.v     = v
+    model.eta    = eta
+    model.Vd_shf = Vd_shf
+    model.Vd_gnd = Vd_gnd
+    model.Pe     = Pe
+    model.Sl     = Sl
+    model.Pb     = Pb
+    model.A      = A
+    model.T      = T
+    model.beta2  = beta
+    model.E      = E
+    model.u      = u
+    model.v      = v
 
   def solve(self):
     """ 
@@ -811,6 +832,10 @@ class Enthalpy(object):
     what        = model.what
     mhat        = model.mhat
     ds          = model.ds
+    dx          = model.dx
+    dx_s        = dx(1)
+    dx_g        = dx(0)
+    dx          = dx(1) + dx(0) # entire internal
     
     # If we're not using the output of the surface climate model,
     #  set the surface temperature to the constant or array that 
@@ -1280,7 +1305,8 @@ class AdjointVelocityBP(object):
 
     # Adjoint variable in trial function form
     Q         = model.Q
-    Vd        = model.Vd
+    Vd_shf    = model.Vd_shf
+    Vd_gnd    = model.Vd_gnd
     Pe        = model.Pe
     Sl        = model.Sl
     Pb        = model.Pb
@@ -1293,12 +1319,16 @@ class AdjointVelocityBP(object):
     adot      = model.adot
     ds        = model.ds
     S         = model.S
-
-    dSrf     = ds(2)        # surface
-    dGnd     = ds(3)        # grounded bed 
-    dFlt     = ds(5)        # floating bed
-    dFltS    = ds(6)        # marine terminating sides
-    dBed     = dGnd + dFlt  # bed
+    
+    dx       = model.dx
+    dx_s     = dx(1)
+    dx_g     = dx(0)
+    dx       = dx(1) + dx(0) # entire internal
+    dSrf     = ds(2)         # surface
+    dGnd     = ds(3)         # grounded bed 
+    dFlt     = ds(5)         # floating bed
+    dFltS    = ds(6)         # marine terminating sides
+    dBed     = dGnd + dFlt   # bed
 
 
     control = config['adjoint']['control_variable']
@@ -1306,7 +1336,7 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = (Vd + Pe)*dx + Sl*dGnd + Pb*dFltS
+      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
@@ -1831,6 +1861,8 @@ class StokesBalance(object):
     etabar  = model.etabar
     ubar    = model.ubar
     vbar    = model.vbar
+    ubar_d  = model.ubar_d
+    vbar_d  = model.vbar_d
 
     # create functions used to solve for velocity :
     V        = MixedFunctionSpace([Q,Q])
@@ -1874,8 +1906,10 @@ class StokesBalance(object):
     tau_d   = model.tau_d
     
     # calc basal drag : 
-    u_c     = ubar - u_b_e
-    v_c     = vbar - v_b_e
+    #u_c     = ubar - u_b_e
+    #v_c     = vbar - v_b_e
+    u_c     = ubar - ubar_d
+    v_c     = vbar - vbar_d
     tau_b_u = beta2_e * H * (du - u_c)
     tau_b_v = beta2_e * H * (dv - v_c)
     tau_b   = as_vector([tau_b_u, tau_b_v, 0])
@@ -1898,11 +1932,12 @@ class StokesBalance(object):
     r  = rn + rt
 
     # make the variables available to solve :
-    self.Q   = Q
-    self.r   = r
-    self.U_s = U_s
-    model.ubar = u_s
-    model.vbar = v_s
+    self.Q      = Q
+    self.r      = r
+    self.U_s    = U_s
+    model.ubar  = u_s
+    model.vbar  = v_s
+    model.tau_b = tau_b
     
   def solve(self):
     """

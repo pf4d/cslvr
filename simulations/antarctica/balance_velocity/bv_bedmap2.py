@@ -19,8 +19,8 @@ direc = os.path.dirname(os.path.realpath(__file__))
 mesh  = MeshFactory.get_antarctica_2D_coarse()
 
 # create data objects to use with varglas :
-d1     = DataInput(None, bm1, mesh=mesh)
-d3     = DataInput(None, bm2, mesh=mesh)
+d1     = DataInput(bm1, mesh=mesh)
+d3     = DataInput(bm2, mesh=mesh)
 
 # get projections for use with FEniCS :
 adot   = d1.get_projection("adot")

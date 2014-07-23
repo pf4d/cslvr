@@ -40,13 +40,15 @@ flat_mesh.coordinates()[:,2] /= 100000.0
 
 
 # create data objects to use with varglas :
-dsr     = DataInput(None, searise,  mesh=mesh)
-dbm     = DataInput(None, bamber,   mesh=mesh)
-#dms     = DataInput(None, measure,  mesh=mesh)
-#dmss    = DataInput(None, meas_shf, mesh=mesh)
-dfm     = DataInput(None, fm_qgeo,  mesh=mesh)
-dsq     = DataInput(None, sec_qgeo, mesh=mesh)
-#dbv     = DataInput("results/", ("Ubmag_measures.mat", "Ubmag.mat"), mesh=mesh)
+dsr     = DataInput(searise,  mesh=mesh)
+dbm     = DataInput(bamber,   mesh=mesh)
+#dms     = DataInput(measure,  mesh=mesh)
+#dmss    = DataInput(meas_shf, mesh=mesh)
+dfm     = DataInput(fm_qgeo,  mesh=mesh)
+dsq     = DataInput(sec_qgeo, mesh=mesh)
+#dbv     = DataInput(("Ubmag_measures.mat", "Ubmag.mat"), 
+#                     direc = "results/", 
+#                     mesh=mesh)
 
 # change the projection of the measures data to fit with other data :
 #dms.change_projection(dsr)

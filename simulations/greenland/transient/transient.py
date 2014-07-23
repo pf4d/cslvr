@@ -12,19 +12,27 @@ set_log_active(True)
 thklim = 50.0
 
 vara = DataFactory.get_searise(thklim = thklim)
+mesh = MeshFactory.get_greenland_coarse()
+dsr  = DataInput(vara, mesh=mesh)
 
-mesh               = MeshFactory.get_greenland_coarse()
+S     = dsr.get_spline_expression('S')
+B     = dsr.get_spline_expression('B')
+SMB   = dsr.get_spline_expression('adot')
+T_s   = dsr.get_spline_expression('T')
+q_geo = dsr.get_spline_expression('q_geo')
+U_ob  = dsr.get_spline_expression('U_ob')
+Tn    = vara['Tn']['map_data']
 
-dsr                = DataInput(None, vara, mesh=mesh)
+# create the model :
+model = Model()
 
-Surface            = dsr.get_spline_expression('S')
-Bed                = dsr.get_spline_expression('B')
-SMB                = dsr.get_spline_expression('adot')
-SurfaceTemperature = dsr.get_spline_expression('T')
-BasalHeatFlux      = dsr.get_spline_expression('q_geo')
-U_observed         = dsr.get_spline_expression('U_ob')
-Tn                 = vara['Tn']['map_data']
-           
+model.set_mesh(mesh)
+model.set_geometry(S, B, deform=True)
+model.set_parameters(IceParameters())
+model.calculate_boundaries()
+model.initialize_variables()
+
+# specify solver parameters : 
 nonlin_solver_params = default_nonlin_solver_params()
 nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
 nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
@@ -34,6 +42,7 @@ nonlin_solver_params['newton_solver']['linear_solver']           = 'gmres'
 nonlin_solver_params['newton_solver']['preconditioner']          = 'hypre_amg'
 parameters['form_compiler']['quadrature_degree']                 = 2
 
+# varglas config dictionary :
 config = { 'mode'                         : 'transient',
            't_start'                      : 0.0,
            't_end'                        : 50.0,
@@ -66,8 +75,8 @@ config = { 'mode'                         : 'transient',
            'enthalpy' : 
            { 
              'on'                         : False,
-             'T_surface'                  : SurfaceTemperature,
-             'q_geo'                      : BasalHeatFlux,
+             'T_surface'                  : T_s,
+             'q_geo'                      : q_geo,
              'use_surface_climate'        : False,
              'lateral_boundaries'         : None
            },
@@ -104,14 +113,6 @@ config = { 'mode'                         : 'transient',
              'objective_function'         : 'logarithmic',
            }}
 
-model = Model()
-
-model.set_mesh(mesh)
-model.set_geometry(Surface, Bed, deform=True)
-model.set_parameters(IceParameters())
-model.calculate_boundaries()
-model.initialize_variables()
-
 F = SteadySolver(model, config)
 F.solve()
 
@@ -121,4 +122,6 @@ np['relaxation_parameter'] = 0.8
 
 T = TransientSolver(model,config)
 T.solve()
+
+
 

@@ -670,42 +670,46 @@ class StokesBalanceSolver(object):
       text = colored(s, 'blue')
       print text
     
-    #Q       = model.Q
-    #u       = model.u
-    #v       = model.v
-    #w       = model.w
-    #S       = model.S
-    #B       = model.B
-    #H       = S - B
-    #eta     = model.eta
-    #beta2   = model.beta2
-    #
-    ## get the values at the bed :
-    #beta2_e = model.extrude(beta2, 3, 2, Q)
-    #u_b_e   = model.extrude(u,     3, 2, Q)
-    #v_b_e   = model.extrude(v,     3, 2, Q)
-    #
-    ## vertically average :
-    #etabar = model.vert_integrate(eta, Q)
-    #etabar = project(model.extrude(etabar, 2, 2, Q) / H)
-    #ubar   = model.vert_integrate(u, Q)
-    #ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
-    #vbar   = model.vert_integrate(v, Q)
-    #vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
+    Q       = model.Q
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    eta     = model.eta
+    beta2   = model.beta2
+    
+    # get the values at the bed :
+    beta2_e = model.extrude(beta2, 3, 2, Q)
+    u_b_e   = model.extrude(u,     3, 2, Q)
+    v_b_e   = model.extrude(v,     3, 2, Q)
+    
+    # vertically average :
+    etabar = model.vert_integrate(eta, Q)
+    etabar = project(model.extrude(etabar, 2, 2, Q) / H)
+    ubar   = model.vert_integrate(u, Q)
+    ubar_d = model.vert_integrate(u - u_b_e, Q)
+    ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
+    vbar   = model.vert_integrate(v, Q)
+    vbar_d = model.vert_integrate(v - v_b_e, Q)
+    vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
 
-    ## set the model variables so the physics object can solve it :
-    #model.beta2_e = beta2_e
-    #model.u_b_e   = u_b_e
-    #model.v_b_e   = v_b_e
-    #model.etabar  = etabar
-    #model.ubar    = ubar
-    #model.vbar    = vbar
-    #
-    ## calculate the driving stress and basal drag once :
-    #model.tau_d   = model.calc_tau_drv(Q)
-    #model.tau_b   = model.calc_tau_bas(Q)
+    # set the model variables so the physics object can solve it :
+    model.beta2_e = beta2_e
+    model.u_b_e   = u_b_e
+    model.v_b_e   = v_b_e
+    model.etabar  = etabar
+    model.ubar    = ubar
+    model.vbar    = vbar
+    model.ubar_d  = ubar_d
+    model.vbar_d  = vbar_d
+    
+    # calculate the driving stress and basal drag once :
+    model.tau_d   = model.calc_tau_drv(Q)
+    model.tau_b   = model.calc_tau_bas(Q)
 
-    self.stress_balance_instance = StokesBalance3D(model, config)
+    self.stress_balance_instance = StokesBalance(model, config)
 
   def solve(self):
     """ 

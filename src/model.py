@@ -2,6 +2,7 @@ from fenics      import *
 from ufl.indexed import Indexed
 from termcolor   import colored, cprint
 import numpy         as np
+from abc import ABCMeta, abstractmethod
 
 class Model(object):
   """ 
@@ -15,7 +16,7 @@ class Model(object):
     self.per_func_space = False  # function space is undefined
     self.out_dir        = out_dir
     self.MPI_rank       = MPI.rank(mpi_comm_world())
-
+    
   def set_geometry(self, sur, bed, deform=True):
     """
     Sets the geometry of the surface and bed of the ice sheet.
@@ -25,6 +26,18 @@ class Model(object):
     :param mask : Expression representing a mask of grounded (0) and floating 
                   (1) areas of the ice.
     """
+    self.boundary_markers = []
+    # Contains the u, v, and w components of the velocity values 
+    # for each boundary
+    self.boundary_u = []
+    self.boundary_v = []
+    
+    # This list will store the integer value corresponding to each boundary
+    self.boundary_values = []
+    
+    # The marker value for the next added boundary. This value will be auto 
+    # incremented
+    self.marker_val = 8
     self.S_ex = sur
     self.B_ex = bed
     
@@ -252,18 +265,38 @@ class Model(object):
     #   3 = high slope, downward facing .............. base
     #   4 = low slope, upward or downward facing ..... sides
     else:
-      for f in facets(self.mesh):
-        n       = f.normal()    # unit normal vector to facet f
+      for f in facets(self.mesh):    
+        # Flag that is set to true if the facet belonged to a user defined 
+        # boundary
+        marked = False
+        
+        # Check if the facet belongs in any of the user defined boundaries
+        for i in range(len(self.boundary_markers)) :
+          bm = self.boundary_markers[i]
+          # Check if the current facet belongs to the boundary
+          if bm.to_mark(f) :
+            marked = True
+            # If so, mark it with the correct integer value for the boundary
+            val = self.boundary_values[i]
+            self.ff[f] = val
+            # Each facet can belong in only one boundary 
+            break
+        
+        # If the facet hasn't been marked already, then we can test if it's some
+        # other type of default boundary
+        if not marked :
+          n       = f.normal()    # unit normal vector to facet f
+          tol     = 1e-3
+        
+          if n.z() >=  tol and f.exterior():
+            self.ff[f] = 2
+        
+          elif n.z() <= -tol and f.exterior():
+            self.ff[f] = 3
+        
+          elif n.z() >  -tol and n.z() < tol and f.exterior():
+            self.ff[f] = 4
       
-        if   n.z() >=  tol and f.exterior():
-          self.ff[f] = 2
-      
-        elif n.z() <= -tol and f.exterior():
-          self.ff[f] = 3
-      
-        elif n.z() >  -tol and n.z() < tol and f.exterior():
-          self.ff[f] = 4
-    
       for f in facets(self.flat_mesh):
         n       = f.normal()    # unit normal vector to facet f
       
@@ -1013,6 +1046,36 @@ class Model(object):
     self.Ub            = Function(self.Q_flat)
     self.u_balance     = Function(self.Q)
     self.v_balance     = Function(self.Q)
+    
+  """ Adds a Dirichlet boundary condition to the BP velocity solver.
+  Inputs :
+  bm : A boundary marker object that determines if a facet belongs on the 
+  boundary
+  u, v, w : Components of the velocity on the value (constant for now)
+  """   
+  def add_bp_dbc(self, bm, u, v) :
+    # The boundary marker object and the corresponding velocity components
+    # are associated by array index
+    self.boundary_markers.append(bm)
+    self.boundary_u.append(u)
+    self.boundary_v.append(v)
+    # This is the integer value assigned to this value, which will be used
+    # in the facet function
+    self.boundary_values.append(self.marker_val)
+    # Auto increment the marker value
+    self.marker_val += 1
+    
+class BoundaryMarker(object):
+    __metaclass__ = ABCMeta
+
+    """ Takes in a facet, returns true if the facet should be marked and false if
+    otherwise.
+    Inputs: 
+    f : A facet """
+    @abstractmethod
+    def to_mark(self,f):
+        pass
+
 
 
 

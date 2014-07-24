@@ -14,7 +14,6 @@ from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
                               argmin
-#from gmshpy            import GModel, GmshSetOption, FlGui
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
                               RectangleMesh, MPI, mpi_comm_world

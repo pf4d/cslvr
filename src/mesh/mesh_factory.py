@@ -94,6 +94,14 @@ class MeshFactory(object):
 
 
   @staticmethod
+  def get_ronne_3D_10H():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/antarctica/antarctica_ronne_shelf.xml')
+    return mesh
+
+
+  @staticmethod
   def get_circle():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))

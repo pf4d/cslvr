@@ -582,6 +582,9 @@ class VelocityBP(object):
       #b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       #b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
+    elif config['velocity']['viscosity_mode'] == 'b_control':
+      b = config['velocity']['b']
+    
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define pressure corrected temperature
       Tstar = T + gamma * (S - x[2])
@@ -604,8 +607,8 @@ class VelocityBP(object):
     eta      =     b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
-    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
-    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    #Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    #Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
@@ -618,7 +621,8 @@ class VelocityBP(object):
     Pb       = (rho*g*H + rho_w*g*B) / H * (u + v) 
 
     # Variational principle
-    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+    #A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+    A        = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -641,6 +645,7 @@ class VelocityBP(object):
     model.b_gnd  = b_gnd
     model.Vd_shf = Vd_shf
     model.Vd_gnd = Vd_gnd
+    model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
     model.Pb     = Pb
@@ -1340,6 +1345,7 @@ class AdjointVelocityBP(object):
     Q         = model.Q
     Vd_shf    = model.Vd_shf
     Vd_gnd    = model.Vd_gnd
+    Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl
     Pb        = model.Pb
@@ -1369,7 +1375,8 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+      #A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+      A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd

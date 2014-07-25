@@ -189,7 +189,7 @@ class Model(object):
         text = colored(s, 'magenta')
         print text
       for f in facets(self.mesh):
-        n       = f.normal()    # unit normal vector to facet f
+        n       = f.normal()
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
@@ -214,7 +214,7 @@ class Model(object):
             self.ff[f] = 4
       
       for f in facets(self.flat_mesh):
-        n       = f.normal()    # unit normal vector to facet f
+        n       = f.normal()
         x_m     = f.midpoint().x()
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()

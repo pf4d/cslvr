@@ -689,11 +689,13 @@ class StokesBalanceSolver(object):
     etabar = model.vert_integrate(eta, Q)
     etabar = project(model.extrude(etabar, 2, 2, Q) / H)
     ubar   = model.vert_integrate(u, Q)
-    ubar_d = model.vert_integrate(u - u_b_e, Q)
     ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
+    ubar_d = model.vert_integrate(u - u_b_e, Q)
+    ubar_d = model.extrude(ubar_d, 2, 2, Q)
     vbar   = model.vert_integrate(v, Q)
-    vbar_d = model.vert_integrate(v - v_b_e, Q)
     vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
+    vbar_d = model.vert_integrate(v - v_b_e, Q)
+    vbar_d = model.extrude(vbar_d, 2, 2, Q)
 
     # set the model variables so the physics object can solve it :
     model.beta2_e = beta2_e

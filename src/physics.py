@@ -607,8 +607,8 @@ class VelocityBP(object):
     eta      =     b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
-    #Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
-    #Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy

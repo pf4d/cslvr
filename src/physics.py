@@ -641,8 +641,8 @@ class VelocityBP(object):
 
     model.eta    = eta
     model.b      = b
-    model.b_shf  = b_shf
-    model.b_gnd  = b_gnd
+    #model.b_shf  = b_shf
+    #model.b_gnd  = b_gnd
     #model.Vd_shf = Vd_shf
     #model.Vd_gnd = Vd_gnd
     model.Vd     = Vd

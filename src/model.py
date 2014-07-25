@@ -903,8 +903,8 @@ class Model(object):
         uMin = u_n.vector().array().min()
         uMax = u_n.vector().array().max()
       else:
-        print "print_min_max function requires a Vector, Function, or array," \
-              + " not %s." % type(u)
+        print "print_min_max function requires a Vector, Function, array," \
+              + " or Indexed, not %s." % type(u)
         exit(1)
       s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
       text = colored(s, 'yellow')

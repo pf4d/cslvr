@@ -607,8 +607,8 @@ class VelocityBP(object):
     eta      =     b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
-    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
-    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    #Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    #Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
@@ -643,8 +643,8 @@ class VelocityBP(object):
     model.b      = b
     model.b_shf  = b_shf
     model.b_gnd  = b_gnd
-    model.Vd_shf = Vd_shf
-    model.Vd_gnd = Vd_gnd
+    #model.Vd_shf = Vd_shf
+    #model.Vd_gnd = Vd_gnd
     model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
@@ -1343,8 +1343,8 @@ class AdjointVelocityBP(object):
 
     # Adjoint variable in trial function form
     Q         = model.Q
-    Vd_shf    = model.Vd_shf
-    Vd_gnd    = model.Vd_gnd
+    #Vd_shf    = model.Vd_shf
+    #Vd_gnd    = model.Vd_gnd
     Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl

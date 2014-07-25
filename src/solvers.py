@@ -558,6 +558,8 @@ class AdjointSolver(object):
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
+      model.print_min_max(model.u_o, 'u_o')
+      model.print_min_max(model.v_o, 'v_o')
       I = assemble(self.adjoint_instance.I)
       return I
  

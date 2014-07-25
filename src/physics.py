@@ -681,6 +681,13 @@ class VelocityBP(object):
       self.bcs.append(DirichletBC(model.Q2.sub(1), 
                       bound_v, model.ff, marker_val))
     
+    # add lateral boundary conditions :  
+    if config['velocity']['boundaries'] == 'user_defined':
+      u_t = config['velocity']['u_lat_boundary']
+      v_t = config['velocity']['v_lat_boundary']
+      self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 6))
+      self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 6))
+    
     # solve nonlinear system :
     if self.model.MPI_rank==0:
       s    = "::: solving BP horizontal velocity :::"

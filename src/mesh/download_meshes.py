@@ -136,6 +136,12 @@ url  = 'https://www.dropbox.com/s/2xwauazntbob22v/antarctica' + \
        '_ronne_shelf.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
+# Ronne shelf, antarctica mesh 50H :
+fldr = 'antarctica'
+url  = 'https://www.dropbox.com/s/xxn2cdc3y4cwihv/antarctica' + \
+       '_ronne_shelf_crude.tar.gz?dl=1'
+download_file(url, home, fldr, extract=True)
+
 # circle mesh :
 fldr = 'test'
 url  = 'https://dl.dropboxusercontent.com/s/hk63j3l9fhx6zty/' + \

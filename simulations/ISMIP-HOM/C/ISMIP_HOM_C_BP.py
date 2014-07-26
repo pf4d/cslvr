@@ -23,7 +23,7 @@ Surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
 Bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha, 
                      element=model.Q.ufl_element())
-Beta2   = Expression(  '1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
+Beta2   = Expression('sqrt(1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L))',
                      alpha=alpha, L=L, element=model.Q.ufl_element())
 
 model.set_geometry(Surface, Bed, deform=True)
@@ -53,6 +53,7 @@ config = { 'mode'                         : 'steady',
            { 
              'on'                  : True,
              'newton_params'       : nonlin_solver_params,
+             'init_beta_from_U_ob' : False,
              'viscosity_mode'      : 'isothermal',
              'b_linear'            : None,
              'use_T0'              : False,
@@ -105,5 +106,6 @@ config = { 'mode'                         : 'steady',
 F = SteadySolver(model, config)
 F.solve()
 
+File('./results_BP_L'+str(L)+'/ff.pvd') << model.ff
 
 

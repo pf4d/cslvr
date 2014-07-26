@@ -169,13 +169,13 @@ class VelocityStokes(object):
     Nc            = model.Nc
     Pb            = model.Pb
     Lsq           = model.Lsq
-    beta2         = model.beta2
+    beta          = model.beta
 
     newton_params = config['velocity']['newton_params']
     A0            = config['velocity']['A0']
     
     # initialize bed friction coefficient :
-    model.assign_variable(beta2, config['velocity']['beta2'])
+    model.assign_variable(beta, config['velocity']['beta'])
    
     # initialize enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -250,7 +250,7 @@ class VelocityStokes(object):
     Pe     = rho * g * w
 
     # 3) Dissipation by sliding
-    Sl     = 0.5 * beta2 * (S - B)**r * (u**2 + v**2 + w**2)
+    Sl     = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
     Pc     = -P * (u.dx(0) + v.dx(1) + w.dx(2)) 
@@ -489,7 +489,7 @@ class VelocityBP(object):
     Pe            = model.Pe
     Sl            = model.Sl
     Pb            = model.Pb
-    beta          = model.beta2
+    beta          = model.beta
 
     # pressure boundary :
     class Depth(Expression):
@@ -516,7 +516,7 @@ class VelocityBP(object):
       beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
       model.assign_variable(beta, beta_0_v)
     else:
-      model.assign_variable(beta, config['velocity']['beta2'])
+      model.assign_variable(beta, config['velocity']['beta'])
    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -549,7 +549,8 @@ class VelocityBP(object):
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
-    dx       = dx(1) + dx(0) # entire internal
+    if model.mask != None:
+      dx     = dx(1) + dx(0) # entire internal
     ds       = model.ds  
     dSrf     = ds(2)         # surface
     dGnd     = ds(3)         # grounded bed
@@ -575,12 +576,13 @@ class VelocityBP(object):
       b_gnd   = config['velocity']['b_linear_gnd']
       #b_shf.vector()[model.gnd_dofs] = 0
       #b_gnd.vector()[model.shf_dofs] = 0
-      V       = FunctionSpace(mesh, 'DG', 0)
-      b       = Function(V)
-      b_e     = Expression('b', b = b_shf)
-      b       = project(b_e, V)
-      #b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
-      #b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
+      #V       = FunctionSpace(mesh, 'DG', 0)
+      #b       = Function(V)
+      #b_e     = Expression('b', b = b_shf)
+      #b       = project(b_e, V)
+      b       = Function(Q)
+      b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
+      b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b = config['velocity']['b']
@@ -607,8 +609,8 @@ class VelocityBP(object):
     eta      =     b * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
-    #Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
-    #Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
@@ -621,8 +623,8 @@ class VelocityBP(object):
     Pb       = (rho*g*H + rho_w*g*B) / H * (u + v) 
 
     # Variational principle
-    #A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
-    A        = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
+    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+    #A        = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -641,17 +643,17 @@ class VelocityBP(object):
 
     model.eta    = eta
     model.b      = b
-    #model.b_shf  = b_shf
-    #model.b_gnd  = b_gnd
-    #model.Vd_shf = Vd_shf
-    #model.Vd_gnd = Vd_gnd
+    model.b_shf  = b_shf
+    model.b_gnd  = b_gnd
+    model.Vd_shf = Vd_shf
+    model.Vd_gnd = Vd_gnd
     model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
     model.Pb     = Pb
     model.A      = A
     model.T      = T
-    model.beta2  = beta
+    model.beta  = beta
     model.E      = E
     model.u      = u
     model.v      = v
@@ -685,6 +687,8 @@ class VelocityBP(object):
     if config['velocity']['boundaries'] == 'user_defined':
       u_t = config['velocity']['u_lat_boundary']
       v_t = config['velocity']['v_lat_boundary']
+      self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 4))
+      self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 4))
       self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 6))
       self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 6))
     
@@ -864,7 +868,7 @@ class Enthalpy(object):
     eta         = model.eta
     rho         = model.rho
     g           = model.g
-    beta2       = model.beta2
+    beta        = model.beta
     u           = model.u
     v           = model.v
     w           = model.w
@@ -910,8 +914,8 @@ class Enthalpy(object):
     # to conserve energy.  This also implies that heretofore, models have been 
     # overestimating frictional heat, and underestimating strain heat.
 
-    # Frictional heating = tau_b*u = beta2*u*u
-    q_friction = 0.5 * beta2 * (S - B)**r * (u**2 + v**2)
+    # Frictional heating = tau_b*u = beta^2*u*u
+    q_friction = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
     Q_s = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
@@ -1104,11 +1108,14 @@ class Enthalpy(object):
     
     # apply T_w conditions of portion of ice in contact with water :
     if model.mask != None:
-      self.bc_H.append( DirichletBC(Q, H_float, model.ff, 5) )
+      self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
+      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 7) )
    
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
+      if model.mask != None:
+        self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 6) ) 
       
     # solve the linear equation for enthalpy :
     if self.model.MPI_rank==0:
@@ -1350,8 +1357,8 @@ class AdjointVelocityBP(object):
 
     # Adjoint variable in trial function form
     Q         = model.Q
-    #Vd_shf    = model.Vd_shf
-    #Vd_gnd    = model.Vd_gnd
+    Vd_shf    = model.Vd_shf
+    Vd_gnd    = model.Vd_gnd
     Vd        = model.Vd
     Pe        = model.Pe
     Sl        = model.Sl
@@ -1382,8 +1389,8 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      #A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
-      A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
+      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+      #A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
@@ -1416,7 +1423,7 @@ class AdjointVelocityBP(object):
         R = Constant(0.0) * dGnd
     
     # Objective function.  This is a least squares on the surface plus a 
-    # regularization term penalizing wiggles in beta2
+    # regularization term penalizing wiggles in beta
     if config['adjoint']['objective_function'] == 'logarithmic':
       a      = Constant(0.5)
       self.I = a * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
@@ -1461,7 +1468,7 @@ class AdjointVelocityBP(object):
     I_gradient = self.I + F_gradient
 
     # Differentiation wrt to the control variable in the direction of a test 
-    # function yields a vector.  Assembly of this vector yields dJ/dbeta2
+    # function yields a vector.  Assembly of this vector yields dJ/dbeta
     self.J = []
     for c in control:
       self.J.append(derivative(I_gradient, c, rho))
@@ -1897,10 +1904,10 @@ class StokesBalance(object):
     B       = model.B
     H       = S - B
     eta     = model.eta
-    beta2   = model.beta2
+    beta    = model.beta
     
     # get the values at the bed :
-    beta2_e = model.beta2_e
+    beta_e  = model.beta_e
     u_b_e   = model.u_b_e
     v_b_e   = model.v_b_e
     
@@ -1953,8 +1960,8 @@ class StokesBalance(object):
     tau_d   = model.tau_d
     
     # calc basal drag : 
-    tau_b_u = beta2_e * H * du
-    tau_b_v = beta2_e * H * dv
+    tau_b_u = beta_e * H * du
+    tau_b_v = beta_e * H * dv
     tau_b   = as_vector([tau_b_u, tau_b_v, 0])
 
     # dot product of stress with the direction along (n) and across (t) flow :
@@ -2130,7 +2137,7 @@ class StokesBalance3D(object):
     S       = model.S
     B       = model.B
     H       = S - B
-    beta2   = model.beta2
+    beta    = model.beta
     eta     = model.eta
     rho     = model.rho
     g       = model.g
@@ -2187,8 +2194,8 @@ class StokesBalance3D(object):
     tau_dt = psi * rho * g * dSdt * dx
     
     # calc basal drag : 
-    tau_bn = beta2 * uhat * H * phi * dBed
-    tau_bt = beta2 * vhat * H * psi * dBed
+    tau_bn = beta * uhat * H * phi * dBed
+    tau_bt = beta * vhat * H * psi * dBed
 
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
@@ -2229,7 +2236,7 @@ class StokesBalance3D(object):
 
     outpath = self.config['output_path']
     Q       = self.Q
-    beta2   = model.beta2
+    beta    = model.beta
     eta     = model.eta
     S       = model.S
     B       = model.B
@@ -2283,8 +2290,8 @@ class StokesBalance3D(object):
     tau_dt = phi * rho * g * dSdt * dx
     
     # calc basal drag : 
-    tau_bn = beta2 * uhat * H * phi * dBed
-    tau_bt = beta2 * vhat * H * phi * dBed
+    tau_bn = beta * uhat * H * phi * dBed
+    tau_bt = beta * vhat * H * phi * dBed
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx

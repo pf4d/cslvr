@@ -611,7 +611,7 @@ class VelocityBP(object):
     # 1) Viscous dissipation
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
     Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
-    Vd       = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
+    Vd       = (2*n)/(n+1) * b     * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
     Pe       = rho * g * (u * S.dx(0) + v * S.dx(1))
@@ -846,7 +846,8 @@ class Enthalpy(object):
     H           = model.H
     H0          = model.H0
     n           = model.n
-    b           = model.b
+    b_gnd       = model.b_gnd
+    b_shf       = model.b_shf
     Tstar       = model.Tstar
     T           = model.T
     T0          = model.T0
@@ -881,6 +882,11 @@ class Enthalpy(object):
     what        = model.what
     mhat        = model.mhat
     ds          = model.ds
+    dSrf        = ds(2)         # surface
+    dGnd        = ds(3)         # grounded bed
+    dFlt        = ds(5)         # floating bed
+    dFltS       = ds(6)         # marine terminating sides
+    dBed        = dGnd + dFlt   # bed
     dx          = model.dx
     dx_s        = dx(1)
     dx_g        = dx(0)
@@ -918,7 +924,8 @@ class Enthalpy(object):
     q_friction = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
-    Q_s = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
+    Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
 
     # Different diffusion coefficent values for temperate and cold ice.  This
     # nonlinearity enters as a part of the Picard iteration between velocity
@@ -946,8 +953,9 @@ class Enthalpy(object):
       # residual of model :
       self.F = + rho * dot(U, grad(dH)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(dH)) * dx \
-               - (q_geo + q_friction) * psihat * ds(3) \
-               - Q_s * psihat * dx
+               - (q_geo + q_friction) * psihat * dGnd \
+               - Q_s_shf * psihat * dx_s \
+               - Q_s_gnd * psihat * dx_g
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -972,8 +980,9 @@ class Enthalpy(object):
       self.F = + rho * (dH - H0) / dt * psi * dx \
                + rho * dot(U, grad(Hmid)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(Hmid)) * dx \
-               - (q_geo + q_friction) * psi * ds(3) \
-               - Q_s * psi * dx
+               - (q_geo + q_friction) * psi * dGnd \
+               - Q_s_shf * psihat * dx_s \
+               - Q_s_gnd * psihat * dx_g
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -1356,22 +1365,22 @@ class AdjointVelocityBP(object):
     self.config = config
 
     # Adjoint variable in trial function form
-    Q         = model.Q
-    Vd_shf    = model.Vd_shf
-    Vd_gnd    = model.Vd_gnd
-    Vd        = model.Vd
-    Pe        = model.Pe
-    Sl        = model.Sl
-    Pb        = model.Pb
-    Pc        = model.Pc
-    Lsq       = model.Lsq
-    Nc        = model.Nc
-    U         = model.U
-    u_o       = model.u_o
-    v_o       = model.v_o
-    adot      = model.adot
-    ds        = model.ds
-    S         = model.S
+    Q        = model.Q
+    Vd_shf   = model.Vd_shf
+    Vd_gnd   = model.Vd_gnd
+    Vd       = model.Vd
+    Pe       = model.Pe
+    Sl       = model.Sl
+    Pb       = model.Pb
+    Pc       = model.Pc
+    Lsq      = model.Lsq
+    Nc       = model.Nc
+    U        = model.U
+    u_o      = model.u_o
+    v_o      = model.v_o
+    adot     = model.adot
+    ds       = model.ds
+    S        = model.S
     
     dx       = model.dx
     dx_s     = dx(1)

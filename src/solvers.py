@@ -65,7 +65,6 @@ class SteadySolver(object):
       print text
     model   = self.model
     config  = self.config
-    T0      = config['velocity']['T0']
     outpath = config['output_path']
     
     # Set the initial Picard iteration (PI) parameters
@@ -84,7 +83,7 @@ class SteadySolver(object):
 
     # Initialize a temperature field for visc. calc.
     if config['velocity']['use_T0']:
-      model.assign_variable(model.T, T0 * ones(len(model.T.vector().array())) )
+      model.assign_variable(model.T, config['velocity']['T0'])
     
     if not config['coupled']['on']: max_iter = 1
     

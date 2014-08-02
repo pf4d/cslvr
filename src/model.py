@@ -937,9 +937,15 @@ class Model(object):
       u.vector().set_local(project(var, self.Q).vector().array())
       u.vector().apply('insert')
 
+    elif isinstance(var, str):
+      File(var) >> u
+
     else:
+      print "********************************************************"
       print "assign_variable() function requires a Function, array, float," + \
-            " int, Vector, Expression, or Indexed not %s" % type(var)
+            " int, \nVector, Expression, Indexed, or string path to .xml, " + \
+            "not \n%s" % type(var)
+      print "********************************************************"
       exit(1)
 
 

@@ -129,4 +129,10 @@ merged  = 'https://dl.dropboxusercontent.com/s/d50xn9nwr107awv/' + \
 fldr    = 'rignot'
 download_file(merged, home, fldr, extract=True)
 
+# updated merged 2014 velocity data :
+merged  = 'https://www.dropbox.com/s/ov5bl30jsojws8g/velocity_' + \
+          'greenland_v4Aug2014.tar.gz?dl=1'
+fldr    = 'rignot'
+download_file(merged, home, fldr, extract=True)
+
 

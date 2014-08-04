@@ -552,7 +552,6 @@ class VelocityBP(object):
     if model.mask != None:
       dx     = dx(1) + dx(0) # entire internal
     ds       = model.ds  
-    dSrf     = ds(2)         # surface
     dGnd     = ds(3)         # grounded bed
     dFlt     = ds(5)         # floating bed
     dFltS    = ds(6)         # marine terminating sides
@@ -1386,7 +1385,9 @@ class AdjointVelocityBP(object):
     dx_s     = dx(1)
     dx_g     = dx(0)
     dx       = dx(1) + dx(0) # entire internal
-    dSrf     = ds(2)         # surface
+    dSrf_s   = ds(7)         # surface
+    dSrf_g   = ds(2)         # surface
+    dSrf     = ds(7) + ds(2)
     dGnd     = ds(3)         # grounded bed 
     dFlt     = ds(5)         # floating bed
     dFltS    = ds(6)         # marine terminating sides
@@ -1456,8 +1457,8 @@ class AdjointVelocityBP(object):
                + R
 
     else:
-      print   "adjoint objection function may be 'linear', 'logarithmic', or" \
-            + " 'kinematic'."
+      print   "adjoint objection function may be 'linear', 'logarithmic'," \
+            + " 'kinematic', or log_lin_hybrid."
       exit(1)
     
     # Objective function constrained to obey the forward model
@@ -2173,9 +2174,10 @@ class StokesBalance3D(object):
     u_n  = U_n[0]
     v_n  = U_n[1]
     w_n  = U_n[2]
-    U_n  = as_vector([u_n,  v_n,  w_n])
-    U_t  = as_vector([v_n, -u_n,  w_n])
-    U    = as_vector([du,   dv,   w])
+    U_n  = as_vector([u_n,  v_n,  0])
+    U_t  = as_vector([v_n, -u_n,  0])
+    U_z  = as_vector([0,    0,    1])
+    U    = as_vector([du,   dv,   0])
 
     # directional derivatives :
     uhat     = dot(U, U_n)
@@ -2184,9 +2186,11 @@ class StokesBalance3D(object):
     gradvhat = grad(vhat)
     gradS    = grad(S)
     dudn     = dot(graduhat, U_n)
-    dvdn     = dot(gradvhat, U_n)
     dudt     = dot(graduhat, U_t)
+    dudz     = dot(graduhat, U_z)
+    dvdn     = dot(gradvhat, U_n)
     dvdt     = dot(gradvhat, U_t)
+    dvdz     = dot(gradvhat, U_z)
     dSdn     = dot(gradS,    U_n)
     dSdt     = dot(gradS,    U_t)
     
@@ -2194,9 +2198,11 @@ class StokesBalance3D(object):
     gradphi = grad(phi)
     dphidn  = dot(gradphi, U_n)
     dphidt  = dot(gradphi, U_t)
+    dphidz  = dot(gradphi, U_z)
     gradpsi = grad(psi)
     dpsidn  = dot(gradpsi, U_n)
     dpsidt  = dot(gradpsi, U_t)
+    dpsidz  = dot(gradphi, U_z)
 
     # driving stress :
     tau_dn = phi * rho * g * dSdn * dx
@@ -2209,12 +2215,14 @@ class StokesBalance3D(object):
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
     tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
+    tau_nz = - dphidz * eta * dudz * dx
     tau_tn = - dpsidn * eta * (  dudt +   dvdn) * dx
     tau_tt = - dpsidt * eta * (4*dvdt + 2*dudn) * dx
+    tau_tz = - dpsidz * eta * dvdz * dx
   
     # form residual in mixed space :
-    rn = tau_nn + tau_nt - tau_bn - tau_dn
-    rt = tau_tn + tau_tt - tau_bt - tau_dt
+    rn = tau_nn + tau_nt + tau_nz - tau_bn - tau_dn
+    rt = tau_tn + tau_tt + tau_tz - tau_bt - tau_dt
     r  = rn + rt
 
     # make the variables available to solve :

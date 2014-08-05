@@ -75,7 +75,7 @@ class SteadySolver(object):
     counter     = 0
    
     # previous velocity for norm calculation
-    u_prev      = project(model.u, model.Q).vector().array()
+    u_prev      = model.U.vector().array()
     
     # set an inner tolerance for PI
     inner_tol   = config['coupled']['inner_tol']
@@ -90,6 +90,10 @@ class SteadySolver(object):
     # Perform a Picard iteration until the L_\infty norm of the velocity 
     # difference is less than tolerance
     while inner_error > inner_tol and counter < max_iter:
+     
+      # reset the velocity for Newton solve to converge : 
+      if counter > 0:  
+        model.assign_variable(model.U, 0.0)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
@@ -132,7 +136,7 @@ class SteadySolver(object):
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
-        u_new       = project(model.u, model.Q).vector().array()
+        u_new       = model.U.vector().array()
         diff        = (u_prev - u_new)
         inner_error = diff.max()
         u_prev      = u_new
@@ -634,7 +638,7 @@ class AdjointSolver(object):
     U_obs = project(as_vector([model.u_o, model.v_o, 0]))
     dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                     + model.w + model.adot)
-    self.file_b_pvd    << model.beta
+    self.file_b_pvd    << model.extrude(model.beta, [3,5], 2) 
     self.file_u_pvd    << U_obs
     self.file_dSdt_pvd << dSdt
 
@@ -681,38 +685,38 @@ class StokesBalanceSolver(object):
     eta     = model.eta
     beta    = model.beta
     
-    # get the values at the bed :
-    beta_e  = model.extrude(beta, 3, 2, Q)
-    u_b_e   = model.extrude(u,    3, 2, Q)
-    v_b_e   = model.extrude(v,    3, 2, Q)
-    
-    # vertically average :
-    etabar = model.vert_integrate(eta, Q)
-    etabar = project(model.extrude(etabar, 2, 2, Q) / H)
-    ubar   = model.vert_integrate(u, Q)
-    ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
-    ubar_d = model.vert_integrate(u - u_b_e, Q)
-    ubar_d = model.extrude(ubar_d, 2, 2, Q)
-    vbar   = model.vert_integrate(v, Q)
-    vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
-    vbar_d = model.vert_integrate(v - v_b_e, Q)
-    vbar_d = model.extrude(vbar_d, 2, 2, Q)
+    ## get the values at the bed :
+    #beta_e  = model.extrude(beta, 3, 2, Q)
+    #u_b_e   = model.extrude(u,    3, 2, Q)
+    #v_b_e   = model.extrude(v,    3, 2, Q)
+    #
+    ## vertically average :
+    #etabar = model.vert_integrate(eta, Q)
+    #etabar = project(model.extrude(etabar, 2, 2, Q) / H)
+    #ubar   = model.vert_integrate(u, Q)
+    #ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
+    #ubar_d = model.vert_integrate(u - u_b_e, Q)
+    #ubar_d = model.extrude(ubar_d, 2, 2, Q)
+    #vbar   = model.vert_integrate(v, Q)
+    #vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
+    #vbar_d = model.vert_integrate(v - v_b_e, Q)
+    #vbar_d = model.extrude(vbar_d, 2, 2, Q)
 
-    # set the model variables so the physics object can solve it :
-    model.beta_e = beta_e
-    model.u_b_e   = u_b_e
-    model.v_b_e   = v_b_e
-    model.etabar  = etabar
-    model.ubar    = ubar
-    model.vbar    = vbar
-    model.ubar_d  = ubar_d
-    model.vbar_d  = vbar_d
+    ## set the model variables so the physics object can solve it :
+    #model.beta_e = beta_e
+    #model.u_b_e   = u_b_e
+    #model.v_b_e   = v_b_e
+    #model.etabar  = etabar
+    #model.ubar    = ubar
+    #model.vbar    = vbar
+    #model.ubar_d  = ubar_d
+    #model.vbar_d  = vbar_d
     
     # calculate the driving stress and basal drag once :
-    model.tau_d   = model.calc_tau_drv(Q)
-    model.tau_b   = model.calc_tau_bas(Q)
+    #model.tau_d   = model.calc_tau_drv(Q)
+    #model.tau_b   = model.calc_tau_bas(Q)
 
-    self.stress_balance_instance = StokesBalance(model, config)
+    self.stress_balance_instance = StokesBalance3D(model, config)
 
   def solve(self):
     """ 
@@ -723,11 +727,17 @@ class StokesBalanceSolver(object):
     
     model.print_min_max(model.u, 'u')
     model.print_min_max(model.v, 'v')
+    model.print_min_max(model.w, 'w')
     
     # calculate ubar, vbar :
     self.stress_balance_instance.solve()
     model.print_min_max(model.ubar, 'ubar')
     model.print_min_max(model.vbar, 'vbar')
+    model.print_min_max(model.wbar, 'wbar')
+    if config['log']:
+      File(outpath + 'ubar.pvd') << project(model.ubar, model.Q)
+      File(outpath + 'vbar.pvd') << project(model.vbar, model.Q)
+      File(outpath + 'wbar.pvd') << project(model.wbar, model.Q)
     
     # solve for the stress balance given the appropriate vertically 
     # averaged velocities :

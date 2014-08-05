@@ -444,7 +444,7 @@ class Model(object):
      
   def extrude(self, f, b, d, Q='self'):
     r"""
-    This extrudes a function <f> defined along a boundary <b> out onto
+    This extrudes a function <f> defined along a boundary list <b> out onto
     the domain in the direction <d>.  It does this by formulating a 
     variational problem:
   
@@ -467,9 +467,13 @@ class Model(object):
     v   = TrialFunction(Q)
     a   = v.dx(d) * phi * dx
     L   = DOLFIN_EPS * phi * dx  # really close to zero to fool FFC
-    bc  = DirichletBC(Q, f, ff, b)
+    bcs = []
+    if type(b) != list:
+      b = [b]
+    for boundary in b:
+      bcs.append(DirichletBC(Q, f, ff, boundary))
     v   = Function(Q)
-    solve(a == L, v, bc)
+    solve(a == L, v, bcs)
     return v
   
   def vert_integrate(self, u, Q='self'):

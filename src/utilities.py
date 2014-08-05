@@ -297,7 +297,7 @@ class DataInput(object):
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_interpolation(self, fn, near=False, kx=3, ky=3):
+  def get_interpolation(self, fn, near=False, bool_data=False, kx=3, ky=3):
     """
     return the interpolation of data field <fn>.
     """

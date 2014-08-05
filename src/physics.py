@@ -664,19 +664,19 @@ class VelocityBP(object):
     model  = self.model
     config = self.config
     
-    # List of boundary conditions
+    # list of boundary conditions
     self.bcs = []
 
-    # Add any user defined boundary conditions    
+    # add any user defined boundary conditions    
     for i in range(len(model.boundary_values)):
-      # Get the value in the facet function for this boundary
+      # get the value in the facet function for this boundary
       marker_val = model.boundary_values[i]
-      # The u component of velocity on the boundary
+      # the u component of velocity on the boundary
       bound_u = model.boundary_u[i]
-      # The v component of velocity on the boundary
+      # the v component of velocity on the boundary
       bound_v = model.boundary_v[i]
       
-      # Add the Direchlet boundary condition
+      # add the Dirichlet boundary condition
       self.bcs.append(DirichletBC(model.Q2.sub(0), 
                       bound_u, model.ff, marker_val))
       self.bcs.append(DirichletBC(model.Q2.sub(1), 
@@ -2159,17 +2159,17 @@ class StokesBalance3D(object):
     dBed    = dGnd + dFlt  # bed
     
     # create functions used to solve for velocity :
-    V        = MixedFunctionSpace([Q,Q])
-    dU       = TrialFunction(V)
-    du, dv   = split(dU)
-    Phi      = TestFunction(V)
-    phi, psi = split(Phi)
-    U_s      = Function(V)
-    u_s, v_s = split(U_s)
+    V             = MixedFunctionSpace([Q,Q,Q])
+    dU            = TrialFunction(V)
+    du, dv, dw    = split(dU)
+    Phi           = TestFunction(V)
+    phi, psi, chi = split(Phi)
+    U_s           = Function(V)
+    u_s, v_s, w_s = split(U_s)
     
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
-    # direction (t) in relation to the stress-tensor :
+    # direction (t) (tensor directions) :
     U_n  = model.normalize_vector(as_vector([u,v,w]), Q)
     u_n  = U_n[0]
     v_n  = U_n[1]
@@ -2177,22 +2177,30 @@ class StokesBalance3D(object):
     U_n  = as_vector([u_n,  v_n,  0])
     U_t  = as_vector([v_n, -u_n,  0])
     U_z  = as_vector([0,    0,    1])
-    U    = as_vector([du,   dv,   0])
+    U    = as_vector([du,   dv,   dw])
 
     # directional derivatives :
     uhat     = dot(U, U_n)
     vhat     = dot(U, U_t)
+    what     = dot(U, U_z)
     graduhat = grad(uhat)
     gradvhat = grad(vhat)
+    gradwhat = grad(what)
     gradS    = grad(S)
+    gradB    = grad(B)
     dudn     = dot(graduhat, U_n)
     dudt     = dot(graduhat, U_t)
     dudz     = dot(graduhat, U_z)
     dvdn     = dot(gradvhat, U_n)
     dvdt     = dot(gradvhat, U_t)
     dvdz     = dot(gradvhat, U_z)
+    dwdn     = dot(gradwhat, U_n)
+    dwdt     = dot(gradwhat, U_t)
+    dwdz     = dot(gradwhat, U_z)
     dSdn     = dot(gradS,    U_n)
     dSdt     = dot(gradS,    U_t)
+    dBdn     = dot(gradB,    U_n)
+    dBdt     = dot(gradB,    U_t)
     
     # integration by parts directional derivative terms :
     gradphi = grad(phi)
@@ -2203,27 +2211,39 @@ class StokesBalance3D(object):
     dpsidn  = dot(gradpsi, U_n)
     dpsidt  = dot(gradpsi, U_t)
     dpsidz  = dot(gradphi, U_z)
+    gradchi = grad(chi)
+    dchidn  = dot(gradchi, U_n)
+    dchidt  = dot(gradchi, U_t)
+    dchidz  = dot(gradchi, U_z)
 
     # driving stress :
-    tau_dn = phi * rho * g * dSdn * dx
-    tau_dt = psi * rho * g * dSdt * dx
+    tau_nd = phi * rho * g * dSdn * dx
+    tau_td = psi * rho * g * dSdt * dx
+    tau_zd = chi * rho * g * dx
     
     # calc basal drag : 
-    tau_bn = beta * uhat * H * phi * dBed
-    tau_bt = beta * vhat * H * psi * dBed
+    tau_nb = - beta * uhat * H * phi * dBed
+    tau_tb = - beta * vhat * H * psi * dBed
 
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
-    tau_nz = - dphidz * eta * dudz * dx
-    tau_tn = - dpsidn * eta * (  dudt +   dvdn) * dx
+    tau_nt = - dphidt * eta * (  dudn +   dvdt) * dx
+    tau_nz = - dphidz * eta * (  dudn +   dwdz) * dx
+
     tau_tt = - dpsidt * eta * (4*dvdt + 2*dudn) * dx
-    tau_tz = - dpsidz * eta * dvdz * dx
-  
+    tau_tn = - dpsidn * eta * (  dvdt +   dudn) * dx
+    tau_tz = - dpsidz * eta * (  dvdt +   dwdz) * dx
+    
+    tau_zz = - dchidz * (2 * eta * dwdz) * dx \
+             - dchidz * (1.0/3.0 * (dudn + dvdt + dwdz)) * dx
+    inpen  = (uhat*dBdn + vhat*dBdt + what) * chi * dBed
+
     # form residual in mixed space :
-    rn = tau_nn + tau_nt + tau_nz - tau_bn - tau_dn
-    rt = tau_tn + tau_tt + tau_tz - tau_bt - tau_dt
-    r  = rn + rt
+    nr = tau_nn + tau_nt + tau_nz + tau_nb - tau_nd
+    tr = tau_tn + tau_tt + tau_tz + tau_tb - tau_td
+    zr = tau_zz - tau_zd
+
+    r  = nr + tr + zr + inpen
 
     # make the variables available to solve :
     self.Q     = Q
@@ -2231,15 +2251,19 @@ class StokesBalance3D(object):
     self.U_s   = U_s
     model.ubar = u_s
     model.vbar = v_s
+    model.wbar = w_s
     
   def solve(self):
     """
     """
+    bc = DirichletBC(self.Q.sub(2), model.w, model.ff, 3)
+    
     if self.model.MPI_rank==0:
       s    = "::: solving 3D 'stokes-balance' for ubar, vbar :::"
       text = colored(s, 'cyan')
       print text
-    solve(lhs(self.r) == rhs(self.r), self.U_s)
+    solve(lhs(self.r) == rhs(self.r), self.U_s, bc=bc, 
+          solver_parameters=self.config['solver_params'])
 
   def component_stress_stokes(self):  
     """
@@ -2283,8 +2307,10 @@ class StokesBalance3D(object):
     # directional derivatives :
     uhat     = dot(U, U_n)
     vhat     = dot(U, U_t)
+    what     = dot(U, U_z)
     graduhat = grad(uhat)
     gradvhat = grad(vhat)
+    gradwhat = grad(what)
     gradS    = grad(S)
     dudn     = dot(graduhat, U_n)
     dvdn     = dot(gradvhat, U_n)

@@ -152,6 +152,7 @@ class VelocityStokes(object):
     gamma         = model.gamma
     S             = model.S
     B             = model.B
+    H             = S - B
     x             = model.x
     E             = model.E
     W             = model.W
@@ -174,12 +175,25 @@ class VelocityStokes(object):
     newton_params = config['velocity']['newton_params']
     A0            = config['velocity']['A0']
     
-    # initialize bed friction coefficient :
-    model.assign_variable(beta, config['velocity']['beta'])
-   
-    # initialize enhancement factor :
-    model.assign_variable(E, config['velocity']['E'])
+    # initialize the temperature depending on input type :
+    if config['velocity']['use_T0']:
+      model.assign_variable(T, config['velocity']['T0'])
 
+    # initialize the bed friction coefficient :
+    if config['velocity']['init_beta_from_U_ob']:
+      U_ob     = config['velocity']['U_ob']
+      U_mag    = sqrt(inner(U_ob, U_ob))
+      S_mag    = sqrt(inner(grad(S), grad(S)))
+      beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag + 0.1)), Q)
+      beta_0_v = beta_0.vector().array()
+      beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
+      model.assign_variable(beta, beta_0_v)
+    else:
+      model.assign_variable(beta, config['velocity']['beta'])
+   
+    # initialize the enhancement factor :
+    model.assign_variable(E, config['velocity']['E'])
+    
     # pressure boundary :
     class Depth(Expression):
       def eval(self, values, x):
@@ -209,32 +223,63 @@ class VelocityStokes(object):
     du,  dv,  dw,  dP    = split(dU)
     u,   v,   w,   P     = split(U)
 
-    # set up surfaces to integrate :
+    dx       = model.dx
+    dx_s     = dx(1)
+    dx_g     = dx(0)
+    if model.mask != None:
+      dx     = dx(1) + dx(0) # entire internal
     ds       = model.ds  
-    dSrf     = ds(2)        # surface
-    dGnd     = ds(3)        # grounded bed 
-    dFlt     = ds(5)        # floating bed
-    dFltS    = ds(6)        # marine terminating sides
-    dBed     = dGnd + dFlt  # bed
+    dGnd     = ds(3)         # grounded bed
+    dFlt     = ds(5)         # floating bed
+    dFltS    = ds(6)         # marine terminating sides
+    dBed     = dGnd + dFlt   # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
-		# using the most recently calculated temperature field, if expected.
+    # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      b = A0**(-1/n)
+      b     = A0**(-1/n)
+      b_gnd = b
+      b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b = config['velocity']['b_linear']
-      n = 1.0
+      b     = config['velocity']['b_linear']
+      b_gnd = b
+      b_shf = b
+      n     = 1.0
     
-    else:
+    elif config['velocity']['viscosity_mode'] == 'shelf_control':
+      b_shf   = config['velocity']['b_linear_shf']
+      b_gnd   = config['velocity']['b_linear_gnd']
+      #b_shf.vector()[model.gnd_dofs] = 0
+      #b_gnd.vector()[model.shf_dofs] = 0
+      #V       = FunctionSpace(mesh, 'DG', 0)
+      #b       = Function(V)
+      #b_e     = Expression('b', b = b_shf)
+      #b       = project(b_e, V)
+      b       = Function(Q)
+      b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
+      b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
+    
+    elif config['velocity']['viscosity_mode'] == 'b_control':
+      b = config['velocity']['b']
+    
+    elif config['velocity']['viscosity_mode'] == 'full':
       # Define pressure corrected temperature
       Tstar = T + gamma * (S - x[2])
        
-      # Define ice hardness parameteri
-      a_T = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10 )
-      Q_T = conditional( lt(Tstar, 263.15), 6e4,13.9e4 )
-      b   = ( E * (a_T * (1 + 181.25*W)) * exp( -Q_T / (R * Tstar) ) )**(-1/n)
+      # Define ice hardness parameterization :
+      a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
+      w_T   = conditional( lt(W,     0.01),   1,            0.01/W)
+      b     = ( E * (a_T * (1 + w_T*181.25*W)) \
+                * exp( -Q_T / (R * Tstar)) )**(-1/n)
+      b_gnd = b
+      b_shf = b
     
+    else:
+      print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
+            "'isothermal', or 'full'."
+
     # Second invariant of the strain rate tensor squared
     term   = + 0.5*(   (u.dx(1) + v.dx(0))**2  \
                      + (u.dx(2) + w.dx(0))**2  \
@@ -242,15 +287,17 @@ class VelocityStokes(object):
              + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
     epsdot = 0.5 * term + eps_reg
     eta    = b * epsdot**((1.0 - n) / (2*n))
-
+    
     # 1) Viscous dissipation
-    Vd     = (2*n)/(n+1) * b * epsdot**((n+1)/(2*n))
+    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Vd       = (2*n)/(n+1) * b     * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
     Pe     = rho * g * w
 
     # 3) Dissipation by sliding
-    Sl     = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2 + w**2)
+    Sl     = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
     Pc     = -P * (u.dx(0) + v.dx(1) + w.dx(2)) 
@@ -259,7 +306,7 @@ class VelocityStokes(object):
     Nc     = P * (u*B.dx(0) + v*B.dx(1) - w)
 
     # 6) pressure boundary
-    Pb     = (rho*g*(S - B) + rho_w*g*B) / (S - B) * (u + v + w) 
+    Pb     = (rho*g*H + rho_w*g*B) / H * (u + v + w) 
 
     g      = Constant((0.0, 0.0, g))
     h      = CellSize(mesh)
@@ -267,11 +314,18 @@ class VelocityStokes(object):
     Lsq    = -tau * dot( (grad(P) + rho*g), (grad(P) + rho*g) )
     
     # Variational principle
-    A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dFltS
+    A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
+             + Sl*dGnd + Nc*dBed + Pb*dFltS
+    #A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dFltS
 
     model.A      = A
     model.epsdot = epsdot
     model.eta    = eta
+    model.b      = b
+    model.b_shf  = b_shf
+    model.b_gnd  = b_gnd
+    model.Vd_shf = Vd_shf
+    model.Vd_gnd = Vd_gnd
     model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
@@ -593,7 +647,9 @@ class VelocityBP(object):
       # Define ice hardness parameterization :
       a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
-      b     = ( E * (a_T * (1 + 181.25*W)) * exp( -Q_T / (R * Tstar)) )**(-1/n)
+      w_T   = conditional( lt(W,     0.01),   1,            0.01/W)
+      b     = ( E * (a_T * (1 + w_T*181.25*W)) \
+                * exp( -Q_T / (R * Tstar)) )**(-1/n)
       b_gnd = b
       b_shf = b
     
@@ -1151,8 +1207,7 @@ class Enthalpy(object):
 
     # update water content :
     WW = W_n.vector().array()
-    WW[WW < 0]    = 0
-    WW[WW > 0.01] = 0.01
+    WW[WW < 0] = 0
     model.assign_variable(W, WW)
 
     # update melt-rate :
@@ -1399,11 +1454,13 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
       #A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
+      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
-      A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
+      #A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
+      A       = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
+                + Sl*dGnd + Nc*dGnd + Pb*dFltS
 
     L         = TrialFunction(Q_adj)
     Phi       = TestFunction(Q_adj)
@@ -2151,12 +2208,16 @@ class StokesBalance3D(object):
     eta     = model.eta
     rho     = model.rho
     g       = model.g
-    ds      = model.ds  
-    dSrf    = ds(2)        # surface
-    dGnd    = ds(3)        # grounded bed 
-    dFlt    = ds(5)        # floating bed
-    dFltS   = ds(6)        # marine terminating sides
-    dBed    = dGnd + dFlt  # bed
+    x       = model.x
+    ds       = model.ds  
+    dGnd     = ds(3)         # grounded bed
+    dGndS    = ds(4)
+    dFlt     = ds(5)         # floating bed
+    dFltS    = ds(6)         # marine terminating sides
+    dBed     = dGnd + dFlt   # bed
+    dSide    = dGndS + dFltS
+    dGamma   = dGndS + dFltS + dGnd + dFlt
+    N        = FacetNormal(model.mesh)
     
     # create functions used to solve for velocity :
     V             = MixedFunctionSpace([Q,Q,Q])
@@ -2170,10 +2231,9 @@ class StokesBalance3D(object):
     #===========================================================================
     # form the stokes equations in the normal direction (n) and tangential 
     # direction (t) (tensor directions) :
-    U_n  = model.normalize_vector(as_vector([u,v,w]), Q)
+    U_n  = model.normalize_vector(as_vector([u,v]), Q)
     u_n  = U_n[0]
     v_n  = U_n[1]
-    w_n  = U_n[2]
     U_n  = as_vector([u_n,  v_n,  0])
     U_t  = as_vector([v_n, -u_n,  0])
     U_z  = as_vector([0,    0,    1])
@@ -2190,12 +2250,8 @@ class StokesBalance3D(object):
     gradB    = grad(B)
     dudn     = dot(graduhat, U_n)
     dudt     = dot(graduhat, U_t)
-    dudz     = dot(graduhat, U_z)
     dvdn     = dot(gradvhat, U_n)
     dvdt     = dot(gradvhat, U_t)
-    dvdz     = dot(gradvhat, U_z)
-    dwdn     = dot(gradwhat, U_n)
-    dwdt     = dot(gradwhat, U_t)
     dwdz     = dot(gradwhat, U_z)
     dSdn     = dot(gradS,    U_n)
     dSdt     = dot(gradS,    U_t)
@@ -2212,8 +2268,6 @@ class StokesBalance3D(object):
     dpsidt  = dot(gradpsi, U_t)
     dpsidz  = dot(gradphi, U_z)
     gradchi = grad(chi)
-    dchidn  = dot(gradchi, U_n)
-    dchidt  = dot(gradchi, U_t)
     dchidz  = dot(gradchi, U_z)
 
     # driving stress :
@@ -2222,31 +2276,36 @@ class StokesBalance3D(object):
     tau_zd = chi * rho * g * dx
     
     # calc basal drag : 
-    tau_nb = - beta * uhat * H * phi * dBed
-    tau_tb = - beta * vhat * H * psi * dBed
+    tau_nb = - beta**2 * uhat * phi * dBed
+    tau_tb = - beta**2 * vhat * psi * dBed
 
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
     tau_nt = - dphidt * eta * (  dudn +   dvdt) * dx
     tau_nz = - dphidz * eta * (  dudn +   dwdz) * dx
+    tau_ns =   rho * g * (S - x[2]) * N[0] * dSide
 
     tau_tt = - dpsidt * eta * (4*dvdt + 2*dudn) * dx
     tau_tn = - dpsidn * eta * (  dvdt +   dudn) * dx
     tau_tz = - dpsidz * eta * (  dvdt +   dwdz) * dx
+    tau_ts =   rho * g * (S - x[2]) * N[1] * dSide
     
     tau_zz = - dchidz * (2 * eta * dwdz) * dx \
+             + chi * (2 * eta * w.dx(2)) * N[2] * dGamma \
              - dchidz * (1.0/3.0 * (dudn + dvdt + dwdz)) * dx
     inpen  = (uhat*dBdn + vhat*dBdt + what) * chi * dBed
+    incom  = (dudn + dvdt + dwdz) * chi * dx
 
     # form residual in mixed space :
-    nr = tau_nn + tau_nt + tau_nz + tau_nb - tau_nd
-    tr = tau_tn + tau_tt + tau_tz + tau_tb - tau_td
+    nr = tau_nn + tau_nt + tau_nz + tau_ns + tau_nb - tau_nd
+    tr = tau_tn + tau_tt + tau_tz + tau_ts + tau_tb - tau_td
     zr = tau_zz - tau_zd
 
-    r  = nr + tr + zr + inpen
+    r  = nr + tr + zr #+ incom + inpen
 
     # make the variables available to solve :
     self.Q     = Q
+    self.V     = V
     self.r     = r
     self.U_s   = U_s
     model.ubar = u_s
@@ -2256,13 +2315,17 @@ class StokesBalance3D(object):
   def solve(self):
     """
     """
-    bc = DirichletBC(self.Q.sub(2), model.w, model.ff, 3)
+    model = self.model
+    bcs   = []
+    #bcs.append(DirichletBC(self.V.sub(2), model.w, model.ff, 2))
+    #bcs.append(DirichletBC(self.V.sub(2), model.w, model.ff, 3))
+    #bcs.append(DirichletBC(self.V.sub(2), model.w, model.ff, 4))
     
     if self.model.MPI_rank==0:
       s    = "::: solving 3D 'stokes-balance' for ubar, vbar :::"
       text = colored(s, 'cyan')
       print text
-    solve(lhs(self.r) == rhs(self.r), self.U_s, bc=bc, 
+    solve(lhs(self.r) == rhs(self.r), self.U_s, bcs=bcs, 
           solver_parameters=self.config['solver_params'])
 
   def component_stress_stokes(self):  
@@ -2333,8 +2396,254 @@ class StokesBalance3D(object):
     tau_dt = phi * rho * g * dSdt * dx
     
     # calc basal drag : 
-    tau_bn = beta * uhat * H * phi * dBed
-    tau_bt = beta * vhat * H * phi * dBed
+    tau_bn = beta**2 * uhat * phi * dBed
+    tau_bt = beta**2 * vhat * phi * dBed
+    
+    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
+    tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
+    tau_nt = - dphidt * eta * (  dudt +   dvdn) * dx
+    tau_tn = - dphidn * eta * (  dudt +   dvdn) * dx
+    tau_tt = - dphidt * eta * (4*dvdt + 2*dudn) * dx
+    
+    # the residuals :
+    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
+    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
+    
+    # mass matrix :
+    M = assemble(phi*dtau*dx)
+
+    # assemble the vectors :
+    tau_dn_v   = assemble(tau_dn)
+    tau_dt_v   = assemble(tau_dt)
+    tau_bn_v   = assemble(tau_bn)
+    tau_bt_v   = assemble(tau_bt)
+    tau_nn_v   = assemble(tau_nn)
+    tau_nt_v   = assemble(tau_nt)
+    tau_tn_v   = assemble(tau_tn)
+    tau_tt_v   = assemble(tau_tt)
+    tau_totn_v = assemble(tau_totn)
+    tau_tott_v = assemble(tau_tott)
+    
+    # solution functions :
+    tau_dn   = Function(Q)
+    tau_dt   = Function(Q)
+    tau_bn   = Function(Q)
+    tau_bt   = Function(Q)
+    tau_nn   = Function(Q)
+    tau_nt   = Function(Q)
+    tau_tn   = Function(Q)
+    tau_tt   = Function(Q)
+    tau_totn = Function(Q)
+    tau_tott = Function(Q)
+    
+    # solve the linear system :
+    solve(M, tau_dn.vector(),   tau_dn_v)
+    solve(M, tau_dt.vector(),   tau_dt_v)
+    #solve(M, tau_bn.vector(),   tau_bn_v)
+    #solve(M, tau_bt.vector(),   tau_bt_v)
+    solve(M, tau_nn.vector(),   tau_nn_v)
+    solve(M, tau_nt.vector(),   tau_nt_v)
+    solve(M, tau_tn.vector(),   tau_tn_v)
+    solve(M, tau_tt.vector(),   tau_tt_v)
+    #solve(M, tau_totn.vector(), tau_totn_v)
+    #solve(M, tau_tott.vector(), tau_tott_v)
+
+    # output the files to the specified directory :
+    File(outpath + 'tau_dn.pvd')   << tau_dn
+    File(outpath + 'tau_bn.pvd')   << tau_bn
+    File(outpath + 'tau_nn.pvd')   << tau_nn
+    File(outpath + 'tau_nt.pvd')   << tau_nt
+    File(outpath + 'tau_totn.pvd') << tau_totn
+    File(outpath + 'tau_tott.pvd') << tau_tott
+    File(outpath + 'u_s.pvd')      << u_s
+    File(outpath + 'v_s.pvd')      << v_s
+
+    # attach the results to the model :
+    model.tau_dn   = tau_dn
+    model.tau_dt   = tau_dt
+    model.tau_bn   = tau_bn
+    model.tau_bt   = tau_bt
+    model.tau_nn   = tau_nn
+    model.tau_nt   = tau_nt
+    model.tau_tn   = tau_tn
+    model.tau_tt   = tau_tt
+    model.tau_totn = tau_totn
+    model.tau_tott = tau_tott
+    model.u_s      = u_s
+    model.v_s      = v_s
+
+class StokesBalance3D_cartesian(object):
+
+  def __init__(self, model, config):
+    """
+    """
+    self.model  = model
+    self.config = config
+
+    Q       = model.Q
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    P       = model.P
+    beta    = model.beta
+    eta     = model.eta
+    rho     = model.rho
+    g       = model.g
+    x       = model.x
+    ds      = model.ds  
+    dGnd    = ds(3)         # grounded bed
+    dGndS   = ds(4)
+    dFlt    = ds(5)         # floating bed
+    dFltS   = ds(6)         # marine terminating sides
+    dBed    = dGnd + dFlt   # bed
+    dSide   = dGndS + dFltS
+    dGamma  = dGndS + dFltS + dGnd + dFlt
+    N       = FacetNormal(model.mesh)
+    
+    # create functions used to solve for velocity :
+    V             = MixedFunctionSpace([Q,Q,Q])
+    dU            = TrialFunction(V)
+    du, dv, dw    = split(dU)
+    Phi           = TestFunction(V)
+    phi, psi, chi = split(Phi)
+    U_s           = Function(V)
+    u_s, v_s, w_s = split(U_s)
+    
+    #===========================================================================
+    # stokes equation weak form :
+    tau_xx = - phi.dx(0) * eta * (4*du.dx(0) + 2*dv.dx(1)) * dx
+    tau_xy = - phi.dx(1) * eta * (  du.dx(0) +   dv.dx(1)) * dx
+    tau_xz = - phi.dx(2) * eta * (  du.dx(0) +   dw.dx(2)) * dx
+    tau_xs =   rho * g * (S - x[2]) * N[0] * dSide
+    tau_xb = - beta**2 * du * phi * dBed
+    tau_xd =   phi * rho * g * S.dx(0) * dx
+
+    tau_yy = - psi.dx(1) * eta * (4*dv.dx(1) + 2*du.dx(0)) * dx
+    tau_yx = - psi.dx(0) * eta * (  dv.dx(1) +   du.dx(0)) * dx
+    tau_yz = - psi.dx(2) * eta * (  dv.dx(1) +   dw.dx(2)) * dx
+    tau_ys =   rho * g * (S - x[2]) * N[1] * dSide
+    tau_yb = - beta**2 * dv * psi * dBed
+    tau_yd =   psi * rho * g * S.dx(1) * dx
+    
+    tau_zz = - chi.dx(2) * 2 * eta * dw.dx(2) * dx \
+             + chi * 2 * eta * w.dx(2) * N[2] * dGamma \
+             - chi.dx(2) * P * dx \
+             + chi * P * N[2] * dGamma
+    tau_zd =   chi * rho * g * dx
+    inpen  =   (du*B.dx(0) + dv*B.dx(1) + dw) * chi * dBed
+    incom  =   (du.dx(0) + dv.dx(1) + dw.dx(2)) * chi * dx
+
+    # form residual in mixed space :
+    xr = tau_xx + tau_xy + tau_xz + tau_xs + tau_xb - tau_xd
+    yr = tau_yx + tau_yy + tau_yz + tau_ys + tau_yb - tau_yd
+    zr = tau_zz - tau_zd
+
+    r  = xr + yr + zr #+ incom + inpen
+
+    # make the variables available to solve :
+    self.Q     = Q
+    self.V     = V
+    self.r     = r
+    self.U_s   = U_s
+    model.ubar = u_s
+    model.vbar = v_s
+    model.wbar = w_s
+    
+  def solve(self):
+    """
+    """
+    model = self.model
+    bcs   = []
+    bcs.append(DirichletBC(self.V.sub(2), model.w, model.ff, 2))
+    bcs.append(DirichletBC(self.V.sub(2), model.w, model.ff, 3))
+    bcs.append(DirichletBC(self.V.sub(2), model.w, model.ff, 4))
+    bcs.append(DirichletBC(self.V.sub(1), model.v, model.ff, 2))
+    bcs.append(DirichletBC(self.V.sub(1), model.v, model.ff, 3))
+    bcs.append(DirichletBC(self.V.sub(1), model.v, model.ff, 4))
+    bcs.append(DirichletBC(self.V.sub(0), model.u, model.ff, 2))
+    bcs.append(DirichletBC(self.V.sub(0), model.u, model.ff, 3))
+    bcs.append(DirichletBC(self.V.sub(0), model.u, model.ff, 4))
+    
+    if self.model.MPI_rank==0:
+      s    = "::: solving 3D 'stokes-balance' for ubar, vbar :::"
+      text = colored(s, 'cyan')
+      print text
+    solve(lhs(self.r) == rhs(self.r), self.U_s, bcs=bcs, 
+          solver_parameters=self.config['solver_params'])
+
+  def component_stress_stokes(self):  
+    """
+    """
+    model = self.model
+    
+    if model.MPI_rank==0:
+      s    = "solving 3D 'stokes-balance' for stress terms :::" 
+      text = colored(s, 'cyan')
+      print text
+
+    outpath = self.config['output_path']
+    Q       = self.Q
+    beta    = model.beta
+    eta     = model.eta
+    S       = model.S
+    B       = model.B
+    H       = S - B
+    rho     = model.rho
+    g       = model.g
+    ds      = model.ds  
+    dSrf    = ds(2)        # surface
+    dGnd    = ds(3)        # grounded bed 
+    dFlt    = ds(5)        # floating bed
+    dFltS   = ds(6)        # marine terminating sides
+    dBed    = dGnd + dFlt  # bed
+    
+    #===========================================================================
+    # form the stokes equations in the normal direction (n) and tangential 
+    # direction (t) in relation to the stress-tensor :
+    u_s = project(model.u, Q)
+    v_s = project(model.v, Q)
+    
+    U   = model.normalize_vector(as_vector([u_s, v_s]), Q)
+    u_n = U[0]
+    v_n = U[1]
+    U   = as_vector([u_s, v_s, 0])
+    U_n = as_vector([u_n, v_n, 0])
+    U_t = as_vector([v_n,-u_n, 0])
+
+    # directional derivatives :
+    uhat     = dot(U, U_n)
+    vhat     = dot(U, U_t)
+    what     = dot(U, U_z)
+    graduhat = grad(uhat)
+    gradvhat = grad(vhat)
+    gradwhat = grad(what)
+    gradS    = grad(S)
+    dudn     = dot(graduhat, U_n)
+    dvdn     = dot(gradvhat, U_n)
+    dudt     = dot(graduhat, U_t)
+    dvdt     = dot(gradvhat, U_t)
+    dSdn     = dot(gradS,    U_n)
+    dSdt     = dot(gradS,    U_t)
+
+    # trial and test functions for linear solve :
+    phi   = TestFunction(Q)
+    dtau  = TrialFunction(Q)
+    
+    # integration by parts directional derivative terms :
+    gradphi = grad(phi)
+    dphidn  = dot(gradphi, U_n)
+    dphidt  = dot(gradphi, U_t)
+
+    # driving stres :
+    tau_dn = phi * rho * g * dSdn * dx
+    tau_dt = phi * rho * g * dSdt * dx
+    
+    # calc basal drag : 
+    tau_bn = beta**2 * uhat * phi * dBed
+    tau_bt = beta**2 * vhat * phi * dBed
     
     # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx

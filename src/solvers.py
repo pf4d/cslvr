@@ -151,6 +151,7 @@ class SteadySolver(object):
     # Solve age equation
     if config['age']['on']:
       self.age_instance.solve()
+      model.print_min_max(model.age, 'age')
       if config['log']: 
         if self.model.MPI_rank==0:
           s    = '::: saving age age.pvd file :::'
@@ -716,7 +717,7 @@ class StokesBalanceSolver(object):
     #model.tau_d   = model.calc_tau_drv(Q)
     #model.tau_b   = model.calc_tau_bas(Q)
 
-    self.stress_balance_instance = StokesBalance3D(model, config)
+    self.stress_balance_instance = StokesBalance3D_cartesian(model, config)
 
   def solve(self):
     """ 

@@ -375,8 +375,10 @@ class Model(object):
     Q   = self.Q
     rho = self.rho
     g   = self.g
+    eta = self.eta
+    w   = self.w
     H   = self.calc_thickness() 
-    P   = rho * g * H
+    P   = rho*g*H + 2*eta*w.dx(2)
     return P
   
   def calc_sigma(self):
@@ -440,7 +442,7 @@ class Model(object):
     epsdot   = as_matrix([[epsdot00,     epsdot[0,1],  epsdot[0,2]],
                           [epsdot[1,0],  epsdot11,     epsdot[1,2]],
                           [epsdot[2,0],  epsdot[2,1],  epsdot[2,2]]])
-    return eta * epsdot
+    return 2 * eta * epsdot
      
   def extrude(self, f, b, d, Q='self'):
     r"""

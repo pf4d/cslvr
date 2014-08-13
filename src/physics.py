@@ -231,7 +231,7 @@ class VelocityStokes(object):
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
     dFlt     = ds(5)         # floating bed
-    dFltS    = ds(6)         # marine terminating sides
+    dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
@@ -315,8 +315,8 @@ class VelocityStokes(object):
     
     # Variational principle
     A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-             + Sl*dGnd + Nc*dBed + Pb*dFltS
-    #A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dFltS
+             + Sl*dGnd + Nc*dBed + Pb*dSde
+    #A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dSde
 
     model.A      = A
     model.epsdot = epsdot
@@ -548,8 +548,7 @@ class VelocityBP(object):
     # pressure boundary :
     class Depth(Expression):
       def eval(self, values, x):
-        b         = model.B_ex(x[0], x[1], x[2])
-        values[0] = abs(min(0, b))
+        values[0] = min(0, x[2])
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
     
@@ -608,7 +607,7 @@ class VelocityBP(object):
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
     dFlt     = ds(5)         # floating bed
-    dFltS    = ds(6)         # marine terminating sides
+    dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
 
     # Set the value of b, the temperature dependent ice hardness parameter,
@@ -675,11 +674,11 @@ class VelocityBP(object):
     Sl       = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = (rho*g*H + rho_w*g*B) / H * (u + v) 
+    Pb       = - (rho*g*(S - x[2]) + rho_w*g*D) * (u*N[0] + v*N[1]) 
 
     # Variational principle
-    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
-    #A        = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
+    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dSde
+    #A        = Vd*dx + Pe*dx + Sl*dGnd + Pb*dSde
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -940,7 +939,7 @@ class Enthalpy(object):
     dSrf        = ds(2)         # surface
     dGnd        = ds(3)         # grounded bed
     dFlt        = ds(5)         # floating bed
-    dFltS       = ds(6)         # marine terminating sides
+    dSde        = ds(4)         # sides
     dBed        = dGnd + dFlt   # bed
     dx          = model.dx
     dx_s        = dx(1)
@@ -1440,12 +1439,12 @@ class AdjointVelocityBP(object):
     dx_s     = dx(1)
     dx_g     = dx(0)
     dx       = dx(1) + dx(0) # entire internal
-    dSrf_s   = ds(7)         # surface
+    dSrf_s   = ds(6)         # surface
     dSrf_g   = ds(2)         # surface
-    dSrf     = ds(7) + ds(2)
+    dSrf     = ds(6) + ds(2)
     dGnd     = ds(3)         # grounded bed 
     dFlt     = ds(5)         # floating bed
-    dFltS    = ds(6)         # marine terminating sides
+    dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
 
 
@@ -1454,13 +1453,13 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      #A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dFltS
-      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dFltS
+      #A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dSde
+      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dSde
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       #A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
       A       = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-                + Sl*dGnd + Nc*dGnd + Pb*dFltS
+                + Sl*dGnd + Nc*dGnd + Pb*dSde
 
     L         = TrialFunction(Q_adj)
     Phi       = TestFunction(Q_adj)
@@ -2211,12 +2210,10 @@ class StokesBalance3D(object):
     x       = model.x
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
-    dGndS    = ds(4)
     dFlt     = ds(5)         # floating bed
-    dFltS    = ds(6)         # marine terminating sides
+    dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
-    dSide    = dGndS + dFltS
-    dGamma   = dGndS + dFltS + dGnd + dFlt
+    dGamma   = dSde + dGnd + dFlt
     N        = FacetNormal(model.mesh)
     
     # create functions used to solve for velocity :
@@ -2283,12 +2280,12 @@ class StokesBalance3D(object):
     tau_nn = - dphidn * eta * (4*dudn + 2*dvdt) * dx
     tau_nt = - dphidt * eta * (  dudn +   dvdt) * dx
     tau_nz = - dphidz * eta * (  dudn +   dwdz) * dx
-    tau_ns =   rho * g * (S - x[2]) * N[0] * dSide
+    tau_ns =   rho * g * (S - x[2]) * N[0] * dSde
 
     tau_tt = - dpsidt * eta * (4*dvdt + 2*dudn) * dx
     tau_tn = - dpsidn * eta * (  dvdt +   dudn) * dx
     tau_tz = - dpsidz * eta * (  dvdt +   dwdz) * dx
-    tau_ts =   rho * g * (S - x[2]) * N[1] * dSide
+    tau_ts =   rho * g * (S - x[2]) * N[1] * dSde
     
     tau_zz = - dchidz * (2 * eta * dwdz) * dx \
              + chi * (2 * eta * w.dx(2)) * N[2] * dGamma \
@@ -2351,7 +2348,7 @@ class StokesBalance3D(object):
     dSrf    = ds(2)        # surface
     dGnd    = ds(3)        # grounded bed 
     dFlt    = ds(5)        # floating bed
-    dFltS   = ds(6)        # marine terminating sides
+    dSde    = ds(4)        # sides
     dBed    = dGnd + dFlt  # bed
     
     #===========================================================================
@@ -2495,12 +2492,10 @@ class StokesBalance3D_cartesian(object):
     x       = model.x
     ds      = model.ds  
     dGnd    = ds(3)         # grounded bed
-    dGndS   = ds(4)
     dFlt    = ds(5)         # floating bed
-    dFltS   = ds(6)         # marine terminating sides
+    dSde    = ds(4)         # sides
     dBed    = dGnd + dFlt   # bed
-    dSide   = dGndS + dFltS
-    dGamma  = dGndS + dFltS + dGnd + dFlt
+    dGamma  = dSde + dGnd + dFlt
     N       = FacetNormal(model.mesh)
     
     # create functions used to solve for velocity :
@@ -2517,14 +2512,14 @@ class StokesBalance3D_cartesian(object):
     tau_xx = - phi.dx(0) * eta * (4*du.dx(0) + 2*dv.dx(1)) * dx
     tau_xy = - phi.dx(1) * eta * (  du.dx(0) +   dv.dx(1)) * dx
     tau_xz = - phi.dx(2) * eta * (  du.dx(0) +   dw.dx(2)) * dx
-    tau_xs =   rho * g * (S - x[2]) * N[0] * dSide
+    tau_xs =   rho * g * (S - x[2]) * N[0] * dSde
     tau_xb = - beta**2 * du * phi * dBed
     tau_xd =   phi * rho * g * S.dx(0) * dx
 
     tau_yy = - psi.dx(1) * eta * (4*dv.dx(1) + 2*du.dx(0)) * dx
     tau_yx = - psi.dx(0) * eta * (  dv.dx(1) +   du.dx(0)) * dx
     tau_yz = - psi.dx(2) * eta * (  dv.dx(1) +   dw.dx(2)) * dx
-    tau_ys =   rho * g * (S - x[2]) * N[1] * dSide
+    tau_ys =   rho * g * (S - x[2]) * N[1] * dSde
     tau_yb = - beta**2 * dv * psi * dBed
     tau_yd =   psi * rho * g * S.dx(1) * dx
     
@@ -2597,7 +2592,7 @@ class StokesBalance3D_cartesian(object):
     dSrf    = ds(2)        # surface
     dGnd    = ds(3)        # grounded bed 
     dFlt    = ds(5)        # floating bed
-    dFltS   = ds(6)        # marine terminating sides
+    dSde    = ds(4)        # sides
     dBed    = dGnd + dFlt  # bed
     
     #===========================================================================

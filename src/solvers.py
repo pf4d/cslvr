@@ -115,7 +115,7 @@ class SteadySolver(object):
               s    = '::: saving pressure P.pvd file :::'
               text = colored(s, 'blue')
               print text
-            File(outpath + 'P.pvd') << model.P
+            File(outpath + 'P.pvd') << project(model.P, model.Q)
         model.print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)

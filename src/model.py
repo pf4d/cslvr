@@ -180,8 +180,7 @@ class Model(object):
     #   3 = grounded high slope, downward facing ..... grounded base
     #   4 = low slope, upward or downward facing ..... grounded sides
     #   5 = floating ................................. floating base
-    #   6 = floating ................................. floating sides
-    #   7 = floating ................................. floating surface
+    #   6 = floating ................................. floating surface
     if self.mask != None:
 
       if self.MPI_rank==0:
@@ -197,7 +196,7 @@ class Model(object):
       
         if   n.z() >=  tol and f.exterior():
           if mask_xy > 0:
-            self.ff[f] = 7
+            self.ff[f] = 6
           else:
             self.ff[f] = 2
       
@@ -208,10 +207,7 @@ class Model(object):
             self.ff[f] = 3
       
         elif n.z() >  -tol and n.z() < tol and f.exterior():
-          if mask_xy > 0:
-            self.ff[f] = 6
-          else:
-            self.ff[f] = 4
+          self.ff[f] = 4
       
       for f in facets(self.flat_mesh):
         n       = f.normal()
@@ -222,7 +218,7 @@ class Model(object):
       
         if   n.z() >=  tol and f.exterior():
           if mask_xy > 0:
-            self.ff_flat[f] = 7
+            self.ff_flat[f] = 6
           else:
             self.ff_flat[f] = 2
       
@@ -233,10 +229,7 @@ class Model(object):
             self.ff_flat[f] = 3
       
         elif n.z() >  -tol and n.z() < tol and f.exterior():
-          if mask_xy > 0:
-            self.ff_flat[f] = 6
-          else:
-            self.ff_flat[f] = 4
+          self.ff_flat[f] = 4
       
       if self.MPI_rank==0:
         s    = "    - iterating through cells - "

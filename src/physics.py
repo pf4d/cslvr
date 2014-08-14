@@ -978,7 +978,7 @@ class Enthalpy(object):
     # to conserve energy.  This also implies that heretofore, models have been 
     # overestimating frictional heat, and underestimating strain heat.
 
-    # Frictional heating = tau_b*u = beta^2*u*u
+    # Frictional heating = tau_b * u = beta^2*H^r*u * u
     q_friction = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
@@ -1002,8 +1002,8 @@ class Enthalpy(object):
         U    = 0.0
 
       # necessary quantities for streamline upwinding :
-      h      = 2 * CellSize(mesh)
-      vnorm  = sqrt(dot(U, U) + 1e-1)
+      h      = CellSize(mesh)
+      vnorm  = sqrt(dot(U, U) + 1e-10)
 
       # skewed test function :
       psihat = psi + h/(2*vnorm) * dot(U, grad(psi))

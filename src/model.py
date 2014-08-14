@@ -914,6 +914,9 @@ class Model(object):
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
     """
+    if isinstance(u, Indexed):
+      u = project(u, self.Q)
+
     if   isinstance(var, float) or isinstance(var, int):
       u.vector()[:] = var
     

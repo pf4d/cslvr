@@ -188,8 +188,8 @@ class VelocityStokes(object):
       beta_0_v = beta_0.vector().array()
       beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
       model.assign_variable(beta, beta_0_v)
-    else:
-      model.assign_variable(beta, config['velocity']['beta'])
+    if config['velocity']['use_beta0']:
+      model.assign_variable(beta, config['velocity']['beta0'])
    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -242,14 +242,14 @@ class VelocityStokes(object):
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b     = config['velocity']['b_linear']
+      b     = config['velocity']['eta']
       b_gnd = b
       b_shf = b
       n     = 1.0
     
-    elif config['velocity']['viscosity_mode'] == 'shelf_control':
-      b_shf   = config['velocity']['b_linear_shf']
-      b_gnd   = config['velocity']['b_linear_gnd']
+    elif config['velocity']['viscosity_mode'] == 'b_control':
+      b_shf   = config['velocity']['b_shf']
+      b_gnd   = config['velocity']['b_gnd']
       #b_shf.vector()[model.gnd_dofs] = 0
       #b_gnd.vector()[model.shf_dofs] = 0
       #V       = FunctionSpace(mesh, 'DG', 0)
@@ -260,8 +260,10 @@ class VelocityStokes(object):
       b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
-    elif config['velocity']['viscosity_mode'] == 'b_control':
-      b = config['velocity']['b']
+    elif config['velocity']['viscosity_mode'] == 'constant_b':
+      b     = config['velocity']['b']
+      b_shf = b
+      b_gnd = b
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define pressure corrected temperature
@@ -306,7 +308,7 @@ class VelocityStokes(object):
     Nc     = P * (u*B.dx(0) + v*B.dx(1) - w)
 
     # 6) pressure boundary
-    Pb     = (rho*g*H + rho_w*g*B) / H * (u + v + w) 
+    Pb     = - (rho*g*(S - x[2]) + rho_w*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
     g      = Constant((0.0, 0.0, g))
     h      = CellSize(mesh)
@@ -568,8 +570,8 @@ class VelocityBP(object):
       beta_0_v = beta_0.vector().array()
       beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
       model.assign_variable(beta, beta_0_v)
-    else:
-      model.assign_variable(beta, config['velocity']['beta'])
+    if config['velocity']['use_beta0']:
+      model.assign_variable(beta, config['velocity']['beta0'])
    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -618,14 +620,14 @@ class VelocityBP(object):
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b     = config['velocity']['b_linear']
+      b     = config['velocity']['eta']
       b_gnd = b
       b_shf = b
       n     = 1.0
     
-    elif config['velocity']['viscosity_mode'] == 'shelf_control':
-      b_shf   = config['velocity']['b_linear_shf']
-      b_gnd   = config['velocity']['b_linear_gnd']
+    elif config['velocity']['viscosity_mode'] == 'b_control':
+      b_shf   = config['velocity']['b_shf']
+      b_gnd   = config['velocity']['b_gnd']
       #b_shf.vector()[model.gnd_dofs] = 0
       #b_gnd.vector()[model.shf_dofs] = 0
       #V       = FunctionSpace(mesh, 'DG', 0)
@@ -636,8 +638,10 @@ class VelocityBP(object):
       b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
-    elif config['velocity']['viscosity_mode'] == 'b_control':
-      b = config['velocity']['b']
+    elif config['velocity']['viscosity_mode'] == 'constant_b':
+      b     = config['velocity']['b']
+      b_shf = b
+      b_gnd = b
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define pressure corrected temperature
@@ -1008,8 +1012,8 @@ class Enthalpy(object):
       self.F = + rho * dot(U, grad(dH)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(dH)) * dx \
                - (q_geo + q_friction) * psihat * dGnd \
-               - Q_s_shf * psihat * dx_s \
                - Q_s_gnd * psihat * dx_g
+               #- Q_s_shf * psihat * dx_s \
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -1035,8 +1039,8 @@ class Enthalpy(object):
                + rho * dot(U, grad(Hmid)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(Hmid)) * dx \
                - (q_geo + q_friction) * psi * dGnd \
-               - Q_s_shf * psihat * dx_s \
                - Q_s_gnd * psihat * dx_g
+               #- Q_s_shf * psihat * dx_s \
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -2208,13 +2212,13 @@ class StokesBalance3D(object):
     rho     = model.rho
     g       = model.g
     x       = model.x
-    ds       = model.ds  
-    dGnd     = ds(3)         # grounded bed
-    dFlt     = ds(5)         # floating bed
-    dSde     = ds(4)         # sides
-    dBed     = dGnd + dFlt   # bed
-    dGamma   = dSde + dGnd + dFlt
-    N        = FacetNormal(model.mesh)
+    ds      = model.ds  
+    dGnd    = ds(3)         # grounded bed
+    dFlt    = ds(5)         # floating bed
+    dSde    = ds(4)         # sides
+    dBed    = dGnd + dFlt   # bed
+    dGamma  = dSde + dGnd + dFlt
+    N       = FacetNormal(model.mesh)
     
     # create functions used to solve for velocity :
     V             = MixedFunctionSpace([Q,Q,Q])

@@ -147,6 +147,8 @@ class VelocityStokes(object):
     Q4            = model.Q4
     n             = model.n
     b             = model.b
+    b_shf         = model.b_shf
+    b_gnd         = model.b_gnd
     Tstar         = model.Tstar
     T             = model.T
     gamma         = model.gamma
@@ -197,8 +199,7 @@ class VelocityStokes(object):
     # pressure boundary :
     class Depth(Expression):
       def eval(self, values, x):
-        b         = model.B_ex(x[0], x[1], x[2])
-        values[0] = abs(min(0, b))
+        values[0] = min(0, x[2])
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
     
@@ -525,6 +526,8 @@ class VelocityBP(object):
     Q2            = model.Q2
     n             = model.n
     b             = model.b
+    b_shf         = model.b_shf
+    b_gnd         = model.b_gnd
     Tstar         = model.Tstar
     T             = model.T
     gamma         = model.gamma
@@ -564,8 +567,8 @@ class VelocityBP(object):
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_U_ob']:
       U_ob     = config['velocity']['U_ob']
-      U_mag    = sqrt(inner(U_ob, U_ob))
-      S_mag    = sqrt(inner(grad(S), grad(S)))
+      U_mag    = sqrt(inner(U_ob, U_ob) + DOLFIN_EPS)
+      S_mag    = sqrt(inner(grad(S), grad(S)) + DOLFIN_EPS)
       beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag + 0.1)), Q)
       beta_0_v = beta_0.vector().array()
       beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
@@ -950,6 +953,13 @@ class Enthalpy(object):
     dx_g        = dx(0)
     dx          = dx(1) + dx(0) # entire internal
     
+    # second invariant of the strain-rate tensor squared :
+    term   = + 0.5*(   (u.dx(1) + v.dx(0))**2  \
+                     + (u.dx(2) + w.dx(0))**2  \
+                     + (v.dx(2) + w.dx(1))**2) \
+             + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
+    epsdot = 0.5 * term + eps_reg
+    
     # If we're not using the output of the surface climate model,
     #  set the surface temperature to the constant or array that 
     #  was passed in.
@@ -983,7 +993,6 @@ class Enthalpy(object):
 
     # Strain heating = stress*strain
     Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
-    Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
 
     # Different diffusion coefficent values for temperate and cold ice.  This
     # nonlinearity enters as a part of the Picard iteration between velocity
@@ -1003,17 +1012,17 @@ class Enthalpy(object):
 
       # necessary quantities for streamline upwinding :
       h      = CellSize(mesh)
-      vnorm  = sqrt(dot(U, U) + 1e-10)
+      vnorm  = sqrt(dot(U, U) + 1.0)
+      T_c    = conditional( lt(vnorm, 8), 0.0, 1.0 )
 
-      # skewed test function :
-      psihat = psi + h/(2*vnorm) * dot(U, grad(psi))
+      # skewed test function in areas with high velocity :
+      psihat = psi + T_c * h/(6*vnorm) * dot(U, grad(psi))
 
       # residual of model :
       self.F = + rho * dot(U, grad(dH)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(dH)) * dx \
                - (q_geo + q_friction) * psihat * dGnd \
                - Q_s_gnd * psihat * dx_g
-               #- Q_s_shf * psihat * dx_s \
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -1026,8 +1035,8 @@ class Enthalpy(object):
       # the mesh velocity subtracted from it.
       U = as_vector([uhat, vhat, what - mhat])
 
-      h      = 2 * CellSize(mesh)
-      vnorm  = sqrt(dot(U,U) + 1e-1)
+      h      = CellSize(mesh)
+      vnorm  = sqrt(dot(U,U) + DOLFIN_EPS)
       psihat = psi + h/(2*vnorm) * dot(U, grad(psi))
 
       theta = 0.5
@@ -1040,7 +1049,6 @@ class Enthalpy(object):
                + rho * kappa * dot(grad(psi), grad(Hmid)) * dx \
                - (q_geo + q_friction) * psi * dGnd \
                - Q_s_gnd * psihat * dx_g
-               #- Q_s_shf * psihat * dx_s \
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -1176,13 +1184,11 @@ class Enthalpy(object):
     # apply T_w conditions of portion of ice in contact with water :
     if model.mask != None:
       self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
-      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 7) )
+      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 6) )
    
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
-      if model.mask != None:
-        self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 6) ) 
       
     # solve the linear equation for enthalpy :
     if self.model.MPI_rank==0:
@@ -1445,7 +1451,7 @@ class AdjointVelocityBP(object):
     dx       = dx(1) + dx(0) # entire internal
     dSrf_s   = ds(6)         # surface
     dSrf_g   = ds(2)         # surface
-    dSrf     = ds(6) + ds(2)
+    dSrf     = ds(6)
     dGnd     = ds(3)         # grounded bed 
     dFlt     = ds(5)         # floating bed
     dSde     = ds(4)         # sides

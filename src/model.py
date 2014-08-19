@@ -178,7 +178,7 @@ class Model(object):
     #
     #   2 = high slope, upward facing ................ grounded surface
     #   3 = grounded high slope, downward facing ..... grounded base
-    #   4 = low slope, upward or downward facing ..... grounded sides
+    #   4 = low slope, upward or downward facing ..... sides
     #   5 = floating ................................. floating base
     #   6 = floating ................................. floating surface
     if self.mask != None:
@@ -993,6 +993,8 @@ class Model(object):
     self.beta          = Function(self.Q)
     self.mhat          = Function(self.Q)
     self.b             = Function(self.Q)
+    self.b_shf         = Function(self.Q)
+    self.b_gnd         = Function(self.Q)
     self.epsdot        = Function(self.Q)
     self.E             = Function(self.Q)
     self.eta           = Function(self.Q)

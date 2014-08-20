@@ -64,7 +64,7 @@ fldr  = 'fox_maule'
 download_file(q_geo, home, fldr)
 
 # bedmap 1 :
-bm1  = "http://www.pangaea.de/Publications/LeBrocq_et_al_2010/ALBMAPv1.nc.zip"
+bm1  = "https://www.dropbox.com/s/tqcdbe3d2chq9py/ALBMAPv1.tar.gz?dl=1"
 fldr = "bedmap1"
 download_file(bm1, home, fldr, extract=True)
 

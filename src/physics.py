@@ -1451,12 +1451,15 @@ class AdjointVelocityBP(object):
     dx       = dx(1) + dx(0) # entire internal
     dSrf_s   = ds(6)         # surface
     dSrf_g   = ds(2)         # surface
-    dSrf     = ds(6)
     dGnd     = ds(3)         # grounded bed 
     dFlt     = ds(5)         # floating bed
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
 
+    if config['adjoint']['surface_integral'] == 'shelves':
+      dSrf     = ds(6)
+    elif config['adjoint']['surface_integral'] == 'grounded':
+      dSrf     = ds(2)
 
     control = config['adjoint']['control_variable']
     alpha   = config['adjoint']['alpha']

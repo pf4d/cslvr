@@ -49,8 +49,6 @@ config['adjoint']['objective_function'] = 'linear'
 config['adjoint']['bounds']             = (0.0, 4000.0)
 config['adjoint']['control_variable']   = model.beta
 
-model.eps_reg = 1e-5
-
 F = SteadySolver(model,config)
 F.solve()
 

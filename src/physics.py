@@ -318,8 +318,9 @@ class VelocityStokes(object):
     
     # Variational principle
     A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-             + Sl*dGnd + Nc*dBed + Pb*dSde
-    #A      = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dBed + Pb*dSde
+             + Sl*dGnd + Nc*dBed
+    if not config['periodic_boundary_conditions']:
+      A += Pb*dSde
 
     model.A      = A
     model.epsdot = epsdot
@@ -684,8 +685,9 @@ class VelocityBP(object):
     Pb       = - (rho*g*(S - x[2]) + rho_w*g*D) * (u*N[0] + v*N[1]) 
 
     # Variational principle
-    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dSde
-    #A        = Vd*dx + Pe*dx + Sl*dGnd + Pb*dSde
+    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
+    if not config['periodic_boundary_conditions']:
+      A += Pb*dSde
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -1466,13 +1468,13 @@ class AdjointVelocityBP(object):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      #A       = Vd*dx + Pe*dx + Sl*dGnd + Pb*dSde
-      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd + Pb*dSde
+      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
-      #A       = (Vd + Pe + Pc + Lsq)*dx + Sl*dGnd + Nc*dGnd
       A       = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-                + Sl*dGnd + Nc*dGnd + Pb*dSde
+                + Sl*dGnd + Nc*dGnd
+    if not config['periodic_boundary_conditions']:
+      A      += Pb*dSde
 
     L         = TrialFunction(Q_adj)
     Phi       = TestFunction(Q_adj)

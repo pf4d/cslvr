@@ -1,7 +1,8 @@
 from varglas.model              import Model
 from varglas.solvers            import SteadySolver, AdjointSolver
 from varglas.physical_constants import IceParameters
-from varglas.helper             import default_nonlin_solver_params
+from varglas.helper             import default_nonlin_solver_params, \
+                                       default_config
 from scipy                      import random
 from fenics                     import set_log_active, File, Expression, pi, \
                                        sin, tan, parameters, project
@@ -22,7 +23,7 @@ Surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
 Bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha, 
                      element=model.Q.ufl_element())
-Beta2   = Expression(  '1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
+Beta    = Expression('sqrt(1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L))',
                      alpha=alpha, L=L, element=model.Q.ufl_element())
 
 model.set_geometry(Surface, Bed, deform=True)
@@ -39,82 +40,21 @@ nparams['newton_solver']['relative_tolerance']      = 1e-5
 nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
 
-config = { 'mode'                         : 'steady',
-           't_start'                      : None,
-           't_end'                        : None,
-           'time_step'                    : None,
-           'output_path'                  : './results/initial/',
-           'wall_markers'                 : [],
-           'periodic_boundary_conditions' : True,
-           'log': True,
-           'coupled' : 
-           { 
-             'on'                  : False,
-             'inner_tol'           : 0.0,
-             'max_iter'            : 1
-           },
-           'velocity' : 
-           { 
-             'on'                  : True,
-             'newton_params'       : nparams,
-             'viscosity_mode'      : 'isothermal',
-             'b_linear'            : None,
-             'use_T0'              : False,
-             'T0'                  : None,
-             'A0'                  : 1e-16,
-             'beta2'               : Beta2,
-             'r'                   : 0.0,
-             'E'                   : 1,
-             'approximation'       : 'fo',
-             'boundaries'          : None,
-             'log'                 : True
-           },
-           'enthalpy' : 
-           { 
-             'on'                  : False,
-             'use_surface_climate' : False,
-             'T_surface'           : None,
-               
-           },
-           'free_surface' :
-           { 
-             'on'                  : False,
-             'thklim'              : None,
-             'use_pdd'             : False,
-             'observed_smb'        : None,
-           },  
-           'age' : 
-           { 
-             'on'                  : False,
-             'use_smb_for_ela'     : False,
-             'ela'                 : None,
-           },
-           'surface_climate' : 
-           { 
-             'on'                  : False,
-             'T_ma'                : None,
-             'T_ju'                : None,
-             'beta_w'              : None,
-             'sigma'               : None,
-             'precip'              : None
-           },
-           'adjoint' :
-           { 
-             'alpha'               : 0.0,
-             'max_fun'             : 20,
-             'objective_function'  : 'linear',
-             'animate'             : False,
-             'bounds'              : (0.0, 5000.0),
-             'control_variable'    : model.beta2,
-             'regularization_type' : 'Tikhonov'
-           }}
+config = default_config()
+config['output_path']                   = './results/initial/'
+config['periodic_boundary_conditions']  = True
+config['velocity']['newton_params']     = nparams
+config['velocity']['beta0']             = Beta
+config['adjoint']['objective_function'] = 'linear'
+config['adjoint']['bounds']             = (0.0, 4000.0)
+config['adjoint']['control_variable']   = model.beta
 
 model.eps_reg = 1e-5
 
 F = SteadySolver(model,config)
 F.solve()
 
-File('results/beta2_obs.pvd') << model.beta2
+File('results/beta2_obs.pvd') << model.beta
 
 u_o = project(model.u, model.Q).vector().array()
 v_o = project(model.v, model.Q).vector().array()
@@ -129,7 +69,7 @@ A = AdjointSolver(model,config)
 
 for i in range(1):
   config['output_path']   = './results/%02i/' % i
-  model.assign_variable(model.beta2, 1000.0)
+  model.assign_variable(model.beta, 1000.0)
   u_error = U_e*random.randn(len(u_o))
   v_error = U_e*random.randn(len(v_o))
   u_obs   = u_o + u_error

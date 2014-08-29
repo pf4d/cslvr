@@ -1,9 +1,10 @@
 from varglas.model              import Model
 from varglas.solvers            import TransientSolver
 from varglas.physical_constants import IceParameters
-from varglas.helper             import default_nonlin_solver_params
+from varglas.helper             import default_nonlin_solver_params, \
+                                       default_config
 from fenics                     import set_log_active, File, Expression, pi, \
-                                       sin, tan, cos, exp
+                                       sin, tan, cos, exp, sqrt
 
 set_log_active(True)
 
@@ -46,75 +47,20 @@ nonlin_solver_params['newton_solver']['relaxation_parameter'] = 1.0
 nonlin_solver_params['newton_solver']['relative_tolerance']   = 1.0
 nonlin_solver_params['newton_solver']['linear_solver']        = 'mumps'
 
-config = { 'mode'                         : 'transient',
-           'output_path'                  : './results/',
-           'wall_markers'                 : [],
-           'periodic_boundary_conditions' : True,
-           't_start'                      : 0.0,
-           't_end'                        : 500.0,
-           'time_step'                    : 2.0,
-           'log'                          : True,
-           'coupled' : 
-           { 
-             'on'                         : False,
-             'inner_tol'                  : 0.0,
-             'max_iter'                   : 1
-           },                             
-           'velocity' :                   
-           {                              
-             'on'                         : True,
-             'newton_params'              : nonlin_solver_params,
-             'viscosity_mode'             : 'isothermal',
-             'b_linear'                   : None,
-             'use_T0'                     : False,
-             'T0'                         : None,
-             'A0'                         : 2.140373e-7,
-             'beta2'                      : (1*2.140373e-7*1000)**-1.,
-             'r'                          : 0.0,
-             'E'                          : 1,
-             'approximation'              : 'fo',
-             'boundaries'                 : None,
-             'log'                        : True
-           },                             
-           'enthalpy' :                   
-           {                              
-             'on'                         : False,
-             'use_surface_climate'        : False,
-             'T_surface'                  : None,
-           },
-           'free_surface' :
-           { 
-             'on'                         : True,
-             'lump_mass_matrix'           : False,
-             'use_shock_capturing'        : False,
-             'thklim'                     : 10.0,
-             'use_pdd'                    : False,
-             'observed_smb'               : SMB,
-             'static_boundary_conditions' : False
-           },  
-           'age' : 
-           { 
-             'on'                         : False,
-             'use_smb_for_ela'            : False,
-             'ela'                        : None,
-           },                             
-           'surface_climate' :            
-           {                              
-             'on'                         : False,
-             'T_ma'                       : None,
-             'T_ju'                       : None,
-             'beta_w'                     : None,
-             'sigma'                      : None,
-             'precip'                     : None
-           },                             
-           'adjoint' :                    
-           {                              
-             'alpha'                      : None,
-             'beta'                       : None,
-             'max_fun'                    : None,
-             'objective_function'         : 'logarithmic',
-             'animate'                    : False
-           }}
+config = default_config()
+config['mode']                         = 'transient'
+config['output_path']                  = './results/'
+config['t_start']                      = 0.0
+config['t_end']                        = 500.0
+config['time_step']                    = 2.0
+config['periodic_boundary_conditions'] = True
+config['velocity']['newton_params']    = nonlin_solver_params
+config['velocity']['A0']               = 2.140373e-7
+config['velocity']['r']                = 0.0
+config['velocity']['beta0']            = sqrt((1*2.140373e-7*1000)**-1.0)
+config['velocity']['approximation']    = 'fo'
+config['free_surface']['on']           = True
+config['free_surface']['observed_smb'] = SMB
 
 T = TransientSolver(model, config)
 T.solve()

@@ -536,6 +536,94 @@ def default_nonlin_solver_params():
   stokes_params['newton_solver']['report']                  = True
   return stokes_params
 
+def default_config():
+  """
+  Returns a set of default configuration parameters to help users get started.
+  """
+  config = { 'mode'                         : 'steady',
+             't_start'                      : None,
+             't_end'                        : None,
+             'time_step'                    : None,
+             'output_path'                  : None,
+             'wall_markers'                 : [],
+             'periodic_boundary_conditions' : False,
+             'log'                          : True,
+             'coupled' : 
+             { 
+               'on'                  : False,
+               'inner_tol'           : 0.0,
+               'max_iter'            : 0
+             },
+             'velocity' : 
+             { 
+               'on'                  : True,
+               'newton_params'       : default_nonlin_solver_params(),
+               'viscosity_mode'      : 'isothermal',
+               'b_linear'            : None,
+               'use_T0'              : False,
+               'use_beta0'           : True,
+               'T0'                  : None,
+               'A0'                  : 1e-16,
+               'beta0'               : 1e3,
+               'init_beta_from_U_ob' : False,
+               'U_ob'                : None,
+               'r'                   : 0.0,
+               'E'                   : 1.0,
+               'approximation'       : 'fo',
+               'boundaries'          : None,
+               'u_lat_boundary'      : None,
+               'v_lat_boundary'      : None,
+               'log'                 : True
+             },
+             'enthalpy' : 
+             { 
+               'on'                  : False,
+               'use_surface_climate' : False,
+               'T_surface'           : None,
+               'q_geo'               : None,
+               'lateral_boundaries'  : None,
+               'log'                 : True 
+             },
+             'free_surface' :
+             { 
+               'on'                  : False,
+               'lump_mass_matrix'    : False,
+               'use_pdd'             : False,
+               'observed_smb'        : None,
+               'use_shock_capturing' : False,
+               'thklim'              : 10.0,
+               'static_boundary_conditions' : False
+             },  
+             'age' : 
+             { 
+               'on'                  : False,
+               'use_smb_for_ela'     : True,
+               'ela'                 : None,
+             },
+             'surface_climate' : 
+             { 
+               'on'                  : False,
+               'T_ma'                : None,
+               'T_ju'                : None,
+               'beta_w'              : None,
+               'sigma'               : None,
+               'precip'              : None
+             },
+             'adjoint' :
+             { 
+               'alpha'               : 0.0,
+               'gamma1'              : 1.0,
+               'gamma2'              : 100.0,
+               'max_fun'             : 20,
+               'objective_function'  : 'logarithmic',
+               'surface_integral'    : 'grounded',
+               'bounds'              : None,
+               'control_variable'    : None,
+               'regularization_type' : 'Tikhonov'
+             }}
+  return config
+
+
 
 def calculate_vertical_average(model,u):
   """

@@ -102,8 +102,8 @@ class SteadySolver(object):
       # Solve velocity
       if config['velocity']['on']:
         self.velocity_instance.solve()
-        U = project(as_vector([model.u, model.v, model.w]))
         if config['velocity']['log']:
+          U = project(as_vector([model.u, model.v, model.w]))
           if self.model.MPI_rank==0:
             s    = '::: saving velocity U.pvd file :::'
             text = colored(s, 'blue')
@@ -116,7 +116,6 @@ class SteadySolver(object):
               text = colored(s, 'blue')
               print text
             File(outpath + 'P.pvd') << project(model.P, model.Q)
-        model.print_min_max(U, 'U')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -129,10 +128,6 @@ class SteadySolver(object):
           File(outpath + 'T.pvd')  << model.T   # save temperature
           File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
           File(outpath + 'W.pvd')  << model.W   # save water content
-        model.print_min_max(model.H,  'H')
-        model.print_min_max(model.T,  'T')
-        model.print_min_max(model.Mb, 'Mb')
-        model.print_min_max(model.W,  'W')
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -151,7 +146,6 @@ class SteadySolver(object):
     # Solve age equation
     if config['age']['on']:
       self.age_instance.solve()
-      model.print_min_max(model.age, 'age')
       if config['log']: 
         if self.model.MPI_rank==0:
           s    = '::: saving age age.pvd file :::'

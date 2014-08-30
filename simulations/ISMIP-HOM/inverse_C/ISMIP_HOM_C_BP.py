@@ -4,8 +4,7 @@ from varglas.physical_constants import IceParameters
 from varglas.helper             import default_nonlin_solver_params, \
                                        default_config
 from scipy                      import random
-from fenics                     import set_log_active, File, Expression, pi, \
-                                       sin, tan, parameters, project
+from fenics                     import *
 
 set_log_active(True)
 
@@ -35,7 +34,7 @@ nparams = default_nonlin_solver_params()
 nparams['newton_solver']['linear_solver']           = 'mumps'
 nparams['newton_solver']['preconditioner']          = 'default'
 nparams['newton_solver']['relaxation_parameter']    = 0.8
-nparams['newton_solver']['maximum_iterations']      = 20
+nparams['newton_solver']['maximum_iterations']      = 16
 nparams['newton_solver']['relative_tolerance']      = 1e-5
 nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
@@ -46,32 +45,37 @@ config['periodic_boundary_conditions']  = True
 config['velocity']['newton_params']     = nparams
 config['velocity']['beta0']             = Beta
 config['adjoint']['objective_function'] = 'linear'
-config['adjoint']['bounds']             = (0.0, 4000.0)
+config['adjoint']['bounds']             = (0.0, 500.0)
 config['adjoint']['control_variable']   = model.beta
 
 F = SteadySolver(model,config)
 F.solve()
 
-File('results/beta2_obs.pvd') << model.beta
+File('results/beta_true.pvd') << model.beta
 
-u_o = project(model.u, model.Q).vector().array()
-v_o = project(model.v, model.Q).vector().array()
-U_e = 10.0
-
-model.print_min_max(u_o, 'u_o')
-model.print_min_max(v_o, 'v_o')
+u_o = model.u.vector().array()
+v_o = model.v.vector().array()
+U_e = 5.0
 
 config['output_path'] = './results/00/'
+#model.eps_reg = 1e-5
 
 A = AdjointSolver(model,config)
 
 for i in range(1):
-  config['output_path']   = './results/%02i/' % i
-  model.assign_variable(model.beta, 1000.0)
   u_error = U_e*random.randn(len(u_o))
   v_error = U_e*random.randn(len(v_o))
   u_obs   = u_o + u_error
   v_obs   = v_o + v_error
+  u_obs_f = Function(model.Q)
+  v_obs_f = Function(model.Q)
+  model.assign_variable(u_obs_f, u_obs)
+  model.assign_variable(v_obs_f, v_obs)
+  U_ob    = project(sqrt(u_obs_f**2 + v_obs_f**2), model.Q)
+  config['output_path']   = './results/%02i/' % i
+  config['velocity']['init_beta_from_U_ob'] = True
+  config['velocity']['U_ob']                = U_ob
+  #model.assign_variable(model.beta, sqrt(1000.0))
   A.set_target_velocity(u=u_obs, v=v_obs)
   A.solve()
 

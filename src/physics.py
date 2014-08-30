@@ -394,6 +394,11 @@ class VelocityStokes(object):
       print text
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
+    model.u, model.v, model.w = model.U.split(True)
+    
+    model.print_min_max(model.u, 'u')
+    model.print_min_max(model.v, 'v')
+    model.print_min_max(model.w, 'w')
 
 
 class VelocityBP(object):
@@ -716,7 +721,7 @@ class VelocityBP(object):
     model.Pb     = Pb
     model.A      = A
     model.T      = T
-    model.beta  = beta
+    model.beta   = beta
     model.E      = E
     model.u      = u
     model.v      = v
@@ -752,8 +757,6 @@ class VelocityBP(object):
       v_t = config['velocity']['v_lat_boundary']
       self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 4))
       self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 4))
-      self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 6))
-      self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 6))
     
     # solve nonlinear system :
     if self.model.MPI_rank==0:
@@ -762,6 +765,9 @@ class VelocityBP(object):
       print text
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
           solver_parameters = self.newton_params)
+    model.u,model.v = model.U.split(True)
+    model.print_min_max(model.u, 'u')
+    model.print_min_max(model.v, 'v')
 
     
     # solve for vertical velocity :
@@ -770,6 +776,7 @@ class VelocityBP(object):
       text = colored(s, 'cyan')
       print text
     solve(self.aw == self.Lw, model.w)
+    model.print_min_max(model.w, 'w')
     
 
 class Enthalpy(object):
@@ -1223,6 +1230,12 @@ class Enthalpy(object):
 
     # update melt-rate :
     model.assign_variable(model.Mb, Mb_n)
+    
+    # print the min/max values to the screen :    
+    model.print_min_max(model.H,  'H')
+    model.print_min_max(model.T,  'T')
+    model.print_min_max(model.Mb, 'Mb')
+    model.print_min_max(model.W,  'W')
 
 
 class FreeSurface(object):
@@ -1708,6 +1721,7 @@ class Age(object):
       text = colored(s, 'cyan')
       print text
     solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
+    model.print_min_max(model.age, 'age')
 
 
 class VelocityBalance(object):

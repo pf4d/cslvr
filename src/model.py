@@ -499,13 +499,10 @@ class Model(object):
     R  = dot(Rz, dot(M, Rz.T))
     return R
 
-  def normalize_vector(self, U, Q='self'):
+  def norm(self, U):
     """
-    Create a normalized vector of the UFL vector <U>.
+    returns the norm of vector <U>.
     """
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-
     # iterate through each component and convert to array :
     U_v = []
     for u in U:
@@ -516,6 +513,17 @@ class Model(object):
 
     # calculate the norm :
     norm_u = np.sqrt(sum(U_v**2))
+    
+    return norm_u
+
+  def normalize_vector(self, U, Q='self'):
+    """
+    Create a normalized vector of the UFL vector <U>.
+    """
+    if type(Q) != FunctionSpace:
+      Q = self.Q
+
+    norm_u = self.norm(U)
     
     # normalize the vector :
     U_v /= norm_u
@@ -904,10 +912,11 @@ class Model(object):
       else:
         print "print_min_max function requires a Vector, Function, array," \
               + " or Indexed, not %s." % type(u)
-        exit(1)
+        uMin = uMax = 0.0
       s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
       text = colored(s, 'yellow')
       print text
+
 
   def assign_variable(self, u, var):
     """
@@ -1001,6 +1010,7 @@ class Model(object):
     self.P             = Function(self.Q)
     self.Tstar         = Function(self.Q)
     self.W             = Function(self.Q)
+    self.W_r           = Function(self.Q)
     self.Vd            = Function(self.Q)
     self.Pe            = Function(self.Q)
     self.Sl            = Function(self.Q)
@@ -1008,6 +1018,9 @@ class Model(object):
     self.Nc            = Function(self.Q)
     self.Pb            = Function(self.Q)
     self.Lsq           = Function(self.Q)
+    self.a_T           = Function(self.Q)
+    self.Q_T           = Function(self.Q)
+    self.w_T           = Function(self.Q)
     
     # Enthalpy model
     self.H_surface     = Function(self.Q)
@@ -1026,6 +1039,7 @@ class Model(object):
     self.T0            = Function(self.Q) # None
     self.h_i           = Function(self.Q) # None
     self.kappa         = Function(self.Q) # None
+    self.Tstar         = self.T + self.gamma * (self.S - self.x[2])
 
     # free surface model :
     self.dSdt          = Function(self.Q_flat)

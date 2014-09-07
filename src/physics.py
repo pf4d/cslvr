@@ -274,7 +274,7 @@ class VelocityStokes(object):
       a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
       w_T   = conditional( lt(W,     0.01),   1,            0.01/W)
-      b     = ( E * (a_T * (1 + w_T*181.25*W)) \
+      b     = ( E * (a_T * (1 + 181.25*W)) \
                 * exp( -Q_T / (R * Tstar)) )**(-1/n)
       b_gnd = b
       b_shf = b
@@ -538,11 +538,12 @@ class VelocityBP(object):
     T             = model.T
     gamma         = model.gamma
     S             = model.S
+    Tstar         = model.Tstar
     B             = model.B
     H             = S - B
     x             = model.x
     E             = model.E
-    W             = model.W
+    W             = model.W_r
     R             = model.R
     epsdot        = model.epsdot
     eps_reg       = model.eps_reg
@@ -569,13 +570,18 @@ class VelocityBP(object):
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
+      Tstar = T + gamma*(S - x[2])
 
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_U_ob']:
       U_ob     = config['velocity']['U_ob']
-      U_mag    = sqrt(inner(U_ob, U_ob) + DOLFIN_EPS)
-      S_mag    = sqrt(inner(grad(S), grad(S)) + DOLFIN_EPS)
-      beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag + 0.1)), Q)
+      gradS    = project(grad(S))
+      U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
+      U_mag_v  = U_mag.vector().array()
+      U_mag_v[U_mag_v < 1.0] = 1.0
+      model.assign_variable(U_mag, U_mag_v)
+      S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
+      beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag)), Q)
       beta_0_v = beta_0.vector().array()
       beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
       model.assign_variable(beta, beta_0_v)
@@ -602,9 +608,9 @@ class VelocityBP(object):
     model.U  = Function(Q2)
     U        = model.U 
 
-    phi, psi = split(Phi)
-    du,  dv  = split(dU)
-    u,   v   = split(U)  # x,y velocity components
+    phi, psi = Phi
+    du,  dv  = dU
+    u,   v   = U
 
     # vertical velocity components :
     chi      = TestFunction(Q)
@@ -653,21 +659,29 @@ class VelocityBP(object):
       b_gnd = b
     
     elif config['velocity']['viscosity_mode'] == 'full':
-      # Define pressure corrected temperature
-      Tstar = T + gamma * (S - x[2])
-       
       # Define ice hardness parameterization :
       a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
       w_T   = conditional( lt(W,     0.01),   1,            0.01/W)
-      b     = ( E * (a_T * (1 + w_T*181.25*W)) \
+      #a_T     = model.a_T
+      #Q_T     = model.Q_T
+      #a_T_v   = a_T.vector().array()
+      #Q_T_v   = Q_T.vector().array()
+      #Tstar_v = project(Tstar).vector().array()
+      #a_T_v[Tstar_v <  263.15] = 1.1384496e-5
+      #a_T_v[Tstar_v >= 263.15] = 5.45e10
+      #Q_T_v[Tstar_v <  263.15] = 6e4
+      #Q_T_v[Tstar_v >= 263.15] = 13.9e4
+      #model.assign_variable(a_T, a_T_v)
+      #model.assign_variable(Q_T, Q_T_v)
+      b     = ( E * (a_T * (1 + 181.25*W)) \
                 * exp( -Q_T / (R * Tstar)) )**(-1/n)
       b_gnd = b
       b_shf = b
     
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-            "'isothermal', or 'full'."
+            "'isothermal', 'b_control', 'constant_b', or 'full'."
 
     # second invariant of the strain rate tensor squared :
     term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
@@ -917,6 +931,7 @@ class Enthalpy(object):
     H0          = model.H0
     n           = model.n
     b_gnd       = model.b_gnd
+    b_gnd       = model.b_gnd
     b_shf       = model.b_shf
     Tstar       = model.Tstar
     T           = model.T
@@ -1002,6 +1017,7 @@ class Enthalpy(object):
 
     # Strain heating = stress*strain
     Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
 
     # Different diffusion coefficent values for temperate and cold ice.  This
     # nonlinearity enters as a part of the Picard iteration between velocity
@@ -1021,17 +1037,19 @@ class Enthalpy(object):
 
       # necessary quantities for streamline upwinding :
       h      = CellSize(mesh)
-      vnorm  = sqrt(dot(U, U) + 1.0)
+      vnorm  = sqrt(dot(U, U) + 1e-1)
+       
       T_c    = conditional( lt(vnorm, 8), 0.0, 1.0 )
 
       # skewed test function in areas with high velocity :
-      psihat = psi + T_c * h/(6*vnorm) * dot(U, grad(psi))
+      psihat = psi + h/(vnorm) * dot(U, grad(psi))
 
       # residual of model :
       self.F = + rho * dot(U, grad(dH)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(dH)) * dx \
                - (q_geo + q_friction) * psihat * dGnd \
-               - Q_s_gnd * psihat * dx_g
+               - Q_s_gnd * psihat * dx_g \
+               - Q_s_shf * psihat * dx_s
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
@@ -1045,8 +1063,9 @@ class Enthalpy(object):
       U = as_vector([uhat, vhat, what - mhat])
 
       h      = CellSize(mesh)
-      vnorm  = sqrt(dot(U,U) + DOLFIN_EPS)
-      psihat = psi + h/(2*vnorm) * dot(U, grad(psi))
+      vnorm  = sqrt(dot(U,U) + 1.0)
+      T_c    = conditional( lt(vnorm, 8), 0.0, 1.0 )
+      psihat = psi + T_c * h/(6*vnorm) * dot(U, grad(psi))
 
       theta = 0.5
       # Crank Nicholson method
@@ -1057,17 +1076,25 @@ class Enthalpy(object):
                + rho * dot(U, grad(Hmid)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(Hmid)) * dx \
                - (q_geo + q_friction) * psi * dGnd \
-               - Q_s_gnd * psihat * dx_g
+               - Q_s_gnd * psihat * dx_g \
+               - Q_s_shf * psihat * dx_s
 
       self.a = lhs(self.F)
       self.L = rhs(self.F)
 
-    kappa_melt = conditional( ge(H, h_i), 0, kappa)
+    #kappa_melt = conditional( ge(H, h_i), 0, kappa)
+    H_v                        = H.vector().array()
+    h_i_v                      = project(h_i).vector().array()
+    kappa_melt                 = Function(Q)
+    kappa_melt_v               = kappa_melt.vector().array()
+    kappa_melt_v[H_v >= h_i_v] = 0
+    kappa_melt_v[H_v <  h_i_v] = k/(rho*C)
+    model.assign_variable(kappa_melt, kappa_melt_v)
 
     # Form representing the basal melt rate
     vec   = as_vector([B.dx(0), B.dx(1), -1])
-    term  = q_geo - (rho * kappa_melt * dot(grad(H), vec))
-    Mb    = (q_friction + term) / (L * rho)
+    term  = q_friction + q_geo - (rho * kappa_melt * dot(grad(H), vec))
+    Mb    = term / (L * rho)
 
     model.T_surface = T_surface
     model.q_geo     = q_geo
@@ -1177,9 +1204,13 @@ class Enthalpy(object):
     h_i       = model.h_i
     T         = model.T
     W         = model.W
+    W_r       = model.W_r
     Mb        = self.Mb
     L         = model.L
     cold      = model.cold
+    a_T       = model.a_T
+    Q_T       = model.Q_T
+    Tstar     = model.Tstar
 
     # Surface boundary condition
     H_surface = project( (T_surface - T0) * C + h_i )
@@ -1194,11 +1225,11 @@ class Enthalpy(object):
     if model.mask != None:
       self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
       self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 6) )
-   
+    
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
-      
+    
     # solve the linear equation for enthalpy :
     if self.model.MPI_rank==0:
       s    = "::: solving enthalpy :::"
@@ -1225,11 +1256,27 @@ class Enthalpy(object):
 
     # update water content :
     WW = W_n.vector().array()
-    WW[WW < 0] = 0
+    WW[WW < 0]    = 0
     model.assign_variable(W, WW)
+    W_r_v  = W_r.vector().array()
+    W_r_v[W_r_v > 0.01] = 0.01
+    model.assign_variable(W_r, W_r_v)
 
     # update melt-rate :
     model.assign_variable(model.Mb, Mb_n)
+      
+    #a_T = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
+    #Q_T = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
+    
+    #a_T_v   = a_T.vector().array()
+    #Q_T_v   = Q_T.vector().array()
+    #Tstar_v = project(Tstar).vector().array()
+    #a_T_v[Tstar_v <  263.15] = 1.1384496e-5
+    #a_T_v[Tstar_v >= 263.15] = 5.45e10
+    #Q_T_v[Tstar_v <  263.15] = 6e4
+    #Q_T_v[Tstar_v >= 263.15] = 13.9e4
+    #model.assign_variable(a_T, a_T_v)
+    #model.assign_variable(Q_T, Q_T_v)
     
     # print the min/max values to the screen :    
     model.print_min_max(model.H,  'H')

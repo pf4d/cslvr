@@ -2,7 +2,7 @@ from fenics      import *
 from ufl.indexed import Indexed
 from termcolor   import colored, cprint
 import numpy         as np
-from abc import ABCMeta, abstractmethod
+from abc         import ABCMeta, abstractmethod
 
 class Model(object):
   """ 
@@ -461,7 +461,7 @@ class Model(object):
     phi = TestFunction(Q)
     v   = TrialFunction(Q)
     a   = v.dx(d) * phi * dx
-    L   = DOLFIN_EPS * phi * dx  # really close to zero to fool FFC
+    L   = DOLFIN_EPS * phi * dx
     bcs = []
     if type(b) != list:
       b = [b]
@@ -477,14 +477,18 @@ class Model(object):
     """
     if type(Q) != FunctionSpace:
       Q = self.Q
-    ff     = self.ff                       # facet function defines boundaries
-    phi    = TestFunction(Q)               # test function
-    v      = TrialFunction(Q)              # trial function
-    bc     = DirichletBC(Q, 0.0, ff, 3)    # integral is zero on bed (ff = 3) 
-    a      = v.dx(2) * phi * dx            # rhs
-    L      = u * phi * dx                  # lhs
-    v      = Function(Q)                   # solution function
-    solve(a == L, v, bc)                   # solve
+    ff  = self.ff
+    phi = TestFunction(Q)
+    v   = TrialFunction(Q)
+    # integral is zero on bed (ff = 3,5) 
+    bcs = []
+    bcs.append(DirichletBC(Q, 0.0, ff, 3))
+    if self.mask != None:
+      bcs.append(DirichletBC(Q, 0.0, ff, 5))
+    a      = v.dx(2) * phi * dx
+    L      = u * phi * dx
+    v      = Function(Q)
+    solve(a == L, v, bcs)
     return v
 
   def rotate(self, M, theta):
@@ -514,7 +518,7 @@ class Model(object):
     # calculate the norm :
     norm_u = np.sqrt(sum(U_v**2))
     
-    return norm_u
+    return U_v, norm_u
 
   def normalize_vector(self, U, Q='self'):
     """
@@ -523,7 +527,7 @@ class Model(object):
     if type(Q) != FunctionSpace:
       Q = self.Q
 
-    norm_u = self.norm(U)
+    U_v, norm_u = self.norm(U)
     
     # normalize the vector :
     U_v /= norm_u
@@ -990,6 +994,9 @@ class Model(object):
       self.B           = interpolate(self.B_ex, self.Q_non_periodic)
       self.Shat        = Function(self.Q_flat_non_periodic)
     
+    # P1 vector function space :
+    self.V             = VectorFunctionSpace(self.mesh, "CG", 1)
+    
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
     self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
@@ -1024,6 +1031,7 @@ class Model(object):
     
     # Enthalpy model
     self.H_surface     = Function(self.Q)
+    self.H_float       = Function(self.Q)
     self.H             = Function(self.Q)
     self.T             = Function(self.Q)
     self.W             = Function(self.Q)
@@ -1092,7 +1100,8 @@ class Model(object):
 class BoundaryMarker(object):
     __metaclass__ = ABCMeta
 
-    """ Takes in a facet, returns true if the facet should be marked and false if
+    """ 
+    Takes in a facet, returns true if the facet should be marked and false if
     otherwise.
     Inputs: 
     f : A facet """

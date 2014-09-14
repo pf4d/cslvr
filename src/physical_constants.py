@@ -55,7 +55,7 @@ class IceParameters(object):
     d_params = \
     {'eps_reg': (1e-15,   'strain rate regularization parameter','t^{-1}'),
      'n'      : (3.0,     'viscosity nonlinearity parameter','dimensionless'),
-     'rho'    : (910,     'ice density','kg m^{-3}'),
+     'rho'    : (917,     'ice density','kg m^{-3}'),
      'rho_w'  : (1000,    'water density', 'kg m^{-3}'),
      'g'      : (9.81,    'gravitational acceleration','m s^{-2}'),
      'a0'     : (5.45e10, 'ice hardness limit','a^{-1} Pa^{-1}'),

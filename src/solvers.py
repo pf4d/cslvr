@@ -675,52 +675,11 @@ class StokesBalanceSolver(object):
     self.config = config
     
     if self.model.MPI_rank==0:
-      s    = "::: initializing 'stokes-balance' solver :::"
+      s    = "::: initializing '3D-stokes-balance' solver :::"
       text = colored(s, 'blue')
       print text
     
-    Q       = model.Q
-    u       = model.u
-    v       = model.v
-    w       = model.w
-    S       = model.S
-    B       = model.B
-    H       = S - B
-    eta     = model.eta
-    beta    = model.beta
-    
-    ## get the values at the bed :
-    #beta_e  = model.extrude(beta, 3, 2, Q)
-    #u_b_e   = model.extrude(u,    3, 2, Q)
-    #v_b_e   = model.extrude(v,    3, 2, Q)
-    #
-    ## vertically average :
-    #etabar = model.vert_integrate(eta, Q)
-    #etabar = project(model.extrude(etabar, 2, 2, Q) / H)
-    #ubar   = model.vert_integrate(u, Q)
-    #ubar   = project(model.extrude(ubar, 2, 2, Q) / H)
-    #ubar_d = model.vert_integrate(u - u_b_e, Q)
-    #ubar_d = model.extrude(ubar_d, 2, 2, Q)
-    #vbar   = model.vert_integrate(v, Q)
-    #vbar   = project(model.extrude(vbar, 2, 2, Q) / H)
-    #vbar_d = model.vert_integrate(v - v_b_e, Q)
-    #vbar_d = model.extrude(vbar_d, 2, 2, Q)
-
-    ## set the model variables so the physics object can solve it :
-    #model.beta_e = beta_e
-    #model.u_b_e   = u_b_e
-    #model.v_b_e   = v_b_e
-    #model.etabar  = etabar
-    #model.ubar    = ubar
-    #model.vbar    = vbar
-    #model.ubar_d  = ubar_d
-    #model.vbar_d  = vbar_d
-    
-    # calculate the driving stress and basal drag once :
-    #model.tau_d   = model.calc_tau_drv(Q)
-    #model.tau_b   = model.calc_tau_bas(Q)
-
-    self.stress_balance_instance = StokesBalance3D_cartesian(model, config)
+    self.stress_balance_instance = StokesBalance3D(model, config)
 
   def solve(self):
     """ 
@@ -735,29 +694,22 @@ class StokesBalanceSolver(object):
     
     # calculate ubar, vbar :
     self.stress_balance_instance.solve()
-    model.print_min_max(model.ubar, 'ubar')
-    model.print_min_max(model.vbar, 'vbar')
-    model.print_min_max(model.wbar, 'wbar')
     if config['log']:
-      File(outpath + 'ubar.pvd') << project(model.ubar, model.Q)
-      File(outpath + 'vbar.pvd') << project(model.vbar, model.Q)
-      File(outpath + 'wbar.pvd') << project(model.wbar, model.Q)
+      U_s = as_vector([model.u_s, model.v_s])
+      File(outpath + 'U_s.pvd') << project(U_s)
     
     # solve for the stress balance given the appropriate vertically 
     # averaged velocities :
     self.stress_balance_instance.component_stress_stokes()
-    model.print_min_max(model.tau_dn,   'tau_dn')
-    model.print_min_max(model.tau_dt,   'tau_dt')
-    model.print_min_max(model.tau_bn,   'tau_bn')
-    model.print_min_max(model.tau_bt,   'tau_bt')
-    model.print_min_max(model.tau_nn,   'tau_nn')
-    model.print_min_max(model.tau_nt,   'tau_nt')
-    model.print_min_max(model.tau_tn,   'tau_tn')
-    model.print_min_max(model.tau_tt,   'tau_tt')
-    model.print_min_max(model.tau_totn, 'tau_totn')
-    model.print_min_max(model.tau_tott, 'tau_tott')
-    model.print_min_max(model.u_s,      'u_s')
-    model.print_min_max(model.v_s,      'v_s')
+    if config['log']: 
+      File(outpath + "memb_n.pvd")   << model.memb_n
+      File(outpath + "memb_t.pvd")   << model.memb_t
+      File(outpath + "membrane.pvd") << model.membrane
+      File(outpath + "driving.pvd")  << model.driving
+      File(outpath + "basal.pvd")    << model.basal
+      File(outpath + "basal_2.pvd")  << model.basal_2
+      File(outpath + "pressure.pvd") << model.pressure
+      File(outpath + "total.pvd")    << model.total
 
 
 

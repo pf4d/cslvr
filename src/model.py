@@ -344,6 +344,26 @@ class Model(object):
        containing model-relavent parameters
     """
     self.params = params
+      
+  def model.init_beta0(self, U_ob, gradS):
+    r"""
+    Init beta from :math:`\tau_b = \tau_d`, the shallow ice approximation, 
+    using the observed surface velocity <U_ob> as approximate basal 
+    velocity and <gradS> the projected surface gradient. i.e.,
+
+    .. math::
+    \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    
+    """
+    U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
+    U_mag_v  = U_mag.vector().array()
+    U_mag_v[U_mag_v < 0.5] = 0.5
+    self.assign_variable(U_mag, U_mag_v)
+    S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
+    beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag)), Q)
+    beta_0_v = beta_0.vector().array()
+    beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
+    model.assign_variable(beta, beta_0_v)
   
   def calc_thickness(self):
     """
@@ -384,28 +404,6 @@ class Model(object):
     tau = self.calc_tau(u)
     return tau - P*Identity(n)
  
-  def n_d_grad(self, u):
-    """
-    """
-    n     = u.shape()[0]
-    gradu = []
-    for i in range(n):
-      graduRow = []
-      for j in range(n):
-        graduRow.append(u[i].dx(j))
-      gradu.append(graduRow)
-    gradu = as_matrix(gradu)
-    return gradu
-  
-  def n_d_div(self, u):
-    """
-    """
-    n     = u.shape()[0]
-    divu  = 0.0
-    for i in range(n):
-      divu += u[i].dx(i)
-    return divu
-  
   def calc_tau(self):
     """
     Calculate the deviatoric stress tensor of velocity field U.
@@ -718,182 +716,6 @@ class Model(object):
  
     # return the values for further analysis :
     return tau_lon, tau_lat, tau_bas_n, tau_drv_n
-
-  def component_stress_stokes_c(self):
-    """
-    Calculate each of the component stresses which define the full stress
-    of the ice-sheet.
-    
-    RETURNS:
-      tau_lon - longitudinal stress field
-      tau_lat - lateral stress field
-      tau_bas - frictional sliding stress at the bed
-      tau_drv - driving stress of the system 
-    
-    Note: tau_drv = tau_lon + tau_lat + tau_bas
-    
-    """
-    if self.MPI_rank==0:
-      s    = "::: calculating 'stokes-balance' :::"
-      text = colored(s, 'magenta')
-      print text
-    out_dir = self.out_dir
-    Q       = self.Q
-    u       = self.u
-    v       = self.v
-    w       = self.w
-    S       = self.S
-    B       = self.B
-    H       = S - B
-    eta     = self.eta
-    rho     = self.rho
-    g       = self.g
-    
-    # create functions used to solve for velocity :
-    V        = MixedFunctionSpace([Q,Q])
-    dU       = TrialFunction(V)
-    du, dv   = split(dU)
-    Phi      = TestFunction(V)
-    phi, psi = split(Phi)
-    U_s      = Function(V)
-    u_s,v_s  = split(U_s)
-    
-    #===========================================================================
-    # driving stress (d) and basal drag (b) weak form :
-    tau_bx = - phi.dx(2) * eta * du.dx(2) * dx
-    tau_by = - psi.dx(2) * eta * dv.dx(2) * dx
-    tau_dx = phi * rho * g * S.dx(0) * dx
-    tau_dy = psi * rho * g * S.dx(1) * dx
-
-    # longitudinal and lateral drag weak form :
-    tau_xx = - phi.dx(0) * eta * (4*du.dx(0) + 2*dv.dx(1)) * dx
-    tau_xy = - phi.dx(1) * eta * (  du.dx(1) +   dv.dx(0)) * dx
-    tau_yx = - psi.dx(0) * eta * (  du.dx(1) +   dv.dx(0)) * dx
-    tau_yy = - psi.dx(1) * eta * (4*dv.dx(1) + 2*du.dx(0)) * dx
-  
-    # form residual in mixed space :
-    r1 = tau_xx + tau_xy + tau_bx - tau_dx
-    r2 = tau_yy + tau_yx + tau_by - tau_dy
-    r  = r1 + r2
-
-    # solve for u and v : 
-    solve(lhs(r) == rhs(r), U_s)
-    
-    #===========================================================================
-    # resolve with corrected velocities :
-    u_s = project(u_s)
-    v_s = project(v_s)
-
-    # trial and test functions for linear solve :
-    phi   = TestFunction(Q)
-    dtau  = TrialFunction(Q)
-    
-    # mass matrix :
-    M = assemble(phi*dtau*dx)
-    
-    # driving stress (d) and basal drag (b) weak form :
-    tau_bx = - phi.dx(2) * eta * u.dx(2) * dx
-    tau_by = - phi.dx(2) * eta * v.dx(2) * dx
-    tau_dx = phi * rho * g * S.dx(0) * dx
-    tau_dy = phi * rho * g * S.dx(1) * dx
-
-    # longitudinal and lateral drag weak form :
-    tau_xx = - phi.dx(0) * eta * (4*u.dx(0) + 2*v.dx(1)) * dx
-    tau_xy = - phi.dx(1) * eta * (  u.dx(1) +   v.dx(0)) * dx
-    tau_yx = - phi.dx(0) * eta * (  u.dx(1) +   v.dx(0)) * dx
-    tau_yy = - phi.dx(1) * eta * (4*v.dx(1) + 2*u.dx(0)) * dx
-    
-    # the residuals :
-    tau_totx = tau_xx + tau_xy + tau_bx - tau_dx
-    tau_toty = tau_yy + tau_yx + tau_by - tau_dy
-
-    # assemble the vectors :
-    tau_xx_v   = assemble(tau_xx)
-    tau_xy_v   = assemble(tau_xy)
-    tau_yx_v   = assemble(tau_yx)
-    tau_yy_v   = assemble(tau_yy)
-    tau_bx_v   = assemble(tau_bx)
-    tau_by_v   = assemble(tau_by)
-    tau_dx_v   = assemble(tau_dx)
-    tau_dy_v   = assemble(tau_dy)
-    tau_totx_v = assemble(tau_totx)
-    tau_toty_v = assemble(tau_toty)
-    
-    # solution functions :
-    tau_xx   = Function(Q)
-    tau_xy   = Function(Q)
-    tau_yx   = Function(Q)
-    tau_yy   = Function(Q)
-    tau_bx   = Function(Q)
-    tau_by   = Function(Q)
-    tau_dx   = Function(Q)
-    tau_dy   = Function(Q)
-    tau_totx = Function(Q)
-    tau_toty = Function(Q)
-    
-    # solve the linear system :
-    solve(M, tau_xx.vector(),   tau_xx_v)
-    solve(M, tau_xy.vector(),   tau_xy_v)
-    solve(M, tau_yx.vector(),   tau_yx_v)
-    solve(M, tau_yy.vector(),   tau_yy_v)
-    solve(M, tau_bx.vector(),   tau_bx_v)
-    solve(M, tau_by.vector(),   tau_by_v)
-    solve(M, tau_dx.vector(),   tau_dx_v)
-    solve(M, tau_dy.vector(),   tau_dy_v)
-    solve(M, tau_totx.vector(), tau_totx_v)
-    solve(M, tau_toty.vector(), tau_toty_v)
-
-    # integrate vertically and extrude the result :
-    tau_xx = self.vert_integrate(tau_xx)
-    tau_xx = project(self.extrude(tau_xx, 2, 2))
-    tau_xy = self.vert_integrate(tau_xy)
-    tau_xy = project(self.extrude(tau_xy, 2, 2))
-    tau_yx = self.vert_integrate(tau_yx)
-    tau_yx = project(self.extrude(tau_yx, 2, 2))
-    tau_yy = self.vert_integrate(tau_yy)
-    tau_yy = project(self.extrude(tau_yy, 2, 2))
-    tau_bx = self.vert_integrate(tau_bx)
-    tau_bx = project(self.extrude(tau_bx, 2, 2))
-    tau_by = self.vert_integrate(tau_by)
-    tau_by = project(self.extrude(tau_by, 2, 2))
-    tau_dx = self.vert_integrate(tau_dx)
-    tau_dx = project(self.extrude(tau_dx, 2, 2))
-    tau_dy = self.vert_integrate(tau_dy)
-    tau_dy = project(self.extrude(tau_dy, 2, 2))
-    tau_totx = self.vert_integrate(tau_totx)
-    tau_totx = project(self.extrude(tau_totx, 2, 2))
-    tau_toty = self.vert_integrate(tau_toty)
-    tau_toty = project(self.extrude(tau_toty, 2, 2))
-
-    # calculate the magnitudes :
-    tau_lon = project(sqrt(tau_xx**2 + tau_yy**2))
-    tau_lat = project(sqrt(tau_xy**2 + tau_yx**2))
-    tau_drv = project(sqrt(tau_dx**2 + tau_dy**2))
-    tau_bas = project(sqrt(tau_bx**2 + tau_by**2))
-
-    # output calculated fields :
-    File(out_dir + 'tau_lon.pvd')  << tau_lon
-    File(out_dir + 'tau_lat.pvd')  << tau_lat
-    File(out_dir + 'tau_drv.pvd')  << tau_drv
-    File(out_dir + 'tau_bas.pvd')  << tau_bas
-
-    # output the files to the specified directory :
-    File(out_dir + 'tau_xx.pvd')   << tau_xx
-    File(out_dir + 'tau_xy.pvd')   << tau_xy
-    File(out_dir + 'tau_yx.pvd')   << tau_yx
-    File(out_dir + 'tau_yy.pvd')   << tau_yy
-    File(out_dir + 'tau_bx.pvd')   << tau_bx
-    File(out_dir + 'tau_dx.pvd')   << tau_dx
-    File(out_dir + 'tau_totx.pvd') << tau_totx
-    File(out_dir + 'tau_toty.pvd') << tau_toty
-    File(out_dir + 'u_s.pvd')      << u_s
-    File(out_dir + 'v_s.pvd')      << v_s
-
-    output = (tau_xx, tau_xy, tau_yx, tau_yy, tau_bx, tau_by, tau_dx, tau_by,
-              tau_totx, tau_toty)
-   
-    # return the functions for further analysis :
-    return output
 
   def print_min_max(self, u, title):
     """

@@ -185,16 +185,7 @@ class VelocityStokes(object):
 
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_U_ob']:
-      U_ob     = config['velocity']['U_ob']
-      U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
-      U_mag_v  = U_mag.vector().array()
-      U_mag_v[U_mag_v < 0.5] = 0.5
-      model.assign_variable(U_mag, U_mag_v)
-      S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-      beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag)), Q)
-      beta_0_v = beta_0.vector().array()
-      beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
-      model.assign_variable(beta, beta_0_v)
+      model.init_beta0(U_ob, gradS)
     if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
    
@@ -256,12 +247,6 @@ class VelocityStokes(object):
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      #b_shf.vector()[model.gnd_dofs] = 0
-      #b_gnd.vector()[model.shf_dofs] = 0
-      #V       = FunctionSpace(mesh, 'DG', 0)
-      #b       = Function(V)
-      #b_e     = Expression('b', b = b_shf)
-      #b       = project(b_e, V)
       b       = Function(Q)
       b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
@@ -273,9 +258,9 @@ class VelocityStokes(object):
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define ice hardness parameterization :
-      a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
-      w_T   = conditional( lt(W,     0.01),   1,            0.01/W)
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      w_T   = conditional( lt(W,   0.01),   1,          0.01/W)
       b     = ( E * (a_T * (1 + 181.25*W)) \
                 * exp( -Q_T / (R * T)) )**(-1/n)
       b_gnd = b
@@ -538,7 +523,6 @@ class VelocityBP(object):
     b             = model.b
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
-    Tstar         = model.Tstar
     T             = model.T
     gamma         = model.gamma
     S             = model.S
@@ -576,7 +560,6 @@ class VelocityBP(object):
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
-      Tstar = T + gamma*(S - x[2])
 
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_U_ob']:
@@ -648,12 +631,6 @@ class VelocityBP(object):
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      #b_shf.vector()[model.gnd_dofs] = 0
-      #b_gnd.vector()[model.shf_dofs] = 0
-      #V       = FunctionSpace(mesh, 'DG', 0)
-      #b       = Function(V)
-      #b_e     = Expression('b', b = b_shf)
-      #b       = project(b_e, V)
       b       = Function(Q)
       b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
@@ -665,9 +642,9 @@ class VelocityBP(object):
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define ice hardness parameterization :
-      a_T   = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
-      w_T   = conditional( lt(W,     0.01),   1,            0.01/W)
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      w_T   = conditional( lt(W, 0.01),   1,            0.01/W)
       #a_T     = model.a_T
       #Q_T     = model.Q_T
       #a_T_v   = a_T.vector().array()
@@ -679,8 +656,7 @@ class VelocityBP(object):
       #Q_T_v[T_v >= 263.15] = 13.9e4
       #model.assign_variable(a_T, a_T_v)
       #model.assign_variable(Q_T, Q_T_v)
-      b     = ( E * (a_T * (1 + 181.25*W)) \
-                * exp( -Q_T / (R * T)) )**(-1/n)
+      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)))**(-1/n)
       b_gnd = b
       b_shf = b
     
@@ -1573,15 +1549,16 @@ class AdjointVelocityBP(object):
     # form regularization term 'R' :
     N = FacetNormal(model.mesh)
     for a,c in zip(alpha,control):
-      t = Constant(0.5)
       if isinstance(a, (float,int)):
-        a = Constant(a)
+        a = Constant(0.5*a)
+      else:
+        a = Constant(0.5)
       if config['adjoint']['regularization_type'] == 'TV':
-        R = a * t * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+        R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        R = a * t * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
+        R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
         print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to no regularization."
@@ -2337,7 +2314,7 @@ class StokesBalance3D(object):
     dU       = TrialFunction(Q2)
     du, dv   = split(dU)
     
-    U        = as_vector([project(u), project(v)])
+    U        = as_vector([u, v])
     U_nm     = model.normalize_vector(U)
     U        = as_vector([U[0],     U[1],  ])
     U_n      = as_vector([U_nm[0],  U_nm[1]])

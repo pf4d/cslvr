@@ -40,27 +40,29 @@ nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
 
 config = default_config()
-config['output_path']                   = './results/initial/'
-config['periodic_boundary_conditions']  = True
-config['velocity']['newton_params']     = nparams
-config['velocity']['beta0']             = Beta
-config['adjoint']['objective_function'] = 'linear'
-config['adjoint']['bounds']             = (0.0, 500.0)
-config['adjoint']['control_variable']   = model.beta
+config['output_path']                     = './results/initial/'
+config['periodic_boundary_conditions']    = True
+config['velocity']['newton_params']       = nparams
+config['velocity']['beta0']               = Beta
+config['adjoint']['objective_function']   = 'linear'
+config['adjoint']['bounds']               = (0.0, 500.0)
+config['adjoint']['control_variable']     = model.beta
+config['adjoint']['alpha']                = 1.0
+config['adjoint']['max_fun']              = 20
 
 F = SteadySolver(model,config)
 F.solve()
 
 File('results/beta_true.pvd') << model.beta
+File('results/U_true.pvd')    << project(as_vector([model.u, model.v, model.w]))
 
 u_o = model.u.vector().array()
 v_o = model.v.vector().array()
 U_e = 5.0
 
-config['output_path'] = './results/00/'
-#model.eps_reg = 1e-5
-
-A = AdjointSolver(model,config)
+config['velocity']['use_beta0']           = False
+#config['velocity']['init_beta_from_U_ob'] = True
+model.eps_reg = 1e-5
 
 for i in range(1):
   u_error = U_e*random.randn(len(u_o))
@@ -72,10 +74,12 @@ for i in range(1):
   model.assign_variable(u_obs_f, u_obs)
   model.assign_variable(v_obs_f, v_obs)
   U_ob    = project(sqrt(u_obs_f**2 + v_obs_f**2), model.Q)
-  config['output_path']   = './results/%02i/' % i
-  config['velocity']['init_beta_from_U_ob'] = True
-  config['velocity']['U_ob']                = U_ob
-  #model.assign_variable(model.beta, sqrt(1000.0))
+  outpath = './results/%02i/' % i
+  config['output_path']      = outpath
+  config['velocity']['U_ob'] = U_ob
+  
+  A = AdjointSolver(model,config)
+  File(outpath + 'beta_0.pvd') << model.beta
   A.set_target_velocity(u=u_obs, v=v_obs)
   A.solve()
 

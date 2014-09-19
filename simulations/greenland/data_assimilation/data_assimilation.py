@@ -1,4 +1,4 @@
-mport sys
+import sys
 import varglas.solvers            as solvers
 import varglas.physical_constants as pc
 import varglas.model              as model
@@ -31,7 +31,7 @@ fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
 rignot   = DataFactory.get_gre_rignot_updated()
 
 # define the mesh :
-mesh = MeshFactory.get_greenland_coarse()
+mesh = MeshFactory.get_greenland_detailed()
 
 # create data objects to use with varglas :
 dsr     = DataInput(searise,  mesh=mesh)
@@ -143,20 +143,20 @@ File(out_dir + 'w.xml')     << model.w
 File(out_dir + 'beta.xml')  << model.beta
 File(out_dir + 'eta.xml')   << project(model.eta, model.Q)
 
-XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
-
-# save the state of the model :
-if i !=0: rw = 'a'
-else:     rw = 'w'
-f = HDF5File(mesh.mpi_comm(), out_dir + 'floating_shelves_0'+str(i)+'.h5', rw)
-f.write(model.mesh,  'mesh')
-f.write(model.beta,  'beta')
-f.write(model.Mb,    'Mb')
-f.write(model.T,     'T')
-f.write(model.S,     'S')
-f.write(model.B,     'B')
-f.write(model.U,     'U')
-f.write(model.eta,   'eta')
+#XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
+#
+## save the state of the model :
+#if i !=0: rw = 'a'
+#else:     rw = 'w'
+#f = HDF5File(mesh.mpi_comm(), out_dir + 'floating_shelves_0'+str(i)+'.h5', rw)
+#f.write(model.mesh,  'mesh')
+#f.write(model.beta,  'beta')
+#f.write(model.Mb,    'Mb')
+#f.write(model.T,     'T')
+#f.write(model.S,     'S')
+#f.write(model.B,     'B')
+#f.write(model.U,     'U')
+#f.write(model.eta,   'eta')
     
 tf = time()
 

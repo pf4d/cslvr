@@ -185,7 +185,8 @@ class VelocityStokes(object):
 
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_U_ob']:
-      model.init_beta0(U_ob, gradS)
+      U_ob = config['velocity']['U_ob']
+      model.init_beta0(beta, U_ob, r, gradS)
     if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
    
@@ -563,16 +564,8 @@ class VelocityBP(object):
 
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_U_ob']:
-      U_ob     = config['velocity']['U_ob']
-      U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
-      U_mag_v  = U_mag.vector().array()
-      U_mag_v[U_mag_v < 0.5] = 0.5
-      model.assign_variable(U_mag, U_mag_v)
-      S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-      beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag)), Q)
-      beta_0_v = beta_0.vector().array()
-      beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
-      model.assign_variable(beta, beta_0_v)
+      U_ob = config['velocity']['U_ob']
+      model.init_beta0(beta, U_ob, r, gradS)
     if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
    
@@ -663,6 +656,11 @@ class VelocityBP(object):
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
             "'isothermal', 'b_control', 'constant_b', or 'full'."
+   
+    # specify some other rate-factor on the shelf :
+    if config['velocity']['specify_b_shf']:
+      model.assign_variable(b_shf, config['velocity']['b_shf'])
+
 
     # second invariant of the strain rate tensor squared :
     term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
@@ -699,7 +697,6 @@ class VelocityBP(object):
    
     self.w_R = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
                (u*N[0] + v*N[1] + dw*N[2])*chi*dBed
-               #(u*B.dx(0) + v*B.dx(1) - dw)*chi*dBed
     
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)

@@ -345,7 +345,7 @@ class Model(object):
     """
     self.params = params
       
-  def model.init_beta0(self, U_ob, gradS):
+  def init_beta0(self, beta, U_ob, r, gradS):
     r"""
     Init beta from :math:`\tau_b = \tau_d`, the shallow ice approximation, 
     using the observed surface velocity <U_ob> as approximate basal 
@@ -355,6 +355,14 @@ class Model(object):
     \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
+    if self.MPI_rank==0:
+      s    = "::: initializing beta from U_ob :::"
+      text = colored(s, 'magenta')
+      print text
+    Q        = self.Q
+    rho      = self.rho
+    g        = self.g
+    H        = self.S - self.B
     U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
     U_mag_v  = U_mag.vector().array()
     U_mag_v[U_mag_v < 0.5] = 0.5
@@ -363,7 +371,7 @@ class Model(object):
     beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
-    model.assign_variable(beta, beta_0_v)
+    self.assign_variable(beta, beta_0_v)
   
   def calc_thickness(self):
     """

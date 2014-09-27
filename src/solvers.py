@@ -636,7 +636,7 @@ class AdjointSolver(object):
       
     # save the output :
     if self.model.MPI_rank==0:
-      s    = '::: saving adjoint beta, U_obs, and DSdt .pvd files :::'
+      s    = '::: saving adjoint beta, U_obs, U_adj, and DSdt .pvd files :::'
       text = colored(s, 'blue')
       print text
     U_obs = project(as_vector([model.u_o, model.v_o, 0]))
@@ -645,6 +645,7 @@ class AdjointSolver(object):
     self.file_b_pvd    << model.extrude(model.beta, [3,5], 2) 
     self.file_u_pvd    << U_obs
     self.file_dSdt_pvd << dSdt
+
 
 
 class BalanceVelocitySolver(object):

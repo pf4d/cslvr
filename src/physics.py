@@ -231,6 +231,16 @@ class VelocityStokes(object):
     dFlt     = ds(5)         # floating bed
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
+    
+    # initialize velocity to a previous solution :
+    if config['velocity']['use_U0']:
+      u0_f = Function(Q)
+      v0_f = Function(Q)
+      w0_f = Function(Q)
+      model.assign_variable(u0_f, config['velocity']['u0'])
+      model.assign_variable(v0_f, config['velocity']['v0'])
+      model.assign_variable(w0_f, config['velocity']['w0'])
+      model.assign_variable(U, project(as_vector([u0_f, v0_f, w0_f]), V))
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -544,6 +554,7 @@ class VelocityBP(object):
     Sl            = model.Sl
     Pb            = model.Pb
     beta          = model.beta
+    w             = model.w
     
     gradS         = project(grad(S),V)
     gradB         = project(grad(B),V)
@@ -568,7 +579,7 @@ class VelocityBP(object):
       model.init_beta0(beta, U_ob, r, gradS)
     if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
-   
+
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
 
@@ -607,6 +618,15 @@ class VelocityBP(object):
     dFlt     = ds(5)         # floating bed
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
+    
+    # initialize velocity to a previous solution :
+    if config['velocity']['use_U0']:
+      u0_f = Function(Q)
+      v0_f = Function(Q)
+      model.assign_variable(u0_f, config['velocity']['u0'])
+      model.assign_variable(v0_f, config['velocity']['v0'])
+      model.assign_variable(U, project(as_vector([u0_f, v0_f]), Q2))
+      model.assign_variable(w, config['velocity']['w0'])
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -656,12 +676,11 @@ class VelocityBP(object):
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
             "'isothermal', 'b_control', 'constant_b', or 'full'."
-   
-    # specify some other rate-factor on the shelf :
-    if config['velocity']['specify_b_shf']:
+
+    # initialize rate-factor on shelves :
+    if config['velocity']['use_b_shf0']:
       model.assign_variable(b_shf, config['velocity']['b_shf'])
-
-
+    
     # second invariant of the strain rate tensor squared :
     term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
                +        u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2
@@ -718,6 +737,7 @@ class VelocityBP(object):
     model.E      = E
     model.u      = u
     model.v      = v
+    model.w      = w
 
   def solve(self):
     """ 
@@ -1614,7 +1634,7 @@ class AdjointVelocityBP(object):
 
   def solve(self):
     """
-    Solves the bilinear residual created by differenciation of the 
+    Solves the bilinear residual created by differentiation of the 
     variational principle in combination with an objective function.
     """
     A = assemble(lhs(self.dI))

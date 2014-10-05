@@ -165,7 +165,6 @@ class VelocityStokes(object):
     rho           = model.rho
     rho_w         = model.rho_w
     g             = model.g
-    Vd            = model.Vd
     Pe            = model.Pe
     Sl            = model.Sl
     Pc            = model.Pc
@@ -217,9 +216,9 @@ class VelocityStokes(object):
     model.U              = Function(Q4)
     U                    = model.U
  
-    phi, psi, xsi, kappa = split(Phi)
-    du,  dv,  dw,  dP    = split(dU)
-    u,   v,   w,   P     = split(U)
+    phi, psi, xsi, kappa = Phi
+    du,  dv,  dw,  dP    = dU
+    u,   v,   w,   P     = U
 
     dx       = model.dx
     dx_s     = dx(1)
@@ -256,9 +255,11 @@ class VelocityStokes(object):
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
-      b_shf   = config['velocity']['b_shf']
-      b_gnd   = config['velocity']['b_gnd']
-      b       = Function(Q)
+      b_shf = Function(Q)
+      b_gnd = Function(Q)
+      model.assign_variable(b_shf, config['velocity']['b_shf'])
+      model.assign_variable(b_gnd, config['velocity']['b_gnd'])
+      b = Function(Q)
       b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
@@ -271,9 +272,7 @@ class VelocityStokes(object):
       # Define ice hardness parameterization :
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      w_T   = conditional( lt(W,   0.01),   1,          0.01/W)
-      b     = ( E * (a_T * (1 + 181.25*W)) \
-                * exp( -Q_T / (R * T)) )**(-1/n)
+      b     = ( E *(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd = b
       b_shf = b
     
@@ -292,7 +291,6 @@ class VelocityStokes(object):
     # 1) Viscous dissipation
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
     Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
-    Vd       = (2*n)/(n+1) * b     * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
     Pe     = rho * g * w
@@ -328,7 +326,6 @@ class VelocityStokes(object):
     model.b_gnd  = b_gnd
     model.Vd_shf = Vd_shf
     model.Vd_gnd = Vd_gnd
-    model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
     model.Pc     = Pc
@@ -541,6 +538,8 @@ class VelocityBP(object):
     H             = S - B
     x             = model.x
     E             = model.E
+    E_gnd         = model.E_gnd
+    E_shf         = model.E_shf
     W             = model.W_r
     R             = model.R
     epsdot        = model.epsdot
@@ -549,7 +548,6 @@ class VelocityBP(object):
     rho           = model.rho
     rho_w         = model.rho_w
     g             = model.g
-    Vd            = model.Vd
     Pe            = model.Pe
     Sl            = model.Sl
     Pb            = model.Pb
@@ -644,7 +642,7 @@ class VelocityBP(object):
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      b       = Function(Q)
+      b = Function(Q)
       b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
       b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
@@ -655,9 +653,6 @@ class VelocityBP(object):
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define ice hardness parameterization :
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      w_T   = conditional( lt(W, 0.01),   1,            0.01/W)
       #a_T     = model.a_T
       #Q_T     = model.Q_T
       #a_T_v   = a_T.vector().array()
@@ -669,9 +664,22 @@ class VelocityBP(object):
       #Q_T_v[T_v >= 263.15] = 13.9e4
       #model.assign_variable(a_T, a_T_v)
       #model.assign_variable(Q_T, Q_T_v)
-      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)))**(-1/n)
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd = b
       b_shf = b
+    
+    elif config['velocity']['viscosity_mode'] == 'E_control':
+      # Define ice hardness parameterization :
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      E_shf = config['velocity']['E_shf'] 
+      E_gnd = config['velocity']['E_gnd']
+      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      model.E_shf = E_shf
+      model.E_gnd = E_gnd
     
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
@@ -679,6 +687,7 @@ class VelocityBP(object):
 
     # initialize rate-factor on shelves :
     if config['velocity']['use_b_shf0']:
+      b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
     
     # second invariant of the strain rate tensor squared :
@@ -690,7 +699,6 @@ class VelocityBP(object):
     # 1) Viscous dissipation
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
     Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
-    Vd       = (2*n)/(n+1) * b     * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
     Pe       = rho * g * (u*gradS[0] + v*gradS[1])
@@ -727,7 +735,6 @@ class VelocityBP(object):
     model.b_gnd  = b_gnd
     model.Vd_shf = Vd_shf
     model.Vd_gnd = Vd_gnd
-    model.Vd     = Vd
     model.Pe     = Pe
     model.Sl     = Sl
     model.Pb     = Pb
@@ -1510,7 +1517,6 @@ class AdjointVelocityBP(object):
     Q        = model.Q
     Vd_shf   = model.Vd_shf
     Vd_gnd   = model.Vd_gnd
-    Vd       = model.Vd
     Pe       = model.Pe
     Sl       = model.Sl
     Pb       = model.Pb

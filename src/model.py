@@ -786,11 +786,11 @@ class Model(object):
       File(var) >> u
 
     else:
-      print "********************************************************"
+      print "*************************************************************"
       print "assign_variable() function requires a Function, array, float," + \
             " int, \nVector, Expression, Indexed, or string path to .xml, " + \
             "not \n%s" % type(var)
-      print "********************************************************"
+      print "*************************************************************"
       exit(1)
 
 
@@ -843,6 +843,8 @@ class Model(object):
     self.b_gnd         = Function(self.Q)
     self.epsdot        = Function(self.Q)
     self.E             = Function(self.Q)
+    self.E_gnd         = Function(self.Q)
+    self.E_shf         = Function(self.Q)
     self.eta           = Function(self.Q)
     self.P             = Function(self.Q)
     self.Tstar         = Function(self.Q)

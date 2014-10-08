@@ -690,6 +690,11 @@ class VelocityBP(object):
       b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
     
+    if config['velocity']['init_b_from_U_ob']:
+      U_ob = config['velocity']['U_ob']
+      b_shf = Function(Q)
+      model.init_b0(b_shf, U_ob, gradS)
+    
     # second invariant of the strain rate tensor squared :
     term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
                +        u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2

@@ -373,6 +373,64 @@ class Model(object):
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(beta, beta_0_v)
   
+  def init_b0(self, b, U_ob, gradS):
+    r"""
+    Init rate-factor b from U_ob. 
+    """
+    if self.MPI_rank==0:
+      s    = "::: initializing b from U_ob :::"
+      text = colored(s, 'magenta')
+      print text
+    
+    Q     = self.Q
+    rho   = self.rho
+    g     = self.g
+    u     = U_ob[0]
+    v     = U_ob[1]
+    n     = 3.0
+    
+    b_f   = TrialFunction(Q)
+    phi   = TestFunction(Q)
+
+    epi   = self.BP_strain_rate(U_ob)
+    ep_xx = epi[0,0]
+    ep_yy = epi[1,1]
+    ep_xy = epi[0,1]
+    ep_xz = epi[0,2]
+    ep_yz = epi[1,2]
+    
+    epsdot = ep_xx**2 + ep_yy**2 + ep_xx*ep_yy + ep_xy**2 + ep_xz**2 + ep_yz**2
+    eta    = 0.5 * b_f * (epsdot + 1e-10)**((1-n)/(2*n))
+
+    epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
+                        0.5*(u.dx(1) + v.dx(0)),
+                        0.5* u.dx(2)            ])
+    epi_2  = as_vector([0.5*(u.dx(1) + v.dx(0)),
+                             u.dx(0) + 2*v.dx(1),
+                        0.5* v.dx(2)            ])
+
+    R  = - 2 * eta * dot(epi_1, grad(phi)) * dx \
+         + rho * g * gradS[0] * phi * dx \
+         #+ 2 * eta * dot(epi_2, grad(phi)) * dx \
+         #+ rho * g * gradS[1] * phi * dx \
+   
+    b_f = Function(Q)
+    solve(lhs(R) == rhs(R), b_f)
+    self.assign_variable(b, b_f)
+
+  def BP_strain_rate(self,U):
+    """
+    return the strain-rate tensor of <U>.
+    """
+    u,v,w = split(U)
+    epi   = 0.5 * (grad(U) + grad(U).T)
+    epi02 = 0.5*u.dx(2)
+    epi12 = 0.5*v.dx(2)
+    epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02   ],
+                        [epi[1,0],  epi[1,1],  epi12   ],
+                        [epi02,     epi12,     epi[2,2]]])
+    return epsdot
+  
   def calc_thickness(self):
     """
     Calculate the continuous thickness field which increases from 0 at the 

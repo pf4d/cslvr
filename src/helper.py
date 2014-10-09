@@ -570,6 +570,7 @@ def default_config():
                'A0'                  : 1e-16,
                'beta0'               : 1e3,
                'init_beta_from_U_ob' : False,
+               'init_b_from_U_ob'    : False,
                'U_ob'                : None,
                'r'                   : 0.0,
                'E'                   : 1.0,

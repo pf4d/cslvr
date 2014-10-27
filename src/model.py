@@ -381,26 +381,39 @@ class Model(object):
       s    = "::: initializing b from U_ob :::"
       text = colored(s, 'magenta')
       print text
+   
+    x      = self.x
+    S      = self.S
+    Q      = self.Q
+    rho    = self.rho
+    rho_w  = self.rho_w
+    g      = self.g
+    u      = U_ob[0]
+    v      = U_ob[1]
+    n      = 3.0
     
-    Q     = self.Q
-    rho   = self.rho
-    g     = self.g
-    u     = U_ob[0]
-    v     = U_ob[1]
-    n     = 3.0
+    class Depth(Expression):
+      def eval(self, values, x):
+        values[0] = min(0, x[2])
+    D = Depth(element = Q.ufl_element())
     
-    b_f   = TrialFunction(Q)
-    phi   = TestFunction(Q)
+    N      = FacetNormal(self.mesh)
+    dSde   = ds(4)
+           
+    b_f    = TrialFunction(Q)
+    phi    = TestFunction(Q)
 
-    epi   = self.BP_strain_rate(U_ob)
-    ep_xx = epi[0,0]
-    ep_yy = epi[1,1]
-    ep_xy = epi[0,1]
-    ep_xz = epi[0,2]
-    ep_yz = epi[1,2]
-    
+    epi    = self.BP_strain_rate(U_ob)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]   
+ 
     epsdot = ep_xx**2 + ep_yy**2 + ep_xx*ep_yy + ep_xy**2 + ep_xz**2 + ep_yz**2
     eta    = 0.5 * b_f * (epsdot + 1e-10)**((1-n)/(2*n))
+
+    f_w    = rho*g*(S - x[2]) + rho_w*g*D
 
     epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
                         0.5*(u.dx(1) + v.dx(0)),

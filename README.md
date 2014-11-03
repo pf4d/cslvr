@@ -10,7 +10,7 @@ installation:
 
 ```bash
 python setup.py install --user
-python download_data.py
+python download_all_data_and_meshes.py
 ```
 
 

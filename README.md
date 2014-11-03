@@ -7,7 +7,7 @@ https://github.com/douglas-brinkerhoff/VarGlaS
 
 utilizing the FEniCS project:
 
-ttp://fenicsproject.org/
+http://fenicsproject.org/
 
 installation:
 -------------

@@ -38,3 +38,9 @@ Partial documentation and install directions may be found at
 
 http://qssi.cs.umt.edu/wiki/index.php/Main_Page
 
+Old documentation is located here:
+
+http://cas.umt.edu/feismd/
+
+Please note that this is old and some descriptions may have changed for this fork of VarGlaS (UM-FEISM).
+

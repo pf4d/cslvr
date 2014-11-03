@@ -42,5 +42,5 @@ Old documentation is located here:
 
 http://cas.umt.edu/feismd/
 
-Please note that this is old and some descriptions may have changed for this fork of VarGlaS (UM-FEISM).
+Please note that this is old and some descriptions may have changed for this fork of VarGlaS (previously called UM-FEISM).
 

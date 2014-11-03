@@ -9,8 +9,8 @@ installation:
 -------------
 
 ```bash
-sudo python setup.py install --user
-sudo python download_data.py
+python setup.py install --user
+python download_data.py
 ```
 
 

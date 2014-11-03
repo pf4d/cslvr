@@ -5,10 +5,23 @@ from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
 from time           import time
 from termcolor      import colored, cprint
+from helper         import raiseNotDefined
 import sys
 import numpy as np
 
-class SteadySolver(object):
+
+class Solver(object):
+  """
+  This abstract class outlines the structure of a VarGlaS solver.
+  """
+  def solve(self):
+    """
+    Solves the problem utilizing Physics object(s).
+    """
+    raiseNotDefined()
+
+
+class SteadySolver(Solver):
   """
   This class solves for velocity, enthalpy (temperature), surface mass balance, 
   and ice age in steady state. The coupling between velocity and enthalpy 
@@ -154,7 +167,7 @@ class SteadySolver(object):
         File(outpath + 'age.pvd') << model.age  # save age
 
 
-class TransientSolver(object):
+class TransientSolver(Solver):
   """
   This class solves for velocity and surface mass balance in steady state
   at each time step, and solves enthalpy (temperature), the free surface, 
@@ -379,7 +392,7 @@ class TransientSolver(object):
       t          += dt
       self.step_time.append(time() - tic)
 
-class AdjointSolver(object):
+class AdjointSolver(Solver):
   """
   This class minimizes the misfit between an observed surface velocity and 
   the modelled surface velocity by changing the value of the basal traction
@@ -648,7 +661,7 @@ class AdjointSolver(object):
 
 
 
-class BalanceVelocitySolver(object):
+class BalanceVelocitySolver(Solver):
   def __init__(self, model, config):
     self.bv_instance = VelocityBalance(model, config)
 
@@ -656,7 +669,7 @@ class BalanceVelocitySolver(object):
     self.bv_instance.solve()
 
 
-class StokesBalanceSolver(object):
+class StokesBalanceSolver(Solver):
 
   def __init__(self, model, config):
     """

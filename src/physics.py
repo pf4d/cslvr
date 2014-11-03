@@ -26,14 +26,26 @@ based on lapse rates
 :class:`~src.physics.VelocityBP` -- Blatter-Pattyn momentum balance
 """
 
-from pylab     import ndarray
-from fenics    import *
-from termcolor import colored, cprint
+from pylab      import ndarray
+from fenics     import *
+from termcolor  import colored, cprint
+from helper     import raiseNotDefined
 import numpy as np
 import numpy.linalg as linalg
 
 
-class VelocityStokes(object):
+class Physics(object):
+  """
+  This abstract class outlines the structure of a physics calculation.
+  """
+  def solve(self):
+    """
+    Solves the physics calculation.
+    """
+    raiseNotDefined()
+
+
+class VelocityStokes(Physics):
   r"""  
   This class solves the non-linear Blatter-Pattyn momentum balance, 
   given a possibly non-uniform temperature field.
@@ -397,7 +409,7 @@ class VelocityStokes(object):
     model.print_min_max(model.P, 'P')
 
 
-class VelocityBP(object):
+class VelocityBP(Physics):
   r"""				
   This class solves the non-linear Blatter-Pattyn momentum balance, 
   given a possibly non-uniform temperature field.
@@ -804,7 +816,7 @@ class VelocityBP(object):
     model.print_min_max(model.w, 'w')
     
 
-class Enthalpy(object):
+class Enthalpy(Physics):
   r""" 
   This class solves the internal energy balance (enthalpy) in steady state or 
   transient, and converts that solution to temperature and water content.
@@ -1314,7 +1326,7 @@ class Enthalpy(object):
     model.print_min_max(model.W,  'W')
 
 
-class FreeSurface(object):
+class FreeSurface(Physics):
   r""" 
   Class for evolving the free surface of the ice through time.
   
@@ -1498,7 +1510,7 @@ class FreeSurface(object):
     solve(A, q, p)
     model.assign_variable(model.dSdt, q)
 
-class AdjointVelocityBP(object):
+class AdjointVelocityBP(Physics):
   """ 
   Complete adjoint of the BP momentum balance.  Now updated to calculate
   the adjoint model and gradient using automatic differentiation.  Changing
@@ -1658,7 +1670,7 @@ class AdjointVelocityBP(object):
     solve(A, self.model.Lam.vector(), l)
     
 
-class SurfaceClimate(object):
+class SurfaceClimate(Physics):
 
   """
   Class which specifies surface mass balance, surface temperature using a 
@@ -1694,7 +1706,7 @@ class SurfaceClimate(object):
     model.assign_variable(model.T_surface, T_ma(S, lat) + T_w)
 
 
-class Age(object):
+class Age(Physics):
   r"""
   Class for calculating the age of the ice in steady state.
 
@@ -1800,7 +1812,7 @@ class Age(object):
     model.print_min_max(model.age, 'age')
 
 
-class VelocityBalance(object):
+class VelocityBalance(Physics):
   
   def __init__(self, model, config):
     
@@ -1888,7 +1900,7 @@ class VelocityBalance(object):
     self.model.assign_variable(self.model.v_balance, v_b.vector())
     
 
-class VelocityBalance_2(object):
+class VelocityBalance_2(Physics):
 
   def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0,0.]):
 
@@ -2059,7 +2071,7 @@ class VelocityBalance_2(object):
              gH.array() , gN.array() ))
 
 
-class StokesBalance(object):
+class StokesBalance(Physics):
 
   def __init__(self, model, config):
     """
@@ -2292,7 +2304,7 @@ class StokesBalance(object):
     model.v_s      = v_s
 
 
-class StokesBalance3D(object):
+class StokesBalance3D(Physics):
 
   def __init__(self, model, config):
     """

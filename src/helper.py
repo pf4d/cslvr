@@ -39,7 +39,16 @@ meshes used in the simulations.
 from fenics    import *
 from termcolor import colored, cprint
 import pylab as p
+import inspect
 
+def raiseNotDefined():
+  fileName = inspect.stack()[1][1]
+  line     = inspect.stack()[1][2]
+  method   = inspect.stack()[1][3]
+  
+  text = "*** Method not implemented: %s at line %s of %s"
+  print text % (method, line, fileName)
+  sys.exit(1)
 
 def download_file(url, direc, folder, extract=False):
   """

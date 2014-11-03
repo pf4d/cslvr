@@ -24,6 +24,7 @@ also ```Gmsh_dynamic``` from
 
 http://geuz.org/gmsh/
 
+is required for the use of the provided mesh generation facilities located in the utilities.py file.
 
 To install the program in the ```usr``` directory and download program data,
 

@@ -2566,22 +2566,22 @@ class StokesBalance3D(Physics):
       text = colored(s, 'cyan')
       print text
     
-    tau_nn   = model.vert_integrate(tau_nn, Q)
-    tau_nt   = model.vert_integrate(tau_nt, Q)
-    tau_nz   = model.vert_integrate(tau_nz, Q)
-    
-    tau_tn   = model.vert_integrate(tau_tn, Q)
-    tau_tz   = model.vert_integrate(tau_tz, Q)
-    tau_tt   = model.vert_integrate(tau_tt, Q)
-    
-    tau_dn   = model.vert_integrate(tau_dn, Q)
-    tau_dt   = model.vert_integrate(tau_dt, Q)
-    
-    tau_pn   = model.vert_integrate(tau_pn, Q)
-    tau_pt   = model.vert_integrate(tau_pt, Q)
-    
-    tau_bn   = model.extrude(tau_bn, [3,5], 2, Q)
-    tau_bt   = model.extrude(tau_bt, [3,5], 2, Q)
+    #tau_nn   = model.vert_integrate(tau_nn, Q)
+    #tau_nt   = model.vert_integrate(tau_nt, Q)
+    #tau_nz   = model.vert_integrate(tau_nz, Q)
+    #
+    #tau_tn   = model.vert_integrate(tau_tn, Q)
+    #tau_tz   = model.vert_integrate(tau_tz, Q)
+    #tau_tt   = model.vert_integrate(tau_tt, Q)
+    #
+    #tau_dn   = model.vert_integrate(tau_dn, Q)
+    #tau_dt   = model.vert_integrate(tau_dt, Q)
+    #
+    #tau_pn   = model.vert_integrate(tau_pn, Q)
+    #tau_pt   = model.vert_integrate(tau_pt, Q)
+    #
+    #tau_bn   = model.extrude(tau_bn, [3,5], 2, Q)
+    #tau_bt   = model.extrude(tau_bt, [3,5], 2, Q)
 
     memb_n   = as_vector([tau_nn, tau_nt, tau_nz])
     memb_t   = as_vector([tau_tn, tau_tt, tau_tz])

@@ -940,14 +940,15 @@ class Model(object):
     self.W             = Function(self.Q)
     self.Mb            = Function(self.Q)
     self.q_geo         = Function(self.Q)
-    self.Hhat          = Function(self.Q) # Midpoint values, usually set to H_n
-    self.uhat          = Function(self.Q) # Midpoint values, usually set to H_n
-    self.vhat          = Function(self.Q) # Midpoint values, usually set to H_n
-    self.what          = Function(self.Q) # Midpoint values, usually set to H_n
+    self.Hhat          = Function(self.Q) # Midpoint values
+    self.uhat          = Function(self.Q) # Midpoint values
+    self.vhat          = Function(self.Q) # Midpoint values
+    self.what          = Function(self.Q) # Midpoint values
     self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.H0            = Function(self.Q) # None initial enthalpy
-    self.T0            = Function(self.Q) # None
-    self.kappa         = Function(self.Q) # None
+    self.H0            = Function(self.Q) # initial enthalpy
+    self.T0            = Function(self.Q) # pressure-melting point
+    self.kappa         = Function(self.Q)
+    self.Kcoef         = Function(self.Q)
 
     # free surface model :
     self.dSdt          = Function(self.Q_flat)

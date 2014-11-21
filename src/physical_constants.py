@@ -52,9 +52,12 @@ class IceParameters(object):
     
     :rtype: Python dictionary
     """
+    spy = 365*24*60*60
+
     d_params = \
     {'eps_reg': (1e-15,   'strain rate regularization parameter','t^{-1}'),
      'n'      : (3.0,     'viscosity nonlinearity parameter','dimensionless'),
+     'spy'    : (spy,     'seconds per year', 's'),
      'rho'    : (917,     'ice density','kg m^{-3}'),
      'rho_w'  : (1000,    'water density', 'kg m^{-3}'),
      'g'      : (9.81,    'gravitational acceleration','m s^{-2}'),

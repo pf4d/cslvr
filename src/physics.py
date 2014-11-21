@@ -741,8 +741,8 @@ class VelocityBP(Physics):
     if not config['periodic_boundary_conditions']:
       A += Pb*dSde
 
-    # Calculate the first variation (the action) of the variational 
-    # principle in the direction of the test function
+    # Calculate the first variation of the action 
+    # in the direction of the test function
     self.F   = derivative(A, U, Phi)
 
     # Calculate the first variation of the action (the Jacobian) in
@@ -993,6 +993,7 @@ class Enthalpy(Physics):
     v           = model.v
     w           = model.w
     kappa       = model.kappa
+    Kcoef       = model.Kcoef
     k           = model.k
     T_surface   = model.T_surface
     H_surface   = model.H_surface
@@ -1003,6 +1004,7 @@ class Enthalpy(Physics):
     vhat        = model.vhat
     what        = model.what
     mhat        = model.mhat
+    spy         = model.spy
     ds          = model.ds
     dSrf        = ds(2)         # surface
     dGnd        = ds(3)         # grounded bed
@@ -1034,6 +1036,9 @@ class Enthalpy(Physics):
     # assign geothermal flux :
     model.assign_variable(q_geo, config['enthalpy']['q_geo'])
 
+    # initialize the conductivity coefficient for entirely cold ice :
+    model.assign_variable(Kcoef, 1.0)
+
     # Define test and trial functions       
     psi = TestFunction(Q)
     dH  = TrialFunction(Q)
@@ -1054,8 +1059,9 @@ class Enthalpy(Physics):
     Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
 
-    # diffusion coefficient :
-    model.assign_variable(kappa, k/(rho*C))
+    # thermal conductivity (Greve and Blatter 2009) :
+    k     =  spy * 9.828 * exp(-0.0057*T)
+    kappa =  k / (rho*C)
 
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
@@ -1076,7 +1082,7 @@ class Enthalpy(Physics):
 
       # residual of model :
       self.a = + rho * dot(U, grad(dH)) * psihat * dx \
-               + rho * kappa * dot(grad(psi), grad(dH)) * dx \
+               + rho * Kcoef * kappa * dot(grad(psi), grad(dH)) * dx \
       
       self.L = + (q_geo + q_friction) * psihat * dGnd \
                + Q_s_gnd * psihat * dx_g \
@@ -1106,13 +1112,14 @@ class Enthalpy(Physics):
       # implicit system (linearized) for enthalpy at time H_{n+1}
       self.a = + rho * (dH - H0) / dt * psi * dx \
                + rho * dot(U, grad(Hmid)) * psihat * dx \
-               + rho * kappa * dot(grad(psi), grad(Hmid)) * dx \
+               + rho * Kcoef * kappa * dot(grad(psi), grad(Hmid)) * dx \
       
       self.L = + (q_geo + q_friction) * psi * dGnd \
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
 
 
+    model.kappa     = kappa
     self.q_friction = q_friction
     self.dBed       = dBed
      
@@ -1200,6 +1207,7 @@ class Enthalpy(Physics):
       model.assign_variable(model.mhat, mhat)
       
     lat_bc     = config['enthalpy']['lateral_boundaries']
+    dt         = config['time_step']
     mesh       = model.mesh
     V          = model.V
     Q          = model.Q
@@ -1207,15 +1215,16 @@ class Enthalpy(Physics):
     H          = model.H
     H_surface  = model.H_surface
     H_float    = model.H_float  
-    C          = model.C
-    k          = model.k
     rho        = model.rho
+    C          = model.C
     T          = model.T
+    Mb         = model.Mb
     W          = model.W
     W0         = model.W0
     W_r        = model.W_r
     L          = model.L
     kappa      = model.kappa
+    Kcoef      = model.Kcoef
     q_geo      = model.q_geo
     B          = model.B
     dBed       = self.dBed
@@ -1260,34 +1269,34 @@ class Enthalpy(Physics):
     #gradH = project(grad(H), V)
     #N     = FacetNormal(mesh)
     #
-    #Mb    = (q_friction + q_geo - rho*kappa*dot(gradH, N)) / (L*rho)
+    #nMb   = (q_friction + q_geo - rho*kappa*dot(gradH, N)) / (L*rho)
     #      
     #a_Mb  = dMb * psi * dx
-    #L_Mb  =  Mb * psi * dBed
-    #solve(a_Mb == L_Mb, model.Mb)
+    #L_Mb  = nMb * psi * dBed
+    #solve(a_Mb == L_Mb, Mb)
     #
-    #model.assign_variable(model.Mb, model.extrude(model.Mb, [3,5], 2))
+    #model.assign_variable(Mb, model.extrude(Mb, [3,5], 2))
 
     # update temperature and thermal conductivity :
     Ta                = T_n.vector().array()
     Ts                = T0.vector().array()
-    kappa_v           = kappa.vector().array()
-    kappa_v[Ta >= Ts] = 1/10.0 * k/(rho*C)          # wet ice
-    kappa_v[Ta <  Ts] = k/(rho*C)                   # cold ice
+    Kcoef_v           = Kcoef.vector().array()
+    Kcoef_v[Ta >= Ts] = 1.0/10.0              # wet ice
+    Kcoef_v[Ta <  Ts] = 1.0                   # cold ice
     Ta[Ta > Ts]       = Ts[Ta > Ts]
     model.assign_variable(T,     Ta)
-    model.assign_variable(kappa, kappa_v)
+    model.assign_variable(Kcoef, Kcoef_v)
 
     # update water content :
-    WW                  = W_n.vector().array()
-    WW[WW < 0]          = 0
+    W_v                 = W_n.vector().array()
+    W_v[W_v < 0.0]      = 0.0
     W_r_v               = W_r.vector().array()
     W_r_v[W_r_v < 0.0]  = 0.0
     W_r_v[W_r_v > 0.01] = 0.01
-    model.assign_variable(W,        WW)
-    model.assign_variable(W_r,      W_r_v)
-    model.assign_variable(model.Mb, project(W_r - W0))
-    model.assign_variable(W0,       W_r)
+    model.assign_variable(W,   W_v)
+    model.assign_variable(W_r, W_r_v)
+    model.assign_variable(Mb,  project((W - W0)/dt))
+    model.assign_variable(W0,  W)
     
     # print the min/max values to the screen :    
     model.print_min_max(model.H,  'H')

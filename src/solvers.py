@@ -36,29 +36,41 @@ class SteadySolver(Solver):
     Initialize solver.  Initialize all of the physics classes specified 
     as 'on' in the config object.
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING STEADY SOLVER :::"
+      text = colored(s, 'blue')
+      print text
     self.model          = model
     self.config         = config
     self.config['mode'] = 'steady'
+    outpath             = config['output_path']
 
     # velocity model :
     if self.config['velocity']['on']:
-      
       if   config['velocity']['approximation'] == 'fo':
         self.velocity_instance = VelocityBP(model, config)
-      
       elif config['velocity']['approximation'] == 'stokes':
         self.velocity_instance = VelocityStokes(model, config)
-      
       else:
         print "Please use 'fo' or 'stokes'. "
+      if config['velocity']['log']:
+        self.U_file = File(outpath + 'U.pvd')
+        if config['velocity']['approximation'] == 'stokes':
+          self.P_file = File(outpath + 'P.pvd')
     
     # enthalpy model :
     if config['enthalpy']['on']:
       self.enthalpy_instance = Enthalpy(model, config)
+      if config['enthalpy']['log']:
+        self.T_file = File(outpath + 'T.pvd')
+        self.W_file = File(outpath + 'W.pvd')
+        self.M_file = File(outpath + 'Mb.pvd')
 
     # age model :
     if config['age']['on']:
       self.age_instance = Age(model, config)
+      if config['age']['log']:
+        self.a_file = File(outpath + 'age.pvd')
     
     # surface climate model :
     if config['surface_climate']['on']:
@@ -78,7 +90,6 @@ class SteadySolver(Solver):
       print text
     model   = self.model
     config  = self.config
-    outpath = config['output_path']
     
     # Set the initial Picard iteration (PI) parameters
     # L_\infty norm in velocity between iterations
@@ -121,14 +132,14 @@ class SteadySolver(Solver):
             s    = '::: saving velocity U.pvd file :::'
             text = colored(s, 'blue')
             print text
-          File(outpath + 'U.pvd') << U
+          self.U_file << U
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
             if self.model.MPI_rank==0:
               s    = '::: saving pressure P.pvd file :::'
               text = colored(s, 'blue')
               print text
-            File(outpath + 'P.pvd') << project(model.P, model.Q)
+            self.P_file << project(model.P, model.Q)
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -138,9 +149,9 @@ class SteadySolver(Solver):
             s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
             text = colored(s, 'blue')
             print text
-          File(outpath + 'T.pvd')  << model.T   # save temperature
-          File(outpath + 'Mb.pvd') << model.Mb  # save melt rate
-          File(outpath + 'W.pvd')  << model.W   # save water content
+          self.T_file  << model.T   # save temperature
+          self.M_file  << model.Mb  # save melt rate
+          self.W_file  << model.W   # save water content
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -164,7 +175,7 @@ class SteadySolver(Solver):
           s    = '::: saving age age.pvd file :::'
           text = colored(s, 'blue')
           print text
-        File(outpath + 'age.pvd') << model.age  # save age
+        self.a_file << model.age  # save age
 
 
 class TransientSolver(Solver):
@@ -192,6 +203,10 @@ class TransientSolver(Solver):
     as 'on' in the config object.
     
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING TRANSIENT SOLVER :::"
+      text = colored(s, 'blue')
+      print text
     self.model          = model
     self.config         = config
     self.config['mode'] = 'transient'
@@ -411,16 +426,20 @@ class AdjointSolver(Solver):
     Initialize the model with a forward instance (SteadySolver) and adjoint
     solver (AdjointVelocityBP, only adjoint currently available).
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING ADJOINT SOLVER :::"
+      text = colored(s, 'blue')
+      print text
     self.model  = model
     self.config = config
     
     config['mode'] = 'steady' # adjoint only solves steady-state
     
     # Set up file I/O
-    self.path          = config['output_path']
-    self.file_b_pvd    = File(self.path + 'beta.pvd')
-    self.file_u_pvd    = File(self.path + 'U_obs.pvd')
-    self.file_dSdt_pvd = File(self.path + 'dSdt.pvd')
+    self.path      = config['output_path']
+    self.beta_file = File(self.path + 'beta.pvd')
+    self.U_file    = File(self.path + 'U_obs.pvd')
+    self.dSdt_file = File(self.path + 'dSdt.pvd')
    
     # ensure that we have lists : 
     if type(config['adjoint']['bounds']) != list:
@@ -655,9 +674,9 @@ class AdjointSolver(Solver):
     U_obs = project(as_vector([model.u_o, model.v_o, 0]))
     dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                     + model.w + model.adot)
-    self.file_b_pvd    << model.extrude(model.beta, [3,5], 2) 
-    self.file_u_pvd    << U_obs
-    self.file_dSdt_pvd << dSdt
+    self.beta_file << model.extrude(model.beta, [3,5], 2) 
+    self.U_file    << U_obs
+    self.dSdt_file << dSdt
 
 
 
@@ -685,6 +704,10 @@ class StokesBalanceSolver(Solver):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING STOKES-BALANCE SOLVER :::"
+      text = colored(s, 'blue')
+      print text
     self.model  = model
     self.config = config
     

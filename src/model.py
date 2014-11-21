@@ -918,7 +918,6 @@ class Model(object):
     self.E_shf         = Function(self.Q)
     self.eta           = Function(self.Q)
     self.P             = Function(self.Q)
-    self.Tstar         = Function(self.Q)
     self.W             = Function(self.Q)
     self.W_r           = Function(self.Q)
     self.Vd            = Function(self.Q)
@@ -937,10 +936,10 @@ class Model(object):
     self.H_float       = Function(self.Q)
     self.H             = Function(self.Q)
     self.T             = Function(self.Q)
+    self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
     self.Mb            = Function(self.Q)
     self.q_geo         = Function(self.Q)
-    self.cold          = Function(self.Q)
     self.Hhat          = Function(self.Q) # Midpoint values, usually set to H_n
     self.uhat          = Function(self.Q) # Midpoint values, usually set to H_n
     self.vhat          = Function(self.Q) # Midpoint values, usually set to H_n
@@ -948,9 +947,7 @@ class Model(object):
     self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
     self.H0            = Function(self.Q) # None initial enthalpy
     self.T0            = Function(self.Q) # None
-    self.h_i           = Function(self.Q) # None
     self.kappa         = Function(self.Q) # None
-    self.Tstar         = self.T + self.gamma * (self.S - self.x[2])
 
     # free surface model :
     self.dSdt          = Function(self.Q_flat)

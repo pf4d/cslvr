@@ -150,6 +150,11 @@ class VelocityStokes(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING STOKES VELOCITY SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model    = model
     self.config   = config
 
@@ -531,6 +536,11 @@ class VelocityBP(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING BP VELOCITY SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model    = model
     self.config   = config
 
@@ -940,6 +950,11 @@ class Enthalpy(Physics):
     """ 
     Set up equation, memory allocation, etc. 
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING ENTHALPY SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.config = config
     self.model  = model
 
@@ -954,11 +969,9 @@ class Enthalpy(Physics):
     b_gnd       = model.b_gnd
     b_gnd       = model.b_gnd
     b_shf       = model.b_shf
-    Tstar       = model.Tstar
     T           = model.T
     T0          = model.T0
     Mb          = model.Mb
-    h_i         = model.h_i
     L           = model.L
     C           = model.C
     C_w         = model.C_w
@@ -979,7 +992,6 @@ class Enthalpy(Physics):
     u           = model.u
     v           = model.v
     w           = model.w
-    cold        = model.cold
     kappa       = model.kappa
     k           = model.k
     T_surface   = model.T_surface
@@ -1017,7 +1029,7 @@ class Enthalpy(Physics):
    
     # Surface boundary condition
     model.assign_variable(H_surface, project(T_surface * C, Q))
-    model.assign_variable(H_float,   project(T_w * C, Q))
+    model.assign_variable(H_float,   project(T_w * C,       Q))
 
     # assign geothermal flux :
     model.assign_variable(q_geo, config['enthalpy']['q_geo'])
@@ -1042,13 +1054,8 @@ class Enthalpy(Physics):
     Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
     Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
 
-    # Different diffusion coefficent values for temperate and cold ice.  This
-    # nonlinearity enters as a part of the Picard iteration between velocity
-    # and enthalpy
-    model.assign_variable(cold, 1.0)
-
     # diffusion coefficient :
-    kappa = cold * k/(rho*C)
+    model.assign_variable(kappa, k/(rho*C))
 
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
@@ -1058,24 +1065,23 @@ class Enthalpy(Physics):
         print "No velocity field found.  Defaulting to no velocity"
         U    = 0.0
 
-      # necessary quantities for streamline upwinding :
-      h      = CellSize(mesh)
-      vnorm  = sqrt(dot(U, U) + 1.0)
-       
-      T_c    = conditional( lt(vnorm, 4), 0.0, 1.0 )
-
       # skewed test function in areas with high velocity :
-      psihat = psi + T_c*h/(2*vnorm) * dot(U, grad(psi))
+      h      = CellSize(mesh)
+      Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+      PE     = Unorm*h/(2*kappa)
+      tau    = 1/tanh(PE) - 1/PE
+      T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
+      psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
+      #psihat = psi + T_c*h/(2*Unorm) * dot(U, grad(psi))
 
       # residual of model :
-      self.F = + rho * dot(U, grad(dH)) * psihat * dx \
+      self.a = + rho * dot(U, grad(dH)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(dH)) * dx \
-               - (q_geo + q_friction) * psihat * dGnd \
-               - Q_s_gnd * psihat * dx_g \
-               - Q_s_shf * psihat * dx_s
       
-      self.a = lhs(self.F)
-      self.L = rhs(self.F)
+      self.L = + (q_geo + q_friction) * psihat * dGnd \
+               + Q_s_gnd * psihat * dx_g \
+               + Q_s_shf * psihat * dx_s
+      
 
     # configure the module to run in transient mode :
     elif config['mode'] == 'transient':
@@ -1086,47 +1092,28 @@ class Enthalpy(Physics):
       U = as_vector([uhat, vhat, what - mhat])
 
       h      = CellSize(mesh)
-      vnorm  = sqrt(dot(U,U) + 1.0)
-      T_c    = conditional( lt(vnorm, 8), 0.0, 1.0 )
-      psihat = psi + T_c * h/(6*vnorm) * dot(U, grad(psi))
+      Unorm  = sqrt(dot(U, U) + 1.0)
+      PE     = Unorm*h/(2*kappa)
+      tau    = 1/tanh(PE) - 1/PE
+      T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
+      psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
+      #psihat = psi + T_c*h/(2*Unorm) * dot(U, grad(psi))
 
       theta = 0.5
       # Crank Nicholson method
       Hmid = theta*dH + (1 - theta)*H0
       
       # implicit system (linearized) for enthalpy at time H_{n+1}
-      self.F = + rho * (dH - H0) / dt * psi * dx \
+      self.a = + rho * (dH - H0) / dt * psi * dx \
                + rho * dot(U, grad(Hmid)) * psihat * dx \
                + rho * kappa * dot(grad(psi), grad(Hmid)) * dx \
-               - (q_geo + q_friction) * psi * dGnd \
-               - Q_s_gnd * psihat * dx_g \
-               - Q_s_shf * psihat * dx_s
+      
+      self.L = + (q_geo + q_friction) * psi * dGnd \
+               + Q_s_gnd * psihat * dx_g \
+               + Q_s_shf * psihat * dx_s
 
-      self.a = lhs(self.F)
-      self.L = rhs(self.F)
 
-    kappa_melt = conditional( ge(T, T0), kappa / 10.0, kappa)
-    #H_v                        = H.vector().array()
-    #h_i_v                      = h_i.vector().array()
-    #kappa_melt                 = Function(Q)
-    #kappa_melt_v               = kappa_melt.vector().array()
-    #kappa_melt_v[H_v >= h_i_v] = 0
-    #kappa_melt_v[H_v <  h_i_v] = k/(rho*C)
-    #model.assign_variable(kappa_melt, kappa_melt_v)
-
-    # form representing the basal melt rate :
-    #vec   = project(as_vector([B.dx(0), B.dx(1), -1]), V)
-    #gradH = project(grad(H), V)
-    #term  = q_friction + q_geo - (rho * kappa_melt * dot(gradH, vec))
-    #Mb    = term / (L * rho)
-    N     = FacetNormal(mesh)
-    Mb    = (q_friction + q_geo - rho*kappa_melt*dot(grad(H), N)) / (L*rho)
-
-    model.kappa     = kappa
     self.q_friction = q_friction
-    self.kappa_melt = kappa_melt
-    self.N          = N
-    self.Mb         = Mb
     self.dBed       = dBed
      
   
@@ -1212,29 +1199,27 @@ class Enthalpy(Physics):
       model.assign_variable(model.what, what)
       model.assign_variable(model.mhat, mhat)
       
-    lat_bc    = config['enthalpy']['lateral_boundaries']
-    T_w       = model.T_w
-    T0        = model.T0
-    Q         = model.Q
-    H         = model.H
-    H0        = model.H0
-    Hhat      = model.Hhat
-    uhat      = model.uhat
-    vhat      = model.vhat
-    what      = model.what
-    mhat      = model.mhat
-    H_surface = model.H_surface
-    H_float   = model.H_float  
-    C         = model.C
-    h_i       = model.h_i
-    T         = model.T
-    W         = model.W
-    W_r       = model.W_r
-    L         = model.L
-    cold      = model.cold
-    a_T       = model.a_T
-    Q_T       = model.Q_T
-    Tstar     = model.Tstar
+    lat_bc     = config['enthalpy']['lateral_boundaries']
+    mesh       = model.mesh
+    V          = model.V
+    Q          = model.Q
+    T0         = model.T0
+    H          = model.H
+    H_surface  = model.H_surface
+    H_float    = model.H_float  
+    C          = model.C
+    k          = model.k
+    rho        = model.rho
+    T          = model.T
+    W          = model.W
+    W0         = model.W0
+    W_r        = model.W_r
+    L          = model.L
+    kappa      = model.kappa
+    q_geo      = model.q_geo
+    B          = model.B
+    dBed       = self.dBed
+    q_friction = self.q_friction
 
     # surface boundary condition : 
     self.bc_H = []
@@ -1258,66 +1243,51 @@ class Enthalpy(Physics):
           solver_parameters = {"linear_solver": "lu"})
 
     # calculate temperature and water content :
-    #T_n  = project( ((H - h_i) / C + T0), Q)
-    #W_n  = project( ((H - h_i) / L),      Q)
+    if self.model.MPI_rank==0:
+      s    = "::: calculating temperature and water content :::"
+      text = colored(s, 'cyan')
+      print text
     T_n  = project(  H / C,          Q)
     W_n  = project( (H - C*T0) / L,  Q)
 
-    # update temperature (Adjust for polythermal stuff) :
-    Ta = T_n.vector().array()
-    Ts = T0.vector().array()
-    #cold.vector().set_local((Ts > Ta).astype('float'))
-    Ta[Ta > Ts] = Ts[Ta > Ts]
-    model.assign_variable(T, Ta)
+    ## solve for melt-rate :
+    #if self.model.MPI_rank==0:
+    #  s    = "::: solving for basal melt rate :::"
+    #  text = colored(s, 'cyan')
+    #  print text
+    #psi   = TestFunction(Q)
+    #dMb   = TrialFunction(Q)
+    #gradH = project(grad(H), V)
+    #N     = FacetNormal(mesh)
+    #
+    #Mb    = (q_friction + q_geo - rho*kappa*dot(gradH, N)) / (L*rho)
+    #      
+    #a_Mb  = dMb * psi * dx
+    #L_Mb  =  Mb * psi * dBed
+    #solve(a_Mb == L_Mb, model.Mb)
+    #
+    #model.assign_variable(model.Mb, model.extrude(model.Mb, [3,5], 2))
+
+    # update temperature and thermal conductivity :
+    Ta                = T_n.vector().array()
+    Ts                = T0.vector().array()
+    kappa_v           = kappa.vector().array()
+    kappa_v[Ta >= Ts] = 1/10.0 * k/(rho*C)          # wet ice
+    kappa_v[Ta <  Ts] = k/(rho*C)                   # cold ice
+    Ta[Ta > Ts]       = Ts[Ta > Ts]
+    model.assign_variable(T,     Ta)
+    model.assign_variable(kappa, kappa_v)
 
     # update water content :
-    WW = W_n.vector().array()
-    WW[WW < 0]    = 0
-    model.assign_variable(W, WW)
-    W_r_v  = W_r.vector().array()
+    WW                  = W_n.vector().array()
+    WW[WW < 0]          = 0
+    W_r_v               = W_r.vector().array()
     W_r_v[W_r_v < 0.0]  = 0.0
     W_r_v[W_r_v > 0.01] = 0.01
-    model.assign_variable(W_r, W_r_v)
-
-    # update melt-rate :
-    psi        = TestFunction(Q)
-    dMb        = TrialFunction(Q)
-    q_friction = self.q_friction
-    q_geo      = model.q_geo
-    rho        = model.rho
-    #N          = self.N
-    B          = model.B
-    V          = model.V
-    N          = project(as_vector([B.dx(0), B.dx(1), -1]), V)
-    kappa_melt = self.kappa_melt
-    dBed       = self.dBed
-    gradH      = project(grad(H), V)
-    
-    Mb   = (q_friction + q_geo - rho*kappa_melt*dot(gradH, N)) / (L*rho)
-    M    = assemble(psi*dMb*dx)
-    #solve(M, model.Mb.vector(), assemble(Mb*psi*dBed))
-    
-    a_Mb = dMb * psi * dx
-    L_Mb =  Mb * psi * dx
-    solve(a_Mb == L_Mb, model.Mb)
-    
-    #model.Mb = project(Mb, Q)
-
-    #model.assign_variable(model.Mb, project(self.Mb))
-    #model.Mb = model.extrude(model.Mb, [3,5], 2)
-      
-    #a_T = conditional( lt(Tstar, 263.15), 1.1384496e-5, 5.45e10)
-    #Q_T = conditional( lt(Tstar, 263.15), 6e4,          13.9e4)
-    
-    #a_T_v   = a_T.vector().array()
-    #Q_T_v   = Q_T.vector().array()
-    #Tstar_v = T.vector().array()
-    #a_T_v[Tstar_v <  263.15] = 1.1384496e-5
-    #a_T_v[Tstar_v >= 263.15] = 5.45e10
-    #Q_T_v[Tstar_v <  263.15] = 6e4
-    #Q_T_v[Tstar_v >= 263.15] = 13.9e4
-    #model.assign_variable(a_T, a_T_v)
-    #model.assign_variable(Q_T, Q_T_v)
+    model.assign_variable(W,        WW)
+    model.assign_variable(W_r,      W_r_v)
+    model.assign_variable(model.Mb, project(W_r - W0))
+    model.assign_variable(W0,       W_r)
     
     # print the min/max values to the screen :    
     model.print_min_max(model.H,  'H')
@@ -1403,6 +1373,13 @@ class FreeSurface(Physics):
   """
 
   def __init__(self, model, config):
+    """
+    """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING FREE-SURFACE SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model  = model
     self.config = config
 
@@ -1527,6 +1504,11 @@ class AdjointVelocityBP(Physics):
     """ 
     Setup.
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING ADJOINT VELOCITY SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model  = model
     self.config = config
 
@@ -1727,6 +1709,11 @@ class Age(Physics):
     """ 
     Set up the equations 
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING AGE SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model  = model
     self.config = config
 
@@ -1739,8 +1726,8 @@ class Age(Physics):
       # SUPG method :
       h      = CellSize(model.mesh)
       U      = as_vector([model.u, model.v, model.w])
-      vnorm  = sqrt(dot(U,U) + 1e-10)
-      phihat = phi + h/(2*vnorm) * dot(U,grad(phi))
+      Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
+      phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
       
       # Residual 
       R = dot(U,grad(a)) - 1.0
@@ -1763,8 +1750,8 @@ class Age(Physics):
       # SUPG method (note subtraction of mesh velocity) :
       h      = CellSize(model.mesh)
       U      = as_vector([uhat, vhat, what-mhat])
-      vnorm  = sqrt(dot(U,U) + 1e-10)
-      phihat = phi + h/(2*vnorm)*dot(U,grad(phi))
+      Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
+      phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
 
       # Midpoint value of age for Crank-Nicholson
       a_mid = 0.5*(a + self.ahat)
@@ -1815,6 +1802,12 @@ class Age(Physics):
 class VelocityBalance(Physics):
   
   def __init__(self, model, config):
+    """
+    """ 
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING VELOCITY-BALANCE SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
     
     self.model  = model
     self.config = config
@@ -1852,6 +1845,17 @@ class VelocityBalance(Physics):
     R_dSdy = + Ny * phi * ds(2) \
              - rho * g * H_ * S_.dx(1) * phi*ds(2) \
              + (l*H_)**2 * (phi.dx(0)*Ny.dx(0) + phi.dx(1)*Ny.dx(1)) * ds(2)
+    
+    a_x  = assemble(lhs(R_dSdx))
+    a_x.ident_zeros()
+    L_x  = assemble(rhs(R_dSdx))
+
+    a_y  = assemble(lhs(R_dSdy))
+    a_y.ident_zeros()
+    L_y  = assemble(rhs(R_dSdy))
+
+    solve(a_x, dSdx.vector(), L_x)
+    solve(a_y, dSdy.vector(), L_y)
 
     slope  = sqrt(dSdx**2 + dSdy**2) + 1e-5
     dS     = as_vector([-dSdx/slope, -dSdy/slope])
@@ -1868,32 +1872,17 @@ class VelocityBalance(Physics):
     term2  = Dx(dU*dS[0]*H_, 0) + Dx(dU*dS[1]*H_, 1) - smb_
     dI     = term1 * term2 * ds(2)
     
-    self.R_dSdx = R_dSdx
-    self.R_dSdy = R_dSdy
     self.dI     = dI
     self.dS     = dS
 
   def solve(self):
-    Ub   = self.model.Ub
-    dSdx = self.model.dSdx
-    dSdy = self.model.dSdy
-
-    a_x  = assemble(lhs(self.R_dSdx))
-    a_x.ident_zeros()
-    L_x  = assemble(rhs(self.R_dSdx))
-
-    a_y  = assemble(lhs(self.R_dSdy))
-    a_y.ident_zeros()
-    L_y  = assemble(rhs(self.R_dSdy))
-
-    solve(a_x, dSdx.vector(), L_x)
-    solve(a_y, dSdy.vector(), L_y)
-
     a_U  = assemble(lhs(self.dI))
     a_U.ident_zeros()
     L_U  = assemble(rhs(self.dI))
 
     solve(a_U, U.vector(), L_U)
+    
+    Ub  = self.model.Ub
     u_b = project(Ub * self.dS[0])
     v_b = project(Ub * self.dS[1])
     self.model.assign_variable(self.model.u_balance, u_b.vector())
@@ -1903,6 +1892,12 @@ class VelocityBalance(Physics):
 class VelocityBalance_2(Physics):
 
   def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0,0.]):
+    """
+    """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING VELOCITY-BALANCE SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
 
     set_log_level(PROGRESS)
     
@@ -2076,6 +2071,11 @@ class StokesBalance(Physics):
   def __init__(self, model, config):
     """
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING STOKES-BALANCE SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model  = model
     self.config = config
 
@@ -2309,6 +2309,11 @@ class StokesBalance3D(Physics):
   def __init__(self, model, config):
     """
     """
+    if model.MPI_rank==0:
+      s    = "::: INITIALIZING STOKES-BALANCE SOLVER :::"
+      text = colored(s, 'cyan')
+      print text
+
     self.model  = model
     self.config = config
 
@@ -2561,11 +2566,11 @@ class StokesBalance3D(Physics):
     solve(M, tau_tt.vector(), assemble(tau_tt_s))
     solve(M, tau_tz.vector(), assemble(tau_tz_s))
     
-    if self.model.MPI_rank==0:
-      s    = "::: vertically integrating '3D-stokes-balance' terms :::"
-      text = colored(s, 'cyan')
-      print text
-    
+    #if self.model.MPI_rank==0:
+    #  s    = "::: vertically integrating '3D-stokes-balance' terms :::"
+    #  text = colored(s, 'cyan')
+    #  print text
+    #
     #tau_nn   = model.vert_integrate(tau_nn, Q)
     #tau_nt   = model.vert_integrate(tau_nt, Q)
     #tau_nz   = model.vert_integrate(tau_nz, Q)

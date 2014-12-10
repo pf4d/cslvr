@@ -499,10 +499,12 @@ class DataFactory(object):
     y       = array(data.variables['y1'][:])
     b       = array(data.variables['lsrf'][:])
     h       = array(data.variables['usrf'][:])
-    adot    = array(data.variables['acca'][:])
+    adota   = array(data.variables['acca'][:])
+    adotr   = array(data.variables['accr'][:])
     mask    = array(data.variables['mask'][:])
     srfTemp = array(data.variables['temp'][:]) + 273.15
-    q_geo   = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365 / 1000
+    q_geo_f = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365 / 1000
+    q_geo_s = array(data.variables['ghfsr'][:]) * 60 * 60 * 24 * 365 / 1000
    
     H             = h - b
     h[H < thklim] = b[H < thklim] + thklim
@@ -520,8 +522,8 @@ class DataFactory(object):
     lat_ts = '-71'
     lon_0  = '0'
     
-    names = ['B', 'S', 'H', 'adot', 'q_geo', 'srfTemp']
-    ftns  = [ b,   h,   H,   adot,   q_geo,   srfTemp]
+    names = ['B','S','H','acca','accr','ghffm','ghfsr','temp']
+    ftns  = [b, h, H, adota, adotr, q_geo_f, q_geo_s, srfTemp]
     
     # save the data in matlab format :
     vara['dataset'] = 'bedmap 1'

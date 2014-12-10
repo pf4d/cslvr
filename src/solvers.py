@@ -90,6 +90,7 @@ class SteadySolver(Solver):
       print text
     model   = self.model
     config  = self.config
+    outpath = config['output_path']
     
     # Set the initial Picard iteration (PI) parameters
     # L_\infty norm in velocity between iterations
@@ -132,14 +133,20 @@ class SteadySolver(Solver):
             s    = '::: saving velocity U.pvd file :::'
             text = colored(s, 'blue')
             print text
-          self.U_file << U
+          if config['log_history']:
+            self.U_file << U
+          else:
+            File(outpath + 'U.pvd')  << U
           # if the velocity solve is full-stokes, save pressure too : 
           if config['velocity']['approximation'] == 'stokes':
             if self.model.MPI_rank==0:
               s    = '::: saving pressure P.pvd file :::'
               text = colored(s, 'blue')
               print text
-            self.P_file << project(model.P, model.Q)
+            if config['log_history']:
+              self.P_file << project(model.P, model.Q)
+            else:
+              File(outpath + 'P.pvd')  << model.P
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -149,9 +156,14 @@ class SteadySolver(Solver):
             s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
             text = colored(s, 'blue')
             print text
-          self.T_file  << model.T   # save temperature
-          self.M_file  << model.Mb  # save melt rate
-          self.W_file  << model.W   # save water content
+          if config['log_history']:
+            self.T_file  << model.T   # save temperature
+            self.M_file  << model.Mb  # save melt rate
+            self.W_file  << model.W   # save water content
+          else:
+            File(outpath + 'T.pvd')  << model.T
+            File(outpath + 'W.pvd')  << model.Mb
+            File(outpath + 'Mb.pvd') << model.W
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -175,7 +187,10 @@ class SteadySolver(Solver):
           s    = '::: saving age age.pvd file :::'
           text = colored(s, 'blue')
           print text
-        self.a_file << model.age  # save age
+        if config['log_history']:
+          self.a_file << model.age  # save age
+        else:
+          File(outpath + 'age.pvd')  << model.age
 
 
 class TransientSolver(Solver):

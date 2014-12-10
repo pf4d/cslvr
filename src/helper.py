@@ -557,6 +557,7 @@ def default_config():
              'wall_markers'                 : [],
              'periodic_boundary_conditions' : False,
              'log'                          : True,
+             'log_history'                  : False,
              'coupled' : 
              { 
                'on'                  : False,

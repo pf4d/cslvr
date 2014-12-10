@@ -1028,10 +1028,6 @@ class Enthalpy(Physics):
     #  was passed in.
     if not config['enthalpy']['use_surface_climate']:
       model.assign_variable(T_surface, config['enthalpy']['T_surface'])
-   
-    # Surface boundary condition
-    model.assign_variable(H_surface, project(T_surface * C, Q))
-    model.assign_variable(H_float,   project(T_w * C,       Q))
 
     # assign geothermal flux :
     model.assign_variable(q_geo, config['enthalpy']['q_geo'])
@@ -1045,6 +1041,10 @@ class Enthalpy(Physics):
 
     # Pressure melting point
     model.assign_variable(T0, project(T_w - gamma * (S - x[2]), Q))
+   
+    # Surface boundary condition
+    model.assign_variable(H_surface, project(T_surface * C))
+    model.assign_variable(H_float,   project(C*T0))
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -1052,7 +1052,7 @@ class Enthalpy(Physics):
     # to conserve energy.  This also implies that heretofore, models have been 
     # overestimating frictional heat, and underestimating strain heat.
 
-    # Frictional heating = tau_b * u = beta^2*H^r*u * u
+    # Frictional heating :
     q_friction = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
@@ -1078,7 +1078,6 @@ class Enthalpy(Physics):
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
-      #psihat = psi + T_c*h/(2*Unorm) * dot(U, grad(psi))
 
       # residual of model :
       self.a = + rho * dot(U, grad(dH)) * psihat * dx \
@@ -1103,7 +1102,6 @@ class Enthalpy(Physics):
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
-      #psihat = psi + T_c*h/(2*Unorm) * dot(U, grad(psi))
 
       theta = 0.5
       # Crank Nicholson method
@@ -1207,7 +1205,6 @@ class Enthalpy(Physics):
       model.assign_variable(model.mhat, mhat)
       
     lat_bc     = config['enthalpy']['lateral_boundaries']
-    dt         = config['time_step']
     mesh       = model.mesh
     V          = model.V
     Q          = model.Q
@@ -1253,11 +1250,24 @@ class Enthalpy(Physics):
 
     # calculate temperature and water content :
     if self.model.MPI_rank==0:
-      s    = "::: calculating temperature and water content :::"
+      s = "::: calculating temperature, water content, and basal melt-rate :::"
       text = colored(s, 'cyan')
       print text
-    T_n  = project(  H / C,          Q)
-    W_n  = project( (H - C*T0) / L,  Q)
+    
+    # temperature solved diagnostically : 
+    T_n  = project(H/C, Q)
+    
+    # update temperature and thermal conductivity for wet/dry areas :
+    Ta            = T_n.vector().array()
+    Ts            = T0.vector().array()
+    Kcoef_v       = Kcoef.vector().array()
+    warm          = Ta >= Ts
+    cold          = Ta <  Ts
+    Kcoef_v[warm] = 1.0/10.0              # wet ice
+    Kcoef_v[cold] = 1.0                   # cold ice
+    Ta[warm]      = Ts[warm]
+    model.assign_variable(T,     Ta)
+    model.assign_variable(Kcoef, Kcoef_v)
 
     ## solve for melt-rate :
     #if self.model.MPI_rank==0:
@@ -1277,26 +1287,22 @@ class Enthalpy(Physics):
     #
     #model.assign_variable(Mb, model.extrude(Mb, [3,5], 2))
 
-    # update temperature and thermal conductivity :
-    Ta                = T_n.vector().array()
-    Ts                = T0.vector().array()
-    Kcoef_v           = Kcoef.vector().array()
-    Kcoef_v[Ta >= Ts] = 1.0/10.0              # wet ice
-    Kcoef_v[Ta <  Ts] = 1.0                   # cold ice
-    Ta[Ta > Ts]       = Ts[Ta > Ts]
-    model.assign_variable(T,     Ta)
-    model.assign_variable(Kcoef, Kcoef_v)
+    # water content solved diagnostically :
+    W_n  = project((H - C*T0)/L, Q)
 
     # update water content :
-    W_v                 = W_n.vector().array()
-    W_v[W_v < 0.0]      = 0.0
-    W_r_v               = W_r.vector().array()
-    W_r_v[W_r_v < 0.0]  = 0.0
-    W_r_v[W_r_v > 0.01] = 0.01
-    model.assign_variable(W,   W_v)
-    model.assign_variable(W_r, W_r_v)
-    model.assign_variable(Mb,  project((W - W0)/dt))
-    model.assign_variable(W0,  W)
+    W_v        = W_n.vector().array()
+    W_v[cold]  = 0.0
+    model.assign_variable(W0, W)
+    model.assign_variable(W,  W_v)
+   
+    # update capped variable for rheology : 
+    W_v[W_v > 0.01] = 0.01
+    model.assign_variable(W_r, W_v)
+   
+    # calculate melt-rate : 
+    nMb   = project((q_friction + q_geo) / (L*rho))
+    model.assign_variable(Mb,  nMb)
     
     # print the min/max values to the screen :    
     model.print_min_max(model.H,  'H')

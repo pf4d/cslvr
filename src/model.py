@@ -882,6 +882,7 @@ class Model(object):
       self.Q           = FunctionSpace(self.mesh,      "CG", 1)
       self.Q_flat      = FunctionSpace(self.flat_mesh, "CG", 1)
       self.Q2          = MixedFunctionSpace([self.Q]*2)
+      self.Q3          = MixedFunctionSpace([self.Q]*3)
       self.Q4          = MixedFunctionSpace([self.Q]*4)
     
       # surface and bed :

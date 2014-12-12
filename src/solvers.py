@@ -62,9 +62,10 @@ class SteadySolver(Solver):
     if config['enthalpy']['on']:
       self.enthalpy_instance = Enthalpy(model, config)
       if config['enthalpy']['log']:
-        self.T_file = File(outpath + 'T.pvd')
-        self.W_file = File(outpath + 'W.pvd')
-        self.M_file = File(outpath + 'Mb.pvd')
+        self.T_file   = File(outpath + 'T.pvd')
+        self.W_file   = File(outpath + 'W.pvd')
+        self.M_file   = File(outpath + 'Mb.pvd')
+        self.rho_file = File(outpath + 'rho.pvd')
 
     # age model :
     if config['age']['on']:
@@ -157,13 +158,15 @@ class SteadySolver(Solver):
             text = colored(s, 'blue')
             print text
           if config['log_history']:
-            self.T_file  << model.T   # save temperature
-            self.M_file  << model.Mb  # save melt rate
-            self.W_file  << model.W   # save water content
+            self.T_file    << model.T    # save temperature
+            self.M_file    << model.Mb   # save melt rate
+            self.W_file    << model.W    # save water content
+            self.rho_file  << model.rho  # save bulk density
           else:
-            File(outpath + 'T.pvd')  << model.T
-            File(outpath + 'W.pvd')  << model.Mb
-            File(outpath + 'Mb.pvd') << model.W
+            File(outpath + 'T.pvd')   << model.T
+            File(outpath + 'W.pvd')   << model.Mb
+            File(outpath + 'Mb.pvd')  << model.W
+            File(outpath + 'rho.pvd') << model.rho
 
       # Calculate L_infinity norm
       if config['coupled']['on']:

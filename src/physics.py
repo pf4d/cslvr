@@ -1046,7 +1046,7 @@ class Enthalpy(Physics):
    
     # Surface boundary condition
     model.assign_variable(H_surface, project(T_surface * ci))
-    model.assign_variable(H_float,   project(C*T0))
+    model.assign_variable(H_float,   project(ci*T0))
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -1123,10 +1123,10 @@ class Enthalpy(Physics):
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
 
-    model.c         = c
-    model.k         = k
-    model.rho       = rho
-    model.kappa     = kappa
+    self.c          = c
+    self.k          = k
+    self.rho        = rho
+    self.kappa      = kappa
     self.q_friction = q_friction
     self.dBed       = dBed
      
@@ -1227,15 +1227,14 @@ class Enthalpy(Physics):
     W0         = model.W0
     W_r        = model.W_r
     L          = model.L
-    kappa      = model.kappa
     Kcoef      = model.Kcoef
     q_geo      = model.q_geo
     B          = model.B
+    ci         = model.ci
     dBed       = self.dBed
     q_friction = self.q_friction
-
-    ci         = model.ci
-    rho        = model.rho
+    rho        = self.rho
+    kappa      = self.kappa
 
     # surface boundary condition : 
     self.bc_H = []
@@ -1267,36 +1266,20 @@ class Enthalpy(Physics):
     # temperature solved diagnostically : 
     T_n  = project(H/ci, Q)
     
-    # update temperature and thermal conductivity for wet/dry areas :
-    T_n_v         = T_n.vector().array()
-    T0_v          = T0.vector().array()
+    # update temperature for wet/dry areas :
+    T_n_v        = T_n.vector().array()
+    T0_v         = T0.vector().array()
+    warm         = T_n_v >= T0_v
+    cold         = T_n_v <  T0_v
+    T_n_v[warm]  = T0_v[warm]
+    model.assign_variable(T, T_n_v)
+    
+    # update kappa coefficient for wet/dry areas :
     #Kcoef_v       = Kcoef.vector().array()
-    warm          = T_n_v >= T0_v
-    cold          = T_n_v <  T0_v
     #Kcoef_v[warm] = 1.0/10.0              # wet ice
     #Kcoef_v[cold] = 1.0                   # cold ice
-    T_n_v[warm]   = T0_v[warm]
-    model.assign_variable(T,     T_n_v)
     #model.assign_variable(Kcoef, Kcoef_v)
 
-    ## solve for melt-rate :
-    #if self.model.MPI_rank==0:
-    #  s    = "::: solving for basal melt rate :::"
-    #  text = colored(s, 'cyan')
-    #  print text
-    #psi   = TestFunction(Q)
-    #dMb   = TrialFunction(Q)
-    #gradH = project(grad(H), V)
-    #N     = FacetNormal(mesh)
-    #
-    #nMb   = (q_friction + q_geo - rhoi*kappa*dot(gradH, N)) / (L*rhoi)
-    #      
-    #a_Mb  = dMb * psi * dx
-    #L_Mb  = nMb * psi * dBed
-    #solve(a_Mb == L_Mb, Mb)
-    #
-    #model.assign_variable(Mb, model.extrude(Mb, [3,5], 2))
-    
     # water content solved diagnostically :
     W_n  = project((H - ci*T0)/L, Q)
     
@@ -1313,12 +1296,17 @@ class Enthalpy(Physics):
     # calculate melt-rate : 
     nMb   = project(-(q_geo + q_friction) / (L*rho))
     model.assign_variable(Mb,  nMb)
+
+    # calculate bulk density :
+    rho       = project(self.rho)
+    model.rho = rho
     
     # print the min/max values to the screen :    
     model.print_min_max(H,  'H')
     model.print_min_max(T,  'T')
     model.print_min_max(Mb, 'Mb')
     model.print_min_max(W,  'W')
+    model.print_min_max(rho,'rho')
 
 
 class FreeSurface(Physics):

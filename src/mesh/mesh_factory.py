@@ -86,6 +86,14 @@ class MeshFactory(object):
  
   
   @staticmethod
+  def get_antarctica_3D_10k():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/antarctica/antarctica_3D_10k.xml')
+    return mesh
+
+  
+  @staticmethod
   def get_antarctica_3D_gradS_crude():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))

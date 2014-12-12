@@ -61,36 +61,32 @@ home     = os.path.dirname(os.path.abspath(filename))
 
 # coarse greenland mesh :
 fldr = 'greenland'
-url  = 'https://dl.dropboxusercontent.com/s/evtzuxhupnwlght/' + \
-       'greenland_coarse_mesh.tar.gz?dl=1&token_hash=AAEFc43' + \
-       '8YYCRbQAiEN1eToNlSB4kIUak4jL6sRncZMnNrg'
+url  = 'https://www.dropbox.com/s/evtzuxhupnwlght/greenland' + \
+       '_coarse_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # medium greenland mesh :
 fldr = 'greenland'
-url  = 'https://dl.dropboxusercontent.com/s/zckpt9uqn0qqyl1/' + \
-       'greenland_medium_mesh.tar.gz?dl=1&token_hash=AAHvYKB' + \
-       'bNjM-U07GaqP3vJTN_H45Nd1eGJxucmhTEuRrDg'
+url  = 'https://www.dropbox.com/s/zckpt9uqn0qqyl1/greenland' + \
+       '_medium_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # detailed greenland mesh :
 fldr = 'greenland'
-url  = 'https://dl.dropboxusercontent.com/s/hz2ih2qpfpm5htb/' + \
-       'greenland_detailed_mesh.tar.gz?dl=1&token_hash=AAGtX' + \
-       'NVrgZiNsiJ_ixg5wxXKPscwH4xFzDQP387tbGQc9w&expiry=1400783674'
+url  = 'https://www.dropbox.com/s/hz2ih2qpfpm5htb/greenland' + \
+       '_detailed_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # 3D 5H greenland mesh :
 fldr = 'greenland'
-url  = 'https://www.dropbox.com/s/yiof92z34ccjbbe/greenland_' + \
-       '3D_5H_mesh.tar.gz?dl=1'
+url  = 'https://www.dropbox.com/s/yiof92z34ccjbbe/greenland' + \
+       '_3D_5H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # 2D 1H greenland mesh :
 fldr = 'greenland'
-url  = 'https://dl.dropboxusercontent.com/s/2wkfzkha7jtjyxq/' + \
-       'greenland_2D_1H_mesh.tar.gz?dl=1&token_hash=AAFTj-T2' + \
-       '4idxuG7Jv5CYlhSVxnGNLcjZoj_IiObdkHDmPQ&expiry=1400783547'
+url  = 'https://www.dropbox.com/s/2wkfzkha7jtjyxq/greenland' + \
+       '_2D_1H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # 2D 5H greenland mesh :
@@ -101,9 +97,7 @@ download_file(url, home, fldr, extract=True)
 
 # coarse, no-shelf antarctica mesh :
 fldr = 'antarctica'
-url  = 'https://dl.dropboxusercontent.com/s/n99zjixyzo2c2i8/' + \
-       'antarctica.tar.gz?dl=1&token_hash=AAGFYWbn7p4JOywM4G' + \
-       'NzNbUhCPhM4oGfg0KV7HX0ACXN8w'
+url  = 'https://www.dropbox.com/s/n99zjixyzo2c2i8/antarctica.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # 50H, shelf, antarctica mesh :
@@ -130,6 +124,12 @@ url  = 'https://www.dropbox.com/s/h36739k2dd4ht5d/antarctica' + \
        '_3D_gradS_mesh_detailed.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
+# 10km, antarctica mesh :
+fldr = 'antarctica'
+url  = 'https://www.dropbox.com/s/g46veuwbmwb354t/antarctica' + \
+       '_3D_10k.tar.gz?dl=1'
+download_file(url, home, fldr, extract=True)
+
 # Ronne shelf, antarctica mesh 10H :
 fldr = 'antarctica'
 url  = 'https://www.dropbox.com/s/2xwauazntbob22v/antarctica' + \
@@ -144,9 +144,7 @@ download_file(url, home, fldr, extract=True)
 
 # circle mesh :
 fldr = 'test'
-url  = 'https://dl.dropboxusercontent.com/s/hk63j3l9fhx6zty/' + \
-       'circle.tar.gz?dl=1&token_hash=AAFGUYbuRVk3A56uAxImZT' + \
-       'DiADzs6Du7Xi9WiOp_yTW7Ng'
+url  = 'https://www.dropbox.com/s/hk63j3l9fhx6zty/circle.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 

@@ -179,8 +179,8 @@ class VelocityStokes(Physics):
     epsdot        = model.epsdot
     eps_reg       = model.eps_reg
     eta           = model.eta
-    rho           = model.rho
-    rho_w         = model.rho_w
+    rhoi          = model.rhoi
+    rhow          = model.rhow
     g             = model.g
     Pe            = model.Pe
     Sl            = model.Sl
@@ -310,7 +310,7 @@ class VelocityStokes(Physics):
     Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
-    Pe     = rho * g * w
+    Pe     = rhoi * g * w
 
     # 3) Dissipation by sliding
     Sl     = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
@@ -322,12 +322,12 @@ class VelocityStokes(Physics):
     Nc     = P * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary
-    Pb     = - (rho*g*(S - x[2]) + rho_w*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
+    Pb     = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
     g      = Constant((0.0, 0.0, g))
     h      = CellSize(mesh)
-    tau    = h**2 / (12 * b * rho**2)
-    Lsq    = -tau * dot( (grad(P) + rho*g), (grad(P) + rho*g) )
+    tau    = h**2 / (12 * b * rhoi**2)
+    Lsq    = -tau * dot( (grad(P) + rhoi*g), (grad(P) + rhoi*g) )
     
     # Variational principle
     A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
@@ -567,8 +567,8 @@ class VelocityBP(Physics):
     epsdot        = model.epsdot
     eps_reg       = model.eps_reg
     eta           = model.eta
-    rho           = model.rho
-    rho_w         = model.rho_w
+    rhoi          = model.rhoi
+    rhow          = model.rhow
     g             = model.g
     Pe            = model.Pe
     Sl            = model.Sl
@@ -728,13 +728,13 @@ class VelocityBP(Physics):
     Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
 
     # 2) Potential energy
-    Pe       = rho * g * (u*gradS[0] + v*gradS[1])
+    Pe       = rhoi * g * (u*gradS[0] + v*gradS[1])
 
     # 3) Dissipation by sliding
     Sl       = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
     # 4) pressure boundary
-    Pb       = - (rho*g*(S - x[2]) + rho_w*g*D) * (u*N[0] + v*N[1]) 
+    Pb       = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1]) 
 
     # Variational principle
     A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
@@ -973,8 +973,8 @@ class Enthalpy(Physics):
     T0          = model.T0
     Mb          = model.Mb
     L           = model.L
-    C           = model.C
-    C_w         = model.C_w
+    ci          = model.ci
+    cw          = model.cw
     T_w         = model.T_w
     gamma       = model.gamma
     S           = model.S
@@ -986,7 +986,8 @@ class Enthalpy(Physics):
     epsdot      = model.epsdot
     eps_reg     = model.eps_reg
     eta         = model.eta
-    rho         = model.rho
+    rhoi        = model.rhoi
+    rhow        = model.rhow
     g           = model.g
     beta        = model.beta
     u           = model.u
@@ -994,7 +995,8 @@ class Enthalpy(Physics):
     w           = model.w
     kappa       = model.kappa
     Kcoef       = model.Kcoef
-    k           = model.k
+    ki          = model.ki
+    kw          = model.kw
     T_surface   = model.T_surface
     H_surface   = model.H_surface
     H_float     = model.H_float
@@ -1043,7 +1045,7 @@ class Enthalpy(Physics):
     model.assign_variable(T0, project(T_w - gamma * (S - x[2]), Q))
    
     # Surface boundary condition
-    model.assign_variable(H_surface, project(T_surface * C))
+    model.assign_variable(H_surface, project(T_surface * ci))
     model.assign_variable(H_float,   project(C*T0))
 
     # For the following heat sources, note that they differ from the 
@@ -1060,8 +1062,13 @@ class Enthalpy(Physics):
     Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
 
     # thermal conductivity (Greve and Blatter 2009) :
-    k     =  spy * 9.828 * exp(-0.0057*T)
-    kappa =  k / (rho*C)
+    ki    =  9.828 * exp(-0.0057*T)
+    
+    # bulk properties :
+    k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
+    c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
+    rho   =  (1 - W)*rhoi + W*rhow   # bulk density
+    kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
@@ -1081,7 +1088,7 @@ class Enthalpy(Physics):
 
       # residual of model :
       self.a = + rho * dot(U, grad(dH)) * psihat * dx \
-               + rho * Kcoef * kappa * dot(grad(psi), grad(dH)) * dx \
+               + rho * spy * kappa * dot(grad(psi), grad(dH)) * dx \
       
       self.L = + (q_geo + q_friction) * psihat * dGnd \
                + Q_s_gnd * psihat * dx_g \
@@ -1110,13 +1117,15 @@ class Enthalpy(Physics):
       # implicit system (linearized) for enthalpy at time H_{n+1}
       self.a = + rho * (dH - H0) / dt * psi * dx \
                + rho * dot(U, grad(Hmid)) * psihat * dx \
-               + rho * Kcoef * kappa * dot(grad(psi), grad(Hmid)) * dx \
+               + rho * spy * kappa * dot(grad(psi), grad(Hmid)) * dx \
       
       self.L = + (q_geo + q_friction) * psi * dGnd \
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
 
-
+    model.c         = c
+    model.k         = k
+    model.rho       = rho
     model.kappa     = kappa
     self.q_friction = q_friction
     self.dBed       = dBed
@@ -1212,8 +1221,6 @@ class Enthalpy(Physics):
     H          = model.H
     H_surface  = model.H_surface
     H_float    = model.H_float  
-    rho        = model.rho
-    C          = model.C
     T          = model.T
     Mb         = model.Mb
     W          = model.W
@@ -1226,6 +1233,9 @@ class Enthalpy(Physics):
     B          = model.B
     dBed       = self.dBed
     q_friction = self.q_friction
+
+    ci         = model.ci
+    rho        = model.rho
 
     # surface boundary condition : 
     self.bc_H = []
@@ -1245,7 +1255,7 @@ class Enthalpy(Physics):
       s    = "::: solving enthalpy :::"
       text = colored(s, 'cyan')
       print text
-    solve(self.a == self.L, model.H, self.bc_H, 
+    solve(self.a == self.L, H, self.bc_H, 
           solver_parameters = {"linear_solver": "lu"})
 
     # calculate temperature and water content :
@@ -1255,19 +1265,19 @@ class Enthalpy(Physics):
       print text
     
     # temperature solved diagnostically : 
-    T_n  = project(H/C, Q)
+    T_n  = project(H/ci, Q)
     
     # update temperature and thermal conductivity for wet/dry areas :
-    Ta            = T_n.vector().array()
-    Ts            = T0.vector().array()
-    Kcoef_v       = Kcoef.vector().array()
-    warm          = Ta >= Ts
-    cold          = Ta <  Ts
-    Kcoef_v[warm] = 1.0/10.0              # wet ice
-    Kcoef_v[cold] = 1.0                   # cold ice
-    Ta[warm]      = Ts[warm]
-    model.assign_variable(T,     Ta)
-    model.assign_variable(Kcoef, Kcoef_v)
+    T_n_v         = T_n.vector().array()
+    T0_v          = T0.vector().array()
+    #Kcoef_v       = Kcoef.vector().array()
+    warm          = T_n_v >= T0_v
+    cold          = T_n_v <  T0_v
+    #Kcoef_v[warm] = 1.0/10.0              # wet ice
+    #Kcoef_v[cold] = 1.0                   # cold ice
+    T_n_v[warm]   = T0_v[warm]
+    model.assign_variable(T,     T_n_v)
+    #model.assign_variable(Kcoef, Kcoef_v)
 
     ## solve for melt-rate :
     #if self.model.MPI_rank==0:
@@ -1279,36 +1289,36 @@ class Enthalpy(Physics):
     #gradH = project(grad(H), V)
     #N     = FacetNormal(mesh)
     #
-    #nMb   = (q_friction + q_geo - rho*kappa*dot(gradH, N)) / (L*rho)
+    #nMb   = (q_friction + q_geo - rhoi*kappa*dot(gradH, N)) / (L*rhoi)
     #      
     #a_Mb  = dMb * psi * dx
     #L_Mb  = nMb * psi * dBed
     #solve(a_Mb == L_Mb, Mb)
     #
     #model.assign_variable(Mb, model.extrude(Mb, [3,5], 2))
-
+    
     # water content solved diagnostically :
-    W_n  = project((H - C*T0)/L, Q)
-
+    W_n  = project((H - ci*T0)/L, Q)
+    
     # update water content :
     W_v        = W_n.vector().array()
     W_v[cold]  = 0.0
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
-   
+    
     # update capped variable for rheology : 
     W_v[W_v > 0.01] = 0.01
     model.assign_variable(W_r, W_v)
-   
+    
     # calculate melt-rate : 
-    nMb   = project((q_friction + q_geo) / (L*rho))
+    nMb   = project(-(q_geo + q_friction) / (L*rho))
     model.assign_variable(Mb,  nMb)
     
     # print the min/max values to the screen :    
-    model.print_min_max(model.H,  'H')
-    model.print_min_max(model.T,  'T')
-    model.print_min_max(model.Mb, 'Mb')
-    model.print_min_max(model.W,  'W')
+    model.print_min_max(H,  'H')
+    model.print_min_max(T,  'T')
+    model.print_min_max(Mb, 'Mb')
+    model.print_min_max(W,  'W')
 
 
 class FreeSurface(Physics):
@@ -1830,7 +1840,7 @@ class VelocityBalance(Physics):
     kappa       = config['balance_velocity']['kappa']
     smb         = config['balance_velocity']['smb']
     g           = model.g
-    rho         = model.rho
+    rhoi        = model.rhoi
 
     flat_mesh   = model.flat_mesh
     Q_flat      = model.Q_flat
@@ -1855,10 +1865,10 @@ class VelocityBalance(Physics):
     model.assign_variable(S_, S) 
 
     R_dSdx = + Nx * phi * ds(2) \
-             - rho * g * H_ * S_.dx(0) * phi * ds(2) \
+             - rhoi * g * H_ * S_.dx(0) * phi * ds(2) \
              + (l*H_)**2 * (phi.dx(0)*Nx.dx(0) + phi.dx(1)*Nx.dx(1)) * ds(2)
     R_dSdy = + Ny * phi * ds(2) \
-             - rho * g * H_ * S_.dx(1) * phi*ds(2) \
+             - rhoi * g * H_ * S_.dx(1) * phi*ds(2) \
              + (l*H_)**2 * (phi.dx(0)*Ny.dx(0) + phi.dx(1)*Ny.dx(1)) * ds(2)
     
     a_x  = assemble(lhs(R_dSdx))
@@ -1919,7 +1929,7 @@ class VelocityBalance_2(Physics):
     Q = FunctionSpace(mesh, "CG", 1)
     
     # Physical constants
-    rho = 911
+    rhoi = 911
     g = 9.81
 
     if Uobs:
@@ -1948,9 +1958,9 @@ class VelocityBalance_2(Physics):
     kappa = Function(Q)
     kappa.vector()[:] = l
     
-    R_dSdx = + (Nx*phi - rho*g*H*S.dx(0) * phi \
+    R_dSdx = + (Nx*phi - rhoi*g*H*S.dx(0) * phi \
              + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
-    R_dSdy = + (Ny*phi - rho*g*H*S.dx(1) * phi \
+    R_dSdy = + (Ny*phi - rhoi*g*H*S.dx(1) * phi \
              + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
     
     solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx)
@@ -2344,8 +2354,8 @@ class StokesBalance3D(Physics):
     H        = S - B
     beta     = model.beta
     eta      = model.eta
-    rho      = model.rho
-    rho_w    = model.rho_w
+    rhoi     = model.rhoi
+    rhow     = model.rhow
     g        = model.g
     x        = model.x
     
@@ -2367,7 +2377,7 @@ class StokesBalance3D(Physics):
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
     
-    f_w      = rho*g*(S - x[2]) + rho_w*g*D
+    f_w      = rhoi*g*(S - x[2]) + rhow*g*D
     
     Phi      = TestFunction(Q2)
     phi, psi = split(Phi)
@@ -2411,8 +2421,8 @@ class StokesBalance3D(Physics):
                              dudn + 2*dvdt,
                         0.5*dvdz             ])
     
-    tau_dn = phi * rho * g * gradS[0] * dx
-    tau_dt = psi * rho * g * gradS[1] * dx
+    tau_dn = phi * rhoi * g * gradS[0] * dx
+    tau_dt = psi * rhoi * g * gradS[1] * dx
     
     tau_bn = - beta**2 * u_s * phi * dBed
     tau_bt = - beta**2 * v_s * psi * dBed
@@ -2479,7 +2489,7 @@ class StokesBalance3D(Physics):
     S       = model.S
     B       = model.B
     H       = S - B
-    rho     = model.rho
+    rhoi    = model.rhoi
     g       = model.g
     
     dx      = model.dx
@@ -2533,8 +2543,8 @@ class StokesBalance3D(Physics):
                              dudn + 2*dvdt,
                         0.5*dvdz             ])
     
-    tau_dn_s = phi * rho * g * gradS[0] * dx
-    tau_dt_s = phi * rho * g * gradS[1] * dx
+    tau_dn_s = phi * rhoi * g * gradS[0] * dx
+    tau_dt_s = phi * rhoi * g * gradS[1] * dx
     
     tau_bn_s = - beta**2 * u_s * phi * dBed
     tau_bt_s = - beta**2 * v_s * phi * dBed

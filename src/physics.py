@@ -2453,8 +2453,7 @@ class StokesBalance3D(Physics):
       s    = "::: solving '3D-stokes-balance' for flow direction :::"
       text = colored(s, 'cyan')
       print text
-    solve(lhs(delta) == rhs(delta), U_s, bcs,
-          solver_parameters=self.config['solver_params'])
+    solve(lhs(delta) == rhs(delta), U_s, bcs)
     model.u_s, model.v_s = U_s.split(True)
     model.print_min_max(model.u_s, 'u_s')
     model.print_min_max(model.v_s, 'v_s')

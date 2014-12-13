@@ -67,6 +67,7 @@ class Model(object):
 
     self.mesh      = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
     self.flat_mesh = Mesh(self.mesh)
+    self.Q         = FunctionSpace(self.mesh, "CG", 1)
     
     # generate periodic boundary conditions if required :
     if generate_pbcs:

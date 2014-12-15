@@ -361,7 +361,7 @@ class Model(object):
       text = colored(s, 'magenta')
       print text
     Q        = self.Q
-    rho      = self.rho
+    rhoi     = self.rhoi
     g        = self.g
     H        = self.S - self.B
     U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
@@ -369,7 +369,7 @@ class Model(object):
     U_mag_v[U_mag_v < 0.5] = 0.5
     self.assign_variable(U_mag, U_mag_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project(sqrt((rho*g*H*S_mag) / (H**r * U_mag)), Q)
+    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(beta, beta_0_v)
@@ -386,8 +386,8 @@ class Model(object):
     x      = self.x
     S      = self.S
     Q      = self.Q
-    rho    = self.rho
-    rho_w  = self.rho_w
+    rhoi   = self.rhoi
+    rhow   = self.rhow
     g      = self.g
     u      = U_ob[0]
     v      = U_ob[1]
@@ -414,7 +414,7 @@ class Model(object):
     epsdot = ep_xx**2 + ep_yy**2 + ep_xx*ep_yy + ep_xy**2 + ep_xz**2 + ep_yz**2
     eta    = 0.5 * b_f * (epsdot + 1e-10)**((1-n)/(2*n))
 
-    f_w    = rho*g*(S - x[2]) + rho_w*g*D
+    f_w    = rhoi*g*(S - x[2]) + rhow*g*D
 
     epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
                         0.5*(u.dx(1) + v.dx(0)),
@@ -424,9 +424,9 @@ class Model(object):
                         0.5* v.dx(2)            ])
 
     R  = - 2 * eta * dot(epi_1, grad(phi)) * dx \
-         + rho * g * gradS[0] * phi * dx \
+         + rhoi * g * gradS[0] * phi * dx \
          #+ 2 * eta * dot(epi_2, grad(phi)) * dx \
-         #+ rho * g * gradS[1] * phi * dx \
+         #+ rhoi * g * gradS[1] * phi * dx \
    
     b_f = Function(Q)
     solve(lhs(R) == rhs(R), b_f)
@@ -465,13 +465,13 @@ class Model(object):
     """
     Calculate the continuous pressure field.
     """
-    Q   = self.Q
-    rho = self.rho
-    g   = self.g
-    eta = self.eta
-    w   = self.w
-    H   = self.calc_thickness() 
-    P   = rho*g*H + 2*eta*w.dx(2)
+    Q    = self.Q
+    rhoi = self.rhoi
+    g    = self.g
+    eta  = self.eta
+    w    = self.w
+    H    = self.calc_thickness() 
+    P    = rhoi*g*H + 2*eta*w.dx(2)
     return P
   
   def calc_sigma(self):
@@ -719,7 +719,7 @@ class Model(object):
     ff    = self.ff
     S     = self.S
     B     = self.B
-    rho   = self.rho
+    rhoi  = self.rhoi
     g     = self.g
     H     = S - B
     gradS = grad(S)
@@ -728,9 +728,9 @@ class Model(object):
     gradS_v = gradS[1]
     gradS_w = gradS[2]
   
-    tau_drv_u = project(rho*g*H*gradS_u, Q)
-    tau_drv_v = project(rho*g*H*gradS_v, Q)
-    tau_drv_w = project(rho*g*H*gradS_w, Q)
+    tau_drv_u = project(rhoi*g*H*gradS_u, Q)
+    tau_drv_v = project(rhoi*g*H*gradS_v, Q)
+    tau_drv_w = project(rhoi*g*H*gradS_w, Q)
 
     return as_vector([tau_drv_u, tau_drv_v, tau_drv_w])
 

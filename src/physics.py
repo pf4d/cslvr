@@ -401,7 +401,7 @@ class VelocityStokes(Physics):
        
     # Solve the nonlinear equations via Newton's method
     if self.model.MPI_rank==0:
-      s    = "::: solving full-stokes velocity :::"
+      s    = "::: solving full-Stokes velocity :::"
       text = colored(s, 'cyan')
       print text
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
@@ -1231,6 +1231,7 @@ class Enthalpy(Physics):
     q_geo      = model.q_geo
     B          = model.B
     ci         = model.ci
+    rhoi       = model.rhoi
     dBed       = self.dBed
     q_friction = self.q_friction
     rho        = self.rho
@@ -1294,7 +1295,7 @@ class Enthalpy(Physics):
     model.assign_variable(W_r, W_v)
     
     # calculate melt-rate : 
-    nMb   = project(-(q_geo + q_friction) / (L*rho))
+    nMb   = project(-(q_geo + q_friction) / (L*rhoi))
     model.assign_variable(Mb,  nMb)
 
     # calculate bulk density :
@@ -1500,7 +1501,7 @@ class FreeSurface(Physics):
     solve(A, q, p)
     model.assign_variable(model.dSdt, q)
 
-class AdjointVelocityBP(Physics):
+class AdjointVelocity(Physics):
   """ 
   Complete adjoint of the BP momentum balance.  Now updated to calculate
   the adjoint model and gradient using automatic differentiation.  Changing
@@ -1659,7 +1660,7 @@ class AdjointVelocityBP(Physics):
     l = assemble(rhs(self.dI))
 
     if self.model.MPI_rank==0:
-      s    = "::: solving adjoint BP velocity :::"
+      s    = "::: solving adjoint velocity :::"
       text = colored(s, 'cyan')
       print text
     solve(A, self.model.Lam.vector(), l)

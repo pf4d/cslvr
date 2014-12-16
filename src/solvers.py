@@ -476,7 +476,7 @@ class AdjointSolver(Solver):
     
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
-    self.adjoint_instance = AdjointVelocityBP(model, config)
+    self.adjoint_instance = AdjointVelocity(model, config)
   
   def set_velocity(self, u, v, w):
     """

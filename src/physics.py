@@ -167,6 +167,8 @@ class VelocityStokes(Physics):
     b             = model.b
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
     T             = model.T
     gamma         = model.gamma
     S             = model.S
@@ -178,7 +180,6 @@ class VelocityStokes(Physics):
     R             = model.R
     epsdot        = model.epsdot
     eps_reg       = model.eps_reg
-    eta           = model.eta
     rhoi          = model.rhoi
     rhow          = model.rhow
     g             = model.g
@@ -193,7 +194,6 @@ class VelocityStokes(Physics):
     gradS         = project(grad(S), V)
 
     newton_params = config['velocity']['newton_params']
-    A0            = config['velocity']['A0']
     
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
@@ -261,14 +261,14 @@ class VelocityStokes(Physics):
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
+      A0    = config['velocity']['A0']
       b     = A0**(-1/n)
       b_gnd = b
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b     = config['velocity']['eta']
-      b_gnd = b
-      b_shf = b
+      b_shf = config['velocity']['eta_shf']
+      b_gnd = config['velocity']['eta_gnd']
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
@@ -276,9 +276,6 @@ class VelocityStokes(Physics):
       b_gnd = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
       model.assign_variable(b_gnd, config['velocity']['b_gnd'])
-      b = Function(Q)
-      b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
-      b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
     elif config['velocity']['viscosity_mode'] == 'constant_b':
       b     = config['velocity']['b']
@@ -293,17 +290,29 @@ class VelocityStokes(Physics):
       b_gnd = b
       b_shf = b
     
+    elif config['velocity']['viscosity_mode'] == 'E_control':
+      # Define ice hardness parameterization :
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      E_shf = config['velocity']['E_shf'] 
+      E_gnd = config['velocity']['E_gnd']
+      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      model.E_shf = E_shf
+      model.E_gnd = E_gnd
+    
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
             "'isothermal', or 'full'."
 
     # Second invariant of the strain rate tensor squared
-    term   = + 0.5*(   (u.dx(1) + v.dx(0))**2  \
-                     + (u.dx(2) + w.dx(0))**2  \
-                     + (v.dx(2) + w.dx(1))**2) \
-             + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
-    epsdot = 0.5 * term + eps_reg
-    eta    = b * epsdot**((1-n)/(2*n))
+    term    = + 0.5 * (+ 0.5*(   (u.dx(1) + v.dx(0))**2  \
+                               + (u.dx(2) + w.dx(0))**2  \
+                               + (v.dx(2) + w.dx(1))**2) \
+                       + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2) 
+    epsdot  = term + eps_reg
+    eta_shf = b_shf * epsdot**((1-n)/(2*n))
+    eta_gnd = b_gnd * epsdot**((1-n)/(2*n))
     
     # 1) Viscous dissipation
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
@@ -335,24 +344,24 @@ class VelocityStokes(Physics):
     if not config['periodic_boundary_conditions']:
       A += Pb*dSde
 
-    model.A      = A
-    model.epsdot = epsdot
-    model.eta    = eta
-    model.b      = b
-    model.b_shf  = b_shf
-    model.b_gnd  = b_gnd
-    model.Vd_shf = Vd_shf
-    model.Vd_gnd = Vd_gnd
-    model.Pe     = Pe
-    model.Sl     = Sl
-    model.Pc     = Pc
-    model.Nc     = Nc
-    model.Pb     = Pb
-    model.Lsq    = Lsq
-    model.u      = u
-    model.v      = v
-    model.w      = w
-    model.P      = P
+    model.A       = A
+    model.epsdot  = epsdot
+    model.eta_shf = eta_shf
+    model.eta_gnd = eta_gnd
+    model.b_shf   = b_shf
+    model.b_gnd   = b_gnd
+    model.Vd_shf  = Vd_shf
+    model.Vd_gnd  = Vd_gnd
+    model.Pe      = Pe
+    model.Sl      = Sl
+    model.Pc      = Pc
+    model.Nc      = Nc
+    model.Pb      = Pb
+    model.Lsq     = Lsq
+    model.u       = u
+    model.v       = v
+    model.w       = w
+    model.P       = P
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -550,9 +559,10 @@ class VelocityBP(Physics):
     Q             = model.Q
     Q2            = model.Q2
     n             = model.n
-    b             = model.b
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
     T             = model.T
     gamma         = model.gamma
     S             = model.S
@@ -566,7 +576,6 @@ class VelocityBP(Physics):
     R             = model.R
     epsdot        = model.epsdot
     eps_reg       = model.eps_reg
-    eta           = model.eta
     rhoi          = model.rhoi
     rhow          = model.rhow
     g             = model.g
@@ -587,7 +596,6 @@ class VelocityBP(Physics):
     N = FacetNormal(mesh)
     
     newton_params = config['velocity']['newton_params']
-    A0            = config['velocity']['A0']
 
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
@@ -651,22 +659,19 @@ class VelocityBP(Physics):
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
+      A0    = config['velocity']['A0']
       b     = A0**(-1/n)
       b_gnd = b
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b     = config['velocity']['eta']
-      b_gnd = b
-      b_shf = b
+      b_gnd = config['velocity']['eta_gnd']
+      b_shf = config['velocity']['eta_shf']
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      b = Function(Q)
-      b.vector()[model.shf_dofs] = b_shf.vector()[model.shf_dofs]
-      b.vector()[model.gnd_dofs] = b_gnd.vector()[model.gnd_dofs]
     
     elif config['velocity']['viscosity_mode'] == 'constant_b':
       b     = config['velocity']['b']
@@ -675,17 +680,6 @@ class VelocityBP(Physics):
     
     elif config['velocity']['viscosity_mode'] == 'full':
       # Define ice hardness parameterization :
-      #a_T     = model.a_T
-      #Q_T     = model.Q_T
-      #a_T_v   = a_T.vector().array()
-      #Q_T_v   = Q_T.vector().array()
-      #T_v     = T.vector().array()
-      #a_T_v[T_v <  263.15] = 1.1384496e-5
-      #a_T_v[T_v >= 263.15] = 5.45e10
-      #Q_T_v[T_v <  263.15] = 6e4
-      #Q_T_v[T_v >= 263.15] = 13.9e4
-      #model.assign_variable(a_T, a_T_v)
-      #model.assign_variable(Q_T, Q_T_v)
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
@@ -718,10 +712,11 @@ class VelocityBP(Physics):
       model.init_b0(b_shf, U_ob, gradS)
     
     # second invariant of the strain rate tensor squared :
-    term     = + 0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
-               +        u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2
-    epsdot   =   0.5 * term + eps_reg
-    eta      =     b * epsdot**((1.0 - n) / (2*n))
+    term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
+    epsdot  =  term + eps_reg
+    eta_shf =  b_shf * epsdot**((1.0 - n) / (2*n))
+    eta_gnd =  b_gnd * epsdot**((1.0 - n) / (2*n))
 
     # 1) Viscous dissipation
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
@@ -756,22 +751,22 @@ class VelocityBP(Physics):
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
 
-    model.eta    = eta
-    model.b      = b
-    model.b_shf  = b_shf
-    model.b_gnd  = b_gnd
-    model.Vd_shf = Vd_shf
-    model.Vd_gnd = Vd_gnd
-    model.Pe     = Pe
-    model.Sl     = Sl
-    model.Pb     = Pb
-    model.A      = A
-    model.T      = T
-    model.beta   = beta
-    model.E      = E
-    model.u      = u
-    model.v      = v
-    model.w      = w
+    model.eta_shf = eta_shf
+    model.eta_gnd = eta_gnd
+    model.b_shf   = b_shf
+    model.b_gnd   = b_gnd
+    model.Vd_shf  = Vd_shf
+    model.Vd_gnd  = Vd_gnd
+    model.Pe      = Pe
+    model.Sl      = Sl
+    model.Pb      = Pb
+    model.A       = A
+    model.T       = T
+    model.beta    = beta
+    model.E       = E
+    model.u       = u
+    model.v       = v
+    model.w       = w
 
   def solve(self):
     """ 
@@ -782,23 +777,16 @@ class VelocityBP(Physics):
     
     # list of boundary conditions
     self.bcs = []
-
-    # add any user defined boundary conditions    
-    for i in range(len(model.boundary_values)):
-      # get the value in the facet function for this boundary
-      marker_val = model.boundary_values[i]
-      # the u component of velocity on the boundary
-      bound_u = model.boundary_u[i]
-      # the v component of velocity on the boundary
-      bound_v = model.boundary_v[i]
       
-      # add the Dirichlet boundary condition
-      self.bcs.append(DirichletBC(model.Q2.sub(0), 
-                      bound_u, model.ff, marker_val))
-      self.bcs.append(DirichletBC(model.Q2.sub(1), 
-                      bound_v, model.ff, marker_val))
-    
     # add lateral boundary conditions :  
+    if config['velocity']['boundaries'] == 'solution':
+      self.bcs.append(DirichletBC(Q2.sub(0), model.u, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), model.v, model.ff, 4))
+      
+    if config['velocity']['boundaries'] == 'homogeneous':
+      self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 4))
+    
     if config['velocity']['boundaries'] == 'user_defined':
       u_t = config['velocity']['u_lat_boundary']
       v_t = config['velocity']['v_lat_boundary']
@@ -816,13 +804,24 @@ class VelocityBP(Physics):
     model.print_min_max(model.u, 'u')
     model.print_min_max(model.v, 'v')
 
+    bc_w = None
+
+    # add appropriate vertical velocity bcs :  
+    if config['velocity']['boundaries'] == 'solution':
+      bc_w = DirichletBC(Q, model.w, model.ff, 4)
+      
+    if config['velocity']['boundaries'] == 'homogeneous':
+      bc_w = DirichletBC(Q, 0.0, model.ff, 4)
+    
+    if config['velocity']['boundaries'] == 'user_defined':
+      bc_w = DirichletBC(Q, 0.0, model.ff, 4)
     
     # solve for vertical velocity :
     if self.model.MPI_rank==0:
       s    = "::: solving BP vertical velocity :::"
       text = colored(s, 'cyan')
       print text
-    solve(self.aw == self.Lw, model.w)
+    solve(self.aw == self.Lw, model.w, bcs=bc_w)
     model.print_min_max(model.w, 'w')
     
 
@@ -985,7 +984,6 @@ class Enthalpy(Physics):
     R           = model.R
     epsdot      = model.epsdot
     eps_reg     = model.eps_reg
-    eta         = model.eta
     rhoi        = model.rhoi
     rhow        = model.rhow
     g           = model.g
@@ -2078,244 +2076,6 @@ class VelocityBalance_2(Physics):
 
     return ((gU.array() , ga.array() ,\
              gH.array() , gN.array() ))
-
-
-class StokesBalance(Physics):
-
-  def __init__(self, model, config):
-    """
-    """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING STOKES-BALANCE SOLVER :::"
-      text = colored(s, 'cyan')
-      print text
-
-    self.model  = model
-    self.config = config
-
-    Q       = model.Q
-    u       = model.u
-    v       = model.v
-    w       = model.w
-    S       = model.S
-    B       = model.B
-    H       = S - B
-    eta     = model.eta
-    beta    = model.beta
-    
-    # get the values at the bed :
-    beta_e  = model.beta_e
-    u_b_e   = model.u_b_e
-    v_b_e   = model.v_b_e
-    
-    # vertically average :
-    etabar  = model.etabar
-    ubar    = model.ubar
-    vbar    = model.vbar
-    ubar_d  = model.ubar_d
-    vbar_d  = model.vbar_d
-
-    # create functions used to solve for velocity :
-    V        = MixedFunctionSpace([Q,Q])
-    dU       = TrialFunction(V)
-    du, dv   = split(dU)
-    Phi      = TestFunction(V)
-    phi, psi = split(Phi)
-    U_s      = Function(V)
-    u_s, v_s = split(U_s)
-    
-    #===========================================================================
-    # form the stokes equations in the normal direction (n) and tangential 
-    # direction (t) in relation to the stress-tensor :
-    U_n  = model.normalize_vector(as_vector([ubar,vbar]), Q)
-    u_n  = U_n[0]
-    v_n  = U_n[1]
-    U_n  = as_vector([u_n,  v_n,  0])
-    U_t  = as_vector([v_n, -u_n,  0])
-    U    = as_vector([du,   dv,   0])
-    Ubar = as_vector([ubar, vbar, 0])
-
-    # directional derivatives :
-    uhat     = dot(U, U_n)
-    vhat     = dot(U, U_t)
-    graduhat = grad(uhat)
-    gradvhat = grad(vhat)
-    dudn     = dot(graduhat, U_n)
-    dvdn     = dot(gradvhat, U_n)
-    dudt     = dot(graduhat, U_t)
-    dvdt     = dot(gradvhat, U_t)
-    
-    # integration by parts directional derivative terms :
-    gradphi = grad(phi)
-    dphidn  = dot(gradphi, U_n)
-    dphidt  = dot(gradphi, U_t)
-    gradpsi = grad(psi)
-    dpsidn  = dot(gradpsi, U_n)
-    dpsidt  = dot(gradpsi, U_t)
-
-    # driving stres :
-    tau_d   = model.tau_d
-    
-    # calc basal drag : 
-    tau_b_u = beta_e * H * du
-    tau_b_v = beta_e * H * dv
-    tau_b   = as_vector([tau_b_u, tau_b_v, 0])
-
-    # dot product of stress with the direction along (n) and across (t) flow :
-    tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_bt = psi * dot(tau_b, U_t) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
-    tau_dt = psi * dot(tau_d, U_t) * dx
-
-    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
-    tau_tn = - dpsidn * H * etabar * (  dudt +   dvdn) * dx
-    tau_tt = - dpsidt * H * etabar * (4*dvdt + 2*dudn) * dx
-  
-    # form residual in mixed space :
-    rn = tau_nn + tau_nt - tau_bn - tau_dn
-    rt = tau_tn + tau_tt - tau_bt - tau_dt
-    r  = rn + rt
-
-    # make the variables available to solve :
-    self.Q      = Q
-    self.r      = r
-    self.U_s    = U_s
-    self.U_n    = U_n
-    self.U_t    = U_t
-    model.ubar  = u_s
-    model.vbar  = v_s
-    model.tau_b = tau_b
-    
-  def solve(self):
-    """
-    """
-    model = self.model
-
-    if self.model.MPI_rank==0:
-      s    = "::: solving 'stokes-balance' for ubar, vbar :::"
-      text = colored(s, 'cyan')
-      print text
-    solve(lhs(self.r) == rhs(self.r), self.U_s)
-
-  def component_stress_stokes(self):  
-    """
-    """
-    if self.model.MPI_rank==0:
-      s    = "solving 'stokes-balance' for stress terms :::" 
-      text = colored(s, 'cyan')
-      print text
-    model = self.model
-
-    outpath = self.config['output_path']
-    Q       = self.Q
-    S       = model.S
-    B       = model.B
-    H       = S - B
-    etabar  = model.etabar
-    
-    #===========================================================================
-    # form the stokes equations in the normal direction (n) and tangential 
-    # direction (t) in relation to the stress-tensor :
-    u_s = project(model.ubar, Q)
-    v_s = project(model.vbar, Q)
-    
-    U   = as_vector([u_s, v_s, 0])
-    U_n = self.U_n
-    U_t = self.U_t
-
-    # directional derivatives :
-    uhat     = dot(U, U_n)
-    vhat     = dot(U, U_t)
-    graduhat = grad(uhat)
-    gradvhat = grad(vhat)
-    dudn     = dot(graduhat, U_n)
-    dvdn     = dot(gradvhat, U_n)
-    dudt     = dot(graduhat, U_t)
-    dvdt     = dot(gradvhat, U_t)
-
-    # get driving stress and basal drag : 
-    tau_d = model.tau_d
-    tau_b = model.tau_b
-    
-    # trial and test functions for linear solve :
-    phi   = TestFunction(Q)
-    dtau  = TrialFunction(Q)
-    
-    # mass matrix :
-    M = assemble(phi*dtau*dx)
-    
-    # integration by parts directional derivative terms :
-    gradphi = grad(phi)
-    dphidn  = dot(gradphi, U_n)
-    dphidt  = dot(gradphi, U_t)
-    
-    # stokes equation weak form in normal dir. (n) and tangent dir. (t) :
-    tau_nn = - dphidn * H * etabar * (4*dudn + 2*dvdt) * dx
-    tau_nt = - dphidt * H * etabar * (  dudt +   dvdn) * dx
-    tau_tn = - dphidn * H * etabar * (  dudt +   dvdn) * dx
-    tau_tt = - dphidt * H * etabar * (4*dvdt + 2*dudn) * dx
-    
-    # dot product of stress with the direction along (n) and across (t) flow :
-    tau_bn = phi * dot(tau_b, U_n) * dx
-    tau_dn = phi * dot(tau_d, U_n) * dx
-    tau_bt = phi * dot(tau_b, U_t) * dx
-    tau_dt = phi * dot(tau_d, U_t) * dx
-    
-    # the residuals :
-    tau_totn = tau_nn + tau_tn - tau_bn - tau_dn
-    tau_tott = tau_nt + tau_tt - tau_bt - tau_dt
-
-    # assemble the vectors :
-    tau_nn_v   = assemble(tau_nn)
-    tau_nt_v   = assemble(tau_nt)
-    tau_tn_v   = assemble(tau_tn)
-    tau_tt_v   = assemble(tau_tt)
-    tau_totn_v = assemble(tau_totn)
-    tau_tott_v = assemble(tau_tott)
-    
-    # solution functions :
-    tau_nn   = Function(Q)
-    tau_nt   = Function(Q)
-    tau_tn   = Function(Q)
-    tau_tt   = Function(Q)
-    tau_totn = Function(Q)
-    tau_tott = Function(Q)
-    
-    # solve the linear system :
-    solve(M, tau_nn.vector(),   tau_nn_v)
-    solve(M, tau_nt.vector(),   tau_nt_v)
-    solve(M, tau_tn.vector(),   tau_tn_v)
-    solve(M, tau_tt.vector(),   tau_tt_v)
-    solve(M, tau_totn.vector(), tau_totn_v)
-    solve(M, tau_tott.vector(), tau_tott_v)
-
-    # give the stress balance terms :
-    tau_bn = project(dot(tau_b, U_n))
-    tau_dn = project(dot(tau_d, U_n))
-
-    # output the files to the specified directory :
-    File(outpath + 'tau_dn.pvd')   << tau_dn
-    File(outpath + 'tau_bn.pvd')   << tau_bn
-    File(outpath + 'tau_nn.pvd')   << tau_nn
-    File(outpath + 'tau_nt.pvd')   << tau_nt
-    File(outpath + 'tau_totn.pvd') << tau_totn
-    File(outpath + 'tau_tott.pvd') << tau_tott
-    File(outpath + 'u_s.pvd')      << u_s
-    File(outpath + 'v_s.pvd')      << v_s
-
-    # attach the results to the model :
-    model.tau_nn = tau_nn
-    model.tau_nt = tau_nt
-    model.tau_tn = tau_tn
-    model.tau_tt = tau_tt
-    model.tau_bn = tau_bn
-    model.tau_dn = tau_dn
-    model.tau_totn = tau_totn
-    model.tau_tott = tau_tott
-    model.u_s      = u_s
-    model.v_s      = v_s
 
 
 class StokesBalance3D(Physics):

@@ -919,6 +919,8 @@ class Model(object):
     self.E_gnd         = Function(self.Q)
     self.E_shf         = Function(self.Q)
     self.eta           = Function(self.Q)
+    self.eta_gnd       = Function(self.Q)
+    self.eta_shf       = Function(self.Q)
     self.P             = Function(self.Q)
     self.W             = Function(self.Q)
     self.W_r           = Function(self.Q)

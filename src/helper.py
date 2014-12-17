@@ -573,6 +573,8 @@ def default_config():
                'b_shf'               : None,
                'E_gnd'               : None,
                'E_shf'               : None,
+               'eta_gnd'             : None,
+               'eta_shf'             : None,
                'use_T0'              : False,
                'use_U0'              : False,
                'use_beta0'           : True,

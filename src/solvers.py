@@ -55,12 +55,11 @@ class SteadySolver(Solver):
         print "Please use 'fo' or 'stokes'. "
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
-        if config['velocity']['approximation'] == 'stokes':
-          self.P_file = File(outpath + 'P.pvd')
+        self.P_file = File(outpath + 'P.pvd')
     
     # enthalpy model :
     if config['enthalpy']['on']:
-      self.enthalpy_instance = Enthalpy(model, config)
+      self.enthalpy_instance = EnthalpyDG(model, config)
       if config['enthalpy']['log']:
         self.T_file   = File(outpath + 'T.pvd')
         self.W_file   = File(outpath + 'W.pvd')
@@ -129,25 +128,24 @@ class SteadySolver(Solver):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         if config['velocity']['log']:
-          U = project(as_vector([model.u, model.v, model.w]))
           if self.model.MPI_rank==0:
-            s    = '::: saving velocity U.pvd file :::'
+            s    = '::: saving velocity and pressure U and P .pvd files :::'
             text = colored(s, 'blue')
             print text
+          U = project(as_vector([model.u, model.v, model.w]))
           if config['log_history']:
             self.U_file << U
           else:
             File(outpath + 'U.pvd')  << U
-          # if the velocity solve is full-stokes, save pressure too : 
+          # if the velocity solve is full-stokes, project pressure onto P1 : 
           if config['velocity']['approximation'] == 'stokes':
-            if self.model.MPI_rank==0:
-              s    = '::: saving pressure P.pvd file :::'
-              text = colored(s, 'blue')
-              print text
+            P = project(model.P, model.Q)
+          else:
+            P = model.P
             if config['log_history']:
-              self.P_file << project(model.P, model.Q)
+              self.P_file << P
             else:
-              File(outpath + 'P.pvd')  << model.P
+              File(outpath + 'P.pvd') << P
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:

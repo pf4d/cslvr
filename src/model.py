@@ -833,7 +833,7 @@ class Model(object):
       u = project(u, self.Q)
 
     if   isinstance(var, float) or isinstance(var, int):
-      u.vector()[:] = var
+      u.interpolate(Constant(var))
     
     elif isinstance(var, np.ndarray):
       u.vector().set_local(var)
@@ -881,6 +881,7 @@ class Model(object):
     # Function Space
     if self.per_func_space == False:
       self.Q           = FunctionSpace(self.mesh,      "CG", 1)
+      self.DQ          = FunctionSpace(self.mesh,      "DG", 1)
       self.Q_flat      = FunctionSpace(self.flat_mesh, "CG", 1)
       self.Q2          = MixedFunctionSpace([self.Q]*2)
       self.Q3          = MixedFunctionSpace([self.Q]*3)
@@ -943,7 +944,6 @@ class Model(object):
     self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
     self.Mb            = Function(self.Q)
-    self.q_geo         = Function(self.Q)
     self.Hhat          = Function(self.Q) # Midpoint values
     self.uhat          = Function(self.Q) # Midpoint values
     self.vhat          = Function(self.Q) # Midpoint values

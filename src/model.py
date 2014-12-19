@@ -850,7 +850,7 @@ class Model(object):
       u.vector()[:] = var.real
 
     elif isinstance(var, float) or isinstance(var, int):
-      u.interpolate(Constant(var))
+      u.vector()[:] = var
     
     elif isinstance(var, np.ndarray):
       u.vector().set_local(var)

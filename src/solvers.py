@@ -59,7 +59,7 @@ class SteadySolver(Solver):
     
     # enthalpy model :
     if config['enthalpy']['on']:
-      self.enthalpy_instance = EnthalpyDG(model, config)
+      self.enthalpy_instance = Enthalpy(model, config)
       if config['enthalpy']['log']:
         self.T_file   = File(outpath + 'T.pvd')
         self.W_file   = File(outpath + 'W.pvd')

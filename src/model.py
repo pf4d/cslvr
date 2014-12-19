@@ -1,8 +1,9 @@
-from fenics      import *
-from ufl.indexed import Indexed
-from termcolor   import colored, cprint
-import numpy         as np
-from abc         import ABCMeta, abstractmethod
+from fenics       import *
+from ufl.indexed  import Indexed
+from termcolor    import colored, cprint
+from abc          import ABCMeta, abstractmethod
+import numpy              as np
+import physical_constants as pc
 
 class Model(object):
   """ 
@@ -336,6 +337,19 @@ class Model(object):
     self.ff_flat   = ff_flat
     self.ds        = Measure('ds')[self.ff]
     self.ds_flat   = Measure('ds')[self.ff_flat]
+
+  def get_bed_mesh(self):
+    """
+    Returns the bed of the mesh for this model instance.
+    """
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = CellFunction("size_t", bmesh, 0)
+    for c in cells(bmesh):
+      if Facet(mesh, cellmap[c.index()]).normal().z() < 0:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
+    return submesh
      
   def set_parameters(self, params):
     """
@@ -831,15 +845,18 @@ class Model(object):
     """
     if isinstance(u, Indexed):
       u = project(u, self.Q)
+    
+    if   isinstance(var, pc.PhysicalConstant):
+      u.vector()[:] = var.real
 
-    if   isinstance(var, float) or isinstance(var, int):
+    elif isinstance(var, float) or isinstance(var, int):
       u.interpolate(Constant(var))
     
     elif isinstance(var, np.ndarray):
       u.vector().set_local(var)
       u.vector().apply('insert')
     
-    elif isinstance(var, Expression):
+    elif isinstance(var, Expression) or isinstance(var, Constant):
       u.interpolate(var)
 
     elif isinstance(var, GenericVector):
@@ -941,6 +958,7 @@ class Model(object):
     self.H_float       = Function(self.Q)
     self.H             = Function(self.Q)
     self.T             = Function(self.Q)
+    self.q_geo         = Function(self.Q)
     self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
     self.Mb            = Function(self.Q)

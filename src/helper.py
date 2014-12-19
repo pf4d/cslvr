@@ -556,6 +556,7 @@ def default_config():
              'output_path'                  : None,
              'wall_markers'                 : [],
              'periodic_boundary_conditions' : False,
+             'use_pressure_boundary'        : True,
              'log'                          : True,
              'log_history'                  : False,
              'coupled' : 
@@ -587,6 +588,7 @@ def default_config():
                'beta0'               : 1e3,
                'init_beta_from_U_ob' : False,
                'init_b_from_U_ob'    : False,
+               'use_stats_beta'      : False,
                'U_ob'                : None,
                'r'                   : 0.0,
                'E'                   : 1.0,
@@ -821,5 +823,18 @@ def extrude(f, b, d, ff, Q):
   solve(a == L, v, bc)
   return v
 
+
+def get_bed_mesh(mesh):
+  """
+  Returns the bed of <mesh>.
+  """
+  bmesh   = BoundaryMesh(mesh, 'exterior')
+  cellmap = bmesh.entity_map(2)
+  pb      = CellFunction("size_t", bmesh, 0)
+  for c in cells(bmesh):
+    if Facet(mesh, cellmap[c.index()]).normal().z() < 0:
+      pb[c] = 1
+  submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
+  return submesh
 
 

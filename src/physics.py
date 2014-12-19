@@ -567,6 +567,7 @@ class VelocityBP(Physics):
     eta_shf       = model.eta_shf
     eta_gnd       = model.eta_gnd
     T             = model.T
+    T_w           = model.T_w
     gamma         = model.gamma
     S             = model.S
     B             = model.B
@@ -598,31 +599,6 @@ class VelocityBP(Physics):
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
     
-    newton_params = config['velocity']['newton_params']
-
-    # initialize the temperature depending on input type :
-    if config['velocity']['use_T0']:
-      model.assign_variable(T, config['velocity']['T0'])
-
-    # initialize the bed friction coefficient :
-    if config['velocity']['init_beta_from_U_ob']:
-      U_ob = config['velocity']['U_ob']
-      model.init_beta0(beta, U_ob, r, gradS)
-    if config['velocity']['use_beta0']:
-      model.assign_variable(beta, config['velocity']['beta0'])
-
-    # initialize the enhancement factor :
-    model.assign_variable(E, config['velocity']['E'])
-
-    # Check if there are non-linear solver parameters defined.  If not, set 
-    # them to dolfin's default.  The default is not likely to converge if 
-    # thermomechanical coupling is used.
-    if newton_params:
-      self.newton_params = newton_params
-    
-    else:
-      self.newton_params = NonlinearVariationalSolver.default_parameters()
-
     # Define a test function
     Phi      = TestFunction(Q2)
 
@@ -702,7 +678,7 @@ class VelocityBP(Physics):
     
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-            "'isothermal', 'b_control', 'constant_b', or 'full'."
+            "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
 
     # initialize rate-factor on shelves :
     if config['velocity']['use_b_shf0']:
@@ -713,6 +689,64 @@ class VelocityBP(Physics):
       U_ob = config['velocity']['U_ob']
       b_shf = Function(Q)
       model.init_b0(b_shf, U_ob, gradS)
+
+    # initialize the temperature depending on input type :
+    if config['velocity']['use_T0']:
+      model.assign_variable(T, config['velocity']['T0'])
+
+    # initialize the bed friction coefficient :
+    if config['velocity']['init_beta_from_U_ob']:
+      U_ob = config['velocity']['U_ob']
+      model.init_beta0(beta, U_ob, r, gradS)
+    if config['velocity']['use_beta0']:
+      model.assign_variable(beta, config['velocity']['beta0'])
+    if config['velocity']['use_stats_beta']:
+      U_ob  = config['velocity']['U_ob']
+      q_geo = config['enthalpy']['q_geo']
+      T_s   = config['enthalpy']['T_surface']
+      adot  = model.adot
+
+      x0  = Constant(1.0)
+      x1  = Constant(T_w) - T
+      x2  = Constant(T_w) - T_s
+      x3  = sqrt(inner(grad(S), grad(S)))
+      x4  = abs(B)
+      x5  = sqrt(inner(grad(B), grad(B)))
+      x6  = sqrt(inner(U,U))
+      x7  = U_ob
+      x8  = q_geo
+      x9  = adot
+
+      X    = [x0,x1,x2,x3,x4,x5,x6,x7,x8,x9]
+      
+      bhat = [  1.35074355e+01,  -5.97035793e-01,   5.57811260e-01,
+               -4.05414919e+00,  -3.46148605e-02,   2.43726049e+00,
+               -8.52901189e-01,   5.42084730e-01,  -6.12118557e-01,
+               -3.27995942e-01,   1.26510434e-01,  -5.13978175e-03,
+               -1.18309286e-02,  -1.17869975e-02,  -6.10051880e-02,
+                8.78585462e-02,  -1.33222615e-02,  -8.98577776e-03,
+                1.78085203e-01,   1.98376697e-02,  -4.59959087e-02,
+                7.13123152e-02,  -1.26854849e-01,   2.65819539e-02,
+               -5.87265392e-02,   1.00721949e-02,  -7.76625966e-05,
+                8.50274265e-02,  -4.82864703e-02,  -2.85768849e-02,
+               -5.34657108e-02,  -1.00914629e-02,  -3.53299496e-04,
+                6.10719597e-03,  -9.75502293e-04,   1.19397326e-02,
+               -4.46784185e-04,  -9.68787710e-03,   1.19434375e-02,
+               -3.55898748e-02,   5.72733308e-03,   2.61585571e-02,
+                1.93415910e-02,  -2.85601091e-02,   9.42174005e-03,
+               -1.36254920e-02]
+
+      for i,xx in enumerate(X[1:]):
+        for yy in X[1:][i+1:]:
+          X.append(xx*yy)
+      
+      beta = 1.0
+      
+      for xx,bb in zip(X,bhat):
+        beta *= xx**bb
+
+    # initialize the enhancement factor :
+    model.assign_variable(E, config['velocity']['E'])
     
     # second invariant of the strain rate tensor squared :
     term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
@@ -736,7 +770,8 @@ class VelocityBP(Physics):
 
     # Variational principle
     A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
-    if not config['periodic_boundary_conditions']:
+    if not (config['periodic_boundary_conditions'] or
+            config['use_pressure_boundary']):
       A += Pb*dSde
 
     # Calculate the first variation of the action 
@@ -805,7 +840,7 @@ class VelocityBP(Physics):
       text = colored(s, 'cyan')
       print text
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
-          solver_parameters = self.newton_params)
+          solver_parameters = config['velocity']['newton_params'])
     model.u,model.v = model.U.split(True)
     model.print_min_max(model.u, 'u')
     model.print_min_max(model.v, 'v')

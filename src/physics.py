@@ -770,8 +770,8 @@ class VelocityBP(Physics):
 
     # Variational principle
     A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
-    if not (config['periodic_boundary_conditions'] or
-            config['use_pressure_boundary']):
+    if (not config['periodic_boundary_conditions']
+        and config['use_pressure_boundary']):
       A += Pb*dSde
 
     # Calculate the first variation of the action 
@@ -824,11 +824,11 @@ class VelocityBP(Physics):
       self.bcs.append(DirichletBC(Q2.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(Q2.sub(1), model.v, model.ff, 4))
       
-    if config['velocity']['boundaries'] == 'homogeneous':
+    elif config['velocity']['boundaries'] == 'homogeneous':
       self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 4))
       self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 4))
     
-    if config['velocity']['boundaries'] == 'user_defined':
+    elif config['velocity']['boundaries'] == 'user_defined':
       u_t = config['velocity']['u_lat_boundary']
       v_t = config['velocity']['v_lat_boundary']
       self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 4))
@@ -851,10 +851,10 @@ class VelocityBP(Physics):
     if config['velocity']['boundaries'] == 'solution':
       bc_w = DirichletBC(Q, model.w, model.ff, 4)
       
-    if config['velocity']['boundaries'] == 'homogeneous':
+    elif config['velocity']['boundaries'] == 'homogeneous':
       bc_w = DirichletBC(Q, 0.0, model.ff, 4)
     
-    if config['velocity']['boundaries'] == 'user_defined':
+    elif config['velocity']['boundaries'] == 'user_defined':
       bc_w = DirichletBC(Q, 0.0, model.ff, 4)
     
     # solve for vertical velocity :
@@ -1331,8 +1331,9 @@ class Enthalpy(Physics):
     W_n  = project((H - ci*T0)/L, Q)
     
     # update water content :
-    W_v        = W_n.vector().array()
-    W_v[cold]  = 0.0
+    W_v             = W_n.vector().array()
+    W_v[cold]       = 0.0
+    W_v[W_v > 1.00] = 1.00
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
     

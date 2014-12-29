@@ -555,7 +555,7 @@ class VelocityBP(Physics):
 
     self.model    = model
     self.config   = config
-
+    
     mesh          = model.mesh
     r             = config['velocity']['r']
     V             = model.V
@@ -1026,6 +1026,7 @@ class Enthalpy(Physics):
     gamma       = model.gamma
     S           = model.S
     B           = model.B
+    H           = S - B
     x           = model.x
     E           = model.E
     W           = model.W
@@ -1101,7 +1102,7 @@ class Enthalpy(Physics):
     # overestimating frictional heat, and underestimating strain heat.
 
     # Frictional heating :
-    q_friction = 0.5 * beta**2 * (S - B)**r * (u**2 + v**2)
+    q_friction = 0.5 * beta**2 * H**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
     Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))

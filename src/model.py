@@ -27,24 +27,12 @@ class Model(object):
     :param mask : Expression representing a mask of grounded (0) and floating 
                   (1) areas of the ice.
     """
-    self.boundary_markers = []
-    # Contains the u, v, and w components of the velocity values 
-    # for each boundary
-    self.boundary_u = []
-    self.boundary_v = []
-    
-    # This list will store the integer value corresponding to each boundary
-    self.boundary_values = []
-    
-    # The marker value for the next added boundary. This value will be auto 
-    # incremented
-    self.marker_val = 8
     self.S_ex = sur
     self.B_ex = bed
     
     if deform:
       self.deform_mesh_to_geometry()
-  
+
   def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, ymin, ymax, 
                             generate_pbcs=False):
     """
@@ -321,22 +309,20 @@ class Model(object):
         if n.z() >= tol and f.exterior() and adot_xy > 0:
           self.ff_acc[f] = 1
  
-  def set_subdomain(self, mesh, flat_mesh, ff, ff_flat):
+  def set_subdomains(self, ff, cf):
     """
-    Sets the mesh to be Mesh <mesh> and flat_mest to be Mesh <flat_mesh>,
-    and sets the subdomains of the mesh and flat mesh to FacetFunction <ff> and
-    <ff_flat> respectively.
+    Set the mesh to be Mesh <mesh>, set the facet subdomains to FacetFunction 
+    <ff>, and set the cell subdomains to CellFunction <cf>.
     """
     if self.MPI_rank==0:
       s    = "::: setting subdomains :::"
       text = colored(s, 'magenta')
       print text
-    self.mesh      = mesh
-    self.flat_mesh = flat_mesh
-    self.ff        = ff
-    self.ff_flat   = ff_flat
-    self.ds        = Measure('ds')[self.ff]
-    self.ds_flat   = Measure('ds')[self.ff_flat]
+    self.ff   = ff
+    self.cf   = cf
+    self.mask = True
+    self.ds   = Measure('ds')[self.ff]
+    self.dx   = Measure('dx')[self.cf]
 
   def get_bed_mesh(self):
     """
@@ -360,7 +346,7 @@ class Model(object):
     """
     self.params = params
       
-  def init_beta0(self, beta, U_ob, r, gradS):
+  def init_beta0(self, beta, U_mag, r, gradS):
     r"""
     Init beta from :math:`\tau_b = \tau_d`, the shallow ice approximation, 
     using the observed surface velocity <U_ob> as approximate basal 
@@ -378,12 +364,12 @@ class Model(object):
     rhoi     = self.rhoi
     g        = self.g
     H        = self.S - self.B
-    U_mag    = project(sqrt(inner(U_ob, U_ob) + DOLFIN_EPS), Q)
     U_mag_v  = U_mag.vector().array()
     U_mag_v[U_mag_v < 0.5] = 0.5
     self.assign_variable(U_mag, U_mag_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
+    #beta_0   = project(sqrt((rhoi*g*S_mag) / (H**r * U_mag)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(beta, beta_0_v)
@@ -882,6 +868,14 @@ class Model(object):
       print "*************************************************************"
       exit(1)
 
+  def globalize_parameters(self, namespace=None):
+    """
+    This function converts the parameter dictinary into global object
+    
+    :param namespace: Optional namespace in which to place the global variables
+    """
+    for v in self.variables.iteritems():
+      vars(namespace)[v[0]] = v[1]
 
   def initialize_variables(self):
     """
@@ -1002,36 +996,6 @@ class Model(object):
     self.u_balance     = Function(self.Q)
     self.v_balance     = Function(self.Q)
     
-  """ Adds a Dirichlet boundary condition to the BP velocity solver.
-  Inputs :
-  bm : A boundary marker object that determines if a facet belongs on the 
-  boundary
-  u, v, w : Components of the velocity on the value (constant for now)
-  """   
-  def add_bp_dbc(self, bm, u, v) :
-    # The boundary marker object and the corresponding velocity components
-    # are associated by array index
-    self.boundary_markers.append(bm)
-    self.boundary_u.append(u)
-    self.boundary_v.append(v)
-    # This is the integer value assigned to this value, which will be used
-    # in the facet function
-    self.boundary_values.append(self.marker_val)
-    # Auto increment the marker value
-    self.marker_val += 1
-    
-class BoundaryMarker(object):
-    __metaclass__ = ABCMeta
-
-    """ 
-    Takes in a facet, returns true if the facet should be marked and false if
-    otherwise.
-    Inputs: 
-    f : A facet """
-    @abstractmethod
-    def to_mark(self,f):
-        pass
-
 
 
 

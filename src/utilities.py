@@ -299,93 +299,40 @@ class DataInput(object):
 
   def get_interpolation(self, fn, near=False, bool_data=False, kx=3, ky=3):
     """
-    return the interpolation of data field <fn>.
-    """
-    if near:
-      interp = self.get_nearest_expression(fn, bool_data=bool_data)
-    else:
-      interp = self.get_spline_expression(fn,kx=kx,ky=ky)
-    
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: getting %s interpolation :::" % fn
-      text = colored(s, 'green')
-      print text
-
-    proj   = interpolate(interp, self.func_space)
-    return proj
-
-  def get_projection(self, fn, dg=False, near=False, 
-                     bool_data=False, kx=3, ky=3):
-    """
-    Return a projection of data with filname <fn> on the functionspace.
+    Return a projection of data with field name <fn> on the functionspace.
     If multiple instances of the DataInput class are present, both initialized 
     with identical meshes, the projections returned by this function may be
     used by the same mathematical problem.
 
-    If <dg> is True, use a discontinuous space, otherwise, continuous.
-
     If <bool_data> is True, convert all values > 0 to 1.
     """
     if MPI.rank(mpi_comm_world())==0:
-      s    = "::: getting %s projection :::" % fn
-      text = colored(s, 'green')
-      print text
-
-    if dg:
-      interp = self.get_nearest_expression(fn, bool_data=bool_data)
-      proj   = project(interp, self.func_space_dg)
-    
-    else:
       if near:
-        interp = self.get_nearest_expression(fn, bool_data=bool_data)
-        proj   = project(interp, self.func_space)
+        t = 'nearest-neighbor'
       else:
-        interp = self.get_spline_expression(fn,kx=kx,ky=ky,bool_data=bool_data)
-        proj   = project(interp, self.func_space)
-        
-    return proj
-
-  def get_nearest_expression(self, fn, bool_data=False):
-    """
-    Returns a dolfin expression using a nearest-neighbor interpolant of data 
-    <fn>.  If <bool_data> is True, convert to boolean.
-    """
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: getting %s nearest expression from %s :::" % (fn, self.name)
+        t = 'spline'
+      s    = "::: getting %s %s interpolation :::" % (fn, t)
       text = colored(s, 'green')
       print text
+
+    interp = self.get_expression(fn, kx=kx, ky=ky, 
+                                 bool_data=bool_data, near=near)
     
-    data = self.data[fn]
-    if bool_data: data[data > 0] = 1
-    
-    if self.chg_proj:
-      new_proj = self.new_p
-      old_proj = self.p
+    return interpolate(interp, self.func_space)
 
-    xs       = self.x
-    ys       = self.y
-    chg_proj = self.chg_proj
-
-    class newExpression(Expression):
-      def eval(self, values, x):
-        if chg_proj:
-          xn, yn = transform(new_proj, old_proj, x[0], x[1])
-        else:
-          xn, yn = x[0], x[1]
-        idx       = abs(xs - xn).argmin()
-        idy       = abs(ys - yn).argmin()
-        values[0] = data[idy, idx]
-
-    return newExpression(element = self.func_space.ufl_element())
-
-  def get_spline_expression(self, fn, kx=3, ky=3, bool_data=False):
+  def get_expression(self, fn, kx=3, ky=3, bool_data=False, near=False):
     """
     Creates a spline-interpolation expression for data <fn>.  Optional 
     arguments <kx> and <ky> determine order of approximation in x and y
-    directions (default cubic).  If <bool_data> is True, convert to boolean.
+    directions (default cubic).  If <bool_data> is True, convert to boolean,
+    if <near> is True, use nearest-neighbor interpolation.
     """
     if MPI.rank(mpi_comm_world())==0:
-      s    = "::: getting %s spline expression from %s :::" % (fn, self.name)
+      if near:
+        t = 'nearest-neighbor'
+      else:
+        t = 'spline'
+      s    = "::: getting %s %s expression from %s :::" % (fn, t, self.name)
       text = colored(s, 'green')
       print text
 
@@ -396,7 +343,9 @@ class DataInput(object):
       new_proj = self.new_p
       old_proj = self.p
   
-    spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)
+    if not near :
+      spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)
+    
     chg_proj = self.chg_proj
     
     class newExpression(Expression):
@@ -405,7 +354,12 @@ class DataInput(object):
           xn, yn = transform(new_proj, old_proj, x[0], x[1])
         else:
           xn, yn = x[0], x[1]
-        values[0] = spline(xn, yn)
+        if not near:
+          values[0] = spline(xn, yn)
+        else:
+          idx       = abs(xs - xn).argmin()
+          idy       = abs(ys - yn).argmin()
+          values[0] = data[idy, idx]
   
     return newExpression(element = self.func_space.ufl_element())
   

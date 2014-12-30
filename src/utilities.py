@@ -346,6 +346,8 @@ class DataInput(object):
     if not near :
       spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)
     
+    xs       = self.x
+    ys       = self.y
     chg_proj = self.chg_proj
     
     class newExpression(Expression):

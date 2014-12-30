@@ -669,8 +669,7 @@ class AdjointSolver(Solver):
       """
       find the unique values of each row of array <S>.
       """
-      unq = unique(bounds.view(bounds.dtype.descr * bounds.shape[1]))
-      unq = unq.view(bounds.dtype).reshape(-1, bounds.shape[1])
+      unq  = unique(bounds)
       text = colored("unique bounds:\n" + str(unq), 'red', attrs=['bold'])
       print text
     

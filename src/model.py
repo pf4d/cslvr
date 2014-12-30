@@ -13,10 +13,11 @@ class Model(object):
   types.
   """
 
-  def __init__(self, out_dir='./'):
-    self.per_func_space = False  # function space is undefined
-    self.out_dir        = out_dir
-    self.MPI_rank       = MPI.rank(mpi_comm_world())
+  def __init__(self):
+    """
+    Create and instance of the model.
+    """
+    self.MPI_rank = MPI.rank(mpi_comm_world())
     
   def set_geometry(self, sur, bed, deform=True):
     """
@@ -29,6 +30,11 @@ class Model(object):
     """
     self.S_ex = sur
     self.B_ex = bed
+    
+    Q = FunctionSpace(self.mesh, 'CG', 1)
+    
+    self.S = interpolate(self.S_ex, Q)
+    self.B = interpolate(self.B_ex, Q)
     
     if deform:
       self.deform_mesh_to_geometry()
@@ -54,10 +60,9 @@ class Model(object):
       text = colored(s, 'magenta')
       print text
 
-    self.mesh      = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
-    self.flat_mesh = Mesh(self.mesh)
-    self.Q         = FunctionSpace(self.mesh, "CG", 1)
-    
+    self.mesh           = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
+    self.flat_mesh      = Mesh(self.mesh)
+   
     # generate periodic boundary conditions if required :
     if generate_pbcs:
       class PeriodicBoundary(SubDomain):
@@ -99,24 +104,34 @@ class Model(object):
       self.Q2  = MixedFunctionSpace([self.Q]*2)
       self.Q4  = MixedFunctionSpace([self.Q]*4)
       
-      self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
       self.Q_flat         = FunctionSpace(self.flat_mesh, "CG", 1, 
                                           constrained_domain=pBC)
-      self.Q_flat_non_periodic = FunctionSpace(self.flat_mesh,"CG",1)
-      self.per_func_space = True
+      self.Q_flat_non_per = FunctionSpace(self.flat_mesh, "CG", 1)
+    
+    else :
+      self.Q = FunctionSpace(self.mesh, "CG", 1)
    
   def set_mesh(self, mesh):
     """
-    Overwrites the previous mesh with a new one
+    Sets the mesh.
     
     :param mesh        : Dolfin mesh to be written
-    :param flat_mesh   : Dolfin flat mesh to be written
-    :param bool deform : If True, deform the mesh to surface and bed data 
-                         provided by the set_geometry method.
     """
     self.mesh      = mesh
     self.flat_mesh = Mesh(mesh)
-    self.Q         = FunctionSpace(mesh, "CG", 1)
+    self.Q_flat    = FunctionSpace(self.flat_mesh, "CG", 1)
+    self.Q         = FunctionSpace(mesh,           "CG", 1)
+    self.DQ        = FunctionSpace(self.mesh,      "DG", 1)
+    self.Q2        = MixedFunctionSpace([self.Q]*2)
+    self.Q3        = MixedFunctionSpace([self.Q]*3)
+    self.Q4        = MixedFunctionSpace([self.Q]*4)
+    
+  def set_surface_and_bed(self, S, B):
+    """
+    Set the Functions for the surface <S> and bed <B>.
+    """
+    self.S = S
+    self.B = B
 
   def deform_mesh_to_geometry(self):
     """
@@ -144,8 +159,8 @@ class Model(object):
     """
     Determines the boundaries of the current model mesh
     """
-    self.mask = mask
-    self.adot = adot
+    self.mask    = mask
+    self.adot_ex = adot
     
     if self.MPI_rank==0:
       s    = "::: calculating boundaries :::"
@@ -171,6 +186,10 @@ class Model(object):
     #   4 = low slope, upward or downward facing ..... sides
     #   5 = floating ................................. floating base
     #   6 = floating ................................. floating surface
+    #
+    # facet for accumulation :
+    #
+    #   1 = high slope, upward facing ................ positive adot
     if self.mask != None:
 
       if self.MPI_rank==0:
@@ -183,6 +202,10 @@ class Model(object):
         y_m     = f.midpoint().y()
         z_m     = f.midpoint().z()
         mask_xy = self.mask(x_m, y_m, z_m)
+        if self.adot_ex != None:
+          adot_xy = self.adot_ex(x_m, y_m, z_m)
+          if n.z() >= tol and f.exterior() and adot_xy > 0:
+            self.ff_acc[f] = 1
       
         if   n.z() >=  tol and f.exterior():
           if mask_xy > 0:
@@ -249,36 +272,17 @@ class Model(object):
     #   4 = low slope, upward or downward facing ..... sides
     else:
       for f in facets(self.mesh):    
-        # Flag that is set to true if the facet belonged to a user defined 
-        # boundary
-        marked = False
+        n       = f.normal()    # unit normal vector to facet f
+        tol     = 1e-3
         
-        # Check if the facet belongs in any of the user defined boundaries
-        for i in range(len(self.boundary_markers)) :
-          bm = self.boundary_markers[i]
-          # Check if the current facet belongs to the boundary
-          if bm.to_mark(f) :
-            marked = True
-            # If so, mark it with the correct integer value for the boundary
-            val = self.boundary_values[i]
-            self.ff[f] = val
-            # Each facet can belong in only one boundary 
-            break
+        if n.z() >=  tol and f.exterior():
+          self.ff[f] = 2
         
-        # If the facet hasn't been marked already, then we can test if it's some
-        # other type of default boundary
-        if not marked :
-          n       = f.normal()    # unit normal vector to facet f
-          tol     = 1e-3
+        elif n.z() <= -tol and f.exterior():
+          self.ff[f] = 3
         
-          if n.z() >=  tol and f.exterior():
-            self.ff[f] = 2
-        
-          elif n.z() <= -tol and f.exterior():
-            self.ff[f] = 3
-        
-          elif n.z() >  -tol and n.z() < tol and f.exterior():
-            self.ff[f] = 4
+        elif n.z() >  -tol and n.z() < tol and f.exterior():
+          self.ff[f] = 4
       
       for f in facets(self.flat_mesh):
         n       = f.normal()    # unit normal vector to facet f
@@ -296,33 +300,21 @@ class Model(object):
     self.ds_flat = Measure('ds')[self.ff_flat]
     self.dx      = Measure('dx')[self.cf]
 
-    # iterate through the facets and mark each if positive accumulation :
-    #
-    #   1 = high slope, upward facing ................ positive adot
-    if self.adot != None:
-      for f in facets(self.mesh):
-        n       = f.normal()    # unit normal vector to facet f
-        x_m     = f.midpoint().x()
-        y_m     = f.midpoint().y()
-        z_m     = f.midpoint().z()
-        adot_xy = self.adot(x_m, y_m, z_m)
-        if n.z() >= tol and f.exterior() and adot_xy > 0:
-          self.ff_acc[f] = 1
- 
-  def set_subdomains(self, ff, cf):
+  def set_subdomains(self, ff, cf, ff_acc):
     """
-    Set the mesh to be Mesh <mesh>, set the facet subdomains to FacetFunction 
-    <ff>, and set the cell subdomains to CellFunction <cf>.
+    Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
+    to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
     """
     if self.MPI_rank==0:
       s    = "::: setting subdomains :::"
       text = colored(s, 'magenta')
       print text
-    self.ff   = ff
-    self.cf   = cf
-    self.mask = True
-    self.ds   = Measure('ds')[self.ff]
-    self.dx   = Measure('dx')[self.cf]
+    self.ff     = ff
+    self.cf     = cf
+    self.ff_acc = ff_acc
+    self.mask   = True
+    self.ds     = Measure('ds')[self.ff]
+    self.dx     = Measure('dx')[self.cf]
 
   def get_bed_mesh(self):
     """
@@ -369,7 +361,6 @@ class Model(object):
     self.assign_variable(U_mag, U_mag_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
-    #beta_0   = project(sqrt((rhoi*g*S_mag) / (H**r * U_mag)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(beta, beta_0_v)
@@ -753,7 +744,6 @@ class Model(object):
       s    = "::: calculating 'stress-balance' :::"
       text = colored(s, 'magenta')
       print text
-    out_dir = self.out_dir
     Q       = self.Q
     u       = self.u
     v       = self.v
@@ -888,30 +878,10 @@ class Model(object):
       print text
     
     self.params.globalize_parameters(self) # make all the variables available 
-
-    # Function Space
-    if self.per_func_space == False:
-      self.Q           = FunctionSpace(self.mesh,      "CG", 1)
-      self.DQ          = FunctionSpace(self.mesh,      "DG", 1)
-      self.Q_flat      = FunctionSpace(self.flat_mesh, "CG", 1)
-      self.Q2          = MixedFunctionSpace([self.Q]*2)
-      self.Q3          = MixedFunctionSpace([self.Q]*3)
-      self.Q4          = MixedFunctionSpace([self.Q]*4)
-    
-      # surface and bed :
-      self.S           = interpolate(self.S_ex, self.Q)
-      self.B           = interpolate(self.B_ex, self.Q)
-      self.Shat        = Function(self.Q_flat)
-    
-    else:
-      # surface and bed :
-      self.S           = interpolate(self.S_ex, self.Q_non_periodic)
-      self.B           = interpolate(self.B_ex, self.Q_non_periodic)
-      self.Shat        = Function(self.Q_flat_non_periodic)
     
     # P1 vector function space :
     self.V             = VectorFunctionSpace(self.mesh, "CG", 1)
-    
+
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
     self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
@@ -930,7 +900,6 @@ class Model(object):
     self.E             = Function(self.Q)
     self.E_gnd         = Function(self.Q)
     self.E_shf         = Function(self.Q)
-    self.eta           = Function(self.Q)
     self.eta_gnd       = Function(self.Q)
     self.eta_shf       = Function(self.Q)
     self.P             = Function(self.Q)
@@ -967,6 +936,7 @@ class Model(object):
     self.Kcoef         = Function(self.Q)
 
     # free surface model :
+    self.Shat          = Function(self.Q_flat)
     self.dSdt          = Function(self.Q_flat)
     self.ahat          = Function(self.Q_flat)
     self.uhat_f        = Function(self.Q_flat)

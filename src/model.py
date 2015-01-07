@@ -19,25 +19,51 @@ class Model(object):
     """
     self.MPI_rank = MPI.rank(mpi_comm_world())
     
-  def set_geometry(self, sur, bed, deform=True):
+  def set_geometry(self, surface, bed, deform=True):
     """
     Sets the geometry of the surface and bed of the ice sheet.
     
-    :param sur  : Expression representing the surface of the mesh
-    :param bed  : Expression representing the base of the mesh
-    :param mask : Expression representing a mask of grounded (0) and floating 
-                  (1) areas of the ice.
+    :param surface : Expression representing the surface of the mesh
+    :param bed     : Expression representing the base of the mesh
+    :param mask    : Expression representing a mask of grounded (0) and 
+                     floating (1) areas of the ice.
     """
-    self.S_ex = sur
+    if self.MPI_rank==0:
+      s    = "::: setting geometry :::"
+      text = colored(s, 'magenta')
+      print text
+
+    self.S_ex = surface
     self.B_ex = bed
+    
+    if deform:
+      self.deform_mesh_to_geometry()
     
     Q = FunctionSpace(self.mesh, 'CG', 1)
     
     self.S = interpolate(self.S_ex, Q)
     self.B = interpolate(self.B_ex, Q)
+
+  def deform_mesh_to_geometry(self):
+    """
+    Deforms the mesh to the geometry.
+    """
+    if self.MPI_rank==0:
+      s    = "::: deforming mesh to geometry :::"
+      text = colored(s, 'magenta')
+      print text
     
-    if deform:
-      self.deform_mesh_to_geometry()
+    # transform z :
+    # thickness = surface - base, z = thickness + base
+    # Get the height of the mesh, assumes that the base is at z=0
+    max_height = self.mesh.coordinates()[:,2].max()
+    min_height = self.mesh.coordinates()[:,2].min()
+    mesh_height = max_height - min_height
+    
+    for x in self.mesh.coordinates():
+      x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
+                                      - self.B_ex(x[0],x[1],x[2]) )
+      x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
 
   def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, ymin, ymax, 
                             generate_pbcs=False):
@@ -56,7 +82,7 @@ class Model(object):
                                 to create periodic boundary conditions
     """
     if self.MPI_rank==0:
-      s    = "::: generating mesh :::"
+      s    = "::: generating rectangle mesh :::"
       text = colored(s, 'magenta')
       print text
 
@@ -115,7 +141,7 @@ class Model(object):
     """
     Sets the mesh.
     
-    :param mesh        : Dolfin mesh to be written
+    :param mesh : Dolfin mesh to be written
     """
     self.mesh      = mesh
     self.flat_mesh = Mesh(mesh)
@@ -130,30 +156,30 @@ class Model(object):
     """
     Set the Functions for the surface <S> and bed <B>.
     """
-    self.S = S
-    self.B = B
-
-  def deform_mesh_to_geometry(self):
-    """
-    Deforms the mesh to the geometry.
-    """
     if self.MPI_rank==0:
-      s    = "::: deforming mesh to geometry :::"
+      s    = "::: setting the surface and bed functions :::"
       text = colored(s, 'magenta')
       print text
-    
-    # transform z :
-    # thickness = surface - base, z = thickness + base
-    # Get the height of the mesh, assumes that the base is at z=0
-    max_height = self.mesh.coordinates()[:,2].max()
-    min_height = self.mesh.coordinates()[:,2].min()
-    mesh_height = max_height - min_height
-    
-    for x in self.mesh.coordinates():
-      x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
-                                      - self.B_ex(x[0],x[1],x[2]) )
-      x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
+    self.S = S
+    self.B = B
+    self.print_min_max(S, 'S')
+    self.print_min_max(B, 'B')
 
+  def set_subdomains(self, ff, cf, ff_acc):
+    """
+    Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
+    to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
+    """
+    if self.MPI_rank==0:
+      s    = "::: setting subdomains :::"
+      text = colored(s, 'magenta')
+      print text
+    self.ff     = ff
+    self.cf     = cf
+    self.ff_acc = ff_acc
+    self.mask   = True
+    self.ds     = Measure('ds')[self.ff]
+    self.dx     = Measure('dx')[self.cf]
 
   def calculate_boundaries(self, mask=None, adot=None):
     """
@@ -190,145 +216,82 @@ class Model(object):
     # facet for accumulation :
     #
     #   1 = high slope, upward facing ................ positive adot
-    if self.mask != None:
-
-      if self.MPI_rank==0:
-        s    = "    - iterating through facets - "
-        text = colored(s, 'magenta')
-        print text
-      for f in facets(self.mesh):
-        n       = f.normal()
-        x_m     = f.midpoint().x()
-        y_m     = f.midpoint().y()
-        z_m     = f.midpoint().z()
-        mask_xy = self.mask(x_m, y_m, z_m)
-        if self.adot_ex != None:
-          adot_xy = self.adot_ex(x_m, y_m, z_m)
-          if n.z() >= tol and f.exterior() and adot_xy > 0:
-            self.ff_acc[f] = 1
-      
-        if   n.z() >=  tol and f.exterior():
-          if mask_xy > 0:
-            self.ff[f] = 6
-          else:
-            self.ff[f] = 2
-      
-        elif n.z() <= -tol and f.exterior():
-          if mask_xy > 0:
-            self.ff[f] = 5
-          else:
-            self.ff[f] = 3
-      
-        elif n.z() >  -tol and n.z() < tol and f.exterior():
-          self.ff[f] = 4
-      
-      for f in facets(self.flat_mesh):
-        n       = f.normal()
-        x_m     = f.midpoint().x()
-        y_m     = f.midpoint().y()
-        z_m     = f.midpoint().z()
-        mask_xy = self.mask(x_m, y_m, z_m)
-      
-        if   n.z() >=  tol and f.exterior():
-          if mask_xy > 0:
-            self.ff_flat[f] = 6
-          else:
-            self.ff_flat[f] = 2
-      
-        elif n.z() <= -tol and f.exterior():
-          if mask_xy > 0:
-            self.ff_flat[f] = 5
-          else:
-            self.ff_flat[f] = 3
-      
-        elif n.z() >  -tol and n.z() < tol and f.exterior():
-          self.ff_flat[f] = 4
-      
-      if self.MPI_rank==0:
-        s    = "    - iterating through cells - "
-        text = colored(s, 'magenta')
-        print text
-      for c in cells(self.mesh):
-        x_m     = c.midpoint().x()
-        y_m     = c.midpoint().y()
-        z_m     = c.midpoint().z()
-        mask_xy = self.mask(x_m, y_m, z_m)
-
-        if mask_xy > 0:
-          self.cf[c] = 1
-          shf_dofs.extend(dofmap.cell_dofs(c.index()))
-        else:
-          self.cf[c] = 0
-          gnd_dofs.extend(dofmap.cell_dofs(c.index()))
-
-      self.shf_dofs = list(set(shf_dofs))
-      self.gnd_dofs = list(set(gnd_dofs))
-
-
-    # iterate through the facets and mark each if on a boundary :
-    #
-    #   2 = high slope, upward facing ................ surface
-    #   3 = high slope, downward facing .............. base
-    #   4 = low slope, upward or downward facing ..... sides
-    else:
-      for f in facets(self.mesh):    
-        n       = f.normal()    # unit normal vector to facet f
-        tol     = 1e-3
-        
-        if n.z() >=  tol and f.exterior():
-          self.ff[f] = 2
-        
-        elif n.z() <= -tol and f.exterior():
-          self.ff[f] = 3
-        
-        elif n.z() >  -tol and n.z() < tol and f.exterior():
-          self.ff[f] = 4
-      
-      for f in facets(self.flat_mesh):
-        n       = f.normal()    # unit normal vector to facet f
-      
-        if   n.z() >=  tol and f.exterior():
-          self.ff_flat[f] = 2
-      
-        elif n.z() <= -tol and f.exterior():
-          self.ff_flat[f] = 3
-      
-        elif n.z() >  -tol and n.z() < tol and f.exterior():
-          self.ff_flat[f] = 4
+    if self.MPI_rank==0:
+      s    = "    - iterating through facets - "
+      text = colored(s, 'magenta')
+      print text
+    for f in facets(self.mesh):
+      n       = f.normal()
+      x_m     = f.midpoint().x()
+      y_m     = f.midpoint().y()
+      z_m     = f.midpoint().z()
+      mask_xy = self.mask(x_m, y_m, z_m)
+      if self.adot_ex != None:
+        adot_xy = self.adot_ex(x_m, y_m, z_m)
+        if n.z() >= tol and f.exterior() and adot_xy > 0:
+          self.ff_acc[f] = 1
     
+      if   n.z() >=  tol and f.exterior():
+        if mask_xy > 0:
+          self.ff[f] = 6
+        else:
+          self.ff[f] = 2
+    
+      elif n.z() <= -tol and f.exterior():
+        if mask_xy > 0:
+          self.ff[f] = 5
+        else:
+          self.ff[f] = 3
+    
+      elif n.z() >  -tol and n.z() < tol and f.exterior():
+        self.ff[f] = 4
+    
+    for f in facets(self.flat_mesh):
+      n       = f.normal()
+      x_m     = f.midpoint().x()
+      y_m     = f.midpoint().y()
+      z_m     = f.midpoint().z()
+      mask_xy = self.mask(x_m, y_m, z_m)
+    
+      if   n.z() >=  tol and f.exterior():
+        if mask_xy > 0:
+          self.ff_flat[f] = 6
+        else:
+          self.ff_flat[f] = 2
+    
+      elif n.z() <= -tol and f.exterior():
+        if mask_xy > 0:
+          self.ff_flat[f] = 5
+        else:
+          self.ff_flat[f] = 3
+    
+      elif n.z() >  -tol and n.z() < tol and f.exterior():
+        self.ff_flat[f] = 4
+    
+    if self.MPI_rank==0:
+      s    = "    - iterating through cells - "
+      text = colored(s, 'magenta')
+      print text
+    for c in cells(self.mesh):
+      x_m     = c.midpoint().x()
+      y_m     = c.midpoint().y()
+      z_m     = c.midpoint().z()
+      mask_xy = self.mask(x_m, y_m, z_m)
+
+      if mask_xy > 0:
+        self.cf[c] = 1
+        shf_dofs.extend(dofmap.cell_dofs(c.index()))
+      else:
+        self.cf[c] = 0
+        gnd_dofs.extend(dofmap.cell_dofs(c.index()))
+
+    self.shf_dofs = list(set(shf_dofs))
+    self.gnd_dofs = list(set(gnd_dofs))
+
     self.ds      = Measure('ds')[self.ff]
     self.ds_flat = Measure('ds')[self.ff_flat]
     self.dx      = Measure('dx')[self.cf]
 
-  def set_subdomains(self, ff, cf, ff_acc):
-    """
-    Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
-    to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
-    """
-    if self.MPI_rank==0:
-      s    = "::: setting subdomains :::"
-      text = colored(s, 'magenta')
-      print text
-    self.ff     = ff
-    self.cf     = cf
-    self.ff_acc = ff_acc
-    self.mask   = True
-    self.ds     = Measure('ds')[self.ff]
-    self.dx     = Measure('dx')[self.cf]
-
-  def get_bed_mesh(self):
-    """
-    Returns the bed of the mesh for this model instance.
-    """
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
-    for c in cells(bmesh):
-      if Facet(mesh, cellmap[c.index()]).normal().z() < 0:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
-    return submesh
-     
   def set_parameters(self, params):
     """
     Sets the model's dictionary of parameters
@@ -337,8 +300,26 @@ class Model(object):
        containing model-relavent parameters
     """
     self.params = params
+
+  def get_bed_mesh(self):
+    """
+    Returns the bed of the mesh for this model instance.
+    """
+    if self.MPI_rank==0:
+      s    = "::: extracting bed mesh :::"
+      text = colored(s, 'magenta')
+      print text
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = CellFunction("size_t", bmesh, 0)
+    for c in cells(bmesh):
+      if Facet(mesh, cellmap[c.index()]).normal().z() < 0:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
+    return submesh
       
-  def init_beta0(self, beta, U_mag, r, gradS):
+  def init_beta(self, beta, U_mag, r, gradS):
     r"""
     Init beta from :math:`\tau_b = \tau_d`, the shallow ice approximation, 
     using the observed surface velocity <U_ob> as approximate basal 
@@ -364,8 +345,9 @@ class Model(object):
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(beta, beta_0_v)
+    self.print_min_max(beta, 'beta')
   
-  def init_b0(self, b, U_ob, gradS):
+  def init_b(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """

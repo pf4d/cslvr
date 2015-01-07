@@ -200,11 +200,11 @@ class VelocityStokes(Physics):
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if config['velocity']['init_beta_from_U_ob']:
-      U_ob = config['velocity']['U_ob']
-      model.init_beta0(beta, U_ob, r, gradS)
     if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
+    if config['velocity']['init_beta_from_U_ob']:
+      U_ob = config['velocity']['U_ob']
+      model.init_beta(beta, U_ob, r, gradS)
    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -344,7 +344,8 @@ class VelocityStokes(Physics):
     # Variational principle
     A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
              + Sl*dGnd + Nc*dBed
-    if not config['periodic_boundary_conditions']:
+    if (not config['periodic_boundary_conditions']
+        and config['use_pressure_boundary']):
       A += Pb*dSde
 
     model.A       = A
@@ -688,18 +689,18 @@ class VelocityBP(Physics):
     if config['velocity']['init_b_from_U_ob']:
       U_ob = config['velocity']['U_ob']
       b_shf = Function(Q)
-      model.init_b0(b_shf, U_ob, gradS)
+      model.init_b(b_shf, U_ob, gradS)
 
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if config['velocity']['init_beta_from_U_ob']:
-      U_ob = config['velocity']['U_ob']
-      model.init_beta0(beta, U_ob, r, gradS)
     if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
+    if config['velocity']['init_beta_from_U_ob']:
+      U_ob = config['velocity']['U_ob']
+      model.init_beta(beta, U_ob, r, gradS)
     if config['velocity']['use_stats_beta']:
       U_ob  = config['velocity']['U_ob']
       q_geo = config['enthalpy']['q_geo']
@@ -752,8 +753,8 @@ class VelocityBP(Physics):
     term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
                      + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
     epsdot  =  term + eps_reg
-    eta_shf =  b_shf * epsdot**((1.0 - n) / (2*n))
-    eta_gnd =  b_gnd * epsdot**((1.0 - n) / (2*n))
+    eta_shf =  b_shf * epsdot**((1-n)/(2*n))
+    eta_gnd =  b_gnd * epsdot**((1-n)/(2*n))
 
     # 1) Viscous dissipation
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
@@ -1929,7 +1930,8 @@ class AdjointVelocity(Physics):
       Q_adj   = model.Q4
       A       = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
                 + Sl*dGnd + Nc*dGnd
-    if not config['periodic_boundary_conditions']:
+    if (not config['periodic_boundary_conditions']
+        and config['use_pressure_boundary']):
       A      += Pb*dSde
 
     L         = TrialFunction(Q_adj)
@@ -2023,6 +2025,8 @@ class AdjointVelocity(Physics):
       s    = "::: solving adjoint velocity :::"
       text = colored(s, 'cyan')
       print text
+      
+    #solve(lhs(self.dI) == rhs(self.dI), self.model.Lam)
     solve(A, self.model.Lam.vector(), l)
     
 

@@ -176,9 +176,13 @@ class SteadySolver(Solver):
       counter += 1
       
       if self.model.MPI_rank==0:
-        s    = 'Picard iteration %i (max %i) done: r = %.3e (tol %.3e)'
-        text = colored(s, 'blue')
-        print text % (counter, max_iter, inner_error, inner_tol)
+        s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
+        s2    = 'r = %.3e ' % inner_error
+        s3    = '(tol %.3e)' % inner_tol
+        text1 = colored(s1, 'blue')
+        text2 = colored(s2, 'red', attrs=['bold'])
+        text3 = colored(s3, 'blue')
+        print text1 + text2 + text3
 
     # Solve age equation
     if config['age']['on']:

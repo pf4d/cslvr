@@ -741,7 +741,7 @@ class VelocityBP(Physics):
         for yy in X[1:][i+1:]:
           X.append(xx*yy)
       
-      beta = 1.0
+      beta = Constant(1.0)
       
       for xx,bb in zip(X,bhat):
         beta *= xx**bb

@@ -314,9 +314,9 @@ class Model(object):
     cellmap = bmesh.entity_map(2)
     pb      = CellFunction("size_t", bmesh, 0)
     for c in cells(bmesh):
-      if Facet(mesh, cellmap[c.index()]).normal().z() < 0:
+      if Facet(self.mesh, cellmap[c.index()]).normal().z() < 0:
         pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
+    submesh = SubMesh(bmesh, pb, 1)
     return submesh
       
   def init_beta(self, beta, U_mag, r, gradS):

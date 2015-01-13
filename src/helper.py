@@ -569,7 +569,7 @@ def default_config():
              { 
                'on'                  : True,
                'newton_params'       : default_nonlin_solver_params(),
-               'vert_solve_method'   : 'superlu_dist',
+               'vert_solve_method'   : 'mumps',
                'viscosity_mode'      : 'isothermal',
                'b_gnd'               : None,
                'b_shf'               : None,
@@ -577,10 +577,7 @@ def default_config():
                'E_shf'               : None,
                'eta_gnd'             : None,
                'eta_shf'             : None,
-               'use_T0'              : False,
                'use_U0'              : False,
-               'use_beta0'           : True,
-               'use_b_shf0'          : False,
                'T0'                  : None,
                'A0'                  : 1e-16,
                'u0'                  : None,
@@ -588,8 +585,8 @@ def default_config():
                'w0'                  : None,
                'beta0'               : 1e3,
                'init_beta_from_U_ob' : False,
+               'init_beta_from_stats': False,
                'init_b_from_U_ob'    : False,
-               'use_stats_beta'      : False,
                'U_ob'                : None,
                'r'                   : 0.0,
                'E'                   : 1.0,
@@ -602,7 +599,7 @@ def default_config():
              'enthalpy' : 
              { 
                'on'                  : False,
-               'solve_method'        : 'superlu_dist',
+               'solve_method'        : 'mumps',
                'use_surface_climate' : False,
                'T_surface'           : None,
                'q_geo'               : None,
@@ -634,7 +631,7 @@ def default_config():
                'sigma'               : None,
                'precip'              : None
              },
-             'adjoint' :
+             'ajoint' :
              { 
                'alpha'               : 0.0,
                'gamma1'              : 1.0,

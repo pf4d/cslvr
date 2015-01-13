@@ -196,11 +196,11 @@ class VelocityStokes(Physics):
     newton_params = config['velocity']['newton_params']
     
     # initialize the temperature depending on input type :
-    if config['velocity']['use_T0']:
+    if config['velocity']['T0'] != None:
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if config['velocity']['use_beta0']:
+    if config['velocity']['beta0'] != None:
       model.assign_variable(beta, config['velocity']['beta0'])
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
@@ -682,7 +682,7 @@ class VelocityBP(Physics):
             "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
 
     # initialize rate-factor on shelves :
-    if config['velocity']['use_b_shf0']:
+    if config['velocity']['b_shf'] != None:
       b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
     
@@ -692,11 +692,11 @@ class VelocityBP(Physics):
       model.init_b(b_shf, U_ob, gradS)
 
     # initialize the temperature depending on input type :
-    if config['velocity']['use_T0']:
+    if config['velocity']['T0'] != None:
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if config['velocity']['use_beta0']:
+    if config['velocity']['beta0'] != None:
       model.assign_variable(beta, config['velocity']['beta0'])
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']

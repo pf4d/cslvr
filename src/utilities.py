@@ -13,10 +13,11 @@ from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
-                              argmin
+                              argmin, ndarray
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
-                              RectangleMesh, MPI, mpi_comm_world
+                              RectangleMesh, MPI, mpi_comm_world, \
+                              GenericVector
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
 from termcolor         import colored, cprint
@@ -866,6 +867,27 @@ class max_field(object):
       l.append(f(x,y,z,entity))
     return max(l)
 
+def print_min_max(u, title):
+  """
+  Print the minimum and maximum values of <u>, a Vector, Function, or array.
+  """
+  if MPI.rank(mpi_comm_world())==0:
+    if isinstance(u, GenericVector):
+      uMin = u.array().min()
+      uMax = u.array().max()
+    elif isinstance(u, Function):
+      uMin = u.vector().min()
+      uMax = u.vector().max()
+    elif isinstance(u, ndarray):
+      uMin = u.min()
+      uMax = u.max()
+    else:
+      print "print_min_max function requires a Vector, Function, array," \
+            + " or Indexed, not %s." % type(u)
+      uMin = uMax = 0.0
+    s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+    text = colored(s, 'yellow')
+    print text
 
 class MeshRefiner(object):
   
@@ -882,6 +904,8 @@ class MeshRefiner(object):
     from gmshpy import GModel, GmshSetOption
 
     self.field  = di.data[fn].T
+    print_min_max(self.field, 'refinement field [m]')
+
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
     
     #load the mesh into a GModel

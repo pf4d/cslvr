@@ -127,7 +127,7 @@ class SteadySolver(Solver):
       # Solve velocity
       if config['velocity']['on']:
         self.velocity_instance.solve()
-        if config['velocity']['log']:
+        if config['velocity']['log'] and config['log']:
           if self.model.MPI_rank==0:
             s    = '::: saving velocity and pressure U and P .pvd files :::'
             text = colored(s, 'blue')
@@ -150,7 +150,7 @@ class SteadySolver(Solver):
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
-        if config['enthalpy']['log']: 
+        if config['enthalpy']['log'] and config['log']: 
           if self.model.MPI_rank==0:
             s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
             text = colored(s, 'blue')
@@ -187,7 +187,7 @@ class SteadySolver(Solver):
     # Solve age equation
     if config['age']['on']:
       self.age_instance.solve()
-      if config['log']: 
+      if config['log'] and config['log']: 
         if self.model.MPI_rank==0:
           s    = '::: saving age age.pvd file :::'
           text = colored(s, 'blue')

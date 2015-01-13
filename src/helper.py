@@ -569,6 +569,7 @@ def default_config():
              { 
                'on'                  : True,
                'newton_params'       : default_nonlin_solver_params(),
+               'vert_solve_method'   : 'superlu_dist',
                'viscosity_mode'      : 'isothermal',
                'b_gnd'               : None,
                'b_shf'               : None,
@@ -601,6 +602,7 @@ def default_config():
              'enthalpy' : 
              { 
                'on'                  : False,
+               'solve_method'        : 'superlu_dist',
                'use_surface_climate' : False,
                'T_surface'           : None,
                'q_geo'               : None,

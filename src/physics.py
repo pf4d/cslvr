@@ -848,7 +848,7 @@ class VelocityBP(Physics):
 
     bc_w = None
 
-    # add appropriate vertical velocity bcs :  
+    # add appropriate vertical velocity bcs :
     if config['velocity']['boundaries'] == 'solution':
       bc_w = DirichletBC(Q, model.w, model.ff, 4)
       
@@ -863,7 +863,9 @@ class VelocityBP(Physics):
       s    = "::: solving BP vertical velocity :::"
       text = colored(s, 'cyan')
       print text
-    solve(self.aw == self.Lw, model.w, bcs=bc_w)
+    sm = config['velocity']['vert_solve_method']
+    solve(self.aw == self.Lw, model.w, bcs=bc_w,
+          solver_parameters = {"linear_solver" : sm})
     model.print_min_max(model.w, 'w')
     
     # solve for pressure :
@@ -1303,8 +1305,9 @@ class Enthalpy(Physics):
       s    = "::: solving enthalpy :::"
       text = colored(s, 'cyan')
       print text
-    solve(self.a == self.L, H, self.bc_H, 
-          solver_parameters = {"linear_solver": "lu"})
+    sm = config['enthalpy']['solve_method']
+    solve(self.a == self.L, H, self.bc_H,
+          solver_parameters = {"linear_solver" : sm})
 
     # calculate temperature and water content :
     if self.model.MPI_rank==0:
@@ -1622,8 +1625,9 @@ class EnthalpyDG(Physics):
       s    = "::: solving DG internal energy :::"
       text = colored(s, 'cyan')
       print text
+    sm = config['enthalpy']['solve_method']
     solve(self.a == self.L, H, self.bc_H, 
-          solver_parameters = {"linear_solver": "lu"})
+          solver_parameters = {"linear_solver" : sm})
 
     # calculate temperature and water content :
     if self.model.MPI_rank==0:
@@ -1887,7 +1891,6 @@ class AdjointVelocity(Physics):
     self.model  = model
     self.config = config
 
-    # Adjoint variable in trial function form
     Q        = model.Q
     Vd_shf   = model.Vd_shf
     Vd_gnd   = model.Vd_gnd
@@ -1934,16 +1937,6 @@ class AdjointVelocity(Physics):
         and config['use_pressure_boundary']):
       A      += Pb*dSde
 
-    L         = TrialFunction(Q_adj)
-    Phi       = TestFunction(Q_adj)
-    model.Lam = Function(Q_adj)
-
-    rho       = TestFunction(Q)
-
-    # Derivative, with trial function L.  This is the BP equations in weak form
-    # multiplied by L and integrated by parts
-    F_adjoint = derivative(A, U, L)
-
     # form regularization term 'R' :
     N = FacetNormal(model.mesh)
     for a,c in zip(alpha,control):
@@ -1962,8 +1955,7 @@ class AdjointVelocity(Physics):
               + " defaulting to no regularization."
         R = Constant(0.0) * dGnd
     
-    # Objective function.  This is a least squares on the surface plus a 
-    # regularization term penalizing wiggles in beta
+    # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'logarithmic':
       a      = Constant(0.5)
       self.I = a * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
@@ -1990,12 +1982,20 @@ class AdjointVelocity(Physics):
       print   "adjoint objection function may be 'linear', 'logarithmic'," \
             + " 'kinematic', or log_lin_hybrid."
       exit(1)
+
+    Phi       = TestFunction(Q_adj)
+    model.Lam = Function(Q_adj)
+    L         = TrialFunction(Q_adj)
+    
+    # Derivative, with trial function L.  This is the momentum equations 
+    # in weak form multiplied by L and integrated by parts
+    F_adjoint = derivative(A, U, L)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
 
-    # Gradient of this with respect to u in the direction of a test 
-    # function yields a bilinear residual which, when solved yields the 
+    # Gradient of this with respect to U in the direction of a test 
+    # function yields a bilinear residual, which when solved yields the 
     # value of the adjoint variable
     self.dI    = derivative(I_adjoint, U, Phi)
 
@@ -2010,6 +2010,7 @@ class AdjointVelocity(Physics):
     # Differentiation wrt to the control variable in the direction of a test 
     # function yields a vector.  Assembly of this vector yields dJ/dbeta
     self.J = []
+    rho    = TestFunction(Q)
     for c in control:
       self.J.append(derivative(I_gradient, c, rho))
 
@@ -2018,16 +2019,17 @@ class AdjointVelocity(Physics):
     Solves the bilinear residual created by differentiation of the 
     variational principle in combination with an objective function.
     """
-    A = assemble(lhs(self.dI))
-    l = assemble(rhs(self.dI))
+    model = self.model
 
-    if self.model.MPI_rank==0:
+    if model.MPI_rank==0:
       s    = "::: solving adjoint velocity :::"
       text = colored(s, 'cyan')
       print text
-      
-    #solve(lhs(self.dI) == rhs(self.dI), self.model.Lam)
-    solve(A, self.model.Lam.vector(), l)
+
+    solve(lhs(self.dI) == rhs(self.dI), model.Lam,
+          solver_parameters = {"linear_solver"  : "cg",
+                               "preconditioner" : "hypre_amg"})
+    model.print_min_max(model.Lam, 'Lam')
     
 
 class SurfaceClimate(Physics):

@@ -631,7 +631,7 @@ def default_config():
                'sigma'               : None,
                'precip'              : None
              },
-             'ajoint' :
+             'adjoint' :
              { 
                'alpha'               : 0.0,
                'gamma1'              : 1.0,

@@ -701,7 +701,7 @@ class VelocityBP(Physics):
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
       model.init_beta(beta, U_ob, r, gradS)
-    if config['velocity']['use_stats_beta']:
+    if config['velocity']['init_beta_from_stats']:
       U_ob  = config['velocity']['U_ob']
       q_geo = config['enthalpy']['q_geo']
       T_s   = config['enthalpy']['T_surface']

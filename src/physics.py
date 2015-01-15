@@ -2239,8 +2239,6 @@ class VelocityBalance(Physics):
     self.config = config
     
     Q           = model.Q
-    kappa       = config['balance_velocity']['kappa']
-    adot        = config['balance_velocity']['adot']
     g           = model.g
     rho         = model.rhoi
     S           = model.S
@@ -2250,6 +2248,12 @@ class VelocityBalance(Physics):
     dSdy        = model.dSdy
     d_x         = model.d_x
     d_y         = model.d_y
+    kappa       = model.kappa
+    adot        = model.adot
+   
+    # assign the variables something that the user specifies : 
+    model.assign_variable(kappa, config['balance_velocity']['kappa'])
+    model.assign_variable(adot,  config['balance_velocity']['adot'])
         
     #===========================================================================
     # form to calculate direction of flow (down driving stress gradient) :

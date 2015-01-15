@@ -943,6 +943,8 @@ class Model(object):
     self.adot          = Function(self.Q)
 
     # Balance Velocity model :
+    self.kappa         = Function(self.Q)
+    self.adot          = Function(self.Q)
     self.dSdx          = Function(self.Q)
     self.dSdy          = Function(self.Q)
     self.d_x           = Function(self.Q)

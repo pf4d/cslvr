@@ -184,7 +184,8 @@ class VelocityStokes(Physics):
     rhow          = model.rhow
     g             = model.g
     Pe            = model.Pe
-    Sl            = model.Sl
+    Sl_gnd        = model.Sl_gnd
+    Sl_shf        = model.Sl_shf
     Pc            = model.Pc
     Nc            = model.Nc
     Pb            = model.Pb
@@ -325,7 +326,8 @@ class VelocityStokes(Physics):
     Pe     = rhoi * g * w
 
     # 3) Dissipation by sliding
-    Sl     = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
+    Sl_gnd = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
+    Sl_shf = 0.5 * Constant(1e-10) * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
     Pc     = -P * (u.dx(0) + v.dx(1) + w.dx(2)) 
@@ -357,7 +359,8 @@ class VelocityStokes(Physics):
     model.Vd_shf  = Vd_shf
     model.Vd_gnd  = Vd_gnd
     model.Pe      = Pe
-    model.Sl      = Sl
+    model.Sl_gnd  = Sl_gnd
+    model.Sl_shf  = Sl_shf
     model.Pc      = Pc
     model.Nc      = Nc
     model.Pb      = Pb
@@ -585,7 +588,8 @@ class VelocityBP(Physics):
     rhow          = model.rhow
     g             = model.g
     Pe            = model.Pe
-    Sl            = model.Sl
+    Sl_shf        = model.Sl_shf
+    Sl_gnd        = model.Sl_gnd
     Pb            = model.Pb
     beta          = model.beta
     w             = model.w
@@ -709,32 +713,70 @@ class VelocityBP(Physics):
       adot  = model.adot
       Mb    = model.Mb
 
+      adot_v = adot.vector().array()
+      adot_v[adot_v < 0] = 0
+      model.assign_variable(adot, adot_v)
+
+      absB  = Function(Q)
+      B_v   = B.vector().array()
+      B_v   = np.abs(B_v)
+      model.assign_variable(absB, B_v)
+
+      nS   = Function(Q)
+      gSx  = project(S.dx(0)).vector().array()
+      gSy  = project(S.dx(1)).vector().array()
+      nS_v = np.sqrt(gSx**2 + gSy**2 + 1e-16)
+      model.assign_variable(nS, nS_v)
+
+      nB   = Function(Q)
+      gBx  = project(B.dx(0)).vector().array()
+      gBy  = project(B.dx(1)).vector().array()
+      nB_v = np.sqrt(gBx**2 + gBy**2 + 1e-16)
+      model.assign_variable(nB, nB_v)
+
       x0   = Mb
       x1   = S
       x2   = T
       x3   = T_s
-      x4   = ln(sqrt(inner(gradS,gradS)) + 1e-10)
-      x5   = abs(B)
-      x6   = ln(sqrt(inner(gradB,gradB)) + 1e-10)
-      x7   = H
-      x11  = ln(sqrt(inner(U,U)) + 1e-10)
+      x4   = nS
+      x5   = absB
+      x6   = nB
+      x7   = project(H, Q)
+      x11  = project(ln(sqrt(inner(U,U)) + 1), Q)
       x13  = q_geo
       x14  = adot
 
       X    = [x1,x2,x3,x4,x5,x6,x7,x13,x14]
-      
-      bhat = [ 2.83076304e+00,   2.81017298e-04,   1.96688751e-02,
-              -9.05011453e-03,   1.00761568e-01,  -1.90171815e-04,
-               3.50492400e-02,  -2.72498158e-05,   8.50695107e-08,
-              -6.24177928e-01]
+      X_i  = []
+      X_i.extend(X)
 
-      #for i,xx in enumerate(X[1:]):
-      #  for yy in X[1:][i+1:]:
-      #    X.append(xx*yy)
+      for i,xx in enumerate(X):
+        model.print_min_max(xx, 'x' + str(i))
+      
+      bhat = [-7.54443566e+01,   6.53054193e-03,   3.39478104e-01,
+               2.73027874e-01,  -3.67290475e+01,  -2.85859098e-03,
+               1.83154152e+01,   9.65797358e-04,   2.55332643e-07,
+              -3.25836154e+00,   8.58836472e-06,  -3.40146227e-05,
+               7.30956484e-04,   2.54795530e-08,   1.98171077e-05,
+              -1.43002357e-07,   7.00353657e-11,   5.78598932e-04,
+              -1.16189511e-03,   1.19154912e-02,   5.27099268e-06,
+              -2.44555433e-02,  -1.54577707e-05,  -1.38719938e-08,
+               2.21354140e-02,   1.36946002e-01,   5.67677202e-06,
+              -4.45993937e-02,   1.12119426e-05,   1.30089025e-08,
+              -1.28790101e-02,  -1.34393916e-03,  -1.44579124e+00,
+               1.29599597e-03,   3.83570863e-07,  -3.29322405e+00,
+               4.20353685e-04,   1.81612171e-07,  -1.31679680e-10,
+              -3.37356195e-04,  -3.64117243e-04,   1.28582085e-07,
+              -2.88311889e-01,  -1.65632157e-11,   2.56559371e-04,
+               1.06994021e-07]
+      
+      for i,xx in enumerate(X):
+        for yy in X[i+1:]:
+          X_i.append(xx*yy)
       
       beta = Constant(bhat[0])
       
-      for xx,bb in zip(X, bhat[1:]):
+      for xx,bb in zip(X_i, bhat[1:]):
         beta += Constant(bb)*xx
       beta = exp(beta) - Constant(100.0)
 
@@ -756,13 +798,14 @@ class VelocityBP(Physics):
     Pe       = rhoi * g * (u*gradS[0] + v*gradS[1])
 
     # 3) Dissipation by sliding
-    Sl       = 0.5 * beta**2 * H**r * (u**2 + v**2)
+    Sl_shf   = 0.5 * Constant(1e-10) * (u**2 + v**2)
+    Sl_gnd   = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
     # 4) pressure boundary
     Pb       = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1]) 
 
     # Variational principle
-    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
+    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd + Sl_shf*dFlt
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
       A += Pb*dSde
@@ -791,8 +834,9 @@ class VelocityBP(Physics):
     model.b_gnd   = b_gnd
     model.Vd_shf  = Vd_shf
     model.Vd_gnd  = Vd_gnd
+    model.Sl_shf  = Sl_shf
+    model.Sl_gnd  = Sl_gnd
     model.Pe      = Pe
-    model.Sl      = Sl
     model.Pb      = Pb
     model.A       = A
     model.T       = T
@@ -1300,14 +1344,13 @@ class Enthalpy(Physics):
     sm = config['enthalpy']['solve_method']
     solve(self.a == self.L, H, self.bc_H,
           solver_parameters = {"linear_solver" : sm})
+    model.print_min_max(H, 'H')
 
-    # calculate temperature and water content :
+    # temperature solved diagnostically : 
     if self.model.MPI_rank==0:
-      s = "::: calculating temperature, water content, and basal melt-rate :::"
+      s = "::: calculating temperature :::"
       text = colored(s, 'cyan')
       print text
-    
-    # temperature solved diagnostically : 
     T_n  = project(H/ci, Q)
     
     # update temperature for wet/dry areas :
@@ -1317,6 +1360,7 @@ class Enthalpy(Physics):
     cold         = T_n_v <  T0_v
     T_n_v[warm]  = T0_v[warm]
     model.assign_variable(T, T_n_v)
+    model.print_min_max(T,  'T')
     
     # update kappa coefficient for wet/dry areas :
     #Kcoef_v       = Kcoef.vector().array()
@@ -1325,6 +1369,10 @@ class Enthalpy(Physics):
     #model.assign_variable(Kcoef, Kcoef_v)
 
     # water content solved diagnostically :
+    if self.model.MPI_rank==0:
+      s = "::: calculating water content :::"
+      text = colored(s, 'cyan')
+      print text
     W_n  = project((H - ci*T0)/L, Q)
     
     # update water content :
@@ -1333,24 +1381,28 @@ class Enthalpy(Physics):
     W_v[W_v > 1.00] = 1.00
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
+    model.print_min_max(W,  'W')
     
     # update capped variable for rheology : 
     W_v[W_v > 0.01] = 0.01
     model.assign_variable(W_r, W_v)
     
     # calculate melt-rate : 
+    if self.model.MPI_rank==0:
+      s = "::: calculating basal melt-rate :::"
+      text = colored(s, 'cyan')
+      print text
     nMb   = project(-(q_geo + q_friction) / (L*rhoi))
     model.assign_variable(Mb,  nMb)
+    model.print_min_max(Mb, 'Mb')
 
     # calculate bulk density :
+    if self.model.MPI_rank==0:
+      s = "::: calculating bulk density :::"
+      text = colored(s, 'cyan')
+      print text
     rho       = project(self.rho)
     model.rho = rho
-    
-    # print the min/max values to the screen :    
-    model.print_min_max(H,  'H')
-    model.print_min_max(T,  'T')
-    model.print_min_max(Mb, 'Mb')
-    model.print_min_max(W,  'W')
     model.print_min_max(rho,'rho')
 
 
@@ -1887,7 +1939,8 @@ class AdjointVelocity(Physics):
     Vd_shf   = model.Vd_shf
     Vd_gnd   = model.Vd_gnd
     Pe       = model.Pe
-    Sl       = model.Sl
+    Sl_shf   = model.Sl_shf
+    Sl_gnd   = model.Sl_gnd
     Pb       = model.Pb
     Pc       = model.Pc
     Lsq      = model.Lsq
@@ -1920,11 +1973,11 @@ class AdjointVelocity(Physics):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl*dGnd
+      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd + Sl_shf*dFlt
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
       A       = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-                + Sl*dGnd + Nc*dGnd
+                + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dGnd
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
       A      += Pb*dSde
@@ -2180,263 +2233,115 @@ class VelocityBalance(Physics):
       s    = "::: INITIALIZING VELOCITY-BALANCE PHYSICS :::"
       text = colored(s, 'cyan')
       print text
-    
+
+
     self.model  = model
     self.config = config
     
+    Q           = model.Q
     kappa       = config['balance_velocity']['kappa']
-    smb         = config['balance_velocity']['smb']
+    adot        = config['balance_velocity']['adot']
     g           = model.g
-    rhoi        = model.rhoi
-
-    flat_mesh   = model.flat_mesh
-    Q_flat      = model.Q_flat
-    B           = model.B.vector().get_local()
-    S           = model.S.vector().get_local()
+    rho         = model.rhoi
+    S           = model.S
+    B           = model.B
+    H           = S - B
     dSdx        = model.dSdx
     dSdy        = model.dSdy
-    Ub          = model.Ub
+    d_x         = model.d_x
+    d_y         = model.d_y
+        
+    #===========================================================================
+    # form to calculate direction of flow (down driving stress gradient) :
 
-    phi         = TestFunction(Q_flat)
-    dU          = TrialFunction(Q_flat)
-                
-    Nx          = TrialFunction(Q_flat)
-    Ny          = TrialFunction(Q_flat)
-    H_          = Function(Q_flat)
-    S_          = Function(Q_flat)
-    smb_        = project(smb, Q_flat)
+    phi  = TestFunction(Q)
+    Ubar = TrialFunction(Q)
+    Nx   = TrialFunction(Q)
+    Ny   = TrialFunction(Q)
     
-    ds          = model.ds
-   
-    model.assign_variable(H_, S-B) 
-    model.assign_variable(S_, S) 
-
-    R_dSdx = + Nx * phi * ds(2) \
-             - rhoi * g * H_ * S_.dx(0) * phi * ds(2) \
-             + (l*H_)**2 * (phi.dx(0)*Nx.dx(0) + phi.dx(1)*Nx.dx(1)) * ds(2)
-    R_dSdy = + Ny * phi * ds(2) \
-             - rhoi * g * H_ * S_.dx(1) * phi*ds(2) \
-             + (l*H_)**2 * (phi.dx(0)*Ny.dx(0) + phi.dx(1)*Ny.dx(1)) * ds(2)
+    # calculate horizontally smoothed driving stress :
+    a_dSdx = + Nx * phi * dx \
+             + (kappa*H)**2 * (phi.dx(0)*Nx.dx(0) + phi.dx(1)*Nx.dx(1)) * dx
+    L_dSdx = rho * g * H * dSdx * phi * dx \
     
-    a_x  = assemble(lhs(R_dSdx))
-    a_x.ident_zeros()
-    L_x  = assemble(rhs(R_dSdx))
-
-    a_y  = assemble(lhs(R_dSdy))
-    a_y.ident_zeros()
-    L_y  = assemble(rhs(R_dSdy))
-
-    solve(a_x, dSdx.vector(), L_x)
-    solve(a_y, dSdy.vector(), L_y)
-
-    slope  = sqrt(dSdx**2 + dSdy**2) + 1e-5
-    dS     = as_vector([-dSdx/slope, -dSdy/slope])
-    
-    def inside(x,on_boundary):
-      return on_boundary
+    a_dSdy = + Ny * phi * dx \
+             + (kappa*H)**2 * (phi.dx(0)*Ny.dx(0) + phi.dx(1)*Ny.dx(1)) * dx
+    L_dSdy = rho * g * H * dSdy * phi*dx \
     
     # SUPG method :
-    h      = CellSize(flat_mesh)
-    U_eff  = sqrt(dot(dS*H_, dS*H_))
-    tau    = h/(2.0 * U_eff)
+    dS      = as_vector([d_x, d_y, 0.0])
+    cellh   = CellSize(model.mesh)
+    phihat  = phi + cellh/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
     
-    term1  = phi + tau*(Dx(H_*phi*dS[0], 0) + Dx(H_*phi*dS[1], 1))
-    term2  = Dx(dU*dS[0]*H_, 0) + Dx(dU*dS[1]*H_, 1) - smb_
-    dI     = term1 * term2 * ds(2)
+    def L(u, uhat):
+      return div(uhat)*u + dot(grad(u), uhat)
     
-    self.dI     = dI
-    self.dS     = dS
+    B = L(Ubar*H, dS) * phihat * dx
+    a = adot * phihat * dx
 
+    self.a_dSdx = a_dSdx
+    self.a_dSdy = a_dSdy
+    self.L_dSdx = L_dSdx
+    self.L_dSdy = L_dSdy
+    self.B      = B
+    self.a      = a
+    
+  
   def solve(self):
-    a_U  = assemble(lhs(self.dI))
-    a_U.ident_zeros()
-    L_U  = assemble(rhs(self.dI))
-
-    solve(a_U, U.vector(), L_U)
-    
-    Ub  = self.model.Ub
-    u_b = project(Ub * self.dS[0])
-    v_b = project(Ub * self.dS[1])
-    self.model.assign_variable(self.model.u_balance, u_b.vector())
-    self.model.assign_variable(self.model.v_balance, v_b.vector())
-    
-
-class VelocityBalance_2(Physics):
-
-  def __init__(self, mesh, H, S, adot, l,dhdt=0.0, Uobs=None,Uobs_mask=None,N_data = None,NO_DATA=-9999,alpha=[0.0,0.0,0.0,0.]):
     """
+    Solve the balance velocity.
     """
+    model = self.model
+
     if model.MPI_rank==0:
-      s    = "::: INITIALIZING VELOCITY-BALANCE PHYSICS :::"
+      s    = "::: calculating surface gradient :::"
       text = colored(s, 'cyan')
       print text
-
-    set_log_level(PROGRESS)
     
-    Q = FunctionSpace(mesh, "CG", 1)
+    dSdx   = project(model.S.dx(0), model.Q)
+    dSdy   = project(model.S.dx(1), model.Q)
+    model.assign_variable(model.dSdx, dSdx)
+    model.assign_variable(model.dSdy, dSdy)
+    model.print_min_max(model.dSdx, 'dSdx')
+    model.print_min_max(model.dSdy, 'dSdy')
     
-    # Physical constants
-    rhoi = 911
-    g = 9.81
-
-    if Uobs:
-      pass
-    else:
-      Uobs = Function(Q)
-
-    # solution and trial functions :
-    Ubmag = Function(Q)
-    dUbmag = TrialFunction(Q)
-
-    lamda = Function(Q)
-    dlamda = TrialFunction(Q)
+    # update velocity direction from driving stress :
+    if model.MPI_rank==0:
+      s    = "::: solving for smoothed x-component of driving stress :::"
+      text = colored(s, 'cyan')
+      print text
+    solve(self.a_dSdx == self.L_dSdx, model.Nx)
+    model.print_min_max(model.Nx, 'Nx')
     
-    # solve for dhdx,dhdy with appropriate smoothing :
-    dSdx = Function(Q)
-    dSdy = Function(Q)
-    dSdx2 = Function(Q)
-    dSdy2 = Function(Q)
-    phi = TestFunction(Q)
-
-    Nx = TrialFunction(Q)
-    Ny = TrialFunction(Q)
+    if model.MPI_rank==0:
+      s    = "::: solving for smoothed y-component of driving stress :::"
+      text = colored(s, 'cyan')
+      print text
+    solve(self.a_dSdy == self.L_dSdy, model.Ny)
+    model.print_min_max(model.Ny, 'Ny')
     
-    # smoothing radius :
-    kappa = Function(Q)
-    kappa.vector()[:] = l
+    # normalize the direction vector :
+    if model.MPI_rank==0:
+      s    =   "::: calculating normalized velocity direction" \
+             + " from driving stress :::"
+      text = colored(s, 'cyan')
+      print text
+    d_x_v = model.Nx.vector().array()
+    d_y_v = model.Ny.vector().array()
+    d_n_v = np.sqrt(d_x_v**2 + d_y_v**2 + 1e-16)
+    model.assign_variable(model.d_x, -d_x_v / d_n_v)
+    model.assign_variable(model.d_y, -d_y_v / d_n_v)
+    model.print_min_max(model.d_x, 'd_x')
+    model.print_min_max(model.d_y, 'd_y')
     
-    R_dSdx = + (Nx*phi - rhoi*g*H*S.dx(0) * phi \
-             + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
-    R_dSdy = + (Ny*phi - rhoi*g*H*S.dx(1) * phi \
-             + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
+    # calculate balance-velocity :
+    if model.MPI_rank==0:
+      s    = "::: solving velocity balance magnitude :::"
+      text = colored(s, 'cyan')
+      print text
+    solve(self.B == self.a, model.Ubar)
+    model.print_min_max(model.Ubar, 'Ubar')
     
-    solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx)
-    solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy)
-
-    # Replace values of slope that are known
-    # I don't think this works in parallel, but it works for now...
-    # Note I did try conditionals here, to bad effect!
-    # Perhaps a DG space would have been better.
-    # To make parallel, try:
-    # remove .array() and replace with .get_local() and .set_local()
-    if N_data:
-        dSdx.vector().array()[N_data[0].vector().array() != NO_DATA] =\
-            N_data[0].vector().array()[N_data[0].vector().array() != NO_DATA]
-        dSdy.vector().array()[N_data[1].vector().array() != NO_DATA] =\
-            N_data[1].vector().array()[N_data[1].vector().array() != NO_DATA]
-
-    # Smoothing the merged results, using the same approach as before
-    kappa = Function(Q)
-    kappa.vector()[:] = 2.5  # Hard coded for development change later
-    
-    R_dSdx = + (Nx*phi - dSdx * phi \
-             + (kappa*H)**2 * dot(grad(phi), grad(Nx))) * dx
-    R_dSdy = + (Ny*phi - dSdy * phi \
-             + (kappa*H)**2 * dot(grad(phi), grad(Ny))) * dx
-    
-    solve(lhs(R_dSdx) == rhs(R_dSdx), dSdx2)
-    solve(lhs(R_dSdy) == rhs(R_dSdy), dSdy2)
-
-    slope = project(sqrt(dSdx2**2 + dSdy2**2) + 1e-10, Q)
-
-    dS = as_vector([project(-dSdx2 / slope, Q),
-                        project(-dSdy2 / slope, Q)])
-   
-    def inside(x,on_boundary):
-      return on_boundary
-       
-    dbc = DirichletBC(Q, 0.0, inside)
-    
-    # test function :
-    phi = TestFunction(Q)
-    
-    cellh = CellSize(mesh)
-    U_eff = sqrt( dot(dS * H, dS * H) + 1e-10 )
-    tau = cellh / (2 * U_eff)
-
-    adot_0 = adot.copy()
-
-    if Uobs_mask:
-        dx_masked = Measure('dx')[Uobs_mask]
-        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot-adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx+ alpha[3]*dot(grad(dS[1]),grad(dS[1]))*dx
-        #self.I = (Ubmag - Uobs)**2*dx_masked(1) + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot-adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx
-    else:
-        self.I = ln(abs(Ubmag+1.)/abs(Uobs+1.))**2*dx + alpha[0]*dot(grad(Uobs),grad(Uobs))*dx + alpha[1]*dot(grad(adot-adot_0),grad(adot - adot_0))*dx + alpha[2]*dot(grad(H),grad(H))*dx
-    
-    self.forward_model = (phi + tau*div(H*dS*phi)) * (div(dUbmag*dS*H) - adot + dhdt) * dx
-
-    self.adjoint_model = derivative(self.I,Ubmag,phi) + ((dlamda + tau*div(dlamda*dS*H))*(div(phi*dS*H)) )*dx
-
-    self.I += (lamda + tau*div(H*dS*lamda)) * (div(Ubmag*dS*H) - adot + dhdt) * dx
-
-    # Switch to use AD for the gradients:
-    self.g_Uobs = derivative(self.I,Uobs,phi)
-    self.g_adot = derivative(self.I,adot,phi)
-    self.g_H    = derivative(self.I,H,phi)
-    self.g_N    = derivative(self.I,dS[1],phi)
-
-    # Gradients computed by hand.
-    #self.g_adot = -(lamda + tau*div(lamda*dS*H))*phi*dx + 2.*alpha[1]*dot(grad(adot),grad(phi))*dx
-    #self.g_H = (lamda + tau*div(lamda*dS*H))*div(Ubmag*dS*phi)*dx + tau*div(lamda*dS*phi)*(div(Ubmag*dS*H) - adot + dhdt)*dx + 2.*alpha[2]*dot(grad(H),grad(phi))*dx
-
-
-    self.H = H
-    self.S = S
-    self.dS = dS
-    self.adot = adot
-    self.R_dSdx = R_dSdx
-    self.R_dSdy = R_dSdy
-    self.dSdx = dSdx
-    self.dSdy = dSdy
-    self.Ubmag = Ubmag
-    self.lamda = lamda
-    self.dbc = dbc
-    self.slope = slope
-    self.residual = Ubmag*div(dS*H) - adot
-    self.residual = project(self.residual, Q)
-    self.Uobs = Uobs
-    self.dx_masked = dx_masked
-    self.Q = Q
-    self.signs = np.sign(self.dS[0].vector().array().copy())
-    self.update_velocity_directions()
-
-  def update_velocity_directions(self):
-      ny = self.dS[1].vector().array().copy()
-
-      # These protect against NaNs in the sqrt below
-      ny[ny>1]  =  1.
-      ny[ny<-1] = -1.
-      nx = self.signs * np.sqrt(1-ny**2)
-
-      # Maybe set_local is more parallel safe
-      self.dS[0].vector().set_local(nx)
-      self.dS[1].vector().set_local(ny)
-      self.dS[0].vector().apply('insert')
-      self.dS[1].vector().apply('insert')
-
-
-  def solve_forward(self):
-    # solve linear problem :
-    self.update_velocity_directions()
-    solve(lhs(self.forward_model) == rhs(self.forward_model), self.Ubmag)
-    self.Ubmag.vector()[self.Ubmag.vector().array()<0] = 0.0
-
-  def solve_adjoint(self):
-    self.update_velocity_directions()
-    self.Uobs.vector()[self.Uobs.vector().array()<0] = 0.0
-    solve(lhs(self.adjoint_model) == rhs(self.adjoint_model), self.lamda)
-   
-  def get_gradient(self):
-    gU = assemble(self.g_Uobs)
-    gH = assemble(self.g_H)
-    gN = assemble(self.g_N)
-    ga = assemble(self.g_adot)
-    #return ((gU.array() / linalg.norm(gU.array()) , ga.array() / linalg.norm(ga.array()),\
-    #         gH.array() / linalg.norm(gH.array()) , gN.array() / linalg.norm(gN.array())))
-
-    return ((gU.array() , ga.array() ,\
-             gH.array() , gN.array() ))
-
 
 class StokesBalance3D(Physics):
 

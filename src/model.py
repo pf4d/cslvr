@@ -889,7 +889,8 @@ class Model(object):
     self.W_r           = Function(self.Q)
     self.Vd            = Function(self.Q)
     self.Pe            = Function(self.Q)
-    self.Sl            = Function(self.Q)
+    self.Sl_shf        = Function(self.Q)
+    self.Sl_gnd        = Function(self.Q)
     self.Pc            = Function(self.Q)
     self.Nc            = Function(self.Q)
     self.Pb            = Function(self.Q)
@@ -942,11 +943,13 @@ class Model(object):
     self.adot          = Function(self.Q)
 
     # Balance Velocity model :
-    self.dSdx          = Function(self.Q_flat)
-    self.dSdy          = Function(self.Q_flat)
-    self.Ub            = Function(self.Q_flat)
-    self.u_balance     = Function(self.Q)
-    self.v_balance     = Function(self.Q)
+    self.dSdx          = Function(self.Q)
+    self.dSdy          = Function(self.Q)
+    self.d_x           = Function(self.Q)
+    self.d_y           = Function(self.Q)
+    self.Ubar          = Function(self.Q)
+    self.Nx            = Function(self.Q)
+    self.Ny            = Function(self.Q)
     
 
 

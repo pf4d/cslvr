@@ -642,6 +642,11 @@ def default_config():
                'bounds'              : None,
                'control_variable'    : None,
                'regularization_type' : 'Tikhonov'
+             },
+             'balance_velocity' :
+             {
+               'kappa'               : 10.0,
+               'adot'                : None 
              }}
   return config
 

@@ -703,48 +703,40 @@ class VelocityBP(Physics):
       model.init_beta(beta, U_ob, r, gradS)
     if config['velocity']['init_beta_from_stats']:
       U_ob  = config['velocity']['U_ob']
+      #Ubar  = config['velocity']['Ubar']
       q_geo = config['enthalpy']['q_geo']
       T_s   = config['enthalpy']['T_surface']
       adot  = model.adot
+      Mb    = model.Mb
 
-      x0  = Constant(1.0)
-      x1  = Constant(T_w) - T
-      x2  = Constant(T_w) - T_s
-      x3  = sqrt(inner(grad(S), grad(S)))
-      x4  = abs(B)
-      x5  = sqrt(inner(grad(B), grad(B)))
-      x6  = sqrt(inner(U,U))
-      x7  = U_ob
-      x8  = q_geo
-      x9  = adot
+      x0   = Mb
+      x1   = S
+      x2   = T
+      x3   = T_s
+      x4   = ln(sqrt(inner(gradS,gradS)) + 1e-10)
+      x5   = abs(B)
+      x6   = ln(sqrt(inner(gradB,gradB)) + 1e-10)
+      x7   = H
+      x11  = ln(sqrt(inner(U,U)) + 1e-10)
+      x13  = q_geo
+      x14  = adot
 
-      X    = [x0,x1,x2,x3,x4,x5,x6,x7,x8,x9]
+      X    = [x1,x2,x3,x4,x5,x6,x7,x13,x14]
       
-      bhat = [  1.35074355e+01,  -5.97035793e-01,   5.57811260e-01,
-               -4.05414919e+00,  -3.46148605e-02,   2.43726049e+00,
-               -8.52901189e-01,   5.42084730e-01,  -6.12118557e-01,
-               -3.27995942e-01,   1.26510434e-01,  -5.13978175e-03,
-               -1.18309286e-02,  -1.17869975e-02,  -6.10051880e-02,
-                8.78585462e-02,  -1.33222615e-02,  -8.98577776e-03,
-                1.78085203e-01,   1.98376697e-02,  -4.59959087e-02,
-                7.13123152e-02,  -1.26854849e-01,   2.65819539e-02,
-               -5.87265392e-02,   1.00721949e-02,  -7.76625966e-05,
-                8.50274265e-02,  -4.82864703e-02,  -2.85768849e-02,
-               -5.34657108e-02,  -1.00914629e-02,  -3.53299496e-04,
-                6.10719597e-03,  -9.75502293e-04,   1.19397326e-02,
-               -4.46784185e-04,  -9.68787710e-03,   1.19434375e-02,
-               -3.55898748e-02,   5.72733308e-03,   2.61585571e-02,
-                1.93415910e-02,  -2.85601091e-02,   9.42174005e-03,
-               -1.36254920e-02]
+      bhat = [ 2.83076304e+00,   2.81017298e-04,   1.96688751e-02,
+              -9.05011453e-03,   1.00761568e-01,  -1.90171815e-04,
+               3.50492400e-02,  -2.72498158e-05,   8.50695107e-08,
+              -6.24177928e-01]
 
-      for i,xx in enumerate(X[1:]):
-        for yy in X[1:][i+1:]:
-          X.append(xx*yy)
+      #for i,xx in enumerate(X[1:]):
+      #  for yy in X[1:][i+1:]:
+      #    X.append(xx*yy)
       
-      beta = Constant(1.0)
+      beta = Constant(bhat[0])
       
-      for xx,bb in zip(X,bhat):
-        beta *= xx**bb
+      for xx,bb in zip(X, bhat[1:]):
+        beta += Constant(bb)*xx
+      beta = exp(beta) - Constant(100.0)
 
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])

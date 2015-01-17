@@ -197,11 +197,11 @@ class VelocityStokes(Physics):
     newton_params = config['velocity']['newton_params']
     
     # initialize the temperature depending on input type :
-    if config['velocity']['T0'] != None:
+    if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if config['velocity']['beta0'] != None:
+    if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
@@ -686,7 +686,7 @@ class VelocityBP(Physics):
             "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
 
     # initialize rate-factor on shelves :
-    if config['velocity']['b_shf'] != None:
+    if config['velocity']['use_b_shf0']:
       b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
     
@@ -696,11 +696,11 @@ class VelocityBP(Physics):
       model.init_b(b_shf, U_ob, gradS)
 
     # initialize the temperature depending on input type :
-    if config['velocity']['T0'] != None:
+    if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
 
     # initialize the bed friction coefficient :
-    if config['velocity']['beta0'] != None:
+    if config['velocity']['use_beta0']:
       model.assign_variable(beta, config['velocity']['beta0'])
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
@@ -712,10 +712,15 @@ class VelocityBP(Physics):
       T_s   = config['enthalpy']['T_surface']
       adot  = model.adot
       Mb    = model.Mb
+      Ubar  = model.Ubar
 
       adot_v = adot.vector().array()
       adot_v[adot_v < 0] = 0
       model.assign_variable(adot, adot_v)
+
+      Ubar_v = Ubar.vector().array()
+      Ubar_v[Ubar_v < 0] = 0
+      model.assign_variable(Ubar, Ubar_v)
 
       absB  = Function(Q)
       B_v   = B.vector().array()
@@ -743,32 +748,36 @@ class VelocityBP(Physics):
       x6   = nB
       x7   = project(H, Q)
       x11  = project(ln(sqrt(inner(U,U)) + 1), Q)
+      x12  = ln(Ubar + 1)
       x13  = q_geo
       x14  = adot
 
-      X    = [x1,x2,x3,x4,x5,x6,x7,x13,x14]
+      X    = [x1,x2,x3,x4,x5,x6,x7,x12,x13,x14]
       X_i  = []
       X_i.extend(X)
 
       for i,xx in enumerate(X):
         model.print_min_max(xx, 'x' + str(i))
       
-      bhat = [-7.54443566e+01,   6.53054193e-03,   3.39478104e-01,
-               2.73027874e-01,  -3.67290475e+01,  -2.85859098e-03,
-               1.83154152e+01,   9.65797358e-04,   2.55332643e-07,
-              -3.25836154e+00,   8.58836472e-06,  -3.40146227e-05,
-               7.30956484e-04,   2.54795530e-08,   1.98171077e-05,
-              -1.43002357e-07,   7.00353657e-11,   5.78598932e-04,
-              -1.16189511e-03,   1.19154912e-02,   5.27099268e-06,
-              -2.44555433e-02,  -1.54577707e-05,  -1.38719938e-08,
-               2.21354140e-02,   1.36946002e-01,   5.67677202e-06,
-              -4.45993937e-02,   1.12119426e-05,   1.30089025e-08,
-              -1.28790101e-02,  -1.34393916e-03,  -1.44579124e+00,
-               1.29599597e-03,   3.83570863e-07,  -3.29322405e+00,
-               4.20353685e-04,   1.81612171e-07,  -1.31679680e-10,
-              -3.37356195e-04,  -3.64117243e-04,   1.28582085e-07,
-              -2.88311889e-01,  -1.65632157e-11,   2.56559371e-04,
-               1.06994021e-07]
+      bhat = [-1.16653775e+01,   2.87649152e-03,   4.87065645e-02,
+               3.84962121e-02,  -3.15959015e+01,  -8.89363266e-04,
+               1.62568668e+01,   2.37564038e-04,   8.03546192e-01,
+               2.20064685e-06,   3.36679395e+00,   7.04636590e-06,
+              -1.71511687e-05,  -4.10659205e-04,   1.03591531e-08,
+               4.20455523e-04,  -1.30572622e-07,  -5.21160921e-05,
+               2.09324153e-11,   2.86873306e-04,  -7.71541947e-05,
+              -8.34118350e-03,   6.77755642e-06,   1.60082484e-03,
+              -1.29432337e-05,  -1.47463962e-03,  -7.30583284e-09,
+               1.13407256e-02,   1.42702371e-01,  -3.86005218e-06,
+              -6.73131992e-02,   1.24026822e-05,  -2.08452153e-03,
+              -1.43446464e-09,  -2.81700421e-02,  -1.30368379e-04,
+              -1.40097136e+00,   1.46881118e-03,  -2.36309908e-01,
+               3.38096768e-08,  -1.97179802e+00,  -9.04632673e-06,
+               1.14253503e-07,   3.03370812e-05,  -9.98532845e-11,
+              -1.68836210e-04,  -4.75354662e-04,   1.14796333e-01,
+               2.83707630e-07,  -4.78784460e-01,  -1.31681562e-05,
+              -1.81293156e-11,   1.05541029e-04,  -8.20784242e-09,
+               1.02707277e-01,   1.89145608e-07]
       
       for i,xx in enumerate(X):
         for yy in X[i+1:]:
@@ -824,9 +833,6 @@ class VelocityBP(Physics):
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
-
-    # define pressure :
-    self.P  = rhoi*g*(S - x[2])
 
     model.eta_shf = eta_shf
     model.eta_gnd = eta_gnd
@@ -909,7 +915,7 @@ class VelocityBP(Physics):
       s    = "::: solving BP pressure :::"
       text = colored(s, 'cyan')
       print text
-    model.P = project(self.P, model.Q)
+    model.P = model.calc_pressure()
     model.print_min_max(model.P, 'P')
     
 

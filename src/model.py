@@ -181,7 +181,7 @@ class Model(object):
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
 
-  def calculate_boundaries(self, mask=None, adot=None):
+  def calculate_boundaries(self, mask, adot=None):
     """
     Determines the boundaries of the current model mesh
     """
@@ -423,29 +423,41 @@ class Model(object):
     Calculate the continuous thickness field which increases from 0 at the 
     surface to the actual thickness at the bed.
     """
+    if self.MPI_rank==0:
+      s    = "::: calculating z-varying thickness :::"
+      text = colored(s, 'magenta')
+      print text
     Q   = self.Q
     ff  = self.ff
     H   = TrialFunction(Q)
     phi = TestFunction(Q)
     a   = H.dx(2) * phi * dx
-    L   = -1.0 * phi * dx
-    bc  = DirichletBC(Q, 0.0, ff, 2)
+    L   = 1.0 * phi * dx
+    # thickness is zero on bed (ff = 3,5)
+    bcs = []
+    bcs.append(DirichletBC(Q, 0.0, ff, 3))
+    if self.mask != None:
+      bcs.append(DirichletBC(Q, 0.0, ff, 5))
     H   = Function(Q)
-    solve(a == L, H, bc)
+    solve(a == L, H, bcs)
+    self.print_min_max(H, 'H')
     return H
   
   def calc_pressure(self):
     """
     Calculate the continuous pressure field.
     """
-    Q    = self.Q
+    if self.MPI_rank==0:
+      s    = "::: calculating pressure :::"
+      text = colored(s, 'magenta')
+      print text
     rhoi = self.rhoi
     g    = self.g
     eta  = self.eta
     w    = self.w
     H    = self.calc_thickness() 
     P    = rhoi*g*H + 2*eta*w.dx(2)
-    return P
+    return project(P, self.Q)
   
   def calc_sigma(self):
     """
@@ -506,6 +518,10 @@ class Model(object):
     :param b  : Boundary condition
     :param d  : Subdomain over which to perform differentiation
     """
+    if self.MPI_rank==0:
+      s    = "::: extruding function :::"
+      text = colored(s, 'magenta')
+      print text
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff  = self.ff
@@ -520,12 +536,19 @@ class Model(object):
       bcs.append(DirichletBC(Q, f, ff, boundary))
     v   = Function(Q)
     solve(a == L, v, bcs)
+    self.print_min_max(f, 'function to be extruded')
+    self.print_min_max(v, 'extruded function')
     return v
   
   def vert_integrate(self, u, Q='self'):
     """
     Integrate <u> from the bed to the surface.
     """
+    if self.MPI_rank==0:
+      s    = "::: vertically integrating function :::"
+      text = colored(s, 'magenta')
+      print text
+
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff  = self.ff
@@ -540,7 +563,26 @@ class Model(object):
     L      = u * phi * dx
     v      = Function(Q)
     solve(a == L, v, bcs)
+    self.print_min_max(u, 'vertically integrated function')
     return v
+
+  def calc_vert_average(self, u):
+    """
+    Calculates the vertical average of a given function space and function.  
+    
+    :param u: Function representing the model's function space
+    :rtype:   Dolfin projection and Function of the vertical average
+    """
+    H    = self.calc_thickness()
+    uhat = self.vert_integrate(u)
+    if self.MPI_rank==0:
+      s    = "::: calculating vertical average :::"
+      text = colored(s, 'magenta')
+      print text
+    ubar = project(uhat/H, self.Q)
+    self.print_min_max(ubar, 'ubar')
+    ubar = self.extrude(ubar, [2,6], 2)
+    return ubar
 
   def rotate(self, M, theta):
     """
@@ -554,7 +596,7 @@ class Model(object):
     R  = dot(Rz, dot(M, Rz.T))
     return R
 
-  def norm(self, U):
+  def get_norm(self, U):
     """
     returns the norm of vector <U>.
     """
@@ -578,7 +620,7 @@ class Model(object):
     if type(Q) != FunctionSpace:
       Q = self.Q
 
-    U_v, norm_u = self.norm(U)
+    U_v, norm_u = self.get_norm(U)
     
     # normalize the vector :
     U_v /= norm_u
@@ -859,6 +901,7 @@ class Model(object):
       text = colored(s, 'magenta')
       print text
     
+    self.set_parameters(pc.IceParameters())
     self.params.globalize_parameters(self) # make all the variables available 
     
     # P1 vector function space :

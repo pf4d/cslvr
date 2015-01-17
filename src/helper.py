@@ -651,38 +651,6 @@ def default_config():
   return config
 
 
-
-def calculate_vertical_average(model,u):
-  """
-  Calculates the vertical average of a given function space and function.  
-  
-  :param model: An instantiated 2D flowline ice :class:`~src.model.Model`
-  :param u: Function representing the model's function space
-  :rtype: Dolfin projection and Function of the vertical average
-  """
-  uhat = TrialFunction(model.Q)
-  Hhat = TrialFunction(model.Q)
-  phi  = TestFunction(model.Q)
-
-  a_u  = uhat.dx(2) * phi*dx
-  L_u  = u*phi*dx
-  
-  a_H  = Hhat.dx(2)*phi*dx
-  L_H  = 1.0*phi*dx
-     
-  bc_u = DirichletBC(model.Q,u,3)
-  bc_H = DirichletBC(model.Q,0,3)
-
-  ubar = Function(model.Q)
-  H    = Function(model.Q)
-   
-  solve(a_u == L_u,ubar,bc_u)
-  solve(a_H == L_H,H,bc_H)
-
-  ubar = project(ubar/H,model.Q)
-  return ubar
-
-
 def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
   """
   This function iterates through the cells and vertces of the mesh in order

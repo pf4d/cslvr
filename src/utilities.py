@@ -13,7 +13,7 @@ from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
                               meshgrid, figure, show, size, hstack, vstack, \
-                              argmin, ndarray
+                              argmin, ndarray, e
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
                               RectangleMesh, MPI, mpi_comm_world, \
@@ -154,8 +154,7 @@ class DataInput(object):
     """
     self.chg_proj = True
     self.new_p    = di.p
-
-      
+ 
   def get_xy(self,lon,lat):
     """
     Returns the (x,y) flat map coordinates corresponding to a given (lon,lat) 
@@ -312,7 +311,7 @@ class DataInput(object):
         t = 'nearest-neighbor'
       else:
         t = 'spline'
-      s    = "::: getting %s %s interpolation :::" % (fn, t)
+      s    = "::: getting %s %s interpolation from %s :::" % (fn, t, self.name)
       text = colored(s, 'green')
       print text
 
@@ -410,11 +409,14 @@ class DataInput(object):
 class DataOutput(object):
   
   def __init__(self, directory):
+    """
+    Create object to write data to directory <directory>
+    """
     self.directory = directory
       
   def write_dict_of_files(self, d, extension='.pvd'):
     """ 
-    Looking for a dictionary d of data to save. The keys are the file 
+    Looking for a dictionary <d> of data to save. The keys are the file 
     names, and the values are the data fields to be stored. Also takes an
     optional extension to determine if it is pvd or xml output.
     """
@@ -430,18 +432,18 @@ class DataOutput(object):
     file_handle = File(self.directory + name + extension)
     file_handle << data
 
-  def write_matlab(self, di, f, outfile, val=-2e9):
+  def write_matlab(self, di, f, filename, val=e):
     """ 
     Using the projections that are read in as data files, create Matlab
     version 4 files to output the regular gridded data in a field.
 
     INPUTS:
-      di      : a DataInput object, defined in the class above in this file.
-      f       : a FEniCS function, to be mapped onto the regular grid that is in
-                di, established from the regular gridded data to start the
-                simulation.
-      outfile : a file name for the matlab file output (include the
-                extension) values not in mesh are set to <val>, default -2e9. 
+      di       : a DataInput object, defined in the class above in this file.
+      f        : a FEniCS function, to be mapped onto the regular grid that is 
+                 in di, established from the regular gridded data to start the
+                 simulation.
+      filename : a file name for the matlab file output (include the
+                 extension) values not in mesh are set to <val>. default is 'e'.
     
     OUTPUT: 
       A single file will be written with name, outfile.

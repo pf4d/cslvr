@@ -17,7 +17,7 @@ from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
 from fenics            import interpolate, project, Expression, Function, \
                               vertices, Mesh, MeshEditor, FunctionSpace, \
                               RectangleMesh, MPI, mpi_comm_world, \
-                              GenericVector
+                              GenericVector, parameters
 from data.data_factory import DataFactory
 from pyproj            import Proj, transform
 from termcolor         import colored, cprint
@@ -420,22 +420,27 @@ class DataOutput(object):
     names, and the values are the data fields to be stored. Also takes an
     optional extension to determine if it is pvd or xml output.
     """
-    for filename in d:
-      file_handle = File(self.directory + filename + extension)
-      file_handle << d[filename]
+    for fn in d:
+      self.write_one_file(filename, d[fn], extension)
   
   def write_one_file(self, name, data, extension='.pvd'):
     """
     Save a single file of FEniCS Function <data> named <name> to the DataOutput 
     instance's directory.  Extension may be '.xml' or '.pvd'.
     """
+    s    = "::: writing file %s :::" % (name + extension)
+    text = colored(s, 'green')
+    print text
     file_handle = File(self.directory + name + extension)
     file_handle << data
 
   def write_matlab(self, di, f, filename, val=e):
     """ 
     Using the projections that are read in as data files, create Matlab
-    version 4 files to output the regular gridded data in a field.
+    version 4 files to output the regular gridded data in a field.  Will accept 
+    functions in 2D or 3D; if a 3D mesh is used, Ensure that value you want 
+    projected is located at z=0, the bed.  This can be accomplished by using
+    any of the non-deformed flat meshes provided by the MeshFactory class.
 
     INPUTS:
       di       : a DataInput object, defined in the class above in this file.
@@ -448,15 +453,22 @@ class DataOutput(object):
     OUTPUT: 
       A single file will be written with name, outfile.
     """
-    fa = zeros( (di.y.size, di.x.size) )
+    fa = zeros( (di.ny, di.nx) )
+    s    = "::: writing %i x %i matlab matrix file %s.mat :::"
+    text = colored(s % (di.ny, di.nx, filename), 'green')
+    print text
     parameters['allow_extrapolation'] = True
+    dim = f.geometric_dimension()
     for j,x in enumerate(di.x):
       for i,y in enumerate(di.y):
         try:
-          fa[i,j] = f(x,y)
+          if dim == 3:
+            fa[i,j] = f(x,y,0)
+          else:
+            fa[i,j] = f(x,y)
         except: 
           fa[i,j] = val
-    
+    outfile = self.directory + filename + '.mat'
     savemat(outfile, {'map_data'          : fa,
                       'map_eastern_edge'  : di.x_max,
                       'map_western_edge'  : di.x_min,

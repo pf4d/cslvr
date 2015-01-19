@@ -382,15 +382,6 @@ class VelocityStokes(Physics):
     """ 
     Perform the Newton solve of the first order equations 
     """
-    # Note that for solving the full Stokes functional, the edges of the 
-    # domain require some sort of boundary condition other than homogeneous 
-    # Neumann, since the geometry of the domain dictates the flow, not an 
-    # imposed driving stress.  Here we have two options, all zeros or the 
-    # solution that is already stored in the model class.  For the latter of 
-    # these two options, this would mean that if you wanted to have some 
-    # arbitrary section of greenland as a domain, you could solve the first 
-    # order equations, which happily operate with homogeneous Neumann, and 
-    # impose these as Dirichlet boundary conditions for the Stokes equations.
     model  = self.model
     config = self.config
     Q4     = model.Q4
@@ -915,7 +906,7 @@ class VelocityBP(Physics):
       s    = "::: solving BP pressure :::"
       text = colored(s, 'cyan')
       print text
-    model.P = model.calc_pressure()
+    model.calc_pressure()
     model.print_min_max(model.P, 'P')
     
 

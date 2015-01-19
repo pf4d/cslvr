@@ -432,12 +432,11 @@ class Model(object):
     H   = TrialFunction(Q)
     phi = TestFunction(Q)
     a   = H.dx(2) * phi * dx
-    L   = 1.0 * phi * dx
-    # thickness is zero on bed (ff = 3,5)
+    L   = -Constant(1.0) * phi * dx
+    # thickness is zero on surface (ff = 2,6)
     bcs = []
-    bcs.append(DirichletBC(Q, 0.0, ff, 3))
-    if self.mask != None:
-      bcs.append(DirichletBC(Q, 0.0, ff, 5))
+    bcs.append(DirichletBC(Q, 0.0, ff, 2))
+    bcs.append(DirichletBC(Q, 0.0, ff, 6))
     H   = Function(Q)
     solve(a == L, H, bcs)
     self.print_min_max(H, 'H')
@@ -451,55 +450,28 @@ class Model(object):
       s    = "::: calculating pressure :::"
       text = colored(s, 'magenta')
       print text
-    rhoi = self.rhoi
-    g    = self.g
-    eta  = self.eta
-    w    = self.w
-    H    = self.calc_thickness() 
-    P    = rhoi*g*H + 2*eta*w.dx(2)
-    return project(P, self.Q)
+    Q       = self.Q
+    rhoi    = self.rhoi
+    g       = self.g
+    S       = self.S
+    x       = self.x
+    P       = rhoi*g*(S - x[2])
+    self.P  = project(P, Q)
+    #dx      = self.dx
+    #dx_s    = dx(1)
+    #dx_g    = dx(0)
+    #dGamma  = dx_s + dx_g
+    #eta_shf = project(self.eta_shf, Q)
+    #eta_gnd = project(self.eta_gnd, Q)
+    #w       = self.w
+    #P       = TrialFunction(Q)
+    #phi     = TestFunction(Q)
+    #M       = assemble(phi*P*dx)
+    #H       = self.calc_thickness()
+    #P_f     = + rhoi * g * H * phi * dGamma \
+    #          + Constant(2.0) * w.dx(2) * phi * (eta_shf*dx_s + eta_gnd*dx_g)
+    #solve(M, self.P.vector(), assemble(P_f))
   
-  def calc_sigma(self):
-    """
-    Calculatethe Cauchy stress tensor of velocity field U.
-    """
-    U   = as_vector([self.u, self.v, self.w])
-    n   = U.geometric_dimension()
-    P   = self.calc_pressure()
-    tau = self.calc_tau(u)
-    return tau - P*Identity(n)
- 
-  def calc_tau(self):
-    """
-    Calculate the deviatoric stress tensor of velocity field U.
-    """
-    U     = as_vector([self.u, self.v, self.w])
-    n     = U.geometric_dimension()
-    eta   = self.eta
-    gradU = nabla_grad(U)
-    divU  = nabla_div(U)
-    tau   = 2 * eta * (gradU + gradU.T - 2.0/n * divU * Identity(n))
-    return tau
-  
-  def calc_R(self):
-    """
-    Calculate the resistive stress tensor of velocity field U.
-    """
-    u   = self.u
-    v   = self.v
-    eta = self.eta
-    U   = as_vector([self.u, self.v, self.w])
-    
-    gradU    = nabla_grad(U)
-    epsdot   = gradU + gradU.T
-    epsdot00 = 2*epsdot[0,0] + epsdot[1,1]
-    epsdot11 = 2*epsdot[1,1] + epsdot[0,0]
-    
-    epsdot   = as_matrix([[epsdot00,     epsdot[0,1],  epsdot[0,2]],
-                          [epsdot[1,0],  epsdot11,     epsdot[1,2]],
-                          [epsdot[2,0],  epsdot[2,1],  epsdot[2,2]]])
-    return 2 * eta * epsdot
-     
   def extrude(self, f, b, d, Q='self'):
     r"""
     This extrudes a function <f> defined along a boundary list <b> out onto

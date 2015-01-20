@@ -624,6 +624,13 @@ class VelocityBP(Physics):
     
     # initialize velocity to a previous solution :
     if config['velocity']['use_U0']:
+      if model.MPI_rank==0:
+        s    = "::: using initial velocity :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(config['velocity']['u0'], 'u0')
+      model.print_min_max(config['velocity']['v0'], 'v0')
+      model.print_min_max(config['velocity']['w0'], 'w0')
       u0_f = Function(Q)
       v0_f = Function(Q)
       model.assign_variable(u0_f, config['velocity']['u0'])
@@ -744,7 +751,6 @@ class VelocityBP(Physics):
       model.init_beta(beta, U_ob, r, gradS)
     if config['velocity']['init_beta_from_stats']:
       U_ob  = config['velocity']['U_ob']
-      #Ubar  = config['velocity']['Ubar']
       q_geo = config['enthalpy']['q_geo']
       T_s   = config['enthalpy']['T_surface']
       adot  = model.adot
@@ -784,37 +790,41 @@ class VelocityBP(Physics):
       x5   = absB
       x6   = nB
       x7   = project(H, Q)
-      x11  = project(ln(sqrt(inner(U,U)) + 1), Q)
+      x11  = ln(sqrt(inner(U,U)) + 1)
       x12  = ln(Ubar + 1)
       x13  = q_geo
       x14  = adot
 
-      X    = [x1,x2,x3,x4,x5,x6,x7,x12,x13,x14]
+      X    = [x0,x1,x2,x3,x4,x5,x6,x7,x11,x12,x14]
       X_i  = []
       X_i.extend(X)
 
       for i,xx in enumerate(X):
         model.print_min_max(xx, 'x' + str(i))
-      
-      bhat = [-1.16653775e+01,   2.87649152e-03,   4.87065645e-02,
-               3.84962121e-02,  -3.15959015e+01,  -8.89363266e-04,
-               1.62568668e+01,   2.37564038e-04,   8.03546192e-01,
-               2.20064685e-06,   3.36679395e+00,   7.04636590e-06,
-              -1.71511687e-05,  -4.10659205e-04,   1.03591531e-08,
-               4.20455523e-04,  -1.30572622e-07,  -5.21160921e-05,
-               2.09324153e-11,   2.86873306e-04,  -7.71541947e-05,
-              -8.34118350e-03,   6.77755642e-06,   1.60082484e-03,
-              -1.29432337e-05,  -1.47463962e-03,  -7.30583284e-09,
-               1.13407256e-02,   1.42702371e-01,  -3.86005218e-06,
-              -6.73131992e-02,   1.24026822e-05,  -2.08452153e-03,
-              -1.43446464e-09,  -2.81700421e-02,  -1.30368379e-04,
-              -1.40097136e+00,   1.46881118e-03,  -2.36309908e-01,
-               3.38096768e-08,  -1.97179802e+00,  -9.04632673e-06,
-               1.14253503e-07,   3.03370812e-05,  -9.98532845e-11,
-              -1.68836210e-04,  -4.75354662e-04,   1.14796333e-01,
-               2.83707630e-07,  -4.78784460e-01,  -1.31681562e-05,
-              -1.81293156e-11,   1.05541029e-04,  -8.20784242e-09,
-               1.02707277e-01,   1.89145608e-07]
+     
+      bhat = [-1.77918639e+01,   2.20011439e-01,   1.32393565e-03,
+               8.59953797e-02,   7.07178347e-02,  -3.52604627e+01,
+              -5.05518896e-04,   3.67367905e+01,   1.59990657e-04,
+               5.03857943e-01,  -7.54116576e-02,  -1.29721750e+00,
+               1.61983883e-06,  -1.24991572e-03,   5.28870555e-04,
+              -4.80464581e-02,  -1.12625188e-05,   2.52433468e-02,
+               2.01589616e-05,  -8.87642978e-03,   6.02403721e-04,
+              -3.59061473e-03,   2.56542080e-06,  -7.44499027e-06,
+               1.04027323e-04,   7.02704009e-08,   3.33015434e-04,
+              -5.46882463e-08,  -8.42303711e-05,   3.95678410e-05,
+               1.81373572e-04,  -2.47195299e-04,   6.64150974e-02,
+               7.48808497e-06,  -8.13631763e-02,  -9.27882915e-06,
+              -2.50951441e-03,  -1.17571686e-03,   3.27624352e-02,
+               8.08053928e-02,  -6.54939178e-06,  -5.77306748e-02,
+               9.26525905e-06,  -8.98656304e-04,   9.11970998e-04,
+              -2.90602485e-02,  -4.23124413e-05,  -2.46680922e+00,
+               1.18344308e-03,   1.91908261e-01,  -3.61928613e-01,
+              -2.69345178e+00,  -5.91708505e-04,   1.55306896e-09,
+               6.39983323e-05,  -5.56000393e-05,   3.72891879e-05,
+              -1.70122837e-04,  -1.99614266e-01,   1.74721495e-01,
+               1.38037415e+00,   4.92579356e-06,   2.98879185e-05,
+              -1.81560116e-04,   4.09910395e-02,   6.07800637e-02,
+              -2.00998100e-02] 
       
       for i,xx in enumerate(X):
         for yy in X[i+1:]:
@@ -825,6 +835,7 @@ class VelocityBP(Physics):
       for xx,bb in zip(X_i, bhat[1:]):
         beta += Constant(bb)*xx
       beta = exp(beta) - Constant(100.0)
+      self.x11 = x11
 
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -924,6 +935,14 @@ class VelocityBP(Physics):
     model.u,model.v = model.U.split(True)
     model.print_min_max(model.u, 'u')
     model.print_min_max(model.v, 'v')
+    
+    #if config['velocity']['init_beta_from_stats']:
+    #  if self.model.MPI_rank==0:
+    #    s    = "::: updating velocity norm on bed for stats beta :::"
+    #    text = colored(s, 'cyan')
+    #    print text
+    #  self.x11 = project(ln(sqrt(inner(model.U,model.U)) + 1), model.Q)
+    #  model.print_min_max(self.x11, 'ln(||U|| + 1)')
 
     bc_w = None
 

@@ -75,7 +75,7 @@ class MeshGenerator(object):
     text = colored(s % (di.name, self.dd.name) , 'green')
     print text
     x,y    = self.longest_cont.T
-    xn, yn = transform(di.p, self.dd.p, x, y)
+    xn, yn = transform(self.dd.p, di.p, x, y)
     self.longest_cont = array([xn, yn]).T
     
   def set_contour(self,cont_array):

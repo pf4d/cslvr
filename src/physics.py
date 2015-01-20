@@ -720,9 +720,9 @@ class VelocityBP(Physics):
         s    = "::: using initial rate-factor on shelves :::"
         text = colored(s, 'cyan')
         print text
-      model.print_min_max(b_shf0, 'b_shf0')
       b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
+      model.print_min_max(b_shf, 'b_shf0')
     
     if config['velocity']['init_b_from_U_ob']:
       U_ob = config['velocity']['U_ob']
@@ -736,7 +736,7 @@ class VelocityBP(Physics):
         s    = "::: using initial temperature :::"
         text = colored(s, 'cyan')
         print text
-      model.print_min_max(config['velocity']['T0'], 'T0')
+      model.print_min_max(T, 'T0')
 
     # initialize the bed friction coefficient :
     if config['velocity']['use_beta0']:
@@ -744,8 +744,8 @@ class VelocityBP(Physics):
         s    = "::: using initial beta :::"
         text = colored(s, 'cyan')
         print text
-      model.print_min_max(config['velocity']['beta0'], 'beta0')
       model.assign_variable(beta, config['velocity']['beta0'])
+      model.print_min_max(beta, 'beta0')
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
       model.init_beta(beta, U_ob, r, gradS)

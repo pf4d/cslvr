@@ -505,7 +505,7 @@ class DataFactory(object):
     srfTemp = array(data.variables['temp'][:]) + 273.15
     q_geo_f = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365 / 1000
     q_geo_s = array(data.variables['ghfsr'][:]) * 60 * 60 * 24 * 365 / 1000
-   
+
     H             = h - b
     h[H < thklim] = b[H < thklim] + thklim
     H[H < thklim] = thklim
@@ -567,8 +567,9 @@ class DataFactory(object):
     coverage    = coverage.asarray() 
     gl04c_WGS84 = gl04c_WGS84.asarray()
     
-    h[H < thklim] = b[H < thklim] + thklim
-    H[H < thklim] = thklim
+    b = h - H
+    H[H == 0.0] = thklim
+    h = b + H
 
     vara        = dict()
      
@@ -622,9 +623,10 @@ class DataFactory(object):
     H    = array(data.variables['IceThickness'][:])
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
-    
-    h[H < thklim] = b[H < thklim] + thklim
-    H[H < thklim] = thklim
+
+    b = h - H
+    H[H == 0.0] = thklim
+    h = b + H
 
     # extents of domain :
     east  = max(x)

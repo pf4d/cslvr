@@ -427,18 +427,7 @@ class Model(object):
       s    = "::: calculating z-varying thickness :::"
       text = colored(s, 'magenta')
       print text
-    Q   = self.Q
-    ff  = self.ff
-    H   = TrialFunction(Q)
-    phi = TestFunction(Q)
-    a   = H.dx(2) * phi * dx
-    L   = -Constant(1.0) * phi * dx
-    # thickness is zero on surface (ff = 2,6)
-    bcs = []
-    bcs.append(DirichletBC(Q, 0.0, ff, 2))
-    bcs.append(DirichletBC(Q, 0.0, ff, 6))
-    H   = Function(Q)
-    solve(a == L, H, bcs)
+    H = project(self.S - self.x[2], self.Q)
     self.print_min_max(H, 'H')
     return H
   
@@ -545,7 +534,7 @@ class Model(object):
     :param u: Function representing the model's function space
     :rtype:   Dolfin projection and Function of the vertical average
     """
-    H    = self.calc_thickness()
+    H    = self.S - self.B
     uhat = self.vert_integrate(u)
     if self.MPI_rank==0:
       s    = "::: calculating vertical average :::"

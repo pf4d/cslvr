@@ -11,10 +11,11 @@ import subprocess
 from gmshpy            import GModel, GmshSetOption
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, show, \
-                              size, hstack, vstack, argmin, ndarray
+                              size, hstack, vstack, argmin, ndarray, zeros
 from fenics            import Function, vertices, Mesh, MeshEditor, \
                               GenericVector
 from termcolor         import colored, cprint
+from pyproj            import transform
 
 
 class MeshGenerator(object):
@@ -64,6 +65,18 @@ class MeshGenerator(object):
     # remove skip points and last point to avoid overlap :
     longest_cont      = cl[amax_ind]
     self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
+  
+  def transform_contour(self, di):
+    """
+    Transforms the coordinates of the contour to DataInput object <di>'s 
+    projection coordinates.
+    """
+    s    = "::: transforming contour coordinates from %s to %s :::"
+    text = colored(s % (di.name, self.dd.name) , 'green')
+    print text
+    x,y    = self.longest_cont.T
+    xn, yn = transform(di.p, self.dd.p, x, y)
+    self.longest_cont = array([xn, yn]).T
     
   def set_contour(self,cont_array):
     """ This is an alternative to the create_contour method that allows you to 
@@ -78,7 +91,7 @@ class MeshGenerator(object):
     Plot the contour created with the "create_contour" method.
     """
     ax = self.ax
-    lc  = self.longest_cont
+    lc = self.longest_cont
     ax.plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
     show()
 
@@ -205,8 +218,7 @@ class MeshGenerator(object):
     f.write("Extrude {0,0," + h + "}" \
             + "{Surface{" + s + "};" \
             + "Layers{" + layers + "};}\n\n")
-  
-  
+
   def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
     """
     add a box to the mesh.  e.g. for Byrd Glacier data:

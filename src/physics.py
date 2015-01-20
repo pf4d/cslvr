@@ -2454,11 +2454,6 @@ class StokesBalance3D(Physics):
     delta  = tau_n + tau_t
     U_s    = Function(Q2)
     
-    #bc1 = DirichletBC(Q2, U, ff, 5)
-    #bc2 = DirichletBC(Q2, U, ff, 6)
-    #bc3 = DirichletBC(Q2, U, ff, 3)
-    bcs = []
-    
     # make the variables available to solve :
     self.delta = delta
     self.U_s   = U_s
@@ -2466,7 +2461,6 @@ class StokesBalance3D(Physics):
     self.U_t   = U_t
     self.N     = N
     self.f_w   = f_w
-    self.bcs   = bcs
     
   def solve(self):
     """
@@ -2474,13 +2468,12 @@ class StokesBalance3D(Physics):
     model = self.model
     delta = self.delta
     U_s   = self.U_s
-    bcs   = self.bcs
     
     if self.model.MPI_rank==0:
       s    = "::: solving '3D-stokes-balance' for flow direction :::"
       text = colored(s, 'cyan')
       print text
-    solve(lhs(delta) == rhs(delta), U_s, bcs)
+    solve(lhs(delta) == rhs(delta), U_s)
     model.u_s, model.v_s = U_s.split(True)
     model.print_min_max(model.u_s, 'u_s')
     model.print_min_max(model.v_s, 'v_s')

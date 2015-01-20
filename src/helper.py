@@ -650,6 +650,10 @@ def default_config():
              {
                'kappa'               : 10.0,
                'adot'                : None 
+             },
+             'stokes_balance' :
+             {
+               'vert_integrate'      : False
              }}
   return config
 

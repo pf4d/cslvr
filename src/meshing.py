@@ -159,8 +159,8 @@ class MeshGenerator(object):
     #       file after a certain point.  calling restart() then write again 
     #       results in correct .geo file written.  However, running the script 
     #       outside of ipython works.
-    s    = "::: writing gmsh contour to %s%s.geo :::" % (self.direc, self.fn)
-    text = colored(s, 'green')
+    s    = "::: writing gmsh contour to \"%s%s.geo\" :::"
+    text = colored(s % (self.direc, self.fn) , 'green')
     print text
     c   = self.longest_cont
     f   = self.f

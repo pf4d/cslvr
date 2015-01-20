@@ -790,10 +790,12 @@ class Model(object):
         u_n  = project(u, self.Q)
         uMin = u_n.vector().array().min()
         uMax = u_n.vector().array().max()
+      elif isinstance(u, int) or isinstance(u, float):
+        uMin = uMax = u
       else:
         print "print_min_max function requires a Vector, Function, array," \
-              + " or Indexed, not %s." % type(u)
-        uMin = uMax = 0.0
+              + " Indexed, int or float, not %s." % type(u)
+        uMin = uMax = np.nan
       s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
       text = colored(s, 'yellow')
       print text

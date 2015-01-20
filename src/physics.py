@@ -635,6 +635,11 @@ class VelocityBP(Physics):
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
       A0    = config['velocity']['A0']
+      if model.MPI_rank==0:
+        s    = "::: using isothermal visosity formulation :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(A0, 'A')
       b     = A0**(-1/n)
       b_gnd = b
       b_shf = b
@@ -642,19 +647,39 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'linear':
       b_gnd = config['velocity']['eta_gnd']
       b_shf = config['velocity']['eta_shf']
+      if model.MPI_rank==0:
+        s    = "::: using linear visosity formulation :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(eta_shf, 'eta_shf')
+      model.print_min_max(eta_gnd, 'eta_gnd')
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
+      if model.MPI_rank==0:
+        s    = "::: using b_control visosity formulation :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(b_shf, 'b_shf')
+      model.print_min_max(b_gnd, 'b_gnd')
     
     elif config['velocity']['viscosity_mode'] == 'constant_b':
       b     = config['velocity']['b']
       b_shf = b
       b_gnd = b
+      if model.MPI_rank==0:
+        s    = "::: using constant_b visosity formulation :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(b, 'b')
     
     elif config['velocity']['viscosity_mode'] == 'full':
-      # Define ice hardness parameterization :
+      if model.MPI_rank==0:
+        s    = "::: using full visosity formulation :::"
+        text = colored(s, 'cyan')
+        print text
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
@@ -662,11 +687,16 @@ class VelocityBP(Physics):
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'E_control':
-      # Define ice hardness parameterization :
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       E_shf = config['velocity']['E_shf'] 
       E_gnd = config['velocity']['E_gnd']
+      if model.MPI_rank==0:
+        s    = "::: using E_control visosity formulation :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(E_shf, 'E_shf')
+      model.print_min_max(E_gnd, 'E_gnd')
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       model.E_shf = E_shf
@@ -678,6 +708,12 @@ class VelocityBP(Physics):
 
     # initialize rate-factor on shelves :
     if config['velocity']['use_b_shf0']:
+      b_shf_0 = config['velocity']['b_shf']
+      if model.MPI_rank==0:
+        s    = "::: using initial rate-factor on shelves :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(b_shf0, 'b_shf0')
       b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
     
@@ -689,9 +725,19 @@ class VelocityBP(Physics):
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
+      if model.MPI_rank==0:
+        s    = "::: using initial temperature :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(config['velocity']['T0'], 'T0')
 
     # initialize the bed friction coefficient :
     if config['velocity']['use_beta0']:
+      if model.MPI_rank==0:
+        s    = "::: using initial beta :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(config['velocity']['beta0'], 'beta0')
       model.assign_variable(beta, config['velocity']['beta0'])
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
@@ -1112,10 +1158,16 @@ class Enthalpy(Physics):
     #  set the surface temperature to the constant or array that 
     #  was passed in.
     if not config['enthalpy']['use_surface_climate']:
+      if model.MPI_rank==0:
+        s    = "::: using surface temperature :::"
+        text = colored(s, 'cyan')
+        print text
+      model.print_min_max(config['enthalpy']['T_surface'], 'T_s')
       model.assign_variable(T_surface, config['enthalpy']['T_surface'])
 
     # assign geothermal flux :
     model.assign_variable(q_geo, config['enthalpy']['q_geo'])
+    model.print_min_max(config['enthalpy']['q_geo'], 'q_geo')
 
     # initialize the conductivity coefficient for entirely cold ice :
     model.assign_variable(Kcoef, 1.0)
@@ -1125,7 +1177,12 @@ class Enthalpy(Physics):
     dH  = TrialFunction(Q)
 
     # Pressure melting point
+    if model.MPI_rank==0:
+      s    = "::: calculating pressure-melting temperature :::"
+      text = colored(s, 'cyan')
+      print text
     model.assign_variable(T0, project(T_w - gamma * (S - x[2]), Q))
+    model.print_min_max(T0, 'T0')
    
     # Surface boundary condition
     model.assign_variable(H_surface, project(T_surface * ci))
@@ -2481,14 +2538,15 @@ class StokesBalance3D(Physics):
   def component_stress_stokes(self):  
     """
     """
-    model = self.model
+    model  = self.model
+    config = self.config
     
     if model.MPI_rank==0:
       s    = "solving '3D-stokes-balance' for stress terms :::" 
       text = colored(s, 'cyan')
       print text
 
-    outpath = self.config['output_path']
+    outpath = config['output_path']
     Q       = model.Q
     N       = self.N
     beta    = model.beta
@@ -2597,28 +2655,29 @@ class StokesBalance3D(Physics):
     solve(M, tau_tn.vector(), assemble(tau_tn_s))
     solve(M, tau_tt.vector(), assemble(tau_tt_s))
     solve(M, tau_tz.vector(), assemble(tau_tz_s))
-    
-    #if self.model.MPI_rank==0:
-    #  s    = "::: vertically integrating '3D-stokes-balance' terms :::"
-    #  text = colored(s, 'cyan')
-    #  print text
-    #
-    #tau_nn   = model.vert_integrate(tau_nn, Q)
-    #tau_nt   = model.vert_integrate(tau_nt, Q)
-    #tau_nz   = model.vert_integrate(tau_nz, Q)
-    #
-    #tau_tn   = model.vert_integrate(tau_tn, Q)
-    #tau_tz   = model.vert_integrate(tau_tz, Q)
-    #tau_tt   = model.vert_integrate(tau_tt, Q)
-    #
-    #tau_dn   = model.vert_integrate(tau_dn, Q)
-    #tau_dt   = model.vert_integrate(tau_dt, Q)
-    #
-    #tau_pn   = model.vert_integrate(tau_pn, Q)
-    #tau_pt   = model.vert_integrate(tau_pt, Q)
-    #
-    #tau_bn   = model.extrude(tau_bn, [3,5], 2, Q)
-    #tau_bt   = model.extrude(tau_bt, [3,5], 2, Q)
+   
+    if config['stokes_balance']['vert_integrate']: 
+      if self.model.MPI_rank==0:
+        s    = "::: vertically integrating '3D-stokes-balance' terms :::"
+        text = colored(s, 'cyan')
+        print text
+      
+      tau_nn   = model.vert_integrate(tau_nn, Q)
+      tau_nt   = model.vert_integrate(tau_nt, Q)
+      tau_nz   = model.vert_integrate(tau_nz, Q)
+      
+      tau_tn   = model.vert_integrate(tau_tn, Q)
+      tau_tz   = model.vert_integrate(tau_tz, Q)
+      tau_tt   = model.vert_integrate(tau_tt, Q)
+      
+      tau_dn   = model.vert_integrate(tau_dn, Q)
+      tau_dt   = model.vert_integrate(tau_dt, Q)
+      
+      tau_pn   = model.vert_integrate(tau_pn, Q)
+      tau_pt   = model.vert_integrate(tau_pt, Q)
+      
+      tau_bn   = model.extrude(tau_bn, [3,5], 2, Q)
+      tau_bt   = model.extrude(tau_bt, [3,5], 2, Q)
 
     memb_n   = as_vector([tau_nn, tau_nt, tau_nz])
     memb_t   = as_vector([tau_tn, tau_tt, tau_tz])

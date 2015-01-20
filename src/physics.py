@@ -628,15 +628,15 @@ class VelocityBP(Physics):
         s    = "::: using initial velocity :::"
         text = colored(s, 'cyan')
         print text
-      model.print_min_max(config['velocity']['u0'], 'u0')
-      model.print_min_max(config['velocity']['v0'], 'v0')
-      model.print_min_max(config['velocity']['w0'], 'w0')
       u0_f = Function(Q)
       v0_f = Function(Q)
       model.assign_variable(u0_f, config['velocity']['u0'])
       model.assign_variable(v0_f, config['velocity']['v0'])
       model.assign_variable(U, project(as_vector([u0_f, v0_f]), Q2))
       model.assign_variable(w, config['velocity']['w0'])
+      model.print_min_max(u0_f, 'u0')
+      model.print_min_max(v0_f, 'v0')
+      model.print_min_max(w,    'w0')
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.

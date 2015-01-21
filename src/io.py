@@ -11,12 +11,14 @@ import subprocess
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
-                              ndarray, e
+                              ndarray, e, nan
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters
 from pyproj            import Proj, transform
-from termcolor         import colored, cprint
+from ufl.indexed       import Indexed
+#from termcolor         import colored, cprint
+from colored           import fg, attr
 
 class DataInput(object):
   """ 
@@ -50,6 +52,7 @@ class DataInput(object):
     self.data       = {}        # dictionary of converted matlab data
     self.rem_nans   = False
     self.chg_proj   = False     # change to other projection flag
+    self.color      = 'chartreuse_4'
     
     first = True  # initialize domain by first file's extents
 
@@ -58,10 +61,8 @@ class DataInput(object):
     elif direc != None:
       self.name = direc
        
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: creating %s DataInput object :::" % self.name
-      text = colored(s, 'green')
-      print text
+    s    = "::: creating %s DataInput object :::" % self.name
+    print_text(s, self.color)
     
     # process the data files :
     for fn in files:
@@ -163,10 +164,8 @@ class DataInput(object):
     coordinates.  Returns tuple of arrays (x,y).
     """
     # FIXME : need a fast way to convert all the x, y. Currently broken
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: transforming coordinates from %s to %s :::"
-      text = colored(s % (di.name, self.name) , 'green')
-      print text
+    s = "::: transforming coordinates from %s to %s :::" % (di.name, self.name)
+    print_text(s, self.color)
     xn, yn = transform(di.p, self.p, di.x, di.y)
     return (xn, yn)
 
@@ -179,10 +178,8 @@ class DataInput(object):
     border artifacts from interpolation; increase this value to eliminate edge
     noise.
     """
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: integrating %s field from %s :::" % (fn_spec, specific.name)
-      text = colored(s, 'green')
-      print text
+    s    = "::: integrating %s field from %s :::" % (fn_spec, specific.name)
+    print_text(s, self.color)
     # get the dofmap to map from mesh vertex indices to function indicies :
     df    = self.func_space.dofmap()
     dfmap = df.vertex_to_dof_map(self.mesh)
@@ -246,12 +243,14 @@ class DataInput(object):
     if any(good_x != self.good_x):
       total_nan_x = sum(good_x == False)
       self.rem_nans = True
-      print "Warning: %d row(s) of \"%s\" are entirely NaN." % (total_nan_x, fn)
+      s =  "Warning: %d row(s) of \"%s\" are entirely NaN." % (total_nan_x, fn)
+      print_text(s, self.color)
 
     if any(good_y != self.good_y):
       total_nan_y = sum(good_y == False)
       self.rem_nans = True
-      print "Warning: %d col(s) of \"%s\" are entirely NaN." % (total_nan_y, fn)
+      s = "Warning: %d col(s) of \"%s\" are entirely NaN." % (total_nan_y, fn)
+      print_text(s, self.color)
     
     self.good_x = good_x
     self.good_y = good_y
@@ -261,10 +260,8 @@ class DataInput(object):
     remove extra rows/cols from data where NaNs were identified and set the 
     extents to those of the good x and y values.
     """
-    if MPI.rank(mpi_comm_world())==0:
-      s    = "::: removing NaNs from %s :::" % self.name
-      text = colored(s, 'green')
-      print text
+    s = "::: removing NaNs from %s :::" % self.name
+    print_text(s, self.color)
     
     self.x     = self.x[self.good_x]
     self.y     = self.y[self.good_y]
@@ -315,14 +312,12 @@ class DataInput(object):
 
     If <bool_data> is True, convert all values > 0 to 1.
     """
-    if MPI.rank(mpi_comm_world())==0:
-      if near:
-        t = 'nearest-neighbor'
-      else:
-        t = 'spline'
-      s    = "::: getting %s %s interpolation from %s :::" % (fn, t, self.name)
-      text = colored(s, 'green')
-      print text
+    if near:
+      t = 'nearest-neighbor'
+    else:
+      t = 'spline'
+    s    = "::: getting %s %s interpolation from %s :::" % (fn, t, self.name)
+    print_text(s, self.color)
 
     interp = self.get_expression(fn, kx=kx, ky=ky, 
                                  bool_data=bool_data, near=near)
@@ -336,14 +331,12 @@ class DataInput(object):
     directions (default cubic).  If <bool_data> is True, convert to boolean,
     if <near> is True, use nearest-neighbor interpolation.
     """
-    if MPI.rank(mpi_comm_world())==0:
-      if near:
-        t = 'nearest-neighbor'
-      else:
-        t = 'spline'
-      s    = "::: getting %s %s expression from %s :::" % (fn, t, self.name)
-      text = colored(s, 'green')
-      print text
+    if near:
+      t = 'nearest-neighbor'
+    else:
+      t = 'spline'
+    s = "::: getting %s %s expression from %s :::" % (fn, t, self.name)
+    print_text(s, self.color)
 
     data = self.data[fn]
     if bool_data: data[data > 0] = 1
@@ -422,6 +415,7 @@ class DataOutput(object):
     Create object to write data to directory <directory>
     """
     self.directory = directory
+    self.color     = 'orange_3'
       
   def write_dict_of_files(self, d, extension='.pvd'):
     """ 
@@ -438,8 +432,7 @@ class DataOutput(object):
     instance's directory.  Extension may be '.xml' or '.pvd'.
     """
     s    = "::: writing file %s :::" % (name + extension)
-    text = colored(s, 'green')
-    print text
+    print_text(s, self.color)
     file_handle = File(self.directory + name + extension)
     file_handle << data
 
@@ -464,8 +457,8 @@ class DataOutput(object):
     """
     fa   = zeros( (di.ny, di.nx) )
     s    = "::: writing %i x %i matlab matrix file %s.mat :::"
-    text = colored(s % (di.ny, di.nx, filename), 'green')
-    print text
+    text = s % (di.ny, di.nx, filename)
+    print_text(text, self.color)
     parameters['allow_extrapolation'] = True
     dim = f.geometric_dimension()
     for j,x in enumerate(di.x):
@@ -500,18 +493,36 @@ def print_min_max(u, title):
       uMin = u.array().min()
       uMax = u.array().max()
     elif isinstance(u, Function):
-      uMin = u.vector().min()
-      uMax = u.vector().max()
+      uMin = u.vector().array().min()
+      uMax = u.vector().array().max()
     elif isinstance(u, ndarray):
       uMin = u.min()
       uMax = u.max()
+    elif isinstance(u, Indexed):
+      u_n  = project(u, self.Q)
+      uMin = u_n.vector().array().min()
+      uMax = u_n.vector().array().max()
+    elif isinstance(u, int) or isinstance(u, float):
+      uMin = uMax = u
     else:
-      print "print_min_max function requires a Vector, Function, array," \
-            + " or Indexed, not %s." % type(u)
-      uMin = uMax = 0.0
+      er = "print_min_max function requires a Vector, Function, array," \
+           + " Indexed, int or float, not %s." % type(u)
+      er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+      print er
+      uMin = uMax = nan
     s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-    text = colored(s, 'yellow')
+    text = ('%s' + s + '%s') % (fg('yellow'), attr(0))
     print text
+ 
+  
+def print_text(text, color='white', atrb=0):
+  """
+  Print text <text> from calling class <cl> to the screen.
+  """
+  if MPI.rank(mpi_comm_world())==0:
+    text = ('%s' + text + '%s') % (fg(color), attr(atrb))
+    print text
+
 
 
 

@@ -1,7 +1,9 @@
 from fenics       import *
 from ufl.indexed  import Indexed
-from termcolor    import colored, cprint
 from abc          import ABCMeta, abstractmethod
+from physics      import Physics
+from solvers      import Solver
+from io           import print_text, print_min_max
 import numpy              as np
 import physical_constants as pc
 
@@ -18,7 +20,8 @@ class Model(object):
     Create and instance of the model.
     """
     self.MPI_rank = MPI.rank(mpi_comm_world())
-    
+    self.color    = 'magenta'
+  
   def set_geometry(self, surface, bed, deform=True):
     """
     Sets the geometry of the surface and bed of the ice sheet.
@@ -28,10 +31,8 @@ class Model(object):
     :param mask    : Expression representing a mask of grounded (0) and 
                      floating (1) areas of the ice.
     """
-    if self.MPI_rank==0:
-      s    = "::: setting geometry :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: setting geometry :::"
+    print_text(s, self.color)
 
     self.S_ex = surface
     self.B_ex = bed
@@ -48,10 +49,8 @@ class Model(object):
     """
     Deforms the mesh to the geometry.
     """
-    if self.MPI_rank==0:
-      s    = "::: deforming mesh to geometry :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: deforming mesh to geometry :::"
+    print_text(s, self.color)
     
     # transform z :
     # thickness = surface - base, z = thickness + base
@@ -81,10 +80,8 @@ class Model(object):
     :param bool generate_pbcs : Optional argument to determine whether
                                 to create periodic boundary conditions
     """
-    if self.MPI_rank==0:
-      s    = "::: generating rectangle mesh :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: generating rectangle mesh :::"
+    print_text(s, self.color)
 
     self.mesh           = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
     self.flat_mesh      = Mesh(self.mesh)
@@ -156,24 +153,20 @@ class Model(object):
     """
     Set the Functions for the surface <S> and bed <B>.
     """
-    if self.MPI_rank==0:
-      s    = "::: setting the surface and bed functions :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: setting the surface and bed functions :::"
+    print_text(s, self.color)
     self.S = S
     self.B = B
-    self.print_min_max(S, 'S')
-    self.print_min_max(B, 'B')
+    print_min_max(S, 'S')
+    print_min_max(B, 'B')
 
   def set_subdomains(self, ff, cf, ff_acc):
     """
     Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
     to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
     """
-    if self.MPI_rank==0:
-      s    = "::: setting subdomains :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: setting subdomains :::"
+    print_text(s, self.color)
     self.ff     = ff
     self.cf     = cf
     self.ff_acc = ff_acc
@@ -188,10 +181,8 @@ class Model(object):
     self.mask    = mask
     self.adot_ex = adot
     
-    if self.MPI_rank==0:
-      s    = "::: calculating boundaries :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating boundaries :::"
+    print_text(s, self.color)
     
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh,      0)
@@ -216,10 +207,8 @@ class Model(object):
     # facet for accumulation :
     #
     #   1 = high slope, upward facing ................ positive adot
-    if self.MPI_rank==0:
-      s    = "    - iterating through facets - "
-      text = colored(s, 'magenta')
-      print text
+    s = "    - iterating through facets - "
+    print_text(s, self.color)
     for f in facets(self.mesh):
       n       = f.normal()
       x_m     = f.midpoint().x()
@@ -268,10 +257,8 @@ class Model(object):
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         self.ff_flat[f] = 4
     
-    if self.MPI_rank==0:
-      s    = "    - iterating through cells - "
-      text = colored(s, 'magenta')
-      print text
+    s = "    - iterating through cells - "
+    print_text(s, self.color)
     for c in cells(self.mesh):
       x_m     = c.midpoint().x()
       y_m     = c.midpoint().y()
@@ -305,10 +292,8 @@ class Model(object):
     """
     Returns the bed of the mesh for this model instance.
     """
-    if self.MPI_rank==0:
-      s    = "::: extracting bed mesh :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: extracting bed mesh :::"
+    print_text(s, self.color)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
@@ -329,10 +314,8 @@ class Model(object):
     \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
-    if self.MPI_rank==0:
-      s    = "::: initializing beta from U_ob :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: initializing beta from U_ob :::"
+    print_text(s, self.color)
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
@@ -345,16 +328,14 @@ class Model(object):
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(beta, beta_0_v)
-    self.print_min_max(beta, 'beta')
+    print_min_max(beta, 'beta')
   
   def init_b(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """
-    if self.MPI_rank==0:
-      s    = "::: initializing b from U_ob :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: initializing b from U_ob :::"
+    print_text(s, self.color)
    
     x      = self.x
     S      = self.S
@@ -423,22 +404,18 @@ class Model(object):
     Calculate the continuous thickness field which increases from 0 at the 
     surface to the actual thickness at the bed.
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating z-varying thickness :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating z-varying thickness :::"
+    print_text(s, self.color)
     H = project(self.S - self.x[2], self.Q)
-    self.print_min_max(H, 'H')
+    print_min_max(H, 'H')
     return H
   
   def calc_pressure(self):
     """
     Calculate the continuous pressure field.
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating pressure :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating pressure :::"
+    print_text(s, self.color)
     Q       = self.Q
     rhoi    = self.rhoi
     g       = self.g
@@ -479,10 +456,8 @@ class Model(object):
     :param b  : Boundary condition
     :param d  : Subdomain over which to perform differentiation
     """
-    if self.MPI_rank==0:
-      s    = "::: extruding function :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: extruding function :::"
+    print_text(s, self.color)
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff  = self.ff
@@ -497,18 +472,16 @@ class Model(object):
       bcs.append(DirichletBC(Q, f, ff, boundary))
     v   = Function(Q)
     solve(a == L, v, bcs)
-    self.print_min_max(f, 'function to be extruded')
-    self.print_min_max(v, 'extruded function')
+    print_min_max(f, 'function to be extruded')
+    print_min_max(v, 'extruded function')
     return v
   
   def vert_integrate(self, u, Q='self'):
     """
     Integrate <u> from the bed to the surface.
     """
-    if self.MPI_rank==0:
-      s    = "::: vertically integrating function :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: vertically integrating function :::"
+    print_text(s, self.color)
 
     if type(Q) != FunctionSpace:
       Q = self.Q
@@ -524,7 +497,7 @@ class Model(object):
     L      = u * phi * dx
     v      = Function(Q)
     solve(a == L, v, bcs)
-    self.print_min_max(u, 'vertically integrated function')
+    print_min_max(u, 'vertically integrated function')
     return v
 
   def calc_vert_average(self, u):
@@ -536,12 +509,10 @@ class Model(object):
     """
     H    = self.S - self.B
     uhat = self.vert_integrate(u)
-    if self.MPI_rank==0:
-      s    = "::: calculating vertical average :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating vertical average :::"
+    print_text(s, self.color)
     ubar = project(uhat/H, self.Q)
-    self.print_min_max(ubar, 'ubar')
+    print_min_max(ubar, 'ubar')
     ubar = self.extrude(ubar, [2,6], 2)
     return ubar
 
@@ -601,10 +572,8 @@ class Model(object):
     Calculate the deviatoric component of stress in the direction of 
     the UFL vector <u_dir>.
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating component stress :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating component stress :::"
+    print_text(s, self.color)
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff     = self.ff                           # facet function for boundaries
@@ -634,10 +603,8 @@ class Model(object):
     """
     Calculate the deviatoric component of stress in the direction of U.
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating component stress :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating component stress :::"
+    print_text(s, self.color)
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff     = self.ff                           # facet function for boundaries
@@ -660,10 +627,8 @@ class Model(object):
   def calc_tau_bas(self, Q='self'):
     """
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating tau_bas :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating tau_bas :::"
+    print_text(s, self.color)
     if type(Q) != FunctionSpace:
       Q = self.Q
     beta  = self.beta
@@ -686,10 +651,8 @@ class Model(object):
   def calc_tau_drv(self, Q='self'):
     """
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating tau_drv :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating tau_drv :::"
+    print_text(s, self.color)
     if type(Q) != FunctionSpace:
       Q = self.Q
     ff    = self.ff
@@ -725,10 +688,8 @@ class Model(object):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    if self.MPI_rank==0:
-      s    = "::: calculating 'stress-balance' :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: calculating 'stress-balance' :::"
+    print_text(s, self.color)
     Q       = self.Q
     u       = self.u
     v       = self.v
@@ -771,35 +732,6 @@ class Model(object):
  
     # return the values for further analysis :
     return tau_lon, tau_lat, tau_bas_n, tau_drv_n
-
-  def print_min_max(self, u, title):
-    """
-    Print the minimum and maximum values of <u>, a Vector, Function, or array.
-    """
-    if self.MPI_rank==0:
-      if isinstance(u, GenericVector):
-        uMin = u.array().min()
-        uMax = u.array().max()
-      elif isinstance(u, Function):
-        uMin = u.vector().array().min()
-        uMax = u.vector().array().max()
-      elif isinstance(u, np.ndarray):
-        uMin = u.min()
-        uMax = u.max()
-      elif isinstance(u, Indexed):
-        u_n  = project(u, self.Q)
-        uMin = u_n.vector().array().min()
-        uMax = u_n.vector().array().max()
-      elif isinstance(u, int) or isinstance(u, float):
-        uMin = uMax = u
-      else:
-        print "print_min_max function requires a Vector, Function, array," \
-              + " Indexed, int or float, not %s." % type(u)
-        uMin = uMax = np.nan
-      s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-      text = colored(s, 'yellow')
-      print text
-
 
   def assign_variable(self, u, var):
     """
@@ -859,10 +791,8 @@ class Model(object):
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
-    if self.MPI_rank==0:
-      s    = "::: initializing variables :::"
-      text = colored(s, 'magenta')
-      print text
+    s = "::: initializing variables :::"
+    print_text(s, self.color)
     
     self.set_parameters(pc.IceParameters())
     self.params.globalize_parameters(self) # make all the variables available 

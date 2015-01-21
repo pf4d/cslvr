@@ -122,14 +122,7 @@ v2      = 'https://dl.dropboxusercontent.com/s/qd02y99d1xrkdz3/' + \
 fldr    = 'bamber13'
 download_file(v2, home, fldr, extract=True)
 
-# merged 2014 velocity data :
-merged  = 'https://dl.dropboxusercontent.com/s/d50xn9nwr107awv/' + \
-          'velocity_greenland_merged_15Feb2013.tar.gz?dl=1&toke' + \
-          'n_hash=AAHz4wSf4OBzbVsVwwHvScaFTtADgTR6IO_siXZLh0BM9w'
-fldr    = 'rignot'
-download_file(merged, home, fldr, extract=True)
-
-# updated merged 2014 velocity data :
+# updated Rignot 2014 velocity data :
 merged  = 'https://www.dropbox.com/s/ov5bl30jsojws8g/velocity_' + \
           'greenland_v4Aug2014.tar.gz?dl=1'
 fldr    = 'rignot'

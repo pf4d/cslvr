@@ -16,6 +16,7 @@ from fenics            import Function, vertices, Mesh, MeshEditor, \
                               GenericVector
 from termcolor         import colored, cprint
 from pyproj            import transform
+from io                import print_text, print_min_max
 
 
 class MeshGenerator(object):
@@ -27,9 +28,9 @@ class MeshGenerator(object):
     Generate a mesh with DataInput object <dd>, output filename <fn>, and 
     output directory <direc>.
     """
+    self.color = 'grey_46'
     s    = "::: INITIALIZING MESHGENERATOR :::"
-    text = colored(s, 'green')
-    print text
+    print_text(s, self.color)
     self.dd         = dd
     self.fn         = fn
     self.direc      = direc
@@ -71,9 +72,8 @@ class MeshGenerator(object):
     Transforms the coordinates of the contour to DataInput object <di>'s 
     projection coordinates.
     """
-    s    = "::: transforming contour coordinates from %s to %s :::"
-    text = colored(s % (di.name, self.dd.name) , 'green')
-    print text
+    s = "::: transforming contour coordinates from %s to %s :::"
+    print_text(s % (di.name, self.dd.name), self.color)
     x,y    = self.longest_cont.T
     xn, yn = transform(self.dd.p, di.p, x, y)
     self.longest_cont = array([xn, yn]).T
@@ -101,8 +101,7 @@ class MeshGenerator(object):
     how far forward to look to eliminate intersections.
     """
     s    = "::: eliminating intersections :::"
-    text = colored(s, 'green')
-    print text
+    print_text(s, self.color)
 
     class Point:
       def __init__(self,x,y):
@@ -160,8 +159,7 @@ class MeshGenerator(object):
     #       results in correct .geo file written.  However, running the script 
     #       outside of ipython works.
     s    = "::: writing gmsh contour to \"%s%s.geo\" :::"
-    text = colored(s % (self.direc, self.fn) , 'green')
-    print text
+    print_text(s % (self.direc, self.fn), self.color)
     c   = self.longest_cont
     f   = self.f
     x   = self.x
@@ -208,8 +206,7 @@ class MeshGenerator(object):
     Extrude the mesh <h> units with <n_layers> number of layers.
     """
     s    = "::: extruding gmsh contour :::"
-    text = colored(s, 'green')
-    print text
+    print_text(s, self.color)
     f = self.f
     s = str(self.surf_num)
     h = str(h)
@@ -297,8 +294,7 @@ class MeshGenerator(object):
     close the .geo file down for further editing.
     """
     s    = '::: finished, closing \"' + self.direc + self.fn + '.geo\" :::'
-    text = colored(s, 'green')
-    print text
+    print_text(s, self.color)
     self.f.close()
 
 
@@ -446,8 +442,7 @@ def print_min_max(u, title):
           + " or Indexed, not %s." % type(u)
     uMin = uMax = 0.0
   s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-  text = colored(s, 'yellow')
-  print text
+  print_text(s, 'yellow')
 
 class MeshRefiner(object):
   
@@ -456,9 +451,9 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
+    self.color = 'grey_74'
     s    = "::: initializing MeshRefiner on \"%s.geo\" :::" % gmsh_file_name
-    text = colored(s, 'green')
-    print text
+    print_text(s, self.color)
 
     self.field  = di.data[fn].T
     print_min_max(self.field, 'refinement field [m]')
@@ -497,6 +492,8 @@ class MeshRefiner(object):
   
     cell_h_i = c * field_i
 
+    returns a tuple, static_attractor object and id number.
+
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
     a   = static_attractor(self.spline, c, inv)
@@ -525,16 +522,13 @@ class MeshRefiner(object):
     """
     #launch the GUI
     if gui:
-      s    = "::: opening GUI :::"
-      text = colored(s, 'green')
-      print text
+      print_text("::: opening GUI :::", self.color)
       FlGui.instance().run()
 
     # instead of starting the GUI, we could generate the mesh and save it
     else:
       s    = "::: writing %s.msh :::" % out_file_name
-      text = colored(s, 'green')
-      print text
+      print_text(s, self.color)
       self.m.mesh(dim)
       self.m.save(out_file_name + ".msh")
    

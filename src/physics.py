@@ -30,6 +30,7 @@ from pylab      import ndarray
 from fenics     import *
 from termcolor  import colored, cprint
 from helper     import raiseNotDefined
+from io         import print_text, print_min_max
 import numpy as np
 import numpy.linalg as linalg
 
@@ -43,6 +44,12 @@ class Physics(object):
     Solves the physics calculation.
     """
     raiseNotDefined()
+  
+  def color(self):
+    """
+    return the default color for this class.
+    """
+    return 'cyan'
 
 
 class VelocityStokes(Physics):
@@ -150,10 +157,8 @@ class VelocityStokes(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING STOKES VELOCITY PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: INITIALIZING STOKES VELOCITY PHYSICS :::"
+    print_text(s, self.color())
 
     self.model    = model
     self.config   = config
@@ -407,18 +412,16 @@ class VelocityStokes(Physics):
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
        
     # Solve the nonlinear equations via Newton's method
-    if self.model.MPI_rank==0:
-      s    = "::: solving full-Stokes velocity :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving full-Stokes velocity :::"
+    print_text(s, self.color())
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
     model.u, model.v, model.w, model.P = model.U.split(True)
     
-    model.print_min_max(model.u, 'u')
-    model.print_min_max(model.v, 'v')
-    model.print_min_max(model.w, 'w')
-    model.print_min_max(model.P, 'P')
+    print_min_max(model.u, 'u')
+    print_min_max(model.v, 'v')
+    print_min_max(model.w, 'w')
+    print_min_max(model.P, 'P')
 
 
 class VelocityBP(Physics):
@@ -543,10 +546,8 @@ class VelocityBP(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING BP VELOCITY PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: INITIALIZING BP VELOCITY PHYSICS :::"
+    print_text(s, self.color())
 
     self.model    = model
     self.config   = config
@@ -624,29 +625,25 @@ class VelocityBP(Physics):
     
     # initialize velocity to a previous solution :
     if config['velocity']['use_U0']:
-      if model.MPI_rank==0:
-        s    = "::: using initial velocity :::"
-        text = colored(s, 'cyan')
-        print text
+      s = "::: using initial velocity :::"
+      print_text(s, self.color())
       u0_f = Function(Q)
       v0_f = Function(Q)
       model.assign_variable(u0_f, config['velocity']['u0'])
       model.assign_variable(v0_f, config['velocity']['v0'])
       model.assign_variable(U, project(as_vector([u0_f, v0_f]), Q2))
       model.assign_variable(w, config['velocity']['w0'])
-      model.print_min_max(u0_f, 'u0')
-      model.print_min_max(v0_f, 'v0')
-      model.print_min_max(w,    'w0')
+      print_min_max(u0_f, 'u0')
+      print_min_max(v0_f, 'v0')
+      print_min_max(w,    'w0')
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0    = config['velocity']['A0']
-      if model.MPI_rank==0:
-        s    = "::: using isothermal visosity formulation :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(A0, 'A')
+      A0 = config['velocity']['A0']
+      s  = "::: using isothermal visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(A0, 'A')
       b     = A0**(-1/n)
       b_gnd = b
       b_shf = b
@@ -654,39 +651,31 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'linear':
       b_gnd = config['velocity']['eta_gnd']
       b_shf = config['velocity']['eta_shf']
-      if model.MPI_rank==0:
-        s    = "::: using linear visosity formulation :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(eta_shf, 'eta_shf')
-      model.print_min_max(eta_gnd, 'eta_gnd')
+      s     = "::: using linear visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(eta_shf, 'eta_shf')
+      print_min_max(eta_gnd, 'eta_gnd')
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      if model.MPI_rank==0:
-        s    = "::: using b_control visosity formulation :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(b_shf, 'b_shf')
-      model.print_min_max(b_gnd, 'b_gnd')
+      s       = "::: using b_control visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(b_shf, 'b_shf')
+      print_min_max(b_gnd, 'b_gnd')
     
     elif config['velocity']['viscosity_mode'] == 'constant_b':
       b     = config['velocity']['b']
       b_shf = b
       b_gnd = b
-      if model.MPI_rank==0:
-        s    = "::: using constant_b visosity formulation :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(b, 'b')
+      s = "::: using constant_b visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(b, 'b')
     
     elif config['velocity']['viscosity_mode'] == 'full':
-      if model.MPI_rank==0:
-        s    = "::: using full visosity formulation :::"
-        text = colored(s, 'cyan')
-        print text
+      s     = "::: using full visosity formulation :::"
+      print_text(s, self.color())
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
@@ -696,12 +685,10 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'E_control':
       E_shf = config['velocity']['E_shf'] 
       E_gnd = config['velocity']['E_gnd']
-      if model.MPI_rank==0:
-        s    = "::: using E_control visosity formulation :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(E_shf, 'E_shf')
-      model.print_min_max(E_gnd, 'E_gnd')
+      s     = "::: using E_control visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(E_shf, 'E_shf')
+      print_min_max(E_gnd, 'E_gnd')
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
@@ -716,13 +703,11 @@ class VelocityBP(Physics):
     # initialize rate-factor on shelves :
     if config['velocity']['use_b_shf0']:
       b_shf_0 = config['velocity']['b_shf']
-      if model.MPI_rank==0:
-        s    = "::: using initial rate-factor on shelves :::"
-        text = colored(s, 'cyan')
-        print text
+      s = "::: using initial rate-factor on shelves :::"
+      print_text(s, self.color())
       b_shf = Function(Q)
       model.assign_variable(b_shf, config['velocity']['b_shf'])
-      model.print_min_max(b_shf, 'b_shf0')
+      print_min_max(b_shf, 'b_shf0')
     
     if config['velocity']['init_b_from_U_ob']:
       U_ob = config['velocity']['U_ob']
@@ -732,24 +717,22 @@ class VelocityBP(Physics):
     # initialize the temperature depending on input type :
     if config['velocity']['use_T0']:
       model.assign_variable(T, config['velocity']['T0'])
-      if model.MPI_rank==0:
-        s    = "::: using initial temperature :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(T, 'T0')
+      s = "::: using initial temperature :::"
+      print_text(s, self.color())
+      print_min_max(T, 'T0')
 
     # initialize the bed friction coefficient :
     if config['velocity']['use_beta0']:
-      if model.MPI_rank==0:
-        s    = "::: using initial beta :::"
-        text = colored(s, 'cyan')
-        print text
+      s    = "::: using initial beta :::"
+      print_text(s, self.color())
       model.assign_variable(beta, config['velocity']['beta0'])
-      model.print_min_max(beta, 'beta0')
+      print_min_max(beta, 'beta0')
     if config['velocity']['init_beta_from_U_ob']:
       U_ob = config['velocity']['U_ob']
       model.init_beta(beta, U_ob, r, gradS)
     if config['velocity']['init_beta_from_stats']:
+      s    = "::: initializing beta from stats :::"
+      print_text(s, self.color())
       U_ob  = config['velocity']['U_ob']
       q_geo = config['enthalpy']['q_geo']
       T_s   = config['enthalpy']['T_surface']
@@ -782,6 +765,8 @@ class VelocityBP(Physics):
       nB_v = np.sqrt(gBx**2 + gBy**2 + 1e-16)
       model.assign_variable(nB, nB_v)
 
+      U_v  = as_vector([u,v,w])
+
       x0   = Mb
       x1   = S
       x2   = T
@@ -789,8 +774,8 @@ class VelocityBP(Physics):
       x4   = nS
       x5   = absB
       x6   = nB
-      x7   = project(H, Q)
-      x11  = ln(sqrt(inner(U,U)) + 1)
+      x7   = H
+      x11  = ln(sqrt(inner(U_v,U_v)) + 1)
       x12  = ln(Ubar + 1)
       x13  = q_geo
       x14  = adot
@@ -800,7 +785,7 @@ class VelocityBP(Physics):
       X_i.extend(X)
 
       for i,xx in enumerate(X):
-        model.print_min_max(xx, 'x' + str(i))
+        print_min_max(xx, 'x' + str(i))
      
       bhat = [-1.77918639e+01,   2.20011439e-01,   1.32393565e-03,
                8.59953797e-02,   7.07178347e-02,  -3.52604627e+01,
@@ -830,12 +815,17 @@ class VelocityBP(Physics):
         for yy in X[i+1:]:
           X_i.append(xx*yy)
       
-      beta = Constant(bhat[0])
+      beta_f = Constant(bhat[0])
       
       for xx,bb in zip(X_i, bhat[1:]):
-        beta += Constant(bb)*xx
-      beta = exp(beta) - Constant(100.0)
-      self.x11 = x11
+        beta_f += Constant(bb)*xx
+      beta_f      = exp(beta_f) - Constant(100.0)
+      beta        = project(beta_f, Q)
+      beta_v      = beta.vector().array()
+      beta_v[beta_v < 0.0] = 0.0
+      model.assign_variable(beta, beta_v)
+      print_min_max(beta, 'beta0')
+      self.beta_f = beta_f
 
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -926,23 +916,13 @@ class VelocityBP(Physics):
       self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 4))
     
     # solve nonlinear system :
-    if self.model.MPI_rank==0:
-      s    = "::: solving BP horizontal velocity :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving BP horizontal velocity :::"
+    print_text(s, self.color())
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
           solver_parameters = config['velocity']['newton_params'])
     model.u,model.v = model.U.split(True)
-    model.print_min_max(model.u, 'u')
-    model.print_min_max(model.v, 'v')
-    
-    #if config['velocity']['init_beta_from_stats']:
-    #  if self.model.MPI_rank==0:
-    #    s    = "::: updating velocity norm on bed for stats beta :::"
-    #    text = colored(s, 'cyan')
-    #    print text
-    #  self.x11 = project(ln(sqrt(inner(model.U,model.U)) + 1), model.Q)
-    #  model.print_min_max(self.x11, 'ln(||U|| + 1)')
+    print_min_max(model.u, 'u')
+    print_min_max(model.v, 'v')
 
     bc_w = None
 
@@ -957,22 +937,27 @@ class VelocityBP(Physics):
       bc_w = DirichletBC(Q, 0.0, model.ff, 4)
     
     # solve for vertical velocity :
-    if self.model.MPI_rank==0:
-      s    = "::: solving BP vertical velocity :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving BP vertical velocity :::"
+    print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
     solve(self.aw == self.Lw, model.w, bcs=bc_w,
           solver_parameters = {"linear_solver" : sm})
-    model.print_min_max(model.w, 'w')
+    print_min_max(model.w, 'w')
+    
+    if config['velocity']['init_beta_from_stats']:
+      s    = "::: updating statistical beta :::"
+      print_text(s, self.color())
+      beta   = project(self.beta_f, model.Q)
+      beta_v = beta.vector().array()
+      beta_v[beta_v < 0.0] = 0.0
+      model.assign_variable(model.beta, beta_v)
+      print_min_max(model.beta, 'beta')
     
     # solve for pressure :
-    if self.model.MPI_rank==0:
-      s    = "::: solving BP pressure :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving BP pressure :::"
+    print_text(s, self.color())
     model.calc_pressure()
-    model.print_min_max(model.P, 'P')
+    print_min_max(model.P, 'P')
     
 
 class Enthalpy(Physics):
@@ -1099,10 +1084,8 @@ class Enthalpy(Physics):
     """ 
     Set up equation, memory allocation, etc. 
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING ENTHALPY PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: INITIALIZING ENTHALPY PHYSICS :::"
+    print_text(s, self.color())
 
     self.config = config
     self.model  = model
@@ -1177,16 +1160,14 @@ class Enthalpy(Physics):
     #  set the surface temperature to the constant or array that 
     #  was passed in.
     if not config['enthalpy']['use_surface_climate']:
-      if model.MPI_rank==0:
-        s    = "::: using surface temperature :::"
-        text = colored(s, 'cyan')
-        print text
-      model.print_min_max(config['enthalpy']['T_surface'], 'T_s')
+      s    = "::: using surface temperature :::"
+      print_text(s, self.color())
+      print_min_max(config['enthalpy']['T_surface'], 'T_s')
       model.assign_variable(T_surface, config['enthalpy']['T_surface'])
 
     # assign geothermal flux :
     model.assign_variable(q_geo, config['enthalpy']['q_geo'])
-    model.print_min_max(config['enthalpy']['q_geo'], 'q_geo')
+    print_min_max(config['enthalpy']['q_geo'], 'q_geo')
 
     # initialize the conductivity coefficient for entirely cold ice :
     model.assign_variable(Kcoef, 1.0)
@@ -1196,12 +1177,10 @@ class Enthalpy(Physics):
     dH  = TrialFunction(Q)
 
     # Pressure melting point
-    if model.MPI_rank==0:
-      s    = "::: calculating pressure-melting temperature :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: calculating pressure-melting temperature :::"
+    print_text(s, self.color())
     model.assign_variable(T0, project(T_w - gamma * (S - x[2]), Q))
-    model.print_min_max(T0, 'T0')
+    print_min_max(T0, 'T0')
    
     # Surface boundary condition
     model.assign_variable(H_surface, project(T_surface * ci))
@@ -1234,7 +1213,8 @@ class Enthalpy(Physics):
       try:
         U    = as_vector([u, v, w])
       except NameError:
-        print "No velocity field found.  Defaulting to no velocity"
+        s =  "No velocity field found.  Defaulting to no velocity"
+        print_text(s, self.color())
         U    = 0.0
 
       # skewed test function in areas with high velocity :
@@ -1410,20 +1390,16 @@ class Enthalpy(Physics):
       self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
     
     # solve the linear equation for enthalpy :
-    if self.model.MPI_rank==0:
-      s    = "::: solving enthalpy :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving enthalpy :::"
+    print_text(s, self.color())
     sm = config['enthalpy']['solve_method']
     solve(self.a == self.L, H, self.bc_H,
           solver_parameters = {"linear_solver" : sm})
-    model.print_min_max(H, 'H')
+    print_min_max(H, 'H')
 
     # temperature solved diagnostically : 
-    if self.model.MPI_rank==0:
-      s = "::: calculating temperature :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: calculating temperature :::"
+    print_text(s, self.color())
     T_n  = project(H/ci, Q)
     
     # update temperature for wet/dry areas :
@@ -1433,7 +1409,7 @@ class Enthalpy(Physics):
     cold         = T_n_v <  T0_v
     T_n_v[warm]  = T0_v[warm]
     model.assign_variable(T, T_n_v)
-    model.print_min_max(T,  'T')
+    print_min_max(T,  'T')
     
     # update kappa coefficient for wet/dry areas :
     #Kcoef_v       = Kcoef.vector().array()
@@ -1442,10 +1418,8 @@ class Enthalpy(Physics):
     #model.assign_variable(Kcoef, Kcoef_v)
 
     # water content solved diagnostically :
-    if self.model.MPI_rank==0:
-      s = "::: calculating water content :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: calculating water content :::"
+    print_text(s, self.color())
     W_n  = project((H - ci*T0)/L, Q)
     
     # update water content :
@@ -1454,29 +1428,25 @@ class Enthalpy(Physics):
     W_v[W_v > 1.00] = 1.00
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
-    model.print_min_max(W,  'W')
+    print_min_max(W,  'W')
     
     # update capped variable for rheology : 
     W_v[W_v > 0.01] = 0.01
     model.assign_variable(W_r, W_v)
     
     # calculate melt-rate : 
-    if self.model.MPI_rank==0:
-      s = "::: calculating basal melt-rate :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: calculating basal melt-rate :::"
+    print_text(s, self.color())
     nMb   = project(-(q_geo + q_friction) / (L*rhoi))
     model.assign_variable(Mb,  nMb)
-    model.print_min_max(Mb, 'Mb')
+    print_min_max(Mb, 'Mb')
 
     # calculate bulk density :
-    if self.model.MPI_rank==0:
-      s = "::: calculating bulk density :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: calculating bulk density :::"
+    print_text(s, self.color())
     rho       = project(self.rho)
     model.rho = rho
-    model.print_min_max(rho,'rho')
+    print_min_max(rho,'rho')
 
 
 class EnthalpyDG(Physics):
@@ -1486,10 +1456,8 @@ class EnthalpyDG(Physics):
     """ 
     Set up equation, memory allocation, etc. 
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING DG ENTHALPY PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: INITIALIZING DG ENTHALPY PHYSICS :::"
+    print_text(s, self.color())
 
     self.config = config
     self.model  = model
@@ -1747,10 +1715,8 @@ class EnthalpyDG(Physics):
           solver_parameters = {"linear_solver" : sm})
 
     # calculate temperature and water content :
-    if self.model.MPI_rank==0:
-      s = "::: calculating temperature, water content, and basal melt-rate :::"
-      text = colored(s, 'cyan')
-      print text
+    s = "::: calculating temperature, water content, and basal melt-rate :::"
+    print_text(s, self.color())
     
     # temperature solved diagnostically : 
     T_n  = project(H/ci, Q)
@@ -1785,11 +1751,11 @@ class EnthalpyDG(Physics):
     model.rho = rho
     
     # print the min/max values to the screen :    
-    model.print_min_max(H,  'H')
-    model.print_min_max(T,  'T')
-    model.print_min_max(Mb, 'Mb')
-    model.print_min_max(W,  'W')
-    model.print_min_max(rho,'rho')
+    print_min_max(H,  'H')
+    print_min_max(T,  'T')
+    print_min_max(Mb, 'Mb')
+    print_min_max(W,  'W')
+    print_min_max(rho,'rho')
 
 
 class FreeSurface(Physics):
@@ -1871,10 +1837,8 @@ class FreeSurface(Physics):
   def __init__(self, model, config):
     """
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING FREE-SURFACE PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: INITIALIZING FREE-SURFACE PHYSICS :::"
+    print_text(s, self.color())
 
     self.model  = model
     self.config = config
@@ -1953,10 +1917,8 @@ class FreeSurface(Physics):
     m = assemble(self.mass_matrix,      keep_diagonal=True)
     r = assemble(self.stiffness_matrix, keep_diagonal=True)
 
-    if self.model.MPI_rank==0:
-      s    = "::: solving free-surface :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving free-surface :::"
+    print_text(s, self.color())
     if config['free_surface']['lump_mass_matrix']:
       m_l = assemble(self.lumped_mass)
       m_l = m_l.get_local()
@@ -1969,7 +1931,7 @@ class FreeSurface(Physics):
     if config['free_surface']['use_shock_capturing']:
       k = assemble(self.diffusion_matrix)
       r -= k
-      model.print_min_max(r, 'D')
+      print_min_max(r, 'D')
 
     if config['free_surface']['lump_mass_matrix']:
       model.assign_variable(model.dSdt, m_l_inv * r.get_local())
@@ -2000,10 +1962,8 @@ class AdjointVelocity(Physics):
     """ 
     Setup.
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING ADJOINT VELOCITY PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s   = "::: INITIALIZING ADJOINT VELOCITY PHYSICS :::"
+    print_text(s, self.color())
 
     self.model  = model
     self.config = config
@@ -2069,8 +2029,9 @@ class AdjointVelocity(Physics):
         R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                   + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
       else:
-        print   "Valid regularizations are 'TV' and 'Tikhonov';" + \
-              + " defaulting to no regularization."
+        s = "Valid regularizations are 'TV' and 'Tikhonov';" + \
+            + " defaulting to no regularization."
+        print_text(s, self.color())
         R = Constant(0.0) * dGnd
     
     # Objective function; least squares over the surface.
@@ -2097,8 +2058,9 @@ class AdjointVelocity(Physics):
                + R
 
     else:
-      print   "adjoint objection function may be 'linear', 'logarithmic'," \
-            + " 'kinematic', or log_lin_hybrid."
+      s = "adjoint objection function may be 'linear', 'logarithmic'," \
+          + " 'kinematic', or log_lin_hybrid."
+      print_text(s, self.color())
       exit(1)
 
     Phi       = TestFunction(Q_adj)
@@ -2139,15 +2101,13 @@ class AdjointVelocity(Physics):
     """
     model = self.model
 
-    if model.MPI_rank==0:
-      s    = "::: solving adjoint velocity :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving adjoint velocity :::"
+    print_text(s, self.color())
 
     solve(lhs(self.dI) == rhs(self.dI), model.Lam,
           solver_parameters = {"linear_solver"  : "cg",
                                "preconditioner" : "hypre_amg"})
-    model.print_min_max(model.Lam, 'Lam')
+    print_min_max(model.Lam, 'Lam')
     
 
 class SurfaceClimate(Physics):
@@ -2170,10 +2130,8 @@ class SurfaceClimate(Physics):
     Calculates PDD, surface temperature given current model geometry
 
     """
-    if self.model.MPI_rank==0:
-      s    = "::: solving surface climate :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving surface climate :::"
+    print_text(s, self.color())
     model  = self.model
     config = self.config
 
@@ -2207,10 +2165,8 @@ class Age(Physics):
     """ 
     Set up the equations 
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING AGE PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: INITIALIZING AGE PHYSICS :::"
+    print_text(s, self.color())
 
     self.model  = model
     self.config = config
@@ -2289,12 +2245,10 @@ class Age(Physics):
       self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
     # Solve!
-    if self.model.MPI_rank==0:
-      s    = "::: solving age :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving age :::"
+    print_text(s, self.color())
     solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
-    model.print_min_max(model.age, 'age')
+    print_min_max(model.age, 'age')
 
 
 class VelocityBalance(Physics):
@@ -2302,10 +2256,8 @@ class VelocityBalance(Physics):
   def __init__(self, model, config):
     """
     """ 
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING VELOCITY-BALANCE PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: INITIALIZING VELOCITY-BALANCE PHYSICS :::"
+    print_text(s, self.color())
 
 
     self.model  = model
@@ -2370,54 +2322,44 @@ class VelocityBalance(Physics):
     """
     model = self.model
 
-    if model.MPI_rank==0:
-      s    = "::: calculating surface gradient :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: calculating surface gradient :::"
+    print_text(s, self.color())
     
     dSdx   = project(model.S.dx(0), model.Q)
     dSdy   = project(model.S.dx(1), model.Q)
     model.assign_variable(model.dSdx, dSdx)
     model.assign_variable(model.dSdy, dSdy)
-    model.print_min_max(model.dSdx, 'dSdx')
-    model.print_min_max(model.dSdy, 'dSdy')
+    print_min_max(model.dSdx, 'dSdx')
+    print_min_max(model.dSdy, 'dSdy')
     
     # update velocity direction from driving stress :
-    if model.MPI_rank==0:
-      s    = "::: solving for smoothed x-component of driving stress :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving for smoothed x-component of driving stress :::"
+    print_text(s, self.color())
     solve(self.a_dSdx == self.L_dSdx, model.Nx)
-    model.print_min_max(model.Nx, 'Nx')
+    print_min_max(model.Nx, 'Nx')
     
-    if model.MPI_rank==0:
-      s    = "::: solving for smoothed y-component of driving stress :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving for smoothed y-component of driving stress :::"
+    print_text(s, self.color())
     solve(self.a_dSdy == self.L_dSdy, model.Ny)
-    model.print_min_max(model.Ny, 'Ny')
+    print_min_max(model.Ny, 'Ny')
     
     # normalize the direction vector :
-    if model.MPI_rank==0:
-      s    =   "::: calculating normalized velocity direction" \
-             + " from driving stress :::"
-      text = colored(s, 'cyan')
-      print text
+    s    =   "::: calculating normalized velocity direction" \
+           + " from driving stress :::"
+    print_text(s, self.color())
     d_x_v = model.Nx.vector().array()
     d_y_v = model.Ny.vector().array()
     d_n_v = np.sqrt(d_x_v**2 + d_y_v**2 + 1e-16)
     model.assign_variable(model.d_x, -d_x_v / d_n_v)
     model.assign_variable(model.d_y, -d_y_v / d_n_v)
-    model.print_min_max(model.d_x, 'd_x')
-    model.print_min_max(model.d_y, 'd_y')
+    print_min_max(model.d_x, 'd_x')
+    print_min_max(model.d_y, 'd_y')
     
     # calculate balance-velocity :
-    if model.MPI_rank==0:
-      s    = "::: solving velocity balance magnitude :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving velocity balance magnitude :::"
+    print_text(s, self.color())
     solve(self.B == self.a, model.Ubar)
-    model.print_min_max(model.Ubar, 'Ubar')
+    print_min_max(model.Ubar, 'Ubar')
     
 
 class StokesBalance3D(Physics):
@@ -2425,10 +2367,8 @@ class StokesBalance3D(Physics):
   def __init__(self, model, config):
     """
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING STOKES-BALANCE PHYSICS :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: INITIALIZING STOKES-BALANCE PHYSICS :::"
+    print_text(s, self.color())
 
     self.model  = model
     self.config = config
@@ -2545,14 +2485,12 @@ class StokesBalance3D(Physics):
     delta = self.delta
     U_s   = self.U_s
     
-    if self.model.MPI_rank==0:
-      s    = "::: solving '3D-stokes-balance' for flow direction :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: solving '3D-stokes-balance' for flow direction :::"
+    print_text(s, self.color())
     solve(lhs(delta) == rhs(delta), U_s)
     model.u_s, model.v_s = U_s.split(True)
-    model.print_min_max(model.u_s, 'u_s')
-    model.print_min_max(model.v_s, 'v_s')
+    print_min_max(model.u_s, 'u_s')
+    print_min_max(model.v_s, 'v_s')
 
   def component_stress_stokes(self):  
     """
@@ -2560,10 +2498,8 @@ class StokesBalance3D(Physics):
     model  = self.model
     config = self.config
     
-    if model.MPI_rank==0:
-      s    = "solving '3D-stokes-balance' for stress terms :::" 
-      text = colored(s, 'cyan')
-      print text
+    s    = "solving '3D-stokes-balance' for stress terms :::" 
+    print_text(s, self.color())
 
     outpath = config['output_path']
     Q       = model.Q
@@ -2676,10 +2612,8 @@ class StokesBalance3D(Physics):
     solve(M, tau_tz.vector(), assemble(tau_tz_s))
    
     if config['stokes_balance']['vert_integrate']: 
-      if self.model.MPI_rank==0:
-        s    = "::: vertically integrating '3D-stokes-balance' terms :::"
-        text = colored(s, 'cyan')
-        print text
+      s    = "::: vertically integrating '3D-stokes-balance' terms :::"
+      print_text(s, self.color())
       
       tau_nn   = model.vert_integrate(tau_nn, Q)
       tau_nt   = model.vert_integrate(tau_nt, Q)
@@ -2711,10 +2645,8 @@ class StokesBalance3D(Physics):
     total    = membrane + basal + pressure - driving
     
     # attach the results to the model :
-    if self.model.MPI_rank==0:
-      s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
-      text = colored(s, 'cyan')
-      print text
+    s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
+    print_text(s, self.color())
     
     model.memb_n   = project(memb_n)
     model.memb_t   = project(memb_t)

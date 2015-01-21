@@ -127,54 +127,6 @@ class DataFactory(object):
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
-    direc = home + '/greenland/rignot/velocity_greenland_merged_15Feb2013.nc'
-    data  = netcdf_file(direc, mode = 'r')
-    vara  = dict()
-    
-    # retrieve data :
-    vx   = array(data.variables['vx'][:])
-    vy   = array(data.variables['vy'][:])
-    err  = array(data.variables['err'][:])
-    vmag = sqrt(vx**2 + vy**2)
-     
-    # extents of domain :
-    m,n   =  shape(vx)
-    dx    =  150
-    west  = -638000.0
-    east  =  west + n*dx
-    north = -657600.0
-    south =  north - m*dx
-
-    #projection info :
-    proj   = 'stere'
-    lat_0  = '90'
-    lat_ts = '70'
-    lon_0  = '-45'
-    
-    names = ['vx', 'vy', 'v_err', 'U_ob']
-    ftns  = [vx, vy, err, vmag]
-    
-    # save the data in matlab format :
-    vara['dataset'] = 'Rignot'
-    for n, f in zip(names, ftns):
-      vara[n] = {'map_data'          : f[::-1, :],
-                 'map_western_edge'  : west, 
-                 'map_eastern_edge'  : east, 
-                 'map_southern_edge' : south, 
-                 'map_northern_edge' : north,
-                 'projection'        : proj,
-                 'standard lat'      : lat_0,
-                 'standard lon'      : lon_0,
-                 'lat true scale'    : lat_ts}
-    return vara
-    
-  
-  @staticmethod
-  def get_gre_rignot_updated():
-    
-    filename = inspect.getframeinfo(inspect.currentframe()).filename
-    home     = os.path.dirname(os.path.abspath(filename))
- 
     direc = home + '/greenland/rignot/velocity_greenland_v4Aug2014.nc'
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
@@ -624,8 +576,8 @@ class DataFactory(object):
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
 
+    H[H == -9999.0] = thklim
     b = h - H
-    H[H == 0.0] = thklim
     h = b + H
 
     # extents of domain :

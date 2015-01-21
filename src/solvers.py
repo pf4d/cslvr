@@ -6,6 +6,7 @@ from scipy.optimize import fmin_l_bfgs_b
 from time           import time
 from termcolor      import colored, cprint
 from helper         import raiseNotDefined
+from io             import print_min_max, print_text
 import sys
 import numpy as np
 
@@ -19,6 +20,12 @@ class Solver(object):
     Solves the problem utilizing Physics object(s).
     """
     raiseNotDefined()
+  
+  def color(self):
+    """
+    return the default color for this class.
+    """
+    return 'deep_sky_blue_2'
 
 
 class SteadySolver(Solver):
@@ -36,10 +43,8 @@ class SteadySolver(Solver):
     Initialize solver.  Initialize all of the physics classes specified 
     as 'on' in the config object.
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING STEADY SOLVER :::"
-      text = colored(s, 'blue')
-      print text
+    s    = "::: INITIALIZING STEADY SOLVER :::"
+    print_text(s, self.color())
     self.model          = model
     self.config         = config
     self.config['mode'] = 'steady'
@@ -52,10 +57,13 @@ class SteadySolver(Solver):
       elif config['velocity']['approximation'] == 'stokes':
         self.velocity_instance = VelocityStokes(model, config)
       else:
-        print "Please use 'fo' or 'stokes'. "
+        s = "Please use 'fo' or 'stokes'. "
+        print_text(s, self.color())
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
         self.P_file = File(outpath + 'P.pvd')
+      if config['velocity']['init_beta_from_stats']:
+        self.beta_file = File(outpath + 'beta.pvd')
     
     # enthalpy model :
     if config['enthalpy']['on']:
@@ -83,10 +91,8 @@ class SteadySolver(Solver):
     dict entry to "False".  If config['coupled']['on'] is "False", solve only
     once.
     """
-    if self.model.MPI_rank==0:
-      s    = '::: solving SteadySolver :::'
-      text = colored(s, 'blue')
-      print text
+    s    = '::: solving SteadySolver :::'
+    print_text(s, self.color())
     model   = self.model
     config  = self.config
     outpath = config['output_path']
@@ -127,10 +133,8 @@ class SteadySolver(Solver):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         if config['velocity']['log'] and config['log']:
-          if self.model.MPI_rank==0:
-            s    = '::: saving velocity and pressure U and P .pvd files :::'
-            text = colored(s, 'blue')
-            print text
+          s    = '::: saving velocity and pressure U and P .pvd files :::'
+          print_text(s, self.color())
           U = project(as_vector([model.u, model.v, model.w]))
           if config['log_history']:
             self.U_file << U
@@ -145,15 +149,20 @@ class SteadySolver(Solver):
               self.P_file << P
             else:
               File(outpath + 'P.pvd') << P
+          if config['velocity']['init_beta_from_stats']:
+            s    = '::: saving stats beta.pvd file :::'
+            print_text(s, self.color())
+            if config['log_history']:
+              self.beta_file << model.beta
+            else:
+              File(outpath + 'beta.pvd') << model.beta
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['enthalpy']['log'] and config['log']: 
-          if self.model.MPI_rank==0:
-            s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
-            text = colored(s, 'blue')
-            print text
+          s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
+          print_text(s, self.color())
           if config['log_history']:
             self.T_file    << model.T    # save temperature
             self.M_file    << model.Mb   # save melt rate
@@ -185,10 +194,8 @@ class SteadySolver(Solver):
     if config['age']['on']:
       self.age_instance.solve()
       if config['log'] and config['log']: 
-        if self.model.MPI_rank==0:
-          s    = '::: saving age age.pvd file :::'
-          text = colored(s, 'blue')
-          print text
+        s    = '::: saving age age.pvd file :::'
+        print_text(s, self.color())
         if config['log_history']:
           self.a_file << model.age  # save age
         else:
@@ -220,10 +227,8 @@ class TransientSolver(Solver):
     as 'on' in the config object.
     
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING TRANSIENT SOLVER :::"
-      text = colored(s, 'blue')
-      print text
+    s    = "::: INITIALIZING TRANSIENT SOLVER :::"
+    print_text(s, self.color())
     self.model          = model
     self.config         = config
     self.config['mode'] = 'transient'
@@ -238,7 +243,8 @@ class TransientSolver(Solver):
         self.velocity_instance = VelocityStokes(model, config)
       
       else:
-        print "Please choose 'fo' or 'stokes'. "
+        s =  "Please choose 'fo' or 'stokes'. "
+        print_text(s, self.color())
     
     # initialized enthalpy solver : 
     if self.config['enthalpy']['on']:
@@ -298,12 +304,10 @@ class TransientSolver(Solver):
       self.velocity_instance.solve()
       if config['velocity']['log']:
         U = project(as_vector([model.u, model.v, model.w]))
-        if self.model.MPI_rank==0:
-          s    = '::: saving velocity U.pvd file :::'
-          text = colored(s, 'blue')
-          print text
+        s    = '::: saving velocity U.pvd file :::'
+        print_text(s, self.color())
         self.file_U << U
-      model.print_min_max(U, 'U')
+      print_min_max(U, 'U')
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
@@ -311,12 +315,10 @@ class TransientSolver(Solver):
     if config['free_surface']['on']:
       self.surface_instance.solve()
       if self.config['log']:
-        if self.model.MPI_rank==0:
-          s    = '::: saving surface S.pvd file :::'
-          text = colored(s, 'blue')
-          print text
+        s    = '::: saving surface S.pvd file :::'
+        print_text(s, self.color())
         self.file_S << model.S
-      model.print_min_max(model.S, 'S')
+      print_min_max(model.S, 'S')
  
     return model.dSdt.compute_vertex_values()
 
@@ -326,10 +328,8 @@ class TransientSolver(Solver):
     well as storing the velocity, temperature, and the age in vtk files.
 
     """
-    if self.model.MPI_rank==0:
-      s    = '::: solving TransientSolver :::'
-      text = colored(s, 'blue')
-      print text
+    s    = '::: solving TransientSolver :::'
+    print_text(s, self.color())
     model  = self.model
     config = self.config
     
@@ -386,27 +386,23 @@ class TransientSolver(Solver):
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
         if self.config['enthalpy']['log']:
-          if self.model.MPI_rank==0:
-            s    = '::: saving temperature T.pvd file :::'
-            text = colored(s, 'blue')
-            print text
+          s    = '::: saving temperature T.pvd file :::'
+          print_text(s, self.color())
           self.file_T << model.T
-        model.print_min_max(model.H,  'H')
-        model.print_min_max(model.T,  'T')
-        model.print_min_max(model.Mb, 'Mb')
-        model.print_min_max(model.W,  'W')
+        print_min_max(model.H,  'H')
+        print_min_max(model.T,  'T')
+        print_min_max(model.Mb, 'Mb')
+        print_min_max(model.W,  'W')
 
       # Calculate age update
       if self.config['age']['on']:
         self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
                                 vhat=model.v, what=model.w, mhat=model.mhat)
         if config['log']: 
-          if self.model.MPI_rank==0:
-            s    = '::: saving age age.pvd file :::'
-            text = colored(s, 'blue')
-            print text
+          s   = '::: saving age age.pvd file :::'
+          print_text(s, self.color())
           self.file_a << model.age
-        model.print_min_max(model.age, 'age')
+        print_min_max(model.age, 'age')
 
       # store information : 
       if self.config['log']:
@@ -443,10 +439,8 @@ class AdjointSolver(Solver):
     Initialize the model with a forward instance (SteadySolver) and adjoint
     solver (AdjointVelocityBP, only adjoint currently available).
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING ADJOINT SOLVER :::"
-      text = colored(s, 'blue')
-      print text
+    s    = "::: INITIALIZING ADJOINT SOLVER :::"
+    print_text(s, self.color())
     self.model  = model
     self.config = config
     
@@ -533,10 +527,8 @@ class AdjointSolver(Solver):
        .. math::
         \beta_{2} > 0
     """
-    if self.model.MPI_rank==0:
-      s    = '::: solving AdjointSolver :::'
-      text = colored(s, 'blue')
-      print text
+    s    = '::: solving AdjointSolver :::'
+    print_text(s, self.color())
     model       = self.model
     config      = self.config
     bounds_list = self.bounds_list
@@ -614,8 +606,8 @@ class AdjointSolver(Solver):
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
-      model.print_min_max(model.u_o, 'u_o')
-      model.print_min_max(model.v_o, 'v_o')
+      print_min_max(model.u_o, 'u_o')
+      print_min_max(model.v_o, 'v_o')
       I = assemble(self.adjoint_instance.I)
       return I
  
@@ -630,7 +622,7 @@ class AdjointSolver(Solver):
       self.adjoint_instance.solve()
 
       for i,c in enumerate(control):
-        model.print_min_max(c, 'c_' + str(i))
+        print_min_max(c, 'c_' + str(i))
 
       Js = []
       for JJ in self.adjoint_instance.J:
@@ -683,25 +675,14 @@ class AdjointSolver(Solver):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
     # save the output :
-    if self.model.MPI_rank==0:
-      s    = '::: saving adjoint beta, U_obs, U_adj, and DSdt .pvd files :::'
-      text = colored(s, 'blue')
-      print text
+    s    = '::: saving adjoint beta, U_obs, U_adj, and DSdt .pvd files :::'
+    print_text(s, self.color())
     U_obs = project(as_vector([model.u_o, model.v_o, 0]))
     dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
                     + model.w + model.adot)
     self.beta_file << model.extrude(model.beta, [3,5], 2) 
     self.U_file    << U_obs
     self.dSdt_file << dSdt
-
-
-
-class BalanceVelocitySolver(Solver):
-  def __init__(self, model, config):
-    self.bv_instance = VelocityBalance(model, config)
-
-  def solve(self):
-    self.bv_instance.solve()
 
 
 class StokesBalanceSolver(Solver):
@@ -720,17 +701,13 @@ class StokesBalanceSolver(Solver):
     Note: tau_drv = tau_lon + tau_lat + tau_bas
     
     """
-    if model.MPI_rank==0:
-      s    = "::: INITIALIZING STOKES-BALANCE SOLVER :::"
-      text = colored(s, 'blue')
-      print text
+    s    = "::: INITIALIZING STOKES-BALANCE SOLVER :::"
+    print_text(s, self.color())
     self.model  = model
     self.config = config
     
-    if self.model.MPI_rank==0:
-      s    = "::: initializing '3D-stokes-balance' solver :::"
-      text = colored(s, 'blue')
-      print text
+    s    = "::: initializing '3D-stokes-balance' solver :::"
+    print_text(s, self.color())
     
     self.stress_balance_instance = StokesBalance3D(model, config)
 
@@ -741,9 +718,9 @@ class StokesBalanceSolver(Solver):
     config  = self.config
     outpath = self.config['output_path']
     
-    model.print_min_max(model.u, 'u')
-    model.print_min_max(model.v, 'v')
-    model.print_min_max(model.w, 'w')
+    print_min_max(model.u, 'u')
+    print_min_max(model.v, 'v')
+    print_min_max(model.w, 'w')
     
     # calculate ubar, vbar :
     self.stress_balance_instance.solve()

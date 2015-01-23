@@ -653,7 +653,11 @@ def default_config():
              },
              'stokes_balance' :
              {
-               'vert_integrate'      : False
+               'vert_integrate'      : False,
+               'viscosity_mode'      : 'isothermal',
+               'A'                   : 1e-16,
+               'T'                   : None,
+               'E'                   : None,
              }}
   return config
 

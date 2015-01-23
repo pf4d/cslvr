@@ -197,7 +197,8 @@ class VelocityStokes(Physics):
     Lsq           = model.Lsq
     beta          = model.beta
 
-    gradS         = project(grad(S), V)
+    gradS         = model.gradS
+    gradB         = model.gradB
 
     newton_params = config['velocity']['newton_params']
     
@@ -586,8 +587,8 @@ class VelocityBP(Physics):
     beta          = model.beta
     w             = model.w
     
-    gradS         = project(grad(S),V)
-    gradB         = project(grad(B),V)
+    gradS         = model.gradS
+    gradB         = model.gradB
 
     # pressure boundary :
     class Depth(Expression):
@@ -627,15 +628,8 @@ class VelocityBP(Physics):
     if config['velocity']['use_U0']:
       s = "::: using initial velocity :::"
       print_text(s, self.color())
-      u0_f = Function(Q)
-      v0_f = Function(Q)
-      model.assign_variable(u0_f, config['velocity']['u0'])
-      model.assign_variable(v0_f, config['velocity']['v0'])
-      model.assign_variable(U, project(as_vector([u0_f, v0_f]), Q2))
-      model.assign_variable(w, config['velocity']['w0'])
-      print_min_max(u0_f, 'u0')
-      print_min_max(v0_f, 'v0')
-      print_min_max(w,    'w0')
+      model.assign_variable(U, project(as_vector([model.u, model.v]), Q2))
+      model.assign_variable(w, model.w)
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -700,36 +694,13 @@ class VelocityBP(Physics):
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
             "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
 
-    # initialize rate-factor on shelves :
-    if config['velocity']['use_b_shf0']:
-      b_shf_0 = config['velocity']['b_shf']
-      s = "::: using initial rate-factor on shelves :::"
-      print_text(s, self.color())
-      b_shf = Function(Q)
-      model.assign_variable(b_shf, config['velocity']['b_shf'])
-      print_min_max(b_shf, 'b_shf0')
-    
+    # experimental :
     if config['velocity']['init_b_from_U_ob']:
       U_ob = config['velocity']['U_ob']
       b_shf = Function(Q)
       model.init_b(b_shf, U_ob, gradS)
 
-    # initialize the temperature depending on input type :
-    if config['velocity']['use_T0']:
-      model.assign_variable(T, config['velocity']['T0'])
-      s = "::: using initial temperature :::"
-      print_text(s, self.color())
-      print_min_max(T, 'T0')
-
     # initialize the bed friction coefficient :
-    if config['velocity']['use_beta0']:
-      s    = "::: using initial beta :::"
-      print_text(s, self.color())
-      model.assign_variable(beta, config['velocity']['beta0'])
-      print_min_max(beta, 'beta0')
-    if config['velocity']['init_beta_from_U_ob']:
-      U_ob = config['velocity']['U_ob']
-      model.init_beta(beta, U_ob, r, gradS)
     if config['velocity']['init_beta_from_stats']:
       s    = "::: initializing beta from stats :::"
       print_text(s, self.color())
@@ -886,9 +857,6 @@ class VelocityBP(Physics):
     model.T       = T
     model.beta    = beta
     model.E       = E
-    model.u       = u
-    model.v       = v
-    model.w       = w
 
   def solve(self):
     """ 
@@ -947,7 +915,7 @@ class VelocityBP(Physics):
     if config['velocity']['init_beta_from_stats']:
       s    = "::: updating statistical beta :::"
       print_text(s, self.color())
-      beta   = project(self.beta_f, model.Q)
+      beta = project(self.beta_f, model.Q)
       beta_v = beta.vector().array()
       beta_v[beta_v < 0.0] = 0.0
       model.assign_variable(model.beta, beta_v)
@@ -1156,19 +1124,6 @@ class Enthalpy(Physics):
              + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
     epsdot = 0.5 * term + eps_reg
     
-    # If we're not using the output of the surface climate model,
-    #  set the surface temperature to the constant or array that 
-    #  was passed in.
-    if not config['enthalpy']['use_surface_climate']:
-      s    = "::: using surface temperature :::"
-      print_text(s, self.color())
-      print_min_max(config['enthalpy']['T_surface'], 'T_s')
-      model.assign_variable(T_surface, config['enthalpy']['T_surface'])
-
-    # assign geothermal flux :
-    model.assign_variable(q_geo, config['enthalpy']['q_geo'])
-    print_min_max(config['enthalpy']['q_geo'], 'q_geo')
-
     # initialize the conductivity coefficient for entirely cold ice :
     model.assign_variable(Kcoef, 1.0)
 
@@ -2389,6 +2344,7 @@ class StokesBalance3D(Physics):
     rhow     = model.rhow
     g        = model.g
     x        = model.x
+    eps_reg  = model.eps_reg
     
     dx       = model.dx
     dx_s     = dx(1)
@@ -2452,6 +2408,39 @@ class StokesBalance3D(Physics):
                              dudn + 2*dvdt,
                         0.5*dvdz             ])
     
+    if   config['stokes_balance']['viscosity_mode'] == 'isothermal':
+      A = config['stokes_balance']['A']
+      s = "::: using isothermal visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(A, 'A')
+      b     = Constant(A**(-1/n))
+    
+    elif config['stokes_balance']['viscosity_mode'] == 'linear':
+      b = config['stokes_balance']['eta']
+      s = "::: using linear visosity formulation :::"
+      print_text(s, self.color())
+      print_min_max(eta, 'eta')
+      n     = 1.0
+    
+    elif config['stokes_balance']['viscosity_mode'] == 'full':
+      s     = "::: using full visosity formulation :::"
+      print_text(s, self.color())
+      model.assign_variable(model.E, config['stokes_balance']['E'])
+      model.assign_variable(model.T, config['stokes_balance']['T'])
+      model.assign_variable(model.W, config['stokes_balance']['W'])
+      R     = model.R
+      T     = model.T
+      E     = model.E
+      W     = model.W
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+    
+    term   = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+                    + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
+    epsdot = term + eps_reg
+    eta    = b * epsdot**((1-n)/(2*n))
+    
     tau_dn = phi * rhoi * g * gradS[0] * dx
     tau_dt = psi * rhoi * g * gradS[1] * dx
     
@@ -2469,7 +2458,7 @@ class StokesBalance3D(Physics):
     
     delta  = tau_n + tau_t
     U_s    = Function(Q2)
-    
+
     # make the variables available to solve :
     self.delta = delta
     self.U_s   = U_s

@@ -279,6 +279,130 @@ class Model(object):
     self.ds_flat = Measure('ds')[self.ff_flat]
     self.dx      = Measure('dx')[self.cf]
 
+  def init_U(self, u, v, w):
+    """
+    """
+    self.assign_variable(self.u, u)
+    self.assign_variable(self.v, v)
+    self.assign_variable(self.w, w)
+    print_min_max(self.u, 'u')
+    print_min_max(self.v, 'v')
+    print_min_max(self.w, 'w')
+  
+  def init_P(self, P):
+    """
+    """
+    s = "::: initializing pressure :::"
+    print_text(s, self.color)
+    self.assign_variable(self.P, P)
+    print_min_max(self.P, 'P')
+  
+  def init_T(self, T):
+    """
+    """
+    s = "::: initializing temperature :::"
+    print_text(s, self.color)
+    self.assign_variable(self.T, T)
+    print_min_max(self.T, 'T')
+  
+  def init_W(self, W):
+    """
+    """
+    s = "::: initializing water content :::"
+    print_text(s, self.color)
+    self.assign_variable(self.W, W)
+    print_min_max(self.W, 'W')
+  
+  def init_Mb(self, Mb):
+    """
+    """
+    s = "::: initializing basal melt rate :::"
+    print_text(s, self.color)
+    self.assign_variable(self.Mb, Mb)
+    print_min_max(self.Mb, 'Mb')
+  
+  def init_adot(self, adot):
+    """
+    """
+    s = "::: initializing accumulation :::"
+    print_text(s, self.color)
+    self.assign_variable(self.adot, adot)
+    print_min_max(self.adot, 'adot')
+  
+  def init_E(self, E):
+    """
+    """
+    s = "::: initializing enhancement factor :::"
+    print_text(s, self.color)
+    self.assign_variable(self.E, E)
+    print_min_max(self.E, 'E')
+  
+  def init_beta(self, beta):
+    """
+    """
+    s = "::: initializing basal friction coefficient :::"
+    print_text(s, self.color)
+    self.assign_variable(self.beta, beta)
+    print_min_max(self.beta, 'beta')
+  
+  def init_b_shf(self, b_shf):
+    """
+    """
+    s = "::: initializing rate-factor over shelves :::"
+    print_text(s, self.color)
+    self.assign_variable(self.b_shf, b_shf)
+    print_min_max(self.b_shf, 'b_shf')
+  
+  def init_b_gnd(self, b_gnd):
+    """
+    """
+    s = "::: initializing rate-factor over grounded ice :::"
+    print_text(s, self.color)
+    self.assign_variable(self.b_gnd, b_gnd)
+    print_min_max(self.b_gnd, 'b_gnd')
+  
+  def init_E_shf(self, E_shf):
+    """
+    """
+    s = "::: initializing enhancement factor over shelves :::"
+    print_text(s, self.color)
+    self.assign_variable(self.E_shf, E_shf)
+    print_min_max(self.E_shf, 'E_shf')
+  
+  def init_E_gnd(self, E_gnd):
+    """
+    """
+    s = "::: initializing enhancement factor over grounded ice :::"
+    print_text(s, self.color)
+    self.assign_variable(self.E_gnd, E_gnd)
+    print_min_max(self.E_gnd, 'E_gnd')
+  
+  def init_T_surface(self, T_s):
+    """
+    """
+    s = "::: initializing surface temperature :::"
+    print_text(s, self.color)
+    self.assign_variable(self.T_surface, T_s)
+    print_min_max(self.T_surface, 'T_surface')
+  
+  def init_q_geo(self, q_geo):
+    """
+    """
+    s = "::: initializing geothermal heat flux :::"
+    print_text(s, self.color)
+    self.assign_variable(self.q_geo, q_geo)
+    print_min_max(self.q_geo, 'q_geo')
+  
+  def init_U_ob(self, u_ob, v_ob):
+    """
+    """
+    s = "::: initializing surface velocity :::"
+    print_text(s, self.color)
+    self.assign_variable(self.u_ob, u_ob)
+    self.assign_variable(self.v_ob, v_ob)
+    print_min_max(self.u_ob, 'u_ob')
+    print_min_max(self.v_ob, 'v_ob')
+
   def set_parameters(self, params):
     """
     Sets the model's dictionary of parameters
@@ -304,7 +428,7 @@ class Model(object):
     submesh = SubMesh(bmesh, pb, 1)
     return submesh
       
-  def init_beta(self, beta, U_mag, r, gradS):
+  def init_beta_SIA(self):
     r"""
     Init beta from :math:`\tau_b = \tau_d`, the shallow ice approximation, 
     using the observed surface velocity <U_ob> as approximate basal 
@@ -316,19 +440,24 @@ class Model(object):
     """
     s = "::: initializing beta from U_ob :::"
     print_text(s, self.color)
+    r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
+    gradS    = self.gradS
     H        = self.S - self.B
-    U_mag_v  = U_mag.vector().array()
+    u_ob_v   = self.u_ob.vector().array()
+    v_ob_v   = self.v_ob.vector().array()
+    U_mag_v  = np.sqrt(u_ob_v**2 + v_ob_v**2 + 1e-16)
     U_mag_v[U_mag_v < 0.5] = 0.5
+    U_mag    = Function(Q)
     self.assign_variable(U_mag, U_mag_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
-    self.assign_variable(beta, beta_0_v)
-    print_min_max(beta, 'beta')
+    self.assign_variable(self.beta, beta_0_v)
+    print_min_max(self.beta, 'beta')
   
   def init_b(self, b, U_ob, gradS):
     r"""
@@ -385,6 +514,46 @@ class Model(object):
     b_f = Function(Q)
     solve(lhs(R) == rhs(R), b_f)
     self.assign_variable(b, b_f)
+
+  def unify_eta(self):
+    """
+    """
+    s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
+    print_text(s, self.color)
+    eta_shf = self.eta_shf
+    eta_gnd = self.eta_gnd
+    dx      = self.dx
+    dx_s    = dx(1)
+    dx_g    = dx(0)
+    Q       = self.Q
+    psi_i   = TestFunction(Q)
+    psi_j   = TrialFunction(Q)
+    M       = assemble(psi_i * psi_j * dx)
+    eta     = assemble(eta_shf*psi_i*dx_s + eta_gnd*psi_i*dx_g)
+    solve(M, self.eta.vector(), eta)
+    print_min_max(self.eta, 'eta')
+
+  def calc_eta(self):
+    s     = "::: calculating visosity :::"
+    print_text(s, self.color)
+    R       = self.R
+    E       = self.E
+    T       = self.T
+    W       = self.W
+    eps_reg = self.eps_reg
+    u       = self.u
+    v       = self.v
+    w       = self.w
+    n       = self.n
+    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    b       = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+    term   = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+                    + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
+    epsdot = term + eps_reg
+    eta    = project(b * epsdot**((1-n)/(2*n)), self.Q)
+    print_min_max(eta, 'eta')
+    return eta
 
   def BP_strain_rate(self,U):
     """
@@ -803,6 +972,8 @@ class Model(object):
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
     self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
+    self.gradS         = project(grad(self.S), self.V)
+    self.gradB         = project(grad(self.B), self.V)
 
     # Velocity model
     self.U             = Function(self.Q2)
@@ -820,6 +991,7 @@ class Model(object):
     self.E_shf         = Function(self.Q)
     self.eta_gnd       = Function(self.Q)
     self.eta_shf       = Function(self.Q)
+    self.eta           = Function(self.Q)
     self.P             = Function(self.Q)
     self.W             = Function(self.Q)
     self.W_r           = Function(self.Q)
@@ -834,6 +1006,9 @@ class Model(object):
     self.a_T           = Function(self.Q)
     self.Q_T           = Function(self.Q)
     self.w_T           = Function(self.Q)
+    self.u_ob          = Function(self.Q)
+    self.v_ob          = Function(self.Q)
+    self.U_ob          = Function(self.Q)
     
     # Enthalpy model
     self.H_surface     = Function(self.Q)

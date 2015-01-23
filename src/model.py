@@ -282,6 +282,8 @@ class Model(object):
   def init_U(self, u, v, w):
     """
     """
+    s = "::: initializing velocity :::"
+    print_text(s, self.color)
     self.assign_variable(self.u, u)
     self.assign_variable(self.v, v)
     self.assign_variable(self.w, w)

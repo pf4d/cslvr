@@ -352,6 +352,8 @@ class Model(object):
     """
     s = "::: initializing rate-factor over shelves :::"
     print_text(s, self.color)
+    if type(self.b_shf) != Function:
+      self.b_shf = Function(self.Q)
     self.assign_variable(self.b_shf, b_shf)
     print_min_max(self.b_shf, 'b_shf')
   

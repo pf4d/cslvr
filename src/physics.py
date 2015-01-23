@@ -630,15 +630,18 @@ class VelocityBP(Physics):
       print_text(s, self.color())
       model.assign_variable(U, project(as_vector([model.u, model.v]), Q2))
       model.assign_variable(w, model.w)
+      print_min_max(model.u, 'u')
+      print_min_max(model.v, 'v')
+      print_min_max(model.w, 'w')
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0 = config['velocity']['A0']
-      s  = "::: using isothermal visosity formulation :::"
+      A = config['velocity']['A']
+      s = "::: using isothermal visosity formulation :::"
       print_text(s, self.color())
-      print_min_max(A0, 'A')
-      b     = A0**(-1/n)
+      print_min_max(A, 'A')
+      b     = A**(-1/n)
       b_gnd = b
       b_shf = b
     
@@ -693,12 +696,6 @@ class VelocityBP(Physics):
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
             "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
-
-    # experimental :
-    if config['velocity']['init_b_from_U_ob']:
-      U_ob = config['velocity']['U_ob']
-      b_shf = Function(Q)
-      model.init_b(b_shf, U_ob, gradS)
 
     # initialize the bed friction coefficient :
     if config['velocity']['init_beta_from_stats']:
@@ -842,6 +839,29 @@ class VelocityBP(Physics):
     # Set up linear solve for vertical velocity.
     self.aw = lhs(self.w_R)
     self.Lw = rhs(self.w_R)
+    
+    # list of boundary conditions
+    self.bcs  = []
+    self.bc_w = None
+      
+    # add lateral boundary conditions :  
+    if config['velocity']['boundaries'] == 'solution':
+      self.bcs.append(DirichletBC(Q2.sub(0), model.u, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), model.v, model.ff, 4))
+      self.bc_w = DirichletBC(Q, model.w, model.ff, 4)
+      
+    elif config['velocity']['boundaries'] == 'homogeneous':
+      self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 4))
+      self.bc_w = DirichletBC(Q, 0.0, model.ff, 4)
+    
+    elif config['velocity']['boundaries'] == 'user_defined':
+      u_t = config['velocity']['u_lat_boundary']
+      v_t = config['velocity']['v_lat_boundary']
+      w_t = config['velocity']['w_lat_boundary']
+      self.bcs.append(DirichletBC(Q2.sub(0), u_t, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), v_t, model.ff, 4))
+      self.bc_w = DirichletBC(Q, w_t, model.ff, 4)
 
     model.eta_shf = eta_shf
     model.eta_gnd = eta_gnd
@@ -865,24 +885,6 @@ class VelocityBP(Physics):
     model  = self.model
     config = self.config
     
-    # list of boundary conditions
-    self.bcs = []
-      
-    # add lateral boundary conditions :  
-    if config['velocity']['boundaries'] == 'solution':
-      self.bcs.append(DirichletBC(Q2.sub(0), model.u, model.ff, 4))
-      self.bcs.append(DirichletBC(Q2.sub(1), model.v, model.ff, 4))
-      
-    elif config['velocity']['boundaries'] == 'homogeneous':
-      self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 4))
-    
-    elif config['velocity']['boundaries'] == 'user_defined':
-      u_t = config['velocity']['u_lat_boundary']
-      v_t = config['velocity']['v_lat_boundary']
-      self.bcs.append(DirichletBC(model.Q2.sub(0), u_t, model.ff, 4))
-      self.bcs.append(DirichletBC(model.Q2.sub(1), v_t, model.ff, 4))
-    
     # solve nonlinear system :
     s    = "::: solving BP horizontal velocity :::"
     print_text(s, self.color())
@@ -891,24 +893,12 @@ class VelocityBP(Physics):
     model.u,model.v = model.U.split(True)
     print_min_max(model.u, 'u')
     print_min_max(model.v, 'v')
-
-    bc_w = None
-
-    # add appropriate vertical velocity bcs :
-    if config['velocity']['boundaries'] == 'solution':
-      bc_w = DirichletBC(Q, model.w, model.ff, 4)
-      
-    elif config['velocity']['boundaries'] == 'homogeneous':
-      bc_w = DirichletBC(Q, 0.0, model.ff, 4)
-    
-    elif config['velocity']['boundaries'] == 'user_defined':
-      bc_w = DirichletBC(Q, 0.0, model.ff, 4)
     
     # solve for vertical velocity :
     s    = "::: solving BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    solve(self.aw == self.Lw, model.w, bcs=bc_w,
+    solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
           solver_parameters = {"linear_solver" : sm})
     print_min_max(model.w, 'w')
     
@@ -1216,6 +1206,20 @@ class Enthalpy(Physics):
       self.L = + (q_geo + q_friction) * psi * dGnd \
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
+    
+    # surface boundary condition : 
+    self.bc_H = []
+    self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 2) )
+    
+    # apply T_w conditions of portion of ice in contact with water :
+    if model.mask != None:
+      self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
+      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 6) )
+    
+    # apply lateral boundaries if desired : 
+    if config['enthalpy']['lateral_boundaries'] is not None:
+      lat_bc = config['enthalpy']['lateral_boundaries']
+      self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
 
     self.c          = c
     self.k          = k
@@ -1307,14 +1311,11 @@ class Enthalpy(Physics):
       model.assign_variable(model.what, what)
       model.assign_variable(model.mhat, mhat)
       
-    lat_bc     = config['enthalpy']['lateral_boundaries']
     mesh       = model.mesh
     V          = model.V
     Q          = model.Q
     T0         = model.T0
     H          = model.H
-    H_surface  = model.H_surface
-    H_float    = model.H_float  
     T          = model.T
     Mb         = model.Mb
     W          = model.W
@@ -1330,19 +1331,6 @@ class Enthalpy(Physics):
     q_friction = self.q_friction
     rho        = self.rho
     kappa      = self.kappa
-
-    # surface boundary condition : 
-    self.bc_H = []
-    self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 2) )
-    
-    # apply T_w conditions of portion of ice in contact with water :
-    if model.mask != None:
-      self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
-      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 6) )
-    
-    # apply lateral boundaries if desired : 
-    if config['enthalpy']['lateral_boundaries'] is not None:
-      self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
     
     # solve the linear equation for enthalpy :
     s    = "::: solving enthalpy :::"
@@ -2645,8 +2633,6 @@ class StokesBalance3D(Physics):
     model.basal_2  = project(basal_2)
     model.pressure = project(pressure)
     model.total    = project(total)
-
-
 
 
 

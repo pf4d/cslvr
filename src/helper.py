@@ -568,6 +568,7 @@ def default_config():
              'velocity' : 
              { 
                'on'                  : True,
+               'log'                 : True,
                'newton_params'       : default_nonlin_solver_params(),
                'vert_solve_method'   : 'mumps',
                'viscosity_mode'      : 'isothermal',
@@ -597,17 +598,16 @@ def default_config():
                'boundaries'          : None,
                'u_lat_boundary'      : None,
                'v_lat_boundary'      : None,
-               'log'                 : True
              },
              'enthalpy' : 
              { 
                'on'                  : False,
+               'log'                 : True,
                'solve_method'        : 'mumps',
                'use_surface_climate' : False,
                'T_surface'           : None,
                'q_geo'               : None,
                'lateral_boundaries'  : None,
-               'log'                 : True 
              },
              'free_surface' :
              { 
@@ -622,6 +622,7 @@ def default_config():
              'age' : 
              { 
                'on'                  : False,
+               'log'                 : True,
                'use_smb_for_ela'     : True,
                'ela'                 : None,
              },
@@ -648,11 +649,15 @@ def default_config():
              },
              'balance_velocity' :
              {
+               'on'                  : False,
+               'log'                 : True,
                'kappa'               : 10.0,
                'adot'                : None 
              },
              'stokes_balance' :
              {
+               'on'                  : False,
+               'log'                 : True,
                'vert_integrate'      : False,
                'viscosity_mode'      : 'isothermal',
                'A'                   : 1e-16,

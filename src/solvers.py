@@ -78,6 +78,25 @@ class SteadySolver(Solver):
       self.age_instance = Age(model, config)
       if config['age']['log']:
         self.a_file = File(outpath + 'age.pvd')
+
+    # balance velocity model :
+    if config['balance_velocity']['on']:
+      self.balance_velocity_instance = VelocityBalance(model, config)
+      if config['balance_velocity']['log']:
+        self.Ubar_file = File(outpath + 'Ubar.pvd')
+
+    # stress balance model :
+    if config['stokes_balance']['on']:
+      self.stokes_balance_instance = StokesBalance3D(model, config)
+      if config['stokes_balance']['log']:
+        self.memb_n_file   = File(outpath + "memb_n.pvd")
+        self.memb_t_file   = File(outpath + "memb_t.pvd")
+        self.membrane_file = File(outpath + "membrane.pvd")
+        self.driving_file  = File(outpath + "driving.pvd")
+        self.basal_file    = File(outpath + "basal.pvd")
+        self.basal_2_file  = File(outpath + "basal_2.pvd")
+        self.pressure_file = File(outpath + "pressure.pvd")
+        self.total_file    = File(outpath + "total.pvd")
     
     # surface climate model :
     if config['surface_climate']['on']:
@@ -193,13 +212,49 @@ class SteadySolver(Solver):
     # Solve age equation
     if config['age']['on']:
       self.age_instance.solve()
-      if config['log'] and config['log']: 
+      if config['age']['log'] and config['log']: 
         s    = '::: saving age age.pvd file :::'
         print_text(s, self.color())
         if config['log_history']:
           self.a_file << model.age  # save age
         else:
           File(outpath + 'age.pvd')  << model.age
+
+    # solve balance velocity :
+    if config['balance_velocity']['on']:
+      self.balance_velocity_instance.solve()
+      if config['balance_velocity']['log'] and config['log']: 
+        s    = '::: saving balance velocity Ubar.pvd file :::'
+        print_text(s, self.color())
+        if config['log_history']:
+          self.Ubar_file << model.Ubar
+        else:
+          File(outpath + 'Ubar.pvd')  << model.Ubar
+
+    # solve stress balance :
+    if config['stokes_balance']['on']:
+      self.stokes_balance_instance.solve()
+      if config['stokes_balance']['log'] and config['log']: 
+        s    = '::: saving stokes balance .pvd files :::'
+        print_text(s, self.color())
+        if config['log_history']:
+          self.memb_n_file   << model.memb_n
+          self.memb_t_file   << model.memb_t
+          self.membrane_file << model.membrane
+          self.driving_file  << model.driving
+          self.basal_file    << model.basal
+          self.basal_2_file  << model.basal_2
+          self.pressure_file << model.pressure
+          self.total_file    << model.total
+        else:
+          File(outpath + "memb_n.pvd")    << model.memb_n
+          File(outpath + "memb_t.pvd")    << model.memb_t
+          File(outpath + "membrane.pvd")  << model.membrane
+          File(outpath + "driving.pvd")   << model.driving
+          File(outpath + "basal.pvd")     << model.basal
+          File(outpath + "basal_2.pvd")   << model.basal_2
+          File(outpath + "pressure.pvd")  << model.pressure
+          File(outpath + "total.pvd")     << model.total
 
 
 class TransientSolver(Solver):
@@ -706,21 +761,17 @@ class StokesBalanceSolver(Solver):
     self.model  = model
     self.config = config
     
-    s    = "::: initializing '3D-stokes-balance' solver :::"
-    print_text(s, self.color())
-    
     self.stress_balance_instance = StokesBalance3D(model, config)
 
   def solve(self):
     """ 
     """
+    s    = "::: solving StokesBalanceSolver :::"
+    print_text(s, self.color())
+   
     model   = self.model
     config  = self.config
     outpath = self.config['output_path']
-    
-    print_min_max(model.u, 'u')
-    print_min_max(model.v, 'v')
-    print_min_max(model.w, 'w')
     
     # calculate ubar, vbar :
     self.stress_balance_instance.solve()

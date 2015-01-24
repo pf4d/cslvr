@@ -11,7 +11,8 @@ import subprocess
 from gmshpy            import GModel, GmshSetOption
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, show, \
-                              size, hstack, vstack, argmin, ndarray, zeros
+                              size, hstack, vstack, argmin, ndarray, zeros, \
+                              shape
 from fenics            import Function, vertices, Mesh, MeshEditor, \
                               GenericVector
 from termcolor         import colored, cprint
@@ -44,6 +45,8 @@ class MeshGenerator(object):
     initialization.  <zero_cntr> is the value of <var> to contour, <skip_pts>
     is the number of points to skip in the contour, needed to prevent overlap. 
     """
+    s    = "::: creating contour from %s's \"%s\" field :::"
+    print_text(s % (self.dd.name, var) , self.color)
     # create contour :
     field  = self.dd.data[var]
     fig = figure()
@@ -66,6 +69,8 @@ class MeshGenerator(object):
     # remove skip points and last point to avoid overlap :
     longest_cont      = cl[amax_ind]
     self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
+    s    = "::: contour created, length %s nodes :::"
+    print_text(s % shape(self.longest_cont)[0], self.color)
   
   def transform_contour(self, di):
     """
@@ -84,12 +89,16 @@ class MeshGenerator(object):
     Inputs:
     cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...])) 
     """
+    s = "::: manually setting contour :::"
+    print_text(s, self.color)
     self.longest_cont = cont_array
     
   def plot_contour(self):
     """
     Plot the contour created with the "create_contour" method.
     """
+    s = "::: plotting contour :::"
+    print_text(s, self.color)
     ax = self.ax
     lc = self.longest_cont
     ax.plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
@@ -128,8 +137,10 @@ class MeshGenerator(object):
         D = Point(*lc[jj+1])
         
         if intersect(A,B,C,D) and ii!=jj+1 and ii+1!=jj:
+          s    = "  - intersection found between node %i and %i"
+          print_text(s % (ii+1, jj), 'red')
           flag[ii+1] = 0
-          flag[jj] = 0
+          flag[jj]   = 0
     
     counter  = 0
     new_cont = zeros((sum(flag),2))
@@ -139,6 +150,8 @@ class MeshGenerator(object):
         counter += 1
     
     self.longest_cont = new_cont
+    s    = "::: eliminated %i nodes :::"
+    print_text(s % sum(flag == 0), self.color)
   
   def restart(self):
     """
@@ -205,7 +218,7 @@ class MeshGenerator(object):
     """
     Extrude the mesh <h> units with <n_layers> number of layers.
     """
-    s    = "::: extruding gmsh contour :::"
+    s    = "::: extruding gmsh contour %i layers :::" % n_layers
     print_text(s, self.color)
     f = self.f
     s = str(self.surf_num)

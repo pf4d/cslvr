@@ -122,6 +122,46 @@ class DataFactory(object):
  
   
   @staticmethod
+  def get_gre_gimp():
+    
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    
+    from tifffile.tifffile import TiffFile
+    vara     = dict()
+     
+    # extents of domain :
+    nx    =  16620
+    ny    =  30000
+    dx    =  90
+    west  = -935727.9959405478
+    east  =  west  + nx*dx
+    south = -3698069.596373792
+    north =  south + ny*dx
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '70'
+    lon_0  = '-45'
+    
+    # retrieve data :
+    data    = TiffFile(home + '/greenland/gimp/GimpIceMask_90m.tif')
+    n       = 'mask'
+    vara['dataset'] = 'gimp'
+    vara[n] = {'map_data'          : data.asarray()[::-1, :],
+               'map_western_edge'  : west,
+               'map_eastern_edge'  : east,  
+               'map_southern_edge' : south,
+               'map_northern_edge' : north,
+               'projection'        : proj,
+               'standard lat'      : lat_0,
+               'standard lon'      : lon_0,
+               'lat true scale'    : lat_ts}
+    return vara
+ 
+  
+  @staticmethod
   def get_gre_rignot():
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
@@ -576,9 +616,8 @@ class DataFactory(object):
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
 
-    H[H == -9999.0] = thklim
+    H[H <= thklim] = thklim
     b = h - H
-    h = b + H
 
     # extents of domain :
     east  = max(x)

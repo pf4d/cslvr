@@ -610,14 +610,15 @@ class DataFactory(object):
     # retrieve data :
     x    = array(data.variables['projection_x_coordinate'][:])
     y    = array(data.variables['projection_y_coordinate'][:])
-    b    = array(data.variables['BedrockElevation'][:])
-    h    = array(data.variables['SurfaceElevation'][:])
+    B    = array(data.variables['BedrockElevation'][:])
+    S    = array(data.variables['SurfaceElevation'][:])
     H    = array(data.variables['IceThickness'][:])
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['IceShelfSourceMask'][:])
 
-    H[H <= thklim] = thklim
-    b = h - H
+    S[H < thklim] = B[H < thklim] + thklim
+    H[H < thklim] = thklim
+    B             = S - H
 
     # extents of domain :
     east  = max(x)
@@ -632,7 +633,7 @@ class DataFactory(object):
     lon_0  = '-39'
      
     names = ['B', 'S', 'H', 'Herr', 'mask']
-    ftns  = [ b,   h,   H,   Herr,   mask]
+    ftns  = [ B,   S,   H,   Herr,   mask]
     
     # save the data in matlab format :
     vara['dataset'] = 'Bamber'

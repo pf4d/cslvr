@@ -20,7 +20,7 @@ class Model(object):
     Create and instance of the model.
     """
     self.MPI_rank = MPI.rank(mpi_comm_world())
-    self.color    = 'magenta'
+    self.color    = 'magenta_2b'#'purple_1a'
   
   def set_geometry(self, surface, bed, deform=True):
     """
@@ -44,6 +44,8 @@ class Model(object):
     
     self.S = interpolate(self.S_ex, Q)
     self.B = interpolate(self.B_ex, Q)
+    print_min_max(self.S, 'S')
+    print_min_max(self.B, 'B')
 
   def deform_mesh_to_geometry(self):
     """
@@ -58,6 +60,9 @@ class Model(object):
     max_height = self.mesh.coordinates()[:,2].max()
     min_height = self.mesh.coordinates()[:,2].min()
     mesh_height = max_height - min_height
+    
+    s = "    - iterating through %i vertices - " % self.dof
+    print_text(s, self.color)
     
     for x in self.mesh.coordinates():
       x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
@@ -83,8 +88,13 @@ class Model(object):
     s = "::: generating rectangle mesh :::"
     print_text(s, self.color)
 
-    self.mesh           = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
-    self.flat_mesh      = Mesh(self.mesh)
+    self.mesh       = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
+    self.flat_mesh  = Mesh(self.mesh)
+    
+    self.mesh.init(1,2)
+    self.num_facets = self.mesh.num_facets()
+    self.num_cells  = self.mesh.num_cells()
+    self.dof        = self.mesh.num_vertices()
    
     # generate periodic boundary conditions if required :
     if generate_pbcs:
@@ -133,6 +143,8 @@ class Model(object):
     
     else :
       self.Q = FunctionSpace(self.mesh, "CG", 1)
+    s = "    - mesh generated, %i cells, %i facets - "
+    print_text(s % (self.num_cells, self.num_facets), self.color)
    
   def set_mesh(self, mesh):
     """
@@ -140,14 +152,22 @@ class Model(object):
     
     :param mesh : Dolfin mesh to be written
     """
-    self.mesh      = mesh
-    self.flat_mesh = Mesh(mesh)
-    self.Q_flat    = FunctionSpace(self.flat_mesh, "CG", 1)
-    self.Q         = FunctionSpace(mesh,           "CG", 1)
-    self.DQ        = FunctionSpace(self.mesh,      "DG", 1)
-    self.Q2        = MixedFunctionSpace([self.Q]*2)
-    self.Q3        = MixedFunctionSpace([self.Q]*3)
-    self.Q4        = MixedFunctionSpace([self.Q]*4)
+    s = "::: setting mesh and generating function spaces :::"
+    print_text(s, self.color)
+    self.mesh       = mesh
+    self.flat_mesh  = Mesh(mesh)
+    self.mesh.init(1,2)
+    self.num_facets = self.mesh.num_facets()
+    self.num_cells  = self.mesh.num_cells()
+    self.dof        = self.mesh.num_vertices()
+    self.Q_flat     = FunctionSpace(self.flat_mesh, "CG", 1)
+    self.Q          = FunctionSpace(mesh,           "CG", 1)
+    self.DQ         = FunctionSpace(self.mesh,      "DG", 1)
+    self.Q2         = MixedFunctionSpace([self.Q]*2)
+    self.Q3         = MixedFunctionSpace([self.Q]*3)
+    self.Q4         = MixedFunctionSpace([self.Q]*4)
+    s = "    - mesh set, %i cells, %i facets - "
+    print_text(s % (self.num_cells, self.num_facets), self.color)
     
   def set_surface_and_bed(self, S, B):
     """
@@ -207,7 +227,7 @@ class Model(object):
     # facet for accumulation :
     #
     #   1 = high slope, upward facing ................ positive adot
-    s = "    - iterating through facets - "
+    s = "    - iterating through %i facets - " % self.num_facets
     print_text(s, self.color)
     for f in facets(self.mesh):
       n       = f.normal()
@@ -257,7 +277,7 @@ class Model(object):
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         self.ff_flat[f] = 4
     
-    s = "    - iterating through cells - "
+    s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, self.color)
     for c in cells(self.mesh):
       x_m     = c.midpoint().x()
@@ -943,11 +963,12 @@ class Model(object):
       File(var) >> u
 
     else:
-      print "*************************************************************"
-      print "assign_variable() function requires a Function, array, float," + \
-            " int, \nVector, Expression, Indexed, or string path to .xml, " + \
-            "not \n%s" % type(var)
-      print "*************************************************************"
+      s =  "*************************************************************\n" + \
+           "assign_variable() function requires a Function, array, float,\n" + \
+           " int, \nVector, Expression, Indexed, or string path to .xml, \n" + \
+           "not \n%s\n" + \
+           "*************************************************************"
+      print_text(s % type(var) , 'red')
       exit(1)
 
   def globalize_parameters(self, namespace=None):

@@ -25,7 +25,7 @@ class Solver(object):
     """
     return the default color for this class.
     """
-    return 'deep_sky_blue_2'
+    return 'turquoise_2'
 
 
 class SteadySolver(Solver):

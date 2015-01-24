@@ -1217,9 +1217,8 @@ class Enthalpy(Physics):
       self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 6) )
     
     # apply lateral boundaries if desired : 
-    if config['enthalpy']['lateral_boundaries'] is not None:
-      lat_bc = config['enthalpy']['lateral_boundaries']
-      self.bc_H.append( DirichletBC(Q, lat_bc, model.ff, 4) )
+    if config['enthalpy']['lateral_boundaries'] == 'surface':
+      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 4) )
 
     self.c          = c
     self.k          = k

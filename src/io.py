@@ -52,7 +52,7 @@ class DataInput(object):
     self.data       = {}        # dictionary of converted matlab data
     self.rem_nans   = False
     self.chg_proj   = False     # change to other projection flag
-    self.color      = 'chartreuse_4'
+    self.color      = 'light_green'
     
     first = True  # initialize domain by first file's extents
 

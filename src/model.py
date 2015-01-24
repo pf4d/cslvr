@@ -143,8 +143,8 @@ class Model(object):
     
     else :
       self.Q = FunctionSpace(self.mesh, "CG", 1)
-    s = "    - mesh generated, %i cells, %i facets - "
-    print_text(s % (self.num_cells, self.num_facets), self.color)
+    s = "    - mesh generated, %i cells, %i facets, %i vertices - "
+    print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
    
   def set_mesh(self, mesh):
     """
@@ -166,8 +166,8 @@ class Model(object):
     self.Q2         = MixedFunctionSpace([self.Q]*2)
     self.Q3         = MixedFunctionSpace([self.Q]*3)
     self.Q4         = MixedFunctionSpace([self.Q]*4)
-    s = "    - mesh set, %i cells, %i facets - "
-    print_text(s % (self.num_cells, self.num_facets), self.color)
+    s = "    - mesh set, %i cells, %i facets, %i vertices - "
+    print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
     
   def set_surface_and_bed(self, S, B):
     """

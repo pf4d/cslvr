@@ -563,7 +563,7 @@ def default_config():
              { 
                'on'                  : False,
                'inner_tol'           : 0.0,
-               'max_iter'            : 0
+               'max_iter'            : 0,
              },
              'velocity' : 
              { 
@@ -598,6 +598,7 @@ def default_config():
                'boundaries'          : None,
                'u_lat_boundary'      : None,
                'v_lat_boundary'      : None,
+               'calc_pressure'       : True,
              },
              'enthalpy' : 
              { 
@@ -617,7 +618,7 @@ def default_config():
                'observed_smb'        : None,
                'use_shock_capturing' : False,
                'thklim'              : 10.0,
-               'static_boundary_conditions' : False
+               'static_boundary_conditions' : False,
              },  
              'age' : 
              { 
@@ -633,7 +634,7 @@ def default_config():
                'T_ju'                : None,
                'beta_w'              : None,
                'sigma'               : None,
-               'precip'              : None
+               'precip'              : None,
              },
              'adjoint' :
              { 
@@ -645,14 +646,14 @@ def default_config():
                'surface_integral'    : 'grounded',
                'bounds'              : None,
                'control_variable'    : None,
-               'regularization_type' : 'Tikhonov'
+               'regularization_type' : 'Tikhonov',
              },
              'balance_velocity' :
              {
                'on'                  : False,
                'log'                 : True,
                'kappa'               : 10.0,
-               'adot'                : None 
+               'adot'                : None,
              },
              'stokes_balance' :
              {

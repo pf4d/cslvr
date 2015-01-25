@@ -2589,6 +2589,19 @@ class StokesBalance3D(Physics):
     solve(M, tau_tn.vector(), assemble(tau_tn_s))
     solve(M, tau_tt.vector(), assemble(tau_tt_s))
     solve(M, tau_tz.vector(), assemble(tau_tz_s))
+    
+    print_min_max(model.tau_dn, 'tau_dn')
+    print_min_max(model.tau_dt, 'tau_dt')
+    print_min_max(model.tau_bn, 'tau_bn')
+    print_min_max(model.tau_bt, 'tau_bt')
+    print_min_max(model.tau_pn, 'tau_pn')
+    print_min_max(model.tau_pt, 'tau_pt')
+    print_min_max(model.tau_nn, 'tau_nn')
+    print_min_max(model.tau_nt, 'tau_nt')
+    print_min_max(model.tau_nz, 'tau_nz')
+    print_min_max(model.tau_tn, 'tau_tn')
+    print_min_max(model.tau_tt, 'tau_tt')
+    print_min_max(model.tau_tz, 'tau_tz')
    
     if config['stokes_balance']['vert_integrate']: 
       s    = "::: vertically integrating '3D-stokes-balance' terms :::"
@@ -2610,6 +2623,19 @@ class StokesBalance3D(Physics):
       
       tau_bn   = model.extrude(tau_bn, [3,5], 2, Q)
       tau_bt   = model.extrude(tau_bt, [3,5], 2, Q)
+    
+      print_min_max(model.tau_dn, 'int_tau_dn')
+      print_min_max(model.tau_dt, 'int_tau_dt')
+      print_min_max(model.tau_bn, 'int_tau_bn')
+      print_min_max(model.tau_bt, 'int_tau_bt')
+      print_min_max(model.tau_pn, 'int_tau_pn')
+      print_min_max(model.tau_pt, 'int_tau_pt')
+      print_min_max(model.tau_nn, 'int_tau_nn')
+      print_min_max(model.tau_nt, 'int_tau_nt')
+      print_min_max(model.tau_nz, 'int_tau_nz')
+      print_min_max(model.tau_tn, 'int_tau_tn')
+      print_min_max(model.tau_tt, 'int_tau_tt')
+      print_min_max(model.tau_tz, 'int_tau_tz')
 
     memb_n   = as_vector([tau_nn, tau_nt, tau_nz])
     memb_t   = as_vector([tau_tn, tau_tt, tau_tz])
@@ -2635,6 +2661,16 @@ class StokesBalance3D(Physics):
     model.basal_2  = project(basal_2)
     model.pressure = project(pressure)
     model.total    = project(total)
+    
+    print_min_max(model.memb_n,   "memb_n")
+    print_min_max(model.memb_t,   "memb_t")
+    print_min_max(model.membrane, "membrane")
+    print_min_max(model.driving,  "driving")
+    print_min_max(model.basal,    "basal")
+    print_min_max(model.basal_2,  "basal_2")
+    print_min_max(model.pressure, "pressure")
+    print_min_max(model.total,    "total")
+
 
 
 

@@ -490,23 +490,23 @@ def print_min_max(u, title):
   """
   if MPI.rank(mpi_comm_world())==0:
     if isinstance(u, GenericVector):
-      uMin = u.array().min()
-      uMax = u.array().max()
+      uMin = MPI.min(mpi_comm_world(), u.min())
+      uMax = MPI.max(mpi_comm_world(), u.max())
     elif isinstance(u, Function):
-      uMin = u.vector().array().min()
-      uMax = u.vector().array().max()
+      uMin = MPI.min(mpi_comm_world(), u.vector().min())
+      uMax = MPI.max(mpi_comm_world(), u.vector().max())
     elif isinstance(u, ndarray):
+      er = "warning, input to print_min_max() is a NumPy array, local min " + \
+           " / max only"
+      er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+      print er
       uMin = u.min()
       uMax = u.max()
-    elif isinstance(u, Indexed):
-      u_n  = project(u, self.Q)
-      uMin = u_n.vector().array().min()
-      uMax = u_n.vector().array().max()
     elif isinstance(u, int) or isinstance(u, float):
       uMin = uMax = u
     else:
       er = "print_min_max function requires a Vector, Function, array," \
-           + " Indexed, int or float, not %s." % type(u)
+           + " int or float, not %s." % type(u)
       er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
       print er
       uMin = uMax = nan

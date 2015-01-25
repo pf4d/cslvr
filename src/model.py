@@ -92,9 +92,9 @@ class Model(object):
     self.flat_mesh  = Mesh(self.mesh)
     
     self.mesh.init(1,2)
-    self.num_facets = self.mesh.num_facets()
-    self.num_cells  = self.mesh.num_cells()
-    self.dof        = self.mesh.num_vertices()
+    self.num_facets = self.mesh.size_global(1)
+    self.num_cells  = self.mesh.size_global(2)
+    self.dof        = self.mesh.size_global(0)
    
     # generate periodic boundary conditions if required :
     if generate_pbcs:
@@ -157,9 +157,9 @@ class Model(object):
     self.mesh       = mesh
     self.flat_mesh  = Mesh(mesh)
     self.mesh.init(1,2)
-    self.num_facets = self.mesh.num_facets()
-    self.num_cells  = self.mesh.num_cells()
-    self.dof        = self.mesh.num_vertices()
+    self.num_facets = self.mesh.size_global(1)
+    self.num_cells  = self.mesh.size_global(2)
+    self.dof        = self.mesh.size_global(0)
     self.Q_flat     = FunctionSpace(self.flat_mesh, "CG", 1)
     self.Q          = FunctionSpace(mesh,           "CG", 1)
     self.DQ         = FunctionSpace(self.mesh,      "DG", 1)
@@ -572,12 +572,12 @@ class Model(object):
     a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
     Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
     b       = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-    term   = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
-                    + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-    epsdot = term + eps_reg
-    eta    = project(b * epsdot**((1-n)/(2*n)), self.Q)
-    print_min_max(eta, 'eta')
-    return eta
+    term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
+    epsdot  = term + eps_reg
+    eta     = project(b * epsdot**((1-n)/(2*n)), self.Q)
+    self.assign_variable(self.eta, eta)
+    print_min_max(self.eta, 'eta')
 
   def BP_strain_rate(self,U):
     """

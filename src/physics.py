@@ -2405,9 +2405,10 @@ class StokesBalance3D(Physics):
       b     = Constant(A**(-1/n))
     
     elif config['stokes_balance']['viscosity_mode'] == 'linear':
-      b = config['stokes_balance']['eta']
       s = "::: using linear visosity formulation :::"
       print_text(s, self.color())
+      b = Function(Q)
+      model.assign_variable(b, config['stokes_balance']['eta'])
       print_min_max(eta, 'eta')
       n     = 1.0
     

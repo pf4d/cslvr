@@ -890,7 +890,9 @@ class VelocityBP(Physics):
     print_text(s, self.color())
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
           solver_parameters = config['velocity']['newton_params'])
-    model.u,model.v = model.U.split(True)
+    u, v = model.U.split(True)
+    model.assign_variable(model.u, u)
+    model.assign_variable(model.v, v)
     print_min_max(model.u, 'u')
     print_min_max(model.v, 'v')
     
@@ -1300,7 +1302,7 @@ class Enthalpy(Physics):
     """
     model  = self.model
     config = self.config
-    
+
     # Assign values for H0,u,w, and mesh velocity
     if H0 is not None:
       model.assign_variable(model.H0,   H0)

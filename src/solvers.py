@@ -152,24 +152,24 @@ class SteadySolver(Solver):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         if config['velocity']['log'] and config['log']:
-          s    = '::: saving velocity and pressure U and P .pvd files :::'
+          s    = '::: saving velocity %sU.pvd file :::' % outpath
           print_text(s, self.color())
           U = project(as_vector([model.u, model.v, model.w]))
           if config['log_history']:
             self.U_file << U
           else:
             File(outpath + 'U.pvd')  << U
-          # if the velocity solve is full-stokes, project pressure onto P1 : 
-          if config['velocity']['approximation'] == 'stokes':
-            P = project(model.P, model.Q)
-          else:
-            P = model.P
+          # save pressure if desired :
+          if config['velocity']['calc_pressure']:
+            s    = '::: saving pressure %sP.pvd file :::' % outpath
+            print_text(s, self.color())
             if config['log_history']:
-              self.P_file << P
+              self.P_file << model.P
             else:
-              File(outpath + 'P.pvd') << P
+              File(outpath + 'P.pvd') << model.P
+          # save evolving beta :
           if config['velocity']['init_beta_from_stats']:
-            s    = '::: saving stats beta.pvd file :::'
+            s    = '::: saving stats %sbeta.pvd file :::' % outpath
             print_text(s, self.color())
             if config['log_history']:
               self.beta_file << model.beta
@@ -180,8 +180,8 @@ class SteadySolver(Solver):
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['enthalpy']['log'] and config['log']: 
-          s    = '::: saving enthalpy fields T, Mb, and W .pvd files :::'
-          print_text(s, self.color())
+          s    = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
+          print_text(s % outpath, self.color())
           if config['log_history']:
             self.T_file    << model.T    # save temperature
             self.M_file    << model.Mb   # save melt rate
@@ -213,7 +213,7 @@ class SteadySolver(Solver):
     if config['age']['on']:
       self.age_instance.solve()
       if config['age']['log'] and config['log']: 
-        s    = '::: saving age age.pvd file :::'
+        s    = '::: saving age %sage.pvd file :::' % outpath
         print_text(s, self.color())
         if config['log_history']:
           self.a_file << model.age  # save age
@@ -224,7 +224,7 @@ class SteadySolver(Solver):
     if config['balance_velocity']['on']:
       self.balance_velocity_instance.solve()
       if config['balance_velocity']['log'] and config['log']: 
-        s    = '::: saving balance velocity Ubar.pvd file :::'
+        s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
         print_text(s, self.color())
         if config['log_history']:
           self.Ubar_file << model.Ubar
@@ -235,7 +235,7 @@ class SteadySolver(Solver):
     if config['stokes_balance']['on']:
       self.stokes_balance_instance.solve()
       if config['stokes_balance']['log'] and config['log']: 
-        s    = '::: saving stokes balance .pvd files :::'
+        s    = '::: saving stokes balance .pvd files to %s :::' % outpath
         print_text(s, self.color())
         if config['log_history']:
           self.memb_n_file   << model.memb_n
@@ -501,12 +501,6 @@ class AdjointSolver(Solver):
     
     config['mode'] = 'steady' # adjoint only solves steady-state
     
-    # Set up file I/O
-    self.path      = config['output_path']
-    self.beta_file = File(self.path + 'beta.pvd')
-    self.U_file    = File(self.path + 'U_obs.pvd')
-    self.dSdt_file = File(self.path + 'dSdt.pvd')
-   
     # ensure that we have lists : 
     if type(config['adjoint']['bounds']) != list:
       config['adjoint']['bounds'] = [config['adjoint']['bounds']]
@@ -580,7 +574,7 @@ class AdjointSolver(Solver):
       
     :Condition:
        .. math::
-        \beta_{2} > 0
+        \beta > 0
     """
     s    = '::: solving AdjointSolver :::'
     print_text(s, self.color())
@@ -730,14 +724,10 @@ class AdjointSolver(Solver):
       set_local_from_global(c, mopt[ii*n:(ii+1)*n])
       
     # save the output :
-    s    = '::: saving adjoint beta, U_obs, U_adj, and DSdt .pvd files :::'
-    print_text(s, self.color())
-    U_obs = project(as_vector([model.u_o, model.v_o, 0]))
-    dSdt  = project(- (model.u*model.S.dx(0) + model.v*model.S.dx(1)) \
-                    + model.w + model.adot)
-    self.beta_file << model.extrude(model.beta, [3,5], 2) 
-    self.U_file    << U_obs
-    self.dSdt_file << dSdt
+    for i,c in enumerate(control):
+      s = '::: saving control variable %sc%i.pvd file :::'
+      print_text(s % (config['output_path'], i), self.color())
+      File(config['output_path'] + 'c' + str(i) + '.pvd') << c
 
 
 class StokesBalanceSolver(Solver):

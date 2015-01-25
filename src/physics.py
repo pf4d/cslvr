@@ -157,7 +157,7 @@ class VelocityStokes(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    s = "::: INITIALIZING STOKES VELOCITY PHYSICS :::"
+    s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
 
     self.model    = model
@@ -356,26 +356,6 @@ class VelocityStokes(Physics):
         and config['use_pressure_boundary']):
       A += Pb*dSde
 
-    model.A       = A
-    model.epsdot  = epsdot
-    model.eta_shf = eta_shf
-    model.eta_gnd = eta_gnd
-    model.b_shf   = b_shf
-    model.b_gnd   = b_gnd
-    model.Vd_shf  = Vd_shf
-    model.Vd_gnd  = Vd_gnd
-    model.Pe      = Pe
-    model.Sl_gnd  = Sl_gnd
-    model.Sl_shf  = Sl_shf
-    model.Pc      = Pc
-    model.Nc      = Nc
-    model.Pb      = Pb
-    model.Lsq     = Lsq
-    model.u       = u
-    model.v       = v
-    model.w       = w
-    model.P       = P
-
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
     self.F = derivative(A, U, Phi)   
@@ -383,16 +363,7 @@ class VelocityStokes(Physics):
     # Calculate the first variation of the action (the Jacobian) in
     # the direction of a small perturbation in U
     self.J = derivative(self.F, U, dU)
-
-  def solve(self):
-    """ 
-    Perform the Newton solve of the first order equations 
-    """
-    model  = self.model
-    config = self.config
-    Q4     = model.Q4
-    Q      = model.Q
-
+    
     self.bcs = []
 
     if config['velocity']['boundaries'] == 'homogeneous':
@@ -411,13 +382,41 @@ class VelocityStokes(Physics):
       self.bcs.append(DirichletBC(Q4.sub(0), u_t, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), v_t, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
+
+    model.A       = A
+    model.epsdot  = epsdot
+    model.eta_shf = eta_shf
+    model.eta_gnd = eta_gnd
+    model.b_shf   = b_shf
+    model.b_gnd   = b_gnd
+    model.Vd_shf  = Vd_shf
+    model.Vd_gnd  = Vd_gnd
+    model.Pe      = Pe
+    model.Sl_gnd  = Sl_gnd
+    model.Sl_shf  = Sl_shf
+    model.Pc      = Pc
+    model.Nc      = Nc
+    model.Pb      = Pb
+    model.Lsq     = Lsq
+
+  def solve(self):
+    """ 
+    Perform the Newton solve of the full-Stokes equations 
+    """
+    model  = self.model
+    config = self.config
        
     # Solve the nonlinear equations via Newton's method
-    s    = "::: solving full-Stokes velocity :::"
+    s    = "::: solving full-Stokes equations :::"
     print_text(s, self.color())
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = self.newton_params)
-    model.u, model.v, model.w, model.P = model.U.split(True)
+    u, v, w, P = model.U.split(True)
+
+    model.assign_variable(model.u, u)
+    model.assign_variable(model.v, v)
+    model.assign_variable(model.w, w)
+    model.assign_variable(model.P, P)
     
     print_min_max(model.u, 'u')
     print_min_max(model.v, 'v')
@@ -914,10 +913,11 @@ class VelocityBP(Physics):
       print_min_max(model.beta, 'beta')
     
     # solve for pressure :
-    s    = "::: solving BP pressure :::"
-    print_text(s, self.color())
-    model.calc_pressure()
-    print_min_max(model.P, 'P')
+    if config['velocity']['calc_pressure']:
+      s    = "::: solving BP pressure :::"
+      print_text(s, self.color())
+      model.calc_pressure()
+      print_min_max(model.P, 'P')
     
 
 class Enthalpy(Physics):

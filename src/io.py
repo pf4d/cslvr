@@ -488,28 +488,29 @@ def print_min_max(u, title):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  if MPI.rank(mpi_comm_world())==0:
-    if isinstance(u, GenericVector):
-      uMin = MPI.min(mpi_comm_world(), u.min())
-      uMax = MPI.max(mpi_comm_world(), u.max())
-    elif isinstance(u, Function):
-      uMin = MPI.min(mpi_comm_world(), u.vector().min())
-      uMax = MPI.max(mpi_comm_world(), u.vector().max())
-    elif isinstance(u, ndarray):
-      er = "warning, input to print_min_max() is a NumPy array, local min " + \
-           " / max only"
-      er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
-      print er
-      uMin = u.min()
-      uMax = u.max()
-    elif isinstance(u, int) or isinstance(u, float):
-      uMin = uMax = u
-    else:
+  if isinstance(u, GenericVector):
+    uMin = MPI.min(mpi_comm_world(), u.min())
+    uMax = MPI.max(mpi_comm_world(), u.max())
+  elif isinstance(u, Function):
+    uMin = MPI.min(mpi_comm_world(), u.vector().min())
+    uMax = MPI.max(mpi_comm_world(), u.vector().max())
+  elif isinstance(u, ndarray):
+    er = "warning, input to print_min_max() is a NumPy array, local min " + \
+         " / max only"
+    er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+    print er
+    uMin = u.min()
+    uMax = u.max()
+  elif isinstance(u, int) or isinstance(u, float):
+    uMin = uMax = u
+  else:
+    if MPI.rank(mpi_comm_world())==0:
       er = "print_min_max function requires a Vector, Function, array," \
            + " int or float, not %s." % type(u)
       er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
       print er
-      uMin = uMax = nan
+    uMin = uMax = nan
+  if MPI.rank(mpi_comm_world())==0:
     s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
     text = ('%s' + s + '%s') % (fg('yellow'), attr(0))
     print text

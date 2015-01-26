@@ -188,13 +188,6 @@ class VelocityStokes(Physics):
     rhoi          = model.rhoi
     rhow          = model.rhow
     g             = model.g
-    Pe            = model.Pe
-    Sl_gnd        = model.Sl_gnd
-    Sl_shf        = model.Sl_shf
-    Pc            = model.Pc
-    Nc            = model.Nc
-    Pb            = model.Pb
-    Lsq           = model.Lsq
     beta          = model.beta
 
     gradS         = model.gradS
@@ -237,8 +230,7 @@ class VelocityStokes(Physics):
 
     # Define a trial function
     dU                   = TrialFunction(Q4)
-    model.U              = Function(Q4)
-    U                    = model.U
+    U                    = Function(Q4)
  
     phi, psi, xsi, kappa = Phi
     du,  dv,  dw,  dP    = dU
@@ -389,15 +381,6 @@ class VelocityStokes(Physics):
     model.eta_gnd = eta_gnd
     model.b_shf   = b_shf
     model.b_gnd   = b_gnd
-    model.Vd_shf  = Vd_shf
-    model.Vd_gnd  = Vd_gnd
-    model.Pe      = Pe
-    model.Sl_gnd  = Sl_gnd
-    model.Sl_shf  = Sl_shf
-    model.Pc      = Pc
-    model.Nc      = Nc
-    model.Pb      = Pb
-    model.Lsq     = Lsq
 
   def solve(self):
     """ 
@@ -579,12 +562,7 @@ class VelocityBP(Physics):
     rhoi          = model.rhoi
     rhow          = model.rhow
     g             = model.g
-    Pe            = model.Pe
-    Sl_shf        = model.Sl_shf
-    Sl_gnd        = model.Sl_gnd
-    Pb            = model.Pb
     beta          = model.beta
-    w             = model.w
     
     gradS         = model.gradS
     gradB         = model.gradB
@@ -601,8 +579,7 @@ class VelocityBP(Physics):
 
     # Define a trial function
     dU       = TrialFunction(Q2)
-    model.U  = Function(Q2)
-    U        = model.U 
+    U        = Function(Q2)
 
     phi, psi = Phi
     du,  dv  = dU
@@ -611,6 +588,7 @@ class VelocityBP(Physics):
     # vertical velocity components :
     chi      = TestFunction(Q)
     dw       = TrialFunction(Q)
+    w        = Function(Q)
 
     dx       = model.dx
     dx_s     = dx(1)
@@ -866,16 +844,10 @@ class VelocityBP(Physics):
     model.eta_gnd = eta_gnd
     model.b_shf   = b_shf
     model.b_gnd   = b_gnd
-    model.Vd_shf  = Vd_shf
-    model.Vd_gnd  = Vd_gnd
-    model.Sl_shf  = Sl_shf
-    model.Sl_gnd  = Sl_gnd
-    model.Pe      = Pe
-    model.Pb      = Pb
     model.A       = A
-    model.T       = T
-    model.beta    = beta
     model.E       = E
+    model.U       = U
+    self.w        = w
 
   def solve(self):
     """ 
@@ -899,8 +871,9 @@ class VelocityBP(Physics):
     s    = "::: solving BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
+    solve(self.aw == self.Lw, self.w, bcs = self.bc_w,
           solver_parameters = {"linear_solver" : sm})
+    model.assign_variable(model.w, self.w)
     print_min_max(model.w, 'w')
     
     if config['velocity']['init_beta_from_stats']:
@@ -1058,7 +1031,6 @@ class Enthalpy(Physics):
     H0          = model.H0
     n           = model.n
     b_gnd       = model.b_gnd
-    b_gnd       = model.b_gnd
     b_shf       = model.b_shf
     T           = model.T
     T0          = model.T0
@@ -1157,12 +1129,7 @@ class Enthalpy(Physics):
 
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
-      try:
-        U    = as_vector([u, v, w])
-      except NameError:
-        s =  "No velocity field found.  Defaulting to no velocity"
-        print_text(s, self.color())
-        U    = 0.0
+      U      = as_vector([u, v, w])
 
       # skewed test function in areas with high velocity :
       h      = CellSize(mesh)
@@ -1913,21 +1880,13 @@ class AdjointVelocity(Physics):
     self.config = config
 
     Q        = model.Q
-    Vd_shf   = model.Vd_shf
-    Vd_gnd   = model.Vd_gnd
-    Pe       = model.Pe
-    Sl_shf   = model.Sl_shf
-    Sl_gnd   = model.Sl_gnd
-    Pb       = model.Pb
-    Pc       = model.Pc
-    Lsq      = model.Lsq
-    Nc       = model.Nc
-    U        = model.U
     u_o      = model.u_o
     v_o      = model.v_o
     adot     = model.adot
     ds       = model.ds
     S        = model.S
+    A        = model.A
+    U        = model.U
     
     dx       = model.dx
     dx_s     = dx(1)
@@ -1950,14 +1909,8 @@ class AdjointVelocity(Physics):
 
     if config['velocity']['approximation'] == 'fo':
       Q_adj   = model.Q2
-      A       = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd + Sl_shf*dFlt
     elif config['velocity']['approximation'] == 'stokes':
       Q_adj   = model.Q4
-      A       = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-                + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dGnd
-    if (not config['periodic_boundary_conditions']
-        and config['use_pressure_boundary']):
-      A      += Pb*dSde
 
     # form regularization term 'R' :
     N = FacetNormal(model.mesh)

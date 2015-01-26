@@ -124,7 +124,7 @@ class SteadySolver(Solver):
     counter     = 0
    
     # previous velocity for norm calculation
-    u_prev      = model.U.vector().array()
+    u_prev      = model.u.vector().array()
     
     # set an inner tolerance for PI
     inner_tol   = config['coupled']['inner_tol']
@@ -142,7 +142,9 @@ class SteadySolver(Solver):
      
       # reset the velocity for Newton solve to converge : 
       if counter > 0:  
-        model.assign_variable(model.U, 0.0)
+        model.assign_variable(model.u, DOLFIN_EPS)
+        model.assign_variable(model.v, DOLFIN_EPS)
+        model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
@@ -193,7 +195,7 @@ class SteadySolver(Solver):
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
-        u_new       = model.U.vector().array()
+        u_new       = model.u.vector().array()
         diff        = (u_prev - u_new)
         inner_error = diff.max()
         u_prev      = u_new

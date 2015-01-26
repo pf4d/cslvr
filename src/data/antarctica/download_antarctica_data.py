@@ -73,11 +73,11 @@ bm2  = "https://secure.antarctica.ac.uk/data/bedmap2/bedmap2_tiff.zip"
 fldr = "bedmap2"
 download_file(bm2, home, fldr, extract=True)
 
-# measures velocity :
-mea  = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
-       'nsidc0484_MEASURES_antarc_vel_V01/450m/antarctica_ice_velocity_450m.nc'
-fldr = "measures"
-download_file(mea, home, fldr)
+## measures velocity :
+#mea  = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
+#       'nsidc0484_MEASURES_antarc_vel_V01/450m/antarctica_ice_velocity_450m.nc'
+#fldr = "measures"
+#download_file(mea, home, fldr)
 
 mea  = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
        'nsidc0484_MEASURES_antarc_vel_V01/900m/antarctica_ice_velocity.nc'

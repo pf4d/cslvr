@@ -626,8 +626,7 @@ class Model(object):
     #P       = TrialFunction(Q)
     #phi     = TestFunction(Q)
     #M       = assemble(phi*P*dx)
-    #H       = self.calc_thickness()
-    #P_f     = + rhoi * g * H * phi * dGamma \
+    #P_f     = + rhoi * g * (S - x[2]) * phi * dGamma \
     #          + Constant(2.0) * w.dx(2) * phi * (eta_shf*dx_s + eta_gnd*dx_g)
     #solve(M, self.P.vector(), assemble(P_f))
   
@@ -1001,10 +1000,10 @@ class Model(object):
     self.gradB         = project(grad(self.B), self.V)
 
     # Velocity model
-    self.U             = Function(self.Q2)
     self.u             = Function(self.Q)
     self.v             = Function(self.Q)
     self.w             = Function(self.Q)
+    self.P             = Function(self.Q)
     self.beta          = Function(self.Q)
     self.mhat          = Function(self.Q)
     self.b             = Function(self.Q)
@@ -1017,20 +1016,6 @@ class Model(object):
     self.eta_gnd       = Function(self.Q)
     self.eta_shf       = Function(self.Q)
     self.eta           = Function(self.Q)
-    self.P             = Function(self.Q)
-    self.W             = Function(self.Q)
-    self.W_r           = Function(self.Q)
-    self.Vd            = Function(self.Q)
-    self.Pe            = Function(self.Q)
-    self.Sl_shf        = Function(self.Q)
-    self.Sl_gnd        = Function(self.Q)
-    self.Pc            = Function(self.Q)
-    self.Nc            = Function(self.Q)
-    self.Pb            = Function(self.Q)
-    self.Lsq           = Function(self.Q)
-    self.a_T           = Function(self.Q)
-    self.Q_T           = Function(self.Q)
-    self.w_T           = Function(self.Q)
     self.u_ob          = Function(self.Q)
     self.v_ob          = Function(self.Q)
     self.U_ob          = Function(self.Q)
@@ -1043,6 +1028,7 @@ class Model(object):
     self.q_geo         = Function(self.Q)
     self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
+    self.W_r           = Function(self.Q)
     self.Mb            = Function(self.Q)
     self.Hhat          = Function(self.Q) # Midpoint values
     self.uhat          = Function(self.Q) # Midpoint values

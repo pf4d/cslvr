@@ -1907,10 +1907,7 @@ class AdjointVelocity(Physics):
     control = config['adjoint']['control_variable']
     alpha   = config['adjoint']['alpha']
 
-    if config['velocity']['approximation'] == 'fo':
-      Q_adj   = model.Q2
-    elif config['velocity']['approximation'] == 'stokes':
-      Q_adj   = model.Q4
+    Q_adj   = U.function_space()
 
     # form regularization term 'R' :
     N = FacetNormal(model.mesh)
@@ -2543,18 +2540,18 @@ class StokesBalance3D(Physics):
     solve(M, tau_tt.vector(), assemble(tau_tt_s))
     solve(M, tau_tz.vector(), assemble(tau_tz_s))
     
-    print_min_max(model.tau_dn, 'tau_dn')
-    print_min_max(model.tau_dt, 'tau_dt')
-    print_min_max(model.tau_bn, 'tau_bn')
-    print_min_max(model.tau_bt, 'tau_bt')
-    print_min_max(model.tau_pn, 'tau_pn')
-    print_min_max(model.tau_pt, 'tau_pt')
-    print_min_max(model.tau_nn, 'tau_nn')
-    print_min_max(model.tau_nt, 'tau_nt')
-    print_min_max(model.tau_nz, 'tau_nz')
-    print_min_max(model.tau_tn, 'tau_tn')
-    print_min_max(model.tau_tt, 'tau_tt')
-    print_min_max(model.tau_tz, 'tau_tz')
+    print_min_max(tau_dn, 'tau_dn')
+    print_min_max(tau_dt, 'tau_dt')
+    print_min_max(tau_bn, 'tau_bn')
+    print_min_max(tau_bt, 'tau_bt')
+    print_min_max(tau_pn, 'tau_pn')
+    print_min_max(tau_pt, 'tau_pt')
+    print_min_max(tau_nn, 'tau_nn')
+    print_min_max(tau_nt, 'tau_nt')
+    print_min_max(tau_nz, 'tau_nz')
+    print_min_max(tau_tn, 'tau_tn')
+    print_min_max(tau_tt, 'tau_tt')
+    print_min_max(tau_tz, 'tau_tz')
    
     if config['stokes_balance']['vert_integrate']: 
       s    = "::: vertically integrating '3D-stokes-balance' terms :::"

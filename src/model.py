@@ -1075,6 +1075,22 @@ class Model(object):
     self.Nx            = Function(self.Q)
     self.Ny            = Function(self.Q)
     
+    # Stokes-balance model :
+    self.u_s           = Function(self.Q)
+    self.v_s           = Function(self.Q)
+    self.tau_dn        = Function(self.Q)
+    self.tau_dt        = Function(self.Q)
+    self.tau_bn        = Function(self.Q)
+    self.tau_bt        = Function(self.Q)
+    self.tau_pn        = Function(self.Q)
+    self.tau_pt        = Function(self.Q)
+    self.tau_nn        = Function(self.Q)
+    self.tau_nt        = Function(self.Q)
+    self.tau_nz        = Function(self.Q)
+    self.tau_tn        = Function(self.Q)
+    self.tau_tt        = Function(self.Q)
+    self.tau_tz        = Function(self.Q)
+    
 
 
 

@@ -239,24 +239,58 @@ class SteadySolver(Solver):
       if config['stokes_balance']['log'] and config['log']: 
         s    = '::: saving stokes balance .pvd files to %s :::' % outpath
         print_text(s, self.color())
+        memb_n   = as_vector([model.tau_nn, model.tau_nt, model.tau_nz])
+        memb_t   = as_vector([model.tau_tn, model.tau_tt, model.tau_tz])
+        memb_x   = model.tau_nn + model.tau_nt + model.tau_nz
+        memb_y   = model.tau_tn + model.tau_tt + model.tau_tz
+        membrane = as_vector([model.memb_x, model.memb_y, 0.0])
+        driving  = as_vector([model.tau_dn, model.tau_dt, 0.0])
+        basal    = as_vector([model.tau_bn, model.tau_bt, 0.0])
+        basal_2  = as_vector([model.tau_nz, model.tau_tz, 0.0])
+        pressure = as_vector([model.tau_pn, model.tau_pt, 0.0])
+        
+        total    = membrane + basal + pressure - driving
+        
+        # attach the results to the model :
+        s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
+        print_text(s, self.color())
+        
+        memb_n   = project(memb_n)
+        memb_t   = project(memb_t)
+        membrane = project(membrane)
+        driving  = project(driving)
+        basal    = project(basal)
+        basal_2  = project(basal_2)
+        pressure = project(pressure)
+        total    = project(total)
+
+        print_min_max(memb_n,   "memb_n")
+        print_min_max(memb_t,   "memb_t")
+        print_min_max(membrane, "membrane")
+        print_min_max(driving,  "driving")
+        print_min_max(basal,    "basal")
+        print_min_max(basal_2,  "basal_2")
+        print_min_max(pressure, "pressure")
+        print_min_max(total,    "total")
+
         if config['log_history']:
-          self.memb_n_file   << model.memb_n
-          self.memb_t_file   << model.memb_t
-          self.membrane_file << model.membrane
-          self.driving_file  << model.driving
-          self.basal_file    << model.basal
-          self.basal_2_file  << model.basal_2
-          self.pressure_file << model.pressure
-          self.total_file    << model.total
+          self.memb_n_file   << memb_n
+          self.memb_t_file   << memb_t
+          self.membrane_file << membrane
+          self.driving_file  << driving
+          self.basal_file    << basal
+          self.basal_2_file  << basal_2
+          self.pressure_file << pressure
+          self.total_file    << total
         else:
-          File(outpath + "memb_n.pvd")    << model.memb_n
-          File(outpath + "memb_t.pvd")    << model.memb_t
-          File(outpath + "membrane.pvd")  << model.membrane
-          File(outpath + "driving.pvd")   << model.driving
-          File(outpath + "basal.pvd")     << model.basal
-          File(outpath + "basal_2.pvd")   << model.basal_2
-          File(outpath + "pressure.pvd")  << model.pressure
-          File(outpath + "total.pvd")     << model.total
+          File(outpath + "memb_n.pvd")    << memb_n
+          File(outpath + "memb_t.pvd")    << memb_t
+          File(outpath + "membrane.pvd")  << membrane
+          File(outpath + "driving.pvd")   << driving
+          File(outpath + "basal.pvd")     << basal
+          File(outpath + "basal_2.pvd")   << basal_2
+          File(outpath + "pressure.pvd")  << pressure
+          File(outpath + "total.pvd")     << total
 
 
 class TransientSolver(Solver):
@@ -775,14 +809,48 @@ class StokesBalanceSolver(Solver):
     # averaged velocities :
     self.stress_balance_instance.component_stress_stokes()
     if config['log']: 
-      File(outpath + "memb_n.pvd")   << model.memb_n
-      File(outpath + "memb_t.pvd")   << model.memb_t
-      File(outpath + "membrane.pvd") << model.membrane
-      File(outpath + "driving.pvd")  << model.driving
-      File(outpath + "basal.pvd")    << model.basal
-      File(outpath + "basal_2.pvd")  << model.basal_2
-      File(outpath + "pressure.pvd") << model.pressure
-      File(outpath + "total.pvd")    << model.total
-
+      memb_n   = as_vector([model.tau_nn, model.tau_nt, model.tau_nz])
+      memb_t   = as_vector([model.tau_tn, model.tau_tt, model.tau_tz])
+      memb_x   = model.tau_nn + model.tau_nt + model.tau_nz
+      memb_y   = model.tau_tn + model.tau_tt + model.tau_tz
+      membrane = as_vector([memb_x,       memb_y,       0.0])
+      driving  = as_vector([model.tau_dn, model.tau_dt, 0.0])
+      basal    = as_vector([model.tau_bn, model.tau_bt, 0.0])
+      basal_2  = as_vector([model.tau_nz, model.tau_tz, 0.0])
+      pressure = as_vector([model.tau_pn, model.tau_pt, 0.0])
+      
+      total    = membrane + basal + pressure - driving
+      
+      # attach the results to the model :
+      s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
+      print_text(s, self.color())
+      
+      memb_n   = project(memb_n)
+      memb_t   = project(memb_t)
+      membrane = project(membrane)
+      driving  = project(driving)
+      basal    = project(basal)
+      basal_2  = project(basal_2)
+      pressure = project(pressure)
+      total    = project(total)
+      
+      print_min_max(memb_n,   "memb_n")
+      print_min_max(memb_t,   "memb_t")
+      print_min_max(membrane, "membrane")
+      print_min_max(driving,  "driving")
+      print_min_max(basal,    "basal")
+      print_min_max(basal_2,  "basal_2")
+      print_min_max(pressure, "pressure")
+      print_min_max(total,    "total")
+      
+      File(outpath + "memb_n.pvd")   << memb_n
+      File(outpath + "memb_t.pvd")   << memb_t
+      File(outpath + "membrane.pvd") << membrane
+      File(outpath + "driving.pvd")  << driving
+      File(outpath + "basal.pvd")    << basal
+      File(outpath + "basal_2.pvd")  << basal_2
+      File(outpath + "pressure.pvd") << pressure
+      File(outpath + "total.pvd")    << total
+ 
 
 

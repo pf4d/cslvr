@@ -2593,40 +2593,5 @@ class StokesBalance3D(Physics):
       print_min_max(model.tau_tt, 'int_tau_tt')
       print_min_max(model.tau_tz, 'int_tau_tz')
 
-    memb_n   = as_vector([tau_nn, tau_nt, tau_nz])
-    memb_t   = as_vector([tau_tn, tau_tt, tau_tz])
-    memb_x   = tau_nn + tau_nt + tau_nz
-    memb_y   = tau_tn + tau_tt + tau_tz
-    membrane = as_vector([memb_x, memb_y, 0.0])
-    driving  = as_vector([tau_dn, tau_dt, 0.0])
-    basal    = as_vector([tau_bn, tau_bt, 0.0])
-    basal_2  = as_vector([tau_nz, tau_tz, 0.0])
-    pressure = as_vector([tau_pn, tau_pt, 0.0])
-    
-    total    = membrane + basal + pressure - driving
-    
-    # attach the results to the model :
-    s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
-    print_text(s, self.color())
-    
-    model.memb_n   = project(memb_n)
-    model.memb_t   = project(memb_t)
-    model.membrane = project(membrane)
-    model.driving  = project(driving)
-    model.basal    = project(basal)
-    model.basal_2  = project(basal_2)
-    model.pressure = project(pressure)
-    model.total    = project(total)
-    
-    print_min_max(model.memb_n,   "memb_n")
-    print_min_max(model.memb_t,   "memb_t")
-    print_min_max(model.membrane, "membrane")
-    print_min_max(model.driving,  "driving")
-    print_min_max(model.basal,    "basal")
-    print_min_max(model.basal_2,  "basal_2")
-    print_min_max(model.pressure, "pressure")
-    print_min_max(model.total,    "total")
-
-
 
 

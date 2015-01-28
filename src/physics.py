@@ -678,9 +678,8 @@ class VelocityBP(Physics):
     if config['velocity']['init_beta_from_stats']:
       s    = "::: initializing beta from stats :::"
       print_text(s, self.color())
-      U_ob  = config['velocity']['U_ob']
-      q_geo = config['enthalpy']['q_geo']
-      T_s   = config['enthalpy']['T_surface']
+      q_geo = model.q_geo
+      T_s   = model.T_surface
       adot  = model.adot
       Mb    = model.Mb
       Ubar  = model.Ubar

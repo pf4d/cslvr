@@ -426,6 +426,14 @@ class Model(object):
     self.assign_variable(self.v_ob, v_ob)
     print_min_max(self.u_ob, 'u_ob')
     print_min_max(self.v_ob, 'v_ob')
+  
+  def init_Ubar(self, Ubar):
+    """
+    """
+    s = "::: initializing balance velocity :::"
+    print_text(s, self.color)
+    self.assign_variable(self.Ubar, Ubar)
+    print_min_max(self.Ubar, 'Ubar')
 
   def set_parameters(self, params):
     """

@@ -169,14 +169,6 @@ class SteadySolver(Solver):
               self.P_file << model.P
             else:
               File(outpath + 'P.pvd') << model.P
-          # save evolving beta :
-          if config['velocity']['init_beta_from_stats']:
-            s    = '::: saving stats %sbeta.pvd file :::' % outpath
-            print_text(s, self.color())
-            if config['log_history']:
-              self.beta_file << model.beta
-            else:
-              File(outpath + 'beta.pvd') << model.beta
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -291,6 +283,24 @@ class SteadySolver(Solver):
           File(outpath + "basal_2.pvd")   << basal_2
           File(outpath + "pressure.pvd")  << pressure
           File(outpath + "total.pvd")     << total
+    
+    # re-compute the friction field :
+    if config['velocity']['init_beta_from_stats']:
+      s    = "::: updating statistical beta :::"
+      print_text(s, self.color())
+      beta = project(model.beta_f, model.Q)
+      beta_v = beta.vector().array()
+      beta_v[beta_v < 0.0] = 0.0
+      model.assign_variable(model.beta, beta_v)
+      print_min_max(model.beta, 'beta')
+      if config['log']:
+        s    = '::: saving stats %sbeta.pvd file :::' % outpath
+        print_text(s, self.color())
+        if config['log_history']:
+          self.beta_file << model.beta
+        else:
+          File(outpath + 'beta.pvd') << model.beta
+    
 
 
 class TransientSolver(Solver):

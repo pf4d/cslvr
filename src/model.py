@@ -20,7 +20,7 @@ class Model(object):
     Create and instance of the model.
     """
     self.MPI_rank = MPI.rank(mpi_comm_world())
-    self.color    = 'magenta_2b'#'purple_1a'
+    self.color    = '148'#'purple_1a'
   
   def set_geometry(self, surface, bed, deform=True):
     """
@@ -490,7 +490,134 @@ class Model(object):
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(self.beta, beta_0_v)
     print_min_max(self.beta, 'beta')
-  
+
+  def init_beta_stats(self):
+    """
+    """
+    s    = "::: initializing beta from stats :::"
+    print_text(s, self.color)
+    q_geo = self.q_geo
+    T_s   = self.T_surface
+    adot  = self.adot
+    Mb    = self.Mb
+    Ubar  = self.Ubar
+    Q     = self.Q
+    B     = self.B
+    S     = self.S
+    T     = self.T
+    T_s   = self.T_surface
+
+    adot_v = adot.vector().array()
+    adot_v[adot_v < 0] = 0
+    self.assign_variable(adot, adot_v)
+
+    Ubar_v = Ubar.vector().array()
+    Ubar_v[Ubar_v < 0] = 0
+    self.assign_variable(Ubar, Ubar_v)
+
+    absB  = Function(Q)
+    B_v   = np.abs(B.vector().array())
+    self.assign_variable(absB, B_v)
+
+    absMb = Function(Q)
+    Mb_v  = np.abs(Mb.vector().array())
+    Mb_v[Mb_v > 40] = 40
+    self.assign_variable(absMb, Mb_v)
+
+    nS   = Function(Q)
+    gSx  = project(S.dx(0)).vector().array()
+    gSy  = project(S.dx(1)).vector().array()
+    nS_v = np.sqrt(gSx**2 + gSy**2 + DOLFIN_EPS)
+    self.assign_variable(nS, nS_v)
+
+    nB   = Function(Q)
+    gBx  = project(B.dx(0)).vector().array()
+    gBy  = project(B.dx(1)).vector().array()
+    nB_v = np.sqrt(gBx**2 + gBy**2 + DOLFIN_EPS)
+    self.assign_variable(nB, nB_v)
+
+    U_v  = as_vector([self.u, self.v, self.w])
+
+    x0   = absMb
+    x1   = S
+    x2   = T
+    x3   = T_s
+    x4   = nS
+    x5   = absB
+    x6   = nB
+    x7   = S - B
+    x11  = ln(sqrt(inner(U_v,U_v) + DOLFIN_EPS) + 1)
+    x12  = ln(Ubar + 1)
+    x13  = q_geo
+    x14  = adot
+
+    X    = [x0,x1,x2,x3,x4,x5,x6,x7,x11,x12,x14]
+    X_i  = []
+    X_i.extend(X)
+
+    for i,xx in enumerate(X):
+      print_min_max(xx, 'x' + str(i))
+    
+    bhat = [-3.98509422e+01,   1.83731650e-03,   1.66906557e-01,
+             1.63890289e-01,  -3.95352283e+01,  -1.93491127e-04,
+             4.16339483e+01,   4.60862234e-04,   2.30155102e-01,
+            -2.33265909e-01,  -2.78970257e+00,   1.70069313e-06,
+            -8.73640584e-06,  -9.10255931e-05,   6.46839290e-08,
+             4.50212825e-04,  -6.88610293e-08,  -7.05023957e-05,
+             3.75678316e-05,   1.77876340e-04,  -5.89842535e-04,
+             5.91611439e-02,   5.48036366e-06,  -7.16633474e-02,
+            -9.78248130e-06,   1.92996569e-04,  -2.51607344e-03,
+             3.71707368e-02,   1.05515483e-01,  -5.67999597e-06,
+            -8.74814399e-02,   8.80558244e-06,  -2.61120247e-03,
+             2.90302458e-03,  -2.77509129e-02,   2.26597990e-04,
+            -2.55854164e+00,   1.52235703e-03,   1.92694168e-01,
+            -3.54007937e-01,  -3.10892968e+00,  -7.78705131e-04,
+             2.49698380e-09,   6.03678732e-05,  -5.52491101e-05,
+             7.02962288e-05,  -2.80908269e-04,  -1.61965268e-01,
+             1.69752253e-01,   1.71380498e+00,  -1.45796107e-05,
+             4.77020225e-05,  -2.17507273e-04,   3.99220193e-02,
+             6.66881845e-02,  -3.23239194e-02]
+
+    bhat = [-3.93728484e+01,   3.02295011e-01,   1.81338345e-03,
+             1.65122057e-01,   1.61581320e-01,  -3.95121989e+01,
+            -1.75721458e-04,   4.16637528e+01,   4.66544783e-04,
+             2.11948401e-01,  -1.92848009e-01,  -2.73443999e+00,
+             4.60007681e-06,   2.80501419e-04,  -1.41774001e-03,
+            -1.01619698e-01,  -2.53577661e-06,  -5.23144809e-03,
+            -6.45447893e-06,   3.20884682e-03,   5.12075647e-03,
+             1.99641534e-02,   1.73263154e-06,  -8.69054910e-06,
+            -4.56845816e-05,   6.42972736e-08,   4.38644485e-04,
+            -6.75628647e-08,  -7.08079608e-05,   3.87533436e-05,
+             1.77803619e-04,  -5.81088039e-04,   6.01730822e-02,
+             5.61122624e-06,  -7.38307750e-02,  -9.81236386e-06,
+             1.47904749e-04,  -2.56907103e-03,   3.65226181e-02,
+             1.04215727e-01,  -5.85880621e-06,  -8.53529037e-02,
+             8.81023751e-06,  -2.50101528e-03,   2.79539488e-03,
+            -2.73278140e-02,   1.87089440e-04,  -2.51548778e+00,
+             1.47017518e-03,   1.89035666e-01,  -3.52882439e-01,
+            -3.06533365e+00,  -7.71542574e-04,   7.69699582e-10,
+             6.09405256e-05,  -5.68891325e-05,   7.03417526e-05,
+            -2.71849813e-04,  -1.65563468e-01,   1.69171945e-01,
+             1.70727898e+00,  -1.35248451e-05,   4.65834091e-05,
+            -2.15920766e-04,   4.02576642e-02,   6.68210961e-02,
+            -3.13812715e-02]
+     
+    for i,xx in enumerate(X):
+      for yy in X[i+1:]:
+        X_i.append(xx*yy)
+    
+    self.beta_f = Constant(bhat[0])
+    
+    for xx,bb in zip(X_i, bhat[1:]):
+      self.beta_f += Constant(bb)*xx
+    self.beta_f = exp(self.beta_f) - Constant(100.0)
+    
+    beta                 = project(self.beta_f, Q)
+    beta_v               = beta.vector().array()
+    beta_v[beta_v < 0.0] = 0.0
+    self.assign_variable(self.beta, beta_v)
+    print_min_max(self.beta, 'beta0')
+     
   def init_b(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 

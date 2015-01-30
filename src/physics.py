@@ -563,6 +563,7 @@ class VelocityBP(Physics):
     rhow          = model.rhow
     g             = model.g
     beta          = model.beta
+    w             = model.w
     
     gradS         = model.gradS
     gradB         = model.gradB
@@ -588,7 +589,6 @@ class VelocityBP(Physics):
     # vertical velocity components :
     chi      = TestFunction(Q)
     dw       = TrialFunction(Q)
-    w        = Function(Q)
 
     dx       = model.dx
     dx_s     = dx(1)
@@ -606,10 +606,6 @@ class VelocityBP(Physics):
       s = "::: using initial velocity :::"
       print_text(s, self.color())
       model.assign_variable(U, project(as_vector([model.u, model.v]), Q2))
-      model.assign_variable(w, model.w)
-      print_min_max(model.u, 'u')
-      print_min_max(model.v, 'v')
-      print_min_max(model.w, 'w')
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
@@ -673,103 +669,6 @@ class VelocityBP(Physics):
     else:
       print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
             "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
-
-    # initialize the bed friction coefficient :
-    if config['velocity']['init_beta_from_stats']:
-      s    = "::: initializing beta from stats :::"
-      print_text(s, self.color())
-      q_geo = model.q_geo
-      T_s   = model.T_surface
-      adot  = model.adot
-      Mb    = model.Mb
-      Ubar  = model.Ubar
-
-      adot_v = adot.vector().array()
-      adot_v[adot_v < 0] = 0
-      model.assign_variable(adot, adot_v)
-
-      Ubar_v = Ubar.vector().array()
-      Ubar_v[Ubar_v < 0] = 0
-      model.assign_variable(Ubar, Ubar_v)
-
-      absB  = Function(Q)
-      B_v   = B.vector().array()
-      B_v   = np.abs(B_v)
-      model.assign_variable(absB, B_v)
-
-      nS   = Function(Q)
-      gSx  = project(S.dx(0)).vector().array()
-      gSy  = project(S.dx(1)).vector().array()
-      nS_v = np.sqrt(gSx**2 + gSy**2 + 1e-16)
-      model.assign_variable(nS, nS_v)
-
-      nB   = Function(Q)
-      gBx  = project(B.dx(0)).vector().array()
-      gBy  = project(B.dx(1)).vector().array()
-      nB_v = np.sqrt(gBx**2 + gBy**2 + 1e-16)
-      model.assign_variable(nB, nB_v)
-
-      U_v  = as_vector([u,v,w])
-
-      x0   = Mb
-      x1   = S
-      x2   = T
-      x3   = T_s
-      x4   = nS
-      x5   = absB
-      x6   = nB
-      x7   = H
-      x11  = ln(sqrt(inner(U_v,U_v)) + 1)
-      x12  = ln(Ubar + 1)
-      x13  = q_geo
-      x14  = adot
-
-      X    = [x0,x1,x2,x3,x4,x5,x6,x7,x11,x12,x14]
-      X_i  = []
-      X_i.extend(X)
-
-      for i,xx in enumerate(X):
-        print_min_max(xx, 'x' + str(i))
-     
-      bhat = [-1.77918639e+01,   2.20011439e-01,   1.32393565e-03,
-               8.59953797e-02,   7.07178347e-02,  -3.52604627e+01,
-              -5.05518896e-04,   3.67367905e+01,   1.59990657e-04,
-               5.03857943e-01,  -7.54116576e-02,  -1.29721750e+00,
-               1.61983883e-06,  -1.24991572e-03,   5.28870555e-04,
-              -4.80464581e-02,  -1.12625188e-05,   2.52433468e-02,
-               2.01589616e-05,  -8.87642978e-03,   6.02403721e-04,
-              -3.59061473e-03,   2.56542080e-06,  -7.44499027e-06,
-               1.04027323e-04,   7.02704009e-08,   3.33015434e-04,
-              -5.46882463e-08,  -8.42303711e-05,   3.95678410e-05,
-               1.81373572e-04,  -2.47195299e-04,   6.64150974e-02,
-               7.48808497e-06,  -8.13631763e-02,  -9.27882915e-06,
-              -2.50951441e-03,  -1.17571686e-03,   3.27624352e-02,
-               8.08053928e-02,  -6.54939178e-06,  -5.77306748e-02,
-               9.26525905e-06,  -8.98656304e-04,   9.11970998e-04,
-              -2.90602485e-02,  -4.23124413e-05,  -2.46680922e+00,
-               1.18344308e-03,   1.91908261e-01,  -3.61928613e-01,
-              -2.69345178e+00,  -5.91708505e-04,   1.55306896e-09,
-               6.39983323e-05,  -5.56000393e-05,   3.72891879e-05,
-              -1.70122837e-04,  -1.99614266e-01,   1.74721495e-01,
-               1.38037415e+00,   4.92579356e-06,   2.98879185e-05,
-              -1.81560116e-04,   4.09910395e-02,   6.07800637e-02,
-              -2.00998100e-02] 
-      
-      for i,xx in enumerate(X):
-        for yy in X[i+1:]:
-          X_i.append(xx*yy)
-      
-      beta_f = Constant(bhat[0])
-      
-      for xx,bb in zip(X_i, bhat[1:]):
-        beta_f += Constant(bb)*xx
-      beta_f      = exp(beta_f) - Constant(100.0)
-      beta        = project(beta_f, Q)
-      beta_v      = beta.vector().array()
-      beta_v[beta_v < 0.0] = 0.0
-      model.assign_variable(beta, beta_v)
-      print_min_max(beta, 'beta0')
-      self.beta_f = beta_f
 
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -846,7 +745,6 @@ class VelocityBP(Physics):
     model.A       = A
     model.E       = E
     model.U       = U
-    self.w        = w
 
   def solve(self):
     """ 
@@ -867,22 +765,12 @@ class VelocityBP(Physics):
     print_min_max(model.v, 'v')
     
     # solve for vertical velocity :
-    s    = "::: solving BP vertical velocity :::"
+    s  = "::: solving BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    solve(self.aw == self.Lw, self.w, bcs = self.bc_w,
+    solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
           solver_parameters = {"linear_solver" : sm})
-    model.assign_variable(model.w, self.w)
     print_min_max(model.w, 'w')
-    
-    if config['velocity']['init_beta_from_stats']:
-      s    = "::: updating statistical beta :::"
-      print_text(s, self.color())
-      beta = project(self.beta_f, model.Q)
-      beta_v = beta.vector().array()
-      beta_v[beta_v < 0.0] = 0.0
-      model.assign_variable(model.beta, beta_v)
-      print_min_max(model.beta, 'beta')
     
     # solve for pressure :
     if config['velocity']['calc_pressure']:

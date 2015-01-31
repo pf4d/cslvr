@@ -184,6 +184,23 @@ class SteadySolver(Solver):
             File(outpath + 'T.pvd')   << model.T
             File(outpath + 'W.pvd')   << model.Mb
             File(outpath + 'Mb.pvd')  << model.W
+    
+      # re-compute the friction field :
+      if config['velocity']['init_beta_from_stats']:
+        s    = "::: updating statistical beta :::"
+        print_text(s, self.color())
+        beta = project(model.beta_f, model.Q)
+        beta_v = beta.vector().array()
+        beta_v[beta_v < 0.0] = 0.0
+        model.assign_variable(model.beta, beta_v)
+        print_min_max(model.beta, 'beta')
+        if config['log']:
+          s    = '::: saving stats %sbeta.pvd file :::' % outpath
+          print_text(s, self.color())
+          if config['log_history']:
+            self.beta_file << model.beta
+          else:
+            File(outpath + 'beta.pvd') << model.beta
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
@@ -283,23 +300,6 @@ class SteadySolver(Solver):
           File(outpath + "basal_2.pvd")   << basal_2
           File(outpath + "pressure.pvd")  << pressure
           File(outpath + "total.pvd")     << total
-    
-    # re-compute the friction field :
-    if config['velocity']['init_beta_from_stats']:
-      s    = "::: updating statistical beta :::"
-      print_text(s, self.color())
-      beta = project(model.beta_f, model.Q)
-      beta_v = beta.vector().array()
-      beta_v[beta_v < 0.0] = 0.0
-      model.assign_variable(model.beta, beta_v)
-      print_min_max(model.beta, 'beta')
-      if config['log']:
-        s    = '::: saving stats %sbeta.pvd file :::' % outpath
-        print_text(s, self.color())
-        if config['log_history']:
-          self.beta_file << model.beta
-        else:
-          File(outpath + 'beta.pvd') << model.beta
     
 
 

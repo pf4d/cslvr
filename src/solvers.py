@@ -198,9 +198,9 @@ class SteadySolver(Solver):
           s    = '::: saving stats %sbeta.pvd file :::' % outpath
           print_text(s, self.color())
           if config['log_history']:
-            self.beta_file << model.beta
+            self.beta_file << model.extrude(model.beta, [3,5], 2)
           else:
-            File(outpath + 'beta.pvd') << model.beta
+            File(outpath + 'beta.pvd') << model.extrude(model.beta, [3,5], 2)
 
       # Calculate L_infinity norm
       if config['coupled']['on']:

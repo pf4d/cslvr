@@ -92,8 +92,8 @@ class Model(object):
     self.flat_mesh  = Mesh(self.mesh)
     
     self.mesh.init(1,2)
-    self.num_facets = self.mesh.size_global(1)
-    self.num_cells  = self.mesh.size_global(2)
+    self.num_facets = self.mesh.size_global(2)
+    self.num_cells  = self.mesh.size_global(3)
     self.dof        = self.mesh.size_global(0)
    
     # generate periodic boundary conditions if required :
@@ -157,8 +157,8 @@ class Model(object):
     self.mesh       = mesh
     self.flat_mesh  = Mesh(mesh)
     self.mesh.init(1,2)
-    self.num_facets = self.mesh.size_global(1)
-    self.num_cells  = self.mesh.size_global(2)
+    self.num_facets = self.mesh.size_global(2)
+    self.num_cells  = self.mesh.size_global(3)
     self.dof        = self.mesh.size_global(0)
     self.Q_flat     = FunctionSpace(self.flat_mesh, "CG", 1)
     self.Q          = FunctionSpace(mesh,           "CG", 1)
@@ -460,17 +460,17 @@ class Model(object):
     submesh = SubMesh(bmesh, pb, 1)
     return submesh
       
-  def init_beta_SIA(self):
+  def init_beta_SIA(self, U_mag=None):
     r"""
-    Init beta from :math:`\tau_b = \tau_d`, the shallow ice approximation, 
-    using the observed surface velocity <U_ob> as approximate basal 
+    Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
+    using the observed surface velocity <U_mag> as approximate basal 
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
     \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
-    s = "::: initializing beta from U_ob :::"
+    s = "::: initializing beta from SIA :::"
     print_text(s, self.color)
     r        = 0.0
     Q        = self.Q
@@ -478,11 +478,14 @@ class Model(object):
     g        = self.g
     gradS    = self.gradS
     H        = self.S - self.B
-    u_ob_v   = self.u_ob.vector().array()
-    v_ob_v   = self.v_ob.vector().array()
-    U_mag_v  = np.sqrt(u_ob_v**2 + v_ob_v**2 + 1e-16)
+    if U_mag == None:
+      U_mag    = Function(Q)
+      u_v      = self.u_ob.vector().array()
+      v_v      = self.v_ob.vector().array()
+      U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
+    else:
+      U_mag_v = U_mag.vector().array()
     U_mag_v[U_mag_v < 0.5] = 0.5
-    U_mag    = Function(Q)
     self.assign_variable(U_mag, U_mag_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
@@ -554,51 +557,51 @@ class Model(object):
     x13  = absMb
     x14  = ln(sqrt(inner(U_v,U_v) + DOLFIN_EPS) + 1)
 
-    X    = [x0,x1,x2,x3,x4,x5,x10,x11]
-    #X    = [x0,x1,x2,x3,x4,x5,x10,x11,x12,x13,x14]
+    #X    = [x0,x1,x2,x3,x4,x5,x10,x11]
+    X    = [x0,x1,x2,x3,x4,x5,x10,x11,x12,x13,x14]
 
     for i,xx in enumerate(X):
       print_min_max(xx, 'x' + str(i))
 
-    ## antarctica dependent included :
-    #bhat = [-3.93728495e+01,   1.81338348e-03,   1.61581323e-01,
-    #        -3.95121988e+01,  -1.75721467e-04,   4.16637532e+01,
-    #         4.66544798e-04,  -2.73444006e+00,  -1.92848011e-01,
-    #         1.65122061e-01,   3.02294645e-01,   2.11948400e-01,
-    #        -8.69054908e-06,  -4.56845894e-05,   6.42972736e-08,
-    #         4.38644481e-04,  -6.75628647e-08,   1.77803620e-04,
-    #         3.87533437e-05,   1.73263144e-06,   4.60008734e-06,
-    #        -7.08079609e-05,   1.04215727e-01,  -5.85880620e-06,
-    #        -8.53529040e-02,   8.81023749e-06,  -2.73278139e-02,
-    #         2.79539490e-03,  -5.81088051e-04,  -1.41773851e-03,
-    #        -2.50101528e-03,   1.87089440e-04,  -2.51548776e+00,
-    #         1.47017518e-03,  -3.06533364e+00,  -3.52882440e-01,
-    #         6.01730826e-02,  -1.01619720e-01,   1.89035666e-01,
-    #        -7.71542575e-04,   7.69699517e-10,   7.03417523e-05,
-    #        -5.68891325e-05,   5.61122626e-06,  -2.53577917e-06,
-    #         6.09405255e-05,  -2.71849811e-04,   1.70727899e+00,
-    #         1.69171945e-01,  -7.38307759e-02,  -5.23143884e-03,
-    #        -1.65563468e-01,  -2.15920765e-04,   4.65834091e-05,
-    #        -9.81236389e-06,  -6.45447501e-06,  -1.35248450e-05,
-    #        -3.13812716e-02,   3.65226182e-02,   1.99641424e-02,
-    #         6.68210962e-02,  -2.56907104e-03,   5.12075444e-03,
-    #         4.02576642e-02,   2.80501545e-04,   1.47904749e-04,
-    #         3.20884773e-03]
+    # antarctica dependent included :
+    bhat = [-3.93728495e+01,   1.81338348e-03,   1.61581323e-01,
+            -3.95121988e+01,  -1.75721467e-04,   4.16637532e+01,
+             4.66544798e-04,  -2.73444006e+00,  -1.92848011e-01,
+             1.65122061e-01,   3.02294645e-01,   2.11948400e-01,
+            -8.69054908e-06,  -4.56845894e-05,   6.42972736e-08,
+             4.38644481e-04,  -6.75628647e-08,   1.77803620e-04,
+             3.87533437e-05,   1.73263144e-06,   4.60008734e-06,
+            -7.08079609e-05,   1.04215727e-01,  -5.85880620e-06,
+            -8.53529040e-02,   8.81023749e-06,  -2.73278139e-02,
+             2.79539490e-03,  -5.81088051e-04,  -1.41773851e-03,
+            -2.50101528e-03,   1.87089440e-04,  -2.51548776e+00,
+             1.47017518e-03,  -3.06533364e+00,  -3.52882440e-01,
+             6.01730826e-02,  -1.01619720e-01,   1.89035666e-01,
+            -7.71542575e-04,   7.69699517e-10,   7.03417523e-05,
+            -5.68891325e-05,   5.61122626e-06,  -2.53577917e-06,
+             6.09405255e-05,  -2.71849811e-04,   1.70727899e+00,
+             1.69171945e-01,  -7.38307759e-02,  -5.23143884e-03,
+            -1.65563468e-01,  -2.15920765e-04,   4.65834091e-05,
+            -9.81236389e-06,  -6.45447501e-06,  -1.35248450e-05,
+            -3.13812716e-02,   3.65226182e-02,   1.99641424e-02,
+             6.68210962e-02,  -2.56907104e-03,   5.12075444e-03,
+             4.02576642e-02,   2.80501545e-04,   1.47904749e-04,
+             3.20884773e-03]
 
-    # antarctica independent only :
-    bhat = [-3.81730613e-01,   1.44979590e-03,   2.30473800e-02,
-            -4.66557207e+01,  -2.70605024e-04,   2.96236959e+01,
-             1.35282874e-04,   4.98572401e+00,   5.76099557e-01,
-            -4.09000148e-06,  -7.66828817e-04,   4.53570633e-08,
-             3.86192314e-04,  -1.22965666e-07,   3.73291874e-04,
-            -7.59612262e-05,   1.96585780e-01,  -9.01208788e-07,
-            -1.17224924e-01,  -1.16892612e-07,  -2.12477085e-02,
-            -2.63217268e-03,   3.56343313e-04,  -1.68509204e+00,
-             2.52093755e-03,  -2.93492954e+00,  -3.44265519e-01,
-            -8.35448819e-05,   1.00058225e-07,  -2.51673071e-04,
-             4.08917599e-05,  -6.09966964e-04,   1.27385446e-01,
-             2.51091290e-01,   1.81664750e-05,  -1.77584371e-05,
-             7.87445598e-02]
+    ## antarctica independent only :
+    #bhat = [-3.81730613e-01,   1.44979590e-03,   2.30473800e-02,
+    #        -4.66557207e+01,  -2.70605024e-04,   2.96236959e+01,
+    #         1.35282874e-04,   4.98572401e+00,   5.76099557e-01,
+    #        -4.09000148e-06,  -7.66828817e-04,   4.53570633e-08,
+    #         3.86192314e-04,  -1.22965666e-07,   3.73291874e-04,
+    #        -7.59612262e-05,   1.96585780e-01,  -9.01208788e-07,
+    #        -1.17224924e-01,  -1.16892612e-07,  -2.12477085e-02,
+    #        -2.63217268e-03,   3.56343313e-04,  -1.68509204e+00,
+    #         2.52093755e-03,  -2.93492954e+00,  -3.44265519e-01,
+    #        -8.35448819e-05,   1.00058225e-07,  -2.51673071e-04,
+    #         4.08917599e-05,  -6.09966964e-04,   1.27385446e-01,
+    #         2.51091290e-01,   1.81664750e-05,  -1.77584371e-05,
+    #         7.87445598e-02]
    
     ## greenland dependent included :
     #bhat = [-9.39465489e+00,   2.19530652e-03,   4.28985887e-02,
@@ -653,11 +656,13 @@ class Model(object):
       self.beta_f += Constant(bb)*xx
     self.beta_f = exp(self.beta_f) - Constant(100.0)
     
-    beta                 = project(self.beta_f, Q)
-    beta_v               = beta.vector().array()
-    beta_v[beta_v < 0.0] = 0.0
-    self.assign_variable(self.beta, beta_v)
-    print_min_max(self.beta, 'beta0')
+    #beta                    = project(self.beta_f, Q)
+    #beta_v                  = beta.vector().array()
+    #beta_v[beta_v < 0.0]    = 0.0
+    #beta_v[beta_v > 2500.0] = 2500.0
+    #self.assign_variable(self.beta, beta_v)
+    #print_min_max(self.beta, 'beta0')
+    self.init_beta_SIA(Ubar)
      
   def init_b(self, b, U_ob, gradS):
     r"""

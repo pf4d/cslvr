@@ -191,7 +191,8 @@ class SteadySolver(Solver):
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)
         beta_v = beta.vector().array()
-        beta_v[beta_v < 0.0] = 0.0
+        beta_v[beta_v < 0.0]    = 0.0
+        beta_v[beta_v > 2500.0] = 2500.0
         model.assign_variable(model.beta, beta_v)
         print_min_max(model.beta, 'beta')
         if config['log']:

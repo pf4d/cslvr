@@ -562,7 +562,7 @@ def default_config():
              'coupled' : 
              { 
                'on'                  : False,
-               'inner_tol'           : 0.0,
+               'inner_tol'           : 1e-10,
                'max_iter'            : 0,
              },
              'velocity' : 
@@ -579,19 +579,10 @@ def default_config():
                'eta_gnd'             : None,
                'eta_shf'             : None,
                'use_U0'              : False,
-               'use_T0'              : False,
-               'use_beta0'           : False,
-               'use_b_shf0'          : False,
-               'T0'                  : None,
                'A0'                  : 1e-16,
                'u0'                  : None,
                'v0'                  : None,
                'w0'                  : None,
-               'beta0'               : 1e3,
-               'init_beta_from_U_ob' : False,
-               'init_beta_from_stats': False,
-               'init_b_from_U_ob'    : False,
-               'U_ob'                : None,
                'r'                   : 0.0,
                'E'                   : 1.0,
                'approximation'       : 'fo',
@@ -606,8 +597,6 @@ def default_config():
                'log'                 : True,
                'solve_method'        : 'mumps',
                'use_surface_climate' : False,
-               'T_surface'           : None,
-               'q_geo'               : None,
                'lateral_boundaries'  : None,
              },
              'free_surface' :

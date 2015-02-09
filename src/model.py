@@ -493,6 +493,8 @@ class Model(object):
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(self.beta, beta_0_v)
     print_min_max(self.beta, 'beta')
+    self.betaSIA = Function(Q)
+    self.assign_variable(self.betaSIA, self.beta)
 
   def init_beta_stats(self):
     """
@@ -662,6 +664,7 @@ class Model(object):
     #beta_v[beta_v > 2500.0] = 2500.0
     #self.assign_variable(self.beta, beta_v)
     #print_min_max(self.beta, 'beta0')
+    self.use_stat_beta = True
     self.init_beta_SIA(Ubar)
      
   def init_b(self, b, U_ob, gradS):

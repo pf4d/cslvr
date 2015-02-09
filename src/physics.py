@@ -195,17 +195,6 @@ class VelocityStokes(Physics):
 
     newton_params = config['velocity']['newton_params']
     
-    # initialize the temperature depending on input type :
-    if config['velocity']['use_T0']:
-      model.assign_variable(T, config['velocity']['T0'])
-
-    # initialize the bed friction coefficient :
-    if config['velocity']['use_beta0']:
-      model.assign_variable(beta, config['velocity']['beta0'])
-    if config['velocity']['init_beta_from_U_ob']:
-      U_ob = config['velocity']['U_ob']
-      model.init_beta(beta, U_ob, r, gradS)
-   
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
     
@@ -400,7 +389,7 @@ class VelocityStokes(Physics):
     model.assign_variable(model.v, v)
     model.assign_variable(model.w, w)
     model.assign_variable(model.P, P)
-    
+     
     print_min_max(model.u, 'u')
     print_min_max(model.v, 'v')
     print_min_max(model.w, 'w')
@@ -1326,17 +1315,6 @@ class EnthalpyDG(Physics):
              + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
     epsdot = 0.5 * term + eps_reg
     
-    # If we're not using the output of the surface climate model,
-    #  set the surface temperature to the constant or array that 
-    #  was passed in.
-    if not config['enthalpy']['use_surface_climate']:
-      T_surface = Function(DQ)
-      model.assign_variable(T_surface, config['enthalpy']['T_surface'])
-
-    # assign geothermal flux :
-    q_geo = Function(DQ)
-    model.assign_variable(q_geo, config['enthalpy']['q_geo'])
-
     # Define test and trial functions       
     psi = TestFunction(DQ)
     dH  = TrialFunction(DQ)

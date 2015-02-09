@@ -62,7 +62,7 @@ class SteadySolver(Solver):
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
         self.P_file = File(outpath + 'P.pvd')
-      if config['velocity']['init_beta_from_stats']:
+      if model.use_stat_beta == True:
         self.beta_file = File(outpath + 'beta.pvd')
     
     # enthalpy model :
@@ -130,10 +130,6 @@ class SteadySolver(Solver):
     inner_tol   = config['coupled']['inner_tol']
     max_iter    = config['coupled']['max_iter']
 
-    # Initialize a temperature field for visc. calc.
-    if config['velocity']['use_T0']:
-      model.assign_variable(model.T, config['velocity']['T0'])
-    
     if not config['coupled']['on']: max_iter = 1
     
     # Perform a Picard iteration until the L_\infty norm of the velocity 
@@ -142,8 +138,7 @@ class SteadySolver(Solver):
      
       # reset the velocity for Newton solve to converge : 
       if counter > 0:  
-        model.assign_variable(model.u, DOLFIN_EPS)
-        model.assign_variable(model.v, DOLFIN_EPS)
+        model.assign_variable(model.U, DOLFIN_EPS)
         model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
@@ -186,13 +181,15 @@ class SteadySolver(Solver):
             File(outpath + 'Mb.pvd')  << model.W
     
       # re-compute the friction field :
-      if config['velocity']['init_beta_from_stats']:
+      if model.use_stat_beta == True:
         s    = "::: updating statistical beta :::"
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)
         beta_v = beta.vector().array()
-        beta_v[beta_v < 0.0]    = 0.0
-        beta_v[beta_v > 2500.0] = 2500.0
+        #betaSIA_v = model.betaSIA.vector().array()
+        #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+        #beta_v[beta_v < 0.0]    = 0.0
+        #beta_v[beta_v > 2500.0] = 2500.0
         model.assign_variable(model.beta, beta_v)
         print_min_max(model.beta, 'beta')
         if config['log']:
@@ -205,21 +202,24 @@ class SteadySolver(Solver):
 
       # Calculate L_infinity norm
       if config['coupled']['on']:
-        u_new       = model.u.vector().array()
-        diff        = (u_prev - u_new)
-        inner_error = diff.max()
-        u_prev      = u_new
-      
-      counter += 1
-      
-      if self.model.MPI_rank==0:
-        s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
-        s2    = 'r = %.3e ' % inner_error
-        s3    = '(tol %.3e)' % inner_tol
-        text1 = colored(s1, 'blue')
-        text2 = colored(s2, 'red', attrs=['bold'])
-        text3 = colored(s3, 'blue')
-        print text1 + text2 + text3
+        u_new         = model.u.vector().array()
+        diff          = (u_prev - u_new)
+        inner_error_n = MPI.max(mpi_comm_world(), diff.max())
+        u_prev        = u_new
+        counter      += 1
+        if self.model.MPI_rank==0:
+          s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
+          s2    = 'r0 = %.3e'  % inner_error
+          s3    = ', '
+          s4    = 'r = %.3e ' % inner_error_n
+          s5    = '(tol %.3e)' % inner_tol
+          text1 = colored(s1, 'blue')
+          text2 = colored(s2, 'red', attrs=['bold'])
+          text3 = colored(s3, 'blue')
+          text4 = colored(s4, 'red', attrs=['bold'])
+          text5 = colored(s5, 'blue')
+          print text1 + text2 + text3 + text4 + text5
+        inner_error = inner_error_n
 
     # Solve age equation
     if config['age']['on']:

@@ -15,12 +15,111 @@ class Model(object):
   types.
   """
 
-  def __init__(self):
+  def __init__(self, config):
     """
     Create and instance of the model.
     """
+    self.config   = config
     self.MPI_rank = MPI.rank(mpi_comm_world())
     self.color    = '148'#'purple_1a'
+
+  def generate_pbc(self):
+    """
+    return a SubDomain of periodic lateral boundaries.
+    """
+    s = "    - using periodic boundaries -"
+    print_text(s, self.color)
+
+    xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
+    xmax = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
+    ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
+    ymax = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+    
+    class PeriodicBoundary(SubDomain):
+      
+      def inside(self, x, on_boundary):
+        """
+        Return True if on left or bottom boundary AND NOT on one 
+        of the two corners (0, 1) and (1, 0).
+        """
+        return bool((near(x[0], xmin) or near(x[1], ymin)) and \
+                    (not ((near(x[0], xmin) and near(x[1], ymax)) \
+                     or (near(x[0], xmax) and near(x[1], ymin)))) \
+                     and on_boundary)
+
+      def map(self, x, y):
+        """
+        Remap the values on the top and right sides to the bottom and left
+        sides.
+        """
+        if near(x[0], xmax) and near(x[1], ymax):
+          y[0] = x[0] - xmax
+          y[1] = x[1] - ymax
+          y[2] = x[2]
+        elif near(x[0], xmax):
+          y[0] = x[0] - xmax
+          y[1] = x[1]
+          y[2] = x[2]
+        elif near(x[1], ymax):
+          y[0] = x[0]
+          y[1] = x[1] - ymax
+          y[2] = x[2]
+        else:
+          y[0] = x[0]
+          y[1] = x[1]
+          y[2] = x[2]
+
+    self.pBC = PeriodicBoundary()
+
+  def set_mesh(self, mesh):
+    """
+    Sets the mesh.
+    
+    :param mesh : Dolfin mesh to be written
+    """
+    s = "::: setting mesh :::"
+    print_text(s, self.color)
+    self.mesh       = mesh
+    self.flat_mesh  = Mesh(mesh)
+    self.mesh.init(1,2)
+    self.num_facets = self.mesh.size_global(2)
+    self.num_cells  = self.mesh.size_global(3)
+    self.dof        = self.mesh.size_global(0)
+    s = "    - mesh set, %i cells, %i facets, %i vertices - "
+    print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
+    self.generate_function_spaces()
+
+  def generate_function_spaces(self):
+    """
+    """
+    s = "::: generating function spaces :::"
+    print_text(s, self.color)
+    if self.config['periodic_boundary_conditions']:
+      self.generate_pbc()
+    else:
+      self.pBC = None
+    self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
+                                constrained_domain=self.pBC)
+    self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
+                                constrained_domain=self.pBC)
+    self.Q2     = MixedFunctionSpace([self.Q]*2)
+    self.Q3     = MixedFunctionSpace([self.Q]*3)
+    self.Q4     = MixedFunctionSpace([self.Q]*4)
+    self.V              = VectorFunctionSpace(self.mesh, "CG", 1)
+    self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
+    s = "    - function spaces created - "
+    print_text(s, self.color)
+    
+  def set_surface_and_bed(self, S, B):
+    """
+    Set the Functions for the surface <S> and bed <B>.
+    """
+    s = "::: setting the surface and bed functions :::"
+    print_text(s, self.color)
+    self.S = S
+    self.B = B
+    print_min_max(S, 'S')
+    print_min_max(B, 'B')
   
   def set_geometry(self, surface, bed, deform=True):
     """
@@ -40,10 +139,8 @@ class Model(object):
     if deform:
       self.deform_mesh_to_geometry()
     
-    Q = FunctionSpace(self.mesh, 'CG', 1)
-    
-    self.S = interpolate(self.S_ex, Q)
-    self.B = interpolate(self.B_ex, Q)
+    self.S = interpolate(self.S_ex, self.Q_non_periodic)
+    self.B = interpolate(self.B_ex, self.Q_non_periodic)
     print_min_max(self.S, 'S')
     print_min_max(self.B, 'B')
 
@@ -57,8 +154,8 @@ class Model(object):
     # transform z :
     # thickness = surface - base, z = thickness + base
     # Get the height of the mesh, assumes that the base is at z=0
-    max_height = self.mesh.coordinates()[:,2].max()
-    min_height = self.mesh.coordinates()[:,2].min()
+    max_height  = self.mesh.coordinates()[:,2].max()
+    min_height  = self.mesh.coordinates()[:,2].min()
     mesh_height = max_height - min_height
     
     s = "    - iterating through %i vertices - " % self.dof
@@ -68,117 +165,6 @@ class Model(object):
       x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
                                       - self.B_ex(x[0],x[1],x[2]) )
       x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
-
-  def generate_uniform_mesh(self, nx, ny, nz, xmin, xmax, ymin, ymax, 
-                            generate_pbcs=False):
-    """
-    Generates a uniformly spaced 3D Dolfin mesh with optional periodic boundary 
-    conditions
-    
-    :param nx                 : Number of x cells
-    :param ny                 : Number of y cells
-    :param nz                 : Number of z cells
-    :param xmin               : Minimum x value of the mesh
-    :param xmax               : Maximum x value of the mesh
-    :param ymin               : Minimum y value of the mesh
-    :param ymax               : Maximum y value of the mesh
-    :param bool generate_pbcs : Optional argument to determine whether
-                                to create periodic boundary conditions
-    """
-    s = "::: generating rectangle mesh :::"
-    print_text(s, self.color)
-
-    self.mesh       = BoxMesh(xmin, ymin, 0, xmax, ymax, 1, nx, ny, nz)
-    self.flat_mesh  = Mesh(self.mesh)
-    
-    self.mesh.init(1,2)
-    self.num_facets = self.mesh.size_global(2)
-    self.num_cells  = self.mesh.size_global(3)
-    self.dof        = self.mesh.size_global(0)
-   
-    # generate periodic boundary conditions if required :
-    if generate_pbcs:
-      class PeriodicBoundary(SubDomain):
-        
-        def inside(self, x, on_boundary):
-          """
-          Return True if on left or bottom boundary AND NOT on one 
-          of the two corners (0, 1) and (1, 0).
-          """
-          return bool((near(x[0], xmin) or near(x[1], ymin)) and \
-                      (not ((near(x[0], xmin) and near(x[1], ymax)) \
-                       or (near(x[0], xmax) and near(x[1], ymin)))) \
-                       and on_boundary)
-
-        def map(self, x, y):
-          """
-          Remap the values on the top and right sides to the bottom and left
-          sides.
-          """
-          if near(x[0], xmax) and near(x[1], ymax):
-            y[0] = x[0] - xmax
-            y[1] = x[1] - ymax
-            y[2] = x[2]
-          elif near(x[0], xmax):
-            y[0] = x[0] - xmax
-            y[1] = x[1]
-            y[2] = x[2]
-          elif near(x[1], ymax):
-            y[0] = x[0]
-            y[1] = x[1] - ymax
-            y[2] = x[2]
-          else:
-            y[0] = x[0]
-            y[1] = x[1]
-            y[2] = x[2]
-
-      pBC      = PeriodicBoundary()
-      self.Q   = FunctionSpace(self.mesh, "CG", 1, constrained_domain=pBC)
-      self.Q2  = MixedFunctionSpace([self.Q]*2)
-      self.Q4  = MixedFunctionSpace([self.Q]*4)
-      
-      self.Q_flat         = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                          constrained_domain=pBC)
-      self.Q_flat_non_per = FunctionSpace(self.flat_mesh, "CG", 1)
-    
-    else :
-      self.Q = FunctionSpace(self.mesh, "CG", 1)
-    s = "    - mesh generated, %i cells, %i facets, %i vertices - "
-    print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
-   
-  def set_mesh(self, mesh):
-    """
-    Sets the mesh.
-    
-    :param mesh : Dolfin mesh to be written
-    """
-    s = "::: setting mesh and generating function spaces :::"
-    print_text(s, self.color)
-    self.mesh       = mesh
-    self.flat_mesh  = Mesh(mesh)
-    self.mesh.init(1,2)
-    self.num_facets = self.mesh.size_global(2)
-    self.num_cells  = self.mesh.size_global(3)
-    self.dof        = self.mesh.size_global(0)
-    self.Q_flat     = FunctionSpace(self.flat_mesh, "CG", 1)
-    self.Q          = FunctionSpace(mesh,           "CG", 1)
-    self.DQ         = FunctionSpace(self.mesh,      "DG", 1)
-    self.Q2         = MixedFunctionSpace([self.Q]*2)
-    self.Q3         = MixedFunctionSpace([self.Q]*3)
-    self.Q4         = MixedFunctionSpace([self.Q]*4)
-    s = "    - mesh set, %i cells, %i facets, %i vertices - "
-    print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
-    
-  def set_surface_and_bed(self, S, B):
-    """
-    Set the Functions for the surface <S> and bed <B>.
-    """
-    s = "::: setting the surface and bed functions :::"
-    print_text(s, self.color)
-    self.S = S
-    self.B = B
-    print_min_max(S, 'S')
-    print_min_max(B, 'B')
 
   def set_subdomains(self, ff, cf, ff_acc):
     """
@@ -565,30 +551,55 @@ class Model(object):
     for i,xx in enumerate(X):
       print_min_max(xx, 'x' + str(i))
 
-    # antarctica dependent included :
-    bhat = [-3.93728495e+01,   1.81338348e-03,   1.61581323e-01,
-            -3.95121988e+01,  -1.75721467e-04,   4.16637532e+01,
-             4.66544798e-04,  -2.73444006e+00,  -1.92848011e-01,
-             1.65122061e-01,   3.02294645e-01,   2.11948400e-01,
-            -8.69054908e-06,  -4.56845894e-05,   6.42972736e-08,
-             4.38644481e-04,  -6.75628647e-08,   1.77803620e-04,
-             3.87533437e-05,   1.73263144e-06,   4.60008734e-06,
-            -7.08079609e-05,   1.04215727e-01,  -5.85880620e-06,
-            -8.53529040e-02,   8.81023749e-06,  -2.73278139e-02,
-             2.79539490e-03,  -5.81088051e-04,  -1.41773851e-03,
-            -2.50101528e-03,   1.87089440e-04,  -2.51548776e+00,
-             1.47017518e-03,  -3.06533364e+00,  -3.52882440e-01,
-             6.01730826e-02,  -1.01619720e-01,   1.89035666e-01,
-            -7.71542575e-04,   7.69699517e-10,   7.03417523e-05,
-            -5.68891325e-05,   5.61122626e-06,  -2.53577917e-06,
-             6.09405255e-05,  -2.71849811e-04,   1.70727899e+00,
-             1.69171945e-01,  -7.38307759e-02,  -5.23143884e-03,
-            -1.65563468e-01,  -2.15920765e-04,   4.65834091e-05,
-            -9.81236389e-06,  -6.45447501e-06,  -1.35248450e-05,
-            -3.13812716e-02,   3.65226182e-02,   1.99641424e-02,
-             6.68210962e-02,  -2.56907104e-03,   5.12075444e-03,
-             4.02576642e-02,   2.80501545e-04,   1.47904749e-04,
-             3.20884773e-03]
+    # experimental antarctica :
+    bhat = [-1.79050733e+02,   1.21225357e-02,   7.00242275e-01,
+            -1.79944157e+02,  -3.92007119e-03,   2.41824847e+02,
+             2.68360346e-03,   1.08996135e+01,  -3.30190367e+00,
+             6.99415928e-01,   1.56903065e+00,  -8.76360367e+00,
+            -5.89194455e-05,  -6.83779816e-03,   2.87684715e-07,
+            -1.52889892e-04,  -5.08241294e-07,  -3.51334303e-04,
+             6.35242700e-05,   1.12753024e-05,   3.17590324e-05,
+             2.44610103e-04,   4.13158937e-01,  -1.60928114e-05,
+            -4.47594232e-01,   3.68525379e-05,  -3.13299967e-01,
+             1.81440872e-02,  -2.55267424e-03,  -4.30367797e-03,
+             2.43652633e-02,   6.78009294e-03,  -1.19606688e+01,
+             1.18463541e-02,  -1.51293227e+01,  -2.70661398e+00,
+             3.38092068e-01,  -6.38959136e-01,   2.04002460e+00,
+            -1.98509132e-03,   1.70764830e-07,   1.42846441e-03,
+            -1.98426159e-04,   2.74015031e-05,  -7.76148708e-06,
+            -1.20679117e-04,  -1.88107778e-03,   9.57136085e+00,
+             2.12328719e+00,  -4.88099394e-01,  -1.93124549e-01,
+            -6.62792869e-01,  -1.52428993e-03,   4.51663540e-04,
+            -4.39776697e-05,  -5.94617368e-06,  -1.66066895e-04,
+            -4.93024203e-01,   2.72992966e-01,  -5.17802786e-02,
+            -2.03153825e-01,  -6.92688954e-03,   3.72880798e-02,
+             5.69350346e-02,  -2.38251991e-03,   3.98819107e-03,
+             9.14996175e-02]
+
+    ## antarctica dependent included :
+    #bhat = [-3.93728495e+01,   1.81338348e-03,   1.61581323e-01,
+    #        -3.95121988e+01,  -1.75721467e-04,   4.16637532e+01,
+    #         4.66544798e-04,  -2.73444006e+00,  -1.92848011e-01,
+    #         1.65122061e-01,   3.02294645e-01,   2.11948400e-01,
+    #        -8.69054908e-06,  -4.56845894e-05,   6.42972736e-08,
+    #         4.38644481e-04,  -6.75628647e-08,   1.77803620e-04,
+    #         3.87533437e-05,   1.73263144e-06,   4.60008734e-06,
+    #        -7.08079609e-05,   1.04215727e-01,  -5.85880620e-06,
+    #        -8.53529040e-02,   8.81023749e-06,  -2.73278139e-02,
+    #         2.79539490e-03,  -5.81088051e-04,  -1.41773851e-03,
+    #        -2.50101528e-03,   1.87089440e-04,  -2.51548776e+00,
+    #         1.47017518e-03,  -3.06533364e+00,  -3.52882440e-01,
+    #         6.01730826e-02,  -1.01619720e-01,   1.89035666e-01,
+    #        -7.71542575e-04,   7.69699517e-10,   7.03417523e-05,
+    #        -5.68891325e-05,   5.61122626e-06,  -2.53577917e-06,
+    #         6.09405255e-05,  -2.71849811e-04,   1.70727899e+00,
+    #         1.69171945e-01,  -7.38307759e-02,  -5.23143884e-03,
+    #        -1.65563468e-01,  -2.15920765e-04,   4.65834091e-05,
+    #        -9.81236389e-06,  -6.45447501e-06,  -1.35248450e-05,
+    #        -3.13812716e-02,   3.65226182e-02,   1.99641424e-02,
+    #         6.68210962e-02,  -2.56907104e-03,   5.12075444e-03,
+    #         4.02576642e-02,   2.80501545e-04,   1.47904749e-04,
+    #         3.20884773e-03]
 
     ## antarctica independent only :
     #bhat = [-3.81730613e-01,   1.44979590e-03,   2.30473800e-02,
@@ -656,16 +667,15 @@ class Model(object):
     
     for xx,bb in zip(X_i, bhat[1:]):
       self.beta_f += Constant(bb)*xx
-    self.beta_f = exp(self.beta_f) - Constant(100.0)
+    #self.beta_f = exp(self.beta_f) - Constant(100.0)
+    self.beta_f = exp(self.beta_f) - Constant(1.0)
     
-    #beta                    = project(self.beta_f, Q)
-    #beta_v                  = beta.vector().array()
-    #beta_v[beta_v < 0.0]    = 0.0
-    #beta_v[beta_v > 2500.0] = 2500.0
-    #self.assign_variable(self.beta, beta_v)
-    #print_min_max(self.beta, 'beta0')
-    self.use_stat_beta = True
-    self.init_beta_SIA(Ubar)
+    beta                    = project(self.beta_f, Q)
+    beta_v                  = beta.vector().array()
+    beta_v[beta_v < 0.0]    = 0.0
+    self.assign_variable(self.beta, np.sqrt(beta_v))
+    print_min_max(self.beta, 'beta0')
+    #self.init_beta_SIA(Ubar)
      
   def init_b(self, b, U_ob, gradS):
     r"""
@@ -1135,8 +1145,12 @@ class Model(object):
       u.vector().apply('insert')
 
     elif isinstance(var, Function):
-      u.vector().set_local(var.vector().array())
-      u.vector().apply('insert')
+      if self.config['periodic_boundary_conditions']:
+        u.interpolate(var)
+      else:
+        u.vector().set_local(var.vector().array())
+        u.vector().apply('insert')
+
     
     elif isinstance(var, Indexed):
       u.vector().set_local(project(var, self.Q).vector().array())
@@ -1173,9 +1187,6 @@ class Model(object):
     
     self.set_parameters(pc.IceParameters())
     self.params.globalize_parameters(self) # make all the variables available 
-    
-    # P1 vector function space :
-    self.V             = VectorFunctionSpace(self.mesh, "CG", 1)
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)

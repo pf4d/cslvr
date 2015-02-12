@@ -537,9 +537,9 @@ def default_nonlin_solver_params():
   """
    
   stokes_params = NonlinearVariationalSolver.default_parameters()
-  stokes_params['newton_solver']['maximum_iterations']      = 100
+  stokes_params['newton_solver']['maximum_iterations']      = 25
   stokes_params['newton_solver']['error_on_nonconvergence'] = True
-  stokes_params['newton_solver']['relaxation_parameter']    = 0.8
+  stokes_params['newton_solver']['relaxation_parameter']    = 0.7
   stokes_params['newton_solver']['method']                  = 'lu'
   stokes_params['newton_solver']['relative_tolerance']      = 1e-3
   stokes_params['newton_solver']['report']                  = True
@@ -579,10 +579,7 @@ def default_config():
                'eta_gnd'             : None,
                'eta_shf'             : None,
                'use_U0'              : False,
-               'A0'                  : 1e-16,
-               'u0'                  : None,
-               'v0'                  : None,
-               'w0'                  : None,
+               'A'                   : 1e-16,
                'r'                   : 0.0,
                'E'                   : 1.0,
                'approximation'       : 'fo',
@@ -590,6 +587,7 @@ def default_config():
                'u_lat_boundary'      : None,
                'v_lat_boundary'      : None,
                'calc_pressure'       : True,
+               'use_stat_beta'       : False,
              },
              'enthalpy' : 
              { 
@@ -651,7 +649,9 @@ def default_config():
                'vert_integrate'      : False,
                'viscosity_mode'      : 'isothermal',
                'A'                   : 1e-16,
+               'eta'                 : None,
                'T'                   : None,
+               'W'                   : None,
                'E'                   : None,
              }}
   return config

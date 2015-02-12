@@ -62,7 +62,7 @@ class SteadySolver(Solver):
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
         self.P_file = File(outpath + 'P.pvd')
-      if model.use_stat_beta == True:
+      if config['velocity']['use_stat_beta']:
         self.beta_file = File(outpath + 'beta.pvd')
     
     # enthalpy model :
@@ -181,16 +181,17 @@ class SteadySolver(Solver):
             File(outpath + 'Mb.pvd')  << model.W
     
       # re-compute the friction field :
-      if model.use_stat_beta == True:
+      if config['velocity']['use_stat_beta']:
         s    = "::: updating statistical beta :::"
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)
+        print_min_max(beta, 'beta^2')
         beta_v = beta.vector().array()
         #betaSIA_v = model.betaSIA.vector().array()
         #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        #beta_v[beta_v < 0.0]    = 0.0
+        beta_v[beta_v < 0.0]    = 0.0
         #beta_v[beta_v > 2500.0] = 2500.0
-        model.assign_variable(model.beta, beta_v)
+        model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath
@@ -200,13 +201,13 @@ class SteadySolver(Solver):
           else:
             File(outpath + 'beta.pvd') << model.extrude(model.beta, [3,5], 2)
 
+      counter += 1
       # Calculate L_infinity norm
       if config['coupled']['on']:
         u_new         = model.u.vector().array()
         diff          = (u_prev - u_new)
         inner_error_n = MPI.max(mpi_comm_world(), diff.max())
         u_prev        = u_new
-        counter      += 1
         if self.model.MPI_rank==0:
           s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
           s2    = 'r0 = %.3e'  % inner_error

@@ -31,9 +31,9 @@ class Model(object):
     print_text(s, self.color)
 
     xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
-    xmax = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
+    xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
     ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
-    ymax = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+    ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
     
     class PeriodicBoundary(SubDomain):
       
@@ -180,12 +180,21 @@ class Model(object):
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
 
-  def calculate_boundaries(self, mask, adot=None):
+  def calculate_boundaries(self, mask=None, adot=None):
     """
     Determines the boundaries of the current model mesh
     """
-    self.mask    = mask
-    self.adot_ex = adot
+    # default to all grounded ice :
+    if mask == None:
+      self.mask = Expression('0.0', element=self.Q.ufl_element())
+    else:
+      self.mask = mask
+    
+    # default to all positive accumulation :
+    if adot == None:
+      self.adot_ex = Expression('1.0', element=self.Q.ufl_element())
+    else:
+      self.adot_ex = adot
     
     s = "::: calculating boundaries :::"
     print_text(s, self.color)
@@ -200,7 +209,7 @@ class Model(object):
     shf_dofs     = []
     gnd_dofs     = []
     
-    tol = 1e-3
+    tol = 1e-6
     
     # iterate through the facets and mark each if on a boundary :
     #
@@ -221,12 +230,11 @@ class Model(object):
       y_m     = f.midpoint().y()
       z_m     = f.midpoint().z()
       mask_xy = self.mask(x_m, y_m, z_m)
-      if self.adot_ex != None:
-        adot_xy = self.adot_ex(x_m, y_m, z_m)
-        if n.z() >= tol and f.exterior() and adot_xy > 0:
-          self.ff_acc[f] = 1
-    
+      adot_xy = self.adot_ex(x_m, y_m, z_m)
+      
       if   n.z() >=  tol and f.exterior():
+        if adot_xy > 0:
+          self.ff_acc[f] = 1
         if mask_xy > 0:
           self.ff[f] = 6
         else:
@@ -1124,9 +1132,6 @@ class Model(object):
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
     """
-    if isinstance(u, Indexed):
-      u = project(u, self.Q)
-    
     if   isinstance(var, pc.PhysicalConstant):
       u.vector()[:] = var.real
 
@@ -1137,24 +1142,9 @@ class Model(object):
       u.vector().set_local(var)
       u.vector().apply('insert')
     
-    elif isinstance(var, Expression) or isinstance(var, Constant):
+    elif isinstance(var, Expression) or isinstance(var, Constant) \
+         or isinstance(var, GenericVector) or isinstance(var, Function):
       u.interpolate(var)
-
-    elif isinstance(var, GenericVector):
-      u.vector().set_local(var.array())
-      u.vector().apply('insert')
-
-    elif isinstance(var, Function):
-      if self.config['periodic_boundary_conditions']:
-        u.interpolate(var)
-      else:
-        u.vector().set_local(var.vector().array())
-        u.vector().apply('insert')
-
-    
-    elif isinstance(var, Indexed):
-      u.vector().set_local(project(var, self.Q).vector().array())
-      u.vector().apply('insert')
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1162,7 +1152,7 @@ class Model(object):
     else:
       s =  "*************************************************************\n" + \
            "assign_variable() function requires a Function, array, float,\n" + \
-           " int, \nVector, Expression, Indexed, or string path to .xml, \n" + \
+           " int, \nVector, Expression, or string path to .xml, \n" + \
            "not \n%s\n" + \
            "*************************************************************"
       print_text(s % type(var) , 'red')

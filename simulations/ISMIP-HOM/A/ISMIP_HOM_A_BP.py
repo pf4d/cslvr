@@ -1,7 +1,7 @@
 from varglas.model   import Model
 from varglas.solvers import SteadySolver
 from varglas.helper  import default_nonlin_solver_params, default_config
-from fenics          import File, Expression, pi, BoxMesh
+from fenics          import File, Expression, pi, BoxMesh, sqrt
 
 alpha = 0.5 * pi / 180 
 L     = 40000
@@ -17,7 +17,7 @@ config['velocity']['newton_params']    = nonlin_solver_params
 config['velocity']['r']                = 0
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 20, 20, 10)
+mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
 
 model = Model(config)
 model.set_mesh(mesh)
@@ -27,14 +27,12 @@ surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
 bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
                      + ' sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
                      alpha=alpha, L=L, element=model.Q.ufl_element())
-mask    = Expression('0.0', element=model.Q.ufl_element())
-beta    = Expression('sqrt(1000)', element=model.Q.ufl_element())
 
-model.calculate_boundaries(mask)
+model.calculate_boundaries()
 model.set_geometry(surface, bed, deform=True)
 model.initialize_variables()
 
-model.init_beta(beta)
+model.init_beta(sqrt(1000))
 
 F = SteadySolver(model, config)
 F.solve()

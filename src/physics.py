@@ -760,7 +760,7 @@ class VelocityBP(Physics):
     solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
           solver_parameters = {"linear_solver" : sm})
     print_min_max(model.w, 'w')
-    
+          
     # solve for pressure :
     if config['velocity']['calc_pressure']:
       s    = "::: solving BP pressure :::"

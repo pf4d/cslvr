@@ -8,10 +8,13 @@ Utilities file:
 
 """
 import subprocess
+import inspect
+import os
+import Image
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
-                              ndarray, e, nan
+                              ndarray, e, nan, sqrt
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters
@@ -524,6 +527,110 @@ def print_text(text, color='white', atrb=0):
     text = ('%s' + text + '%s') % (fg(color), attr(atrb))
     print text
 
+class GetBasin(object):
+    """This class contains functions to return a contour corresponding to the
+    perimeter of various basins in Antarctica and Greenland. The libraries of
+    basins are drawn from ICESat data, and posted here:
 
+    http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
 
+    INPUTS:
+                di = an instance of a DataInput obect (see above) needed for
+                projection function
 
+                where = 'Greenland' if contour is to be from Greenland, False for Antarctica
+
+    TODO: Now working to extend the domain beyond the present day ice margin for
+    the purpose of increasing the stability of dynamic runs. Additionally, there
+    appear to be some stability issues when running the MCB algorithm, but these
+    are not consistent; some domains work, others do not. The hope is that
+    extension of the domain will help here too.
+
+    """
+    def __init__(self,di,where = 'Greenland',edge_resolution = 1000.):
+        """
+            INPUTS:
+                di = data input object
+                where = Greenland or Antarctica
+                edge_resolution = meters between points that are pulled from the
+                                  database of domain edges.
+        """
+        self.di = di
+        self.where = where
+        self.edge_resolution = edge_resolution
+
+        # Get path of this file, which should be in the src directory
+        filename = inspect.getframeinfo(inspect.currentframe()).filename
+        home     = os.path.dirname(os.path.abspath(filename))
+
+        if where == "Greenland":
+            path = home+"/data/greenland/basins/"
+            self.datafile = path+"GrnDrainageSystems_Ekholm.txt"
+            self.imagefile =path+"Grn_Drainage_Systems.png" 
+        elif where == "Antarctica":
+            path = home+"/data/antarctica/basins/"
+            self.datafile = path+"Ant_Grounded_DrainageSystem_Polygons.txt"
+            self.imagefile =path+"Ant_ICESatDSMaps_Fig_1_sm.jpg" 
+        else:
+            print "Can not find data corresponding to location "+where+"."
+
+        self.show_and_get_basin()
+        self.retrive_basin_latlong()
+        self.convert_to_projection()
+
+    def show_and_get_basin(self):
+        print self.imagefile
+        image = Image.open(self.imagefile)
+        image.show()
+        self.basin = raw_input("Input the numerical code of the basin.\n")
+
+    def retrive_basin_latlong(self):
+        self.llcoords = []
+        if self.where == "Antarctica":
+            id  = 2
+            lat = 0
+            lon = 1
+        else:
+            id  = 0
+            lat = 1
+            lon = 2
+
+        f = open(self.datafile)
+        for line in f:
+            sl = line.split()
+            if sl[id] == self.basin:
+                self.llcoords.append([sl[lon],sl[lat]])
+        self.llcoords = array(self.llcoords)
+
+    def convert_to_projection(self):
+        self.xycoords = []
+        self.edge     = []
+        p = self.llcoords[0,:] # previous point
+        self.xycoords.append(self.di.get_xy(p[0],p[1]))
+        p_p = self.xycoords[-1]
+        distance = 0
+
+        for p in self.llcoords:
+            p_n = self.di.get_xy(p[0],p[1]) # Current point xy
+            delta_X = sqrt((p_n[0] - p_p[0])**2 + (p_n[1] - p_p[1])**2) 
+            distance += delta_X
+
+            if distance > self.edge_resolution:
+                if delta_X > 500.: # Simple observation that edge points are further apart
+                    self.edge.append(True)
+                else:
+                    self.edge.append(False)
+                self.xycoords.append(p_n)
+                distance = 0.
+                p_p = p_n
+            else:
+                p_p = p_n
+
+        self.xycoords = array(self.xycoords)
+        self.edge = array(self.edge)
+
+    def get_xy_contour(self):
+        return self.xycoords
+
+    def get_edge(self):
+        return self.edge

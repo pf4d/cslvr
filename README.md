@@ -24,9 +24,9 @@ also ```Gmsh_dynamic``` from
 
 http://geuz.org/gmsh/
 
-is required for the use of the provided mesh generation facilities located in the ```utilities.py``` file.
+is required for the use of the provided mesh generation facilities located in the ```utilities.py``` file. It is, simply, the gmsh bindings to Python.
 
-To install the program in the ```usr``` directory and download program data,
+To install the program in the your home directory and download program data,
 
 ```bash
 python setup.py install --user

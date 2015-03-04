@@ -2,20 +2,18 @@
 Utilities file:
 
   This contains classes that are used by UM-FEISM to aid in the loading
-  of data and preparing data for use in DOLFIN based simulation. 
-  Specifically the data are projected onto the mesh with appropriate 
+  of data and preparing data for use in DOLFIN based simulation.
+  Specifically the data are projected onto the mesh with appropriate
   basis functions.
 
 """
 import subprocess
-from gmshpy            import GModel, GmshSetOption
+from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, show, \
-                              size, hstack, vstack, argmin, ndarray, zeros, \
-                              shape
-from fenics            import Function, vertices, Mesh, MeshEditor, \
-                              GenericVector
-from termcolor         import colored, cprint
+                              size, hstack, vstack, argmin, zeros, shape
+from fenics            import Mesh, MeshEditor, Point, File
+#from termcolor         import colored, cprint
 from pyproj            import transform
 from io                import print_text, print_min_max
 
@@ -23,10 +21,10 @@ from io                import print_text, print_min_max
 class MeshGenerator(object):
   """
   generate a mesh.
-  """ 
+  """
   def __init__(self, dd, fn, direc):
     """
-    Generate a mesh with DataInput object <dd>, output filename <fn>, and 
+    Generate a mesh with DataInput object <dd>, output filename <fn>, and
     output directory <direc>.
     """
     self.color = 'grey_46'
@@ -38,12 +36,12 @@ class MeshGenerator(object):
     self.x, self.y  = meshgrid(dd.x, dd.y)
     self.f          = open(direc + fn + '.geo', 'w')
     self.fieldList  = []  # list of field indexes created.
-  
-  def create_contour(self, var, zero_cntr, skip_pts):  
+
+  def create_contour(self, var, zero_cntr, skip_pts):
     """
-    Create a contour of the data field with index <var> of <dd> provided at 
+    Create a contour of the data field with index <var> of <dd> provided at
     initialization.  <zero_cntr> is the value of <var> to contour, <skip_pts>
-    is the number of points to skip in the contour, needed to prevent overlap. 
+    is the number of points to skip in the contour, needed to prevent overlap.
     """
     s    = "::: creating contour from %s's \"%s\" field :::"
     print_text(s % (self.dd.name, var) , self.color)
@@ -51,30 +49,30 @@ class MeshGenerator(object):
     field  = self.dd.data[var]
     fig = figure()
     self.ax = fig.add_subplot(111)
-    self.ax.set_aspect('equal') 
+    self.ax.set_aspect('equal')
     self.c = self.ax.contour(self.x, self.y, field, [zero_cntr])
-    
+
     # Get longest contour:
     cl       = self.c.allsegs[0]
     ind      = 0
     amax     = 0
     amax_ind = 0
-    
+
     for a in cl:
       if size(a) > amax:
         amax = size(a)
         amax_ind = ind
       ind += 1
-    
+
     # remove skip points and last point to avoid overlap :
     longest_cont      = cl[amax_ind]
     self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
     s    = "::: contour created, length %s nodes :::"
     print_text(s % shape(self.longest_cont)[0], self.color)
-  
+
   def transform_contour(self, di):
     """
-    Transforms the coordinates of the contour to DataInput object <di>'s 
+    Transforms the coordinates of the contour to DataInput object <di>'s
     projection coordinates.
     """
     s = "::: transforming contour coordinates from %s to %s :::"
@@ -82,17 +80,20 @@ class MeshGenerator(object):
     x,y    = self.longest_cont.T
     xn, yn = transform(self.dd.p, di.p, x, y)
     self.longest_cont = array([xn, yn]).T
-    
+
   def set_contour(self,cont_array):
-    """ This is an alternative to the create_contour method that allows you to 
+    """ This is an alternative to the create_contour method that allows you to
     manually specify contour points.
     Inputs:
-    cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...])) 
+    cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...]))
     """
     s = "::: manually setting contour :::"
+    fig = figure()
+    self.ax = fig.add_subplot(111)
+    self.ax.set_aspect('equal')
     print_text(s, self.color)
     self.longest_cont = cont_array
-    
+
   def plot_contour(self):
     """
     Plot the contour created with the "create_contour" method.
@@ -106,7 +107,7 @@ class MeshGenerator(object):
 
   def eliminate_intersections(self, dist=10):
     """
-    Eliminate intersecting boundary elements. <dist> is an integer specifiying 
+    Eliminate intersecting boundary elements. <dist> is an integer specifiying
     how far forward to look to eliminate intersections.
     """
     s    = "::: eliminating intersections :::"
@@ -116,85 +117,83 @@ class MeshGenerator(object):
       def __init__(self,x,y):
         self.x = x
         self.y = y
-    
+
     def ccw(A,B,C):
       return (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x)
-    
+
     def intersect(A,B,C,D):
       return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
-  
-    lc   = self.longest_cont 
-    
+
+    lc   = self.longest_cont
+
     flag = ones(len(lc))
     for ii in range(len(lc)-1):
-      
+
       A = Point(*lc[ii])
       B = Point(*lc[ii+1])
-      
+
       for jj in range(ii, min(ii + dist, len(lc)-1)):
-        
+
         C = Point(*lc[jj])
         D = Point(*lc[jj+1])
-        
+
         if intersect(A,B,C,D) and ii!=jj+1 and ii+1!=jj:
           s    = "  - intersection found between node %i and %i"
           print_text(s % (ii+1, jj), 'red')
           flag[ii+1] = 0
           flag[jj]   = 0
-    
+
     counter  = 0
     new_cont = zeros((sum(flag),2))
     for ii,fl in enumerate(flag):
       if fl:
         new_cont[counter,:] = lc[ii,:]
         counter += 1
-    
+
     self.longest_cont = new_cont
     s    = "::: eliminated %i nodes :::"
     print_text(s % sum(flag == 0), self.color)
-  
+
   def restart(self):
     """
     clear all contents from the .geo file.
     """
     self.f.close
-    self.f = open(self.direc + self.fn + '.geo', 'w') 
+    self.f = open(self.direc + self.fn + '.geo', 'w')
     print 'Reopened \"' + self.direc + self.fn + '.geo\".'
-  
-  def write_gmsh_contour(self, lc=100000, boundary_extend=True):  
+
+  def write_gmsh_contour(self, lc=100000, boundary_extend=True):
     """
     write the contour created with create_contour to the .geo file with mesh
-    spacing <lc>.  If <boundary_extend> is true, the spacing in the interior 
+    spacing <lc>.  If <boundary_extend> is true, the spacing in the interior
     of the domain will be the same as the distance between nodes on the contour.
-    """ 
+    """
     #FIXME: sporadic results when used with ipython, does not stops writing the
-    #       file after a certain point.  calling restart() then write again 
-    #       results in correct .geo file written.  However, running the script 
+    #       file after a certain point.  calling restart() then write again
+    #       results in correct .geo file written.  However, running the script
     #       outside of ipython works.
     s    = "::: writing gmsh contour to \"%s%s.geo\" :::"
     print_text(s % (self.direc, self.fn), self.color)
     c   = self.longest_cont
     f   = self.f
-    x   = self.x
-    y   = self.y
 
     pts = size(c[:,0])
 
     # write the file to .geo file :
     f.write("// Mesh spacing\n")
     f.write("lc = " + str(lc) + ";\n\n")
-    
+
     f.write("// Points\n")
     for i in range(pts):
       f.write("Point(" + str(i) + ") = {" + str(c[i,0]) + "," \
               + str(c[i,1]) + ",0,lc};\n")
-    
+
     f.write("\n// Lines\n")
     for i in range(pts-1):
       f.write("Line(" + str(i) + ") = {" + str(i) + "," + str(i+1) + "};\n")
     f.write("Line(" + str(pts-1) + ") = {" + str(pts-1) + "," \
             + str(0) + "};\n\n")
-    
+
     f.write("// Line loop\n")
     loop = ""
     loop += "{"
@@ -202,7 +201,7 @@ class MeshGenerator(object):
       loop += str(i) + ","
     loop += str(pts-1) + "}"
     f.write("Line Loop(" + str(pts+1) + ") = " + loop + ";\n\n")
-    
+
     f.write("// Surface\n")
     surf_num = pts+2
     f.write("Plane Surface(" + str(surf_num) + ") = {" + str(pts+1) + "};\n\n")
@@ -213,7 +212,7 @@ class MeshGenerator(object):
     self.surf_num = surf_num
     self.pts      = pts
     self.loop     = loop
-  
+
   def extrude(self, h, n_layers):
     """
     Extrude the mesh <h> units with <n_layers> number of layers.
@@ -224,18 +223,18 @@ class MeshGenerator(object):
     s = str(self.surf_num)
     h = str(h)
     layers = str(n_layers)
-    
+
     f.write("Extrude {0,0," + h + "}" \
             + "{Surface{" + s + "};" \
             + "Layers{" + layers + "};}\n\n")
 
-  def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax): 
+  def add_box(self, field, vin, xmin, xmax, ymin, ymax, zmin, zmax):
     """
     add a box to the mesh.  e.g. for Byrd Glacier data:
-      
-      add_box(10000, 260000, 620000, -1080000, -710100, 0, 0) 
 
-    """ 
+      add_box(10000, 260000, 620000, -1080000, -710100, 0, 0)
+
+    """
     f  = self.f
     fd = str(field)
 
@@ -248,7 +247,7 @@ class MeshGenerator(object):
     f.write("Field[" + fd + "].YMin =  " + float(ymin) + ";\n")
     f.write("Field[" + fd + "].ZMax =  " + float(zmax) + ";\n")
     f.write("Field[" + fd + "].ZMin =  " + float(zmin) + ";\n\n")
-    
+
     self.fieldList.append(field)
 
   def add_edge_attractor(self, field):
@@ -275,7 +274,7 @@ class MeshGenerator(object):
     f.write("Field[" + fd + "].DistMax = " + str(distMax) + ";\n\n")
 
     self.fieldList.append(field)
-  
+
   def finish(self, field):
     """
     figure out background field and close the .geo file.
@@ -290,18 +289,18 @@ class MeshGenerator(object):
       l += str(j)
       if i != len(flist) - 1:
         l += ', '
-  
-    # make the background mesh size the minimum of the fields : 
+
+    # make the background mesh size the minimum of the fields :
     if len(flist) > 0:
       f.write("Field[" + fd + "]            = Min;\n")
       f.write("Field[" + fd + "].FieldsList = {" + l + "};\n")
       f.write("Background Field    = " + fd + ";\n\n")
     else:
       f.write("Background Field = " + fd + ";\n\n")
-    
+
     print 'finished, closing \"' + self.direc + self.fn + '.geo\".'
     f.close()
-  
+
   def close_file(self):
     """
     close the .geo file down for further editing.
@@ -338,23 +337,23 @@ class linear_attractor(object):
   """
   Create an attractor object which refines with min and max cell radius <l_min>,
   <l_max> over data field <field>.  The <f_max> parameter specifies a max value
-  for which to apply the minimum cell size such that if <field>_i is less than 
-  <f_max>, the cell size in this region will be <l_max>.  If <inv> = True 
+  for which to apply the minimum cell size such that if <field>_i is less than
+  <f_max>, the cell size in this region will be <l_max>.  If <inv> = True
   the object refines on the inverse of the data field <field>.
-  
+
                {l_min,     field_i > f_max
     cell_h_i = {l_max,     field_i < f_max
-               {field_i,   otherwise 
+               {field_i,   otherwise
 
   """
   def __init__(self, spline, field, f_max, l_min, l_max, inv=True):
     """
-    Refine the mesh off of data field <field> using spline <spline> with the 
+    Refine the mesh off of data field <field> using spline <spline> with the
     cell radius defined as :
-  
+
                {l_min,     field_i > f_max
     cell_h_i = {l_max,     field_i < f_max
-               {field_i,   otherwise 
+               {field_i,   otherwise
 
     If <inv> is True, refine off of the inverse of <field> instead.
 
@@ -365,7 +364,7 @@ class linear_attractor(object):
     self.l_max    = l_max
     self.f_max    = f_max
     self.inv      = inv
-  
+
   def op(self, x, y, z, entity):
     """
     """
@@ -390,7 +389,7 @@ class static_attractor(object):
   """
   def __init__(self, spline, c, inv=False):
     """
-    Refine the mesh off of data field <spline> with the cell radius 
+    Refine the mesh off of data field <spline> with the cell radius
     defined as :
 
     cell_h_i = c * spline(x,y)
@@ -399,7 +398,7 @@ class static_attractor(object):
     self.spline = spline
     self.c      = c
     self.inv    = inv
-  
+
   def op(self, x, y, z, entity):
     """
     """
@@ -407,7 +406,7 @@ class static_attractor(object):
       lc = self.c * self.spline(x,y)[0][0]
     else:
       lc = self.c * 1/self.spline(x,y)[0][0]
-    return lc 
+    return lc
 
 
 class min_field(object):
@@ -437,28 +436,8 @@ class max_field(object):
       l.append(f(x,y,z,entity))
     return max(l)
 
-def print_min_max(u, title):
-  """
-  Print the minimum and maximum values of <u>, a Vector, Function, or array.
-  """
-  if isinstance(u, GenericVector):
-    uMin = u.array().min()
-    uMax = u.array().max()
-  elif isinstance(u, Function):
-    uMin = u.vector().min()
-    uMax = u.vector().max()
-  elif isinstance(u, ndarray):
-    uMin = u.min()
-    uMax = u.max()
-  else:
-    print "print_min_max function requires a Vector, Function, array," \
-          + " or Indexed, not %s." % type(u)
-    uMin = uMax = 0.0
-  s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-  print_text(s, 'yellow')
-
 class MeshRefiner(object):
-  
+
   def __init__(self, di, fn, gmsh_file_name):
     """
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
@@ -472,7 +451,7 @@ class MeshRefiner(object):
     print_min_max(self.field, 'refinement field [m]')
 
     self.spline = RectBivariateSpline(di.x, di.y, self.field, kx=1, ky=1)
-    
+
     #load the mesh into a GModel
     self.m = GModel.current()
     self.m.load(gmsh_file_name + '.geo')
@@ -485,16 +464,16 @@ class MeshRefiner(object):
   def add_linear_attractor(self, f_max, l_min, l_max, inv):
     """
     Refine the mesh with the cell radius defined as :
-  
+
                {l_min,     field_i > f_max
     cell_h_i = {l_max,     field_i < f_max
-               {field_i,   otherwise 
+               {field_i,   otherwise
 
     If <inv> is True, refine off of the inverse of <field> instead.
 
     """
     # field, f_max, l_min, l_max, hard_cut=false, inv=true
-    a   = linear_attractor(self.spline, self.field, f_max, l_min, l_max, 
+    a   = linear_attractor(self.spline, self.field, f_max, l_min, l_max,
                            inv=inv)
     aid = self.m.getFields().addPythonField(a.op)
     return a,aid
@@ -502,7 +481,7 @@ class MeshRefiner(object):
   def add_static_attractor(self, c=1, inv=False):
     """
     Refine the mesh with the cell radius defined as :
-  
+
     cell_h_i = c * field_i
 
     returns a tuple, static_attractor object and id number.
@@ -520,7 +499,7 @@ class MeshRefiner(object):
     mf  = min_field(op_list)
     mid = self.m.getFields().addPythonField(mf.op)
     return mid
-    
+
   def set_background_field(self, idn):
     """
     Set the background field to that of field index <idn>.
@@ -529,7 +508,7 @@ class MeshRefiner(object):
 
   def finish(self, gui=True, dim=3, out_file_name='mesh'):
     """
-    Finish and create the .msh file.  If <gui> is True, run the gui program, 
+    Finish and create the .msh file.  If <gui> is True, run the gui program,
     Otherwise, create the .msh file with dimension <dim> and filename
     <out_file_name>.msh.
     """
@@ -544,14 +523,14 @@ class MeshRefiner(object):
       print_text(s, self.color)
       self.m.mesh(dim)
       self.m.save(out_file_name + ".msh")
-   
+
 
 
 class MeshExtruder(object):
   """
-  Due to extreme bugginess in the gmsh extrusion utilities, this class 
-  extrudes a 2D mesh footprint in the z direction in an arbitrary number of 
-  layers.  Its primary purpose is to facilitate mesh generation for the 
+  Due to extreme bugginess in the gmsh extrusion utilities, this class
+  extrudes a 2D mesh footprint in the z direction in an arbitrary number of
+  layers.  Its primary purpose is to facilitate mesh generation for the
   ice sheet model VarGlaS.  Method based on HOW TO SUBDIVIDE PYRAMIDS, PRISMS
   AND HEXAHEDRA INTO TETRAHEDRA by Dompierre et al.
 
@@ -575,6 +554,8 @@ class MeshExtruder(object):
 
   def extrude_mesh(self,l,z_offset):
     # accepts the number of layers and the length of extrusion
+
+    mesh = self.mesh
 
     # Extrude vertices
     all_coords = []

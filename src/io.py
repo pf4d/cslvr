@@ -635,13 +635,16 @@ class GetBasin(object):
         self.edge = array(self.edge)
 
     def clean_edge(self):
+        """
+        Remove spurious edge markers. Not very common but do happen.
+        """
         edge = self.edge
 
         def check_n(i, l, n, check_f):
             """
-            Return True if for at least n points on either side of a given
-            index check_f(l[i]) returns True. Array will be assumed to be circular,
-            i.e. l[len(l)] will be converted to l[0]
+            Return True if for at least <n> points on either side of a given
+            index check_f(l[i]) returns True. Array will be assumed to be
+            circular, i.e. l[len(l)] will be converted to l[0]
             """
             g = lambda i: i%len(l)
 
@@ -658,6 +661,10 @@ class GetBasin(object):
                     edge[i] = False
 
     def extend_edge(self, r):
+        """
+        Extends a 2d contour out from points labeled in self.edge by a distance
+        <r> (radius) in all directions.
+        """
         xycoords = self.xycoords
         edge = self.edge
 
@@ -666,24 +673,26 @@ class GetBasin(object):
             yo = [y + sin(2*pi/n*j)*r for j in range(0,n+1)]
             return array(zip(xo,yo))
 
+        # create points in a circle around each edge point
         pts = []
-        for i in range(len(xycoords)):
+        for i,v  in enumerate(xycoords):
           if edge[i]:
-            pts.extend(points_circle(xycoords[i,0], xycoords[i,1], r))
+            pts.extend(points_circle(v[0], v[1], r))
 
-        pts = array(pts)
+        # take convex hull
+        pts  = array(pts)
         hull = ConvexHull(pts)
 
+        # union of our original polygon and convex hull
         p1 = Polygon(zip(pts[hull.vertices,0],pts[hull.vertices,1]))
         p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
-
         p3 = cascaded_union([p1,p2])
 
         self.extend = True
         self.xycoords_buf = array(zip(p3.exterior.xy[:][0],p3.exterior.xy[:][1]))
 
-    def plot_xycoords_buf(self, Show=True):
 
+    def plot_xycoords_buf(self, Show=True):
         fig = figure()
         ax  = fig.add_subplot(111)
         ax.set_aspect("equal")

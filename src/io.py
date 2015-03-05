@@ -12,7 +12,8 @@ import Image
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
-                              ndarray, e, nan, sqrt, float64
+                              ndarray, e, nan, sqrt, float64, sin, cos, pi,\
+                              figure, show
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
@@ -20,6 +21,9 @@ from fenics            import interpolate, Expression, Function, \
 from pyproj            import Proj, transform
 #from termcolor         import colored, cprint
 from colored           import fg, attr
+from scipy.spatial     import ConvexHull
+from shapely.geometry  import Polygon
+from shapely.ops       import cascaded_union
 
 class DataInput(object):
   """
@@ -553,6 +557,7 @@ class GetBasin(object):
                 edge_resolution = meters between points that are pulled from the
                                   database of domain edges.
         """
+        self.extend = False
         self.di = di
         self.where = where
         self.edge_resolution = edge_resolution
@@ -605,6 +610,7 @@ class GetBasin(object):
         self.edge     = []
         p = self.llcoords[0,:] # previous point
         self.xycoords.append(self.di.get_xy(p[0],p[1]))
+        self.edge.append(True)
         p_p = self.xycoords[-1]
         distance = 0
 
@@ -625,10 +631,76 @@ class GetBasin(object):
                 p_p = p_n
 
         self.xycoords = array(self.xycoords)
+        self.clean_edge() #clean (very rare) incorrectly identified edge points
         self.edge = array(self.edge)
 
+    def clean_edge(self):
+        edge = self.edge
+
+        def check_n(i, l, n, check_f):
+            """
+            Return True if for at least n points on either side of a given
+            index check_f(l[i]) returns True. Array will be assumed to be circular,
+            i.e. l[len(l)] will be converted to l[0]
+            """
+            g = lambda i: i%len(l)
+
+            behind = sum([check_f( l[g(i-(j+1))] ) for j in range(n)]) == n
+            front  = sum([check_f( l[g(i+j+1)] ) for j in range(n)]) == n
+
+            return behind or front
+
+        # For every edge point make sure that at least 5 points on either side
+        # are also edge Points.
+        for i in range(len(edge)):
+            if edge[i]:
+                if not check_n(i, edge, 5, lambda v: v):
+                    edge[i] = False
+
+    def extend_edge(self, r):
+        xycoords = self.xycoords
+        edge = self.edge
+
+        def points_circle(x, y, r,n=100):
+            xo = [x + cos(2*pi/n*i)*r for i in range(0,n+1)]
+            yo = [y + sin(2*pi/n*j)*r for j in range(0,n+1)]
+            return array(zip(xo,yo))
+
+        pts = []
+        for i in range(len(xycoords)):
+          if edge[i]:
+            pts.extend(points_circle(xycoords[i,0], xycoords[i,1], r))
+
+        pts = array(pts)
+        hull = ConvexHull(pts)
+
+        p1 = Polygon(zip(pts[hull.vertices,0],pts[hull.vertices,1]))
+        p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+
+        p3 = cascaded_union([p1,p2])
+
+        self.extend = True
+        self.xycoords_buf = array(zip(p3.exterior.xy[:][0],p3.exterior.xy[:][1]))
+
+    def plot_xycoords_buf(self, Show=True):
+
+        fig = figure()
+        ax  = fig.add_subplot(111)
+        ax.set_aspect("equal")
+        ax.plot(self.xycoords_buf[:,0], self.xycoords_buf[:,1], 'b', lw=2.5)
+        ax.plot(self.xycoords[:,0], self.xycoords[:,1], 'r', lw=2.5)
+        from numpy import ma
+        interior  = ma.masked_array(self.xycoords,array([zip(self.edge,self.edge)]))
+        ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
+        ax.set_title("boundaries")
+        if Show:
+          show()
+
     def get_xy_contour(self):
-        return self.xycoords
+        if self.extend:
+            return self.xycoords_buf
+        else:
+            return self.xycoords
 
     def get_edge(self):
         return self.edge

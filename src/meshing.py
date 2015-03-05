@@ -103,6 +103,7 @@ class MeshGenerator(object):
     ax = self.ax
     lc = self.longest_cont
     ax.plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
+    ax.set_title("contour")
     show()
 
   def eliminate_intersections(self, dist=10):

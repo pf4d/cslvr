@@ -17,7 +17,8 @@ dependencies:
 ```bash
 sudo apt-get install python python-scipy python-pyproj \
                      python-mpltoolkits.basemap \
-                     python-termcolor python-gdal fenics
+                     python-termcolor python-gdal \
+		     python-shapely fenics
 ```
 
 also ```Gmsh_dynamic``` from

@@ -3,6 +3,7 @@ from ufl.indexed  import Indexed
 from abc          import ABCMeta, abstractmethod
 from physics      import Physics
 from solvers      import Solver
+from helper       import default_config
 from io           import print_text, print_min_max
 import numpy              as np
 import physical_constants as pc
@@ -15,11 +16,14 @@ class Model(object):
   types.
   """
 
-  def __init__(self, config):
+  def __init__(self, config=None):
     """
     Create and instance of the model.
     """
-    self.config   = config
+    if config == None:
+      self.config = default_config()
+    else:
+      self.config = config
     self.MPI_rank = MPI.rank(mpi_comm_world())
     self.color    = '148'#'purple_1a'
 

@@ -185,13 +185,14 @@ class SteadySolver(Solver):
         s    = "::: updating statistical beta :::"
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)
-        print_min_max(beta, 'beta^2')
-        beta_v = beta.vector().array()
-        #betaSIA_v = model.betaSIA.vector().array()
-        #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        beta_v[beta_v < 0.0]    = 0.0
-        #beta_v[beta_v > 2500.0] = 2500.0
-        model.assign_variable(model.beta, np.sqrt(beta_v))
+        print_min_max(beta, 'beta')
+        #beta_v = beta.vector().array()
+        ##betaSIA_v = model.betaSIA.vector().array()
+        ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+        #beta_v[beta_v < 0.0]    = 0.0
+        ##beta_v[beta_v > 2500.0] = 2500.0
+        model.assign_variable(model.beta, beta)
+        #model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath
@@ -596,15 +597,15 @@ class AdjointSolver(Solver):
     Q     = model.Q
     
     if u != None and v != None:
-      model.assign_variable(model.u_o, u)
-      model.assign_variable(model.v_o, v)
+      model.assign_variable(model.u_ob, u)
+      model.assign_variable(model.v_ob, v)
 
     elif U != None:
       Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
       u_n    = project(-U * S.dx(0) / Smag, Q)
       v_n    = project(-U * S.dx(1) / Smag, Q)      
-      model.assign_variable(model.u_o, u_n)
-      model.assign_variable(model.v_o, v_n)
+      model.assign_variable(model.u_ob, u_n)
+      model.assign_variable(model.v_ob, v_n)
 
   def solve(self):
     r""" 
@@ -703,8 +704,8 @@ class AdjointSolver(Solver):
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
-      print_min_max(model.u_o, 'u_o')
-      print_min_max(model.v_o, 'v_o')
+      print_min_max(model.u_ob, 'u_ob')
+      print_min_max(model.v_ob, 'v_ob')
       I = assemble(self.adjoint_instance.I)
       return I
  

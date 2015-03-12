@@ -592,7 +592,7 @@ class VelocityBP(Physics):
     
     # initialize velocity to a previous solution :
     if config['velocity']['use_U0']:
-      s = "::: using initial velocity :::"
+      s = "    - using initial velocity -"
       print_text(s, self.color())
       model.assign_variable(U, project(as_vector([model.u, model.v]), Q2))
 
@@ -600,7 +600,7 @@ class VelocityBP(Physics):
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
       A = config['velocity']['A']
-      s = "::: using isothermal visosity formulation :::"
+      s = "    - using isothermal visosity formulation -"
       print_text(s, self.color())
       print_min_max(A, 'A')
       b     = A**(-1/n)
@@ -610,7 +610,7 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'linear':
       b_gnd = config['velocity']['eta_gnd']
       b_shf = config['velocity']['eta_shf']
-      s     = "::: using linear visosity formulation :::"
+      s     = "    - using linear visosity formulation -"
       print_text(s, self.color())
       print_min_max(eta_shf, 'eta_shf')
       print_min_max(eta_gnd, 'eta_gnd')
@@ -619,7 +619,7 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      s       = "::: using b_control visosity formulation :::"
+      s       = "    - using b_control visosity formulation -"
       print_text(s, self.color())
       print_min_max(b_shf, 'b_shf')
       print_min_max(b_gnd, 'b_gnd')
@@ -628,12 +628,12 @@ class VelocityBP(Physics):
       b     = config['velocity']['b']
       b_shf = b
       b_gnd = b
-      s = "::: using constant_b visosity formulation :::"
+      s = "    - using constant_b visosity formulation -"
       print_text(s, self.color())
       print_min_max(b, 'b')
     
     elif config['velocity']['viscosity_mode'] == 'full':
-      s     = "::: using full visosity formulation :::"
+      s     = "    - using full visosity formulation -"
       print_text(s, self.color())
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
@@ -644,7 +644,7 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'E_control':
       E_shf = config['velocity']['E_shf'] 
       E_gnd = config['velocity']['E_gnd']
-      s     = "::: using E_control visosity formulation :::"
+      s     = "    - using E_control visosity formulation -"
       print_text(s, self.color())
       print_min_max(E_shf, 'E_shf')
       print_min_max(E_gnd, 'E_gnd')
@@ -1745,8 +1745,8 @@ class AdjointVelocity(Physics):
     self.config = config
 
     Q        = model.Q
-    u_o      = model.u_o
-    v_o      = model.v_o
+    u_ob     = model.u_ob
+    v_ob     = model.v_ob
     adot     = model.adot
     ds       = model.ds
     S        = model.S
@@ -1766,8 +1766,12 @@ class AdjointVelocity(Physics):
 
     if config['adjoint']['surface_integral'] == 'shelves':
       dSrf     = ds(6)
+      s   = "    - integrating over shelves -"
     elif config['adjoint']['surface_integral'] == 'grounded':
       dSrf     = ds(2)
+      s   = "    - integrating over grounded ice -"
+    
+    print_text(s, self.color())
 
     control = config['adjoint']['control_variable']
     alpha   = config['adjoint']['alpha']
@@ -1776,51 +1780,57 @@ class AdjointVelocity(Physics):
 
     # form regularization term 'R' :
     N = FacetNormal(model.mesh)
-    for a,c in zip(alpha,control):
-      if isinstance(a, (float,int)):
-        a = Constant(0.5*a)
-      else:
-        a = Constant(0.5)
-      if config['adjoint']['regularization_type'] == 'TV':
-        R = a * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                      + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
-      elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        R = a * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
-      else:
-        s = "Valid regularizations are 'TV' and 'Tikhonov';" + \
-            + " defaulting to no regularization."
-        print_text(s, self.color())
-        R = Constant(0.0) * dGnd
     
     # Objective function; least squares over the surface.
-    if config['adjoint']['objective_function'] == 'logarithmic':
-      a      = Constant(0.5)
-      self.I = a * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                       (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf + R
+    if config['adjoint']['objective_function'] == 'log':
+      self.I = 0.5 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                         (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      s   = "    - using log objective function -"
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      a      = Constant(0.5)
-      self.I = a * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
-                    - (U[2] + adot))**2 * dSrf + R
+      self.I = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
+                      - (U[2] + adot))**2 * dSrf + R
+      s   = "    - using kinematic objective function -"
 
     elif config['adjoint']['objective_function'] == 'linear':
-      a      = Constant(0.5)
-      self.I = a * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf + R
+      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
-      g1     = Constant(0.5 * config['adjoint']['gamma1'])
-      g2     = Constant(0.5 * config['adjoint']['gamma2'])
-      self.I = + g1 * ((U[0] - u_o)**2 + (U[1] - v_o)**2) * dSrf \
-               + g2 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                          (sqrt( u_o**2 +  v_o**2) + 1.0))**2 * dSrf \
-               + R
+      g1     = config['adjoint']['gamma1']
+      g2     = config['adjoint']['gamma2']
+      self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
+               + g2 * 0.5 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
+                                (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      s   = "    - using log/linear hybrid objective -"
 
     else:
-      s = "adjoint objection function may be 'linear', 'logarithmic'," \
-          + " 'kinematic', or log_lin_hybrid."
+      s = "    - adjoint objection function may be 'linear', 'logarithmic'," \
+          + " 'kinematic', or log_lin_hybrid, defaulting to 'linear' -"
+      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+    print_text(s, self.color())
+    
+    for a,c in zip(alpha,control):
+      if a == 0:
+        s = "    - using no regularization -"
+      else:
+        if config['adjoint']['regularization_type'] == 'TV':
+          R = a * 0.5 * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                              + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+          self.I += R
+          s   = "    - using total variation regularization -"
+        elif config['adjoint']['regularization_type'] == 'Tikhonov':
+          R = a * 0.5 * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
+          self.I += R
+          s   = "    - using Tikhonov regularization -"
+        else:
+          R = a * 0.5 * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
+          self.I += R
+          s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
+              + " defaulting to Tikhonov regularization -"
       print_text(s, self.color())
-      exit(1)
 
     Phi       = TestFunction(Q_adj)
     model.Lam = Function(Q_adj)
@@ -2214,13 +2224,13 @@ class StokesBalance3D(Physics):
     
     if   config['stokes_balance']['viscosity_mode'] == 'isothermal':
       A = config['stokes_balance']['A']
-      s = "::: using isothermal visosity formulation :::"
+      s = "    - using isothermal visosity formulation -"
       print_text(s, self.color())
       print_min_max(A, 'A')
       b     = Constant(A**(-1/n))
     
     elif config['stokes_balance']['viscosity_mode'] == 'linear':
-      s = "::: using linear visosity formulation :::"
+      s = "    - using linear visosity formulation -"
       print_text(s, self.color())
       b = Function(Q)
       model.assign_variable(b, config['stokes_balance']['eta'])
@@ -2228,7 +2238,7 @@ class StokesBalance3D(Physics):
       n     = 1.0
     
     elif config['stokes_balance']['viscosity_mode'] == 'full':
-      s     = "::: using full visosity formulation :::"
+      s     = "    - using full visosity formulation -"
       print_text(s, self.color())
       model.assign_variable(model.E, config['stokes_balance']['E'])
       model.assign_variable(model.T, config['stokes_balance']['T'])

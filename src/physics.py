@@ -1811,6 +1811,8 @@ class AdjointVelocity(Physics):
     print_text(s, self.color())
     
     for a,c in zip(alpha,control):
+      s   = "    - regularization parameter alpha = %.2E -" % a
+      print_text(s, self.color())
       if a == 0:
         s = "    - using no regularization -"
       else:

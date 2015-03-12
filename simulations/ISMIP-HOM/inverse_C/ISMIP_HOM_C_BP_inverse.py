@@ -4,6 +4,8 @@ from varglas.helper  import default_nonlin_solver_params, default_config
 from fenics          import *
 from scipy           import random
 
+#set_log_active(False)
+
 alpha = 0.1 * pi / 180
 L     = 40000
 
@@ -51,15 +53,16 @@ U_e = 0.5
 n   = len(u_o)
 
 model.init_beta(30.0)
-#model.eps_reg = 1e-5
 
 config['adjoint']['objective_function']   = 'log'
-config['adjoint']['bounds']               = (0.0, 100.0)
+config['adjoint']['bounds']               = (1.0, 100.0)
 config['adjoint']['control_variable']     = model.beta
-config['adjoint']['alpha']                = 0.1
-config['adjoint']['max_fun']              = 20
+config['adjoint']['alpha']                = 0.0
+config['adjoint']['max_fun']              = 200
+#config['velocity']['viscosity_mode']      = 'linear'
+#config['velocity']['eta_gnd']             = model.eta_gnd
+#config['velocity']['eta_shf']             = model.eta_shf
 
-nparams['newton_solver']['relative_tolerance']      = 1e-10
 nparams['newton_solver']['relative_tolerance']      = 1e-3
 nparams['newton_solver']['relaxation_parameter']    = 0.7
 nparams['newton_solver']['maximum_iterations']      = 20

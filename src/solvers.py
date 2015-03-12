@@ -766,7 +766,7 @@ class AdjointSolver(Solver):
     
     # minimize function I with initial guess beta_0 and gradient function J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
-                               maxfun=maxfun, iprint=iprint)
+                               maxfun=maxfun, iprint=iprint, factr=1e7)
 
     n = len(mopt)/len(control)
     for ii,c in enumerate(control):

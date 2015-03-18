@@ -586,7 +586,7 @@ def default_config():
                'boundaries'          : None,
                'u_lat_boundary'      : None,
                'v_lat_boundary'      : None,
-               'calc_pressure'       : True,
+               'calc_pressure'       : False,
                'use_stat_beta'       : False,
              },
              'enthalpy' : 

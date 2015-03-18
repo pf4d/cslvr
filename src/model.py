@@ -862,6 +862,41 @@ class Model(object):
     ubar = self.extrude(ubar, [2,6], 2)
     return ubar
 
+  def calc_misfit(self, integral):
+    """
+    Calculates the misfit of model and observations, 
+
+      D = ||U - U_ob||
+
+    and updates model.misfit with D.
+    """
+    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
+    print_text(s % integral, self.color)
+
+    Q2     = self.Q2
+    ff     = self.ff
+    U_s    = Function(Q2)
+    U_ob_s = Function(Q2)
+    U      = as_vector([self.u,    self.v])
+    U_ob   = as_vector([self.u_ob, self.v_ob])
+
+    if integral == 'shelves':
+      bc_U    = DirichletBC(self.Q2, U,    ff, 6)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 6)
+    elif integral == 'grounded':
+      bc_U    = DirichletBC(self.Q2, U,    ff, 2)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 2)
+    
+    bc_U.apply(U_s.vector())
+    bc_U_ob.apply(U_ob_s.vector())
+    
+    U_d  = project(U_s - U_ob_s)
+    D    = norm(U_d.vector(), 'linf')
+    
+    s    = "||U - U_ob|| : %.3E" % D
+    print_text(s, '208', 1)
+    self.misfit = D
+
   def rotate(self, M, theta):
     """
     rotate the tensor <M> about the z axes by angle <theta>.
@@ -1218,6 +1253,8 @@ class Model(object):
     # Adjoint model
     self.lam           = Function(self.Q)
     self.adot          = Function(self.Q)
+    self.adj_f         = 0.0              # objective function value at end
+    self.misfit        = 0.0              # ||U - U_ob||
 
     # Balance Velocity model :
     self.kappa         = Function(self.Q)

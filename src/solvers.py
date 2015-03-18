@@ -721,6 +721,9 @@ class AdjointSolver(Solver):
 
       for i,c in enumerate(control):
         print_min_max(c, 'c_' + str(i))
+ 
+      # calculate and print misfit : 
+      model.calc_misfit(config['adjoint']['surface_integral'])
 
       Js = []
       for JJ in self.adjoint_instance.J:
@@ -766,7 +769,8 @@ class AdjointSolver(Solver):
     
     # minimize function I with initial guess beta_0 and gradient function J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
-                               maxfun=maxfun, iprint=iprint, factr=1e7)
+                               maxiter=maxfun-2, iprint=iprint, factr=10)
+    model.f_adj = f  # save the function value for later use 
 
     n = len(mopt)/len(control)
     for ii,c in enumerate(control):

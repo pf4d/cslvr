@@ -758,7 +758,8 @@ class VelocityBP(Physics):
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
     solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
-          solver_parameters = {"linear_solver" : sm})
+          solver_parameters = {"linear_solver" : sm,
+                               "symmetric" : True})
     print_min_max(model.w, 'w')
           
     # solve for pressure :

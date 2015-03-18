@@ -526,190 +526,199 @@ def print_text(text, color='white', atrb=0):
   Print text <text> from calling class <cl> to the screen.
   """
   if MPI.rank(mpi_comm_world())==0:
-    text = ('%s' + text + '%s') % (fg(color), attr(atrb))
+    if atrb != 0:
+      text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))
+    else:
+      text = ('%s' + text + '%s') % (fg(color), attr(0))
     print text
 
+
 class GetBasin(object):
-    """This class contains functions to return a contour corresponding to the
-    perimeter of various basins in Antarctica and Greenland. The libraries of
-    basins are drawn from ICESat data, and posted here:
+  """This class contains functions to return a contour corresponding to the
+  perimeter of various basins in Antarctica and Greenland. The libraries of
+  basins are drawn from ICESat data, and posted here:
 
-    http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
+  http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
 
-    INPUTS:
-                di = an instance of a DataInput obect (see above) needed for
-                projection function
+  INPUTS:
+              di :     an instance of a DataInput obect (see above) needed for
+                       projection function
 
-                where = 'Greenland' if contour is to be from Greenland, False for Antarctica
+              where : 'Greenland' if contour is to be from Greenland, 
+                       False for Antarctica
 
-    TODO: Now working to extend the domain beyond the present day ice margin for
-    the purpose of increasing the stability of dynamic runs. Additionally, there
-    appear to be some stability issues when running the MCB algorithm, but these
-    are not consistent; some domains work, others do not. The hope is that
-    extension of the domain will help here too.
+  TODO: Now working to extend the domain beyond the present day ice margin for
+  the purpose of increasing the stability of dynamic runs. Additionally, there
+  appear to be some stability issues when running the MCB algorithm, but these
+  are not consistent; some domains work, others do not. The hope is that
+  extension of the domain will help here too.
 
+  """
+  def __init__(self,di,where = 'Greenland',edge_resolution = 1000.):
     """
-    def __init__(self,di,where = 'Greenland',edge_resolution = 1000.):
-        """
-            INPUTS:
-                di = data input object
-                where = Greenland or Antarctica
-                edge_resolution = meters between points that are pulled from the
-                                  database of domain edges.
-        """
-        self.extend = False
-        self.di = di
-        self.where = where
-        self.edge_resolution = edge_resolution
+    INPUTS:
+      di :              data input object
+      where :           Greenland or Antarctica
+      edge_resolution : meters between points that are pulled from the
+                        database of domain edges.
+    """
+    self.extend = False
+    self.di = di
+    self.where = where
+    self.edge_resolution = edge_resolution
 
-        # Get path of this file, which should be in the src directory
-        filename = inspect.getframeinfo(inspect.currentframe()).filename
-        home     = os.path.dirname(os.path.abspath(filename))
+    # Get path of this file, which should be in the src directory
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
 
-        if where == "Greenland":
-            path = home+"/data/greenland/basins/"
-            self.datafile = path+"GrnDrainageSystems_Ekholm.txt"
-            self.imagefile =path+"Grn_Drainage_Systems.png"
-        elif where == "Antarctica":
-            path = home+"/data/antarctica/basins/"
-            self.datafile = path+"Ant_Grounded_DrainageSystem_Polygons.txt"
-            self.imagefile =path+"Ant_ICESatDSMaps_Fig_1_sm.jpg"
+    if where == "Greenland":
+      path = home+"/data/greenland/basins/"
+      self.datafile = path+"GrnDrainageSystems_Ekholm.txt"
+      self.imagefile =path+"Grn_Drainage_Systems.png"
+    elif where == "Antarctica":
+      path = home+"/data/antarctica/basins/"
+      self.datafile = path+"Ant_Grounded_DrainageSystem_Polygons.txt"
+      self.imagefile =path+"Ant_ICESatDSMaps_Fig_1_sm.jpg"
+    else:
+      print "Can not find data corresponding to location "+where+"."
+
+    self.show_and_get_basin()
+    self.retrive_basin_latlong()
+    self.convert_to_projection()
+
+  def show_and_get_basin(self):
+    print self.imagefile
+    image = Image.open(self.imagefile)
+    image.show()
+    self.basin = raw_input("Input the numerical code of the basin.\n")
+
+  def retrive_basin_latlong(self):
+    self.llcoords = []
+    if self.where == "Antarctica":
+      id  = 2
+      lat = 0
+      lon = 1
+    else:
+      id  = 0
+      lat = 1
+      lon = 2
+
+    f = open(self.datafile)
+    for line in f:
+      sl = line.split()
+      if sl[id] == self.basin:
+        self.llcoords.append([sl[lon],sl[lat]])
+    self.llcoords = array(self.llcoords)
+
+  def convert_to_projection(self):
+    self.xycoords = []
+    self.edge     = []
+    p = self.llcoords[0,:] # previous point
+    self.xycoords.append(self.di.get_xy(p[0],p[1]))
+    self.edge.append(True)
+    p_p = self.xycoords[-1]
+    distance = 0
+
+    for p in self.llcoords:
+      p_n = self.di.get_xy(p[0],p[1]) # Current point xy
+      delta_X = sqrt((p_n[0] - p_p[0])**2 + (p_n[1] - p_p[1])**2)
+      distance += delta_X
+
+      if distance > self.edge_resolution:
+        # Simple observation that edge points are further apart
+        if delta_X > 500.:
+          self.edge.append(True)
         else:
-            print "Can not find data corresponding to location "+where+"."
+          self.edge.append(False)
+        self.xycoords.append(p_n)
+        distance = 0.
+        p_p = p_n
+      else:
+        p_p = p_n
 
-        self.show_and_get_basin()
-        self.retrive_basin_latlong()
-        self.convert_to_projection()
+    self.xycoords = array(self.xycoords)
+    self.clean_edge() #clean (very rare) incorrectly identified edge points
+    self.edge = array(self.edge)
 
-    def show_and_get_basin(self):
-        print self.imagefile
-        image = Image.open(self.imagefile)
-        image.show()
-        self.basin = raw_input("Input the numerical code of the basin.\n")
+  def clean_edge(self):
+    """
+    Remove spurious edge markers. Not very common but do happen.
+    """
+    edge = self.edge
 
-    def retrive_basin_latlong(self):
-        self.llcoords = []
-        if self.where == "Antarctica":
-            id  = 2
-            lat = 0
-            lon = 1
-        else:
-            id  = 0
-            lat = 1
-            lon = 2
+    def check_n(i, l, n, check_f):
+      """
+      Return True if for at least <n> points on either side of a given
+      index check_f(l[i]) returns True. Array will be assumed to be
+      circular, i.e. l[len(l)] will be converted to l[0]
+      """
+      g = lambda i: i%len(l)
 
-        f = open(self.datafile)
-        for line in f:
-            sl = line.split()
-            if sl[id] == self.basin:
-                self.llcoords.append([sl[lon],sl[lat]])
-        self.llcoords = array(self.llcoords)
+      behind = sum([check_f( l[g(i-(j+1))] ) for j in range(n)]) == n
+      front  = sum([check_f( l[g(i+j+1)] ) for j in range(n)]) == n
 
-    def convert_to_projection(self):
-        self.xycoords = []
-        self.edge     = []
-        p = self.llcoords[0,:] # previous point
-        self.xycoords.append(self.di.get_xy(p[0],p[1]))
-        self.edge.append(True)
-        p_p = self.xycoords[-1]
-        distance = 0
+      return behind or front
 
-        for p in self.llcoords:
-            p_n = self.di.get_xy(p[0],p[1]) # Current point xy
-            delta_X = sqrt((p_n[0] - p_p[0])**2 + (p_n[1] - p_p[1])**2)
-            distance += delta_X
+    # For every edge point make sure that at least 5 points on either side
+    # are also edge Points.
+    for i in range(len(edge)):
+      if edge[i]:
+        if not check_n(i, edge, 5, lambda v: v):
+          edge[i] = False
 
-            if distance > self.edge_resolution:
-                if delta_X > 500.: # Simple observation that edge points are further apart
-                    self.edge.append(True)
-                else:
-                    self.edge.append(False)
-                self.xycoords.append(p_n)
-                distance = 0.
-                p_p = p_n
-            else:
-                p_p = p_n
+  def extend_edge(self, r):
+    """
+    Extends a 2d contour out from points labeled in self.edge by a distance
+    <r> (radius) in all directions.
+    """
+    xycoords = self.xycoords
+    edge = self.edge
 
-        self.xycoords = array(self.xycoords)
-        self.clean_edge() #clean (very rare) incorrectly identified edge points
-        self.edge = array(self.edge)
+    def points_circle(x, y, r,n=100):
+      xo = [x + cos(2*pi/n*i)*r for i in range(0,n+1)]
+      yo = [y + sin(2*pi/n*j)*r for j in range(0,n+1)]
+      return array(zip(xo,yo))
 
-    def clean_edge(self):
-        """
-        Remove spurious edge markers. Not very common but do happen.
-        """
-        edge = self.edge
+    # create points in a circle around each edge point
+    pts = []
+    for i,v  in enumerate(xycoords):
+      if edge[i]:
+        pts.extend(points_circle(v[0], v[1], r))
 
-        def check_n(i, l, n, check_f):
-            """
-            Return True if for at least <n> points on either side of a given
-            index check_f(l[i]) returns True. Array will be assumed to be
-            circular, i.e. l[len(l)] will be converted to l[0]
-            """
-            g = lambda i: i%len(l)
+    # take convex hull
+    pts  = array(pts)
+    hull = ConvexHull(pts)
 
-            behind = sum([check_f( l[g(i-(j+1))] ) for j in range(n)]) == n
-            front  = sum([check_f( l[g(i+j+1)] ) for j in range(n)]) == n
+    # union of our original polygon and convex hull
+    p1 = Polygon(zip(pts[hull.vertices,0],pts[hull.vertices,1]))
+    p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+    p3 = cascaded_union([p1,p2])
 
-            return behind or front
-
-        # For every edge point make sure that at least 5 points on either side
-        # are also edge Points.
-        for i in range(len(edge)):
-            if edge[i]:
-                if not check_n(i, edge, 5, lambda v: v):
-                    edge[i] = False
-
-    def extend_edge(self, r):
-        """
-        Extends a 2d contour out from points labeled in self.edge by a distance
-        <r> (radius) in all directions.
-        """
-        xycoords = self.xycoords
-        edge = self.edge
-
-        def points_circle(x, y, r,n=100):
-            xo = [x + cos(2*pi/n*i)*r for i in range(0,n+1)]
-            yo = [y + sin(2*pi/n*j)*r for j in range(0,n+1)]
-            return array(zip(xo,yo))
-
-        # create points in a circle around each edge point
-        pts = []
-        for i,v  in enumerate(xycoords):
-          if edge[i]:
-            pts.extend(points_circle(v[0], v[1], r))
-
-        # take convex hull
-        pts  = array(pts)
-        hull = ConvexHull(pts)
-
-        # union of our original polygon and convex hull
-        p1 = Polygon(zip(pts[hull.vertices,0],pts[hull.vertices,1]))
-        p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
-        p3 = cascaded_union([p1,p2])
-
-        self.extend = True
-        self.xycoords_buf = array(zip(p3.exterior.xy[:][0],p3.exterior.xy[:][1]))
+    self.extend = True
+    self.xycoords_buf = array(zip(p3.exterior.xy[:][0],p3.exterior.xy[:][1]))
 
 
-    def plot_xycoords_buf(self, Show=True):
-        fig = figure()
-        ax  = fig.add_subplot(111)
-        ax.set_aspect("equal")
-        ax.plot(self.xycoords_buf[:,0], self.xycoords_buf[:,1], 'b', lw=2.5)
-        ax.plot(self.xycoords[:,0], self.xycoords[:,1], 'r', lw=2.5)
-        from numpy import ma
-        interior  = ma.masked_array(self.xycoords,array([zip(self.edge,self.edge)]))
-        ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
-        ax.set_title("boundaries")
-        if Show:
-          show()
+  def plot_xycoords_buf(self, Show=True):
+    fig = figure()
+    ax  = fig.add_subplot(111)
+    ax.set_aspect("equal")
+    ax.plot(self.xycoords_buf[:,0], self.xycoords_buf[:,1], 'b', lw=2.5)
+    ax.plot(self.xycoords[:,0], self.xycoords[:,1], 'r', lw=2.5)
+    from numpy import ma
+    interior  = ma.masked_array(self.xycoords,array([zip(self.edge,self.edge)]))
+    ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
+    ax.set_title("boundaries")
+    if Show:
+      show()
 
-    def get_xy_contour(self):
-        if self.extend:
-            return self.xycoords_buf
-        else:
-            return self.xycoords
+  def get_xy_contour(self):
+    if self.extend:
+      return self.xycoords_buf
+    else:
+      return self.xycoords
 
-    def get_edge(self):
-        return self.edge
+  def get_edge(self):
+    return self.edge
+
+
+

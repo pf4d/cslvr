@@ -1,6 +1,7 @@
 from varglas.model   import Model
 from varglas.solvers import SteadySolver, AdjointSolver
 from varglas.helper  import default_nonlin_solver_params, default_config
+from varglas.io      import print_text, print_min_max
 from fenics          import *
 from scipy           import random
 
@@ -12,20 +13,21 @@ L     = 10000
 nparams = default_nonlin_solver_params()
 nparams['newton_solver']['linear_solver']           = 'cg'
 nparams['newton_solver']['preconditioner']          = 'hypre_amg'
-nparams['newton_solver']['relative_tolerance']      = 1e-10
+nparams['newton_solver']['relative_tolerance']      = 1e-12
 nparams['newton_solver']['relaxation_parameter']    = 1.0
 nparams['newton_solver']['maximum_iterations']      = 20
 nparams['newton_solver']['error_on_nonconvergence'] = False
 parameters['form_compiler']['quadrature_degree']    = 2
 
 config = default_config()
+config['log_history']                     = True
 config['output_path']                     = './results/initial/'
 config['periodic_boundary_conditions']    = True
 config['velocity']['newton_params']       = nparams
-config['velocity']['vert_solve_method']   = 'superlu_dist'
+config['velocity']['vert_solve_method']   = 'mumps'
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 20, 20, 10)
+mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
 
 model = Model(config)
 model.set_mesh(mesh)
@@ -50,11 +52,12 @@ model.save_pvd(model.beta, 'beta_true')
 
 u_o = model.u.vector().array()
 v_o = model.v.vector().array()
-U_e = 0.20
+U_e = model.get_norm(as_vector([model.u, model.v]), 'linf')[1] / 200
+print_min_max(U_e, 'U_e')
 n   = len(u_o)
 
-config['adjoint']['objective_function']   = 'log'
-config['adjoint']['bounds']               = (1.0, 100.0)
+config['adjoint']['objective_function']   = 'linear'
+config['adjoint']['bounds']               = (DOLFIN_EPS, 100.0)
 config['adjoint']['control_variable']     = model.beta
 config['adjoint']['alpha']                = 0.0
 config['adjoint']['max_fun']              = 200

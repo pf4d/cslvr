@@ -489,7 +489,7 @@ class DataOutput(object):
                       'lat true scale'    : di.lat_ts})
 
 
-def print_min_max(u, title):
+def print_min_max(u, title, color='yellow'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
@@ -517,7 +517,7 @@ def print_min_max(u, title):
     uMin = uMax = nan
   if MPI.rank(mpi_comm_world())==0:
     s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-    text = ('%s' + s + '%s') % (fg('yellow'), attr(0))
+    text = ('%s' + s + '%s') % (fg(color), attr(0))
     print text
 
 

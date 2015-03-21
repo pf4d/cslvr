@@ -20,6 +20,7 @@ class Model(object):
     """
     Create and instance of the model.
     """
+    PETScOptions.set("mat_mumps_icntl_14", 100.0)
     if config == None:
       self.config = default_config()
     else:
@@ -889,9 +890,12 @@ class Model(object):
     
     bc_U.apply(U_s.vector())
     bc_U_ob.apply(U_ob_s.vector())
-    
-    U_d  = project(U_s - U_ob_s)
-    D    = norm(U_d.vector(), 'linf')
+
+    # calculate L_inf vector norm :
+    U_s_v    = U_s.vector().array()
+    U_ob_s_v = U_ob_s.vector().array()
+    D_v      = U_s_v - U_ob_s_v
+    D        = MPI.max(mpi_comm_world(), D_v.max())
     
     s    = "||U - U_ob|| : %.3E" % D
     print_text(s, '208', 1)
@@ -909,7 +913,7 @@ class Model(object):
     R  = dot(Rz, dot(M, Rz.T))
     return R
 
-  def get_norm(self, U):
+  def get_norm(self, U, type='l2'):
     """
     returns the norm of vector <U>.
     """
@@ -922,7 +926,10 @@ class Model(object):
     U_v = np.array(U_v)
 
     # calculate the norm :
-    norm_u = np.sqrt(sum(U_v**2))
+    if type == 'l2':
+      norm_u = np.sqrt(sum(U_v**2))
+    elif type == 'linf':
+      norm_u = np.max(U_v)
     
     return U_v, norm_u
 

@@ -656,8 +656,9 @@ class VelocityBP(Physics):
       model.E_gnd = E_gnd
     
     else:
-      print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-            "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
+      s = "Acceptable choices for 'viscosity_mode' are 'linear', " + \
+          "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
+      print_text(s, 'red', 1)
 
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
@@ -743,11 +744,15 @@ class VelocityBP(Physics):
     config = self.config
     
     # solve nonlinear system :
-    s    = "::: solving BP horizontal velocity :::"
+    params = config['velocity']['newton_params']
+    rtol   = params['newton_solver']['relative_tolerance']
+    s      = "::: solving BP horizontal velocity with rtol = %.1E :::" % rtol
     print_text(s, self.color())
+    
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
-          solver_parameters = config['velocity']['newton_params'])
+          solver_parameters = params)
     u, v = model.U.split(True)
+    
     model.assign_variable(model.u, u)
     model.assign_variable(model.v, v)
     print_min_max(model.u, 'u')
@@ -758,8 +763,8 @@ class VelocityBP(Physics):
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
     solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
-          solver_parameters = {"linear_solver" : sm,
-                               "symmetric" : True})
+          solver_parameters = {"linear_solver" : sm})#,
+    #                           "symmetric" : True})
     print_min_max(model.w, 'w')
           
     # solve for pressure :
@@ -1806,8 +1811,10 @@ class AdjointVelocity(Physics):
       s   = "    - using log/linear hybrid objective -"
 
     else:
-      s = "    - adjoint objection function may be 'linear', 'logarithmic'," \
-          + " 'kinematic', or log_lin_hybrid, defaulting to 'linear' -"
+      s = "    - WARNING: adjoint objection function may be 'linear', " + \
+          "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'linear' -"
+      print_text(s, 'red', 1)
+      s   = "    - using linear objective function -"
       self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
     print_text(s, self.color())
     

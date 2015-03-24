@@ -25,7 +25,7 @@ also ```Gmsh_dynamic``` from
 
 http://geuz.org/gmsh/
 
-is required for the use of the provided mesh generation facilities located in the ```utilities.py``` file. It is, simply, the gmsh bindings to Python.
+is required for the use of the provided mesh generation facilities located in the ```utilities.py``` file. It is, simply, the gmsh bindings to Python. Further instrucitons on installing Gmsh_dynamic can be found on the [Qssi wiki ](http://qssi.cs.umt.edu/wiki/index.php/Setup).
 
 To install the program in the your home directory and download program data,
 

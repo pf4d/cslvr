@@ -19,7 +19,6 @@ from fenics            import interpolate, Expression, Function, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
                               File
 from pyproj            import Proj, transform
-#from termcolor         import colored, cprint
 from colored           import fg, attr
 from scipy.spatial     import ConvexHull
 from shapely.geometry  import Polygon
@@ -493,29 +492,53 @@ def print_min_max(u, title, color='yellow'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  if isinstance(u, GenericVector):
-    uMin = MPI.min(mpi_comm_world(), u.min())
-    uMax = MPI.max(mpi_comm_world(), u.max())
-  elif isinstance(u, Function):
-    uMin = MPI.min(mpi_comm_world(), u.vector().min())
-    uMax = MPI.max(mpi_comm_world(), u.vector().max())
-  elif isinstance(u, ndarray):
-    er = "warning, input to print_min_max() is a NumPy array, local min " + \
-         " / max only"
-    er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
-    print er
-    uMin = u.min()
-    uMax = u.max()
-  elif isinstance(u, int) or isinstance(u, float):
-    uMin = uMax = u
-  else:
+  if MPI.size(mpi_comm_world()) > 1:
+    if isinstance(u, GenericVector):
+      uMin = MPI.min(mpi_comm_world(), u.min())
+      uMax = MPI.max(mpi_comm_world(), u.max())
+    elif isinstance(u, Function):
+      uMin = MPI.min(mpi_comm_world(), u.vector().min())
+      uMax = MPI.max(mpi_comm_world(), u.vector().max())
+    elif isinstance(u, ndarray):
+      #er = "warning, input to print_min_max() is a NumPy array, local min " + \
+      #     " / max only"
+      #er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+      #print er
+      #uMin = u.min()
+      #uMax = u.max()
+      uMin = MPI.min(mpi_comm_world(), u)
+      uMax = MPI.max(mpi_comm_world(), u)
+    elif isinstance(u, int) or isinstance(u, float):
+      uMin = uMax = u
+    else:
+      if MPI.rank(mpi_comm_world())==0:
+        er = "print_min_max function requires a Vector, Function, array," \
+             + " int or float, not %s." % type(u)
+        er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+        print er
+      uMin = uMax = nan
     if MPI.rank(mpi_comm_world())==0:
+      s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+      text = ('%s' + s + '%s') % (fg(color), attr(0))
+      print text
+  else:
+    if isinstance(u, GenericVector):
+      uMin = u.min()
+      uMax = u.max()
+    elif isinstance(u, Function):
+      uMin = u.vector().min()
+      uMax = u.vector().max()
+    elif isinstance(u, ndarray):
+      uMin = u.min()
+      uMax = u.max()
+    elif isinstance(u, int) or isinstance(u, float):
+      uMin = uMax = u
+    else:
       er = "print_min_max function requires a Vector, Function, array," \
            + " int or float, not %s." % type(u)
       er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
       print er
-    uMin = uMax = nan
-  if MPI.rank(mpi_comm_world())==0:
+      uMin = uMax = nan
     s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
     text = ('%s' + s + '%s') % (fg(color), attr(0))
     print text

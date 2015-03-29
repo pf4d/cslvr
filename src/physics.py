@@ -702,8 +702,8 @@ class VelocityBP(Physics):
                (u*N[0] + v*N[1] + dw*N[2])*chi*dBed
     
     # Set up linear solve for vertical velocity.
-    self.aw = lhs(self.w_R)
-    self.Lw = rhs(self.w_R)
+    self.aw = assemble(lhs(self.w_R))
+    self.Lw = assemble(rhs(self.w_R))
     
     # list of boundary conditions
     self.bcs  = []
@@ -762,8 +762,11 @@ class VelocityBP(Physics):
     s  = "::: solving BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
+    self.bc_w.apply(self.aw, self.Lw)
+    solve(self.aw, model.w.vector(), self.Lw,
           solver_parameters = {"linear_solver" : sm})#,
+    #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
+    #      solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True})
     print_min_max(model.w, 'w')
           
@@ -1071,6 +1074,8 @@ class Enthalpy(Physics):
     if config['enthalpy']['lateral_boundaries'] == 'surface':
       self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 4) )
 
+    self.aw         = assemble(self.a)
+    self.Lw         = assemble(self.L)
     self.c          = c
     self.k          = k
     self.rho        = rho
@@ -1186,8 +1191,12 @@ class Enthalpy(Physics):
     s    = "::: solving enthalpy :::"
     print_text(s, self.color())
     sm = config['enthalpy']['solve_method']
-    solve(self.a == self.L, H, self.bc_H,
+    for bc in self.bc_H:
+      bc.apply(self.aw, self.Lw)
+    solve(self.a, H.vector(), self.L,
           solver_parameters = {"linear_solver" : sm})
+    #solve(self.a == self.L, H, self.bc_H,
+    #      solver_parameters = {"linear_solver" : sm})
     print_min_max(H, 'H')
 
     # temperature solved diagnostically : 

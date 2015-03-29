@@ -1,5 +1,5 @@
 """
-Utilities file:
+io file:
 
   This contains classes that are used by UM-FEISM to aid in the loading
   of data and preparing data for use in DOLFIN based simulation.
@@ -137,6 +137,16 @@ class DataInput(object):
       # if DG space is needed :
       if req_dg:
         self.func_space_dg = FunctionSpace(self.mesh, "DG", 1)
+    
+      self.mesh.init(1,2)
+      self.num_facets = self.mesh.size_global(2)
+      self.num_cells  = self.mesh.size_global(3)
+      self.dof        = self.mesh.size_global(0)
+      s = "    - using mesh with %i cells, %i facets, %i vertices - "
+      print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
+    else:
+      s = "    - not using a mesh - "
+      print_text(s, self.color)
 
     # create projection :
     proj =   " +proj="   + self.proj \

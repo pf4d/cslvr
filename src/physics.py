@@ -1193,7 +1193,7 @@ class Enthalpy(Physics):
     sm = config['enthalpy']['solve_method']
     for bc in self.bc_H:
       bc.apply(self.aw, self.Lw)
-    solve(self.a, H.vector(), self.L,
+    solve(self.aw, H.vector(), self.Lw,
           solver_parameters = {"linear_solver" : sm})
     #solve(self.a == self.L, H, self.bc_H,
     #      solver_parameters = {"linear_solver" : sm})
@@ -1881,6 +1881,9 @@ class AdjointVelocity(Physics):
     rho    = TestFunction(Q)
     for c in control:
       self.J.append(derivative(I_gradient, c, rho))
+    
+    self.aw = assemble(lhs(self.dI))
+    self.Lw = assemble(rhs(self.dI))
 
   def solve(self):
     """
@@ -1892,9 +1895,12 @@ class AdjointVelocity(Physics):
     s    = "::: solving adjoint velocity :::"
     print_text(s, self.color())
 
-    solve(lhs(self.dI) == rhs(self.dI), model.Lam,
+    solve(self.aw, model.Lam.vector(), self.Lw,
           solver_parameters = {"linear_solver"  : "cg",
                                "preconditioner" : "hypre_amg"})
+    #solve(lhs(self.dI) == rhs(self.dI), model.Lam,
+    #      solver_parameters = {"linear_solver"  : "cg",
+    #                           "preconditioner" : "hypre_amg"})
     print_min_max(model.Lam, 'Lam')
     
 

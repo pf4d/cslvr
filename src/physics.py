@@ -746,7 +746,10 @@ class VelocityBP(Physics):
     # solve nonlinear system :
     params = config['velocity']['newton_params']
     rtol   = params['newton_solver']['relative_tolerance']
-    s      = "::: solving BP horizontal velocity with rtol = %.1E :::" % rtol
+    maxit  = params['newton_solver']['maximum_iterations']
+    alpha  = params['newton_solver']['relaxation_parameter']
+    s      = "::: solving BP horizontal velocity with max_iterations = %i" + \
+             " and step size %.1d :::" % (maxit, alpha)
     print_text(s, self.color())
     
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
@@ -764,8 +767,8 @@ class VelocityBP(Physics):
     sm = config['velocity']['vert_solve_method']
     if self.bc_w != None:
       self.bc_w.apply(self.aw, self.Lw)
-    solve(self.aw, model.w.vector(), self.Lw,
-          solver_parameters = {"linear_solver" : sm})#,
+    w_solver = LUSolver(sm)
+    w_solver.solve(self.aw, model.w.vector(), self.Lw)
     #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
     #      solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True})
@@ -1194,8 +1197,8 @@ class Enthalpy(Physics):
     sm = config['enthalpy']['solve_method']
     for bc in self.bc_H:
       bc.apply(self.aw, self.Lw)
-    solve(self.aw, H.vector(), self.Lw,
-          solver_parameters = {"linear_solver" : sm})
+    H_solver = LUSolver(sm)
+    H_solver.solve(self.aw, H.vector(), self.Lw)
     #solve(self.a == self.L, H, self.bc_H,
     #      solver_parameters = {"linear_solver" : sm})
     print_min_max(H, 'H')

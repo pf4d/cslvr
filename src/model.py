@@ -482,21 +482,21 @@ class Model(object):
     g        = self.g
     gradS    = self.gradS
     H        = self.S - self.B
-    U_mag    = Function(Q)
+    U_s      = Function(Q)
     if U_mag == None:
-      U_mag_v  = self.U_ob.vector().array()
+      U_v = self.U_ob.vector().array()
     else:
-      U_mag_v = U_mag.vector().array()
-    U_mag_v[U_mag_v < eps] = eps
-    self.assign_variable(U_mag, U_mag_v)
+      U_v = U_mag.vector().array()
+    U_v[U_v < eps] = eps
+    self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
+    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(self.beta, beta_0_v)
     print_min_max(self.beta, 'beta')
     self.betaSIA = Function(Q)
-    self.assign_variable(self.betaSIA, self.beta)
+    self.assign_variable(self.betaSIA, beta_0_v)
 
   def init_beta_stats(self):
     """

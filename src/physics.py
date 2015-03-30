@@ -762,7 +762,8 @@ class VelocityBP(Physics):
     s  = "::: solving BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    self.bc_w.apply(self.aw, self.Lw)
+    if self.bc_w != None:
+      self.bc_w.apply(self.aw, self.Lw)
     solve(self.aw, model.w.vector(), self.Lw,
           solver_parameters = {"linear_solver" : sm})#,
     #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,

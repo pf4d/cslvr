@@ -528,7 +528,7 @@ def print_min_max(u, title, color='yellow'):
         print er
       uMin = uMax = nan
     if MPI.rank(mpi_comm_world())==0:
-      s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+      s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
       text = ('%s' + s + '%s') % (fg(color), attr(0))
       print text
   else:
@@ -549,7 +549,7 @@ def print_min_max(u, title, color='yellow'):
       er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
       print er
       uMin = uMax = nan
-    s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
+    s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
     text = ('%s' + s + '%s') % (fg(color), attr(0))
     print text
 

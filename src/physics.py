@@ -749,8 +749,8 @@ class VelocityBP(Physics):
     maxit  = params['newton_solver']['maximum_iterations']
     alpha  = params['newton_solver']['relaxation_parameter']
     s      = "::: solving BP horizontal velocity with max_iterations = %i" + \
-             " and step size %.1d :::" % (maxit, alpha)
-    print_text(s, self.color())
+             " and step size = %.1f :::"
+    print_text(s % (maxit, alpha), self.color())
     
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
           solver_parameters = params)

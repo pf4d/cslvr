@@ -35,14 +35,12 @@ class DataInput(object):
     3) Project the data onto a finite element mesh that is generated based
        on the extents of the input data set.
   """
-  def __init__(self, files, direc=None, flip=False, mesh=None, gen_space=True,
+  def __init__(self, mf_obj, flip=False, mesh=None, gen_space=True,
                zero_edge=False, bool_data=False, req_dg=False):
     """
     The following data are used to initialize the class :
 
-      direc     : Set the directory containing the input files.
-      files     : Tuple of file names.  All files are scanned for rows or
-                  columns of nans. Assume all files have the same extents.
+      mf_obj    : mesh factory dictionary.
       flip      : flip the data over the x-axis?
       mesh      : FEniCS mesh if there is one already created.
       zero_edge : Make edges of domain -0.002?
@@ -52,54 +50,35 @@ class DataInput(object):
     Based on thickness extents, create a rectangular mesh object.
     Also define the function space as continious galerkin, order 1.
     """
-    self.directory  = direc
     self.data       = {}        # dictionary of converted matlab data
-    self.rem_nans   = False
+    self.rem_nans   = False     # may change depending on 'identify_nans' call 
     self.chg_proj   = False     # change to other projection flag
     self.color      = 'light_green'
 
-    first = True  # initialize domain by first file's extents
-
-    if direc == None and type(files) == dict:
-      self.name = files.pop('dataset')
-    elif direc != None:
-      self.name = direc
+    self.name       = mf_obj.pop('dataset')
+    self.cont       = mf_obj.pop('continent')
+    self.proj       = mf_obj.pop('pyproj_Proj')
+      
+    # initialize extents :
+    self.ny         = mf_obj.pop('ny')
+    self.nx         = mf_obj.pop('nx')
+    self.x_min      = float(mf_obj.pop('map_western_edge'))
+    self.x_max      = float(mf_obj.pop('map_eastern_edge'))
+    self.y_min      = float(mf_obj.pop('map_southern_edge'))
+    self.y_max      = float(mf_obj.pop('map_northern_edge'))
+    self.x          = linspace(self.x_min, self.x_max, self.nx)
+    self.y          = linspace(self.y_min, self.y_max, self.ny)
+    self.good_x     = array(ones(len(self.x)), dtype=bool)      # no NaNs
+    self.good_y     = array(ones(len(self.y)), dtype=bool)      # no NaNs
 
     s    = "::: creating %s DataInput object :::" % self.name
     print_text(s, self.color)
 
-    # process the data files :
-    for fn in files:
-
-      if direc == None and type(files) == dict:
-        d_dict = files[fn]
-
-
-      elif direc != None:
-        d_dict = loadmat(direc + fn)
-        d_dict['projection']     = d_dict['projection'][0]
-        d_dict['standard lat']   = d_dict['standard lat'][0]
-        d_dict['standard lon']   = d_dict['standard lon'][0]
-        d_dict['lat true scale'] = d_dict['lat true scale'][0]
-
-      d = d_dict["map_data"]
-
-      # initialize extents :
-      if first:
-        self.ny,self.nx = shape(d_dict['map_data'])
-        self.x_min      = float(d_dict['map_western_edge'])
-        self.x_max      = float(d_dict['map_eastern_edge'])
-        self.y_min      = float(d_dict['map_southern_edge'])
-        self.y_max      = float(d_dict['map_northern_edge'])
-        self.proj       = str(d_dict['projection'])
-        self.lat_0      = str(d_dict['standard lat'])
-        self.lon_0      = str(d_dict['standard lon'])
-        self.lat_ts     = str(d_dict['lat true scale'])
-        self.x          = linspace(self.x_min, self.x_max, self.nx)
-        self.y          = linspace(self.y_min, self.y_max, self.ny)
-        self.good_x     = array(ones(len(self.x)), dtype=bool)      # no NaNs
-        self.good_y     = array(ones(len(self.y)), dtype=bool)      # no NaNs
-        first           = False
+    # process the data mf_obj :
+    for fn in mf_obj:
+      
+      # raw data matrix with key fn :
+      d = mf_obj[fn]
 
       # identify, but not remove the NaNs :
       self.identify_nans(d, fn)
@@ -148,15 +127,6 @@ class DataInput(object):
       s = "    - not using a mesh - "
       print_text(s, self.color)
 
-    # create projection :
-    proj =   " +proj="   + self.proj \
-           + " +lat_0="  + self.lat_0 \
-           + " +lat_ts=" + self.lat_ts \
-           + " +lon_0="  + self.lon_0 \
-           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
-           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
-    self.p = Proj(proj)
-
   def change_projection(self, di):
     """
     change the projection of this data to that of the <di> DataInput object's
@@ -170,7 +140,7 @@ class DataInput(object):
     """
     Returns the (x,y) flat map coordinates corresponding to a given (lon,lat)
     coordinate pair using the DataInput object's current projection."""
-    return self.p(lon,lat)
+    return self.proj(lon,lat)
 
   def transform_xy(self, di):
     """
@@ -180,7 +150,7 @@ class DataInput(object):
     # FIXME : need a fast way to convert all the x, y. Currently broken
     s = "::: transforming coordinates from %s to %s :::" % (di.name, self.name)
     print_text(s, self.color)
-    xn, yn = transform(di.p, self.p, di.x, di.y)
+    xn, yn = transform(di.p, self.proj, di.x, di.y)
     return (xn, yn)
 
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
@@ -357,7 +327,7 @@ class DataInput(object):
 
     if self.chg_proj:
       new_proj = self.new_p
-      old_proj = self.p
+      old_proj = self.proj
 
     if not near :
       spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)

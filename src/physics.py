@@ -702,8 +702,8 @@ class VelocityBP(Physics):
                (u*N[0] + v*N[1] + dw*N[2])*chi*dBed
     
     # Set up linear solve for vertical velocity.
-    self.aw = assemble(lhs(self.w_R))
-    self.Lw = assemble(rhs(self.w_R))
+    self.aw = lhs(self.w_R)
+    self.Lw = rhs(self.w_R)
     
     # list of boundary conditions
     self.bcs  = []
@@ -748,7 +748,7 @@ class VelocityBP(Physics):
     rtol   = params['newton_solver']['relative_tolerance']
     maxit  = params['newton_solver']['maximum_iterations']
     alpha  = params['newton_solver']['relaxation_parameter']
-    s      = "::: solving BP horizontal velocity with max_iterations = %i" + \
+    s      = "::: solving BP horizontal velocity with %i max iterations" + \
              " and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
     
@@ -765,10 +765,12 @@ class VelocityBP(Physics):
     s  = "::: solving BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
+    aw       = assemble(self.aw)
+    Lw       = assemble(self.Lw)
     if self.bc_w != None:
-      self.bc_w.apply(self.aw, self.Lw)
+      self.bc_w.apply(aw, Lw)
     w_solver = LUSolver(sm)
-    w_solver.solve(self.aw, model.w.vector(), self.Lw)
+    w_solver.solve(aw, model.w.vector(), Lw)
     #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
     #      solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True})
@@ -1078,8 +1080,6 @@ class Enthalpy(Physics):
     if config['enthalpy']['lateral_boundaries'] == 'surface':
       self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 4) )
 
-    self.aw         = assemble(self.a)
-    self.Lw         = assemble(self.L)
     self.c          = c
     self.k          = k
     self.rho        = rho
@@ -1195,10 +1195,12 @@ class Enthalpy(Physics):
     s    = "::: solving enthalpy :::"
     print_text(s, self.color())
     sm = config['enthalpy']['solve_method']
+    aw        = assemble(self.a)
+    Lw        = assemble(self.L)
     for bc in self.bc_H:
-      bc.apply(self.aw, self.Lw)
+      bc.apply(aw, Lw)
     H_solver = LUSolver(sm)
-    H_solver.solve(self.aw, H.vector(), self.Lw)
+    H_solver.solve(aw, H.vector(), Lw)
     #solve(self.a == self.L, H, self.bc_H,
     #      solver_parameters = {"linear_solver" : sm})
     print_min_max(H, 'H')
@@ -1886,8 +1888,8 @@ class AdjointVelocity(Physics):
     for c in control:
       self.J.append(derivative(I_gradient, c, rho))
     
-    self.aw = assemble(lhs(self.dI))
-    self.Lw = assemble(rhs(self.dI))
+    self.aw = lhs(self.dI)
+    self.Lw = rhs(self.dI)
 
   def solve(self):
     """
@@ -1899,10 +1901,11 @@ class AdjointVelocity(Physics):
     s    = "::: solving adjoint velocity :::"
     print_text(s, self.color())
 
-    solve(self.aw, model.Lam.vector(), self.Lw,
-          solver_parameters = {"linear_solver"  : "cg",
-                               "preconditioner" : "hypre_amg"})
-    #solve(lhs(self.dI) == rhs(self.dI), model.Lam,
+    aw       = assemble(self.aw)
+    Lw       = assemble(self.Lw)
+    a_solver = KrylovSolver('cg', 'hypre_amg')
+    a_solver.solve(aw, model.Lam.vector(), Lw)
+    #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",
     #                           "preconditioner" : "hypre_amg"})
     print_min_max(model.Lam, 'Lam')

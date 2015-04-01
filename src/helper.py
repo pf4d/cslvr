@@ -826,7 +826,7 @@ def get_bed_mesh(mesh):
   return submesh
 
 
-def plotIce(di, u, directory, cmap='gist_gray',  scale='lin', name='', 
+def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='', 
             numLvls=12, tp=False, tpAlpha=0.5):
   """
   INPUTS :

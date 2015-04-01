@@ -28,34 +28,35 @@ def download_file(url, direc, folder, extract=False, name = None):
   EXISTS = os.path.isfile(direc+fn)
     
   if not EXISTS:
-      u    = urllib2.urlopen(url)
-      f    = open(direc + fn, 'wb')
-      meta = u.info()
-      fs   = int(meta.getheaders("Content-Length")[0])
-      
-      s    = "Downloading: %s Bytes: %s" % (fn, fs)
-      print s
-      
-      fs_dl  = 0
-      blk_sz = 8192
+    u    = urllib2.urlopen(url)
+    f    = open(direc + fn, 'wb')
+    meta = u.info()
+    fs   = int(meta.getheaders("Content-Length")[0])
+    
+    s    = "Downloading: %s Bytes: %s" % (fn, fs)
+    print s
+    
+    fs_dl  = 0
+    blk_sz = 8192
 
-      
-      # download the file and print status :
-      while True:
-        buffer = u.read(blk_sz)
-        if not buffer:
-          break
-      
-        fs_dl += len(buffer)
-        f.write(buffer)
-        status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
-        status = status + chr(8)*(len(status)+1)
-        sys.stdout.write(status)
-        sys.stdout.flush()
-      
-      f.close()
+    
+    # download the file and print status :
+    while True:
+      buffer = u.read(blk_sz)
+      if not buffer:
+        break
+    
+      fs_dl += len(buffer)
+      f.write(buffer)
+      status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
+      status = status + chr(8)*(len(status)+1)
+      sys.stdout.write(status)
+      sys.stdout.flush()
+    
+    f.close()
   else:
-    print "WARNING: "+fn+" already downloaded. \nDelete file if it is was partial download"
+    print "WARNING: "+fn+" already downloaded. \nDelete file if it is was" +\
+          " partial download"
 
   # extract the zip/tar.gz file if necessary :
   if extract and not EXISTS:
@@ -107,12 +108,12 @@ errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
           '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
 download_file(errors, home, fldr, extract=True)
 
-# convert to searise projection via raster warp :
-convert_measures_projection(home + '/' + fldr, 'vx')
-convert_measures_projection(home + '/' + fldr, 'vy')
-convert_measures_projection(home + '/' + fldr, 'ex')
-convert_measures_projection(home + '/' + fldr, 'ey')
-convert_measures_projection(home + '/' + fldr, 'sp')
+## convert to searise projection via raster warp :
+#convert_measures_projection(home + '/' + fldr, 'vx')
+#convert_measures_projection(home + '/' + fldr, 'vy')
+#convert_measures_projection(home + '/' + fldr, 'ex')
+#convert_measures_projection(home + '/' + fldr, 'ey')
+#convert_measures_projection(home + '/' + fldr, 'sp')
 
 # Fox Maule et al. (2005) basal heat flux :
 q_geo   = 'http://websrv.cs.umt.edu/isis/images/d/da/Greenland_heat_flux_5km.nc'

@@ -32,7 +32,7 @@ also ```Gmsh_dynamic``` and ```GmshPy``` from
 
 http://geuz.org/gmsh/
 
-~~NOTE:~~ GMSH is _only_ required to be installed in order to use the mesh generation facilities located in ```meshing.py```.
+**NOTE:** GMSH is *only* required to be installed in order to use the mesh generation facilities located in ```meshing.py```.
 
 To install the program and download program data to the your home directory,
 

@@ -2801,7 +2801,7 @@ class MassBalanceHybrid(Physics):
     #Define variational solver for the mass problem
     ffc_options  = config['free_surface']['ffc_options']
     mass_problem = NonlinearVariationalProblem(R_thick, H, J=J_thick,
-                                               form_compiler_parameters=ffc_options)
+                                        form_compiler_parameters=ffc_options)
     self.mass_solver  = NonlinearVariationalSolver(mass_problem)
     self.mass_solver.parameters['nonlinear_solver']                  = 'snes'
     self.mass_solver.parameters['snes_solver']['method']             = 'vinewtonrsls'
@@ -2815,23 +2815,26 @@ class MassBalanceHybrid(Physics):
     """
     Solves for hybrid conservation of mass.
     """
-    s    = "::: solving hybrid mass-balance :::"
-    print_text(s, self.color())
-    
     config = self.config
     model  = self.model
 
     ffc_options = config['free_surface']['ffc_options']
 
     # Find corrective velocities
+    s    = "::: solving for corrective velocities :::"
+    print_text(s, self.color())
     solve(self.M == self.ubar_proj, model.ubar_c, 
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=ffc_options)
     solve(self.M == self.vbar_proj, model.vbar_c, 
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=ffc_options)
+    print_min_max(model.ubar_c, 'ubar_c')
+    print_min_max(model.vbar_c, 'vbar_c')
 
     # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
+    s    = "::: solving hybrid mass-balance :::"
+    print_text(s, self.color())
     self.mass_solver.solve(model.H_min, model.H_max)
 
     print_min_max(model.H, 'H')
@@ -2917,9 +2920,6 @@ class EnergyHybrid(Physics):
 
     T  = VerticalFDBasis(T_,  deltax, coef, sigmas)
     T0 = VerticalFDBasis(T0_, deltax, coef, sigmas)
-    
-    Tm  = as_vector([T_w - gamma*sigma*H for sigma in sigmas])
-    Tmb = T_w - gamma*H
 
     # METRICS FOR COORDINATE TRANSFORM
     def dsdx(s):
@@ -2996,8 +2996,8 @@ class EnergyHybrid(Physics):
     # PRETEND THIS IS LINEAR (A GOOD APPROXIMATION IN THE TRANSIENT CASE)
     self.R_T = replace(R_T, {T_:dT})
 
-    self.Tm  = Tm
-    self.Tmb = Tmb
+    # pressure melting point stuff :
+    self.Tm  = as_vector([273.15 - gamma*sigma*H for sigma in sigmas])
 
   def solve(self):
     """
@@ -3020,15 +3020,21 @@ class EnergyHybrid(Physics):
           form_compiler_parameters=ffc_options)    
 
     # Update temperature field
+    s    = "::: calculating pressure-melting point :::"
+    print_text(s, self.color())
     T_melt  = project(self.Tm)
-    Tb_m    = project(self.Tmb)
-     
-    T_v      = T_.vector()
-    T_melt_v = T_melt.vector()
+    Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
+    print_min_max(T_melt, 'T_melt')
+    print_min_max(Tb_m,   'Tb_m')
+    
+    #  correct for pressure melting point :
+    T_v      = T_.vector().array()
+    T_melt_v = T_melt.vector().array()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
+    model.assign_variable(T_, T_v)
 
     out_T = T_.split(True)  # deepcopy avoids projections
-
+    
     model.assign_variable(model.Ts, out_T[0])
     model.assign_variable(model.Tb, out_T[-1]) 
 

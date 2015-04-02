@@ -861,7 +861,6 @@ class StokesBalanceSolver(Solver):
       membrane = as_vector([memb_x,       memb_y,       0.0])
       driving  = as_vector([model.tau_dn, model.tau_dt, 0.0])
       basal    = as_vector([model.tau_bn, model.tau_bt, 0.0])
-      basal_2  = as_vector([model.tau_nz, model.tau_tz, 0.0])
       pressure = as_vector([model.tau_pn, model.tau_pt, 0.0])
       
       total    = membrane + basal + pressure - driving
@@ -875,7 +874,6 @@ class StokesBalanceSolver(Solver):
       membrane = project(membrane)
       driving  = project(driving)
       basal    = project(basal)
-      basal_2  = project(basal_2)
       pressure = project(pressure)
       total    = project(total)
       
@@ -884,7 +882,6 @@ class StokesBalanceSolver(Solver):
       print_min_max(membrane, "membrane")
       print_min_max(driving,  "driving")
       print_min_max(basal,    "basal")
-      print_min_max(basal_2,  "basal_2")
       print_min_max(pressure, "pressure")
       print_min_max(total,    "total")
       
@@ -893,7 +890,6 @@ class StokesBalanceSolver(Solver):
       File(outpath + "membrane.pvd") << membrane
       File(outpath + "driving.pvd")  << driving
       File(outpath + "basal.pvd")    << basal
-      File(outpath + "basal_2.pvd")  << basal_2
       File(outpath + "pressure.pvd") << pressure
       File(outpath + "total.pvd")    << total
  

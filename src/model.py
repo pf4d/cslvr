@@ -3,6 +3,7 @@ from ufl.indexed  import Indexed
 from abc          import ABCMeta, abstractmethod
 from physics      import Physics
 from solvers      import Solver
+from helper       import default_config
 from io           import print_text, print_min_max
 import numpy              as np
 import physical_constants as pc
@@ -15,11 +16,15 @@ class Model(object):
   types.
   """
 
-  def __init__(self, config):
+  def __init__(self, config=None):
     """
     Create and instance of the model.
     """
-    self.config   = config
+    PETScOptions.set("mat_mumps_icntl_14", 100.0)
+    if config == None:
+      self.config = default_config()
+    else:
+      self.config = config
     self.MPI_rank = MPI.rank(mpi_comm_world())
     self.color    = '148'#'purple_1a'
 
@@ -100,13 +105,21 @@ class Model(object):
       self.pBC = None
     self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
                                 constrained_domain=self.pBC)
-    self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                constrained_domain=self.pBC)
-    self.Q2     = MixedFunctionSpace([self.Q]*2)
-    self.Q3     = MixedFunctionSpace([self.Q]*3)
-    self.Q4     = MixedFunctionSpace([self.Q]*4)
-    self.V              = VectorFunctionSpace(self.mesh, "CG", 1)
+    if self.config['model_order'] != 'L1L2':
+      self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
+                                  constrained_domain=self.pBC)
+      self.Q2     = MixedFunctionSpace([self.Q]*2)
+      self.Q3     = MixedFunctionSpace([self.Q]*3)
+      self.Q4     = MixedFunctionSpace([self.Q]*4)
+      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+    else:
+      poly_degree = self.config['velocity']['poly_degree']
+      N_T         = self.config['enthalpy']['N_T']
+      self.HV     = MixedFunctionSpace([self.Q]*2*poly_degree) # VELOCITY
+      self.Z      = MixedFunctionSpace([self.Q]*N_T)           # TEMPERATURE
+    
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
+
     s = "    - function spaces created - "
     print_text(s, self.color)
     
@@ -418,8 +431,32 @@ class Model(object):
     print_text(s, self.color)
     self.assign_variable(self.u_ob, u_ob)
     self.assign_variable(self.v_ob, v_ob)
+    u_v      = self.u_ob.vector().array()
+    v_v      = self.v_ob.vector().array()
+    U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
+    self.assign_variable(self.U_ob, U_mag_v)
     print_min_max(self.u_ob, 'u_ob')
     print_min_max(self.v_ob, 'v_ob')
+    print_min_max(self.U_ob, 'U_ob')
+    
+  def init_H(self, H):
+    """
+    """
+    s = "::: initializing thickness :::"
+    print_text(s, self.color)
+    self.assign_variable(self.H,  H)
+    self.assign_variable(self.H0, H)
+    print_min_max(self.H, 'H')
+
+  def init_H_bounds(self, H_min, H_max):
+    """
+    """
+    s = "::: initializing bounds on thickness :::"
+    print_text(s, self.color)
+    self.assign_variable(self.H_min, H_min)
+    self.assign_variable(self.H_max, H_max)
+    print_min_max(self.H_min, 'H_min')
+    print_min_max(self.H_max, 'H_max')
   
   def init_Ubar(self, Ubar):
     """
@@ -454,7 +491,7 @@ class Model(object):
     submesh = SubMesh(bmesh, pb, 1)
     return submesh
       
-  def init_beta_SIA(self, U_mag=None):
+  def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
     using the observed surface velocity <U_mag> as approximate basal 
@@ -472,23 +509,21 @@ class Model(object):
     g        = self.g
     gradS    = self.gradS
     H        = self.S - self.B
+    U_s      = Function(Q)
     if U_mag == None:
-      U_mag    = Function(Q)
-      u_v      = self.u_ob.vector().array()
-      v_v      = self.v_ob.vector().array()
-      U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
+      U_v = self.U_ob.vector().array()
     else:
-      U_mag_v = U_mag.vector().array()
-    U_mag_v[U_mag_v < 0.5] = 0.5
-    self.assign_variable(U_mag, U_mag_v)
+      U_v = U_mag.vector().array()
+    U_v[U_v < eps] = eps
+    self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_mag)), Q)
+    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(self.beta, beta_0_v)
     print_min_max(self.beta, 'beta')
     self.betaSIA = Function(Q)
-    self.assign_variable(self.betaSIA, self.beta)
+    self.assign_variable(self.betaSIA, beta_0_v)
 
   def init_beta_stats(self):
     """
@@ -535,7 +570,7 @@ class Model(object):
     nB_v = np.sqrt(gBx**2 + gBy**2 + DOLFIN_EPS)
     self.assign_variable(nB, nB_v)
 
-    U_v  = as_vector([self.u, self.v, self.w])
+    U_v  = as_vector([self.u, self.v])
 
     x0   = S
     x1   = T_s
@@ -559,111 +594,56 @@ class Model(object):
     for i,xx in enumerate(X):
       print_min_max(xx, 'x' + str(i))
 
-    # experimental antarctica :
-    bhat = [-1.79050733e+02,   1.21225357e-02,   7.00242275e-01,
-            -1.79944157e+02,  -3.92007119e-03,   2.41824847e+02,
-             2.68360346e-03,   1.08996135e+01,  -3.30190367e+00,
-             6.99415928e-01,   1.56903065e+00,  -8.76360367e+00,
-            -5.89194455e-05,  -6.83779816e-03,   2.87684715e-07,
-            -1.52889892e-04,  -5.08241294e-07,  -3.51334303e-04,
-             6.35242700e-05,   1.12753024e-05,   3.17590324e-05,
-             2.44610103e-04,   4.13158937e-01,  -1.60928114e-05,
-            -4.47594232e-01,   3.68525379e-05,  -3.13299967e-01,
-             1.81440872e-02,  -2.55267424e-03,  -4.30367797e-03,
-             2.43652633e-02,   6.78009294e-03,  -1.19606688e+01,
-             1.18463541e-02,  -1.51293227e+01,  -2.70661398e+00,
-             3.38092068e-01,  -6.38959136e-01,   2.04002460e+00,
-            -1.98509132e-03,   1.70764830e-07,   1.42846441e-03,
-            -1.98426159e-04,   2.74015031e-05,  -7.76148708e-06,
-            -1.20679117e-04,  -1.88107778e-03,   9.57136085e+00,
-             2.12328719e+00,  -4.88099394e-01,  -1.93124549e-01,
-            -6.62792869e-01,  -1.52428993e-03,   4.51663540e-04,
-            -4.39776697e-05,  -5.94617368e-06,  -1.66066895e-04,
-            -4.93024203e-01,   2.72992966e-01,  -5.17802786e-02,
-            -2.03153825e-01,  -6.92688954e-03,   3.72880798e-02,
-             5.69350346e-02,  -2.38251991e-03,   3.98819107e-03,
-             9.14996175e-02]
+    # GLM :
+    bhat = [ 1.26487569e+01,   2.34567816e-03,  -5.34422108e-02,
+             3.93804046e+00,  -4.12801624e-03,   3.25268549e+01,
+             1.95255714e-03,   1.06370874e+00,   6.79133343e-01,
+            -3.54872218e-02,   4.09903244e-02,  -2.03633122e+00,
+            -2.99760096e-06,  -2.29650440e-03,   1.30059715e-07,
+             7.63794398e-04,  -2.28886568e-07,  -9.41355141e-05,
+            -3.79308468e-05,  -4.02590130e-06,  -1.38896798e-06,
+            -3.95327785e-05,   1.16775433e-02,   7.68482665e-07,
+            -2.03358934e-03,   1.38949356e-06,   1.96293602e-04,
+            -1.68177974e-03,   2.44589171e-04,  -9.73848142e-05,
+             4.99092829e-05,   2.33623868e-03,  -8.05881038e+00,
+             1.86332339e-03,   1.65167828e-01,  -2.81735481e-01,
+            -1.43265646e-02,  -1.45607775e-02,  -7.48203064e-02,
+            -9.26079605e-04,   1.40037572e-07,   1.43865686e-04,
+            -3.79278444e-05,   1.27236289e-05,   3.48409555e-06,
+             2.40578092e-05,  -2.95606621e-04,  -5.88401039e-01,
+             1.53401653e-01,  -1.19255343e-01,   3.97027906e-05,
+             3.90281123e-01,   7.16558267e-05,   9.30684521e-05,
+            -8.56621714e-06,   2.49187662e-06,  -4.40625856e-05,
+            -2.83085289e-02,  -3.49092574e-03,   7.84665148e-03,
+             1.84762987e-02,  -1.37814457e-03,   5.94246849e-04,
+             2.74922117e-02,  -7.16825516e-05,   5.14383788e-03,
+             1.69906987e-05]
 
-    ## antarctica dependent included :
-    #bhat = [-3.93728495e+01,   1.81338348e-03,   1.61581323e-01,
-    #        -3.95121988e+01,  -1.75721467e-04,   4.16637532e+01,
-    #         4.66544798e-04,  -2.73444006e+00,  -1.92848011e-01,
-    #         1.65122061e-01,   3.02294645e-01,   2.11948400e-01,
-    #        -8.69054908e-06,  -4.56845894e-05,   6.42972736e-08,
-    #         4.38644481e-04,  -6.75628647e-08,   1.77803620e-04,
-    #         3.87533437e-05,   1.73263144e-06,   4.60008734e-06,
-    #        -7.08079609e-05,   1.04215727e-01,  -5.85880620e-06,
-    #        -8.53529040e-02,   8.81023749e-06,  -2.73278139e-02,
-    #         2.79539490e-03,  -5.81088051e-04,  -1.41773851e-03,
-    #        -2.50101528e-03,   1.87089440e-04,  -2.51548776e+00,
-    #         1.47017518e-03,  -3.06533364e+00,  -3.52882440e-01,
-    #         6.01730826e-02,  -1.01619720e-01,   1.89035666e-01,
-    #        -7.71542575e-04,   7.69699517e-10,   7.03417523e-05,
-    #        -5.68891325e-05,   5.61122626e-06,  -2.53577917e-06,
-    #         6.09405255e-05,  -2.71849811e-04,   1.70727899e+00,
-    #         1.69171945e-01,  -7.38307759e-02,  -5.23143884e-03,
-    #        -1.65563468e-01,  -2.15920765e-04,   4.65834091e-05,
-    #        -9.81236389e-06,  -6.45447501e-06,  -1.35248450e-05,
-    #        -3.13812716e-02,   3.65226182e-02,   1.99641424e-02,
-    #         6.68210962e-02,  -2.56907104e-03,   5.12075444e-03,
-    #         4.02576642e-02,   2.80501545e-04,   1.47904749e-04,
-    #         3.20884773e-03]
+    ## combined :
+    #bhat = [-3.38068626e+01,   8.00815477e-03,   4.32502670e-02,
+    #        -1.55898502e+01,  -1.03695611e-02,   1.31647095e+02,
+    #         7.65619003e-03,  -4.03972486e+00,   1.85285334e+00,
+    #         1.41227706e-01,   1.04228509e-01,  -2.37682966e+00,
+    #        -5.03594634e-06,  -1.01495464e-02,   4.06437973e-07,
+    #        -2.40096032e-03,  -4.22744068e-07,  -4.14768698e-04,
+    #         4.67576058e-05,  -2.28183640e-05,  -6.44380751e-06,
+    #         6.59824198e-05,   2.62059227e-02,  -5.16642217e-06,
+    #        -3.27126033e-02,  -5.41842588e-06,   2.92134501e-03,
+    #        -3.69584445e-03,  -2.08059738e-05,  -4.17568430e-04,
+    #         2.53494901e-04,   9.66433564e-03,  -9.42920821e+00,
+    #         9.09977967e-03,   1.22402288e+00,  -9.17635883e-01,
+    #         5.03523468e-02,   6.75328534e-02,   4.72455314e-01,
+    #         1.30016821e-03,   2.80117874e-07,   7.43252200e-04,
+    #        -2.54320922e-04,   4.00502614e-05,   1.83641082e-05,
+    #        -3.05722555e-05,   2.45430345e-03,  -7.63761162e-01,
+    #         7.00892423e-01,  -4.52893496e-01,  -6.42302280e-02,
+    #        -7.41595393e-01,   6.58530850e-04,   4.16585868e-04,
+    #        -2.50902590e-05,   1.44210507e-05,  -2.95156478e-04,
+    #        -6.98435060e-02,   1.24163144e-02,   3.08524704e-02,
+    #         3.60910325e-02,  -5.69395057e-03,   1.58658208e-03,
+    #         8.96009614e-02,  -8.95661225e-05,   3.30803500e-03,
+    #         4.91981788e-03]
 
-    ## antarctica independent only :
-    #bhat = [-3.81730613e-01,   1.44979590e-03,   2.30473800e-02,
-    #        -4.66557207e+01,  -2.70605024e-04,   2.96236959e+01,
-    #         1.35282874e-04,   4.98572401e+00,   5.76099557e-01,
-    #        -4.09000148e-06,  -7.66828817e-04,   4.53570633e-08,
-    #         3.86192314e-04,  -1.22965666e-07,   3.73291874e-04,
-    #        -7.59612262e-05,   1.96585780e-01,  -9.01208788e-07,
-    #        -1.17224924e-01,  -1.16892612e-07,  -2.12477085e-02,
-    #        -2.63217268e-03,   3.56343313e-04,  -1.68509204e+00,
-    #         2.52093755e-03,  -2.93492954e+00,  -3.44265519e-01,
-    #        -8.35448819e-05,   1.00058225e-07,  -2.51673071e-04,
-    #         4.08917599e-05,  -6.09966964e-04,   1.27385446e-01,
-    #         2.51091290e-01,   1.81664750e-05,  -1.77584371e-05,
-    #         7.87445598e-02]
-   
-    ## greenland dependent included :
-    #bhat = [-9.39465489e+00,   2.19530652e-03,   4.28985887e-02,
-    #         3.18782474e+00,  -2.34050602e-03,   3.73032420e+00,
-    #        -1.22317169e-03,   1.28776686e+00,   1.01060056e+00,
-    #         6.60535868e-02,   6.69064894e+00,  -1.14935616e+00,
-    #        -1.08320681e-05,  -3.20529924e-04,   1.75510050e-08,
-    #         1.91612174e-04,  -7.10957013e-09,  -4.26885238e-06,
-    #         8.88992656e-05,   1.53702105e-06,   1.91016413e-04,
-    #        -6.46213366e-05,  -6.44455268e-03,   1.72392535e-06,
-    #         1.42759432e-02,   1.19588342e-05,  -6.05947661e-03,
-    #         2.23623001e-04,  -1.96745101e-04,  -1.47302440e-02,
-    #         1.24823873e-03,   2.98046284e-04,  -1.17614093e+00,
-    #         1.13790819e-04,   5.46704392e-02,   4.35791870e-02,
-    #        -3.43609371e-03,  -2.83742011e-01,  -6.35289747e-02,
-    #         1.86851654e-05,  -1.43078724e-08,   3.22580805e-05,
-    #        -8.28082876e-05,   8.55215944e-06,  -1.53823948e-04,
-    #        -9.44222140e-06,  -8.43205343e-05,  -3.75357711e-02,
-    #        -1.08061501e-01,  -2.59821405e-02,  -5.01141501e-01,
-    #         3.27036521e-02,   6.40989073e-06,  -1.89547330e-05,
-    #        -6.45132233e-06,   7.27148472e-06,   6.93137619e-06,
-    #         9.46724452e-04,   1.28674541e-03,   1.61861928e-02,
-    #        -1.19089114e-02,  -4.33623624e-03,  -3.28422430e-02,
-    #         1.96250108e-02,  -9.23730933e-03,   2.38812961e-03,
-    #        -9.46730935e-03] 
-    
-    ## greenland independent only :
-    #bhat = [ 1.05722099e+01,  -3.14375789e-03,  -2.08948258e-02,
-    #        -1.33363418e+00,   5.79102422e-03,  -5.25066003e+00,
-    #         1.88843384e-03,  -5.17373398e-01,  -1.37549574e+00,
-    #         1.36776450e-05,  -3.28684159e-04,  -3.70461389e-10,
-    #        -3.59714356e-04,  -1.22610525e-08,  -8.41035670e-05,
-    #        -3.35163941e-05,   8.31556947e-03,  -2.35148210e-05,
-    #         1.69045150e-02,  -8.26475722e-06,   2.33510653e-03,
-    #         5.06403921e-03,   5.21793194e-04,  -1.07521646e+00,
-    #        -4.73340816e-06,   3.25557416e-02,  -3.48467832e-02,
-    #         7.52948616e-04,  -6.03040655e-08,   1.42208676e-04,
-    #         3.01671475e-05,   3.60847814e-04,  -1.55640821e-01,
-    #         1.67986111e-01,   1.40480808e-04,   1.02754750e-05,
-    #        -2.32648719e-02]
-    
     X_i  = []
     X_i.extend(X)
      
@@ -671,17 +651,17 @@ class Model(object):
       for yy in X[i+1:]:
         X_i.append(xx*yy)
     
-    self.beta_f = Constant(bhat[0])
+    self.beta_f = exp(Constant(bhat[0]))
     
     for xx,bb in zip(X_i, bhat[1:]):
-      self.beta_f += Constant(bb)*xx
-    #self.beta_f = exp(self.beta_f) - Constant(100.0)
-    self.beta_f = exp(self.beta_f) - Constant(1.0)
+      self.beta_f *= exp(Constant(bb)*xx)
+      #self.beta_f += Constant(bb)*xx
+    #self.beta_f = exp(self.beta_f)
     
     beta                    = project(self.beta_f, Q)
     beta_v                  = beta.vector().array()
     beta_v[beta_v < 0.0]    = 0.0
-    self.assign_variable(self.beta, np.sqrt(beta_v))
+    self.assign_variable(self.beta, beta)
     print_min_max(self.beta, 'beta0')
     #self.init_beta_SIA(Ubar)
      
@@ -910,6 +890,44 @@ class Model(object):
     ubar = self.extrude(ubar, [2,6], 2)
     return ubar
 
+  def calc_misfit(self, integral):
+    """
+    Calculates the misfit of model and observations, 
+
+      D = ||U - U_ob||
+
+    and updates model.misfit with D.
+    """
+    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
+    print_text(s % integral, self.color)
+
+    Q2     = self.Q2
+    ff     = self.ff
+    U_s    = Function(Q2)
+    U_ob_s = Function(Q2)
+    U      = as_vector([self.u,    self.v])
+    U_ob   = as_vector([self.u_ob, self.v_ob])
+
+    if integral == 'shelves':
+      bc_U    = DirichletBC(self.Q2, U,    ff, 6)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 6)
+    elif integral == 'grounded':
+      bc_U    = DirichletBC(self.Q2, U,    ff, 2)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 2)
+    
+    bc_U.apply(U_s.vector())
+    bc_U_ob.apply(U_ob_s.vector())
+
+    # calculate L_inf vector norm :
+    U_s_v    = U_s.vector().array()
+    U_ob_s_v = U_ob_s.vector().array()
+    D_v      = U_s_v - U_ob_s_v
+    D        = MPI.max(mpi_comm_world(), D_v.max())
+    
+    s    = "||U - U_ob|| : %.3E" % D
+    print_text(s, '208', 1)
+    self.misfit = D
+
   def rotate(self, M, theta):
     """
     rotate the tensor <M> about the z axes by angle <theta>.
@@ -922,7 +940,7 @@ class Model(object):
     R  = dot(Rz, dot(M, Rz.T))
     return R
 
-  def get_norm(self, U):
+  def get_norm(self, U, type='l2'):
     """
     returns the norm of vector <U>.
     """
@@ -935,7 +953,10 @@ class Model(object):
     U_v = np.array(U_v)
 
     # calculate the norm :
-    norm_u = np.sqrt(sum(U_v**2))
+    if type == 'l2':
+      norm_u = np.sqrt(sum(U_v**2))
+    elif type == 'linf':
+      norm_u = np.max(U_v)
     
     return U_v, norm_u
 
@@ -1167,6 +1188,79 @@ class Model(object):
     for v in self.variables.iteritems():
       vars(namespace)[v[0]] = v[1]
 
+  def save_pvd(self, var, name):
+    """
+    Save a <name>.pvd file of the FEniCS Function <var> to this model's log 
+    directory specified by the config['output_path'] field.
+    """
+    outpath = self.config['output_path']
+    s       = "::: saving %s%s.pvd file :::" % (outpath, name)
+    print_text(s, self.color)
+    File(outpath + name + '.pvd') << var
+
+  def save_xml(self, var, name):
+    """
+    Save a <name>.xml file of the FEniCS Function <var> to this model's log 
+    directory specified by the config['output_path'] field.
+    """
+    outpath = self.config['output_path']
+    s       = "::: saving %s%s.xml file :::" % (outpath, name)
+    print_text(s, self.color)
+    File(outpath + '/' +  name + '.xml') << var
+
+  def init_hybrid_variables(self):
+    """
+    """
+    # hybrid mass-balance :
+    self.H             = Function(self.Q)
+    self.H0            = Function(self.Q)
+    self.ubar_c        = Function(self.Q)
+    self.vbar_c        = Function(self.Q)
+    self.H_min         = Function(self.Q)
+    self.H_max         = Function(self.Q)
+
+    # hybrid energy-balance :
+    N_T                = self.config['enthalpy']['N_T']
+    self.deltax        = 1./(N_T-1.)
+    self.sigmas        = np.linspace(0, 1, N_T, endpoint=True)
+    self.T_            = Function(self.Z)
+    self.T0_           = Function(self.Z)
+    self.Ts            = Function(self.Q)
+    self.Tb            = Function(self.Q)
+    
+    # hybrid momentum :
+    self.U             = Function(self.HV)
+    
+
+  def init_BP_variables(self):
+    """
+    """
+    self.U             = Function(self.Q2)
+    self.init_higher_order_variables()
+
+  def init_stokes_variables(self):
+    """
+    """
+    self.U             = Function(self.Q4)
+    self.init_higher_order_variables()
+
+  def init_higher_order_variables(self):
+    """
+    """
+    self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
+    self.gradS         = project(grad(self.S), self.V)
+    self.gradB         = project(grad(self.B), self.V)
+
+    # free surface model :
+    self.Shat          = Function(self.Q_flat)
+    self.dSdt          = Function(self.Q_flat)
+    self.ahat          = Function(self.Q_flat)
+    self.uhat_f        = Function(self.Q_flat)
+    self.vhat_f        = Function(self.Q_flat)
+    self.what_f        = Function(self.Q_flat)
+    self.M             = Function(self.Q_flat)
+
+
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -1174,15 +1268,22 @@ class Model(object):
     """
     s = "::: initializing variables :::"
     print_text(s, self.color)
-    
-    self.set_parameters(pc.IceParameters())
-    self.params.globalize_parameters(self) # make all the variables available 
+
+    config = self.config
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
-    self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
-    self.gradS         = project(grad(self.S), self.V)
-    self.gradB         = project(grad(self.B), self.V)
+    self.h             = CellSize(self.mesh)
+
+    if   config['model_order'] == 'stokes':
+      self.init_stokes_variables()
+    elif config['model_order'] == 'BP':
+      self.init_BP_variables()
+    elif config['model_order'] == 'L1L2':
+      self.init_hybrid_variables()
+    
+    self.set_parameters(pc.IceParameters())
+    self.params.globalize_parameters(self) # make all the variables available 
 
     # Velocity model
     self.u             = Function(self.Q)
@@ -1206,34 +1307,25 @@ class Model(object):
     self.U_ob          = Function(self.Q)
     
     # Enthalpy model
-    self.H_surface     = Function(self.Q)
-    self.H_float       = Function(self.Q)
-    self.H             = Function(self.Q)
+    self.theta_surface = Function(self.Q)
+    self.theta_float   = Function(self.Q)
+    self.theta         = Function(self.Q)
     self.T             = Function(self.Q)
     self.q_geo         = Function(self.Q)
     self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
     self.W_r           = Function(self.Q)
     self.Mb            = Function(self.Q)
-    self.Hhat          = Function(self.Q) # Midpoint values
+    self.thetahat      = Function(self.Q) # Midpoint values
     self.uhat          = Function(self.Q) # Midpoint values
     self.vhat          = Function(self.Q) # Midpoint values
     self.what          = Function(self.Q) # Midpoint values
     self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.H0            = Function(self.Q) # initial enthalpy
+    self.theta0        = Function(self.Q) # initial enthalpy
     self.T0            = Function(self.Q) # pressure-melting point
     self.kappa         = Function(self.Q)
     self.Kcoef         = Function(self.Q)
 
-    # free surface model :
-    self.Shat          = Function(self.Q_flat)
-    self.dSdt          = Function(self.Q_flat)
-    self.ahat          = Function(self.Q_flat)
-    self.uhat_f        = Function(self.Q_flat)
-    self.vhat_f        = Function(self.Q_flat)
-    self.what_f        = Function(self.Q_flat)
-    self.M             = Function(self.Q_flat)
-    
     # Age model   
     self.age           = Function(self.Q)
     self.a0            = Function(self.Q)
@@ -1244,10 +1336,10 @@ class Model(object):
     self.T_surface     = Function(self.Q)
 
     # Adjoint model
-    self.u_o           = Function(self.Q)
-    self.v_o           = Function(self.Q)
     self.lam           = Function(self.Q)
     self.adot          = Function(self.Q)
+    self.adj_f         = 0.0              # objective function value at end
+    self.misfit        = 0.0              # ||U - U_ob||
 
     # Balance Velocity model :
     self.kappa         = Function(self.Q)

@@ -36,10 +36,20 @@ The Hessian of the velocity norm is used in calculating error metrics of the
 meshes used in the simulations.
 """
 
-from fenics    import *
-from termcolor import colored, cprint
-import pylab as p
 import inspect
+import pylab              as pl
+import numpy              as np
+from pylab                import plt
+from fenics               import *
+from termcolor            import colored, cprint
+from mpl_toolkits.basemap import Basemap
+from matplotlib           import colors
+from pyproj               import *
+from io                   import DataInput
+
+pl.mpl.rcParams['font.family']     = 'serif'
+pl.mpl.rcParams['legend.fontsize'] = 'medium'
+
 
 def raiseNotDefined():
   fileName = inspect.stack()[1][1]
@@ -172,7 +182,7 @@ class IsotropicMeshRefiner(object):
       H_local = ([[a,b], [b,d]])
       
       #Calculate the Hessian of the velocity norm
-      Hnorm = p.norm(H_local, 2)
+      Hnorm = pl.norm(H_local, 2)
       h     = c.diameter()
       
       # Use the diameter of the cells to set the error :
@@ -259,8 +269,8 @@ class AnisotropicMeshRefiner(object):
     mesh.init(1,2)
     
     #Create copies of the x coordinates
-    new_x          = p.copy(coord[:,0])
-    new_y          = p.copy(coord[:,1])
+    new_x          = pl.copy(coord[:,0])
+    new_y          = pl.copy(coord[:,1])
     exterior_point = {}
 
     for v in vertices(mesh):
@@ -288,14 +298,14 @@ class AnisotropicMeshRefiner(object):
         x_p   = coord[entry[0],0]
         y_p   = coord[entry[0],1]
         error = entry[1]
-        kbar += 1./len(list(data)) * error/p.sqrt( (x-x_p)**2 + (y-y_p)**2 ) 
+        kbar += 1./len(list(data)) * error/pl.sqrt( (x-x_p)**2 + (y-y_p)**2 ) 
       kbar = 0.0 
 
       for entry in list(data):
         x_p      = coord[entry[0],0]
         y_p      = coord[entry[0],1]
         error    = entry[1]
-        k_ij     = error/p.sqrt( (x-x_p)**2 + (y-y_p)**2 )
+        k_ij     = error/pl.sqrt( (x-x_p)**2 + (y-y_p)**2 )
         x_sum   += (k_ij-kbar) * (x_p-x)
         y_sum   += (k_ij-kbar) * (y_p-y)
         wgt_sum += k_ij
@@ -358,8 +368,8 @@ class AnisotropicMeshRefiner(object):
 
       H_local = ([[a,b], [b,d]])
 
-      l, ve   = p.eig(H_local)
-      M       = p.dot(p.dot(ve, abs(p.diag(l))), ve.T)       
+      l, ve   = pl.eig(H_local)
+      M       = pl.dot(pl.dot(ve, abs(pl.diag(l))), ve.T)       
 
       Mxx.vector()[idx] = M[0,0]
       Mxy.vector()[idx] = M[1,0]
@@ -370,13 +380,13 @@ class AnisotropicMeshRefiner(object):
       I, J  = e.entities(0)
       x_I   = coord[I,:]
       x_J   = coord[J,:]
-      M_I   = p.array([[Mxx.vector()[I], Mxy.vector()[I]],
+      M_I   = pl.array([[Mxx.vector()[I], Mxy.vector()[I]],
                        [Mxy.vector()[I], Myy.vector()[I]]]) 
-      M_J   = p.array([[Mxx.vector()[J], Mxy.vector()[J]],
+      M_J   = pl.array([[Mxx.vector()[J], Mxy.vector()[J]],
                        [Mxy.vector()[J], Myy.vector()[J]]])
       M     = (M_I + M_J)/2.
       dX    = x_I - x_J
-      error = p.dot(p.dot(dX, M), dX.T)
+      error = pl.dot(pl.dot(dX, M), dX.T)
       
       e_list.append(error)
       edge_errors[e] = error
@@ -402,12 +412,12 @@ class AnisotropicMeshRefiner(object):
     mesh.init(0,1)
     
     avg_error                 = edge_errors.array().mean()
-    error_sorted_edge_indices = p.argsort(edge_errors.array())[::-1]
+    error_sorted_edge_indices = pl.argsort(edge_errors.array())[::-1]
     refine_edge               = FacetFunction('bool', mesh)
     for e in edges(mesh):
       refine_edge[e] = edge_errors[e] > gamma*avg_error
 
-    coordinates = p.copy(self.mesh.coordinates())      
+    coordinates = pl.copy(self.mesh.coordinates())      
     current_new_vertex = len(coordinates)
     cells_to_delete = []
     new_cells = []
@@ -419,22 +429,22 @@ class AnisotropicMeshRefiner(object):
           adjacent_vertices = e.entities(0)
           if not any([c in cells_to_delete for c in adjacent_cells]):
             new_x,new_y = e.midpoint().x(),e.midpoint().y()
-            coordinates = p.vstack((coordinates,[new_x,new_y]))
+            coordinates = pl.vstack((coordinates,[new_x,new_y]))
             for c in adjacent_cells:
               off_facet_vertex = list(self.mesh.cells()[c])
               [off_facet_vertex.remove(ii) for ii in adjacent_vertices]
               for on_facet_vertex in adjacent_vertices:
-                new_cell = p.sort([current_new_vertex,off_facet_vertex[0],on_facet_vertex])
+                new_cell = pl.sort([current_new_vertex,off_facet_vertex[0],on_facet_vertex])
                 new_cells.append(new_cell)
               cells_to_delete.append(c)
             current_new_vertex+=1
       error_sorted_edge_indices = error_sorted_edge_indices[1:]
 
     old_cells = self.mesh.cells()
-    keep_cell = p.ones(len(old_cells))
+    keep_cell = pl.ones(len(old_cells))
     keep_cell[cells_to_delete] = 0
     old_cells_parsed = old_cells[keep_cell.astype('bool')]
-    all_cells = p.vstack((old_cells_parsed,new_cells))
+    all_cells = pl.vstack((old_cells_parsed,new_cells))
     n_cells = len(all_cells)
 
     e = MeshEditor()
@@ -498,7 +508,7 @@ def write_gmsh(mesh,path):
   nodes = mesh.coordinates()
   n_nodes = mesh.num_vertices()
 
-  nodes = p.hstack((nodes,p.zeros((n_nodes,3 - p.shape(mesh.coordinates())[1]))))
+  nodes = pl.hstack((nodes,pl.zeros((n_nodes,3 - pl.shape(mesh.coordinates())[1]))))
 
   cells = mesh.cells()
   n_cells = mesh.num_cells()
@@ -545,11 +555,25 @@ def default_nonlin_solver_params():
   stokes_params['newton_solver']['report']                  = True
   return stokes_params
 
+
+def default_ffc_options():
+  """ 
+  Returns a set of default ffc options that yield good performance
+  """
+  ffc_options = {"optimize"               : True,
+                 "eliminate_zeros"        : True,
+                 "precompute_basis_const" : True,
+                 "precompute_ip_const"    : True}
+   
+  return ffc_options
+
+
 def default_config():
   """
   Returns a set of default configuration parameters to help users get started.
   """
   config = { 'mode'                         : 'steady',
+             'model_order'                  : 'BP',
              't_start'                      : None,
              't_end'                        : None,
              'time_step'                    : 1.0,
@@ -569,7 +593,9 @@ def default_config():
              { 
                'on'                  : True,
                'log'                 : True,
+               'poly_degree'         : 2,
                'newton_params'       : default_nonlin_solver_params(),
+               'ffc_options'         : default_ffc_options(),
                'vert_solve_method'   : 'mumps',
                'viscosity_mode'      : 'isothermal',
                'b_gnd'               : None,
@@ -582,20 +608,21 @@ def default_config():
                'A'                   : 1e-16,
                'r'                   : 0.0,
                'E'                   : 1.0,
-               'approximation'       : 'fo',
                'boundaries'          : None,
                'u_lat_boundary'      : None,
                'v_lat_boundary'      : None,
-               'calc_pressure'       : True,
+               'calc_pressure'       : False,
                'use_stat_beta'       : False,
              },
              'enthalpy' : 
              { 
                'on'                  : False,
                'log'                 : True,
+               'N_T'                 : 8,
                'solve_method'        : 'mumps',
                'use_surface_climate' : False,
                'lateral_boundaries'  : None,
+               'ffc_options'         : default_ffc_options(),
              },
              'free_surface' :
              { 
@@ -606,6 +633,7 @@ def default_config():
                'use_shock_capturing' : False,
                'thklim'              : 10.0,
                'static_boundary_conditions' : False,
+               'ffc_options'         : default_ffc_options(),
              },  
              'age' : 
              { 
@@ -684,7 +712,7 @@ def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
 
   num_vertices = mesh.num_vertices()
 
-  boundary_vertices = (p.ones(num_vertices)*num_vertices).astype(int)
+  boundary_vertices = (pl.ones(num_vertices)*num_vertices).astype(int)
   num_boundary_vertices = 0
   num_boundary_cells = 0
 
@@ -719,7 +747,7 @@ def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
         vertex_map[vertex_index] = v.index()
       editor.add_vertex(vertex_index,v.point())
 
-  cell = p.zeros(surface_mesh.type().num_vertices(surface_mesh.topology().dim()),dtype = p.uintp)
+  cell = pl.zeros(surface_mesh.type().num_vertices(surface_mesh.topology().dim()),dtype = pl.uintp)
   current_cell = 0
   for f in facets(mesh):
     if boundary_facet[f]:
@@ -814,5 +842,230 @@ def get_bed_mesh(mesh):
       pb[c] = 1
   submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
   return submesh
+
+
+def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='', 
+            numLvls=12, tp=False, tpAlpha=0.5):
+  """
+  INPUTS :
+
+    di :
+      DataInput object with desired projection
+    u :
+      solution to plot; can be either a function on a 2D mesh, or a string 
+      key to matrix variable in <di>.data.
+    directory :
+      directory string location to save image.
+    cmap :
+      colormap to use - see images directory for sample and name
+    scale :
+      scale to plot, either 'log' or 'lin'
+    name :
+      title of the plot, latex accepted
+    numLvls :
+      number of levels for field values
+    tp :
+      boolean determins plotting of triangle overlay
+    tpAlpha :
+      alpha level of triangles 0.0 (transparent) - 1.0 (opaque)
+  
+  OUTPUT :
+ 
+    A sigle 250 dpi .png in the source directory.
+  
+  """
+  #=============================================================================
+  # data gathering :
+  
+  # get the original projection coordinates and data :
+  if isinstance(u, str):
+    vx,vy  = np.meshgrid(di.x, di.y)
+    v      = di.data[u]
+
+  elif isinstance(u, Function):
+    mesh  = u.function_space().mesh()
+    coord = mesh.coordinates()
+    fi    = mesh.cells()
+    v     = u.compute_vertex_values(mesh)
+    vx    = coord[:,0]
+    vy    = coord[:,1]
+
+  # get lon,lat from coordinates :
+  lon,lat = di.proj(vx, vy, inverse=True)
+  
+  # the width/height numbers were calculated from vertices from a mesh :
+  #w = 1.05 * (vx.max() - vx.min())
+  #h = 1.05 * (vy.max() - vy.min())
+
+  # Antarctica :
+  if di.cont == 'antarctica':
+    w   = 5513335.22665
+    h   = 4602848.6605
+    fig = plt.figure(figsize=(14,10))
+    ax  = fig.add_axes()
+    
+    # new projection :
+    m = Basemap(ax=ax, width=w, height=h, resolution='h', 
+                projection='stere', lat_ts=-71, 
+                lon_0=0, lat_0=-90)
+   
+    # draw lat/lon grid lines every 5 degrees.
+    # labels = [left,right,top,bottom]
+    m.drawmeridians(np.arange(0, 360, 20.0),
+                    color = 'black',
+                    labels = [True, False, True, True])
+    m.drawparallels(np.arange(-90, 90, 5.0), 
+                    color = 'black', 
+                    labels = [True, False, True, True])
+    m.drawmapscale(-130, -68, 0, -90, 400, 
+                   yoffset  = 0.01 * (m.ymax - m.ymin), 
+                   barstyle = 'fancy')
+ 
+  # Greenland : 
+  elif di.cont == 'greenland':
+    w   = 1532453.49654
+    h   = 2644074.78236
+    fig = plt.figure(figsize=(8,10))
+    ax  = fig.add_axes()
+    
+    # new projection :
+    m = Basemap(ax=ax, width=w, height=h, resolution='h', 
+                projection='stere', lat_ts=71, 
+                lon_0=-41.5, lat_0=71)
+    
+    # draw lat/lon grid lines every 5 degrees.
+    # labels = [left,right,top,bottom]
+    m.drawmeridians(np.arange(0, 360, 5.0),
+                    color = 'black',
+                    labels = [False, False, False, True])
+    m.drawparallels(np.arange(-90, 90, 5.0), 
+                    color = 'black', 
+                    labels = [True, False, True, False])
+    m.drawmapscale(-34, 60.5, -41.5, 71, 400, 
+                   yoffset  = 0.01 * (m.ymax - m.ymin), 
+                   barstyle = 'fancy')
+
+  # convert to new projection coordinates from lon,lat :
+  x, y  = m(lon, lat)
+ 
+  m.drawcoastlines(linewidth=0.25, color = 'black')
+  #m.shadedrelief()
+  #m.bluemarble()
+  #m.etopo()
+  
+
+  #=============================================================================
+  # plotting :
+  
+  # countour levels :
+  if scale == 'log':
+    from matplotlib.ticker import LogFormatter
+    vmax                = np.ceil(v.max())
+    vmin                = np.floor(v.min())
+    v[np.where(v<=1.0)] = 1.0
+    levels              = np.logspace(0.0, np.log10(vmax+1), numLvls)
+    formatter           = LogFormatter(10, labelOnlyBase=False)
+    norm                = colors.LogNorm()
+  
+  elif scale == 'lin':
+    from matplotlib.ticker import ScalarFormatter
+    vmin      = np.floor(v.min())
+    vmax      = np.ceil(v.max())
+    levels    = np.linspace(vmin, vmax+1, numLvls)
+    formatter = ScalarFormatter()
+    norm      = None
+  
+  elif scale == 'bool':
+    from matplotlib.ticker import ScalarFormatter
+    levels    = [0, 1, 2]
+    formatter = ScalarFormatter()
+    norm      = None
+  
+
+  if isinstance(u, str):
+    #cs = plt.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
+    cs = plt.contourf(x, y, v, levels=levels, 
+                      cmap=pl.get_cmap(cmap), norm=norm)
+  
+  elif isinstance(u, Function):
+    #cs = plt.tripcolor(x, y, fi, v, shading='gouraud', 
+    #                   cmap=get_cmap(cmap), norm=norm)
+    cs = plt.tricontourf(x, y, fi, v, levels=levels, 
+                         cmap=pl.get_cmap(cmap), norm=norm)
+  
+  # plot triangles :
+  if tp == True:
+    tp = plt.triplot(x, y, fi, '-', lw=0.2, alpha=tpAlpha)
+
+  # include colorbar :
+  cbar = m.colorbar(cs, format=formatter, 
+                    ticks=np.around(levels,decimals=1), 
+                    location='right', pad="5%")
+  
+  # title :
+  #tit = plt.title(name)
+  #tit.set_fontsize(40)
+  
+  plt.savefig(directory + '/' + name + '.png', dpi=250)
+  plt.show()
+
+
+# VERTICAL BASIS REPLACES A NORMAL FUNCTION, SUCH THAT VERTICAL DERIVATIVES
+# CAN BE EVALUATED IN MUCH THE SAME WAY AS HORIZONTAL DERIVATIVES.  IT NEEDS
+# TO BE SUPPLIED A LIST OF FUNCTIONS OF SIGMA THAT MULTIPLY EACH COEFFICIENT.
+class VerticalBasis(object):
+  def __init__(self, u, coef, dcoef):
+    self.u     = u
+    self.coef  = coef
+    self.dcoef = dcoef
+
+  def __call__(self,s):
+    return sum([u*c(s) for u,c in zip(self.u, self.coef)])
+
+  def ds(self,s):
+    return sum([u*c(s) for u,c in zip(self.u, self.dcoef)])
+
+  def dx(self,s,x):
+    return sum([u.dx(x)*c(s) for u,c in zip(self.u, self.coef)])
+
+
+# SIMILAR TO ABOVE, BUT FOR CALCULATION OF FINITE DIFFERENCE QUANTITIES.
+class VerticalFDBasis(object):
+  def __init__(self,u, deltax, coef, sigmas):
+    self.u      = u 
+    self.deltax = deltax
+    self.coef   = coef
+    self.sigmas = sigmas
+
+  def __call__(self,i):
+    return self.u[i]
+
+  def eval(self,s):
+    fl   = max(sum(s > self.sigmas)-1,0)
+    dist = s - self.sigmas[fl]
+    return self.u[fl]*(1 - dist/self.deltax) + self.u[fl+1]*dist/self.deltax
+
+  def ds(self,i):
+    return (self.u[i+1] - self.u[i-1])/(2*self.deltax)
+
+  def d2s(self,i):
+    return (self.u[i+1] - 2*self.u[i] + self.u[i-1])/(self.deltax**2)
+
+  def dx(self,i,x):
+    return self.u[i].dx(x)        
+
+
+# PERFORMS GAUSSIAN QUADRATURE FOR ARBITRARY FUNCTION OF SIGMA, QUAD POINTS, AND WEIGHTS
+class VerticalIntegrator(object):
+  def __init__(self,points,weights):
+    self.points  = points
+    self.weights = weights
+  def integral_term(self,f,s,w):
+    return w*f(s)
+  def intz(self,f):
+    return sum([self.integral_term(f,s,w) for s,w in zip(self.points,self.weights)])
+
+
+
 
 

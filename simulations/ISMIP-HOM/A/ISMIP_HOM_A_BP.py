@@ -14,7 +14,6 @@ config = default_config()
 config['output_path']                  = './results_BP/'
 config['periodic_boundary_conditions'] = True
 config['velocity']['newton_params']    = nonlin_solver_params
-config['velocity']['r']                = 0
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
 mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
@@ -22,7 +21,7 @@ mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
 model = Model(config)
 model.set_mesh(mesh)
 
-surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
+surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
 bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
                      + ' sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',

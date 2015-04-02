@@ -52,12 +52,14 @@ class SteadySolver(Solver):
 
     # velocity model :
     if self.config['velocity']['on']:
-      if   config['velocity']['approximation'] == 'fo':
+      if   config['model_order'] == 'BP':
         self.velocity_instance = VelocityBP(model, config)
-      elif config['velocity']['approximation'] == 'stokes':
+      elif config['model_order'] == 'stokes':
         self.velocity_instance = VelocityStokes(model, config)
+      elif config['model_order'] == 'L1L2':
+        self.velocity_instance = VelocityHybrid(model, config)
       else:
-        s = "Please use 'fo' or 'stokes'. "
+        s = "Please use 'BP', 'stokes', or 'L1L2'. "
         print_text(s, self.color())
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
@@ -67,11 +69,17 @@ class SteadySolver(Solver):
     
     # enthalpy model :
     if config['enthalpy']['on']:
-      self.enthalpy_instance = Enthalpy(model, config)
-      if config['enthalpy']['log']:
-        self.T_file   = File(outpath + 'T.pvd')
-        self.W_file   = File(outpath + 'W.pvd')
-        self.M_file   = File(outpath + 'Mb.pvd')
+      if   self.config['model_order'] == 'L1L2':
+        self.enthalpy_instance = EnergyHybrid(model, config)
+        if config['enthalpy']['log']:
+          self.Ts_file  = File(outpath + 'Ts.pvd')
+          self.Tb_file  = File(outpath + 'Tb.pvd')
+      else:
+        self.enthalpy_instance = Enthalpy(model, config)
+        if config['enthalpy']['log']:
+          self.T_file   = File(outpath + 'T.pvd')
+          self.W_file   = File(outpath + 'W.pvd')
+          self.M_file   = File(outpath + 'Mb.pvd')
 
     # age model :
     if config['age']['on']:
@@ -137,9 +145,8 @@ class SteadySolver(Solver):
     while inner_error > inner_tol and counter < max_iter:
      
       # reset the velocity for Newton solve to converge : 
-      if counter > 0:  
-        model.assign_variable(model.U, DOLFIN_EPS)
-        model.assign_variable(model.w, DOLFIN_EPS)
+      model.assign_variable(model.U, DOLFIN_EPS)
+      model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
@@ -169,29 +176,41 @@ class SteadySolver(Solver):
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['enthalpy']['log'] and config['log']: 
-          s    = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
-          print_text(s % outpath, self.color())
-          if config['log_history']:
-            self.T_file    << model.T    # save temperature
-            self.M_file    << model.Mb   # save melt rate
-            self.W_file    << model.W    # save water content
-          else:
-            File(outpath + 'T.pvd')   << model.T
-            File(outpath + 'W.pvd')   << model.Mb
-            File(outpath + 'Mb.pvd')  << model.W
+          if config['model_order'] == 'L1L2':
+            s  = '::: saving surface and bed temperature Ts, and Tb .pvd ' + \
+                 'files to %s :::'
+            print_text(s % outpath, self.color())
+            if config['log_history']:
+              self.Ts_file    << model.Ts   # save temperature
+              self.Tb_file    << model.Tb   # save melt rate
+            else:
+              File(outpath + 'Ts.pvd')   << model.Ts
+              File(outpath + 'Tb.pvd')   << model.Tb
+          else :
+            s  = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
+            print_text(s % outpath, self.color())
+            if config['log_history']:
+              self.T_file    << model.T    # save temperature
+              self.M_file    << model.Mb   # save melt rate
+              self.W_file    << model.W    # save water content
+            else:
+              File(outpath + 'T.pvd')   << model.T
+              File(outpath + 'W.pvd')   << model.Mb
+              File(outpath + 'Mb.pvd')  << model.W
     
       # re-compute the friction field :
       if config['velocity']['use_stat_beta']:
         s    = "::: updating statistical beta :::"
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)
-        print_min_max(beta, 'beta^2')
-        beta_v = beta.vector().array()
-        #betaSIA_v = model.betaSIA.vector().array()
-        #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        beta_v[beta_v < 0.0]    = 0.0
-        #beta_v[beta_v > 2500.0] = 2500.0
-        model.assign_variable(model.beta, np.sqrt(beta_v))
+        print_min_max(beta, 'beta')
+        #beta_v = beta.vector().array()
+        ##betaSIA_v = model.betaSIA.vector().array()
+        ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+        #beta_v[beta_v < 0.0]    = 0.0
+        ##beta_v[beta_v > 2500.0] = 2500.0
+        model.assign_variable(model.beta, beta)
+        #model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath
@@ -339,19 +358,25 @@ class TransientSolver(Solver):
     # initialize velocity solver :
     if self.config['velocity']['on']:
       
-      if   self.config['velocity']['approximation'] == 'fo':
+      if   self.config['model_order'] == 'BP':
         self.velocity_instance = VelocityBP(model, config)
       
-      elif self.config['velocity']['approximation'] == 'stokes':
+      elif self.config['model_order'] == 'stokes':
         self.velocity_instance = VelocityStokes(model, config)
       
+      elif config['model_order'] == 'L1L2':
+        self.velocity_instance = VelocityHybrid(model, config)
+      
       else:
-        s =  "Please choose 'fo' or 'stokes'. "
+        s =  "Please choose 'BP' or 'stokes'. "
         print_text(s, self.color())
     
     # initialized enthalpy solver : 
     if self.config['enthalpy']['on']:
-      self.enthalpy_instance = Enthalpy(model, config)
+      if   self.config['model_order'] == 'L1L2':
+        self.enthalpy_instance = EnergyHybrid(model, config)
+      else:
+        self.enthalpy_instance = Enthalpy(model, config)
 
     # initialize age solver :
     if self.config['age']['on']:
@@ -363,14 +388,20 @@ class TransientSolver(Solver):
 
     # initialize free surface solver :
     if config['free_surface']['on']:
-      self.surface_instance = FreeSurface(model, config)
-      self.M_prev           = 1.0
+      if   self.config['model_order'] == 'L1L2':
+        self.surface_instance = MassBalanceHybrid(model, config)
+      else:
+        self.surface_instance = FreeSurface(model, config)
+        self.M_prev           = 1.0
 
     # Set up files for logging time dependent solutions to paraview files.
     if config['log']:
       self.file_U  = File(self.config['output_path']+'U.pvd')
       self.file_T  = File(self.config['output_path']+'T.pvd')
+      self.file_Ts = File(self.config['output_path']+'Ts.pvd')
+      self.file_Tb = File(self.config['output_path']+'Tb.pvd')
       self.file_S  = File(self.config['output_path']+'S.pvd')
+      self.file_H  = File(self.config['output_path']+'H.pvd')
       self.file_a  = File(self.config['output_path']+'age.pvd')
       self.dheight = []
       self.mass    = []
@@ -442,19 +473,17 @@ class TransientSolver(Solver):
     thklim = config['free_surface']['thklim']
    
     mesh   = model.mesh 
-    smb    = model.smb
+    adot   = model.adot
     sigma  = model.sigma
 
     S      = model.S
     B      = model.B
- 
-    smb.interpolate(config['free_surface']['observed_smb'])
 
     if config['periodic_boundary_conditions']:
-      d2v = dof_to_vertex_map(model.Q_non_periodic)
+      d2v      = dof_to_vertex_map(model.Q_non_periodic)
       mhat_non = Function(model.Q_non_periodic)
     else:
-      d2v = dof_to_vertex_map(model.Q)
+      d2v      = dof_to_vertex_map(model.Q)
 
     # Loop over all times
     while t <= t_end:
@@ -596,15 +625,15 @@ class AdjointSolver(Solver):
     Q     = model.Q
     
     if u != None and v != None:
-      model.assign_variable(model.u_o, u)
-      model.assign_variable(model.v_o, v)
+      model.assign_variable(model.u_ob, u)
+      model.assign_variable(model.v_ob, v)
 
     elif U != None:
       Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
       u_n    = project(-U * S.dx(0) / Smag, Q)
       v_n    = project(-U * S.dx(1) / Smag, Q)      
-      model.assign_variable(model.u_o, u_n)
-      model.assign_variable(model.v_o, v_n)
+      model.assign_variable(model.u_ob, u_n)
+      model.assign_variable(model.v_ob, v_n)
 
   def solve(self):
     r""" 
@@ -703,8 +732,8 @@ class AdjointSolver(Solver):
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
-      print_min_max(model.u_o, 'u_o')
-      print_min_max(model.v_o, 'v_o')
+      print_min_max(model.u_ob, 'u_ob')
+      print_min_max(model.v_ob, 'v_ob')
       I = assemble(self.adjoint_instance.I)
       return I
  
@@ -720,6 +749,9 @@ class AdjointSolver(Solver):
 
       for i,c in enumerate(control):
         print_min_max(c, 'c_' + str(i))
+ 
+      # calculate and print misfit : 
+      model.calc_misfit(config['adjoint']['surface_integral'])
 
       Js = []
       for JJ in self.adjoint_instance.J:
@@ -765,7 +797,8 @@ class AdjointSolver(Solver):
     
     # minimize function I with initial guess beta_0 and gradient function J :
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
-                               maxfun=maxfun, iprint=iprint)
+                               maxiter=maxfun-2, iprint=iprint, factr=10)
+    model.f_adj = f  # save the function value for later use 
 
     n = len(mopt)/len(control)
     for ii,c in enumerate(control):
@@ -828,7 +861,6 @@ class StokesBalanceSolver(Solver):
       membrane = as_vector([memb_x,       memb_y,       0.0])
       driving  = as_vector([model.tau_dn, model.tau_dt, 0.0])
       basal    = as_vector([model.tau_bn, model.tau_bt, 0.0])
-      basal_2  = as_vector([model.tau_nz, model.tau_tz, 0.0])
       pressure = as_vector([model.tau_pn, model.tau_pt, 0.0])
       
       total    = membrane + basal + pressure - driving
@@ -842,7 +874,6 @@ class StokesBalanceSolver(Solver):
       membrane = project(membrane)
       driving  = project(driving)
       basal    = project(basal)
-      basal_2  = project(basal_2)
       pressure = project(pressure)
       total    = project(total)
       
@@ -851,7 +882,6 @@ class StokesBalanceSolver(Solver):
       print_min_max(membrane, "membrane")
       print_min_max(driving,  "driving")
       print_min_max(basal,    "basal")
-      print_min_max(basal_2,  "basal_2")
       print_min_max(pressure, "pressure")
       print_min_max(total,    "total")
       
@@ -860,9 +890,125 @@ class StokesBalanceSolver(Solver):
       File(outpath + "membrane.pvd") << membrane
       File(outpath + "driving.pvd")  << driving
       File(outpath + "basal.pvd")    << basal
-      File(outpath + "basal_2.pvd")  << basal_2
       File(outpath + "pressure.pvd") << pressure
       File(outpath + "total.pvd")    << total
  
+
+class HybridTransientSolver(Solver):
+  """
+  This abstract class outlines the structure of a VarGlaS solver.
+  """
+  def __init__(self, model, config):
+    """
+    """
+    s    = "::: INITIALIZING HYBRID TRANSIENT SOLVER :::"
+    print_text(s, self.color())
+    self.model          = model
+    self.config         = config
+    self.config['mode'] = 'transient'
+    outpath             = config['output_path']
+
+    # initialize velocity solver :
+    if self.config['velocity']['on']:
+      self.velocity_instance = VelocityHybrid(model, config)
+    
+    # initialized enthalpy solver : 
+    if self.config['enthalpy']['on']:
+      self.enthalpy_instance = EnergyHybrid(model, config)
+
+    # initialize surface climate solver :
+    if self.config['surface_climate']['on']:
+      self.surface_climate_instance = SurfaceClimate(model, config)
+
+    # initialize free surface solver :
+    if config['free_surface']['on']:
+      self.surface_instance = MassBalanceHybrid(model, config)
+
+    # Set up files for logging time dependent solutions to paraview files.
+    if config['log']:
+      self.file_U    = File(outpath + 'U.pvd')
+      self.file_Ts   = File(outpath + 'Ts.pvd')
+      self.file_Tb   = File(outpath + 'Tb.pvd')
+      self.file_H    = File(outpath + 'H.pvd')
+      self.file_beta = File(outpath + 'beta.pvd')
+      self.t_log     = []
+
+    self.step_time = []
+    self.M_prev    = 1.0
+
+  def solve(self):
+    """
+    Performs the physics, evaluating and updating the enthalpy and age as 
+    well as storing the velocity, temperature, and the age in vtk files.
+
+    """
+    s    = '::: solving HybridTransientSolver :::'
+    print_text(s, self.color())
+    model  = self.model
+    config = self.config
+    
+    t      = config['t_start']
+    t_end  = config['t_end']
+    dt     = config['time_step']
+   
+    H      = model.H
+    H0     = model.H0
+    T_     = model.T_
+    T0_    = model.T0_
+    beta   = model.beta
+
+    # Loop over all times
+    while t <= t_end:
+
+      # start the timer :
+      tic = time()
+       
+      # calculate velocity : 
+      if config['velocity']['on']:
+        self.velocity_instance.solve()
+        if config['velocity']['log']:
+          s    = '::: saving velocity U.pvd file :::'
+          print_text(s, self.color())
+          U    = project(as_vector([model.u, model.v, model.w]))
+          self.file_U << U
+
+      # calculate energy
+      if config['enthalpy']['on']:
+        self.enthalpy_instance.solve()
+        if config['enthalpy']['log']:
+          s    = '::: saving surface and bed temperature Ts and Tb .pvd ' + \
+                 'files :::'
+          print_text(s, self.color())
+          self.file_Ts << model.Ts
+          self.file_Tb << model.Tb
+        T0_.interpolate(T_)  # update previous temp
+      
+      # calculate free surface :
+      if config['free_surface']['on']:
+        self.surface_instance.solve()
+        if config['log']:
+          s    = '::: saving thickness H.pvd file :::'
+          print_text(s, self.color())
+          self.file_H << model.H
+        H0.interpolate(H)
+    
+      # calculate surface climate solver :
+      if config['surface_climate']['on']:
+        self.surface_climate_instance.solve()
+
+      # store information : 
+      if self.config['log']:
+        self.file_beta << beta
+        self.t_log.append(t)
+
+      # increment time step :
+      if self.model.MPI_rank==0:
+        s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
+        text = colored(s, 'red', attrs=['bold'])
+        print text % (t, time()-tic)
+
+      t += dt
+      self.step_time.append(time() - tic)
+
 
 

@@ -1,5 +1,5 @@
 """
-Utilities file:
+io file:
 
   This contains classes that are used by UM-FEISM to aid in the loading
   of data and preparing data for use in DOLFIN based simulation.
@@ -18,7 +18,6 @@ from fenics            import interpolate, Expression, Function, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
                               File
 from pyproj            import Proj, transform
-#from termcolor         import colored, cprint
 from colored           import fg, attr
 #from scipy.spatial     import ConvexHull
 from shapely.geometry  import Polygon, Point
@@ -35,14 +34,12 @@ class DataInput(object):
     3) Project the data onto a finite element mesh that is generated based
        on the extents of the input data set.
   """
-  def __init__(self, files, direc=None, flip=False, mesh=None, gen_space=True,
+  def __init__(self, mf_obj, flip=False, mesh=None, gen_space=True,
                zero_edge=False, bool_data=False, req_dg=False):
     """
     The following data are used to initialize the class :
 
-      direc     : Set the directory containing the input files.
-      files     : Tuple of file names.  All files are scanned for rows or
-                  columns of nans. Assume all files have the same extents.
+      mf_obj    : mesh factory dictionary.
       flip      : flip the data over the x-axis?
       mesh      : FEniCS mesh if there is one already created.
       zero_edge : Make edges of domain -0.002?
@@ -52,54 +49,35 @@ class DataInput(object):
     Based on thickness extents, create a rectangular mesh object.
     Also define the function space as continious galerkin, order 1.
     """
-    self.directory  = direc
     self.data       = {}        # dictionary of converted matlab data
-    self.rem_nans   = False
+    self.rem_nans   = False     # may change depending on 'identify_nans' call
     self.chg_proj   = False     # change to other projection flag
     self.color      = 'light_green'
 
-    first = True  # initialize domain by first file's extents
+    self.name       = mf_obj.pop('dataset')
+    self.cont       = mf_obj.pop('continent')
+    self.proj       = mf_obj.pop('pyproj_Proj')
 
-    if direc == None and type(files) == dict:
-      self.name = files.pop('dataset')
-    elif direc != None:
-      self.name = direc
+    # initialize extents :
+    self.ny         = mf_obj.pop('ny')
+    self.nx         = mf_obj.pop('nx')
+    self.x_min      = float(mf_obj.pop('map_western_edge'))
+    self.x_max      = float(mf_obj.pop('map_eastern_edge'))
+    self.y_min      = float(mf_obj.pop('map_southern_edge'))
+    self.y_max      = float(mf_obj.pop('map_northern_edge'))
+    self.x          = linspace(self.x_min, self.x_max, self.nx)
+    self.y          = linspace(self.y_min, self.y_max, self.ny)
+    self.good_x     = array(ones(len(self.x)), dtype=bool)      # no NaNs
+    self.good_y     = array(ones(len(self.y)), dtype=bool)      # no NaNs
 
     s    = "::: creating %s DataInput object :::" % self.name
     print_text(s, self.color)
 
-    # process the data files :
-    for fn in files:
+    # process the data mf_obj :
+    for fn in mf_obj:
 
-      if direc == None and type(files) == dict:
-        d_dict = files[fn]
-
-
-      elif direc != None:
-        d_dict = loadmat(direc + fn)
-        d_dict['projection']     = d_dict['projection'][0]
-        d_dict['standard lat']   = d_dict['standard lat'][0]
-        d_dict['standard lon']   = d_dict['standard lon'][0]
-        d_dict['lat true scale'] = d_dict['lat true scale'][0]
-
-      d = d_dict["map_data"]
-
-      # initialize extents :
-      if first:
-        self.ny,self.nx = shape(d_dict['map_data'])
-        self.x_min      = float(d_dict['map_western_edge'])
-        self.x_max      = float(d_dict['map_eastern_edge'])
-        self.y_min      = float(d_dict['map_southern_edge'])
-        self.y_max      = float(d_dict['map_northern_edge'])
-        self.proj       = str(d_dict['projection'])
-        self.lat_0      = str(d_dict['standard lat'])
-        self.lon_0      = str(d_dict['standard lon'])
-        self.lat_ts     = str(d_dict['lat true scale'])
-        self.x          = linspace(self.x_min, self.x_max, self.nx)
-        self.y          = linspace(self.y_min, self.y_max, self.ny)
-        self.good_x     = array(ones(len(self.x)), dtype=bool)      # no NaNs
-        self.good_y     = array(ones(len(self.y)), dtype=bool)      # no NaNs
-        first           = False
+      # raw data matrix with key fn :
+      d = mf_obj[fn]
 
       # identify, but not remove the NaNs :
       self.identify_nans(d, fn)
@@ -138,14 +116,15 @@ class DataInput(object):
       if req_dg:
         self.func_space_dg = FunctionSpace(self.mesh, "DG", 1)
 
-    # create projection :
-    proj =   " +proj="   + self.proj \
-           + " +lat_0="  + self.lat_0 \
-           + " +lat_ts=" + self.lat_ts \
-           + " +lon_0="  + self.lon_0 \
-           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
-           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
-    self.p = Proj(proj)
+      self.mesh.init(1,2)
+      self.num_facets = self.mesh.size_global(2)
+      self.num_cells  = self.mesh.size_global(3)
+      self.dof        = self.mesh.size_global(0)
+      s = "    - using mesh with %i cells, %i facets, %i vertices - "
+      print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
+    else:
+      s = "    - not using a mesh - "
+      print_text(s, self.color)
 
   def change_projection(self, di):
     """
@@ -160,7 +139,7 @@ class DataInput(object):
     """
     Returns the (x,y) flat map coordinates corresponding to a given (lon,lat)
     coordinate pair using the DataInput object's current projection."""
-    return self.p(lon,lat)
+    return self.proj(lon,lat)
 
   def transform_xy(self, di):
     """
@@ -170,7 +149,7 @@ class DataInput(object):
     # FIXME : need a fast way to convert all the x, y. Currently broken
     s = "::: transforming coordinates from %s to %s :::" % (di.name, self.name)
     print_text(s, self.color)
-    xn, yn = transform(di.p, self.p, di.x, di.y)
+    xn, yn = transform(di.p, self.proj, di.x, di.y)
     return (xn, yn)
 
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
@@ -347,7 +326,7 @@ class DataInput(object):
 
     if self.chg_proj:
       new_proj = self.new_p
-      old_proj = self.p
+      old_proj = self.proj
 
     if not near :
       spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)
@@ -488,35 +467,59 @@ class DataOutput(object):
                       'lat true scale'    : di.lat_ts})
 
 
-def print_min_max(u, title):
+def print_min_max(u, title, color='yellow'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  if isinstance(u, GenericVector):
-    uMin = MPI.min(mpi_comm_world(), u.min())
-    uMax = MPI.max(mpi_comm_world(), u.max())
-  elif isinstance(u, Function):
-    uMin = MPI.min(mpi_comm_world(), u.vector().min())
-    uMax = MPI.max(mpi_comm_world(), u.vector().max())
-  elif isinstance(u, ndarray):
-    er = "warning, input to print_min_max() is a NumPy array, local min " + \
-         " / max only"
-    er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
-    print er
-    uMin = u.min()
-    uMax = u.max()
-  elif isinstance(u, int) or isinstance(u, float):
-    uMin = uMax = u
-  else:
+  if MPI.size(mpi_comm_world()) > 1:
+    if isinstance(u, GenericVector):
+      uMin = MPI.min(mpi_comm_world(), u.min())
+      uMax = MPI.max(mpi_comm_world(), u.max())
+    elif isinstance(u, Function):
+      uMin = MPI.min(mpi_comm_world(), u.vector().min())
+      uMax = MPI.max(mpi_comm_world(), u.vector().max())
+    elif isinstance(u, ndarray):
+      #er = "warning, input to print_min_max() is a NumPy array, local min " + \
+      #     " / max only"
+      #er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+      #print er
+      #uMin = u.min()
+      #uMax = u.max()
+      uMin = MPI.min(mpi_comm_world(), u)
+      uMax = MPI.max(mpi_comm_world(), u)
+    elif isinstance(u, int) or isinstance(u, float):
+      uMin = uMax = u
+    else:
+      if MPI.rank(mpi_comm_world())==0:
+        er = "print_min_max function requires a Vector, Function, array," \
+             + " int or float, not %s." % type(u)
+        er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
+        print er
+      uMin = uMax = nan
     if MPI.rank(mpi_comm_world())==0:
+      s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
+      text = ('%s' + s + '%s') % (fg(color), attr(0))
+      print text
+  else:
+    if isinstance(u, GenericVector):
+      uMin = u.min()
+      uMax = u.max()
+    elif isinstance(u, Function):
+      uMin = u.vector().min()
+      uMax = u.vector().max()
+    elif isinstance(u, ndarray):
+      uMin = u.min()
+      uMax = u.max()
+    elif isinstance(u, int) or isinstance(u, float):
+      uMin = uMax = u
+    else:
       er = "print_min_max function requires a Vector, Function, array," \
            + " int or float, not %s." % type(u)
       er = ('%s%s' + er + '%s') % (fg('red'), attr(1), attr(0))
       print er
-    uMin = uMax = nan
-  if MPI.rank(mpi_comm_world())==0:
-    s    = title + ' <min, max> : <%f, %f>' % (uMin, uMax)
-    text = ('%s' + s + '%s') % (fg('yellow'), attr(0))
+      uMin = uMax = nan
+    s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
+    text = ('%s' + s + '%s') % (fg(color), attr(0))
     print text
 
 
@@ -525,16 +528,36 @@ def print_text(text, color='white', atrb=0):
   Print text <text> from calling class <cl> to the screen.
   """
   if MPI.rank(mpi_comm_world())==0:
-    text = ('%s' + text + '%s') % (fg(color), attr(atrb))
+    if atrb != 0:
+      text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))
+    else:
+      text = ('%s' + text + '%s') % (fg(color), attr(0))
     print text
 
+
 class GetBasin(object):
-    """This class contains functions to return a contour corresponding to the
-    perimeter of various basins in Antarctica and Greenland. The libraries of
-    basins are drawn from ICESat data, and posted here:
+  """This class contains functions to return a contour corresponding to the
+  perimeter of various basins in Antarctica and Greenland. The libraries of
+  basins are drawn from ICESat data, and posted here:
 
-    http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
+  http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
 
+  INPUTS:
+              di :     an instance of a DataInput obect (see above) needed for
+                       projection function
+
+              where : 'Greenland' if contour is to be from Greenland,
+                       False for Antarctica
+
+  TODO: Now working to extend the domain beyond the present day ice margin for
+  the purpose of increasing the stability of dynamic runs. Additionally, there
+  appear to be some stability issues when running the MCB algorithm, but these
+  are not consistent; some domains work, others do not. The hope is that
+  extension of the domain will help here too.
+
+  """
+  def __init__(self,di,where = 'Greenland',edge_resolution = 1000.):
+    """
     INPUTS:
                 di = an instance of a DataInput obect (see above) needed for
                 projection function
@@ -802,6 +825,3 @@ class GetBasin(object):
     def get_xy_contour(self):
         self.check_dist()
         return self.xycoords
-
-    def get_edge(self):
-        return self.edge

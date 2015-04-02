@@ -105,13 +105,21 @@ class Model(object):
       self.pBC = None
     self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
                                 constrained_domain=self.pBC)
-    self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                constrained_domain=self.pBC)
-    self.Q2     = MixedFunctionSpace([self.Q]*2)
-    self.Q3     = MixedFunctionSpace([self.Q]*3)
-    self.Q4     = MixedFunctionSpace([self.Q]*4)
-    self.V              = VectorFunctionSpace(self.mesh, "CG", 1)
+    if self.config['model_order'] != 'L1L2':
+      self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
+                                  constrained_domain=self.pBC)
+      self.Q2     = MixedFunctionSpace([self.Q]*2)
+      self.Q3     = MixedFunctionSpace([self.Q]*3)
+      self.Q4     = MixedFunctionSpace([self.Q]*4)
+      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+    else:
+      poly_degree = self.config['velocity']['poly_degree']
+      N_T         = self.config['enthalpy']['N_T']
+      self.HV     = MixedFunctionSpace([self.Q]*2*poly_degree) # VELOCITY
+      self.Z      = MixedFunctionSpace([self.Q]*N_T)           # TEMPERATURE
+    
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
+
     s = "    - function spaces created - "
     print_text(s, self.color)
     
@@ -430,6 +438,25 @@ class Model(object):
     print_min_max(self.u_ob, 'u_ob')
     print_min_max(self.v_ob, 'v_ob')
     print_min_max(self.U_ob, 'U_ob')
+    
+  def init_H(self, H):
+    """
+    """
+    s = "::: initializing thickness :::"
+    print_text(s, self.color)
+    self.assign_variable(self.H,  H)
+    self.assign_variable(self.H0, H)
+    print_min_max(self.H, 'H')
+
+  def init_H_bounds(self, H_min, H_max):
+    """
+    """
+    s = "::: initializing bounds on thickness :::"
+    print_text(s, self.color)
+    self.assign_variable(self.H_min, H_min)
+    self.assign_variable(self.H_max, H_max)
+    print_min_max(self.H_min, 'H_min')
+    print_min_max(self.H_max, 'H_max')
   
   def init_Ubar(self, Ubar):
     """
@@ -1181,6 +1208,59 @@ class Model(object):
     print_text(s, self.color)
     File(outpath + '/' +  name + '.xml') << var
 
+  def init_hybrid_variables(self):
+    """
+    """
+    # hybrid mass-balance :
+    self.H             = Function(self.Q)
+    self.H0            = Function(self.Q)
+    self.ubar_c        = Function(self.Q)
+    self.vbar_c        = Function(self.Q)
+    self.H_min         = Function(self.Q)
+    self.H_max         = Function(self.Q)
+
+    # hybrid energy-balance :
+    N_T                = self.config['enthalpy']['N_T']
+    self.deltax        = 1./(N_T-1.)
+    self.sigmas        = np.linspace(0, 1, N_T, endpoint=True)
+    self.T_            = Function(self.Z)
+    self.T0_           = Function(self.Z)
+    self.Ts            = Function(self.Q)
+    self.Tb            = Function(self.Q)
+    
+    # hybrid momentum :
+    self.U             = Function(self.HV)
+    
+
+  def init_BP_variables(self):
+    """
+    """
+    self.U             = Function(Q2)
+    self.init_higher_order_variables()
+
+  def init_stokes_variables(self):
+    """
+    """
+    self.U             = Function(Q4)
+    self.init_higher_order_variables()
+
+  def init_higher_order_variables(self):
+    """
+    """
+    self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
+    self.gradS         = project(grad(self.S), self.V)
+    self.gradB         = project(grad(self.B), self.V)
+
+    # free surface model :
+    self.Shat          = Function(self.Q_flat)
+    self.dSdt          = Function(self.Q_flat)
+    self.ahat          = Function(self.Q_flat)
+    self.uhat_f        = Function(self.Q_flat)
+    self.vhat_f        = Function(self.Q_flat)
+    self.what_f        = Function(self.Q_flat)
+    self.M             = Function(self.Q_flat)
+
+
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -1188,15 +1268,22 @@ class Model(object):
     """
     s = "::: initializing variables :::"
     print_text(s, self.color)
+
+    config = self.config
+
+    if   config['model_order'] == 'stokes':
+      self.init_stokes_variables()
+    elif config['model_order'] == 'BP':
+      self.init_BP_variables()
+    elif config['model_order'] == 'L1L2':
+      self.init_hybrid_variables()
     
     self.set_parameters(pc.IceParameters())
     self.params.globalize_parameters(self) # make all the variables available 
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
-    self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
-    self.gradS         = project(grad(self.S), self.V)
-    self.gradB         = project(grad(self.B), self.V)
+    self.h             = CellSize(self.mesh)
 
     # Velocity model
     self.u             = Function(self.Q)
@@ -1220,34 +1307,25 @@ class Model(object):
     self.U_ob          = Function(self.Q)
     
     # Enthalpy model
-    self.H_surface     = Function(self.Q)
-    self.H_float       = Function(self.Q)
-    self.H             = Function(self.Q)
+    self.theta_surface = Function(self.Q)
+    self.theta_float   = Function(self.Q)
+    self.theta         = Function(self.Q)
     self.T             = Function(self.Q)
     self.q_geo         = Function(self.Q)
     self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
     self.W_r           = Function(self.Q)
     self.Mb            = Function(self.Q)
-    self.Hhat          = Function(self.Q) # Midpoint values
+    self.thetahat      = Function(self.Q) # Midpoint values
     self.uhat          = Function(self.Q) # Midpoint values
     self.vhat          = Function(self.Q) # Midpoint values
     self.what          = Function(self.Q) # Midpoint values
     self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.H0            = Function(self.Q) # initial enthalpy
+    self.theta0        = Function(self.Q) # initial enthalpy
     self.T0            = Function(self.Q) # pressure-melting point
     self.kappa         = Function(self.Q)
     self.Kcoef         = Function(self.Q)
 
-    # free surface model :
-    self.Shat          = Function(self.Q_flat)
-    self.dSdt          = Function(self.Q_flat)
-    self.ahat          = Function(self.Q_flat)
-    self.uhat_f        = Function(self.Q_flat)
-    self.vhat_f        = Function(self.Q_flat)
-    self.what_f        = Function(self.Q_flat)
-    self.M             = Function(self.Q_flat)
-    
     # Age model   
     self.age           = Function(self.Q)
     self.a0            = Function(self.Q)

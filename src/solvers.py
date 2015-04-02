@@ -52,12 +52,14 @@ class SteadySolver(Solver):
 
     # velocity model :
     if self.config['velocity']['on']:
-      if   config['velocity']['approximation'] == 'fo':
+      if   config['model_order'] == 'BP':
         self.velocity_instance = VelocityBP(model, config)
-      elif config['velocity']['approximation'] == 'stokes':
+      elif config['model_order'] == 'stokes':
         self.velocity_instance = VelocityStokes(model, config)
+      elif config['model_order'] == 'L1L2':
+        self.velocity_instance = VelocityHybrid(model, config)
       else:
-        s = "Please use 'fo' or 'stokes'. "
+        s = "Please use 'BP' or 'stokes'. "
         print_text(s, self.color())
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
@@ -67,11 +69,17 @@ class SteadySolver(Solver):
     
     # enthalpy model :
     if config['enthalpy']['on']:
-      self.enthalpy_instance = Enthalpy(model, config)
-      if config['enthalpy']['log']:
-        self.T_file   = File(outpath + 'T.pvd')
-        self.W_file   = File(outpath + 'W.pvd')
-        self.M_file   = File(outpath + 'Mb.pvd')
+      if   self.config['model_order'] == 'L1L2':
+        self.enthalpy_instance = EnergyHybrid(model, config)
+        if config['enthalpy']['log']:
+          self.Ts_file  = File(outpath + 'Ts.pvd')
+          self.Tb_file  = File(outpath + 'Tb.pvd')
+      else:
+        self.enthalpy_instance = Enthalpy(model, config)
+        if config['enthalpy']['log']:
+          self.T_file   = File(outpath + 'T.pvd')
+          self.W_file   = File(outpath + 'W.pvd')
+          self.M_file   = File(outpath + 'Mb.pvd')
 
     # age model :
     if config['age']['on']:
@@ -169,16 +177,27 @@ class SteadySolver(Solver):
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['enthalpy']['log'] and config['log']: 
-          s    = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
-          print_text(s % outpath, self.color())
-          if config['log_history']:
-            self.T_file    << model.T    # save temperature
-            self.M_file    << model.Mb   # save melt rate
-            self.W_file    << model.W    # save water content
-          else:
-            File(outpath + 'T.pvd')   << model.T
-            File(outpath + 'W.pvd')   << model.Mb
-            File(outpath + 'Mb.pvd')  << model.W
+          if config['model_order'] == 'L1L2':
+            s  = '::: saving surface and bed temperature Ts, and Tb .pvd ' + \
+                 'files to %s :::'
+            print_text(s % outpath, self.color())
+            if config['log_history']:
+              self.Ts_file    << model.Ts   # save temperature
+              self.Tb_file    << model.Tb   # save melt rate
+            else:
+              File(outpath + 'Ts.pvd')   << model.Ts
+              File(outpath + 'Tb.pvd')   << model.Tb
+          else :
+            s  = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
+            print_text(s % outpath, self.color())
+            if config['log_history']:
+              self.T_file    << model.T    # save temperature
+              self.M_file    << model.Mb   # save melt rate
+              self.W_file    << model.W    # save water content
+            else:
+              File(outpath + 'T.pvd')   << model.T
+              File(outpath + 'W.pvd')   << model.Mb
+              File(outpath + 'Mb.pvd')  << model.W
     
       # re-compute the friction field :
       if config['velocity']['use_stat_beta']:
@@ -340,19 +359,25 @@ class TransientSolver(Solver):
     # initialize velocity solver :
     if self.config['velocity']['on']:
       
-      if   self.config['velocity']['approximation'] == 'fo':
+      if   self.config['model_order'] == 'BP':
         self.velocity_instance = VelocityBP(model, config)
       
-      elif self.config['velocity']['approximation'] == 'stokes':
+      elif self.config['model_order'] == 'stokes':
         self.velocity_instance = VelocityStokes(model, config)
       
+      elif config['model_order'] == 'L1L2':
+        self.velocity_instance = VelocityHybrid(model, config)
+      
       else:
-        s =  "Please choose 'fo' or 'stokes'. "
+        s =  "Please choose 'BP' or 'stokes'. "
         print_text(s, self.color())
     
     # initialized enthalpy solver : 
     if self.config['enthalpy']['on']:
-      self.enthalpy_instance = Enthalpy(model, config)
+      if   self.config['model_order'] == 'L1L2':
+        self.enthalpy_instance = EnergyHybrid(model, config)
+      else:
+        self.enthalpy_instance = Enthalpy(model, config)
 
     # initialize age solver :
     if self.config['age']['on']:
@@ -364,14 +389,20 @@ class TransientSolver(Solver):
 
     # initialize free surface solver :
     if config['free_surface']['on']:
-      self.surface_instance = FreeSurface(model, config)
-      self.M_prev           = 1.0
+      if   self.config['model_order'] == 'L1L2':
+        self.surface_instance = MassBalanceHybrid(model, config)
+      else:
+        self.surface_instance = FreeSurface(model, config)
+        self.M_prev           = 1.0
 
     # Set up files for logging time dependent solutions to paraview files.
     if config['log']:
       self.file_U  = File(self.config['output_path']+'U.pvd')
       self.file_T  = File(self.config['output_path']+'T.pvd')
+      self.file_Ts = File(self.config['output_path']+'Ts.pvd')
+      self.file_Tb = File(self.config['output_path']+'Tb.pvd')
       self.file_S  = File(self.config['output_path']+'S.pvd')
+      self.file_H  = File(self.config['output_path']+'H.pvd')
       self.file_a  = File(self.config['output_path']+'age.pvd')
       self.dheight = []
       self.mass    = []
@@ -443,19 +474,17 @@ class TransientSolver(Solver):
     thklim = config['free_surface']['thklim']
    
     mesh   = model.mesh 
-    smb    = model.smb
+    adot   = model.adot
     sigma  = model.sigma
 
     S      = model.S
     B      = model.B
- 
-    smb.interpolate(config['free_surface']['observed_smb'])
 
     if config['periodic_boundary_conditions']:
-      d2v = dof_to_vertex_map(model.Q_non_periodic)
+      d2v      = dof_to_vertex_map(model.Q_non_periodic)
       mhat_non = Function(model.Q_non_periodic)
     else:
-      d2v = dof_to_vertex_map(model.Q)
+      d2v      = dof_to_vertex_map(model.Q)
 
     # Loop over all times
     while t <= t_end:
@@ -869,5 +898,122 @@ class StokesBalanceSolver(Solver):
       File(outpath + "pressure.pvd") << pressure
       File(outpath + "total.pvd")    << total
  
+
+class HybridTransientSolver(Solver):
+  """
+  This abstract class outlines the structure of a VarGlaS solver.
+  """
+  def __init__(self, model, config):
+    """
+    """
+    s    = "::: INITIALIZING HYBRID TRANSIENT SOLVER :::"
+    print_text(s, self.color())
+    self.model          = model
+    self.config         = config
+    self.config['mode'] = 'transient'
+    outpath             = config['output_path']
+
+    # initialize velocity solver :
+    if self.config['velocity']['on']:
+      self.velocity_instance = VelocityHybrid(model, config)
+    
+    # initialized enthalpy solver : 
+    if self.config['enthalpy']['on']:
+      self.enthalpy_instance = EnergyHybrid(model, config)
+
+    # initialize surface climate solver :
+    if self.config['surface_climate']['on']:
+      self.surface_climate_instance = SurfaceClimate(model, config)
+
+    # initialize free surface solver :
+    if config['free_surface']['on']:
+      self.surface_instance = MassBalanceHybrid(model, config)
+
+    # Set up files for logging time dependent solutions to paraview files.
+    if config['log']:
+      self.file_U    = File(outpath + 'U.pvd')
+      self.file_Ts   = File(outpath + 'Ts.pvd')
+      self.file_Tb   = File(outpath + 'Tb.pvd')
+      self.file_H    = File(outpath + 'H.pvd')
+      self.file_beta = File(outpath + 'beta.pvd')
+      self.t_log     = []
+
+    self.step_time = []
+    self.M_prev    = 1.0
+
+  def solve(self):
+    """
+    Performs the physics, evaluating and updating the enthalpy and age as 
+    well as storing the velocity, temperature, and the age in vtk files.
+
+    """
+    s    = '::: solving HybridTransientSolver :::'
+    print_text(s, self.color())
+    model  = self.model
+    config = self.config
+    
+    t      = config['t_start']
+    t_end  = config['t_end']
+    dt     = config['time_step']
+   
+    H      = model.H
+    H0     = model.H0
+    T_     = model.T_
+    T0_    = model.T0_
+    beta   = model.beta
+
+    # Loop over all times
+    while t <= t_end:
+
+      # start the timer :
+      tic = time()
+       
+      # calculate velocity : 
+      if config['velocity']['on']:
+        self.velocity_instance.solve()
+        if config['velocity']['log']:
+          s    = '::: saving velocity U.pvd file :::'
+          print_text(s, self.color())
+          U    = project(as_vector([model.u, model.v, model.w]))
+          self.file_U << U
+
+      # calculate energy
+      if config['enthalpy']['on']:
+        self.enthalpy_instance.solve()
+        if config['enthalpy']['log']:
+          s    = '::: saving surface and bed temperature Ts and Tb .pvd ' + \
+                 'files :::'
+          print_text(s, self.color())
+          self.file_Ts << model.Ts
+          self.file_Tb << model.Tb
+        T0_.interpolate(T_)  # update previous temp
+      
+      # calculate free surface :
+      if config['free_surface']['on']:
+        self.surface_instance.solve()
+        if config['log']:
+          s    = '::: saving thickness H.pvd file :::'
+          print_text(s, self.color())
+          self.file_H << model.H
+        H0.interpolate(H)
+    
+      # calculate surface climate solver :
+      if config['surface_climate']['on']:
+        self.surface_climate_instance.solve()
+
+      # store information : 
+      if self.config['log']:
+        self.file_beta << beta
+        self.t_log.append(t)
+
+      # increment time step :
+      if self.model.MPI_rank==0:
+        s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
+        text = colored(s, 'red', attrs=['bold'])
+        print text % (t, time()-tic)
+
+      t += dt
+      self.step_time.append(time() - tic)
+
 
 

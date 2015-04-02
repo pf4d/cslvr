@@ -555,11 +555,25 @@ def default_nonlin_solver_params():
   stokes_params['newton_solver']['report']                  = True
   return stokes_params
 
+
+def default_ffc_options():
+  """ 
+  Returns a set of default ffc options that yield good performance
+  """
+  ffc_options = {"optimize": True, \
+                 "eliminate_zeros": True, \
+                 "precompute_basis_const": True, \
+                 "precompute_ip_const": True}
+   
+  return ffc_options
+
+
 def default_config():
   """
   Returns a set of default configuration parameters to help users get started.
   """
   config = { 'mode'                         : 'steady',
+             'model_order'                  : 'BP',
              't_start'                      : None,
              't_end'                        : None,
              'time_step'                    : 1.0,
@@ -579,7 +593,9 @@ def default_config():
              { 
                'on'                  : True,
                'log'                 : True,
+               'poly_degree'         : 2,
                'newton_params'       : default_nonlin_solver_params(),
+               'ffc_options'         : default_ffc_options(),
                'vert_solve_method'   : 'mumps',
                'viscosity_mode'      : 'isothermal',
                'b_gnd'               : None,
@@ -592,7 +608,6 @@ def default_config():
                'A'                   : 1e-16,
                'r'                   : 0.0,
                'E'                   : 1.0,
-               'approximation'       : 'fo',
                'boundaries'          : None,
                'u_lat_boundary'      : None,
                'v_lat_boundary'      : None,
@@ -603,9 +618,11 @@ def default_config():
              { 
                'on'                  : False,
                'log'                 : True,
+               'N_T'                 : 8,
                'solve_method'        : 'mumps',
                'use_surface_climate' : False,
                'lateral_boundaries'  : None,
+               'ffc_options'         : default_ffc_options(),
              },
              'free_surface' :
              { 
@@ -616,6 +633,7 @@ def default_config():
                'use_shock_capturing' : False,
                'thklim'              : 10.0,
                'static_boundary_conditions' : False,
+               'ffc_options'         : default_ffc_options(),
              },  
              'age' : 
              { 
@@ -990,6 +1008,62 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
   
   plt.savefig(directory + '/' + name + '.png', dpi=250)
   plt.show()
+
+
+# VERTICAL BASIS REPLACES A NORMAL FUNCTION, SUCH THAT VERTICAL DERIVATIVES
+# CAN BE EVALUATED IN MUCH THE SAME WAY AS HORIZONTAL DERIVATIVES.  IT NEEDS
+# TO BE SUPPLIED A LIST OF FUNCTIONS OF SIGMA THAT MULTIPLY EACH COEFFICIENT.
+class VerticalBasis(object):
+  def __init__(self, u, coef, dcoef):
+    self.u     = u
+    self.coef  = coef
+    self.dcoef = dcoef
+
+  def __call__(self,s):
+    return sum([u*c(s) for u,c in zip(self.u, self.coef)])
+
+  def ds(self,s):
+    return sum([u*c(s) for u,c in zip(self.u, self.dcoef)])
+
+  def dx(self,s,x):
+    return sum([u.dx(x)*c(s) for u,c in zip(self.u, self.coef)])
+
+
+# SIMILAR TO ABOVE, BUT FOR CALCULATION OF FINITE DIFFERENCE QUANTITIES.
+class VerticalFDBasis(object):
+  def __init__(self,u, deltax, coef, sigmas):
+    self.u      = u 
+    self.deltax = deltax
+    self.coef   = coef
+    self.sigmas = sigmas
+
+  def __call__(self,i):
+    return self.u[i]
+
+  def eval(self,s):
+    fl   = max(sum(s > self.sigmas)-1,0)
+    dist = s - self.sigmas[fl]
+    return self.u[fl]*(1 - dist/self.deltax) + self.u[fl+1]*dist/self.deltax
+
+  def ds(self,i):
+    return (self.u[i+1] - self.u[i-1])/(2*self.deltax)
+
+  def d2s(self,i):
+    return (self.u[i+1] - 2*self.u[i] + self.u[i-1])/(self.deltax**2)
+
+  def dx(self,i,x):
+    return self.u[i].dx(x)        
+
+
+# PERFORMS GAUSSIAN QUADRATURE FOR ARBITRARY FUNCTION OF SIGMA, QUAD POINTS, AND WEIGHTS
+class VerticalIntegrator(object):
+  def __init__(self,points,weights):
+    self.points  = points
+    self.weights = weights
+  def integral_term(self,f,s,w):
+    return w*f(s)
+  def intz(self,f):
+    return sum([self.integral_term(f,s,w) for s,w in zip(self.points,self.weights)])
 
 
 

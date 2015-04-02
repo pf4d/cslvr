@@ -29,7 +29,8 @@ based on lapse rates
 from pylab      import ndarray
 from fenics     import *
 from termcolor  import colored, cprint
-from helper     import raiseNotDefined
+from helper     import raiseNotDefined, VerticalBasis, VerticalFDBasis, \
+                       VerticalIntegrator
 from io         import print_text, print_min_max
 import numpy as np
 import numpy.linalg as linalg
@@ -168,6 +169,7 @@ class VelocityStokes(Physics):
     V             = model.V
     Q             = model.Q
     Q4            = model.Q4
+    U             = model.U
     n             = model.n
     b             = model.b
     b_shf         = model.b_shf
@@ -189,6 +191,7 @@ class VelocityStokes(Physics):
     rhow          = model.rhow
     g             = model.g
     beta          = model.beta
+    h             = model.h
 
     gradS         = model.gradS
     gradB         = model.gradB
@@ -219,7 +222,6 @@ class VelocityStokes(Physics):
 
     # Define a trial function
     dU                   = TrialFunction(Q4)
-    U                    = Function(Q4)
  
     phi, psi, xsi, kappa = Phi
     du,  dv,  dw,  dP    = dU
@@ -326,7 +328,6 @@ class VelocityStokes(Physics):
     Pb     = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
     g      = Constant((0.0, 0.0, g))
-    h      = CellSize(mesh)
     tau    = h**2 / (12 * b * rhoi**2)
     Lsq    = -tau * dot( (grad(P) + rhoi*g), (grad(P) + rhoi*g) )
     
@@ -529,6 +530,7 @@ class VelocityBP(Physics):
     V             = model.V
     Q             = model.Q
     Q2            = model.Q2
+    U             = model.U
     n             = model.n
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
@@ -569,9 +571,6 @@ class VelocityBP(Physics):
 
     # Define a trial function
     dU       = TrialFunction(Q2)
-    U        = Function(Q2)
-
-    phi, psi = Phi
     du,  dv  = dU
     u,   v   = U
 
@@ -918,8 +917,8 @@ class Enthalpy(Physics):
     mesh        = model.mesh
     V           = model.V
     Q           = model.Q
-    H           = model.H
-    H0          = model.H0
+    theta       = model.theta
+    theta0      = model.theta0
     n           = model.n
     b_gnd       = model.b_gnd
     b_shf       = model.b_shf
@@ -952,15 +951,16 @@ class Enthalpy(Physics):
     ki          = model.ki
     kw          = model.kw
     T_surface   = model.T_surface
-    H_surface   = model.H_surface
-    H_float     = model.H_float
-    q_geo       = model.q_geo
-    Hhat        = model.Hhat
+    theta_surface = model.theta_surface
+    theta_float   = model.theta_float
+    q_geo         = model.q_geo
+    thetahat      = model.thetahat
     uhat        = model.uhat
     vhat        = model.vhat
     what        = model.what
     mhat        = model.mhat
     spy         = model.spy
+    h           = model.h
     ds          = model.ds
     dSrf        = ds(2)         # surface
     dGnd        = ds(3)         # grounded bed
@@ -984,7 +984,7 @@ class Enthalpy(Physics):
 
     # Define test and trial functions       
     psi = TestFunction(Q)
-    dH  = TrialFunction(Q)
+    dtheta  = TrialFunction(Q)
 
     # Pressure melting point
     s    = "::: calculating pressure-melting temperature :::"
@@ -993,8 +993,8 @@ class Enthalpy(Physics):
     print_min_max(T0, 'T0')
    
     # Surface boundary condition
-    model.assign_variable(H_surface, project(T_surface * ci))
-    model.assign_variable(H_float,   project(ci*T0))
+    model.assign_variable(theta_surface, project(T_surface * ci))
+    model.assign_variable(theta_float,   project(ci*T0))
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -1023,7 +1023,6 @@ class Enthalpy(Physics):
       U      = as_vector([u, v, w])
 
       # skewed test function in areas with high velocity :
-      h      = CellSize(mesh)
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
@@ -1031,8 +1030,8 @@ class Enthalpy(Physics):
       psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
 
       # residual of model :
-      self.a = + rho * dot(U, grad(dH)) * psihat * dx \
-               + rho * spy * kappa * dot(grad(psi), grad(dH)) * dx \
+      self.a = + rho * dot(U, grad(dtheta)) * psihat * dx \
+               + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
       
       self.L = + (q_geo + q_friction) * psihat * dGnd \
                + Q_s_gnd * psihat * dx_g \
@@ -1047,38 +1046,37 @@ class Enthalpy(Physics):
       # the mesh velocity subtracted from it.
       U = as_vector([uhat, vhat, what - mhat])
 
-      h      = CellSize(mesh)
       Unorm  = sqrt(dot(U, U) + 1.0)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
 
-      theta = 0.5
+      nu = 0.5
       # Crank Nicholson method
-      Hmid = theta*dH + (1 - theta)*H0
+      thetamid = nu*dtheta + (1 - nu)*theta0
       
-      # implicit system (linearized) for enthalpy at time H_{n+1}
-      self.a = + rho * (dH - H0) / dt * psi * dx \
-               + rho * dot(U, grad(Hmid)) * psihat * dx \
-               + rho * spy * kappa * dot(grad(psi), grad(Hmid)) * dx \
+      # implicit system (linearized) for enthalpy at time theta_{n+1}
+      self.a = + rho * (dtheta - theta0) / dt * psi * dx \
+               + rho * dot(U, grad(thetamid)) * psihat * dx \
+               + rho * spy * kappa * dot(grad(psi), grad(thetamid)) * dx \
       
       self.L = + (q_geo + q_friction) * psi * dGnd \
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
     
     # surface boundary condition : 
-    self.bc_H = []
-    self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 2) )
+    self.bc_theta = []
+    self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 2) )
     
     # apply T_w conditions of portion of ice in contact with water :
     if model.mask != None:
-      self.bc_H.append( DirichletBC(Q, H_float,   model.ff, 5) )
-      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 6) )
+      self.bc_theta.append( DirichletBC(Q, theta_float,   model.ff, 5) )
+      self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 6) )
     
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] == 'surface':
-      self.bc_H.append( DirichletBC(Q, H_surface, model.ff, 4) )
+      self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 4) )
 
     self.c          = c
     self.k          = k
@@ -1088,14 +1086,14 @@ class Enthalpy(Physics):
     self.dBed       = dBed
      
   
-  def solve(self, H0=None, Hhat=None, uhat=None, 
+  def solve(self, theta0=None, thetahat=None, uhat=None, 
             vhat=None, what=None, mhat=None):
     r""" 
     Uses boundary conditions and the linear solver to solve for temperature
     and water content.
     
-    :param H0     : Initial enthalpy
-    :param Hhat   : Enthalpy expression
+    :param theta0     : Initial enthalpy
+    :param thetahat   : Enthalpy expression
     :param uhat   : Horizontal velocity
     :param vhat   : Horizontal velocity perpendicular to :attr:`uhat`
     :param what   : Vertical velocity
@@ -1162,9 +1160,9 @@ class Enthalpy(Physics):
     config = self.config
 
     # Assign values for H0,u,w, and mesh velocity
-    if H0 is not None:
-      model.assign_variable(model.H0,   H0)
-      model.assign_variable(model.Hhat, Hhat)
+    if theta0 is not None:
+      model.assign_variable(model.theta0,   theta0)
+      model.assign_variable(model.thetahat, thetahat)
       model.assign_variable(model.uhat, uhat)
       model.assign_variable(model.vhat, vhat)
       model.assign_variable(model.what, what)
@@ -1174,7 +1172,7 @@ class Enthalpy(Physics):
     V          = model.V
     Q          = model.Q
     T0         = model.T0
-    H          = model.H
+    theta          = model.theta
     T          = model.T
     Mb         = model.Mb
     W          = model.W
@@ -1197,18 +1195,18 @@ class Enthalpy(Physics):
     sm = config['enthalpy']['solve_method']
     aw        = assemble(self.a)
     Lw        = assemble(self.L)
-    for bc in self.bc_H:
+    for bc in self.bc_theta:
       bc.apply(aw, Lw)
-    H_solver = LUSolver(sm)
-    H_solver.solve(aw, H.vector(), Lw)
-    #solve(self.a == self.L, H, self.bc_H,
+    theta_solver = LUSolver(sm)
+    theta_solver.solve(aw, theta.vector(), Lw)
+    #solve(self.a == self.L, theta, self.bc_theta,
     #      solver_parameters = {"linear_solver" : sm})
-    print_min_max(H, 'H')
+    print_min_max(theta, 'theta')
 
     # temperature solved diagnostically : 
     s = "::: calculating temperature :::"
     print_text(s, self.color())
-    T_n  = project(H/ci, Q)
+    T_n  = project(theta/ci, Q)
     
     # update temperature for wet/dry areas :
     T_n_v        = T_n.vector().array()
@@ -1228,7 +1226,7 @@ class Enthalpy(Physics):
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, self.color())
-    W_n  = project((H - ci*T0)/L, Q)
+    W_n  = project((theta - ci*T0)/L, Q)
     
     # update water content :
     W_v             = W_n.vector().array()
@@ -1274,8 +1272,8 @@ class EnthalpyDG(Physics):
     mesh        = model.mesh
     Q           = model.Q
     DQ          = model.DQ
-    H           = model.H
-    H0          = model.H0
+    theta           = model.theta
+    theta0          = model.theta0
     n           = model.n
     b_gnd       = model.b_gnd
     b_gnd       = model.b_gnd
@@ -1308,15 +1306,16 @@ class EnthalpyDG(Physics):
     ki          = model.ki
     kw          = model.kw
     T_surface   = model.T_surface
-    H_surface   = model.H_surface
-    H_float     = model.H_float
+    theta_surface   = model.theta_surface
+    theta_float     = model.theta_float
     q_geo       = model.q_geo
-    Hhat        = model.Hhat
+    thetahat        = model.thetahat
     uhat        = model.uhat
     vhat        = model.vhat
     what        = model.what
     mhat        = model.mhat
     spy         = model.spy
+    h           = model.h
     ds          = model.ds
     dSrf        = ds(2)         # surface
     dGnd        = ds(3)         # grounded bed
@@ -1338,17 +1337,17 @@ class EnthalpyDG(Physics):
     
     # Define test and trial functions       
     psi = TestFunction(DQ)
-    dH  = TrialFunction(DQ)
+    dtheta  = TrialFunction(DQ)
 
     # Pressure melting point
     T0 = Function(DQ)
     model.assign_variable(T0, project(T_w - gamma * (S - x[2]), DQ))
    
     # Surface boundary condition
-    H_surface = Function(DQ)
-    H_float   = Function(DQ)
-    model.assign_variable(H_surface, project(T_surface * ci, DQ))
-    model.assign_variable(H_float,   project(ci*T0, DQ))
+    theta_surface = Function(DQ)
+    theta_float   = Function(DQ)
+    model.assign_variable(theta_surface, project(T_surface * ci, DQ))
+    model.assign_variable(theta_float,   project(ci*T0, DQ))
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -1380,25 +1379,24 @@ class EnthalpyDG(Physics):
         print "No velocity field found.  Defaulting to no velocity"
         U    = 0.0
 
-      h      = CellSize(mesh)
       n      = FacetNormal(mesh)
       h_avg  = (h('+') + h('-'))/2.0
       un     = (dot(U, n) + abs(dot(U, n)))/2.0
       alpha  = Constant(5.0)
 
       # residual of model :
-      a_int  = rho * dot(grad(psi), spy * kappa*grad(dH) - U*dH)*dx
+      a_int  = rho * dot(grad(psi), spy * kappa*grad(dtheta) - U*dtheta)*dx
              
-      a_fac  = + rho * spy * kappa * (alpha / h_avg)*jump(psi)*jump(dH) * dS \
-               - rho * spy * kappa * dot(avg(grad(psi)), jump(dH, n)) * dS \
-               - rho * spy * kappa * dot(jump(psi, n), avg(grad(dH))) * dS
+      a_fac  = + rho * spy * kappa * (alpha / h_avg)*jump(psi)*jump(dtheta) * dS \
+               - rho * spy * kappa * dot(avg(grad(psi)), jump(dtheta, n)) * dS \
+               - rho * spy * kappa * dot(jump(psi, n), avg(grad(dtheta))) * dS
                  
-      a_vel  = jump(psi)*jump(un*dH)*dS  + psi*un*dH*dGamma
+      a_vel  = jump(psi)*jump(un*dtheta)*dS  + psi*un*dtheta*dGamma
       
       self.a = a_int + a_fac + a_vel
 
-      #self.a = + rho * dot(U, grad(dH)) * psihat * dx \
-      #         + rho * spy * kappa * dot(grad(psi), grad(dH)) * dx \
+      #self.a = + rho * dot(U, grad(dtheta)) * psihat * dx \
+      #         + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
       
       self.L = + (q_geo + q_friction) * psi * dGnd \
                + Q_s_gnd * psi * dx_g \
@@ -1413,32 +1411,31 @@ class EnthalpyDG(Physics):
       # the mesh velocity subtracted from it.
       U = as_vector([uhat, vhat, what - mhat])
 
-      h      = CellSize(mesh)
       Unorm  = sqrt(dot(U, U) + 1.0)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
 
-      theta = 0.5
+      nu = 0.5
       # Crank Nicholson method
-      Hmid = theta*dH + (1 - theta)*H0
+      thetamid = nu*dtheta + (1 - nu)*theta0
       
-      # implicit system (linearized) for enthalpy at time H_{n+1}
-      self.a = + rho * (dH - H0) / dt * psi * dx \
-               + rho * dot(U, grad(Hmid)) * psihat * dx \
-               + rho * spy * kappa * dot(grad(psi), grad(Hmid)) * dx \
+      # implicit system (linearized) for enthalpy at time theta_{n+1}
+      self.a = + rho * (dtheta - theta0) / dt * psi * dx \
+               + rho * dot(U, grad(thetamid)) * psihat * dx \
+               + rho * spy * kappa * dot(grad(psi), grad(thetamid)) * dx \
       
       self.L = + (q_geo + q_friction) * psi * dGnd \
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
 
-    model.H         = Function(DQ)
+    model.theta         = Function(DQ)
     model.T_surface = T_surface
     model.q_geo     = q_geo
     model.T0        = T0
-    model.H_surface = H_surface
-    model.H_float   = H_float
+    model.theta_surface = theta_surface
+    model.theta_float   = theta_float
     
     self.c          = c
     self.k          = k
@@ -1448,17 +1445,17 @@ class EnthalpyDG(Physics):
     self.dBed       = dBed
      
   
-  def solve(self, H0=None, Hhat=None, uhat=None, 
+  def solve(self, theta0=None, thetahat=None, uhat=None, 
             vhat=None, what=None, mhat=None):
     r""" 
     """
     model  = self.model
     config = self.config
     
-    # Assign values for H0,u,w, and mesh velocity
-    if H0 is not None:
-      model.assign_variable(model.H0,   H0)
-      model.assign_variable(model.Hhat, Hhat)
+    # Assign values for theta0,u,w, and mesh velocity
+    if theta0 is not None:
+      model.assign_variable(model.theta0,   theta0)
+      model.assign_variable(model.thetahat, thetahat)
       model.assign_variable(model.uhat, uhat)
       model.assign_variable(model.vhat, vhat)
       model.assign_variable(model.what, what)
@@ -1470,9 +1467,9 @@ class EnthalpyDG(Physics):
     Q          = model.Q
     DQ         = model.DQ
     T0         = model.T0
-    H          = model.H
-    H_surface  = model.H_surface
-    H_float    = model.H_float  
+    theta          = model.theta
+    theta_surface  = model.theta_surface
+    theta_float    = model.theta_float  
     T          = model.T
     Mb         = model.Mb
     W          = model.W
@@ -1490,17 +1487,17 @@ class EnthalpyDG(Physics):
     kappa      = self.kappa
 
     # surface boundary condition : 
-    self.bc_H = []
-    self.bc_H.append( DirichletBC(DQ, H_surface, model.ff, 2) )
+    self.bc_theta = []
+    self.bc_theta.append( DirichletBC(DQ, theta_surface, model.ff, 2) )
     
     # apply T_w conditions of portion of ice in contact with water :
     if model.mask != None:
-      self.bc_H.append( DirichletBC(DQ, H_float,   model.ff, 5) )
-      self.bc_H.append( DirichletBC(DQ, H_surface, model.ff, 6) )
+      self.bc_theta.append( DirichletBC(DQ, theta_float,   model.ff, 5) )
+      self.bc_theta.append( DirichletBC(DQ, theta_surface, model.ff, 6) )
     
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
-      self.bc_H.append( DirichletBC(DQ, lat_bc, model.ff, 4) )
+      self.bc_theta.append( DirichletBC(DQ, lat_bc, model.ff, 4) )
     
     # solve the linear equation for enthalpy :
     if self.model.MPI_rank==0:
@@ -1508,7 +1505,7 @@ class EnthalpyDG(Physics):
       text = colored(s, 'cyan')
       print text
     sm = config['enthalpy']['solve_method']
-    solve(self.a == self.L, H, self.bc_H, 
+    solve(self.a == self.L, theta, self.bc_theta, 
           solver_parameters = {"linear_solver" : sm})
 
     # calculate temperature and water content :
@@ -1516,7 +1513,7 @@ class EnthalpyDG(Physics):
     print_text(s, self.color())
     
     # temperature solved diagnostically : 
-    T_n  = project(H/ci, Q)
+    T_n  = project(theta/ci, Q)
     
     # update temperature for wet/dry areas :
     T_n_v        = T_n.vector().array()
@@ -1527,7 +1524,7 @@ class EnthalpyDG(Physics):
     model.assign_variable(T, T_n_v)
     
     # water content solved diagnostically :
-    W_n  = project((H - ci*T0)/L, Q)
+    W_n  = project((theta - ci*T0)/L, Q)
     
     # update water content :
     W_v        = W_n.vector().array()
@@ -1548,7 +1545,7 @@ class EnthalpyDG(Physics):
     model.rho = rho
     
     # print the min/max values to the screen :    
-    print_min_max(H,  'H')
+    print_min_max(theta,  'theta')
     print_min_max(T,  'T')
     print_min_max(Mb, 'Mb')
     print_min_max(W,  'W')
@@ -1706,7 +1703,7 @@ class FreeSurface(Physics):
     config = self.config
    
     model.assign_variable(self.Shat, model.S) 
-    model.assign_variable(self.ahat, model.smb) 
+    model.assign_variable(self.ahat, model.adot) 
     model.assign_variable(self.uhat, model.u) 
     model.assign_variable(self.vhat, model.v) 
     model.assign_variable(self.what, model.w) 
@@ -1972,6 +1969,8 @@ class Age(Physics):
     self.model  = model
     self.config = config
 
+    h = model.h
+
     # Trial and test
     a   = TrialFunction(model.Q)
     phi = TestFunction(model.Q)
@@ -1979,7 +1978,6 @@ class Age(Physics):
     # Steady state
     if config['mode'] == 'steady':
       # SUPG method :
-      h      = CellSize(model.mesh)
       U      = as_vector([model.u, model.v, model.w])
       Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
       phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
@@ -2003,7 +2001,6 @@ class Age(Physics):
       dt     = config['time_step']
 
       # SUPG method (note subtraction of mesh velocity) :
-      h      = CellSize(model.mesh)
       U      = as_vector([uhat, vhat, what-mhat])
       Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
       phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
@@ -2070,6 +2067,7 @@ class VelocityBalance(Physics):
     S           = model.S
     B           = model.B
     H           = S - B
+    h           = model.h
     dSdx        = model.dSdx
     dSdy        = model.dSdy
     d_x         = model.d_x
@@ -2100,7 +2098,6 @@ class VelocityBalance(Physics):
     
     # SUPG method :
     dS      = as_vector([d_x, d_y, 0.0])
-    cellh   = CellSize(model.mesh)
     phihat  = phi + cellh/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
     
     def L(u, uhat):
@@ -2499,6 +2496,530 @@ class StokesBalance3D(Physics):
       print_min_max(model.tau_tn, 'int_tau_tn')
       print_min_max(model.tau_tt, 'int_tau_tt')
       print_min_max(model.tau_tz, 'int_tau_tz')
+
+
+class VelocityHybrid(Physics):
+  """
+  New 2D hybrid model.
+  """
+  def __init__(self, model, config):
+    """
+    """
+    s = "::: INITIALIZING HYBRID VELOCITY PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.model  = model
+    self.config = config
+
+    # TIME
+    minute = 60.0
+    hour   = 60*minute
+    day    = 24*hour
+    year   = 365*day
+    
+    # CONSTANTS
+    rho = model.rhoi
+    g   = model.g
+    n   = model.n
+    
+    B       = model.B
+    beta    = model.beta
+    eps_reg = model.eps_reg
+    H       = model.H
+    S       = B + H
+    deltax  = model.deltax
+    sigmas  = model.sigmas
+    T0_     = model.T0_
+    T_      = model.T_
+    U       = model.U
+    
+    Bc    = 3.61e-13*year
+    Bw    = 1.73e3*year #model.a0 ice hardness
+    Qc    = 6e4
+    Qw    = model.Q0 # ice act. energy
+    Rc    = model.R  # gas constant
+
+    # FUNCTION SPACES
+    Q  = model.Q
+    HV = model.HV
+    
+    # MOMENTUM
+    Phi = TestFunction(HV)
+    dU  = TrialFunction(HV)
+    
+    # ANSATZ    
+    coef  = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
+    dcoef = [lambda s:0.0, lambda s:5*s**3]
+    
+    u_   = [U[0],   U[2]]
+    v_   = [U[1],   U[3]]
+    phi_ = [Phi[0], Phi[2]]
+    psi_ = [Phi[1], Phi[3]]
+    
+    u    = VerticalBasis(u_,  coef, dcoef)
+    v    = VerticalBasis(v_,  coef, dcoef)
+    phi  = VerticalBasis(phi_,coef, dcoef)
+    psi  = VerticalBasis(psi_,coef, dcoef)
+    
+    # energy functions :
+    T    = VerticalFDBasis(T_,  deltax, coef, sigmas)
+    T0   = VerticalFDBasis(T0_, deltax, coef, sigmas)
+
+    # METRICS FOR COORDINATE TRANSFORM
+    def dsdx(s):
+      return 1./H*(S.dx(0) - s*H.dx(0))
+    
+    def dsdy(s):
+      return 1./H*(S.dx(1) - s*H.dx(1))
+    
+    def dsdz(s):
+      return -1./H
+
+    def A_v(T):
+      return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+    
+    def epsilon_dot(s):
+      return ((+u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
+               +(v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
+               +(u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
+               +0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
+               + ((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
+               + eps_reg)
+    
+    def eta_v(s):
+      return A_v(T0.eval(s))**(-1./n)/2.*epsilon_dot(s)**((1.-n)/(2*n))
+    
+    def membrane_xx(s):
+      return (phi.dx(s,0) + phi.ds(s)*dsdx(s))*H*eta_v(s)*(4*(u.dx(s,0) + u.ds(s)*dsdx(s)) + 2*(v.dx(s,1) + v.ds(s)*dsdy(s)))
+    
+    def membrane_xy(s):
+      return (phi.dx(s,1) + phi.ds(s)*dsdy(s))*H*eta_v(s)*((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))
+    
+    def membrane_yx(s):
+      return (psi.dx(s,0) + psi.ds(s)*dsdx(s))*H*eta_v(s)*((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))
+    
+    def membrane_yy(s):
+      return (psi.dx(s,1) + psi.ds(s)*dsdy(s))*H*eta_v(s)*(2*(u.dx(s,0) + u.ds(s)*dsdx(s)) + 4*(v.dx(s,1) + v.ds(s)*dsdy(s)))
+    
+    def shear_xz(s):
+      return dsdz(s)**2*phi.ds(s)*H*eta_v(s)*u.ds(s)
+    
+    def shear_yz(s):
+      return dsdz(s)**2*psi.ds(s)*H*eta_v(s)*v.ds(s)
+    
+    def tau_dx(s):
+      return rho*g*H*S.dx(0)*phi(s)
+    
+    def tau_dy(s):
+      return rho*g*H*S.dx(1)*psi(s)
+    
+    def w(s):
+      w_0 = (U[0].dx(0) + U[1].dx(1))*(s-1.)
+      w_2 = + (U[2].dx(0) + U[3].dx(1))*(s**(n+2) - s)/(n+1) \
+            + (n+2)/H*U[2]*(1./(n+1)*(s**(n+1) - 1.)*S.dx(0) \
+            - 1./(n+1)*(s**(n+2) - 1.)*H.dx(0)) \
+            + (n+2)/H*U[3]*(+ 1./(n+1)*(s**(n+1) - 1.)*S.dx(1) \
+                            - 1./(n+1)*(s**(n+2) - 1.)*H.dx(1))
+      return (u(1)*B.dx(0) + v(1)*B.dx(1)) - 1./dsdz(s)*(w_0 + w_2) 
+    
+    # O(4)
+    points  = np.array([0.0,       0.4688, 0.8302, 1.0   ])
+    weights = np.array([0.4876/2., 0.4317, 0.2768, 0.0476])
+    # O(6)
+    #points  = np.array([1.0,     0.89976,   0.677186, 0.36312,   0.0        ])
+    #weights = np.array([0.02778, 0.1654595, 0.274539, 0.3464285, 0.371519/2.])
+    # O(8)
+    #points  = np.array([1,         0.934001, 0.784483, 0.565235, 0.295758, 0          ])
+    #weights = np.array([0.0181818, 0.10961,  0.18717,  0.248048, 0.28688,  0.300218/2.])
+    
+    vi = VerticalIntegrator(points, weights)
+
+    R_x = - vi.intz(membrane_xx) - vi.intz(membrane_xy) - vi.intz(shear_xz) - phi(1)*beta**2*u(1) - vi.intz(tau_dx)
+    R_y = - vi.intz(membrane_yx) - vi.intz(membrane_yy) - vi.intz(shear_yz) - psi(1)*beta**2*v(1) - vi.intz(tau_dy)
+
+    # SIA
+    self.R = (R_x + R_y)*dx
+    #R = replace(R,{U:dU})
+    self.J = derivative(self.R,U,dU)
+
+    self.u = u
+    self.v = v
+    self.w = w
+
+    #Define variational solver for the momentum problem
+    ffc_options = config['velocity']['ffc_options']
+    m_problem   = NonlinearVariationalProblem(self.R, U, J=self.J,
+                                         form_compiler_parameters=ffc_options)
+    self.m_solver = NonlinearVariationalSolver(m_problem)
+    
+    self.m_solver.parameters['nonlinear_solver']                      = 'newton'
+    self.m_solver.parameters['newton_solver']['relaxation_parameter']    = 0.7
+    self.m_solver.parameters['newton_solver']['relative_tolerance']      = 1e-3
+    self.m_solver.parameters['newton_solver']['absolute_tolerance']      = 1e7
+    self.m_solver.parameters['newton_solver']['maximum_iterations']      = 20
+    self.m_solver.parameters['newton_solver']['error_on_nonconvergence'] = False
+    self.m_solver.parameters['newton_solver']['linear_solver']        = 'mumps'
+  
+  def solve(self):
+    """
+    Solves for hybrid velocity.
+    """
+    s    = "::: solving hybrid velocity :::"
+    print_text(s, self.color())
+    
+    model = self.model
+    Q     = model.Q
+
+    self.m_solver.solve()
+
+    model.assign_variable(model.u, project(self.u(0.0), Q))
+    model.assign_variable(model.v, project(self.v(0.0), Q))
+    model.assign_variable(model.w, project(self.w(0.0), Q))
+
+    print_min_max(model.u, 'u_s')
+    print_min_max(model.v, 'v_s')
+    print_min_max(model.w, 'w_s')
+
+
+class MassBalanceHybrid(Physics):
+  """
+  New 2D hybrid model.
+  """
+  def __init__(self, model, config):
+    """
+    """
+    s = "::: INITIALIZING HYBRID MASS-BALANCE PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.model  = model
+    self.config = config
+
+    # TIME
+    minute = 60.0
+    hour   = 60*minute
+    day    = 24*hour
+    year   = 365*day
+    
+    # CONSTANTS
+    rho = model.rhoi
+    g   = model.g
+    n   = model.n
+    A   = config['velocity']['A']
+    b   = A**(-1./n)
+    
+    k     = model.ki
+    Cp    = model.ci
+    kappa = k/(rho*Cp)
+    
+    q_geo  = model.q_geo
+    Q      = model.Q
+    B      = model.B
+    beta   = model.beta
+    adot   = model.adot
+    ubar_c = model.ubar_c 
+    vbar_c = model.ubar_c
+    H      = model.H
+    H0     = model.H0
+    U      = model.U
+    T_     = model.T_
+    deltax = model.deltax
+    sigmas = model.sigmas
+    h      = model.h
+    S      = B + H
+    coef   = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
+    T      = VerticalFDBasis(T_, deltax, coef, sigmas)
+    
+    Bc    = 3.61e-13*year
+    Bw    = 1.73e3*year #model.a0 ice hardness
+    Qc    = 6e4
+    Qw    = model.Q0 # ice act. energy
+    Rc    = model.R  # gas constant
+    
+    # TIME STEP AND REGULARIZATION
+    eps_reg = model.eps_reg
+    dt      = config['time_step']
+    thklim  = config['free_surface']['thklim']
+   
+    # function spaces : 
+    dH  = TrialFunction(Q)
+    xsi = TestFunction(Q)
+    
+    def A_v(T):
+      return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+    
+    # SIA DIFFUSION COEFFICIENT INTEGRAL TERM.
+    def sia_int(s):
+      return A_v(T.eval(s))*s**(n+1)
+    
+    # O(4)
+    points  = np.array([0.0,       0.4688, 0.8302, 1.0   ])
+    weights = np.array([0.4876/2., 0.4317, 0.2768, 0.0476])
+    # O(6)
+    #points  = np.array([1.0,     0.89976,   0.677186, 0.36312,   0.0        ])
+    #weights = np.array([0.02778, 0.1654595, 0.274539, 0.3464285, 0.371519/2.])
+    # O(8)
+    #points  = np.array([1,         0.934001, 0.784483, 0.565235, 0.295758, 0          ])
+    #weights = np.array([0.0181818, 0.10961,  0.18717,  0.248048, 0.28688,  0.300218/2.])
+    
+    vi = VerticalIntegrator(points, weights)
+    
+    #D = 2.*(rho*g)**n*A/(n+2.)*H**(n+2)*dot(grad(S),grad(S))**((n-1.)/2.)
+    D = 2*(rho*g)**n*H**(n+2)*dot(grad(S),grad(S))**((n-1)/2)*vi.intz(sia_int) + rho*g*H**2/beta**2
+    
+    ubar = U[0]
+    vbar = U[1]
+    
+    ubar_si = -D/H*S.dx(0)
+    vbar_si = -D/H*S.dx(1)
+    
+    self.ubar_proj = (ubar-ubar_si)*xsi*dx
+    self.vbar_proj = (vbar-vbar_si)*xsi*dx
+
+    # mass term :
+    self.M  = dH*xsi*dx
+    
+    # residual :
+    R_thick = ((H-H0)/dt*xsi + D*dot(grad(S),grad(xsi)) + xsi*(Dx(ubar_c*H,0)+Dx(vbar_c*H,1)) - adot*xsi)*dx
+
+    # Jacobian :
+    J_thick = derivative(R_thick, H, dH)
+    
+    #Define variational solver for the mass problem
+    ffc_options  = config['free_surface']['ffc_options']
+    mass_problem = NonlinearVariationalProblem(R_thick, H, J=J_thick,
+                                               form_compiler_parameters=ffc_options)
+    self.mass_solver  = NonlinearVariationalSolver(mass_problem)
+    self.mass_solver.parameters['nonlinear_solver']                  = 'snes'
+    self.mass_solver.parameters['snes_solver']['method']             = 'vinewtonrsls'
+    self.mass_solver.parameters['snes_solver']['relative_tolerance'] = 1e-3
+    self.mass_solver.parameters['snes_solver']['absolute_tolerance'] = 1e-3
+    self.mass_solver.parameters['snes_solver']['maximum_iterations'] = 20
+    self.mass_solver.parameters['snes_solver']['error_on_nonconvergence'] = False
+    self.mass_solver.parameters['snes_solver']['linear_solver'] = 'mumps'
+
+  def solve(self):
+    """
+    Solves for hybrid conservation of mass.
+    """
+    s    = "::: solving hybrid mass-balance :::"
+    print_text(s, self.color())
+    
+    config = self.config
+    model  = self.model
+
+    ffc_options = config['free_surface']['ffc_options']
+
+    # Find corrective velocities
+    solve(self.M == self.ubar_proj, model.ubar_c, 
+          solver_parameters={'linear_solver':'mumps'},
+          form_compiler_parameters=ffc_options)
+    solve(self.M == self.vbar_proj, model.vbar_c, 
+          solver_parameters={'linear_solver':'mumps'},
+          form_compiler_parameters=ffc_options)
+
+    # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
+    self.mass_solver.solve(model.H_min, model.H_max)
+
+    print_min_max(model.H, 'H')
+    
+
+class EnergyHybrid(Physics):
+  """
+  New 2D hybrid model.
+  """
+  def __init__(self, model, config):
+    """
+    """
+    s = "::: INITIALIZING HYBRID ENERGY PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.model  = model
+    self.config = config
+
+    # TIME
+    minute = 60.0
+    hour   = 60*minute
+    day    = 24*hour
+    year   = 365*day
+    
+    # CONSTANTS
+    rho = model.rhoi
+    g   = model.g
+    n   = model.n
+    A   = config['velocity']['A']
+    b   = A**(-1./n)
+    
+    k     = model.ki
+    Cp    = model.ci
+    kappa = k/(rho*Cp)
+    
+    q_geo = model.q_geo
+    S     = model.S
+    B     = model.B
+    beta  = model.beta
+    adot  = model.adot
+    T_s   = model.T_surface
+    T_w   = model.T_w
+    U     = model.U
+    H     = model.H
+    H0    = model.H0
+    T_    = model.T_
+    T0_   = model.T0_
+    deltax  = model.deltax
+    sigmas  = model.sigmas
+    eps_reg = model.eps_reg
+    h       = model.h
+    dt      = config['time_step']
+    N_T     = config['enthalpy']['N_T']
+    
+    Bc    = 3.61e-13*year
+    Bw    = 1.73e3*year #model.a0 ice hardness
+    Qc    = 6e4
+    Qw    = model.Q0 # ice act. energy
+    Rc    = model.R  # gas constant
+    gamma = model.gamma  # pressure melting point depth dependence
+   
+    # get velocity components : 
+    # ANSATZ    
+    coef  = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
+    dcoef = [lambda s:0.0, lambda s:5*s**3]
+    
+    u_   = [U[0], U[2]]
+    v_   = [U[1], U[3]]
+    
+    u    = VerticalBasis(u_, coef, dcoef)
+    v    = VerticalBasis(v_, coef, dcoef)
+    
+    # FUNCTION SPACES
+    Q = model.Q
+    Z = model.Z
+    
+    # ENERGY BALANCE 
+    Psi = TestFunction(Z)
+    dT  = TrialFunction(Z)
+
+    # initialize surface temperature :
+    model.assign_variable(T0_, project(as_vector([T_s]*N_T), Z))
+
+    T  = VerticalFDBasis(T_,  deltax, coef, sigmas)
+    T0 = VerticalFDBasis(T0_, deltax, coef, sigmas)
+    
+    Tm  = as_vector([T_w - gamma*sigma*H for sigma in sigmas])
+    Tmb = T_w - gamma*H
+
+    # METRICS FOR COORDINATE TRANSFORM
+    def dsdx(s):
+      return 1./H*(S.dx(0) - s*H.dx(0))
+    
+    def dsdy(s):
+      return 1./H*(S.dx(1) - s*H.dx(1))
+    
+    def dsdz(s):
+      return -1./H
+    
+    def epsilon_dot(s):
+      return ((+u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
+               +(v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
+               +(u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
+               +0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
+               + ((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
+               + eps_reg)
+    
+    def A_v(T):
+      return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+    
+    def eta_v(s):
+      return A_v(T0.eval(s))**(-1./n)/2.*epsilon_dot(s)**((1.-n)/(2*n))
+    
+    def w(s):
+      w_0 = (U[0].dx(0) + U[1].dx(1))*(s-1.)
+      w_2 = + (U[2].dx(0) + U[3].dx(1))*(s**(n+2) - s)/(n+1) \
+            + (n+2)/H*U[2]*(1./(n+1)*(s**(n+1) - 1.)*S.dx(0) \
+            - 1./(n+1)*(s**(n+2) - 1.)*H.dx(0)) \
+            + (n+2)/H*U[3]*(+ 1./(n+1)*(s**(n+1) - 1.)*S.dx(1) \
+                            - 1./(n+1)*(s**(n+2) - 1.)*H.dx(1))
+      return (u(1)*B.dx(0) + v(1)*B.dx(1)) - 1./dsdz(s)*(w_0 + w_2) 
+    
+    R_T = 0
+
+    for i in range(N_T):
+      # SIGMA COORDINATE
+      s = i/(N_T-1.0)
+    
+      # EFFECTIVE VERTICAL VELOCITY
+      w_eff = u(s)*dsdx(s) + v(s)*dsdy(s) + w(s)*dsdz(s) + 1./H*(1.-s)*((H-H0)/dt)
+    
+      # STRAIN HEAT
+      Phi_strain = (2*n)/(n+1)*2*eta_v(s)*epsilon_dot(s)
+    
+      # STABILIZATION SCHEME
+      Umag = sqrt(u(s)**2 + v(s)**2 + 1e-3)
+      tau = h/(2*Umag)
+      Psihat = Psi[i] + tau*(u(s)*Psi[i].dx(0) + v(s)*Psi[i].dx(1))
+    
+      # TIME DERIVATIVE
+      dTdt = (T(i) - T0(i))/dt
+    
+      # SURFACE BOUNDARY
+      if i==0:
+        R_T += Psi[i]*(T(i) - T_s)*dx
+      # BASAL BOUNDARY
+      elif i==(N_T-1):
+        R_T += dTdt*Psi[i]*dx
+        R_T += (u(s)*T.dx(i,0) + v(s)*T.dx(i,1))*Psihat*dx
+        R_T += -Phi_strain/(rho*Cp)*Psi[i]*dx 
+        R_T += -w_eff*q_geo/(rho*Cp*kappa*dsdz(s))*Psi[i]*dx
+        f    = (q_geo + 0.5*beta**2*(u(s)**2 + v(s)**2))/(rho*Cp*kappa*dsdz(s))
+        R_T += -2.*kappa*dsdz(s)**2*((T(N_T-2) - T(N_T-1))/(deltax**2) - f/deltax)*Psi[i]*dx
+      # INTERIOR
+      else:
+        R_T += dTdt*Psi[i]*dx
+        R_T += -kappa*dsdz(s)**2.*T.d2s(i)*Psi[i]*dx
+        R_T += w_eff*T.ds(i)*Psi[i]*dx
+        R_T += (u(s)*T.dx(i,0) + v(s)*T.dx(i,1))*Psihat*dx
+        R_T += -Phi_strain/(rho*Cp)*Psi[i]*dx 
+    
+    # PRETEND THIS IS LINEAR (A GOOD APPROXIMATION IN THE TRANSIENT CASE)
+    self.R_T = replace(R_T, {T_:dT})
+
+    self.Tm  = Tm
+    self.Tmb = Tmb
+
+  def solve(self):
+    """
+    Solves for hybrid energy.
+    """
+    s    = "::: solving hybrid energy :::"
+    print_text(s, self.color())
+    
+    config = self.config
+    model  = self.model
+    
+    Q      = model.Q
+    T_     = model.T_
+
+    ffc_options = config['enthalpy']['ffc_options']
+
+    # SOLVE TEMPERATURE
+    solve(lhs(self.R_T) == rhs(self.R_T), T_,
+          solver_parameters={'linear_solver':'mumps'},
+          form_compiler_parameters=ffc_options)    
+
+    # Update temperature field
+    T_melt  = project(self.Tm)
+    Tb_m    = project(self.Tmb)
+     
+    T_v      = T_.vector()
+    T_melt_v = T_melt.vector()
+    T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
+
+    out_T = T_.split(True)  # deepcopy avoids projections
+
+    model.assign_variable(model.Ts, out_T[0])
+    model.assign_variable(model.Tb, out_T[-1]) 
+
+    print_min_max(model.Ts, 'T_S')
+    print_min_max(model.Tb, 'T_B')
 
 
 

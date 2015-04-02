@@ -18,16 +18,23 @@ dependencies:
 sudo apt-get install python python-scipy python-pyproj \
                      python-mpltoolkits.basemap \
                      python-termcolor python-gdal \
-                     python-shapely fenics
+                     python-shapely fenics python-pip
 ```
 
-also ```Gmsh_dynamic``` from
+and you'll need to install the ```colored``` package,
+
+```bash
+pip install colored
+```
+
+
+also ```Gmsh_dynamic``` and ```GmshPy``` from
 
 http://geuz.org/gmsh/
 
-is required for the use of the provided mesh generation facilities located in the ```utilities.py``` file. It is, simply, the gmsh bindings to Python.
+NOTE: this is `only` required to be installed in order to use the mesh generation facilities located in ```meshing.py```.
 
-To install the program in the your home directory and download program data,
+To install the program and download program data to the your home directory,
 
 ```bash
 python setup.py install --user

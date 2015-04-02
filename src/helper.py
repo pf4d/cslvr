@@ -560,10 +560,10 @@ def default_ffc_options():
   """ 
   Returns a set of default ffc options that yield good performance
   """
-  ffc_options = {"optimize": True, \
-                 "eliminate_zeros": True, \
-                 "precompute_basis_const": True, \
-                 "precompute_ip_const": True}
+  ffc_options = {"optimize"               : True,
+                 "eliminate_zeros"        : True,
+                 "precompute_basis_const" : True,
+                 "precompute_ip_const"    : True}
    
   return ffc_options
 

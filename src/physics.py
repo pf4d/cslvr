@@ -196,8 +196,6 @@ class VelocityStokes(Physics):
     gradS         = model.gradS
     gradB         = model.gradB
 
-    newton_params = config['velocity']['newton_params']
-    
     # initialize the enhancement factor :
     model.assign_variable(E, config['velocity']['E'])
     
@@ -207,15 +205,6 @@ class VelocityStokes(Physics):
         values[0] = min(0, x[2])
     D = Depth(element=Q.ufl_element())
     N = FacetNormal(mesh)
-    
-    # Check if there are non-linear solver parameters defined.  If not, set 
-    # them to dolfin's default.  The default is not likely to converge if 
-    # thermomechanical coupling is used.
-    if newton_params:
-      self.newton_params = newton_params
-    
-    else:
-      self.newton_params = NonlinearVariationalSolver.default_parameters()
     
     # Define a test function
     Phi                  = TestFunction(Q4)
@@ -240,64 +229,78 @@ class VelocityStokes(Physics):
     
     # initialize velocity to a previous solution :
     if config['velocity']['use_U0']:
-      u0_f = Function(Q)
-      v0_f = Function(Q)
-      w0_f = Function(Q)
-      P0_f = Function(Q)
-      model.assign_variable(u0_f, config['velocity']['u0'])
-      model.assign_variable(v0_f, config['velocity']['v0'])
-      model.assign_variable(w0_f, config['velocity']['w0'])
-      model.assign_variable(P0_f, config['velocity']['P0'])
-      U0   = as_vector([u0_f, v0_f, w0_f, P0_f])
-      model.assign_variable(U, project(U0, Q4))
+      s = "    - using initial velocity -"
+      print_text(s, self.color())
+      U_t = project(as_vector([model.u, model.v, model.w, model.P]), Q4)
+      model.assign_variable(U, U_t)
 
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0    = config['velocity']['A0']
-      b     = A0**(-1/n)
+      A = config['velocity']['A']
+      s = "    - using isothermal visosity formulation -"
+      print_text(s, self.color())
+      print_min_max(A, 'A')
+      b     = A**(-1/n)
       b_gnd = b
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'linear':
-      b_shf = config['velocity']['eta_shf']
       b_gnd = config['velocity']['eta_gnd']
+      b_shf = config['velocity']['eta_shf']
+      s     = "    - using linear viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(eta_shf, 'eta_shf')
+      print_min_max(eta_gnd, 'eta_gnd')
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
-      b_shf = Function(Q)
-      b_gnd = Function(Q)
-      model.assign_variable(b_shf, config['velocity']['b_shf'])
-      model.assign_variable(b_gnd, config['velocity']['b_gnd'])
+      b_shf   = config['velocity']['b_shf']
+      b_gnd   = config['velocity']['b_gnd']
+      s       = "    - using b_control viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(b_shf, 'b_shf')
+      print_min_max(b_gnd, 'b_gnd')
     
     elif config['velocity']['viscosity_mode'] == 'constant_b':
       b     = config['velocity']['b']
       b_shf = b
       b_gnd = b
+      s = "    - using constant_b viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(b, 'b')
     
     elif config['velocity']['viscosity_mode'] == 'full':
-      # Define ice hardness parameterization :
+      s     = "    - using full viscosity formulation -"
+      print_text(s, self.color())
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b     = ( E *(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd = b
       b_shf = b
     
     elif config['velocity']['viscosity_mode'] == 'E_control':
-      # Define ice hardness parameterization :
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       E_shf = config['velocity']['E_shf'] 
       E_gnd = config['velocity']['E_gnd']
+      s     = "    - using E_control viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(E_shf, 'E_shf')
+      print_min_max(E_gnd, 'E_gnd')
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       model.E_shf = E_shf
       model.E_gnd = E_gnd
     
     else:
-      print "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-            "'isothermal', or 'full'."
+      s = "Acceptable choices for 'viscosity_mode' are 'linear', " + \
+          "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
+      print_text(s, 'red', 1)
 
+    # initialize the enhancement factor :
+    model.assign_variable(E, config['velocity']['E'])
+    
     # Second invariant of the strain rate tensor squared
     term    = + 0.5 * (+ 0.5*(   (u.dx(1) + v.dx(0))**2  \
                                + (u.dx(2) + w.dx(0))**2  \
@@ -316,6 +319,10 @@ class VelocityStokes(Physics):
 
     # 3) Dissipation by sliding
     Sl_gnd = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
+    #Ne     = H - rhow/rhoi * D
+    #lnC    = ln(-0.383)
+    #Ce     = ln(beta**2 * Ne**(-0.349)) / lnC
+    #Sl_gnd = (ln(1/u)/lnC + Ce)*u + (ln(1/v)/lnC + Ce)*v + (ln(1/w)/lnC + Ce)*w
     Sl_shf = 0.5 * Constant(1e-10) * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
@@ -333,7 +340,7 @@ class VelocityStokes(Physics):
     
     # Variational principle
     A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-             + Sl*dGnd + Nc*dBed
+             + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
       A += Pb*dSde
@@ -367,10 +374,11 @@ class VelocityStokes(Physics):
 
     model.A       = A
     model.epsdot  = epsdot
-    model.eta_shf = eta_shf
-    model.eta_gnd = eta_gnd
     model.b_shf   = b_shf
     model.b_gnd   = b_gnd
+    model.eta_shf = eta_shf
+    model.eta_gnd = eta_gnd
+    model.E       = E
 
   def solve(self):
     """ 
@@ -378,12 +386,12 @@ class VelocityStokes(Physics):
     """
     model  = self.model
     config = self.config
-       
+    
     # Solve the nonlinear equations via Newton's method
     s    = "::: solving full-Stokes equations :::"
     print_text(s, self.color())
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
-          solver_parameters = self.newton_params)
+          solver_parameters = config['velocity']['newton_params'])
     u, v, w, P = model.U.split(True)
 
     model.assign_variable(model.u, u)
@@ -599,7 +607,7 @@ class VelocityBP(Physics):
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
       A = config['velocity']['A']
-      s = "    - using isothermal visosity formulation -"
+      s = "    - using isothermal viscosity formulation -"
       print_text(s, self.color())
       print_min_max(A, 'A')
       b     = A**(-1/n)
@@ -609,7 +617,7 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'linear':
       b_gnd = config['velocity']['eta_gnd']
       b_shf = config['velocity']['eta_shf']
-      s     = "    - using linear visosity formulation -"
+      s     = "    - using linear viscosity formulation -"
       print_text(s, self.color())
       print_min_max(eta_shf, 'eta_shf')
       print_min_max(eta_gnd, 'eta_gnd')
@@ -618,7 +626,7 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'b_control':
       b_shf   = config['velocity']['b_shf']
       b_gnd   = config['velocity']['b_gnd']
-      s       = "    - using b_control visosity formulation -"
+      s       = "    - using b_control viscosity formulation -"
       print_text(s, self.color())
       print_min_max(b_shf, 'b_shf')
       print_min_max(b_gnd, 'b_gnd')
@@ -627,12 +635,12 @@ class VelocityBP(Physics):
       b     = config['velocity']['b']
       b_shf = b
       b_gnd = b
-      s = "    - using constant_b visosity formulation -"
+      s = "    - using constant_b viscosity formulation -"
       print_text(s, self.color())
       print_min_max(b, 'b')
     
     elif config['velocity']['viscosity_mode'] == 'full':
-      s     = "    - using full visosity formulation -"
+      s     = "    - using full viscosity formulation -"
       print_text(s, self.color())
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
@@ -643,7 +651,7 @@ class VelocityBP(Physics):
     elif config['velocity']['viscosity_mode'] == 'E_control':
       E_shf = config['velocity']['E_shf'] 
       E_gnd = config['velocity']['E_gnd']
-      s     = "    - using E_control visosity formulation -"
+      s     = "    - using E_control viscosity formulation -"
       print_text(s, self.color())
       print_min_max(E_shf, 'E_shf')
       print_min_max(E_gnd, 'E_gnd')
@@ -733,7 +741,6 @@ class VelocityBP(Physics):
     model.b_gnd   = b_gnd
     model.A       = A
     model.E       = E
-    model.U       = U
 
   def solve(self):
     """ 
@@ -1893,15 +1900,22 @@ class AdjointVelocity(Physics):
     Solves the bilinear residual created by differentiation of the 
     variational principle in combination with an objective function.
     """
-    model = self.model
+    model  = self.model
+    config = self.config
 
     s    = "::: solving adjoint velocity :::"
     print_text(s, self.color())
+      
+    aw = assemble(self.aw)
+    Lw = assemble(self.Lw)
 
-    aw       = assemble(self.aw)
-    Lw       = assemble(self.Lw)
+    #if config['model_order'] == 'stokes':
+    #  a_solver = LUSolver('mumps')
+    #else:
     a_solver = KrylovSolver('cg', 'hypre_amg')
+
     a_solver.solve(aw, model.Lam.vector(), Lw)
+    
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",
     #                           "preconditioner" : "hypre_amg"})

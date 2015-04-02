@@ -59,7 +59,7 @@ class SteadySolver(Solver):
       elif config['model_order'] == 'L1L2':
         self.velocity_instance = VelocityHybrid(model, config)
       else:
-        s = "Please use 'BP' or 'stokes'. "
+        s = "Please use 'BP', 'stokes', or 'L1L2'. "
         print_text(s, self.color())
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
@@ -145,9 +145,8 @@ class SteadySolver(Solver):
     while inner_error > inner_tol and counter < max_iter:
      
       # reset the velocity for Newton solve to converge : 
-      if counter > 0:  
-        model.assign_variable(model.U, DOLFIN_EPS)
-        model.assign_variable(model.w, DOLFIN_EPS)
+      model.assign_variable(model.U, DOLFIN_EPS)
+      model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:

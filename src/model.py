@@ -1235,13 +1235,13 @@ class Model(object):
   def init_BP_variables(self):
     """
     """
-    self.U             = Function(Q2)
+    self.U             = Function(self.Q2)
     self.init_higher_order_variables()
 
   def init_stokes_variables(self):
     """
     """
-    self.U             = Function(Q4)
+    self.U             = Function(self.Q4)
     self.init_higher_order_variables()
 
   def init_higher_order_variables(self):
@@ -1271,6 +1271,10 @@ class Model(object):
 
     config = self.config
 
+    # Coordinates of various types 
+    self.x             = SpatialCoordinate(self.mesh)
+    self.h             = CellSize(self.mesh)
+
     if   config['model_order'] == 'stokes':
       self.init_stokes_variables()
     elif config['model_order'] == 'BP':
@@ -1280,10 +1284,6 @@ class Model(object):
     
     self.set_parameters(pc.IceParameters())
     self.params.globalize_parameters(self) # make all the variables available 
-
-    # Coordinates of various types 
-    self.x             = SpatialCoordinate(self.mesh)
-    self.h             = CellSize(self.mesh)
 
     # Velocity model
     self.u             = Function(self.Q)

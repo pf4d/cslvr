@@ -12,8 +12,7 @@ import Image
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, shape, linspace, ones, isnan, all, zeros, \
-                              ndarray, e, nan, sqrt, float64, sin, cos, pi,\
-                              figure, show
+                              ndarray, e, nan, sqrt, float64, figure, show
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
@@ -21,8 +20,8 @@ from fenics            import interpolate, Expression, Function, \
 from pyproj            import Proj, transform
 #from termcolor         import colored, cprint
 from colored           import fg, attr
-from scipy.spatial     import ConvexHull
-from shapely.geometry  import Polygon
+#from scipy.spatial     import ConvexHull
+from shapely.geometry  import Polygon, Point
 from shapely.ops       import cascaded_union
 
 class DataInput(object):
@@ -540,7 +539,8 @@ class GetBasin(object):
                 di = an instance of a DataInput obect (see above) needed for
                 projection function
 
-                where = 'Greenland' if contour is to be from Greenland, False for Antarctica
+                where = 'Greenland' if contour is to be from Greenland, False
+                        for Antarctica
 
     TODO: Now working to extend the domain beyond the present day ice margin for
     the purpose of increasing the stability of dynamic runs. Additionally, there
@@ -549,7 +549,8 @@ class GetBasin(object):
     extension of the domain will help here too.
 
     """
-    def __init__(self,di,where = 'Greenland',edge_resolution = 1000.):
+    def __init__(self,di,basin=None,where = 'Greenland',\
+                    edge_resolution = 1000.):
         """
             INPUTS:
                 di = data input object
@@ -557,10 +558,12 @@ class GetBasin(object):
                 edge_resolution = meters between points that are pulled from the
                                   database of domain edges.
         """
-        self.extend = False
-        self.di = di
-        self.where = where
+        self.color  = 'light_green'
+        self.di     = di
+        self.where  = where
+
         self.edge_resolution = edge_resolution
+        self.plot_coords     = {}
 
         # Get path of this file, which should be in the src directory
         filename = inspect.getframeinfo(inspect.currentframe()).filename
@@ -577,7 +580,10 @@ class GetBasin(object):
         else:
             print "Can not find data corresponding to location "+where+"."
 
-        self.show_and_get_basin()
+        if basin == None:
+            self.show_and_get_basin()
+        else:
+            self.basin = basin
         self.retrive_basin_latlong()
         self.convert_to_projection()
 
@@ -614,9 +620,11 @@ class GetBasin(object):
         p_p = self.xycoords[-1]
         distance = 0
 
+        lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+
         for p in self.llcoords:
             p_n = self.di.get_xy(p[0],p[1]) # Current point xy
-            delta_X = sqrt((p_n[0] - p_p[0])**2 + (p_n[1] - p_p[1])**2)
+            delta_X = lin_dist(p_n, p_p)
             distance += delta_X
 
             if distance > self.edge_resolution:
@@ -630,35 +638,82 @@ class GetBasin(object):
             else:
                 p_p = p_n
 
+        """
+        # remove points at end of array that may overlap
+        while(len(self.xycoords) > 0 and \
+                lin_dist(self.xycoords[0],self.xycoords[-1]) \
+                < self.edge_resolution):
+            self.xycoords.pop()
+            self.edge.pop()
+        """
+
         self.xycoords = array(self.xycoords)
+        self.plot_coords["xycoords"] = self.xycoords
+
         self.clean_edge() #clean (very rare) incorrectly identified edge points
         self.edge = array(self.edge)
 
     def clean_edge(self):
         """
-        Remove spurious edge markers. Not very common but do happen.
+        Remove spurious edge markers. Not very common, but they do happen.
         """
-        edge = self.edge
+        edge  = self.edge
+        check = 5
 
         def check_n(i, l, n, check_f):
             """
             Return True if for at least <n> points on either side of a given
             index check_f(l[i]) returns True. Array will be assumed to be
-            circular, i.e. l[len(l)] will be converted to l[0]
+            circular, i.e. l[len(l)] will be converted to l[0], and
+            l[len(l)+1] will be converted to [1]
             """
             g = lambda i: i%len(l)
 
             behind = sum([check_f( l[g(i-(j+1))] ) for j in range(n)]) == n
             front  = sum([check_f( l[g(i+j+1)] ) for j in range(n)]) == n
 
-            return behind or front
+            return front or behind
 
-        # For every edge point make sure that at least 5 points on either side
-        # are also edge Points.
+        # For every edge point make sure that at least <check> points on either
+        # side are also edge Points.
         for i in range(len(edge)):
             if edge[i]:
-                if not check_n(i, edge, 5, lambda v: v):
+                if not check_n(i, edge, check, lambda v: v):
                     edge[i] = False
+
+    def check_dist(self):
+        """
+        Remove points in xycoords that are not a linear distance of at least
+        <dist> from previous point.
+        """
+        lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+
+        xycoords = self.xycoords
+
+        mask = ones(len(xycoords), dtype=bool)
+
+        i = 0
+        while(i < len(xycoords)-1):
+            p1 = xycoords[i]
+            j = i + 1
+            while(j < len(xycoords) and lin_dist(p1, xycoords[j]) < self.edge_resolution):
+                mask[j] = 0
+                j += 1
+            i = j
+
+        # fix end of array
+        i = -1
+        while(len(xycoords) + i >= 0 and (not mask[i] or \
+                lin_dist(xycoords[0],xycoords[i]) < self.edge_resolution)):
+            mask[i] = 0
+            i -= 1
+
+        # print results
+        s    = "::: removed %s points closer than %s m to one another :::"% \
+                (str(len(mask) - sum(mask)), self.edge_resolution)
+        print_text(s, self.color)
+
+        self.xycoords = xycoords[mask]
 
     def extend_edge(self, r):
         """
@@ -668,48 +723,85 @@ class GetBasin(object):
         xycoords = self.xycoords
         edge = self.edge
 
-        def points_circle(x, y, r,n=100):
-            xo = [x + cos(2*pi/n*i)*r for i in range(0,n+1)]
-            yo = [y + sin(2*pi/n*j)*r for j in range(0,n+1)]
-            return array(zip(xo,yo))
-
-        # create points in a circle around each edge point
-        pts = []
-        for i,v  in enumerate(xycoords):
-          if edge[i]:
-            pts.extend(points_circle(v[0], v[1], r))
-
-        # take convex hull
-        pts  = array(pts)
-        hull = ConvexHull(pts)
+        polygons = []
+        for i, v in enumerate(xycoords):
+            if edge[i]:
+                polygons.append(Point(v[0],v[1]).buffer(r))
 
         # union of our original polygon and convex hull
-        p1 = Polygon(zip(pts[hull.vertices,0],pts[hull.vertices,1]))
+        p1 = cascaded_union(polygons)
         p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
         p3 = cascaded_union([p1,p2])
 
-        self.extend = True
-        self.xycoords_buf = array(zip(p3.exterior.xy[:][0],p3.exterior.xy[:][1]))
+        xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+        self.plot_coords["xycoords_buf"] = xycoords_buf
+        self.xycoords = xycoords_buf
 
+    def intersection(self, other):
+        """
+        Take the geometric intersection of current coordinates with <other>.
+        Used primarily to replace the edge with something from a different
+        (better) data set.
 
-    def plot_xycoords_buf(self, Show=True):
+        NOTE: it's probably better to extend the boundary before taking the
+        intersection.
+        """
+        xycoords = self.xycoords
+
+        p1 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+        p2 = Polygon(zip(other[:,0],other[:,1]))
+
+        intersection = p1.intersection(p2)
+
+        # check if multi-polygon is created. If so, take polygon with greatest
+        # area
+        import collections
+        if isinstance(intersection, collections.Iterable):
+            p3 = max(intersection, key = lambda x: x.area)
+        else:
+            p3 = intersection
+
+        xycoords_intersect = array(zip(p3.exterior.xy[:][0], \
+                p3.exterior.xy[:][1]))
+
+        self.plot_coords["xycoords_intersect"] = xycoords_intersect
+        self.xycoords = xycoords_intersect
+
+    def plot_xycoords_buf(self, Show=True, other=None):
         fig = figure()
         ax  = fig.add_subplot(111)
         ax.set_aspect("equal")
-        ax.plot(self.xycoords_buf[:,0], self.xycoords_buf[:,1], 'b', lw=2.5)
-        ax.plot(self.xycoords[:,0], self.xycoords[:,1], 'r', lw=2.5)
+
+        # plot other
+        if other != None:
+            ax.plot(other[:,0], other[:,1], 'g', lw=3.0)
+
+        # plot buffered coordinates
+        if "xycoords_buf" in self.plot_coords:
+            xycoords_buf = self.plot_coords["xycoords_buf"]
+            ax.plot(xycoords_buf[:,0], xycoords_buf[:,1], 'b', lw=2.5)
+
+        # plot original data
+        xycoords = self.plot_coords["xycoords"]
+        ax.plot(xycoords[:,0], xycoords[:,1], 'r', lw=2.5)
+
         from numpy import ma
-        interior  = ma.masked_array(self.xycoords,array([zip(self.edge,self.edge)]))
+        interior = ma.masked_array(xycoords, array([zip(self.edge,self.edge)]))
         ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
+
+        # plot intersection
+        if "xycoords_intersect" in self.plot_coords:
+            xycoords_intersect = self.plot_coords["xycoords_intersect"]
+            ax.plot(xycoords_intersect[:,0], xycoords_intersect[:,1],\
+                    'c', lw=1)
+
         ax.set_title("boundaries")
         if Show:
           show()
 
     def get_xy_contour(self):
-        if self.extend:
-            return self.xycoords_buf
-        else:
-            return self.xycoords
+        self.check_dist()
+        return self.xycoords
 
     def get_edge(self):
         return self.edge

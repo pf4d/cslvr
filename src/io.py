@@ -536,34 +536,23 @@ def print_text(text, color='white', atrb=0):
 
 
 class GetBasin(object):
-  """This class contains functions to return a contour corresponding to the
-  perimeter of various basins in Antarctica and Greenland. The libraries of
-  basins are drawn from ICESat data, and posted here:
+    """This class contains functions to return a contour corresponding to the
+    perimeter of various basins in Antarctica and Greenland. The libraries of
+    basins are drawn from ICESat data, and posted here:
 
-  http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
+    http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
 
-  INPUTS:
-              di :     an instance of a DataInput obect (see above) needed for
-                       projection function
-
-              where : 'Greenland' if contour is to be from Greenland,
-                       False for Antarctica
-
-  TODO: Now working to extend the domain beyond the present day ice margin for
-  the purpose of increasing the stability of dynamic runs. Additionally, there
-  appear to be some stability issues when running the MCB algorithm, but these
-  are not consistent; some domains work, others do not. The hope is that
-  extension of the domain will help here too.
-
-  """
-  def __init__(self,di,where = 'Greenland',edge_resolution = 1000.):
-    """
     INPUTS:
-                di = an instance of a DataInput obect (see above) needed for
-                projection function
+                di :     an instance of a DataInput obect (see above) needed for
+                         projection function
 
-                where = 'Greenland' if contour is to be from Greenland, False
-                        for Antarctica
+                where : 'Greenland' if contour is to be from Greenland,
+                         False for Antarctica
+
+                edeg_resolution: distance between points on boundary
+
+                basin: basin number. If left as None, the program will prompt
+                you to pick a basin
 
     TODO: Now working to extend the domain beyond the present day ice margin for
     the purpose of increasing the stability of dynamic runs. Additionally, there
@@ -574,13 +563,6 @@ class GetBasin(object):
     """
     def __init__(self,di,basin=None,where = 'Greenland',\
                     edge_resolution = 1000.):
-        """
-            INPUTS:
-                di = data input object
-                where = Greenland or Antarctica
-                edge_resolution = meters between points that are pulled from the
-                                  database of domain edges.
-        """
         self.color  = 'light_green'
         self.di     = di
         self.where  = where

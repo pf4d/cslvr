@@ -1176,7 +1176,7 @@ class Enthalpy(Physics):
     V          = model.V
     Q          = model.Q
     T0         = model.T0
-    theta          = model.theta
+    theta      = model.theta
     T          = model.T
     Mb         = model.Mb
     W          = model.W
@@ -2590,11 +2590,12 @@ class VelocityHybrid(Physics):
       return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
     
     def epsilon_dot(s):
-      return ((+u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
-               +(v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
-               +(u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
-               +0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
-               + ((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
+      return ( + (u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
+               + (v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
+               + (u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
+               + 0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
+               + (+ (u.dx(s,1) + u.ds(s)*dsdy(s)) \
+                  + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
                + eps_reg)
     
     def eta_v(s):
@@ -2645,13 +2646,21 @@ class VelocityHybrid(Physics):
     
     vi = VerticalIntegrator(points, weights)
 
-    R_x = - vi.intz(membrane_xx) - vi.intz(membrane_xy) - vi.intz(shear_xz) - phi(1)*beta**2*u(1) - vi.intz(tau_dx)
-    R_y = - vi.intz(membrane_yx) - vi.intz(membrane_yy) - vi.intz(shear_yz) - psi(1)*beta**2*v(1) - vi.intz(tau_dy)
+    R_x = - vi.intz(membrane_xx) \
+          - vi.intz(membrane_xy) \
+          - vi.intz(shear_xz) \
+          - phi(1)*beta**2*u(1) \
+          - vi.intz(tau_dx)
+    R_y = - vi.intz(membrane_yx) \
+          - vi.intz(membrane_yy) \
+          - vi.intz(shear_yz) \
+          - psi(1)*beta**2*v(1) \
+          - vi.intz(tau_dy)
 
     # SIA
     self.R = (R_x + R_y)*dx
     #R = replace(R,{U:dU})
-    self.J = derivative(self.R,U,dU)
+    self.J = derivative(self.R, U, dU)
 
     self.u = u
     self.v = v
@@ -2716,13 +2725,7 @@ class MassBalanceHybrid(Physics):
     g   = model.g
     n   = model.n
     A   = config['velocity']['A']
-    b   = A**(-1./n)
     
-    k     = model.ki
-    Cp    = model.ci
-    kappa = k/(rho*Cp)
-    
-    q_geo  = model.q_geo
     Q      = model.Q
     B      = model.B
     beta   = model.beta
@@ -2790,7 +2793,10 @@ class MassBalanceHybrid(Physics):
     self.M  = dH*xsi*dx
     
     # residual :
-    R_thick = ((H-H0)/dt*xsi + D*dot(grad(S),grad(xsi)) + xsi*(Dx(ubar_c*H,0)+Dx(vbar_c*H,1)) - adot*xsi)*dx
+    R_thick = + (H-H0) / dt * xsi * dx \
+              + D * dot(grad(S), grad(xsi)) * dx \
+              + (Dx(ubar_c*H,0) + Dx(vbar_c*H,1)) * xsi * dx \
+              - adot * xsi * dx
 
     # Jacobian :
     J_thick = derivative(R_thick, H, dH)
@@ -2857,21 +2863,19 @@ class EnergyHybrid(Physics):
     year   = 365*day
     
     # CONSTANTS
-    rho = model.rhoi
     g   = model.g
     n   = model.n
     A   = config['velocity']['A']
-    b   = A**(-1./n)
     
     k     = model.ki
+    rho   = model.rhoi
     Cp    = model.ci
-    kappa = k/(rho*Cp)
+    kappa = year*k/(rho*Cp)
     
     q_geo = model.q_geo
     S     = model.S
     B     = model.B
     beta  = model.beta
-    adot  = model.adot
     T_s   = model.T_surface
     T_w   = model.T_w
     U     = model.U
@@ -2887,10 +2891,10 @@ class EnergyHybrid(Physics):
     N_T     = config['enthalpy']['N_T']
     
     Bc    = 3.61e-13*year
-    Bw    = 1.73e3*year #model.a0 ice hardness
+    Bw    = 1.73e3*year  # model.a0 ice hardness
     Qc    = 6e4
-    Qw    = model.Q0 # ice act. energy
-    Rc    = model.R  # gas constant
+    Qw    = model.Q0     # ice act. energy
+    Rc    = model.R      # gas constant
     gamma = model.gamma  # pressure melting point depth dependence
    
     # get velocity components : 
@@ -2929,11 +2933,12 @@ class EnergyHybrid(Physics):
       return -1./H
     
     def epsilon_dot(s):
-      return ((+u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
-               +(v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
-               +(u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
-               +0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
-               + ((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
+      return ( + (u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
+               + (v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
+               + (u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
+               + 0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
+               + (+ (u.dx(s,1) + u.ds(s)*dsdy(s)) \
+                  + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
                + eps_reg)
     
     def A_v(T):
@@ -2958,14 +2963,15 @@ class EnergyHybrid(Physics):
       s = i/(N_T-1.0)
     
       # EFFECTIVE VERTICAL VELOCITY
-      w_eff = u(s)*dsdx(s) + v(s)*dsdy(s) + w(s)*dsdz(s) + 1./H*(1.-s)*((H-H0)/dt)
+      w_eff = + u(s)*dsdx(s) + v(s)*dsdy(s) + w(s)*dsdz(s) \
+              + 1.0/H*(1.0 - s)*(H - H0)/dt
     
       # STRAIN HEAT
       Phi_strain = (2*n)/(n+1)*2*eta_v(s)*epsilon_dot(s)
     
       # STABILIZATION SCHEME
-      Umag = sqrt(u(s)**2 + v(s)**2 + 1e-3)
-      tau = h/(2*Umag)
+      Umag   = sqrt(u(s)**2 + v(s)**2 + 1e-3)
+      tau    = h/(2*Umag)
       Psihat = Psi[i] + tau*(u(s)*Psi[i].dx(0) + v(s)*Psi[i].dx(1))
     
       # TIME DERIVATIVE
@@ -2981,7 +2987,8 @@ class EnergyHybrid(Physics):
         R_T += -Phi_strain/(rho*Cp)*Psi[i]*dx 
         R_T += -w_eff*q_geo/(rho*Cp*kappa*dsdz(s))*Psi[i]*dx
         f    = (q_geo + 0.5*beta**2*(u(s)**2 + v(s)**2))/(rho*Cp*kappa*dsdz(s))
-        R_T += -2.*kappa*dsdz(s)**2*((T(N_T-2) - T(N_T-1))/(deltax**2) - f/deltax)*Psi[i]*dx
+        R_T += -2.*kappa*dsdz(s)**2*(+ (T(N_T-2) - T(N_T-1)) / deltax**2 \
+                                     - f/deltax)*Psi[i]*dx
       # INTERIOR
       else:
         R_T += dTdt*Psi[i]*dx
@@ -2994,7 +3001,7 @@ class EnergyHybrid(Physics):
     self.R_T = replace(R_T, {T_:dT})
 
     # pressure melting point stuff :
-    self.Tm  = as_vector([273.15 - gamma*sigma*H for sigma in sigmas])
+    self.Tm  = as_vector([T_w - gamma*sigma*H for sigma in sigmas])
 
   def solve(self):
     """
@@ -3012,7 +3019,7 @@ class EnergyHybrid(Physics):
     ffc_options = config['enthalpy']['ffc_options']
 
     # SOLVE TEMPERATURE
-    solve(lhs(self.R_T) == rhs(self.R_T), T_,
+    solve(lhs(self.R_T) == rhs(self.R_T), model.T_,
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=ffc_options)    
 
@@ -3029,8 +3036,8 @@ class EnergyHybrid(Physics):
     T_melt_v = T_melt.vector().array()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
     model.assign_variable(T_, T_v)
-
-    out_T = T_.split(True)  # deepcopy avoids projections
+    
+    out_T = T_.split(True)            # deepcopy avoids projections
     
     model.assign_variable(model.Ts, out_T[0])
     model.assign_variable(model.Tb, out_T[-1]) 

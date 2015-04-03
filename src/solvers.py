@@ -951,12 +951,6 @@ class HybridTransientSolver(Solver):
     t_end  = config['t_end']
     dt     = config['time_step']
    
-    H      = model.H
-    H0     = model.H0
-    T_     = model.T_
-    T0_    = model.T0_
-    beta   = model.beta
-
     # Loop over all times
     while t <= t_end:
 
@@ -981,7 +975,7 @@ class HybridTransientSolver(Solver):
           print_text(s, self.color())
           self.file_Ts << model.Ts
           self.file_Tb << model.Tb
-        T0_.interpolate(T_)  # update previous temp
+        model.T0_.interpolate(model.T_)  # update previous temp
       
       # calculate free surface :
       if config['free_surface']['on']:
@@ -990,7 +984,7 @@ class HybridTransientSolver(Solver):
           s    = '::: saving thickness H.pvd file :::'
           print_text(s, self.color())
           self.file_H << model.H
-        H0.interpolate(H)
+        model.H0.interpolate(model.H)
     
       # calculate surface climate solver :
       if config['surface_climate']['on']:
@@ -998,7 +992,7 @@ class HybridTransientSolver(Solver):
 
       # store information : 
       if self.config['log']:
-        self.file_beta << beta
+        self.file_beta << model.beta
         self.t_log.append(t)
 
       # increment time step :

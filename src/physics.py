@@ -2521,17 +2521,12 @@ class VelocityHybrid(Physics):
     
     self.model  = model
     self.config = config
-
-    # TIME
-    minute = 60.0
-    hour   = 60*minute
-    day    = 24*hour
-    year   = 365*day
     
     # CONSTANTS
-    rho = model.rhoi
-    g   = model.g
-    n   = model.n
+    year = model.spy
+    rho  = model.rhoi
+    g    = model.g
+    n    = model.n
     
     B       = model.B
     beta    = model.beta
@@ -2713,18 +2708,13 @@ class MassBalanceHybrid(Physics):
     
     self.model  = model
     self.config = config
-
-    # TIME
-    minute = 60.0
-    hour   = 60*minute
-    day    = 24*hour
-    year   = 365*day
     
     # CONSTANTS
-    rho = model.rhoi
-    g   = model.g
-    n   = model.n
-    A   = config['velocity']['A']
+    year = model.spy
+    rho  = model.rhoi
+    g    = model.g
+    n    = model.n
+    A    = config['velocity']['A']
     
     Q      = model.Q
     B      = model.B
@@ -2855,17 +2845,12 @@ class EnergyHybrid(Physics):
     
     self.model  = model
     self.config = config
-
-    # TIME
-    minute = 60.0
-    hour   = 60*minute
-    day    = 24*hour
-    year   = 365*day
     
     # CONSTANTS
-    g   = model.g
-    n   = model.n
-    A   = config['velocity']['A']
+    year  = model.spy
+    g     = model.g
+    n     = model.n
+    A     = config['velocity']['A']
     
     k     = model.ki
     rho   = model.rhoi

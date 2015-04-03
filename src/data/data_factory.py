@@ -78,8 +78,8 @@ class DataFactory(object):
     vara['map_eastern_edge']  = east 
     vara['map_southern_edge'] = south 
     vara['map_northern_edge'] = north
-    vara['nx']                = n
-    vara['ny']                = m
+    vara['nx']                = nx
+    vara['ny']                = ny
     
     # save the data in matlab format :
     vara['dataset']   = 'measures'

@@ -126,8 +126,10 @@ fldr    = 'searise'
 download_file(searise, home, fldr)
 
 # NASA basins dataset for Greenland:
-basins_shape  = 'https://umt.box.com/shared/static/s18gkw5k7ldozg0l9kfreh3hsxk0flpq.txt'
-basins_image  = 'https://umt.box.com/shared/static/pgo62nopbwid6hkuc5suyvggjozvywqv.png'
+basins_shape  = 'https://umt.box.com/shared/static/' + \
+                's18gkw5k7ldozg0l9kfreh3hsxk0flpq.txt'
+basins_image  = 'https://umt.box.com/shared/static/' + \
+                'pgo62nopbwid6hkuc5suyvggjozvywqv.png'
 fldr    = 'basins'
 download_file(basins_shape, home, fldr ,name = 'GrnDrainageSystems_Ekholm.txt')
 download_file(basins_image, home, fldr ,name = 'Grn_Drainage_Systems.png')

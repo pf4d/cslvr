@@ -196,9 +196,6 @@ class VelocityStokes(Physics):
     gradS         = model.gradS
     gradB         = model.gradB
 
-    # initialize the enhancement factor :
-    model.assign_variable(E, config['velocity']['E'])
-    
     # pressure boundary :
     class Depth(Expression):
       def eval(self, values, x):
@@ -237,11 +234,11 @@ class VelocityStokes(Physics):
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A = config['velocity']['A']
-      s = "    - using isothermal visosity formulation -"
+      A0 = config['velocity']['A']
+      s  = "    - using isothermal visosity formulation -"
       print_text(s, self.color())
-      print_min_max(A, 'A')
-      b     = A**(-1/n)
+      print_min_max(A0, 'A')
+      b     = A0*(-1/n)
       b_gnd = b
       b_shf = b
     
@@ -250,8 +247,8 @@ class VelocityStokes(Physics):
       b_shf = config['velocity']['eta_shf']
       s     = "    - using linear viscosity formulation -"
       print_text(s, self.color())
-      print_min_max(eta_shf, 'eta_shf')
-      print_min_max(eta_gnd, 'eta_gnd')
+      print_min_max(b_shf, 'eta_shf')
+      print_min_max(b_gnd, 'eta_gnd')
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':
@@ -606,11 +603,11 @@ class VelocityBP(Physics):
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field, if expected.
     if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A = config['velocity']['A']
+      A0 = config['velocity']['A']
       s = "    - using isothermal viscosity formulation -"
       print_text(s, self.color())
-      print_min_max(A, 'A')
-      b     = A**(-1/n)
+      print_min_max(A0, 'A')
+      b     = A0**(-1/n)
       b_gnd = b
       b_shf = b
     
@@ -619,8 +616,8 @@ class VelocityBP(Physics):
       b_shf = config['velocity']['eta_shf']
       s     = "    - using linear viscosity formulation -"
       print_text(s, self.color())
-      print_min_max(eta_shf, 'eta_shf')
-      print_min_max(eta_gnd, 'eta_gnd')
+      print_min_max(b_shf, 'eta_shf')
+      print_min_max(b_gnd, 'eta_gnd')
       n     = 1.0
     
     elif config['velocity']['viscosity_mode'] == 'b_control':

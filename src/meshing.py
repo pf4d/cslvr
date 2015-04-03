@@ -627,7 +627,8 @@ class MeshExtruder(object):
     File(filename) << self.new_mesh
 
 class GetBasin(object):
-  """This class contains functions to return a contour corresponding to the
+  """
+  This class contains functions to return a contour corresponding to the
   perimeter of various basins in Antarctica and Greenland. The libraries of
   basins are drawn from ICESat data, and posted here:
 

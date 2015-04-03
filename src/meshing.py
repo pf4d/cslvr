@@ -656,6 +656,9 @@ class GetBasin(object):
     """
     self.color  = 'grey_46'
     self.di     = di
+    
+    s    = "::: INITIALIZING BASIN GENERATOR :::"
+    print_text(s, self.color)
 
     self.edge_resolution = edge_resolution
     self.plot_coords     = {}

@@ -539,8 +539,8 @@ class DataFactory(object):
 
     from tifffile.tifffile import TiffFile
    
-    b           = TiffFile(direc + 'bedmap2_bed.tif')
-    h           = TiffFile(direc + 'bedmap2_surface.tif') 
+    B           = TiffFile(direc + 'bedmap2_bed.tif')
+    S           = TiffFile(direc + 'bedmap2_surface.tif') 
     H           = TiffFile(direc + 'bedmap2_thickness.tif')
     mask        = TiffFile(direc + 'bedmap2_icemask_grounded_and_shelves.tif') 
     rock_mask   = TiffFile(direc + 'bedmap2_rockmask.tif') 
@@ -548,8 +548,8 @@ class DataFactory(object):
     coverage    = TiffFile(direc + 'bedmap2_coverage.tif')
     gl04c_WGS84 = TiffFile(direc + 'gl04c_geiod_to_WGS84.tif')
    
-    b           = b.asarray()
-    h           = h.asarray()
+    B           = B.asarray()
+    S           = S.asarray()
     H           = H.asarray()
     mask        = mask.asarray()
     rock_mask   = rock_mask.asarray()
@@ -557,9 +557,10 @@ class DataFactory(object):
     coverage    = coverage.asarray() 
     gl04c_WGS84 = gl04c_WGS84.asarray()
     
-    b = h - H
-    H[H == 0.0] = thklim
-    h = b + H
+    B = S - H
+    H[H == 32767]  = thklim
+    H[H <= thklim] = thklim
+    S = B + H
 
     vara        = dict()
      
@@ -598,7 +599,7 @@ class DataFactory(object):
     
     names = ['B', 'S', 'H', 'mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
-    ftns  = [b, h, H, mask, rock_mask, b_uncert, coverage, gl04c_WGS84]
+    ftns  = [B, S, H, mask, rock_mask, b_uncert, coverage, gl04c_WGS84]
    
     # retrieve data :
     vara['dataset']   = 'bedmap 2'

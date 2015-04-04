@@ -93,11 +93,11 @@ class MeshGenerator(object):
     Inputs:
     cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...]))
     """
-    s = "::: manually setting contour :::"
+    s = "::: manually setting contour with %s nodes:::"
+    print_text(s % shape(cont_array)[0], self.color)
     fig = figure()
     self.ax = fig.add_subplot(111)
     self.ax.set_aspect('equal')
-    print_text(s, self.color)
     self.longest_cont = cont_array
 
   def plot_contour(self):

@@ -923,9 +923,14 @@ class HybridTransientSolver(Solver):
     # initialize free surface solver :
     if config['free_surface']['on']:
       self.surface_instance = MassBalanceHybrid(model, config)
+    
+    # balance velocity model :
+    if config['balance_velocity']['on']:
+      self.balance_velocity_instance = VelocityBalance(model, config)
 
     # Set up files for logging time dependent solutions to paraview files.
     if config['log']:
+      self.file_Ubar = File(outpath + 'Ubar.pvd')
       self.file_U    = File(outpath + 'U.pvd')
       self.file_Ts   = File(outpath + 'Ts.pvd')
       self.file_Tb   = File(outpath + 'Tb.pvd')
@@ -944,8 +949,9 @@ class HybridTransientSolver(Solver):
     """
     s    = '::: solving HybridTransientSolver :::'
     print_text(s, self.color())
-    model  = self.model
-    config = self.config
+    model   = self.model
+    config  = self.config
+    outpath = config['output_path']
     
     t      = config['t_start']
     t_end  = config['t_end']
@@ -961,7 +967,7 @@ class HybridTransientSolver(Solver):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         if config['velocity']['log']:
-          s    = '::: saving velocity U.pvd file :::'
+          s    = '::: saving velocity %sU.pvd file :::' % outpath
           print_text(s, self.color())
           U    = project(as_vector([model.u, model.v, model.w]))
           self.file_U << U
@@ -971,7 +977,7 @@ class HybridTransientSolver(Solver):
         self.enthalpy_instance.solve()
         if config['enthalpy']['log']:
           s    = '::: saving surface and bed temperature Ts and Tb .pvd ' + \
-                 'files :::'
+                 'files to %s :::' % outpath
           print_text(s, self.color())
           self.file_Ts << model.Ts
           self.file_Tb << model.Tb
@@ -981,7 +987,7 @@ class HybridTransientSolver(Solver):
       if config['free_surface']['on']:
         self.surface_instance.solve()
         if config['log']:
-          s    = '::: saving thickness H.pvd file :::'
+          s    = '::: saving thickness %sH.pvd file :::' % outpath
           print_text(s, self.color())
           self.file_H << model.H
         model.H0.interpolate(model.H)
@@ -989,10 +995,42 @@ class HybridTransientSolver(Solver):
       # calculate surface climate solver :
       if config['surface_climate']['on']:
         self.surface_climate_instance.solve()
+    
+      # balance velocity model :
+      if config['balance_velocity']['on']:
+        self.balance_velocity_instance.solve()
+        if config['log']:
+          s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
+          print_text(s, self.color())
+          self.file_Ubar << model.Ubar
+      
+      # re-compute the friction field :
+      if config['velocity']['use_stat_beta']:
+        
+        s    = "::: calculating new statistical beta :::"
+        print_text(s, self.color())
+        beta = project(model.beta_f, model.Q)
+        print_min_max(beta, 'beta')
+    
+        s    = "::: removing negative values of beta :::"
+        print_text(s, self.color())
+        beta_v = beta.vector().array()
+        #betaSIA_v = model.betaSIA.vector().array()
+        #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+        beta_v[beta_v < 0.0]    = 0.0
+        #beta_v[beta_v > 2500.0] = 2500.0
+        model.assign_variable(model.beta, beta_v)
+        #model.assign_variable(model.beta, np.sqrt(beta_v))
+        print_min_max(model.beta, 'beta')
+        
+        # save beta : 
+        if config['log']:
+          s    = '::: saving stats %sbeta.pvd file :::' % outpath
+          print_text(s, self.color())
+          self.file_beta << model.beta
 
       # store information : 
       if self.config['log']:
-        self.file_beta << model.beta
         self.t_log.append(t)
 
       # increment time step :

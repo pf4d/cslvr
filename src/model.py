@@ -231,6 +231,7 @@ class Model(object):
     #   4 = low slope, upward or downward facing ..... sides
     #   5 = floating ................................. floating base
     #   6 = floating ................................. floating surface
+    #   7 = floating sides
     #
     # facet for accumulation :
     #
@@ -260,7 +261,10 @@ class Model(object):
           self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        self.ff[f] = 4
+        if mask_xy > 0:
+          self.ff[f] = 4
+        else:
+          self.ff[f] = 7
     
     for f in facets(self.flat_mesh):
       n       = f.normal()
@@ -282,7 +286,10 @@ class Model(object):
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        self.ff_flat[f] = 4
+        if mask_xy > 0:
+          self.ff_flat[f] = 4
+        else:
+          self.ff_flat[f] = 7
     
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, self.color)
@@ -538,7 +545,7 @@ class Model(object):
     Q     = self.Q
     B     = self.B
     S     = self.S
-    T     = self.T
+    T     = self.Tb
     T_s   = self.T_surface
 
     adot_v = adot.vector().array()

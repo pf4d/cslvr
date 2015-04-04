@@ -674,25 +674,28 @@ class VelocityBP(Physics):
     eta_shf =  b_shf * epsdot**((1-n)/(2*n))
     eta_gnd =  b_gnd * epsdot**((1-n)/(2*n))
 
-    # 1) Viscous dissipation
+    # 1) viscous dissipation :
     Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
     Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
 
-    # 2) Potential energy
+    # 2) potential energy :
     Pe       = rhoi * g * (u*gradS[0] + v*gradS[1])
 
-    # 3) Dissipation by sliding
+    # 3) dissipation by sliding :
     Sl_shf   = 0.5 * Constant(1e-10) * (u**2 + v**2)
     Sl_gnd   = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
-    # 4) pressure boundary
+    # 4) pressure boundary :
     Pb       = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1]) 
+
+    # 5) tangential velocity to divide :
+    Db       = u**2*N[0] + v**2*N[1]
 
     # Variational principle
     A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd + Sl_shf*dFlt
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
-      A += Pb*dSde
+      A += Pb*dSde #+ Db*ds(7)
 
     # Calculate the first variation of the action 
     # in the direction of the test function
@@ -731,6 +734,10 @@ class VelocityBP(Physics):
       self.bcs.append(DirichletBC(Q2.sub(0), u_t, model.ff, 4))
       self.bcs.append(DirichletBC(Q2.sub(1), v_t, model.ff, 4))
       self.bc_w = DirichletBC(Q, w_t, model.ff, 4)
+
+    # add boundary condition for the divide :
+    self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
     model.eta_shf = eta_shf
     model.eta_gnd = eta_gnd
@@ -2088,7 +2095,6 @@ class VelocityBalance(Physics):
    
     # assign the variables something that the user specifies : 
     model.assign_variable(kappa, config['balance_velocity']['kappa'])
-    model.assign_variable(adot,  config['balance_velocity']['adot'])
         
     #===========================================================================
     # form to calculate direction of flow (down driving stress gradient) :
@@ -2108,8 +2114,11 @@ class VelocityBalance(Physics):
     L_dSdy = rho * g * H * dSdy * phi*dx \
     
     # SUPG method :
-    dS      = as_vector([d_x, d_y, 0.0])
-    phihat  = phi + cellh/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
+    if model.mesh.ufl_cell().topological_dimension() == 3:
+      dS      = as_vector([d_x, d_y, 0.0])
+    elif model.mesh.ufl_cell().topological_dimension() == 2:
+      dS      = as_vector([d_x, d_y])
+    phihat  = phi + h/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
     
     def L(u, uhat):
       return div(uhat)*u + dot(grad(u), uhat)
@@ -2168,6 +2177,14 @@ class VelocityBalance(Physics):
     s    = "::: solving velocity balance magnitude :::"
     print_text(s, self.color())
     solve(self.B == self.a, model.Ubar)
+    print_min_max(model.Ubar, 'Ubar')
+    
+    # enforce positivity of balance-velocity :
+    s    = "::: removing negative values of balance velocity :::"
+    print_text(s, self.color())
+    Ubar_v = model.Ubar.vector().array()
+    Ubar_v[Ubar_v < 0] = 0
+    model.assign_variable(model.Ubar, Ubar_v)
     print_min_max(model.Ubar, 'Ubar')
     
 
@@ -2832,6 +2849,13 @@ class MassBalanceHybrid(Physics):
 
     print_min_max(model.H, 'H')
     
+    # update the surface :
+    s    = "::: updating surface :::"
+    print_text(s, self.color())
+    S    = project(model.B + model.H, model.Q)
+    model.assign_variable(model.S, S)
+    print_min_max(model.S, 'S')
+    
 
 class EnergyHybrid(Physics):
   """
@@ -2847,27 +2871,27 @@ class EnergyHybrid(Physics):
     self.config = config
     
     # CONSTANTS
-    year  = model.spy
-    g     = model.g
-    n     = model.n
-    A     = config['velocity']['A']
-    
-    k     = model.ki
-    rho   = model.rhoi
-    Cp    = model.ci
-    kappa = year*k/(rho*Cp)
-    
-    q_geo = model.q_geo
-    S     = model.S
-    B     = model.B
-    beta  = model.beta
-    T_s   = model.T_surface
-    T_w   = model.T_w
-    U     = model.U
-    H     = model.H
-    H0    = model.H0
-    T_    = model.T_
-    T0_   = model.T0_
+    year    = model.spy
+    g       = model.g
+    n       = model.n
+    A       = config['velocity']['A']
+            
+    k       = model.ki
+    rho     = model.rhoi
+    Cp      = model.ci
+    kappa   = year*k/(rho*Cp)
+            
+    q_geo   = model.q_geo
+    S       = model.S
+    B       = model.B
+    beta    = model.beta
+    T_s     = model.T_surface
+    T_w     = model.T_w
+    U       = model.U
+    H       = model.H
+    H0      = model.H0
+    T_      = model.T_
+    T0_     = model.T0_
     deltax  = model.deltax
     sigmas  = model.sigmas
     eps_reg = model.eps_reg
@@ -2875,12 +2899,12 @@ class EnergyHybrid(Physics):
     dt      = config['time_step']
     N_T     = config['enthalpy']['N_T']
     
-    Bc    = 3.61e-13*year
-    Bw    = 1.73e3*year  # model.a0 ice hardness
-    Qc    = 6e4
-    Qw    = model.Q0     # ice act. energy
-    Rc    = model.R      # gas constant
-    gamma = model.gamma  # pressure melting point depth dependence
+    Bc      = 3.61e-13*year
+    Bw      = 1.73e3*year  # model.a0 ice hardness
+    Qc      = 6e4
+    Qw      = model.Q0     # ice act. energy
+    Rc      = model.R      # gas constant
+    gamma   = model.gamma  # pressure melting point depth dependence
    
     # get velocity components : 
     # ANSATZ    
@@ -3007,6 +3031,7 @@ class EnergyHybrid(Physics):
     solve(lhs(self.R_T) == rhs(self.R_T), model.T_,
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=ffc_options)    
+    print_min_max(model.T_, 'T_')
 
     # Update temperature field
     s    = "::: calculating pressure-melting point :::"
@@ -3014,7 +3039,6 @@ class EnergyHybrid(Physics):
     T_melt  = project(self.Tm)
     Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
     print_min_max(T_melt, 'T_melt')
-    print_min_max(Tb_m,   'Tb_m')
     
     #  correct for pressure melting point :
     T_v      = T_.vector().array()

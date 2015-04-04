@@ -668,7 +668,6 @@ def default_config():
                'on'                  : False,
                'log'                 : True,
                'kappa'               : 10.0,
-               'adot'                : None,
              },
              'stokes_balance' :
              {

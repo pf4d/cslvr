@@ -7,13 +7,15 @@ alpha = 0.1 * pi / 180
 L     = 40000
 
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['linear_solver']  = 'cg'
-nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']  = 'mumps'
+#nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
 
 config = default_config()
 config['output_path']                  = './results_BP_L'+str(L)+'/'
 config['periodic_boundary_conditions'] = True
 config['velocity']['newton_params']    = nonlin_solver_params
+config['model_order']                  = 'BP'
+config['use_dukowicz']                 = False
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
 mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)

@@ -53,7 +53,7 @@ class Physics(object):
     return 'cyan'
 
 
-class VelocityStokes(Physics):
+class VelocityDukowiczStokes(Physics):
   r"""  
   This class solves the non-linear Blatter-Pattyn momentum balance, 
   given a possibly non-uniform temperature field.
@@ -192,17 +192,12 @@ class VelocityStokes(Physics):
     g             = model.g
     beta          = model.beta
     h             = model.h
+    N             = model.N
+    D             = model.D
 
     gradS         = model.gradS
     gradB         = model.gradB
 
-    # pressure boundary :
-    class Depth(Expression):
-      def eval(self, values, x):
-        values[0] = min(0, x[2])
-    D = Depth(element=Q.ufl_element())
-    N = FacetNormal(mesh)
-    
     # Define a test function
     Phi                  = TestFunction(Q4)
 
@@ -216,8 +211,7 @@ class VelocityStokes(Physics):
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
-    if model.mask != None:
-      dx     = dx(1) + dx(0) # entire internal
+    dx       = dx(1) + dx(0) # entire internal
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
     dFlt     = ds(5)         # floating bed
@@ -402,7 +396,7 @@ class VelocityStokes(Physics):
     print_min_max(model.P, 'P')
 
 
-class VelocityBP(Physics):
+class VelocityDukowiczBP(Physics):
   r"""				
   This class solves the non-linear Blatter-Pattyn momentum balance, 
   given a possibly non-uniform temperature field.
@@ -484,7 +478,7 @@ class VelocityBP(Physics):
   |                   |                               |surface elevation of   |
   |                   |                               |the ice                |
   |                   +-------------------------------+-----------------------+
-  |                   |.. math::                      |*Frictional head       |
+  |                   |.. math::                      |*Frictional heat       |
   |                   |                               |dissipation*           |
   |                   |   \frac{\beta^{2}}{2}H^{r}    |including terms for    |
   |                   |   \textbf{u}_{| |}\cdot       |the basal              |
@@ -560,17 +554,12 @@ class VelocityBP(Physics):
     g             = model.g
     beta          = model.beta
     w             = model.w
+    N             = model.N
+    D             = model.D
     
     gradS         = model.gradS
     gradB         = model.gradB
 
-    # pressure boundary :
-    class Depth(Expression):
-      def eval(self, values, x):
-        values[0] = min(0, x[2])
-    D = Depth(element=Q.ufl_element())
-    N = FacetNormal(mesh)
-    
     # Define a test function
     Phi      = TestFunction(Q2)
 
@@ -586,8 +575,7 @@ class VelocityBP(Physics):
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
-    if model.mask != None:
-      dx     = dx(1) + dx(0) # entire internal
+    dx       = dx(1) + dx(0) # entire internal
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
     dFlt     = ds(5)         # floating bed
@@ -682,6 +670,13 @@ class VelocityBP(Physics):
     Pe       = rhoi * g * (u*gradS[0] + v*gradS[1])
 
     # 3) dissipation by sliding :
+    #Ne       = H - rhow/rhoi * D
+    #lnC      = ln(0.383)
+    ##Cu       = ln(beta**2 * Ne**(-0.349) * 1/u) / lnC
+    ##Cv       = ln(beta**2 * Ne**(-0.349) * 1/v) / lnC
+    #Cu       = (2*ln(beta + 1e-3) - ln(u + 1e-3)) / lnC
+    #Cv       = (2*ln(beta + 1e-3) - ln(v + 1e-3)) / lnC
+    #Sl_gnd   = Cu*u + Cv*v
     Sl_shf   = 0.5 * Constant(1e-10) * (u**2 + v**2)
     Sl_gnd   = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
@@ -735,9 +730,9 @@ class VelocityBP(Physics):
       self.bcs.append(DirichletBC(Q2.sub(1), v_t, model.ff, 4))
       self.bc_w = DirichletBC(Q, w_t, model.ff, 4)
 
-    # add boundary condition for the divide :
-    self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+    ## add boundary condition for the divide :
+    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
+    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
     model.eta_shf = eta_shf
     model.eta_gnd = eta_gnd
@@ -786,6 +781,282 @@ class VelocityBP(Physics):
     #                           "symmetric" : True})
     print_min_max(model.w, 'w')
           
+    # solve for pressure :
+    if config['velocity']['calc_pressure']:
+      s    = "::: solving BP pressure :::"
+      print_text(s, self.color())
+      model.calc_pressure()
+      print_min_max(model.P, 'P')
+
+
+class VelocityBP(Physics):
+  """				
+  """
+  def __init__(self, model, config):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.
+    """
+    s = "::: INITIALIZING NEW BP VELOCITY PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.model  = model
+    self.config = config
+
+    def strain_rate(U):
+      """
+      return the strain-rate tensor of <U>.
+      """
+      u,v,w = U
+      epi   = 0.5 * (grad(U) + grad(U).T)
+      epi02 = 0.5*u.dx(2)
+      epi12 = 0.5*v.dx(2)
+      epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02   ],
+                          [epi[1,0],  epi[1,1],  epi12   ],
+                          [epi02,     epi12,     epi[2,2]]])
+      return epsdot
+    
+    mesh          = model.mesh
+    r             = config['velocity']['r']
+    V             = model.Q3
+    Q             = model.Q
+    U             = model.U
+    n             = model.n
+    b_shf         = model.b_shf
+    b_gnd         = model.b_gnd
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
+    T             = model.T
+    T_w           = model.T_w
+    gamma         = model.gamma
+    S             = model.S
+    B             = model.B
+    H             = S - B
+    x             = model.x
+    E             = model.E
+    E_gnd         = model.E_gnd
+    E_shf         = model.E_shf
+    W             = model.W_r
+    R             = model.R
+    eps_reg       = model.eps_reg
+    rhoi          = model.rhoi
+    rhow          = model.rhow
+    g             = model.g
+    beta          = model.beta
+    w             = model.w
+    N             = model.N
+    D             = model.D
+    
+    gradS         = model.gradS
+    gradB         = model.gradB
+     
+    # new constants :
+    p0     = 101325
+    T0     = 288.15
+    M      = 0.0289644
+    ci     = model.ci
+
+    dx     = model.dx
+    dx_s   = dx(1)
+    dx_g   = dx(0)
+    dx     = dx(1) + dx(0) # entire internal
+    ds     = model.ds  
+    dGnd   = ds(3)         # grounded bed
+    dFlt   = ds(5)         # floating bed
+    dSde   = ds(4)         # sides
+    dBed   = dGnd + dFlt   # bed
+    
+    # initialize velocity to a previous solution :
+    if config['velocity']['use_U0']:
+      s = "    - using initial velocity -"
+      print_text(s, self.color())
+      U_v = as_vector([model.u, model.v, model.w])
+      model.assign_variable(U, project(U_v, V))
+
+    # Set the value of b, the temperature dependent ice hardness parameter,
+    # using the most recently calculated temperature field, if expected.
+    if   config['velocity']['viscosity_mode'] == 'isothermal':
+      A0 = config['velocity']['A']
+      s = "    - using isothermal viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(A0, 'A')
+      b     = A0**(-1/n)
+      b_gnd = b
+      b_shf = b
+    
+    elif config['velocity']['viscosity_mode'] == 'linear':
+      b_gnd = config['velocity']['eta_gnd']
+      b_shf = config['velocity']['eta_shf']
+      s     = "    - using linear viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(b_shf, 'eta_shf')
+      print_min_max(b_gnd, 'eta_gnd')
+      n     = 1.0
+    
+    elif config['velocity']['viscosity_mode'] == 'b_control':
+      b_shf   = config['velocity']['b_shf']
+      b_gnd   = config['velocity']['b_gnd']
+      s       = "    - using b_control viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(b_shf, 'b_shf')
+      print_min_max(b_gnd, 'b_gnd')
+    
+    elif config['velocity']['viscosity_mode'] == 'constant_b':
+      b     = config['velocity']['b']
+      b_shf = b
+      b_gnd = b
+      s = "    - using constant_b viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(b, 'b')
+    
+    elif config['velocity']['viscosity_mode'] == 'full':
+      s     = "    - using full viscosity formulation -"
+      print_text(s, self.color())
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      A0    = E * (a_T*(1 + 181.25*W)) * exp(-Q_T/(R*T))
+      b     = A0**(-1/n)
+      b_gnd = b
+      b_shf = b
+    
+    elif config['velocity']['viscosity_mode'] == 'E_control':
+      E_shf = config['velocity']['E_shf'] 
+      E_gnd = config['velocity']['E_gnd']
+      s     = "    - using E_control viscosity formulation -"
+      print_text(s, self.color())
+      print_min_max(E_shf, 'E_shf')
+      print_min_max(E_gnd, 'E_gnd')
+      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      model.E_shf = E_shf
+      model.E_gnd = E_gnd
+    
+    else:
+      s = "Acceptable choices for 'viscosity_mode' are 'linear', " + \
+          "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
+      print_text(s, 'red', 1)
+
+    # initialize the enhancement factor :
+    model.assign_variable(E, config['velocity']['E'])
+    
+    #===========================================================================
+    # define variational problem :
+    u, v, w       = U
+                  
+    dU            = TrialFunction(V)
+    Phi           = TestFunction(V)
+    phi, psi, chi = Phi
+    
+    # Second invariant of the strain rate tensor squared
+    epi   = strain_rate(U)
+    ep_xx = epi[0,0]
+    ep_yy = epi[1,1]
+    ep_xy = epi[0,1]
+    ep_xz = epi[0,2]
+    ep_yz = epi[1,2]
+    
+    epsdot  = ep_xx**2 + ep_yy**2 + ep_xx*ep_yy + ep_xy**2 + ep_xz**2 + ep_yz**2
+    eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+    
+    epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
+                        0.5*(u.dx(1) + v.dx(0)),
+                        0.5* u.dx(2)            ])
+    epi_2  = as_vector([0.5*(u.dx(1) + v.dx(0)),
+                             u.dx(0) + 2*v.dx(1),
+                        0.5* v.dx(2)            ])
+   
+    # boundary integral terms : 
+    f_w    = rhoi*g*(S - x[2]) + rhow*g*D               # lateral
+    p_a    = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)        # surface pressure
+    
+    # residual :
+    R1 = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_s \
+         + 2 * eta_shf * dot(epi_2, grad(psi)) * dx_s \
+         + 2 * eta_gnd * dot(epi_1, grad(phi)) * dx_g \
+         + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
+         + rhoi * g * gradS[0] * phi * dx \
+         + rhoi * g * gradS[1] * psi * dx \
+         + beta**2 * u * phi * dGnd \
+         + beta**2 * v * psi * dGnd \
+         + Constant(1e-10) * u * phi * dFlt \
+         + Constant(1e-10) * v * psi * dFlt \
+    
+    if (not config['periodic_boundary_conditions']
+        and config['use_pressure_boundary']):
+      R1 -= f_w * dot(N, Phi) * dSde \
+    
+    R2 = + div(U) * chi * dx \
+         - (u*N[0] + v*N[1] - w*N[2]) * chi * dBed \
+  
+    # residual :  
+    self.A = R1 + R2
+    
+    # Jacobian :
+    self.J = derivative(self.A, U, dU)
+
+    # list of boundary conditions
+    self.bcs  = []
+      
+    # add lateral boundary conditions :  
+    if config['velocity']['boundaries'] == 'solution':
+      self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), model.w, model.ff, 4))
+      
+    elif config['velocity']['boundaries'] == 'homogeneous':
+      self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
+    
+    elif config['velocity']['boundaries'] == 'user_defined':
+      u_t = config['velocity']['u_lat_boundary']
+      v_t = config['velocity']['v_lat_boundary']
+      w_t = config['velocity']['w_lat_boundary']
+      self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), w_t, model.ff, 4))
+
+    ## add boundary condition for the divide :
+    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
+    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+
+    model.eta_shf = eta_shf
+    model.eta_gnd = eta_gnd
+    model.b_shf   = b_shf
+    model.b_gnd   = b_gnd
+    model.A       = self.A
+
+  def solve(self):
+    """ 
+    Perform the Newton solve of the first order equations 
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve nonlinear system :
+    params = config['velocity']['newton_params']
+    rtol   = params['newton_solver']['relative_tolerance']
+    maxit  = params['newton_solver']['maximum_iterations']
+    alpha  = params['newton_solver']['relaxation_parameter']
+    s      = "::: solving new BP velocity with %i max iterations" + \
+             " and step size = %.1f :::"
+    print_text(s % (maxit, alpha), self.color())
+    
+    # compute solution :
+    solve(self.A == 0, model.U, J = self.J, bcs = self.bcs, 
+          solver_parameters = params)
+    u, v, w = model.U.split(True)
+    
+    model.assign_variable(model.u, u)
+    model.assign_variable(model.v, v)
+    model.assign_variable(model.w, w)
+    print_min_max(model.u, 'u')
+    print_min_max(model.v, 'v')
+    print_min_max(model.w, 'w')
+    
     # solve for pressure :
     if config['velocity']['calc_pressure']:
       s    = "::: solving BP pressure :::"
@@ -1081,9 +1352,8 @@ class Enthalpy(Physics):
     self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 2) )
     
     # apply T_w conditions of portion of ice in contact with water :
-    if model.mask != None:
-      self.bc_theta.append( DirichletBC(Q, theta_float,   model.ff, 5) )
-      self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 6) )
+    self.bc_theta.append( DirichletBC(Q, theta_float,   model.ff, 5) )
+    self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 6) )
     
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] == 'surface':
@@ -1327,6 +1597,7 @@ class EnthalpyDG(Physics):
     mhat        = model.mhat
     spy         = model.spy
     h           = model.h
+    N           = model.N
     ds          = model.ds
     dSrf        = ds(2)         # surface
     dGnd        = ds(3)         # grounded bed
@@ -1390,17 +1661,16 @@ class EnthalpyDG(Physics):
         print "No velocity field found.  Defaulting to no velocity"
         U    = 0.0
 
-      n      = FacetNormal(mesh)
       h_avg  = (h('+') + h('-'))/2.0
-      un     = (dot(U, n) + abs(dot(U, n)))/2.0
+      un     = (dot(U, N) + abs(dot(U, N)))/2.0
       alpha  = Constant(5.0)
 
       # residual of model :
       a_int  = rho * dot(grad(psi), spy * kappa*grad(dtheta) - U*dtheta)*dx
              
-      a_fac  = + rho * spy * kappa * (alpha / h_avg)*jump(psi)*jump(dtheta) * dS \
-               - rho * spy * kappa * dot(avg(grad(psi)), jump(dtheta, n)) * dS \
-               - rho * spy * kappa * dot(jump(psi, n), avg(grad(dtheta))) * dS
+      a_fac  = + rho * spy * kappa * (alpha/h_avg)*jump(psi)*jump(dtheta) * dS \
+               - rho * spy * kappa * dot(avg(grad(psi)), jump(dtheta, N)) * dS \
+               - rho * spy * kappa * dot(jump(psi, N), avg(grad(dtheta))) * dS
                  
       a_vel  = jump(psi)*jump(un*dtheta)*dS  + psi*un*dtheta*dGamma
       
@@ -1502,9 +1772,8 @@ class EnthalpyDG(Physics):
     self.bc_theta.append( DirichletBC(DQ, theta_surface, model.ff, 2) )
     
     # apply T_w conditions of portion of ice in contact with water :
-    if model.mask != None:
-      self.bc_theta.append( DirichletBC(DQ, theta_float,   model.ff, 5) )
-      self.bc_theta.append( DirichletBC(DQ, theta_surface, model.ff, 6) )
+    self.bc_theta.append( DirichletBC(DQ, theta_float,   model.ff, 5) )
+    self.bc_theta.append( DirichletBC(DQ, theta_surface, model.ff, 6) )
     
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] is not None:
@@ -1750,6 +2019,7 @@ class FreeSurface(Physics):
     solve(A, q, p)
     model.assign_variable(model.dSdt, q)
 
+
 class AdjointVelocity(Physics):
   """ 
   Complete adjoint of the BP momentum balance.  Now updated to calculate
@@ -1781,6 +2051,7 @@ class AdjointVelocity(Physics):
     S        = model.S
     A        = model.A
     U        = model.U
+    N        = model.N
     
     dx       = model.dx
     dx_s     = dx(1)
@@ -1807,9 +2078,6 @@ class AdjointVelocity(Physics):
 
     Q_adj   = U.function_space()
 
-    # form regularization term 'R' :
-    N = FacetNormal(model.mesh)
-    
     # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'log':
       self.I = 0.5 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
@@ -1841,6 +2109,7 @@ class AdjointVelocity(Physics):
       self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
     print_text(s, self.color())
     
+    # form regularization term 'R' :
     for a,c in zip(alpha,control):
       s   = "    - regularization parameter alpha = %.2E -" % a
       print_text(s, self.color())
@@ -1869,7 +2138,7 @@ class AdjointVelocity(Physics):
     model.Lam = Function(Q_adj)
     L         = TrialFunction(Q_adj)
     
-    # Derivative, with trial function L.  This is the momentum equations 
+    # Derivative, with trial function L.  These are the momentum equations 
     # in weak form multiplied by L and integrated by parts
     F_adjoint = derivative(A, U, L)
     
@@ -1910,19 +2179,19 @@ class AdjointVelocity(Physics):
     s    = "::: solving adjoint velocity :::"
     print_text(s, self.color())
       
-    aw = assemble(self.aw)
-    Lw = assemble(self.Lw)
+    #aw = assemble(self.aw)
+    #Lw = assemble(self.Lw)
 
     #if config['model_order'] == 'stokes':
     #  a_solver = LUSolver('mumps')
     #else:
-    a_solver = KrylovSolver('cg', 'hypre_amg')
+    #  a_solver = KrylovSolver('cg', 'hypre_amg')
 
-    a_solver.solve(aw, model.Lam.vector(), Lw)
+    #a_solver.solve(aw, model.Lam.vector(), Lw)
     
-    #solve(self.aw == self.Lw, model.Lam,
-    #      solver_parameters = {"linear_solver"  : "cg",
-    #                           "preconditioner" : "hypre_amg"})
+    solve(self.aw == self.Lw, model.Lam,
+          solver_parameters = {"linear_solver"  : "cg",
+                               "preconditioner" : "hypre_amg"})
     print_min_max(model.Lam, 'Lam')
     
 
@@ -2216,24 +2485,18 @@ class StokesBalance3D(Physics):
     g        = model.g
     x        = model.x
     eps_reg  = model.eps_reg
+    N        = model.N
+    D        = model.D
     
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
-    if model.mask != None:
-      dx     = dx(1) + dx(0) # entire internal
+    dx       = dx(1) + dx(0) # entire internal
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
     dFlt     = ds(5)         # floating bed
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
-    
-    # pressure boundary :
-    class Depth(Expression):
-      def eval(self, values, x):
-        values[0] = min(0, x[2])
-    D = Depth(element=Q.ufl_element())
-    N = FacetNormal(mesh)
     
     f_w      = rhoi*g*(S - x[2]) + rhow*g*D
     
@@ -2336,7 +2599,6 @@ class StokesBalance3D(Physics):
     self.U_s   = U_s
     self.U_n   = U_n
     self.U_t   = U_t
-    self.N     = N
     self.f_w   = f_w
     
   def solve(self):
@@ -2364,7 +2626,7 @@ class StokesBalance3D(Physics):
 
     outpath = config['output_path']
     Q       = model.Q
-    N       = self.N
+    N       = model.N
     beta    = model.beta
     eta     = model.eta
     S       = model.S
@@ -2376,8 +2638,7 @@ class StokesBalance3D(Physics):
     dx      = model.dx
     dx_s    = dx(1)
     dx_g    = dx(0)
-    if model.mask != None:
-      dx    = dx(1) + dx(0) # entire internal
+    dx      = dx(1) + dx(0) # entire internal
     ds      = model.ds  
     dGnd    = ds(3)         # grounded bed
     dFlt    = ds(5)         # floating bed

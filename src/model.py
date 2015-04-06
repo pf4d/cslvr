@@ -261,10 +261,11 @@ class Model(object):
           self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff[f] = 4
-        else:
-          self.ff[f] = 7
+        #if mask_xy > 0:
+        #  self.ff[f] = 4
+        #else:
+        #  self.ff[f] = 7
+        self.ff[f] = 4
     
     for f in facets(self.flat_mesh):
       n       = f.normal()
@@ -286,10 +287,11 @@ class Model(object):
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 4
-        else:
-          self.ff_flat[f] = 7
+        #if mask_xy > 0:
+        #  self.ff_flat[f] = 4
+        #else:
+        #  self.ff_flat[f] = 7
+        self.ff_flat[f] = 4
     
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, self.color)
@@ -525,6 +527,51 @@ class Model(object):
     self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
+    beta_0_v = beta_0.vector().array()
+    beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
+    self.assign_variable(self.beta, beta_0_v)
+    print_min_max(self.beta, 'beta')
+    self.betaSIA = Function(Q)
+    self.assign_variable(self.betaSIA, beta_0_v)
+      
+  def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
+    r"""
+    Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
+    using the observed surface velocity <U_mag> as approximate basal 
+    velocity and <gradS> the projected surface gradient. i.e.,
+
+    .. math::
+    \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    
+    """
+    s = "::: initializing new sliding beta from SIA :::"
+    print_text(s, self.color)
+    r        = 0.0
+    Q        = self.Q
+    rhoi     = self.rhoi
+    rhow     = self.rhow
+    g        = self.g
+    gradS    = self.gradS
+    H        = self.S - self.B
+    D        = self.D
+    
+    Ne       = H - rhow/rhoi * D
+    lnC      = ln(0.383)
+    
+    U_s      = Function(Q)
+    if U_mag == None:
+      U_v = self.U_ob.vector().array()
+    else:
+      U_v = U_mag.vector().array()
+    U_v[U_v < eps] = eps
+    self.assign_variable(U_s, U_v)
+    
+    S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
+    beta     = U_s * Ne**(0.349) * exp(lnC * rhoi * g * H * S_mag)
+    #beta     = U_s * exp(lnC * rhoi * g * H * S_mag)
+    beta_0   = project(sqrt(beta), Q)
+    print_min_max(beta_0, 'beta_0')
+    
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     self.assign_variable(self.beta, beta_0_v)
@@ -1238,11 +1285,16 @@ class Model(object):
     # hybrid momentum :
     self.U             = Function(self.HV)
     
+  def init_dukowicz_BP_variables(self):
+    """
+    """
+    self.U             = Function(self.Q2)
+    self.init_higher_order_variables()
 
   def init_BP_variables(self):
     """
     """
-    self.U             = Function(self.Q2)
+    self.U             = Function(self.Q3)
     self.init_higher_order_variables()
 
   def init_stokes_variables(self):
@@ -1281,11 +1333,22 @@ class Model(object):
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
     self.h             = CellSize(self.mesh)
+    self.N             = FacetNormal(self.mesh)
+    
+    # Depth below sea level :
+    class Depth(Expression):
+      def eval(self, values, x):
+        values[0] = min(0, x[2])
+    self.D = Depth(element=self.Q.ufl_element())
 
     if   config['model_order'] == 'stokes':
-      self.init_stokes_variables()
+      if config['use_dukowicz']:
+        self.init_dukowicz_stokes_variables()
     elif config['model_order'] == 'BP':
-      self.init_BP_variables()
+      if config['use_dukowicz']:
+        self.init_dukowicz_BP_variables()
+      else:
+        self.init_BP_variables()
     elif config['model_order'] == 'L1L2':
       self.init_hybrid_variables()
     

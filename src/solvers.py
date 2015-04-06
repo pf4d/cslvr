@@ -53,9 +53,15 @@ class SteadySolver(Solver):
     # velocity model :
     if self.config['velocity']['on']:
       if   config['model_order'] == 'BP':
-        self.velocity_instance = VelocityBP(model, config)
+        if config['use_dukowicz']:
+          self.velocity_instance = VelocityDukowiczBP(model, config)
+        else:
+          self.velocity_instance = VelocityBP(model, config)
       elif config['model_order'] == 'stokes':
-        self.velocity_instance = VelocityStokes(model, config)
+        if config['use_dukowicz']:
+          self.velocity_instance = VelocityDukowiczStokes(model, config)
+        else:
+          self.velocity_instance = VelocityStokes(model, config)
       elif config['model_order'] == 'L1L2':
         self.velocity_instance = VelocityHybrid(model, config)
       else:
@@ -359,10 +365,16 @@ class TransientSolver(Solver):
     if self.config['velocity']['on']:
       
       if   self.config['model_order'] == 'BP':
-        self.velocity_instance = VelocityBP(model, config)
+        if config['use_dukowicz']:
+          self.velocity_instance = VelocityDukowiczBP(model, config)
+        else:
+          self.velocity_instance = VelocityBP(model, config)
       
       elif self.config['model_order'] == 'stokes':
-        self.velocity_instance = VelocityStokes(model, config)
+        if config['use_dukowicz']:
+          self.velocity_instance = VelocityDukowiczStokes(model, config)
+        else:
+          self.velocity_instance = VelocityStokes(model, config)
       
       elif config['model_order'] == 'L1L2':
         self.velocity_instance = VelocityHybrid(model, config)
@@ -552,6 +564,7 @@ class TransientSolver(Solver):
       t          += dt
       self.step_time.append(time() - tic)
 
+
 class AdjointSolver(Solver):
   """
   This class minimizes the misfit between an observed surface velocity and 
@@ -596,6 +609,9 @@ class AdjointSolver(Solver):
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
     self.adjoint_instance = AdjointVelocity(model, config)
+        
+    # create file to save control varialble #FIXME : hax
+    self.beta_file = File(config['output_path'] + 'beta_a.pvd')
   
   def set_velocity(self, u, v, w):
     """
@@ -732,6 +748,10 @@ class AdjointSolver(Solver):
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
+      # save the output :
+      s = '::: saving friction variable %sbeta_a.pvd file :::'
+      print_text(s % config['output_path'], self.color())
+      self.beta_file << model.beta
       print_min_max(model.u_ob, 'u_ob')
       print_min_max(model.v_ob, 'v_ob')
       I = assemble(self.adjoint_instance.I)

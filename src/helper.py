@@ -574,6 +574,7 @@ def default_config():
   """
   config = { 'mode'                         : 'steady',
              'model_order'                  : 'BP',
+             'use_dukowicz'                 : True,
              't_start'                      : None,
              't_end'                        : None,
              'time_step'                    : 1.0,

@@ -816,20 +816,7 @@ class Model(object):
     self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
 
-  def BP_strain_rate_tensor(self,U):
-    """
-    return the strain-rate tensor of <U>.
-    """
-    u,v,w = split(U)
-    epi   = 0.5 * (grad(U) + grad(U).T)
-    epi02 = 0.5*u.dx(2)
-    epi12 = 0.5*v.dx(2)
-    epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02   ],
-                        [epi[1,0],  epi[1,1],  epi12   ],
-                        [epi02,     epi12,     epi[2,2]]])
-    return epsdot
-
-  def full_strain_rate_tensor(U):
+  def strain_rate_tensor(self, U):
     """
     return the strain-rate tensor of <U>.
     """
@@ -1358,13 +1345,14 @@ class Model(object):
     n       = self.n
     epsdot  = self.epsdot
     eps_reg = self.eps_reg
-    eta_shf = b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd = b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
 
-    self.assign_variable(self.eta_shf, eta_shf)
-    self.assign_variable(self.eta_gnd, eta_gnd)
-    self.assign_variable(self.b_shf, b_shf)
-    self.assign_variable(self.b_gnd, b_gnd)
+    # initialize the viscosity parameters :
+    self.eta_shf = eta_shf
+    self.eta_gnd = eta_gnd
+    self.b_shf   = b_shf
+    self.b_gnd   = b_gnd
 
   def init_hybrid_variables(self):
     """
@@ -1399,15 +1387,15 @@ class Model(object):
                          + u.dx(0)**2 + v.dx(1)**2 \
                          + (u.dx(0) + v.dx(1))**2 )
     self.init_higher_order_variables()
+    self.init_viscosity_mode()
 
   def init_BP_variables(self):
     """
     """
-    # velocity :
-    self.U   = Function(self.Q3)
+    self.U   = Function(self.Q2)
     
     # Second invariant of the strain rate tensor squared
-    epi   = self.BP_strain_rate_tensor(self.U)
+    epi   = self.strain_rate_tensor(as_vector([self.U[0], self.U[1], 0.0]))
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
     ep_xy = epi[0,1]
@@ -1417,6 +1405,7 @@ class Model(object):
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
+    self.init_viscosity_mode()
 
   def init_dukowicz_stokes_variables(self):
     """
@@ -1430,6 +1419,7 @@ class Model(object):
                                     + (v.dx(2) + w.dx(1))**2) \
                             + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2) 
     self.init_higher_order_variables()
+    self.init_viscosity_mode()
 
   def init_stokes_variables(self):
     """
@@ -1438,7 +1428,7 @@ class Model(object):
     self.U   = Function(self.Q3)
     
     # Second invariant of the strain rate tensor squared
-    epi   = self.full_strain_rate_tensor(self.U)
+    epi   = self.strain_rate_tensor(self.U)
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
     ep_xy = epi[0,1]
@@ -1448,6 +1438,7 @@ class Model(object):
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
+    self.init_viscosity_mode()
 
   def init_higher_order_variables(self):
     """
@@ -1485,6 +1476,10 @@ class Model(object):
     print_text(s, self.color)
 
     config = self.config
+    
+    # initialize constants and make them globally available :
+    self.set_parameters(pc.IceParameters())
+    self.params.globalize_parameters(self)
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
@@ -1514,9 +1509,6 @@ class Model(object):
           "or 'L1L2' -"
       print_text(s, 'red', 1)
       sys.exit(1)
-    
-    self.set_parameters(pc.IceParameters())
-    self.params.globalize_parameters(self) # make all the variables available 
 
     # Velocity model
     self.u             = Function(self.Q)
@@ -1525,13 +1517,8 @@ class Model(object):
     self.P             = Function(self.Q)
     self.beta          = Function(self.Q)
     self.mhat          = Function(self.Q)
-    self.b             = Function(self.Q)
-    self.b_shf         = Function(self.Q)
-    self.b_gnd         = Function(self.Q)
     self.E_gnd         = Function(self.Q)
     self.E_shf         = Function(self.Q)
-    self.eta_gnd       = Function(self.Q)
-    self.eta_shf       = Function(self.Q)
     self.eta           = Function(self.Q)
     self.u_ob          = Function(self.Q)
     self.v_ob          = Function(self.Q)

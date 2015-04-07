@@ -1,21 +1,25 @@
 from varglas.model   import Model
 from varglas.solvers import SteadySolver
 from varglas.helper  import default_nonlin_solver_params, default_config
+from varglas.io      import print_text
 from fenics          import File, Expression, BoxMesh, pi
+from time            import time
+
+t0 = time()
 
 alpha = 0.1 * pi / 180
 L     = 40000
 
 nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['linear_solver']  = 'mumps'
-#nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
+nonlin_solver_params['newton_solver']['linear_solver']  = 'cg'
+nonlin_solver_params['newton_solver']['preconditioner'] = 'hypre_amg'
 
 config = default_config()
 config['output_path']                  = './results_BP_L'+str(L)+'/'
 config['periodic_boundary_conditions'] = True
 config['velocity']['newton_params']    = nonlin_solver_params
 config['model_order']                  = 'BP'
-config['use_dukowicz']                 = True
+config['use_dukowicz']                 = False
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
 mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
@@ -38,6 +42,20 @@ model.init_beta(beta)
 
 F = SteadySolver(model, config)
 F.solve()
+
+tf = time()
+
+# calculate total time to compute
+s   = tf - t0
+m   = s / 60.0
+h   = m / 60.0
+s   = s % 60
+m   = m % 60
+txt = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+print_text(txt, 'red', 1)
+
+
+
 
 
 

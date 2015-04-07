@@ -171,7 +171,6 @@ class VelocityDukowiczStokes(Physics):
     Q4            = model.Q4
     U             = model.U
     n             = model.n
-    b             = model.b
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
     S             = model.S
@@ -203,10 +202,6 @@ class VelocityDukowiczStokes(Physics):
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
     
-    # initialize eta_gnd, eta_shf, b_shf, and b_gnd to what you want 
-    # from the config :
-    model.init_viscosity_mode()
-
     #===========================================================================
     # define variational problem :
    
@@ -226,10 +221,6 @@ class VelocityDukowiczStokes(Physics):
 
     # 3) Dissipation by sliding
     Sl_gnd = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
-    #Ne     = H - rhow/rhoi * D
-    #lnC    = ln(-0.383)
-    #Ce     = ln(beta**2 * Ne**(-0.349)) / lnC
-    #Sl_gnd = (ln(1/u)/lnC + Ce)*u + (ln(1/v)/lnC + Ce)*v + (ln(1/w)/lnC + Ce)*w
     Sl_shf = 0.5 * Constant(1e-10) * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
@@ -477,9 +468,6 @@ class VelocityDukowiczBP(Physics):
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
     
-    # initialize b_shf, b_gnd to what you want from the config :
-    model.init_viscosity_mode()
-
     #===========================================================================
     # define variational problem :
     Phi      = TestFunction(Q2)
@@ -616,7 +604,7 @@ class VelocityBP(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    s = "::: INITIALIZING NEW BP VELOCITY PHYSICS :::"
+    s = "::: INITIALIZING BP VELOCITY PHYSICS :::"
     print_text(s, self.color())
     
     self.model  = model
@@ -624,7 +612,7 @@ class VelocityBP(Physics):
 
     mesh          = model.mesh
     r             = config['velocity']['r']
-    V             = model.Q3
+    V             = model.Q2
     Q             = model.Q
     U             = model.U
     n             = model.n
@@ -670,16 +658,18 @@ class VelocityBP(Physics):
     dSde   = ds(4)         # sides
     dBed   = dGnd + dFlt   # bed
     
-    # initialize b_shf, b_gnd to what you want from the config :
-    model.init_viscosity_mode()
-
     #===========================================================================
     # define variational problem :
-    u, v, w       = U
-                  
-    dU            = TrialFunction(V)
-    Phi           = TestFunction(V)
-    phi, psi, chi = Phi
+
+    # horizontal velocity :
+    u, v      = U
+    dU        = TrialFunction(V)
+    Phi       = TestFunction(V)
+    phi, psi  = Phi
+    
+    # vertical velocity :
+    dw        = TrialFunction(Q)
+    chi       = TestFunction(Q)
     
     epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
                         0.5*(u.dx(1) + v.dx(0)),
@@ -691,6 +681,11 @@ class VelocityBP(Physics):
     # boundary integral terms : 
     f_w    = rhoi*g*(S - x[2]) + rhow*g*D               # lateral
     p_a    = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)        # surface pressure
+    
+    #Ne     = H - rhow/rhoi * D
+    #lnC    = ln(-0.383)
+    #Ce     = ln(beta**2 * Ne**(-0.349)) / lnC
+    #Sl_gnd = (ln(1/u)/lnC + Ce)*u + (ln(1/v)/lnC + Ce)*v + (ln(1/w)/lnC + Ce)*w
     
     # residual :
     R1 = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_s \
@@ -706,30 +701,32 @@ class VelocityBP(Physics):
     
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
-      R1 -= f_w * dot(N, Phi) * dSde \
+      R1 -= f_w * (N[0]*phi + N[1]*psi) * dSde \
     
-    R2 = + div(U) * chi * dx \
-         - (u*N[0] + v*N[1] - w*N[2]) * chi * dBed \
+    R2 = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
+         - (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed \
   
-    # residual :  
-    self.A = R1 + R2
+    # residuals :  
+    self.R1 = R1
+    self.R2 = R2
     
     # Jacobian :
-    self.J = derivative(self.A, U, dU)
+    self.J = derivative(self.R1, U, dU)
 
     # list of boundary conditions
     self.bcs  = []
+    self.bc_w = None
       
     # add lateral boundary conditions :  
     if config['velocity']['boundaries'] == 'solution':
       self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
       self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), model.w, model.ff, 4))
+      self.bc_w = DirichletBC(Q, model.w, model.ff, 4)
       
     elif config['velocity']['boundaries'] == 'homogeneous':
       self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
       self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
+      self.bc_w = DirichletBC(Q, 0.0, model.ff, 4)
     
     elif config['velocity']['boundaries'] == 'user_defined':
       u_t = config['velocity']['u_lat_boundary']
@@ -737,14 +734,14 @@ class VelocityBP(Physics):
       w_t = config['velocity']['w_lat_boundary']
       self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
       self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), w_t, model.ff, 4))
+      self.bc_w = DirichletBC(Q, w_t, model.ff, 4)
 
     ## add boundary condition for the divide :
     #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
     #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
     # keep the residual for adjoint solves :
-    model.A       = self.A
+    model.A       = self.R1
 
   def solve(self):
     """ 
@@ -758,20 +755,33 @@ class VelocityBP(Physics):
     rtol   = params['newton_solver']['relative_tolerance']
     maxit  = params['newton_solver']['maximum_iterations']
     alpha  = params['newton_solver']['relaxation_parameter']
-    s      = "::: solving new BP velocity with %i max iterations" + \
+    s      = "::: solving BP horizontal velocity with %i max iterations" + \
              " and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
     
     # compute solution :
-    solve(self.A == 0, model.U, J = self.J, bcs = self.bcs, 
+    solve(self.R1 == 0, model.U, J = self.J, bcs = self.bcs, 
           solver_parameters = params)
-    u, v, w = model.U.split(True)
-    
+    u, v = model.U.split(True)
+
     model.assign_variable(model.u, u)
     model.assign_variable(model.v, v)
-    model.assign_variable(model.w, w)
     print_min_max(model.u, 'u')
     print_min_max(model.v, 'v')
+    
+    # solve for vertical velocity :
+    s  = "::: solving BP vertical velocity :::"
+    print_text(s, self.color())
+    sm = config['velocity']['vert_solve_method']
+    aw       = assemble(lhs(self.R2))
+    Lw       = assemble(rhs(self.R2))
+    if self.bc_w != None:
+      self.bc_w.apply(aw, Lw)
+    w_solver = LUSolver(sm)
+    w_solver.solve(aw, model.w.vector(), Lw)
+    #solve(lhs(self.R2) == rhs(self.R2), model.w, bcs = self.bc_w,
+    #      solver_parameters = {"linear_solver" : sm})#,
+    #                           "symmetric" : True})
     print_min_max(model.w, 'w')
     
     # solve for pressure :

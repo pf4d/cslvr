@@ -14,6 +14,8 @@ config = default_config()
 config['output_path']                  = './results_BP/'
 config['periodic_boundary_conditions'] = True
 config['velocity']['newton_params']    = nonlin_solver_params
+config['model_order']                  = 'BP'
+config['use_dukowicz']                 = True
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
 mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)

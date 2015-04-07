@@ -206,9 +206,6 @@ class VelocityDukowiczStokes(Physics):
     # initialize eta_gnd, eta_shf, b_shf, and b_gnd to what you want 
     # from the config :
     model.init_viscosity_mode()
-    
-    b_shf         = model.b_shf  # FIXME:  this here is not good at all
-    b_gnd         = model.b_gnd
 
     #===========================================================================
     # define variational problem :
@@ -244,13 +241,15 @@ class VelocityDukowiczStokes(Physics):
     # 6) pressure boundary
     Pb     = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
-    f      = rhoi * Constant((0.0, 0.0, g))
-    tau    = h**2 / (12 * b * rhoi**2)
-    Lsq    = -tau * dot( (grad(P) + f), (grad(P) + f) )
+    f       = rhoi * Constant((0.0, 0.0, g))
+    tau_shf = h**2 / (12 * b_shf * rhoi**2)
+    tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
+    Lsq_shf = -tau_shf * dot( (grad(P) + f), (grad(P) + f) )
+    Lsq_gnd = -tau_gnd * dot( (grad(P) + f), (grad(P) + f) )
     
     # Variational principle
-    A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
-             + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
+             + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
       A += Pb*dSde

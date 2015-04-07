@@ -158,7 +158,7 @@ class VelocityDukowiczStokes(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
+    s = "::: INITIALIZING DUKOWICZ FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
 
     self.model    = model
@@ -174,15 +174,10 @@ class VelocityDukowiczStokes(Physics):
     b             = model.b
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
-    eta_shf       = model.eta_shf
-    eta_gnd       = model.eta_gnd
-    T             = model.T
-    gamma         = model.gamma
     S             = model.S
     B             = model.B
     H             = S - B
     x             = model.x
-    E             = model.E
     W             = model.W
     R             = model.R
     epsdot        = model.epsdot
@@ -198,16 +193,6 @@ class VelocityDukowiczStokes(Physics):
     gradS         = model.gradS
     gradB         = model.gradB
 
-    # Define a test function
-    Phi                  = TestFunction(Q4)
-
-    # Define a trial function
-    dU                   = TrialFunction(Q4)
- 
-    phi, psi, xsi, kappa = Phi
-    du,  dv,  dw,  dP    = dU
-    u,   v,   w,   P     = U
-
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
@@ -218,92 +203,26 @@ class VelocityDukowiczStokes(Physics):
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
     
-    # initialize velocity to a previous solution :
-    if config['velocity']['use_U0']:
-      s = "    - using initial velocity -"
-      print_text(s, self.color())
-      U_t = project(as_vector([model.u, model.v, model.w, model.P]), Q4)
-      model.assign_variable(U, U_t)
+    # initialize eta_gnd, eta_shf, b_shf, and b_gnd to what you want 
+    # from the config :
+    model.init_viscosity_mode()
+    
+    b_shf         = model.b_shf  # FIXME:  this here is not good at all
+    b_gnd         = model.b_gnd
 
-    # Set the value of b, the temperature dependent ice hardness parameter,
-    # using the most recently calculated temperature field, if expected.
-    if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0 = config['velocity']['A']
-      s  = "    - using isothermal visosity formulation -"
-      print_text(s, self.color())
-      print_min_max(A0, 'A')
-      b     = A0*(-1/n)
-      b_gnd = b
-      b_shf = b
-    
-    elif config['velocity']['viscosity_mode'] == 'linear':
-      b_gnd = config['velocity']['eta_gnd']
-      b_shf = config['velocity']['eta_shf']
-      s     = "    - using linear viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b_shf, 'eta_shf')
-      print_min_max(b_gnd, 'eta_gnd')
-      n     = 1.0
-    
-    elif config['velocity']['viscosity_mode'] == 'b_control':
-      b_shf   = config['velocity']['b_shf']
-      b_gnd   = config['velocity']['b_gnd']
-      s       = "    - using b_control viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b_shf, 'b_shf')
-      print_min_max(b_gnd, 'b_gnd')
-    
-    elif config['velocity']['viscosity_mode'] == 'constant_b':
-      b     = config['velocity']['b']
-      b_shf = b
-      b_gnd = b
-      s = "    - using constant_b viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b, 'b')
-    
-    elif config['velocity']['viscosity_mode'] == 'full':
-      s     = "    - using full viscosity formulation -"
-      print_text(s, self.color())
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = b
-      b_shf = b
-    
-    elif config['velocity']['viscosity_mode'] == 'E_control':
-      E_shf = config['velocity']['E_shf'] 
-      E_gnd = config['velocity']['E_gnd']
-      s     = "    - using E_control viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(E_shf, 'E_shf')
-      print_min_max(E_gnd, 'E_gnd')
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      model.E_shf = E_shf
-      model.E_gnd = E_gnd
-    
-    else:
-      s = "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-          "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
-      print_text(s, 'red', 1)
-
-    # initialize the enhancement factor :
-    model.assign_variable(E, config['velocity']['E'])
-    
-    # Second invariant of the strain rate tensor squared
-    term    = + 0.5 * (+ 0.5*(   (u.dx(1) + v.dx(0))**2  \
-                               + (u.dx(2) + w.dx(0))**2  \
-                               + (v.dx(2) + w.dx(1))**2) \
-                       + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2) 
-    epsdot  = term + eps_reg
-    eta_shf = b_shf * epsdot**((1-n)/(2*n))
-    eta_gnd = b_gnd * epsdot**((1-n)/(2*n))
-    
+    #===========================================================================
+    # define variational problem :
+   
+    Phi   = TestFunction(Q4)
+    dU    = TrialFunction(Q4)
+ 
+    phi, psi, xsi, kappa = Phi
+    du,  dv,  dw,  dP    = dU
+    u,   v,   w,   P     = U
+      
     # 1) Viscous dissipation
-    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
-    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
+    Vd_gnd   = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
 
     # 2) Potential energy
     Pe     = rhoi * g * w
@@ -325,9 +244,9 @@ class VelocityDukowiczStokes(Physics):
     # 6) pressure boundary
     Pb     = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
-    g      = Constant((0.0, 0.0, g))
+    f      = rhoi * Constant((0.0, 0.0, g))
     tau    = h**2 / (12 * b * rhoi**2)
-    Lsq    = -tau * dot( (grad(P) + rhoi*g), (grad(P) + rhoi*g) )
+    Lsq    = -tau * dot( (grad(P) + f), (grad(P) + f) )
     
     # Variational principle
     A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc + Lsq)*dx \
@@ -362,14 +281,9 @@ class VelocityDukowiczStokes(Physics):
       self.bcs.append(DirichletBC(Q4.sub(0), u_t, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(1), v_t, model.ff, 4))
       self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
-
+    
+    # keep the residual for adjoint solves :
     model.A       = A
-    model.epsdot  = epsdot
-    model.b_shf   = b_shf
-    model.b_gnd   = b_gnd
-    model.eta_shf = eta_shf
-    model.eta_gnd = eta_gnd
-    model.E       = E
 
   def solve(self):
     """ 
@@ -379,7 +293,7 @@ class VelocityDukowiczStokes(Physics):
     config = self.config
     
     # Solve the nonlinear equations via Newton's method
-    s    = "::: solving full-Stokes equations :::"
+    s    = "::: solving Dukowicz full-Stokes equations :::"
     print_text(s, self.color())
     solve(self.F == 0, model.U, bcs=self.bcs, J = self.J, 
           solver_parameters = config['velocity']['newton_params'])
@@ -518,12 +432,12 @@ class VelocityDukowiczBP(Physics):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    s = "::: INITIALIZING BP VELOCITY PHYSICS :::"
+    s = "::: INITIALIZING DUKOWICZ BP VELOCITY PHYSICS :::"
     print_text(s, self.color())
 
     self.model    = model
     self.config   = config
-    
+
     mesh          = model.mesh
     r             = config['velocity']['r']
     V             = model.V
@@ -533,16 +447,10 @@ class VelocityDukowiczBP(Physics):
     n             = model.n
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
-    eta_shf       = model.eta_shf
-    eta_gnd       = model.eta_gnd
-    T             = model.T
-    T_w           = model.T_w
-    gamma         = model.gamma
     S             = model.S
     B             = model.B
     H             = S - B
     x             = model.x
-    E             = model.E
     E_gnd         = model.E_gnd
     E_shf         = model.E_shf
     W             = model.W_r
@@ -560,18 +468,6 @@ class VelocityDukowiczBP(Physics):
     gradS         = model.gradS
     gradB         = model.gradB
 
-    # Define a test function
-    Phi      = TestFunction(Q2)
-
-    # Define a trial function
-    dU       = TrialFunction(Q2)
-    du,  dv  = dU
-    u,   v   = U
-
-    # vertical velocity components :
-    chi      = TestFunction(Q)
-    dw       = TrialFunction(Q)
-
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
@@ -582,101 +478,29 @@ class VelocityDukowiczBP(Physics):
     dSde     = ds(4)         # sides
     dBed     = dGnd + dFlt   # bed
     
-    # initialize velocity to a previous solution :
-    if config['velocity']['use_U0']:
-      s = "    - using initial velocity -"
-      print_text(s, self.color())
-      model.assign_variable(U, project(as_vector([model.u, model.v]), Q2))
+    # initialize b_shf, b_gnd to what you want from the config :
+    model.init_viscosity_mode()
 
-    # Set the value of b, the temperature dependent ice hardness parameter,
-    # using the most recently calculated temperature field, if expected.
-    if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0 = config['velocity']['A']
-      s = "    - using isothermal viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(A0, 'A')
-      b     = A0**(-1/n)
-      b_gnd = b
-      b_shf = b
+    #===========================================================================
+    # define variational problem :
+    Phi      = TestFunction(Q2)
+    dU       = TrialFunction(Q2)
     
-    elif config['velocity']['viscosity_mode'] == 'linear':
-      b_gnd = config['velocity']['eta_gnd']
-      b_shf = config['velocity']['eta_shf']
-      s     = "    - using linear viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b_shf, 'eta_shf')
-      print_min_max(b_gnd, 'eta_gnd')
-      n     = 1.0
-    
-    elif config['velocity']['viscosity_mode'] == 'b_control':
-      b_shf   = config['velocity']['b_shf']
-      b_gnd   = config['velocity']['b_gnd']
-      s       = "    - using b_control viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b_shf, 'b_shf')
-      print_min_max(b_gnd, 'b_gnd')
-    
-    elif config['velocity']['viscosity_mode'] == 'constant_b':
-      b     = config['velocity']['b']
-      b_shf = b
-      b_gnd = b
-      s = "    - using constant_b viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b, 'b')
-    
-    elif config['velocity']['viscosity_mode'] == 'full':
-      s     = "    - using full viscosity formulation -"
-      print_text(s, self.color())
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = b
-      b_shf = b
-    
-    elif config['velocity']['viscosity_mode'] == 'E_control':
-      E_shf = config['velocity']['E_shf'] 
-      E_gnd = config['velocity']['E_gnd']
-      s     = "    - using E_control viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(E_shf, 'E_shf')
-      print_min_max(E_gnd, 'E_gnd')
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      model.E_shf = E_shf
-      model.E_gnd = E_gnd
-    
-    else:
-      s = "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-          "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
-      print_text(s, 'red', 1)
+    du,  dv  = dU
+    u,   v   = U
 
-    # initialize the enhancement factor :
-    model.assign_variable(E, config['velocity']['E'])
-    
-    # second invariant of the strain rate tensor squared :
-    term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
-                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-    epsdot  =  term + eps_reg
-    eta_shf =  b_shf * epsdot**((1-n)/(2*n))
-    eta_gnd =  b_gnd * epsdot**((1-n)/(2*n))
+    # vertical velocity components :
+    chi      = TestFunction(Q)
+    dw       = TrialFunction(Q)
 
     # 1) viscous dissipation :
-    Vd_shf   = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
-    Vd_gnd   = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
+    Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
+    Vd_gnd   = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
 
     # 2) potential energy :
     Pe       = rhoi * g * (u*gradS[0] + v*gradS[1])
 
     # 3) dissipation by sliding :
-    #Ne       = H - rhow/rhoi * D
-    #lnC      = ln(0.383)
-    ##Cu       = ln(beta**2 * Ne**(-0.349) * 1/u) / lnC
-    ##Cv       = ln(beta**2 * Ne**(-0.349) * 1/v) / lnC
-    #Cu       = (2*ln(beta + 1e-3) - ln(u + 1e-3)) / lnC
-    #Cv       = (2*ln(beta + 1e-3) - ln(v + 1e-3)) / lnC
-    #Sl_gnd   = Cu*u + Cv*v
     Sl_shf   = 0.5 * Constant(1e-10) * (u**2 + v**2)
     Sl_gnd   = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
@@ -734,12 +558,8 @@ class VelocityDukowiczBP(Physics):
     #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
     #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
-    model.eta_shf = eta_shf
-    model.eta_gnd = eta_gnd
-    model.b_shf   = b_shf
-    model.b_gnd   = b_gnd
+    # keep the residual for adjoint solves :
     model.A       = A
-    model.E       = E
 
   def solve(self):
     """ 
@@ -753,8 +573,8 @@ class VelocityDukowiczBP(Physics):
     rtol   = params['newton_solver']['relative_tolerance']
     maxit  = params['newton_solver']['maximum_iterations']
     alpha  = params['newton_solver']['relaxation_parameter']
-    s      = "::: solving BP horizontal velocity with %i max iterations" + \
-             " and step size = %.1f :::"
+    s      = "::: solving Dukowicz BP horizontal velocity with %i max " + \
+             "iterations and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
     
     solve(self.F == 0, model.U, J = self.J, bcs = self.bcs,
@@ -803,19 +623,6 @@ class VelocityBP(Physics):
     self.model  = model
     self.config = config
 
-    def strain_rate(U):
-      """
-      return the strain-rate tensor of <U>.
-      """
-      u,v,w = U
-      epi   = 0.5 * (grad(U) + grad(U).T)
-      epi02 = 0.5*u.dx(2)
-      epi12 = 0.5*v.dx(2)
-      epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02   ],
-                          [epi[1,0],  epi[1,1],  epi12   ],
-                          [epi02,     epi12,     epi[2,2]]])
-      return epsdot
-    
     mesh          = model.mesh
     r             = config['velocity']['r']
     V             = model.Q3
@@ -826,18 +633,16 @@ class VelocityBP(Physics):
     b_gnd         = model.b_gnd
     eta_shf       = model.eta_shf
     eta_gnd       = model.eta_gnd
-    T             = model.T
-    T_w           = model.T_w
     gamma         = model.gamma
     S             = model.S
     B             = model.B
     H             = S - B
     x             = model.x
-    E             = model.E
     E_gnd         = model.E_gnd
     E_shf         = model.E_shf
     W             = model.W_r
     R             = model.R
+    epsdot        = model.epsdot
     eps_reg       = model.eps_reg
     rhoi          = model.rhoi
     rhow          = model.rhow
@@ -866,81 +671,9 @@ class VelocityBP(Physics):
     dSde   = ds(4)         # sides
     dBed   = dGnd + dFlt   # bed
     
-    # initialize velocity to a previous solution :
-    if config['velocity']['use_U0']:
-      s = "    - using initial velocity -"
-      print_text(s, self.color())
-      U_v = as_vector([model.u, model.v, model.w])
-      model.assign_variable(U, project(U_v, V))
+    # initialize b_shf, b_gnd to what you want from the config :
+    model.init_viscosity_mode()
 
-    # Set the value of b, the temperature dependent ice hardness parameter,
-    # using the most recently calculated temperature field, if expected.
-    if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0 = config['velocity']['A']
-      s = "    - using isothermal viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(A0, 'A')
-      b     = A0**(-1/n)
-      b_gnd = b
-      b_shf = b
-    
-    elif config['velocity']['viscosity_mode'] == 'linear':
-      b_gnd = config['velocity']['eta_gnd']
-      b_shf = config['velocity']['eta_shf']
-      s     = "    - using linear viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b_shf, 'eta_shf')
-      print_min_max(b_gnd, 'eta_gnd')
-      n     = 1.0
-    
-    elif config['velocity']['viscosity_mode'] == 'b_control':
-      b_shf   = config['velocity']['b_shf']
-      b_gnd   = config['velocity']['b_gnd']
-      s       = "    - using b_control viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b_shf, 'b_shf')
-      print_min_max(b_gnd, 'b_gnd')
-    
-    elif config['velocity']['viscosity_mode'] == 'constant_b':
-      b     = config['velocity']['b']
-      b_shf = b
-      b_gnd = b
-      s = "    - using constant_b viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(b, 'b')
-    
-    elif config['velocity']['viscosity_mode'] == 'full':
-      s     = "    - using full viscosity formulation -"
-      print_text(s, self.color())
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      A0    = E * (a_T*(1 + 181.25*W)) * exp(-Q_T/(R*T))
-      b     = A0**(-1/n)
-      b_gnd = b
-      b_shf = b
-    
-    elif config['velocity']['viscosity_mode'] == 'E_control':
-      E_shf = config['velocity']['E_shf'] 
-      E_gnd = config['velocity']['E_gnd']
-      s     = "    - using E_control viscosity formulation -"
-      print_text(s, self.color())
-      print_min_max(E_shf, 'E_shf')
-      print_min_max(E_gnd, 'E_gnd')
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      model.E_shf = E_shf
-      model.E_gnd = E_gnd
-    
-    else:
-      s = "Acceptable choices for 'viscosity_mode' are 'linear', " + \
-          "'isothermal', 'b_control', 'constant_b', 'E_control', or 'full'."
-      print_text(s, 'red', 1)
-
-    # initialize the enhancement factor :
-    model.assign_variable(E, config['velocity']['E'])
-    
     #===========================================================================
     # define variational problem :
     u, v, w       = U
@@ -948,18 +681,6 @@ class VelocityBP(Physics):
     dU            = TrialFunction(V)
     Phi           = TestFunction(V)
     phi, psi, chi = Phi
-    
-    # Second invariant of the strain rate tensor squared
-    epi   = strain_rate(U)
-    ep_xx = epi[0,0]
-    ep_yy = epi[1,1]
-    ep_xy = epi[0,1]
-    ep_xz = epi[0,2]
-    ep_yz = epi[1,2]
-    
-    epsdot  = ep_xx**2 + ep_yy**2 + ep_xx*ep_yy + ep_xy**2 + ep_xz**2 + ep_yz**2
-    eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
     
     epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
                         0.5*(u.dx(1) + v.dx(0)),
@@ -1023,10 +744,7 @@ class VelocityBP(Physics):
     #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
     #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
-    model.eta_shf = eta_shf
-    model.eta_gnd = eta_gnd
-    model.b_shf   = b_shf
-    model.b_gnd   = b_gnd
+    # keep the residual for adjoint solves :
     model.A       = self.A
 
   def solve(self):
@@ -1216,7 +934,6 @@ class Enthalpy(Physics):
     B           = model.B
     H           = S - B
     x           = model.x
-    E           = model.E
     W           = model.W
     R           = model.R
     epsdot      = model.epsdot
@@ -1254,12 +971,12 @@ class Enthalpy(Physics):
     dx_g        = dx(0)
     dx          = dx(1) + dx(0) # entire internal
     
-    # second invariant of the strain-rate tensor squared :
-    term   = + 0.5*(   (u.dx(1) + v.dx(0))**2  \
-                     + (u.dx(2) + w.dx(0))**2  \
-                     + (v.dx(2) + w.dx(1))**2) \
-             + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
-    epsdot = 0.5 * term + eps_reg
+    ## second invariant of the strain-rate tensor squared :
+    #term   = + 0.5*(   (u.dx(1) + v.dx(0))**2  \
+    #                 + (u.dx(2) + w.dx(0))**2  \
+    #                 + (v.dx(2) + w.dx(1))**2) \
+    #         + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2 
+    #epsdot = 0.5 * term + eps_reg
     
     # initialize the conductivity coefficient for entirely cold ice :
     model.assign_variable(Kcoef, 1.0)
@@ -1288,8 +1005,8 @@ class Enthalpy(Physics):
     q_friction = 0.5 * beta**2 * H**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
-    Q_s_gnd = (2*n)/(n+1) * b_gnd * epsdot**((n+1)/(2*n))
-    Q_s_shf = (2*n)/(n+1) * b_shf * epsdot**((n+1)/(2*n))
+    Q_s_gnd = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+    Q_s_shf = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
 
     # thermal conductivity (Greve and Blatter 2009) :
     ki    =  9.828 * exp(-0.0057*T)
@@ -1553,8 +1270,8 @@ class EnthalpyDG(Physics):
     mesh        = model.mesh
     Q           = model.Q
     DQ          = model.DQ
-    theta           = model.theta
-    theta0          = model.theta0
+    theta       = model.theta
+    theta0      = model.theta0
     n           = model.n
     b_gnd       = model.b_gnd
     b_gnd       = model.b_gnd
@@ -1570,7 +1287,6 @@ class EnthalpyDG(Physics):
     S           = model.S
     B           = model.B
     x           = model.x
-    E           = model.E
     W           = model.W
     R           = model.R
     epsdot      = model.epsdot

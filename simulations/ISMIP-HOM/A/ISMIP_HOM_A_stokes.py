@@ -1,7 +1,11 @@
 from varglas.model   import Model
 from varglas.solvers import SteadySolver
 from varglas.helper  import default_nonlin_solver_params, default_config
-from fenics          import File, Expression, pi, BoxMesh, sqrt
+from varglas.io      import print_text
+from fenics          import File, Expression, pi, BoxMesh, sqrt, parameters
+from time            import time
+
+t0 = time()
 
 alpha = 0.5 * pi / 180 
 L     = 40000
@@ -14,7 +18,8 @@ config['output_path']                  = './results_stokes/'
 config['periodic_boundary_conditions'] = True
 config['velocity']['newton_params']    = nonlin_solver_params
 config['model_order']                  = 'stokes'
-config['use_dukowicz']                 = True
+config['use_dukowicz']                 = False
+parameters['form_compiler']['quadrature_degree'] = 2
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
 mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
@@ -37,7 +42,16 @@ model.init_beta(sqrt(1000))
 F = SteadySolver(model, config)
 F.solve()
 
+tf = time()
 
+# calculate total time to compute
+s   = tf - t0
+m   = s / 60.0
+h   = m / 60.0
+s   = s % 60
+m   = m % 60
+txt = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+print_text(txt, 'red', 1)
 
 
 

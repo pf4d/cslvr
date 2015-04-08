@@ -56,7 +56,10 @@ class SteadySolver(Solver):
         if config['use_dukowicz']:
           self.velocity_instance = VelocityDukowiczBP(model, config)
         else:
-          self.velocity_instance = VelocityBP(model, config)
+          if config['velocity']['full_BP']:
+            self.velocity_instance = VelocityBPFull(model, config)
+          else :
+            self.velocity_instance = VelocityBP(model, config)
       elif config['model_order'] == 'stokes':
         if config['use_dukowicz']:
           self.velocity_instance = VelocityDukowiczStokes(model, config)

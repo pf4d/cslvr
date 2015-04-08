@@ -112,6 +112,12 @@ class Model(object):
       self.Q2     = MixedFunctionSpace([self.Q]*2)
       self.Q3     = MixedFunctionSpace([self.Q]*3)
       self.Q4     = MixedFunctionSpace([self.Q]*4)
+      # Define function spaces
+      B           = FunctionSpace(self.mesh, "B", 4, 
+                                  constrained_domain=self.pBC)
+      M           = self.Q + B
+      M3          = MixedFunctionSpace([M,M,M])
+      self.MV     = MixedFunctionSpace([M3,self.Q])
       self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
     else:
       poly_degree = self.config['velocity']['poly_degree']
@@ -368,14 +374,6 @@ class Model(object):
     self.assign_variable(self.adot, adot)
     print_min_max(self.adot, 'adot')
   
-  def init_E(self, E):
-    """
-    """
-    s = "::: initializing enhancement factor :::"
-    print_text(s, self.color)
-    self.assign_variable(self.E, E)
-    print_min_max(self.E, 'E')
-  
   def init_beta(self, beta):
     """
     """
@@ -384,10 +382,18 @@ class Model(object):
     self.assign_variable(self.beta, beta)
     print_min_max(self.beta, 'beta')
   
+  def init_b(self, b):
+    """
+    """
+    s = "::: initializing rate factor over grounded and shelves :::"
+    print_text(s, self.color)
+    self.init_b_shf(b)
+    self.init_b_gnd(b)
+  
   def init_b_shf(self, b_shf):
     """
     """
-    s = "::: initializing rate-factor over shelves :::"
+    s = "::: initializing rate factor over shelves :::"
     print_text(s, self.color)
     if type(self.b_shf) != Function:
       self.b_shf = Function(self.Q)
@@ -397,10 +403,18 @@ class Model(object):
   def init_b_gnd(self, b_gnd):
     """
     """
-    s = "::: initializing rate-factor over grounded ice :::"
+    s = "::: initializing rate factor over grounded ice :::"
     print_text(s, self.color)
     self.assign_variable(self.b_gnd, b_gnd)
     print_min_max(self.b_gnd, 'b_gnd')
+  
+  def init_E(self, E):
+    """
+    """
+    s = "::: initializing enhancement factor over grounded and shelves :::"
+    print_text(s, self.color)
+    self.init_E_shf(E)
+    self.init_E_gnd(E)
   
   def init_E_shf(self, E_shf):
     """
@@ -795,6 +809,7 @@ class Model(object):
     print_min_max(self.eta, 'eta')
 
   def calc_eta(self):
+    #FIXME: not working due to no 'E' anymore.
     s     = "::: calculating visosity :::"
     print_text(s, self.color)
     R       = self.R
@@ -1327,7 +1342,6 @@ class Model(object):
       W     = self.W
       R     = self.R
       n     = self.n
-      E     = self.E
       a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
       b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
@@ -1392,16 +1406,20 @@ class Model(object):
   def init_BP_variables(self):
     """
     """
-    self.U   = Function(self.Q2)
-    
-    # Second invariant of the strain rate tensor squared
-    epi   = self.strain_rate_tensor(as_vector([self.U[0], self.U[1], 0.0]))
+    if self.config['velocity']['full_BP']:
+      self.U  = Function(self.Q3)
+      epi     = self.strain_rate_tensor(self.U)
+    else :
+      self.U  = Function(self.Q2)
+      epi     = self.strain_rate_tensor(as_vector([self.U[0], self.U[1], 0.0]))
+
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
     ep_xy = epi[0,1]
     ep_xz = epi[0,2]
     ep_yz = epi[1,2]
     
+    # Second invariant of the strain rate tensor squared
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
@@ -1425,10 +1443,12 @@ class Model(object):
     """
     """
     # velocity :
-    self.U   = Function(self.Q3)
+    self.U   = Function(self.MV)
+
+    U,P = split(self.U)
     
     # Second invariant of the strain rate tensor squared
-    epi   = self.strain_rate_tensor(self.U)
+    epi   = self.strain_rate_tensor(U)
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
     ep_xy = epi[0,1]
@@ -1491,24 +1511,6 @@ class Model(object):
       def eval(self, values, x):
         values[0] = min(0, x[2])
     self.D = Depth(element=self.Q.ufl_element())
-
-    if   config['model_order'] == 'stokes':
-      if config['use_dukowicz']:
-        self.init_dukowicz_stokes_variables()
-      else:
-        self.init_stokes_variables()
-    elif config['model_order'] == 'BP':
-      if config['use_dukowicz']:
-        self.init_dukowicz_BP_variables()
-      else:
-        self.init_BP_variables()
-    elif config['model_order'] == 'L1L2':
-      self.init_hybrid_variables()
-    else:
-      s = "    - PLEASE SPECIFY A MODEL ORDER; MAY BE 'stokes', 'BP', " + \
-          "or 'L1L2' -"
-      print_text(s, 'red', 1)
-      sys.exit(1)
 
     # Velocity model
     self.u             = Function(self.Q)
@@ -1585,6 +1587,25 @@ class Model(object):
     self.tau_tn        = Function(self.Q)
     self.tau_tt        = Function(self.Q)
     self.tau_tz        = Function(self.Q)
+    
+    if   config['model_order'] == 'stokes':
+      if config['use_dukowicz']:
+        self.init_dukowicz_stokes_variables()
+      else:
+        self.init_stokes_variables()
+    elif config['model_order'] == 'BP':
+      if config['use_dukowicz']:
+        self.init_dukowicz_BP_variables()
+      else:
+        self.init_BP_variables()
+    elif config['model_order'] == 'L1L2':
+      self.init_hybrid_variables()
+    else:
+      s = "    - PLEASE SPECIFY A MODEL ORDER; MAY BE 'stokes', 'BP', " + \
+          "or 'L1L2' -"
+      print_text(s, 'red', 1)
+      sys.exit(1)
+
     
 
 

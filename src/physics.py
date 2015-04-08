@@ -300,6 +300,159 @@ class VelocityDukowiczStokes(Physics):
     print_min_max(model.P, 'P')
 
 
+class VelocityStokes(Physics):
+  """  
+  """
+  def __init__(self, model, config):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.
+    """
+    s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
+    print_text(s, self.color())
+
+    self.model    = model
+    self.config   = config
+
+    mesh          = model.mesh
+    r             = config['velocity']['r']
+    V             = model.MV
+    Q             = model.Q
+    G             = model.U
+    n             = model.n
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
+    S             = model.S
+    B             = model.B
+    H             = S - B
+    x             = model.x
+    W             = model.W
+    R             = model.R
+    epsdot        = model.epsdot
+    eps_reg       = model.eps_reg
+    rhoi          = model.rhoi
+    rhow          = model.rhow
+    g             = model.g
+    beta          = model.beta
+    h             = model.h
+    N             = model.N
+    D             = model.D
+
+    gradS         = model.gradS
+    gradB         = model.gradB
+     
+    # new constants :
+    p0     = 101325
+    T0     = 288.15
+    M      = 0.0289644
+    ci     = model.ci
+
+    dx       = model.dx
+    dx_s     = dx(1)
+    dx_g     = dx(0)
+    dx       = dx(1) + dx(0) # entire internal
+    ds       = model.ds  
+    dGnd     = ds(3)         # grounded bed
+    dFlt     = ds(5)         # floating bed
+    dSde     = ds(4)         # sides
+    dBed     = dGnd + dFlt   # bed
+    dSrf     = ds(2) + ds(6)
+    
+    #===========================================================================
+    # define variational problem :
+    dU  = TrialFunction(V)
+    Tst = TestFunction(V)
+    
+    du,  dp = split(dU)
+    U,   P  = split(G)
+    Phi, xi = split(Tst)
+    
+    u,   v,   w   = U
+    phi, psi, chi = Phi
+    
+    k   = as_vector([0, 0, 1])
+    f_w = rhoi*g*(S - x[2]) + rhow*g*D
+    p_a = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)
+
+    epi = model.strain_rate_tensor(U)
+    I   = Identity(3)
+
+    sigma_shf = 2*eta_shf*epi - P*I
+    sigma_gnd = 2*eta_gnd*epi - P*I
+
+    # gravity vector :
+    gv = as_vector([0, 0, g])
+    
+    # conservation of momentum :
+    R1 = + inner(sigma_shf, grad(Phi)) * dx_s \
+         + inner(sigma_gnd, grad(Phi)) * dx_g \
+         + rhoi * dot(gv, Phi) * dx \
+         + beta**2 * dot(U, Phi) * dBed \
+         #- p_a * dot(N, Phi) * dSrf \
+    
+    if (not config['periodic_boundary_conditions']
+        and config['use_pressure_boundary']):
+      R1 -= f_w * dot(N, Phi) * dSde \
+    
+    # conservation of mass :
+    R2 = + div(U) * xi * dx \
+    #     - dot(U, N) * xi * dBed \
+    
+    # total residual :
+    self.A = R1 + R2
+    
+    self.J = derivative(self.A, G, dU)
+   
+    self.bcs = []
+
+    if config['velocity']['boundaries'] == 'homogeneous':
+      self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
+      
+    if config['velocity']['boundaries'] == 'solution':
+      self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), model.w, model.ff, 4))
+      
+    if config['velocity']['boundaries'] == 'user_defined':
+      u_t = config['velocity']['u_lat_boundary']
+      v_t = config['velocity']['v_lat_boundary']
+      self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
+    
+    # keep the residual for adjoint solves :
+    model.A       = self.A
+
+  def solve(self):
+    """ 
+    Perform the Newton solve of the full-Stokes equations 
+    """
+    model  = self.model
+    config = self.config
+    
+    # Solve the nonlinear equations via Newton's method
+    s    = "::: solving full-Stokes equations :::"
+    print_text(s, self.color())
+    
+    # compute solution :
+    solve(self.A == 0, model.U, bcs=self.bcs, J = self.J, 
+          solver_parameters = config['velocity']['newton_params'])
+    U, P    = model.U.split()
+    u, v, w = U.split(True)
+
+    model.assign_variable(model.u, u)
+    model.assign_variable(model.v, v)
+    model.assign_variable(model.w, w)
+    model.assign_variable(model.P, P)
+     
+    print_min_max(model.u, 'u')
+    print_min_max(model.v, 'v')
+    print_min_max(model.w, 'w')
+    print_min_max(model.P, 'P')
+
+
 class VelocityDukowiczBP(Physics):
   r"""				
   This class solves the non-linear Blatter-Pattyn momentum balance, 
@@ -782,6 +935,178 @@ class VelocityBP(Physics):
     #solve(lhs(self.R2) == rhs(self.R2), model.w, bcs = self.bc_w,
     #      solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True})
+    print_min_max(model.w, 'w')
+    
+    # solve for pressure :
+    if config['velocity']['calc_pressure']:
+      s    = "::: solving BP pressure :::"
+      print_text(s, self.color())
+      model.calc_pressure()
+      print_min_max(model.P, 'P')
+
+
+class VelocityBPFull(Physics):
+  """				
+  """
+  def __init__(self, model, config):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.
+    """
+    s = "::: INITIALIZING FULL BP VELOCITY PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.model  = model
+    self.config = config
+
+    mesh          = model.mesh
+    r             = config['velocity']['r']
+    V             = model.Q3
+    Q             = model.Q
+    U             = model.U
+    n             = model.n
+    b_shf         = model.b_shf
+    b_gnd         = model.b_gnd
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
+    gamma         = model.gamma
+    S             = model.S
+    B             = model.B
+    H             = S - B
+    x             = model.x
+    E_gnd         = model.E_gnd
+    E_shf         = model.E_shf
+    W             = model.W_r
+    R             = model.R
+    epsdot        = model.epsdot
+    eps_reg       = model.eps_reg
+    rhoi          = model.rhoi
+    rhow          = model.rhow
+    g             = model.g
+    beta          = model.beta
+    N             = model.N
+    D             = model.D
+    
+    gradS         = model.gradS
+    gradB         = model.gradB
+     
+    # new constants :
+    p0     = 101325
+    T0     = 288.15
+    M      = 0.0289644
+    ci     = model.ci
+
+    dx     = model.dx
+    dx_s   = dx(1)
+    dx_g   = dx(0)
+    dx     = dx(1) + dx(0) # entire internal
+    ds     = model.ds  
+    dGnd   = ds(3)         # grounded bed
+    dFlt   = ds(5)         # floating bed
+    dSde   = ds(4)         # sides
+    dBed   = dGnd + dFlt   # bed
+    
+    #===========================================================================
+    # define variational problem :
+
+    # horizontal velocity :
+    u, v, w        = U
+    dU             = TrialFunction(V)
+    Phi            = TestFunction(V)
+    phi, psi, chi  = Phi
+    
+    epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
+                        0.5*(u.dx(1) + v.dx(0)),
+                        0.5* u.dx(2)            ])
+    epi_2  = as_vector([0.5*(u.dx(1) + v.dx(0)),
+                             u.dx(0) + 2*v.dx(1),
+                        0.5* v.dx(2)            ])
+   
+    # boundary integral terms : 
+    f_w    = rhoi*g*(S - x[2]) + rhow*g*D               # lateral
+    p_a    = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)        # surface pressure
+    
+    #Ne     = H - rhow/rhoi * D
+    #lnC    = ln(-0.383)
+    #Ce     = ln(beta**2 * Ne**(-0.349)) / lnC
+    #Sl_gnd = (ln(1/u)/lnC + Ce)*u + (ln(1/v)/lnC + Ce)*v + (ln(1/w)/lnC + Ce)*w
+    
+    # residual :
+    R1 = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_s \
+         + 2 * eta_shf * dot(epi_2, grad(psi)) * dx_s \
+         + 2 * eta_gnd * dot(epi_1, grad(phi)) * dx_g \
+         + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
+         + rhoi * g * dot(gradS, Phi) * dx \
+         + beta**2 * dot(U, Phi) * dGnd \
+         + Constant(1e-10) * dot(U, Phi) * dFlt \
+    
+    if (not config['periodic_boundary_conditions']
+        and config['use_pressure_boundary']):
+      R1 -= f_w * dot(N, Phi) * dSde \
+    
+    R2 = div(U)*chi*dx - dot(U, N)*chi*dBed
+     
+    # residual :  
+    self.A = R1 + R2
+    
+    # Jacobian :
+    self.J = derivative(self.A, U, dU)
+
+    # list of boundary conditions
+    self.bcs  = []
+      
+    # add lateral boundary conditions :  
+    if config['velocity']['boundaries'] == 'solution':
+      self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), model.w, model.ff, 4))
+      
+    elif config['velocity']['boundaries'] == 'homogeneous':
+      self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
+    
+    elif config['velocity']['boundaries'] == 'user_defined':
+      u_t = config['velocity']['u_lat_boundary']
+      v_t = config['velocity']['v_lat_boundary']
+      w_t = config['velocity']['w_lat_boundary']
+      self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), w_t, model.ff, 4))
+
+    ## add boundary condition for the divide :
+    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
+    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+
+    # keep the residual for adjoint solves :
+    model.A       = self.A
+
+  def solve(self):
+    """ 
+    Perform the Newton solve of the first order equations 
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve nonlinear system :
+    params = config['velocity']['newton_params']
+    rtol   = params['newton_solver']['relative_tolerance']
+    maxit  = params['newton_solver']['maximum_iterations']
+    alpha  = params['newton_solver']['relaxation_parameter']
+    s      = "::: solving full BP velocity with %i max " + \
+             "iterations and step size = %.1f :::"
+    print_text(s % (maxit, alpha), self.color())
+    
+    # compute solution :
+    solve(self.A == 0, model.U, J = self.J, bcs = self.bcs, 
+          solver_parameters = params)
+    u, v, w = model.U.split(True)
+
+    model.assign_variable(model.u, u)
+    model.assign_variable(model.v, v)
+    model.assign_variable(model.w, w)
+    print_min_max(model.u, 'u')
+    print_min_max(model.v, 'v')
     print_min_max(model.w, 'w')
     
     # solve for pressure :

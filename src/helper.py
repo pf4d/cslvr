@@ -594,6 +594,7 @@ def default_config():
              { 
                'on'                  : True,
                'log'                 : True,
+               'full_BP'             : False,
                'poly_degree'         : 2,
                'newton_params'       : default_nonlin_solver_params(),
                'ffc_options'         : default_ffc_options(),

@@ -54,104 +54,7 @@ class Physics(object):
 
 
 class VelocityDukowiczStokes(Physics):
-  r"""  
-  This class solves the non-linear Blatter-Pattyn momentum balance, 
-  given a possibly non-uniform temperature field.
-  
-  :param model  : An instantiated 2D flowline ice :class:`~src.model.Model`
-  :param config : Dictionary object containing information on physical 
-	                attributes such as velocties, age, and surface climate
-
-  **Equations**
- 
-  +-------------------+---------------+---------------------------------------+
-  |Equation Name      |Condition      | Formula                               |
-  +===================+===============+=======================================+
-  |Variational        |               |.. math::                              |
-  |Principle          |               |   \mathcal{A}[\textbf{u}, P] =        |
-  |For Power Law      |               |   \int\limits_{\Omega}\frac{2n}{n+1}  |
-  |Rheology           |               |   \eta\left(\dot{\epsilon}^{2}\right) |
-  |                   |None           |   \dot{\epsilon}^{2} + \rho\textbf{g} |
-  |                   |               |   \cdot\textbf{u}-P\nabla\cdot        |
-  |                   |               |   \textbf{u}                          |
-  |                   |               |   \ d\Omega+\int\limits_{\Gamma_{B}}  |
-  |                   |               |   \frac{\beta^{2}}{2}H^{r}\textbf{u}  |
-  |                   |               |   \cdot                               |
-  |                   |               |   \textbf{u}+P\textbf{u}\cdot         |
-  |                   |               |   \textbf{n} d\Gamma                  |
-  +-------------------+---------------+---------------------------------------+
-  |Rate of            |None           |.. math::                              |
-  |strain             |               |   \eta\left(\dot{\epsilon}^{2}\right) |
-  |                   |               |   =                                   |
-  |tensor             |               |   b(T)\left[\dot{\epsilon}^{2}\right] |
-  |                   |               |   ^{\frac{1-n}{2n}}                   |
-  +-------------------+---------------+---------------------------------------+
-  |Temperature        |Viscosity mode +.. math::                              |
-  |Dependent          |is isothermal  |   b(T) = A_0^{\frac{-1}{n}}           |
-  |Rate Factor        +---------------+---------------------------------------+
-  |                   |Viscosity mode |Model dependent                        |
-  |                   |is linear      |                                       |
-  |                   +---------------+---------------------------------------+
-  |                   |Viscosity mode |                                       |
-  |                   |is full        |.. math::                              |
-  |                   |               |   b(T) = \left[Ea(T)e^{-\frac{Q(T)}   |
-  |                   |               |   {RT^*}}                             |
-  |                   |               |   \right]^{\frac{-1}{n}}              |
-  +-------------------+---------------+---------------------------------------+
-  
-  **Terms**
-
-  +------------+-------------------------+------------------------------------+
-  |Equation    |Term                     | Description                        |
-  +============+=========================+====================================+
-  |Variational |.. math::                |*Viscous dissipation* including     |
-  |Principle   |                         |terms for strain rate dependent ice |
-  |For Power   |   \frac{2n}{n+1}        |viscosity and the strain rate       |
-  | Law        |   \eta\left(\dot        |tensor, respectively                |
-  |Rheology    |   {\epsilon}^{2}        |                                    |
-  |            |   \right)\dot{          |                                    |
-  |            |   \epsilon}^{2}         |                                    |
-  |            +-------------------------+------------------------------------+
-  |            |.. math::                |*Graviataional potential* energy    |
-  |            |   \rho\textbf{g}\cdot   |calculated using the density,       |
-  |            |   \textbf{u}            |graviational force, and ice velocity|
-  |            +-------------------------+------------------------------------+
-  |            |.. math::                |*Incompressibility constraint*      |
-  |            |    P\nabla\cdot         |included terms for pressure and the |
-  |            |    \textbf{u}\ d\Omega  |divergence of the ice velocity      |
-  |            +-------------------------+------------------------------------+
-  |            |.. math::                |*Frictional head dissipation*       |
-  |            |   \frac{\beta^{2}}      |including terms for the basal       |
-  |            |   {2}H^{r}\textbf{u}    |sliding coefficient, ice thickness, |
-  |            |   \cdot\textbf{u}       |and the ice velocity dotted into    |
-  |            |                         |itself                              |
-  |            +-------------------------+------------------------------------+
-  |            |.. math::                |*Impenetrability constraint*        |
-  |            |   P\textbf{u}\cdot      |calculated using the pressure and   |
-  |            |   \textbf{n}            |the ice velocity dotted into the    |
-  |            |                         |outward normal vector               |
-  +------------+-------------------------+------------------------------------+
-  |Rate of     |.. math::                |Temperature dependent rate factor,  |
-  |strain      |   b(T)\left[\dot        |square of the second invarient of   |
-  |tensor      |   {\epsilon}^{2}        |the strain rate tensor              |
-  |            |   \right]^              |                                    |
-  |            |  {\frac{1-n}{2n}}       |                                    |
-  +------------+-------------------------+------------------------------------+
-  |Temperature |.. math::                |Enhancement factor                  |
-  |Dependent   |   E                     |                                    |
-  |Rate Factor +-------------------------+------------------------------------+
-  |            |.. math::                |Temperature dependent parameters    |
-  |            |   a(T)                  |                                    |
-  |            |                         |                                    |
-  |            |   Q(T)                  |                                    |
-  |            +-------------------------+------------------------------------+
-  |            |.. math::                |Rate constant                       |
-  |            |   R                     |                                    |
-  +            +-------------------------+------------------------------------+
-  |            |.. math::                |Temperature corrected for melting   |
-  |            |   T^*                   |point dependence                    |
-  +------------+-------------------------+------------------------------------+
-  
+  """  
   """
   def __init__(self, model, config):
     """ 
@@ -173,14 +76,14 @@ class VelocityDukowiczStokes(Physics):
     n             = model.n
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
     S             = model.S
     B             = model.B
     H             = S - B
     x             = model.x
     W             = model.W
     R             = model.R
-    epsdot        = model.epsdot
-    eps_reg       = model.eps_reg
     rhoi          = model.rhoi
     rhow          = model.rhow
     g             = model.g
@@ -213,8 +116,8 @@ class VelocityDukowiczStokes(Physics):
     u,   v,   w,   P     = U
       
     # 1) Viscous dissipation
-    Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
-    Vd_gnd   = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+    Vd_shf   = model.Vd_shf
+    Vd_gnd   = model.Vd_gnd
 
     # 2) Potential energy
     Pe     = rhoi * g * w
@@ -254,23 +157,12 @@ class VelocityDukowiczStokes(Physics):
     self.J = derivative(self.F, U, dU)
     
     self.bcs = []
-
-    if config['velocity']['boundaries'] == 'homogeneous':
-      self.bcs.append(DirichletBC(Q4.sub(0), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(Q4.sub(1), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
       
-    if config['velocity']['boundaries'] == 'solution':
-      self.bcs.append(DirichletBC(Q4.sub(0), model.u, model.ff, 4))
-      self.bcs.append(DirichletBC(Q4.sub(1), model.v, model.ff, 4))
-      self.bcs.append(DirichletBC(Q4.sub(2), model.w, model.ff, 4))
-      
-    if config['velocity']['boundaries'] == 'user_defined':
-      u_t = config['velocity']['u_lat_boundary']
-      v_t = config['velocity']['v_lat_boundary']
-      self.bcs.append(DirichletBC(Q4.sub(0), u_t, model.ff, 4))
-      self.bcs.append(DirichletBC(Q4.sub(1), v_t, model.ff, 4))
-      self.bcs.append(DirichletBC(Q4.sub(2), 0.0, model.ff, 4))
+    # add lateral boundary conditions :  
+    if config['velocity']['use_lat_bcs']:
+      self.bcs.append(DirichletBC(Q3.sub(0), model.u_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(Q3.sub(1), model.v_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(Q3.sub(2), model.w_lat_bc, model.ff, 4))
     
     # keep the residual for adjoint solves :
     model.A       = A
@@ -404,24 +296,13 @@ class VelocityStokes(Physics):
     self.J = derivative(self.A, G, dU)
    
     self.bcs = []
+      
+    # add lateral boundary conditions :  
+    if config['velocity']['use_lat_bcs']:
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), model.w_lat_bc, model.ff, 4))
 
-    if config['velocity']['boundaries'] == 'homogeneous':
-      self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
-      
-    if config['velocity']['boundaries'] == 'solution':
-      self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), model.w, model.ff, 4))
-      
-    if config['velocity']['boundaries'] == 'user_defined':
-      u_t = config['velocity']['u_lat_boundary']
-      v_t = config['velocity']['v_lat_boundary']
-      self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
-    
     # keep the residual for adjoint solves :
     model.A       = self.A
 
@@ -454,121 +335,7 @@ class VelocityStokes(Physics):
 
 
 class VelocityDukowiczBP(Physics):
-  r"""				
-  This class solves the non-linear Blatter-Pattyn momentum balance, 
-  given a possibly non-uniform temperature field.
-  
-  :param model  : An instantiated 2D flowline ice :class:`~src.model.Model`
-  :param config : Dictionary object containing information on physical 
-	                attributes such as velocties, age, and surface climate
-  
-  This class uses a simplification of the full Stokes' functional by expressing
-  vertical velocities in terms of horizontal ones through incompressibility
-  and bed impenetrability constraints.
-  	
-  **Equations**
-	
-  +-------------------+---------------+---------------------------------------+
-  |Equation           |Condition      | Formula                               |
-  +===================+===============+=======================================+
-  |Variational        |               |.. math::                              |
-  |Principle          |               |   \mathcal{A}\left[\textbf{u}_{| |}   |
-  |                   |               |   \right]=                            |
-  |For Power          |               |   \int\limits_{\Omega}\frac{2n}{n+1}  |
-  |Law                |               |   \eta\left(\dot{\epsilon}^2_1\right) |
-  |Rheology           |None           |   \dot{\epsilon}^2_1 + \rho g         |
-  |                   |               |   \textbf{u}_{| |}\cdot\nabla_{| |}S  |
-  |                   |               |   \ d\Omega+\int\limits_{\Gamma_{B}}  |
-  |                   |               |   \frac{\beta^{2}}{2}H^{r}\textbf     |
-  |                   |               |   {u}_{| |}                           |
-  |                   |               |   \cdot\textbf{u}_{| |}               |
-  |                   |               |   \ d\Gamma                           |
-  +-------------------+---------------+---------------------------------------+
-  |Rate of            |None           |.. math::                              |
-  |strain             |               |   \eta\left(\dot{\epsilon}^{2}\right)=|
-  |tensor             |               |   b(T)\left[\dot{\epsilon}^{2}\right] |
-  |                   |               |   ^{\frac{1-n}{2n}}                   |
-  +-------------------+---------------+---------------------------------------+
-  |Temperature        |Viscosity mode +.. math::                              |
-  |Dependent          |is isothermal  |   b(T) = A_0^{\frac{-1}{n}}           |
-  |Rate Factor        +---------------+---------------------------------------+
-  |                   |Viscosity mode |Model dependent                        |
-  |                   |is linear      |                                       |
-  +                   +---------------+---------------------------------------+
-  |                   |Viscosity mode |                                       |
-  |                   |is full        |.. math::                              |
-  |                   |               |   b(T) = \left[Ea(T)e^{-\frac{Q(T)    |
-  |                   |               |   }{RT^*}}                            |
-  |                   |               |   \right]^{\frac{-1}{n}}              |
-  +-------------------+---------------+---------------------------------------+
-  |Incompressibility  |.. math::      |.. math::                              |
-  |                   |   w_b=\textbf |   w\left(u\right)=-\int\limits^{z}_{B}|
-  |                   |   {u}_{| | b} |   \nabla_{| |}\textbf{u}_{| |}dz'     |
-  |                   |   \cdot       |                                       |
-  |                   |   \nabla_{| | |                                       |
-  |                   |   }B          |                                       |
-  +-------------------+---------------+---------------------------------------+
-  
-  **Terms**
-
-  +-------------------+-------------------------------+-----------------------+
-  |Equation Name      |Term                           | Description           |
-  +===================+===============================+=======================+
-  |Variational        |.. math::                      |*Viscous dissipation*  |
-  |Principle          |                               |including              |
-  |For Power Law      |                               |terms for strain rate  |
-  |Rheology           |                               |dependent ice          |
-  |                   |   \frac{2n}{n+1}\eta\left(    |viscosity and the      |
-  |                   |   \dot{\epsilon}^2_1\right)   |strain rate            |
-  |                   |   \dot{\epsilon}^2_1          |tensor, respectively   |
-  |                   |                               |                       |
-  |                   +-------------------------------+-----------------------+
-  |                   |.. math::                      |*Graviataional         |
-  |                   |   \rho g                      |potential* energy      |
-  |                   |   \textbf{u}\cdot\nabla       |calculated using the   |
-  |                   |   _{| |}S                     |density,               |
-  |                   |                               |graviational force,    |
-  |                   |                               |and horizontal         |
-  |                   |                               |ice velocity dotted    |
-  |                   |                               |into the               |
-  |                   |                               |gradient of the        |
-  |                   |                               |surface elevation of   |
-  |                   |                               |the ice                |
-  |                   +-------------------------------+-----------------------+
-  |                   |.. math::                      |*Frictional heat       |
-  |                   |                               |dissipation*           |
-  |                   |   \frac{\beta^{2}}{2}H^{r}    |including terms for    |
-  |                   |   \textbf{u}_{| |}\cdot       |the basal              |
-  |                   |   \textbf{u}_{| |}            |sliding coefficient,   |
-  |                   |                               |ice thickness,         |
-  |                   |                               |and the horizontal     |
-  |                   |                               |ice velocity           |
-  |                   |                               |dotted into itself     |
-  +-------------------+-------------------------------+-----------------------+
-  |Rate of            |.. math::                      |Temperature dependent  |
-  |strain             |                               |rate factor,           |
-  |tensor             |   b(T)\left[\dot{\epsilon}    |square of the second   |
-  |                   |   ^{2}\right]                 |invarient of           |
-  |                   |   ^{\frac{1-n}{2n}}           |the strain rate        |
-  |                   |                               |tensor                 |
-  |                   |                               |                       |
-  +-------------------+-------------------------------+-----------------------+
-  |Temperature        |.. math::                      |Enhancement factor     |
-  |Dependent          |   E                           |                       |
-  |Rate Factor        +-------------------------------+-----------------------+
-  |                   |.. math::                      |Temperature            |
-  |                   |                               |dependent parameters   |
-  |                   |   a(T)                        |                       |
-  |                   |   Q(T)                        |                       |
-  |                   |                               |                       |
-  |                   +-------------------------------+-----------------------+
-  |                   |.. math::                      |Rate constant          |
-  |                   |   R                           |                       |
-  +                   +-------------------------------+-----------------------+
-  |                   |.. math::                      |Temperature corrected  |
-  |                   |                               |for melting            |
-  |                   |   T^*                         |point dependence       |
-  +-------------------+-------------------------------+-----------------------+
+  """				
   """
   def __init__(self, model, config):
     """ 
@@ -590,12 +357,12 @@ class VelocityDukowiczBP(Physics):
     n             = model.n
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
+    eta_shf       = model.eta_shf
+    eta_gnd       = model.eta_gnd
     S             = model.S
     B             = model.B
     H             = S - B
     x             = model.x
-    E_gnd         = model.E_gnd
-    E_shf         = model.E_shf
     W             = model.W_r
     R             = model.R
     epsdot        = model.epsdot
@@ -634,14 +401,22 @@ class VelocityDukowiczBP(Physics):
     dw       = TrialFunction(Q)
 
     # 1) viscous dissipation :
-    Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
-    Vd_gnd   = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+    Vd_shf   = model.Vd_shf 
+    Vd_gnd   = model.Vd_gnd
 
     # 2) potential energy :
     Pe       = rhoi * g * (u*gradS[0] + v*gradS[1])
 
     # 3) dissipation by sliding :
-    Sl_shf   = 0.5 * Constant(1e-10) * (u**2 + v**2)
+    #Ne       = H + rhow/rhoi * D
+    #p        = 1.0#-0.383
+    #q        = -0.349
+    #Unorm    = sqrt(inner(U,U) + DOLFIN_EPS)
+    #coef     = beta**(-2/p) * Ne**(-q/p) * p/(p+1)
+    #coef     = beta * Ne**(-q/p) * p/(p+1)
+    #Sl_gnd   = + coef * abs(u + DOLFIN_EPS)**(1/p + 1) * u/Unorm \
+    #           + coef * abs(v + DOLFIN_EPS)**(1/p + 1) * v/Unorm
+    Sl_shf   = 0.5 * Constant(DOLFIN_EPS) * H**r * (u**2 + v**2)
     Sl_gnd   = 0.5 * beta**2 * H**r * (u**2 + v**2)
     
     # 4) pressure boundary :
@@ -676,27 +451,15 @@ class VelocityDukowiczBP(Physics):
     self.bc_w = None
       
     # add lateral boundary conditions :  
-    if config['velocity']['boundaries'] == 'solution':
-      self.bcs.append(DirichletBC(Q2.sub(0), model.u, model.ff, 4))
-      self.bcs.append(DirichletBC(Q2.sub(1), model.v, model.ff, 4))
-      self.bc_w = DirichletBC(Q, model.w, model.ff, 4)
+    if config['velocity']['use_lat_bcs']:
+      self.bcs.append(DirichletBC(Q2.sub(0), model.u_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), model.v_lat_bc, model.ff, 4))
+      self.bc_w = DirichletBC(Q, model.w_lat_bc, model.ff, 4)
       
-    elif config['velocity']['boundaries'] == 'homogeneous':
-      self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 4))
-      self.bc_w = DirichletBC(Q, 0.0, model.ff, 4)
-    
-    elif config['velocity']['boundaries'] == 'user_defined':
-      u_t = config['velocity']['u_lat_boundary']
-      v_t = config['velocity']['v_lat_boundary']
-      w_t = config['velocity']['w_lat_boundary']
-      self.bcs.append(DirichletBC(Q2.sub(0), u_t, model.ff, 4))
-      self.bcs.append(DirichletBC(Q2.sub(1), v_t, model.ff, 4))
-      self.bc_w = DirichletBC(Q, w_t, model.ff, 4)
-
-    ## add boundary condition for the divide :
-    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
-    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+    # add boundary condition for the divide :
+    # FIXME: this is a hack
+    self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
     # keep the residual for adjoint solves :
     model.A       = A
@@ -727,7 +490,7 @@ class VelocityDukowiczBP(Physics):
     print_min_max(model.v, 'v')
     
     # solve for vertical velocity :
-    s  = "::: solving BP vertical velocity :::"
+    s  = "::: solving Dukowicz BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
     aw       = assemble(self.aw)
@@ -768,24 +531,17 @@ class VelocityBP(Physics):
     V             = model.Q2
     Q             = model.Q
     U             = model.U
-    n             = model.n
-    b_shf         = model.b_shf
-    b_gnd         = model.b_gnd
+    dU            = model.dU
+    Phi           = model.Phi
     eta_shf       = model.eta_shf
     eta_gnd       = model.eta_gnd
-    gamma         = model.gamma
     S             = model.S
     B             = model.B
     H             = S - B
     x             = model.x
-    E_gnd         = model.E_gnd
-    E_shf         = model.E_shf
-    W             = model.W_r
-    R             = model.R
-    epsdot        = model.epsdot
-    eps_reg       = model.eps_reg
     rhoi          = model.rhoi
     rhow          = model.rhow
+    R             = model.R
     g             = model.g
     beta          = model.beta
     w             = model.w
@@ -816,8 +572,6 @@ class VelocityBP(Physics):
 
     # horizontal velocity :
     u, v      = U
-    dU        = TrialFunction(V)
-    Phi       = TestFunction(V)
     phi, psi  = Phi
     
     # vertical velocity :
@@ -835,10 +589,11 @@ class VelocityBP(Physics):
     f_w    = rhoi*g*(S - x[2]) + rhow*g*D               # lateral
     p_a    = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)        # surface pressure
     
-    #Ne     = H - rhow/rhoi * D
-    #lnC    = ln(-0.383)
-    #Ce     = ln(beta**2 * Ne**(-0.349)) / lnC
-    #Sl_gnd = (ln(1/u)/lnC + Ce)*u + (ln(1/v)/lnC + Ce)*v + (ln(1/w)/lnC + Ce)*w
+    Ne       = H + rhow/rhoi * D
+    p        = -0.383
+    q        = -0.349
+    Unorm    = sqrt(inner(U,U) + DOLFIN_EPS)
+    coef     = 1/(beta * Ne**(q/p))
     
     # residual :
     R1 = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_s \
@@ -847,10 +602,12 @@ class VelocityBP(Physics):
          + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
          + rhoi * g * gradS[0] * phi * dx \
          + rhoi * g * gradS[1] * psi * dx \
-         + beta**2 * u * phi * dGnd \
-         + beta**2 * v * psi * dGnd \
-         + Constant(1e-10) * u * phi * dFlt \
-         + Constant(1e-10) * v * psi * dFlt \
+         + coef * abs(u + DOLFIN_EPS)**(1/p) * u/Unorm * phi * dGnd \
+         + coef * abs(v + DOLFIN_EPS)**(1/p) * v/Unorm * psi * dGnd \
+         #+ beta**2 * u * phi * dGnd \
+         #+ beta**2 * v * psi * dGnd \
+         #+ Constant(DOLFIN_EPS) * u * phi * dFlt \
+         #+ Constant(DOLFIN_EPS) * v * psi * dFlt \
     
     if (not config['periodic_boundary_conditions']
         and config['use_pressure_boundary']):
@@ -871,30 +628,17 @@ class VelocityBP(Physics):
     self.bc_w = None
       
     # add lateral boundary conditions :  
-    if config['velocity']['boundaries'] == 'solution':
-      self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
-      self.bc_w = DirichletBC(Q, model.w, model.ff, 4)
-      
-    elif config['velocity']['boundaries'] == 'homogeneous':
-      self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
-      self.bc_w = DirichletBC(Q, 0.0, model.ff, 4)
-    
-    elif config['velocity']['boundaries'] == 'user_defined':
-      u_t = config['velocity']['u_lat_boundary']
-      v_t = config['velocity']['v_lat_boundary']
-      w_t = config['velocity']['w_lat_boundary']
-      self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
-      self.bc_w = DirichletBC(Q, w_t, model.ff, 4)
+    if config['velocity']['use_lat_bcs']:
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat_bc, model.ff, 4))
+      self.bc_w = DirichletBC(Q, model.w_lat_bc, model.ff, 4)
 
-    ## add boundary condition for the divide :
-    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
-    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+    # add boundary condition for the divide :
+    self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 7))
 
     # keep the residual for adjoint solves :
-    model.A       = self.R1
+    model.A     = self.R1
 
   def solve(self):
     """ 
@@ -964,9 +708,8 @@ class VelocityBPFull(Physics):
     V             = model.Q3
     Q             = model.Q
     U             = model.U
-    n             = model.n
-    b_shf         = model.b_shf
-    b_gnd         = model.b_gnd
+    dU            = model.dU
+    Phi           = model.Phi
     eta_shf       = model.eta_shf
     eta_gnd       = model.eta_gnd
     gamma         = model.gamma
@@ -974,12 +717,7 @@ class VelocityBPFull(Physics):
     B             = model.B
     H             = S - B
     x             = model.x
-    E_gnd         = model.E_gnd
-    E_shf         = model.E_shf
-    W             = model.W_r
     R             = model.R
-    epsdot        = model.epsdot
-    eps_reg       = model.eps_reg
     rhoi          = model.rhoi
     rhow          = model.rhow
     g             = model.g
@@ -1011,8 +749,6 @@ class VelocityBPFull(Physics):
 
     # horizontal velocity :
     u, v, w        = U
-    dU             = TrialFunction(V)
-    Phi            = TestFunction(V)
     phi, psi, chi  = Phi
     
     epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
@@ -1056,27 +792,14 @@ class VelocityBPFull(Physics):
     self.bcs  = []
       
     # add lateral boundary conditions :  
-    if config['velocity']['boundaries'] == 'solution':
-      self.bcs.append(DirichletBC(V.sub(0), model.u, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), model.w, model.ff, 4))
-      
-    elif config['velocity']['boundaries'] == 'homogeneous':
-      self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), 0.0, model.ff, 4))
-    
-    elif config['velocity']['boundaries'] == 'user_defined':
-      u_t = config['velocity']['u_lat_boundary']
-      v_t = config['velocity']['v_lat_boundary']
-      w_t = config['velocity']['w_lat_boundary']
-      self.bcs.append(DirichletBC(V.sub(0), u_t, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), v_t, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), w_t, model.ff, 4))
+    if config['velocity']['use_lat_bcs']:
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(2), model.w_lat_bc, model.ff, 4))
 
-    ## add boundary condition for the divide :
-    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
-    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+    # add boundary condition for the divide :
+    self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 7))
 
     # keep the residual for adjoint solves :
     model.A       = self.A
@@ -1118,124 +841,7 @@ class VelocityBPFull(Physics):
     
 
 class Enthalpy(Physics):
-  r""" 
-  This class solves the internal energy balance (enthalpy) in steady state or 
-  transient, and converts that solution to temperature and water content.
-
-  Time stepping uses Crank-Nicholson, which is 2nd order accurate.
-    
-  :param model  : An instantiated 2D flowline ice :class:`~src.model.Model`
-  :param config : Dictionary object containing information on physical 
-                 	attributes such as velocties, age, and surface climate
-	
-  The enthalpy equation used in this class is a typical advection-diffusion 
-  equation with a non-linear diffusivity
-
-  :Enthalpy:
-     .. math::
-      \rho\left(\partial_t+\textbf{u}\cdot\nabla\right)H = 
-      \rho\nabla\cdot\kappa\left(H\right)\nabla H + Q
-		 
-  +-------------------------+---------------------------------------------+
-  |Term                     |Description                                  |
-  +=========================+=============================================+
-  |.. math::                |                                             |
-  |   H                     |Enthalpy                                     |
-  +-------------------------+---------------------------------------------+
-  |.. math::                |                                             |
-  |   \rho                  |Ice density                                  |
-  +-------------------------+---------------------------------------------+
-  |.. math::                |Strain heat generated by viscious dissipation|
-  |   Q                     |given by the first term in the Stokes'       |
-  |                         |functional                                   |
-  +-------------------------+---------------------------------------------+
-  |.. math::                |Ice velocity                                 |
-  |   \textbf{u}            |                                             | 
-  +-------------------------+---------------------------------------------+
-  |.. math::                |Enthalpy dependent diffusivity               |
-  |   \kappa                |                                             |
-  |                         +--------------+------------------------------+
-  |                         |if the ice is |.. math::                     |
-  |                         |cold          |   \frac{k}{\rho C_p}         |
-  |                         +--------------+------------------------------+
-  |                         |if the ice is |.. math::                     |
-  |                         |temperate     |   \frac{\nu}{\rho}           |	
-  +-------------------------+--------------+------------------------------+
-  |.. math::                |Thermal conductivity of cold ice             |
-  |   k                     |                                             |
-  +-------------------------+---------------------------------------------+
-  |.. math::                |Heat capacity                                |
-  |   C_p                   |                                             |
-  +-------------------------+---------------------------------------------+
-  |.. math::                |Diffusivity of enthalpy in temperate ice     |
-  |   \nu                   |                                             |
-  +-------------------------+---------------------------------------------+
-  
-  +-----------------------------------------------------------------------+	
-  |Ice Definitions                                                        |
-  +====================+==================================================+
-  |Cold ice            |.. math::                                         |
-  |                    |   \left(H-h_i\left(P\right)\right) < 0           |
-  +--------------------+--------------------------------------------------+
-  |Temperate ice       |.. math::                                         |
-  |                    |   \left(H-h_i\left(P\right)\right) \geq 0        |
-  +--------------------+--------------------------------------------------+
-
-  +------------------------+----------------------------------------------+
-  |Term                    |Definition                                    |
-  +========================+==============================================+
-  |.. math::               |Pressure melting point expressed in enthalpy  |
-  |   h_i\left(P\right)=   |                                              |
-  |   -L+C_w\left(273-     |                                              |
-  |   \gamma P\right)      |                                              |
-  +------------------------+----------------------------------------------+
-  |.. math::               |Latent heat of fusion                         |
-  |   L                    |                                              |
-  +------------------------+----------------------------------------------+
-  |.. math::               |Heat capacity of liquid water                 |
-  |   C_w                  |                                              |
-  +------------------------+----------------------------------------------+
-  |.. math::               |Dependence of the melting point on pressure   |
-  |   \gamma               |                                              |
-  +------------------------+----------------------------------------------+
-  |.. math::               |Pressure                                      |
-  |   P                    |                                              |
-  +------------------------+----------------------------------------------+
-  
-  **Stabilization**
-  
-  The enthalpy equation is hyperbolic and so the 
-  standard centered Galerkin Finite Element method is non-optimal and 
-  spurious oscillations can arise. In order to stabilize it, we apply 
-  streamline upwind Petrov-Galerkin methods. 
-  This consists of adding an additional diffusion term of the form
-  
-  :Term:
-     .. math::
-      \rho\nabla\cdot K\nabla H
-      
-  +--------------------------------+--------------------------------------+
-  |Term                            |Description                           |
-  +================================+======================================+
-  |.. math::                       |Tensor valued diffusivity             |
-  |   K_{ij} = \frac{\alpha h}{2}  |                                      |
-  |   \frac{u_i u_j}{| |u| |}      |                                      |
-  +--------------------------------+--------------------------------------+
-  |.. math::                       |Taken to be equal to unity            |
-  |   \alpha                       |                                      |
-  +--------------------------------+--------------------------------------+
-  |.. math::                       |Cell size metric                      |
-  |   h                            |                                      |
-  +--------------------------------+--------------------------------------+
-  
-  Alternatively, to weight the advective portion of the governing equation
-  we can view this stabilization as using skewed finite element test 
-  functions of the form
-  
-  :Equation:
-     .. math::
-      \hat{\phi} = \phi + \frac{\alpha h}{2}\frac{u_i u_j}{| |u| |}
-      \cdot\nabla_{| |}\phi
+  """ 
   """
   def __init__(self, model, config):
     """ 
@@ -1339,8 +945,8 @@ class Enthalpy(Physics):
     q_friction = 0.5 * beta**2 * H**r * (u**2 + v**2)
 
     # Strain heating = stress*strain
-    Q_s_gnd = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
-    Q_s_shf = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
+    Q_s_gnd = model.Vd_gnd
+    Q_s_shf = model.Vd_shf
 
     # thermal conductivity (Greve and Blatter 2009) :
     ki    =  9.828 * exp(-0.0057*T)
@@ -1420,73 +1026,7 @@ class Enthalpy(Physics):
   
   def solve(self, theta0=None, thetahat=None, uhat=None, 
             vhat=None, what=None, mhat=None):
-    r""" 
-    Uses boundary conditions and the linear solver to solve for temperature
-    and water content.
-    
-    :param theta0     : Initial enthalpy
-    :param thetahat   : Enthalpy expression
-    :param uhat   : Horizontal velocity
-    :param vhat   : Horizontal velocity perpendicular to :attr:`uhat`
-    :param what   : Vertical velocity
-    :param mhat   : Mesh velocity
-  
-    
-    A Neumann boundary condition is imposed at the basal boundary.
-    
-    :Boundary Condition:
-       .. math::
-        \kappa\left(H\right)\nabla H\cdot\textbf{n} = q_g+q_f
-        -M_b\rho L
-        
-    +----------------------------+-------------------------------------------+
-    |Terms                       |Description                                |
-    +============================+===========================================+
-    |.. math::                   |Geothermal heat flux, assumed to be known  |
-    |   q_g                      |                                           |
-    +----------------------------+-------------------------------------------+
-    |.. math::                   |Frictional heat generated by basal sliding |
-    |   q_f                      |                                           |
-    +----------------------------+-------------------------------------------+
-    |.. math::                   |Basal melt rate                            |
-    |   M_b                      |                                           |
-    +----------------------------+-------------------------------------------+
-    
-    Since temperature is uniquely related to enthalpy, it can be extracted 
-    using the following equations
-  
-    +-----------------------------------------------------------------------+
-    |                                                                       |
-    +=================+=================================+===================+
-    |.. math::        |.. math::                        |If the ice is cold |
-    |   T\left(H,P    |   C_{p}^{-1}\left(H-h_i\left(P  |                   |
-    |   \right) =     |   \right)\right)+T_{m}(p)       |                   |
-    |                 +---------------------------------+-------------------+
-    |                 |.. math::                        |If the ice is      |
-    |                 |   T_{m}                         |temperate          |
-    +-----------------+---------------------------------+-------------------+
-    
-    Similarly, the water content can also be extracted using the following 
-    equations
-    
-    +-----------------------------------------------------------------------+
-    |                                                                       |
-    +=================+=================================+===================+
-    |.. math::        |.. math::                        |If the ice is cold |
-    |   \omega\left(  |   0                             |                   |
-    |   H,P\right)=   |                                 |                   |
-    |                 +---------------------------------+-------------------+
-    |                 |.. math::                        |If the ice is      |
-    |                 |   \frac{H-h_i\left(P\right)}    |temperate          |
-    |                 |   {L}                           |                   |
-    +-----------------+---------------------------------+-------------------+
-    
-    +---------------------------+-------------------------------------------+
-    |Term                       |Description                                |
-    +===========================+===========================================+
-    |.. math::                  |Temperature melting point expressed in     |
-    |   T_{m}                   |enthalpy                                   |
-    +---------------------------+-------------------------------------------+
+    """ 
     """
     model  = self.model
     config = self.config
@@ -1668,7 +1208,7 @@ class EnthalpyDG(Physics):
     epsdot = 0.5 * term + eps_reg
     
     # Define test and trial functions       
-    psi = TestFunction(DQ)
+    psi     = TestFunction(DQ)
     dtheta  = TrialFunction(DQ)
 
     # Pressure melting point
@@ -2070,7 +1610,7 @@ class FreeSurface(Physics):
     model.assign_variable(model.dSdt, q)
 
 
-class AdjointVelocity(Physics):
+class AdjointDukowiczVelocity(Physics):
   """ 
   Complete adjoint of the BP momentum balance.  Now updated to calculate
   the adjoint model and gradient using automatic differentiation.  Changing
@@ -2087,7 +1627,7 @@ class AdjointVelocity(Physics):
     """ 
     Setup.
     """
-    s   = "::: INITIALIZING ADJOINT VELOCITY PHYSICS :::"
+    s   = "::: INITIALIZING DUKOWICZ ADJOINT VELOCITY PHYSICS :::"
     print_text(s, self.color())
 
     self.model  = model
@@ -2130,8 +1670,8 @@ class AdjointVelocity(Physics):
 
     # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'log':
-      self.I = 0.5 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                         (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                         / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
       s   = "    - using log objective function -"
     
     elif config['adjoint']['objective_function'] == 'kinematic':
@@ -2147,8 +1687,8 @@ class AdjointVelocity(Physics):
       g1     = config['adjoint']['gamma1']
       g2     = config['adjoint']['gamma2']
       self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
-               + g2 * 0.5 * ln( (sqrt(U[0]**2 + U[1]**2) + 1.0) / \
-                                (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+               + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                                / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
       s   = "    - using log/linear hybrid objective -"
 
     else:
@@ -2167,30 +1707,28 @@ class AdjointVelocity(Physics):
         s = "    - using no regularization -"
       else:
         if config['adjoint']['regularization_type'] == 'TV':
-          R = a * 0.5 * sqrt(   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                              + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
-          self.I += R
           s   = "    - using total variation regularization -"
+          R = a * 0.5 * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                              + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
         elif config['adjoint']['regularization_type'] == 'Tikhonov':
-          R = a * 0.5 * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
-          self.I += R
           s   = "    - using Tikhonov regularization -"
+          R = a * 0.5 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
         else:
-          R = a * 0.5 * (   (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2) * dGnd
-          self.I += R
           s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to Tikhonov regularization -"
+          R = a * 0.5 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+        self.I += R
       print_text(s, self.color())
 
-    Phi       = TestFunction(Q_adj)
-    model.Lam = Function(Q_adj)
-    L         = TrialFunction(Q_adj)
+    Phi        = TestFunction(Q_adj)
+    model.Lam  = Function(Q_adj)
+    L          = TrialFunction(Q_adj)
     
     # Derivative, with trial function L.  These are the momentum equations 
     # in weak form multiplied by L and integrated by parts
-    F_adjoint = derivative(A, U, L)
+    F_adjoint  = derivative(A, U, L)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
@@ -2226,22 +1764,176 @@ class AdjointVelocity(Physics):
     model  = self.model
     config = self.config
 
+    s    = "::: solving Dukowicz adjoint velocity :::"
+    print_text(s, self.color())
+      
+    aw = assemble(self.aw)
+    Lw = assemble(self.Lw)
+
+    if config['model_order'] == 'stokes':
+      a_solver = LUSolver('mumps')
+    else:
+      a_solver = KrylovSolver('cg', 'hypre_amg')
+
+    a_solver.solve(aw, model.Lam.vector(), Lw)
+    
+    #solve(self.aw == self.Lw, model.Lam,
+    #      solver_parameters = {"linear_solver"  : "cg",
+    #                           "preconditioner" : "hypre_amg"})
+    print_min_max(model.Lam, 'Lam')
+
+
+class AdjointVelocity(Physics):
+  """ 
+  """
+  def __init__(self, model, config):
+    """ 
+    Setup.
+    """
+    s   = "::: INITIALIZING ADJOINT VELOCITY PHYSICS :::"
+    print_text(s, self.color())
+
+    self.model  = model
+    self.config = config
+
+    Q        = model.Q
+    u_ob     = model.u_ob
+    v_ob     = model.v_ob
+    adot     = model.adot
+    ds       = model.ds
+    S        = model.S
+    A        = model.A
+    dU       = model.dU
+    Phi      = model.Phi
+    U        = model.U
+    N        = model.N
+    
+    dx       = model.dx
+    dx_s     = dx(1)
+    dx_g     = dx(0)
+    dx       = dx(1) + dx(0) # entire internal
+    dSrf_s   = ds(6)         # surface
+    dSrf_g   = ds(2)         # surface
+    dGnd     = ds(3)         # grounded bed 
+    dFlt     = ds(5)         # floating bed
+    dSde     = ds(4)         # sides
+    dBed     = dGnd + dFlt   # bed
+
+    if config['adjoint']['surface_integral'] == 'shelves':
+      dSrf     = ds(6)
+      s   = "    - integrating over shelves -"
+    elif config['adjoint']['surface_integral'] == 'grounded':
+      dSrf     = ds(2)
+      s   = "    - integrating over grounded ice -"
+    
+    print_text(s, self.color())
+
+    control = config['adjoint']['control_variable']
+    alpha   = config['adjoint']['alpha']
+
+    # Objective function; least squares over the surface.
+    if config['adjoint']['objective_function'] == 'log':
+      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                         / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      s   = "    - using log objective function -"
+    
+    elif config['adjoint']['objective_function'] == 'kinematic':
+      self.I = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
+                      - (U[2] + adot))**2 * dSrf + R
+      s   = "    - using kinematic objective function -"
+
+    elif config['adjoint']['objective_function'] == 'linear':
+      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      s   = "    - using linear objective function -"
+    
+    elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
+      g1     = config['adjoint']['gamma1']
+      g2     = config['adjoint']['gamma2']
+      self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
+               + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                                / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      s   = "    - using log/linear hybrid objective -"
+
+    else:
+      s = "    - WARNING: adjoint objection function may be 'linear', " + \
+          "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'linear' -"
+      print_text(s, 'red', 1)
+      s   = "    - using linear objective function -"
+      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+    print_text(s, self.color())
+    
+    # form regularization term 'R' :
+    for a,c in zip(alpha,control):
+      s   = "    - regularization parameter alpha = %.2E -" % a
+      print_text(s, self.color())
+      if a == 0:
+        s = "    - using no regularization -"
+      else:
+        if config['adjoint']['regularization_type'] == 'TV':
+          s   = "    - using total variation regularization -"
+          R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dGnd
+        elif config['adjoint']['regularization_type'] == 'Tikhonov':
+          s   = "    - using Tikhonov regularization -"
+          R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
+        else:
+          s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
+              + " defaulting to Tikhonov regularization -"
+          R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
+        self.I += R
+      print_text(s, self.color())
+
+    # this is the adjoint of the momentum residual :
+    A_adj      = replace(A, {Phi:dU})
+
+    # objective function constrained to obey the forward model :
+    Lagrangian = self.I + A_adj
+
+    # we desire the derivative of the Lagrangian w.r.t. the model state U
+    # in the direction of the test function Phi to vanish :
+    self.dI    = derivative(Lagrangian, U, Phi)
+
+    # we want the derivative of the Lagrangian w.r.t. the model state U 
+    # in the direction of a computed Lagrange multiplier Lam to vanish
+    # as well :
+    A_adj_lam  = replace(A_adj, {dU:model.Lam})
+
+    # the Lagrangian with unknowns replaced with computed Lam :
+    Lagrangian = self.I + A_adj_lam
+
+    # the derivative of the cost function w.r.t. the control variables in the 
+    # direction of P1 test function :
+    self.J = []
+    phi    = TestFunction(Q)
+    for c in control:
+      self.J.append(derivative(Lagrangian, c, phi))
+    
+    self.aw = lhs(self.dI)
+    self.Lw = rhs(self.dI)
+
+  def solve(self):
+    """
+    Solves the bilinear residual created by differentiation of the 
+    variational principle in combination with an objective function.
+    """
+    model  = self.model
+    config = self.config
+
     s    = "::: solving adjoint velocity :::"
     print_text(s, self.color())
       
-    #aw = assemble(self.aw)
-    #Lw = assemble(self.Lw)
+    aw = assemble(self.aw)
+    Lw = assemble(self.Lw)
 
     #if config['model_order'] == 'stokes':
     #  a_solver = LUSolver('mumps')
     #else:
-    #  a_solver = KrylovSolver('cg', 'hypre_amg')
+    a_solver = KrylovSolver('cg', 'hypre_amg')
 
-    #a_solver.solve(aw, model.Lam.vector(), Lw)
+    a_solver.solve(aw, model.Lam.vector(), Lw)
     
-    solve(self.aw == self.Lw, model.Lam,
-          solver_parameters = {"linear_solver"  : "cg",
-                               "preconditioner" : "hypre_amg"})
+    #solve(self.aw == self.Lw, model.Lam,
+    #      solver_parameters = {"linear_solver"  : "cg",
+    #                           "preconditioner" : "hypre_amg"})
     print_min_max(model.Lam, 'Lam')
     
 

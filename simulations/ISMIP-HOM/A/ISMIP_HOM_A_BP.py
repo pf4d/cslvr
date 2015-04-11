@@ -26,7 +26,7 @@ model.set_mesh(mesh)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
-bed     = Expression(  '- x[0] * tan(alpha) - 2000.0 + 2000.0 * ' \
+bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
                      + ' sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
                      alpha=alpha, L=L, element=model.Q.ufl_element())
 

@@ -611,10 +611,14 @@ class AdjointSolver(Solver):
     
     # initialize instances of the forward model, and the adjoint physics : 
     self.forward_model    = SteadySolver(model, config)
-    self.adjoint_instance = AdjointVelocity(model, config)
+    if config['use_dukowicz']:
+      self.adjoint_instance = AdjointDukowiczVelocity(model, config)
+    else:
+      self.adjoint_instance = AdjointVelocity(model, config)
         
     # create file to save control varialble #FIXME : hax
     self.beta_file = File(config['output_path'] + 'beta_a.pvd')
+    self.Lam_file  = File(config['output_path'] + 'Lam_a.pvd')
   
   def set_velocity(self, u, v, w):
     """
@@ -755,8 +759,6 @@ class AdjointSolver(Solver):
       s = '::: saving friction variable %sbeta_a.pvd file :::'
       print_text(s % config['output_path'], self.color())
       self.beta_file << model.beta
-      print_min_max(model.u_ob, 'u_ob')
-      print_min_max(model.v_ob, 'v_ob')
       I = assemble(self.adjoint_instance.I)
       return I
  
@@ -772,6 +774,10 @@ class AdjointSolver(Solver):
 
       for i,c in enumerate(control):
         print_min_max(c, 'c_' + str(i))
+      
+      s = '::: saving adjoint variable %sLam_a.pvd file :::'
+      print_text(s % config['output_path'], self.color())
+      self.Lam_file << model.Lam
  
       # calculate and print misfit : 
       model.calc_misfit(config['adjoint']['surface_integral'])

@@ -268,11 +268,11 @@ class Model(object):
           self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff[f] = 4
-        #else:
-        #  self.ff[f] = 7
-        self.ff[f] = 4
+        if mask_xy > 0:
+          self.ff[f] = 4
+        else:
+          self.ff[f] = 7
+        #self.ff[f] = 4
     
     for f in facets(self.flat_mesh):
       n       = f.normal()
@@ -294,11 +294,11 @@ class Model(object):
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff_flat[f] = 4
-        #else:
-        #  self.ff_flat[f] = 7
-        self.ff_flat[f] = 4
+        if mask_xy > 0:
+          self.ff_flat[f] = 4
+        else:
+          self.ff_flat[f] = 7
+        #self.ff_flat[f] = 4
     
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, self.color)
@@ -489,6 +489,30 @@ class Model(object):
     print_text(s, self.color)
     self.assign_variable(self.Ubar, Ubar)
     print_min_max(self.Ubar, 'Ubar')
+  
+  def init_u_lat(self, u_lat):
+    """
+    """
+    s = "::: initializing u lateral boundary condtion :::"
+    print_text(s, self.color)
+    self.assign_variable(self.u_lat, u_lat)
+    print_min_max(self.u_lat, 'u_lat')
+  
+  def init_v_lat(self, v_lat):
+    """
+    """
+    s = "::: initializing v lateral boundary condtion :::"
+    print_text(s, self.color)
+    self.assign_variable(self.v_lat, v_lat)
+    print_min_max(self.v_lat, 'v_lat')
+  
+  def init_w_lat(self, w_lat):
+    """
+    """
+    s = "::: initializing w lateral boundary condtion :::"
+    print_text(s, self.color)
+    self.assign_variable(self.w_lat, w_lat)
+    print_min_max(self.w_lat, 'w_lat')
 
   def set_parameters(self, params):
     """
@@ -543,11 +567,16 @@ class Model(object):
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
     beta_0_v = beta_0.vector().array()
-    beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
-    self.assign_variable(self.beta, beta_0_v)
-    print_min_max(self.beta, 'beta')
+    beta_0_v[beta_0_v < 1e-3] = 1e-3
+    #self.assign_variable(self.beta, beta_0_v)
     self.betaSIA = Function(Q)
     self.assign_variable(self.betaSIA, beta_0_v)
+    print_min_max(self.betaSIA, 'betaSIA')
+    
+    self.assign_variable(self.beta, DOLFIN_EPS)
+    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, 3)
+    bc_beta.apply(self.beta.vector())
+    print_min_max(self.beta, 'beta')
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
     r"""
@@ -569,9 +598,8 @@ class Model(object):
     gradS    = self.gradS
     H        = self.S - self.B
     D        = self.D
-    
-    Ne       = H - rhow/rhoi * D
-    lnC      = ln(0.383)
+    p        = -0.383
+    q        = -0.349
     
     U_s      = Function(Q)
     if U_mag == None:
@@ -581,19 +609,25 @@ class Model(object):
     U_v[U_v < eps] = eps
     self.assign_variable(U_s, U_v)
     
+    Ne       = H + rhow/rhoi * D
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta     = U_s * Ne**(0.349) * exp(lnC * rhoi * g * H * S_mag)
-    #beta     = U_s * exp(lnC * rhoi * g * H * S_mag)
-    beta_0   = project(sqrt(beta), Q)
-    print_min_max(beta_0, 'beta_0')
+    beta     = U_s**(1/p) / ( rhoi * g * H * S_mag * Ne**(q/p) )
+    beta_0   = project(beta, Q)
     
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
-    self.assign_variable(self.beta, beta_0_v)
-    print_min_max(self.beta, 'beta')
-    self.betaSIA = Function(Q)
-    self.assign_variable(self.betaSIA, beta_0_v)
+    #self.assign_variable(beta_0, beta_0_v)
+    print_min_max(beta_0, 'beta_0')
 
+    #self.assign_variable(self.beta, beta_0)
+    
+    self.assign_variable(self.beta, DOLFIN_EPS)
+    bc_beta = DirichletBC(self.Q, beta_0, self.ff, 3)
+    bc_beta.apply(self.beta.vector())
+    
+    #self.betaSIA = Function(Q)
+    #self.assign_variable(self.betaSIA, beta_0_v)
+    
   def init_beta_stats(self):
     """
     """
@@ -1271,103 +1305,95 @@ class Model(object):
     print_text(s, self.color)
     File(outpath + '/' +  name + '.xml') << var
 
-  def init_viscosity_mode(self):
+  def init_viscosity_mode(self, mode):
     """
+    Initialize the rate-factor b, viscosit eta, and viscous dissipation term 
+    used by the Enthalpy and Dukowicz velocity solvers.  The values of <mode>
+    may be :
+    
+      'isothermal' :  use the values of model.A0 for b = A0^{-1/n}
+      'linear'     :  use the values in the current model.u, model.v, 
+                      and model.w to form the viscosity; requires that b has 
+                      been initialized previously
+      'full'       :  use the full temperature-dependent rate factor.
+
     """
-    s       = "::: initializing viscosity :::"
+    s = "::: initializing viscosity :::"
     print_text(s, self.color)
-    config = self.config
 
     # Set the value of b, the temperature dependent ice hardness parameter,
-    # using the most recently calculated temperature field, if expected.
-    if   config['velocity']['viscosity_mode'] == 'isothermal':
-      A0 = config['velocity']['A']
+    # using the most recently calculated temperature field.
+    #
+    #   eta = visosity,
+    #   b   = rate factor
+    #   Vd  = viscous dissipation
+    #   shf = volume over shelves
+    #   gnd = volume over grounded ice
+    #
+    if   mode == 'isothermal':
       s  = "    - using isothermal visosity formulation -"
       print_text(s, self.color)
-      print_min_max(A0, 'A')
-      n     = self.n
-      b     = A0**(-1/n)
-      b_shf = b
-      b_gnd = b
-      print_min_max(b_shf, 'b_shf')
-      print_min_max(b_gnd, 'b_gnd')
+      print_min_max(self.A0, 'A')
+      A0         = self.A0
+      n          = self.n
+      epsdot     = self.epsdot
+      eps_reg    = self.eps_reg
+      b          = A0**(-1/n)
+      self.b_shf = b
+      self.b_gnd = b
+      print_min_max(self.b_shf, 'b')
+      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.Vd_shf  = (2*n)/(n+1)*0.5*self.b_shf*(epsdot+eps_reg)**((n+1)/(2*n))
+      self.Vd_gnd  = (2*n)/(n+1)*0.5*self.b_gnd*(epsdot+eps_reg)**((n+1)/(2*n))
     
-    elif config['velocity']['viscosity_mode'] == 'linear':
-      b_gnd = config['velocity']['eta_gnd']
-      b_shf = config['velocity']['eta_shf']
+    elif mode == 'linear':
       s     = "    - using linear viscosity formulation -"
       print_text(s, self.color)
-      print_min_max(b_shf, 'eta_shf')
-      print_min_max(b_gnd, 'eta_gnd')
-      self.n  = 1.0
+      n         = self.n
+      eps_reg   = self.eps_reg
+      u_cpy     = self.u.copy(True)
+      v_cpy     = self.v.copy(True)
+      w_cpy     = self.w.copy(True)
+      epi       = self.strain_rate_tensor(as_vector([u_cpy, v_cpy, w_cpy]))
+      ep_xx     = epi[0,0]
+      ep_yy     = epi[1,1]
+      ep_xy     = epi[0,1]
+      ep_xz     = epi[0,2]
+      ep_yz     = epi[1,2]
+      epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
+                  + ep_xy**2 + ep_xz**2 + ep_yz**2
+      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.Vd_shf  = (2*n)/(n+1) * self.eta_shf * self.epsdot
+      self.Vd_gnd  = (2*n)/(n+1) * self.eta_gnd * self.epsdot
     
-    elif config['velocity']['viscosity_mode'] == 'b_control':
-      b_shf   = config['velocity']['b_shf']
-      b_gnd   = config['velocity']['b_gnd']
-      s       = "    - using b_control viscosity formulation -"
-      print_text(s, self.color)
-      print_min_max(b_shf, 'b_shf')
-      print_min_max(b_gnd, 'b_gnd')
-    
-    elif config['velocity']['viscosity_mode'] == 'constant_b':
-      b     = config['velocity']['b']
-      b_shf = b
-      b_gnd = b
-      s = "    - using constant_b viscosity formulation -"
-      print_text(s, self.color)
-      print_min_max(b, 'b')
-    
-    elif config['velocity']['viscosity_mode'] == 'full':
+    elif mode == 'full':
       s     = "    - using full viscosity formulation -"
       print_text(s, self.color)
-      T     = self.T
-      W     = self.W
-      R     = self.R
-      n     = self.n
-      E_shf = self.E_shf
-      E_gnd = self.E_gnd
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-    
-    elif config['velocity']['viscosity_mode'] == 'E_control':
-      E_shf = config['velocity']['E_shf'] 
-      E_gnd = config['velocity']['E_gnd']
-      s     = "    - using E_control viscosity formulation -"
-      print_text(s, self.color)
-      print_min_max(E_shf, 'E_shf')
-      print_min_max(E_gnd, 'E_gnd')
-      T     = self.T
-      W     = self.W
-      R     = self.R
-      n     = self.n
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      self.assign_variable(self.E_shf, E_shf)
-      self.assign_variable(self.E_gnd, E_gnd)
+      n       = self.n
+      epsdot  = self.epsdot
+      eps_reg = self.eps_reg
+      T       = self.T
+      W       = self.W
+      R       = self.R
+      E_shf   = self.E_shf
+      E_gnd   = self.E_gnd
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      self.b_shf   = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      self.b_gnd   = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.Vd_shf  = (2*n)/(n+1)*0.5*self.b_shf*(epsdot+eps_reg)**((n+1)/(2*n))
+      self.Vd_gnd  = (2*n)/(n+1)*0.5*self.b_gnd*(epsdot+eps_reg)**((n+1)/(2*n))
     
     else:
-      s = "    - ACCEPTABLE CHOICES FOR 'viscosity_mode' ARE 'linear', " + \
-          "'isothermal', 'b_control', 'constant_b', 'E_control', OR 'full' -"
+      s = "    - ACCEPTABLE CHOICES FOR <mode> ARE 'linear', " + \
+          "'isothermal', OR 'full' -"
       print_text(s, 'red', 1)
       sys.exit(1)
     
-    # Glen's flow law :
-    n       = self.n
-    epsdot  = self.epsdot
-    eps_reg = self.eps_reg
-    eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-
-    # initialize the viscosity parameters :
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
-    self.b_shf   = b_shf
-    self.b_gnd   = b_gnd
-
   def init_hybrid_variables(self):
     """
     """
@@ -1391,27 +1417,24 @@ class Model(object):
     # hybrid momentum :
     self.U             = Function(self.HV)
     
-  def init_dukowicz_BP_variables(self):
-    """
-    """
-    self.U      = Function(self.Q2)
-    u,v         = self.U
-    self.epsdot = 0.5 * (+ 0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
-                                  + (u.dx(1) + v.dx(0))**2) \
-                         + u.dx(0)**2 + v.dx(1)**2 \
-                         + (u.dx(0) + v.dx(1))**2 )
-    self.init_higher_order_variables()
-    self.init_viscosity_mode()
-
   def init_BP_variables(self):
     """
     """
     if self.config['velocity']['full_BP']:
-      self.U  = Function(self.Q3)
-      epi     = self.strain_rate_tensor(self.U)
+      s = "    - initializing full BP variables -"
+      self.U   = Function(self.Q3)
+      self.dU  = TrialFunction(self.Q3)
+      self.Phi = TestFunction(self.Q3)
+      self.Lam = Function(self.Q3)
+      epi      = self.strain_rate_tensor(self.U)
     else :
-      self.U  = Function(self.Q2)
-      epi     = self.strain_rate_tensor(as_vector([self.U[0], self.U[1], 0.0]))
+      s = "    - initializing BP variables -"
+      self.U   = Function(self.Q2)
+      self.dU  = TrialFunction(self.Q2)
+      self.Phi = TestFunction(self.Q2)
+      self.Lam = Function(self.Q2)
+      epi      = self.strain_rate_tensor(as_vector([self.U[0], self.U[1], 0.0]))
+    print_text(s, self.color)
 
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
@@ -1423,29 +1446,19 @@ class Model(object):
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
-    self.init_viscosity_mode()
-
-  def init_dukowicz_stokes_variables(self):
-    """
-    """
-    self.U   = Function(self.Q4)
-    u,v,w,P  = self.U
-    
-    # Second invariant of the strain rate tensor squared
-    self.epsdot  = + 0.5 * (+ 0.5*( + (u.dx(1) + v.dx(0))**2  \
-                                    + (u.dx(2) + w.dx(0))**2  \
-                                    + (v.dx(2) + w.dx(1))**2) \
-                            + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2) 
-    self.init_higher_order_variables()
-    self.init_viscosity_mode()
 
   def init_stokes_variables(self):
     """
     """
+    s = "    - initializing full-stokes variables -"
+    print_text(s, self.color)
     # velocity :
-    self.U   = Function(self.MV)
-
-    U,P = split(self.U)
+    if config['use_dukowicz']:
+      self.U   = Function(self.Q4)
+      U        = as_vector([U[0], U[1], U[2]])
+    else:
+      self.U   = Function(self.MV)
+      U, P     = split(self.U)
     
     # Second invariant of the strain rate tensor squared
     epi   = self.strain_rate_tensor(U)
@@ -1458,7 +1471,6 @@ class Model(object):
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
-    self.init_viscosity_mode()
 
   def init_higher_order_variables(self):
     """
@@ -1525,6 +1537,9 @@ class Model(object):
     self.u_ob          = Function(self.Q)
     self.v_ob          = Function(self.Q)
     self.U_ob          = Function(self.Q)
+    self.u_lat         = Function(self.Q)
+    self.v_lat         = Function(self.Q)
+    self.w_lat         = Function(self.Q)
     
     # Enthalpy model
     self.theta_surface = Function(self.Q)
@@ -1589,15 +1604,9 @@ class Model(object):
     self.tau_tz        = Function(self.Q)
     
     if   config['model_order'] == 'stokes':
-      if config['use_dukowicz']:
-        self.init_dukowicz_stokes_variables()
-      else:
-        self.init_stokes_variables()
+      self.init_stokes_variables()
     elif config['model_order'] == 'BP':
-      if config['use_dukowicz']:
-        self.init_dukowicz_BP_variables()
-      else:
-        self.init_BP_variables()
+      self.init_BP_variables()
     elif config['model_order'] == 'L1L2':
       self.init_hybrid_variables()
     else:

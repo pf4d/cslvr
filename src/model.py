@@ -21,7 +21,7 @@ class Model(object):
     """
     Create and instance of the model.
     """
-    PETScOptions.set("mat_mumps_icntl_14", 100.0)
+    PETScOptions.set("mat_mumps_icntl_14", 10000.0)
     if config == None:
       self.config = default_config()
     else:
@@ -199,6 +199,13 @@ class Model(object):
     self.mask   = True
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
+    
+    dofmap    = self.Q.dofmap()
+    shf_cells = np.where(self.cf.array() == 1)[0]
+    shf_dofs  = []
+    for i in shf_cells:
+      shf_dofs.extend(dofmap.cell_dofs(i))
+    self.shf_dofs = list(set(shf_dofs))
 
   def calculate_boundaries(self, mask=None, adot=None):
     """

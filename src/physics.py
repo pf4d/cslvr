@@ -26,7 +26,7 @@ based on lapse rates
 :class:`~src.physics.VelocityBP` -- Blatter-Pattyn momentum balance
 """
 
-from pylab      import ndarray
+from pylab      import ndarray, where
 from fenics     import *
 from termcolor  import colored, cprint
 from helper     import raiseNotDefined, VerticalBasis, VerticalFDBasis, \
@@ -1755,7 +1755,7 @@ class AdjointDukowiczVelocity(Physics):
     
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)
-
+    
   def solve(self):
     """
     Solves the bilinear residual created by differentiation of the 
@@ -1776,6 +1776,8 @@ class AdjointDukowiczVelocity(Physics):
       a_solver = KrylovSolver('cg', 'hypre_amg')
 
     a_solver.solve(aw, model.Lam.vector(), Lw)
+    
+    model.Lam.vector()[model.shf_dofs] = 0.0
     
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",

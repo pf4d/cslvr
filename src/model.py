@@ -1,4 +1,5 @@
-from fenics       import *
+frot
+ fenics       import *
 from ufl.indexed  import Indexed
 from abc          import ABCMeta, abstractmethod
 from physics      import Physics
@@ -199,13 +200,26 @@ class Model(object):
     self.mask   = True
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
-    
+
+    shf_cells = SubsetIterator(self.cf, 1)
     dofmap    = self.Q.dofmap()
-    shf_cells = np.where(self.cf.array() == 1)[0]
-    shf_dofs  = []
-    for i in shf_cells:
-      shf_dofs.extend(dofmap.cell_dofs(i))
-    self.shf_dofs = list(set(shf_dofs))
+    
+    # Dofs in domain
+    dofs = sum((dofmap.cell_dofs(cell.index()).tolist()
+               for cell in shf_cells), [])
+    # Get unique dofs in local numbering that the process sees. 
+    # Some might not be owned
+    dofs = set(dofs)
+    
+    # Where in global vector are dofs owned by the process
+    my_first, my_last = dofmap.ownership_range()
+    
+    # Keep only owned ones, ie those whose global index is in ownership range
+    shf_dofs = filter(lambda dof: my_first <= \
+                                  dofmap.local_to_global_index(dof) \
+                                  < my_last, \
+                      dofs)
+    self.shf_dofs = shf_dofs
 
   def calculate_boundaries(self, mask=None, adot=None):
     """

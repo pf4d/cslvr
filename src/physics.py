@@ -1884,30 +1884,31 @@ class AdjointVelocity(Physics):
         self.I += R
       print_text(s, self.color())
 
-    # this is the adjoint of the momentum residual :
-    A_adj      = replace(A, {Phi:dU})
+    # this is the adjoint of the momentum residual, the Lagrangian :
+    L        = replace(A, {Phi:dU})
 
-    # objective function constrained to obey the forward model :
-    Lagrangian = self.I + A_adj
+    # the Hamiltonian:
+    H_U      = self.I + L
 
-    # we desire the derivative of the Lagrangian w.r.t. the model state U
+    # we desire the derivative of the Hamiltonian w.r.t. the model state U
     # in the direction of the test function Phi to vanish :
-    self.dI    = derivative(Lagrangian, U, Phi)
+    self.dI  = derivative(H_U, U, Phi)
 
-    # we want the derivative of the Lagrangian w.r.t. the model state U 
-    # in the direction of a computed Lagrange multiplier Lam to vanish
-    # as well :
-    A_adj_lam  = replace(A_adj, {dU:model.Lam})
+    # we need to evaluate the Hamiltonian with the values of lam computed from
+    # self.dI in order to get the derivative of the Hamiltonian w.r.t. the 
+    # control variables.  Hence we need a new Lagrangian with the trial 
+    # functions replaced with the computed lam values.
+    L_lam    = replace(L, {dU:model.Lam})
 
-    # the Lagrangian with unknowns replaced with computed Lam :
-    Lagrangian = self.I + A_adj_lam
+    # the Hamiltonian with unknowns replaced with computed Lam :
+    H_lam    = self.I + L_lam
 
-    # the derivative of the cost function w.r.t. the control variables in the 
-    # direction of P1 test function :
+    # the derivative of the Hamiltonian w.r.t. the control variables in the 
+    # direction of a P1 test function :
     self.J = []
     phi    = TestFunction(Q)
     for c in control:
-      self.J.append(derivative(Lagrangian, c, phi))
+      self.J.append(derivative(H_lam, c, phi))
     
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)
@@ -1936,7 +1937,7 @@ class AdjointVelocity(Physics):
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",
     #                           "preconditioner" : "hypre_amg"})
-    print_min_max(model.Lam, 'Lam')
+    print_min_max(norm(model.Lam), '||Lam||')
     
 
 class SurfaceClimate(Physics):

@@ -1,5 +1,4 @@
-frot
- fenics       import *
+from fenics       import *
 from ufl.indexed  import Indexed
 from abc          import ABCMeta, abstractmethod
 from physics      import Physics

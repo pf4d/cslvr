@@ -1380,14 +1380,10 @@ class Model(object):
       self.b_shf = b
       self.b_gnd = b
       print_min_max(self.b_shf, 'b')
-      #self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      #self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      #self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      #self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = n/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = n/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
+      self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
+      self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
     
     elif mode == 'linear':
       s     = "    - using linear viscosity formulation -"
@@ -1405,12 +1401,8 @@ class Model(object):
       ep_yz     = epi[1,2]
       epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
-      #self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      #self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      #self.Vd_shf  = self.eta_shf * self.epsdot
-      #self.Vd_gnd  = self.eta_gnd * self.epsdot
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       self.Vd_shf  = self.eta_shf * self.epsdot
       self.Vd_gnd  = self.eta_gnd * self.epsdot
     
@@ -1429,14 +1421,10 @@ class Model(object):
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
       self.b_shf   = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       self.b_gnd   = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      #self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      #self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      #self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      #self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = n/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = n/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
+      self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
+      self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
     
     else:
       s = "    - ACCEPTABLE CHOICES FOR VISCOSITY ARE 'linear', " + \

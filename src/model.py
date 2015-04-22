@@ -196,29 +196,29 @@ class Model(object):
     self.ff     = ff
     self.cf     = cf
     self.ff_acc = ff_acc
-    self.mask   = True
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
 
-    shf_cells = SubsetIterator(self.cf, 1)
-    dofmap    = self.Q.dofmap()
-    
-    # Dofs in domain
-    dofs = sum((dofmap.cell_dofs(cell.index()).tolist()
-               for cell in shf_cells), [])
-    # Get unique dofs in local numbering that the process sees. 
-    # Some might not be owned
-    dofs = set(dofs)
-    
-    # Where in global vector are dofs owned by the process
-    my_first, my_last = dofmap.ownership_range()
-    
-    # Keep only owned ones, ie those whose global index is in ownership range
-    shf_dofs = filter(lambda dof: my_first <= \
-                                  dofmap.local_to_global_index(dof) \
-                                  < my_last, \
-                      dofs)
-    self.shf_dofs = shf_dofs
+    # FIXME: this doesn't work with adjoint self.lam
+    #shf_cells = SubsetIterator(self.cf, 1)
+    #dofmap    = self.Q.dofmap()
+    #
+    ## Dofs in domain
+    #dofs = sum((dofmap.cell_dofs(cell.index()).tolist()
+    #           for cell in shf_cells), [])
+    ## Get unique dofs in local numbering that the process sees. 
+    ## Some might not be owned
+    #dofs = set(dofs)
+    #
+    ## Where in global vector are dofs owned by the process
+    #my_first, my_last = dofmap.ownership_range()
+    #
+    ## Keep only owned ones, ie those whose global index is in ownership range
+    #shf_dofs = filter(lambda dof: my_first <= \
+    #                              dofmap.local_to_global_index(dof) \
+    #                              < my_last, \
+    #                  dofs)
+    #self.shf_dofs = shf_dofs
 
   def calculate_boundaries(self, mask=None, adot=None):
     """
@@ -226,15 +226,11 @@ class Model(object):
     """
     # default to all grounded ice :
     if mask == None:
-      self.mask = Expression('0.0', element=self.Q.ufl_element())
-    else:
-      self.mask = mask
+      mask = Expression('0.0', element=self.Q.ufl_element())
     
     # default to all positive accumulation :
     if adot == None:
-      self.adot_ex = Expression('1.0', element=self.Q.ufl_element())
-    else:
-      self.adot_ex = adot
+      adot = Expression('1.0', element=self.Q.ufl_element())
     
     s = "::: calculating boundaries :::"
     print_text(s, self.color)
@@ -270,8 +266,8 @@ class Model(object):
       x_m     = f.midpoint().x()
       y_m     = f.midpoint().y()
       z_m     = f.midpoint().z()
-      mask_xy = self.mask(x_m, y_m, z_m)
-      adot_xy = self.adot_ex(x_m, y_m, z_m)
+      mask_xy = mask(x_m, y_m, z_m)
+      adot_xy = adot(x_m, y_m, z_m)
       
       if   n.z() >=  tol and f.exterior():
         if adot_xy > 0:
@@ -288,18 +284,18 @@ class Model(object):
           self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff[f] = 4
-        else:
-          self.ff[f] = 7
-        #self.ff[f] = 4
+        #if mask_xy > 0:
+        #  self.ff[f] = 4
+        #else:
+        #  self.ff[f] = 7
+        self.ff[f] = 4
     
     for f in facets(self.flat_mesh):
       n       = f.normal()
       x_m     = f.midpoint().x()
       y_m     = f.midpoint().y()
       z_m     = f.midpoint().z()
-      mask_xy = self.mask(x_m, y_m, z_m)
+      mask_xy = mask(x_m, y_m, z_m)
     
       if   n.z() >=  tol and f.exterior():
         if mask_xy > 0:
@@ -314,11 +310,11 @@ class Model(object):
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 4
-        else:
-          self.ff_flat[f] = 7
-        #self.ff_flat[f] = 4
+        #if mask_xy > 0:
+        #  self.ff_flat[f] = 4
+        #else:
+        #  self.ff_flat[f] = 7
+        self.ff_flat[f] = 4
     
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, self.color)
@@ -326,7 +322,7 @@ class Model(object):
       x_m     = c.midpoint().x()
       y_m     = c.midpoint().y()
       z_m     = c.midpoint().z()
-      mask_xy = self.mask(x_m, y_m, z_m)
+      mask_xy = mask(x_m, y_m, z_m)
 
       if mask_xy > 0:
         self.cf[c] = 1
@@ -513,7 +509,7 @@ class Model(object):
   def init_u_lat(self, u_lat):
     """
     """
-    s = "::: initializing u lateral boundary condtion :::"
+    s = "::: initializing u lateral boundary condition :::"
     print_text(s, self.color)
     self.assign_variable(self.u_lat, u_lat)
     print_min_max(self.u_lat, 'u_lat')
@@ -521,7 +517,7 @@ class Model(object):
   def init_v_lat(self, v_lat):
     """
     """
-    s = "::: initializing v lateral boundary condtion :::"
+    s = "::: initializing v lateral boundary condition :::"
     print_text(s, self.color)
     self.assign_variable(self.v_lat, v_lat)
     print_min_max(self.v_lat, 'v_lat')
@@ -529,10 +525,20 @@ class Model(object):
   def init_w_lat(self, w_lat):
     """
     """
-    s = "::: initializing w lateral boundary condtion :::"
+    s = "::: initializing w lateral boundary condition :::"
     print_text(s, self.color)
     self.assign_variable(self.w_lat, w_lat)
     print_min_max(self.w_lat, 'w_lat')
+  
+  def init_mask(self, mask):
+    """
+    """
+    s = "::: initializing shelf mask :::"
+    print_text(s, self.color)
+    self.assign_variable(self.mask, mask)
+    print_min_max(self.mask, 'mask')
+    self.shf_dofs = np.where(self.mask.vector().array() == 1.0)[0]
+    self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
 
   def set_parameters(self, params):
     """
@@ -588,7 +594,6 @@ class Model(object):
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < 1e-3] = 1e-3
-    #self.assign_variable(self.beta, beta_0_v)
     self.betaSIA = Function(Q)
     self.assign_variable(self.betaSIA, beta_0_v)
     print_min_max(self.betaSIA, 'betaSIA')
@@ -890,6 +895,20 @@ class Model(object):
     return the strain-rate tensor of <U>.
     """
     return 0.5 * (grad(U) + grad(U).T)
+
+  def BP_strain_rate_tensor(self,U):
+    """
+    return the strain-rate tensor of <U>.
+    """
+    u,v,w = U
+    epi   = 0.5 * (grad(U) + grad(U).T)
+    epi02 = 0.5*u.dx(2)
+    epi12 = 0.5*v.dx(2)
+    epi22 = -u.dx(0) - v.dx(1)  # incompressibility
+    epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02],
+                        [epi[1,0],  epi[1,1],  epi12],
+                        [epi02,     epi12,     epi22]])
+    return epsdot
   
   def calc_thickness(self):
     """
@@ -981,9 +1000,8 @@ class Model(object):
     v   = TrialFunction(Q)
     # integral is zero on bed (ff = 3,5) 
     bcs = []
-    bcs.append(DirichletBC(Q, 0.0, ff, 3))
-    if self.mask != None:
-      bcs.append(DirichletBC(Q, 0.0, ff, 5))
+    bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
+    bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
     a      = v.dx(2) * phi * dx
     L      = u * phi * dx
     v      = Function(Q)
@@ -1362,10 +1380,14 @@ class Model(object):
       self.b_shf = b
       self.b_gnd = b
       print_min_max(self.b_shf, 'b')
+      #self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      #self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      #self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
+      #self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
       self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1)*0.5*self.b_shf*(epsdot+eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = (2*n)/(n+1)*0.5*self.b_gnd*(epsdot+eps_reg)**((n+1)/(2*n))
+      self.Vd_shf  = n/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
+      self.Vd_gnd  = n/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
     
     elif mode == 'linear':
       s     = "    - using linear viscosity formulation -"
@@ -1383,10 +1405,14 @@ class Model(object):
       ep_yz     = epi[1,2]
       epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
+      #self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      #self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      #self.Vd_shf  = self.eta_shf * self.epsdot
+      #self.Vd_gnd  = self.eta_gnd * self.epsdot
       self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1) * self.eta_shf * self.epsdot
-      self.Vd_gnd  = (2*n)/(n+1) * self.eta_gnd * self.epsdot
+      self.Vd_shf  = self.eta_shf * self.epsdot
+      self.Vd_gnd  = self.eta_gnd * self.epsdot
     
     elif mode == 'full':
       s     = "    - using full viscosity formulation -"
@@ -1403,13 +1429,17 @@ class Model(object):
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
       self.b_shf   = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
       self.b_gnd   = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      #self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      #self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      #self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
+      #self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
       self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1)*0.5*self.b_shf*(epsdot+eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = (2*n)/(n+1)*0.5*self.b_gnd*(epsdot+eps_reg)**((n+1)/(2*n))
+      self.Vd_shf  = n/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
+      self.Vd_gnd  = n/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
     
     else:
-      s = "    - ACCEPTABLE CHOICES FOR <mode> ARE 'linear', " + \
+      s = "    - ACCEPTABLE CHOICES FOR VISCOSITY ARE 'linear', " + \
           "'isothermal', OR 'full' -"
       print_text(s, 'red', 1)
       sys.exit(1)
@@ -1453,7 +1483,8 @@ class Model(object):
       self.dU  = TrialFunction(self.Q2)
       self.Phi = TestFunction(self.Q2)
       self.Lam = Function(self.Q2)
-      epi      = self.strain_rate_tensor(as_vector([self.U[0], self.U[1], 0.0]))
+      U_t      = as_vector([self.U[0], self.U[1], 0.0])
+      epi      = self.BP_strain_rate_tensor(U_t)
     print_text(s, self.color)
 
     ep_xx = epi[0,0]
@@ -1461,7 +1492,7 @@ class Model(object):
     ep_xy = epi[0,1]
     ep_xz = epi[0,2]
     ep_yz = epi[1,2]
-    
+
     # Second invariant of the strain rate tensor squared
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
@@ -1475,9 +1506,11 @@ class Model(object):
     # velocity :
     if config['use_dukowicz']:
       self.U   = Function(self.Q4)
+      self.Lam = Function(self.Q4)
       U        = as_vector([U[0], U[1], U[2]])
     else:
       self.U   = Function(self.MV)
+      self.Lam = Function(self.MV)
       U, P     = split(self.U)
     
     # Second invariant of the strain rate tensor squared
@@ -1537,6 +1570,9 @@ class Model(object):
     self.x             = SpatialCoordinate(self.mesh)
     self.h             = CellSize(self.mesh)
     self.N             = FacetNormal(self.mesh)
+
+    # shelf mask (1 if shelf) :
+    self.mask          = Function(self.Q)
     
     # Depth below sea level :
     class Depth(Expression):
@@ -1591,7 +1627,6 @@ class Model(object):
     self.T_surface     = Function(self.Q)
 
     # Adjoint model
-    self.lam           = Function(self.Q)
     self.adot          = Function(self.Q)
     self.adj_f         = 0.0              # objective function value at end
     self.misfit        = 0.0              # ||U - U_ob||

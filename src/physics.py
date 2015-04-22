@@ -145,6 +145,7 @@ class VelocityDukowiczStokes(Physics):
     A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
              + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
     if (not config['periodic_boundary_conditions']
+        and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
       A += Pb*dSde
 
@@ -283,6 +284,7 @@ class VelocityStokes(Physics):
          #- p_a * dot(N, Phi) * dSrf \
     
     if (not config['periodic_boundary_conditions']
+        and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
       R1 -= f_w * dot(N, Phi) * dSde \
     
@@ -348,35 +350,30 @@ class VelocityDukowiczBP(Physics):
     self.model    = model
     self.config   = config
 
-    mesh          = model.mesh
-    r             = config['velocity']['r']
-    V             = model.V
-    Q             = model.Q
-    Q2            = model.Q2
-    U             = model.U
-    n             = model.n
-    b_shf         = model.b_shf
-    b_gnd         = model.b_gnd
-    eta_shf       = model.eta_shf
-    eta_gnd       = model.eta_gnd
-    S             = model.S
-    B             = model.B
-    H             = S - B
-    x             = model.x
-    W             = model.W_r
-    R             = model.R
-    epsdot        = model.epsdot
-    eps_reg       = model.eps_reg
-    rhoi          = model.rhoi
-    rhow          = model.rhow
-    g             = model.g
-    beta          = model.beta
-    w             = model.w
-    N             = model.N
-    D             = model.D
+    mesh     = model.mesh
+    r        = config['velocity']['r']
+    V        = model.V
+    Q        = model.Q
+    Q2       = model.Q2
+    U        = model.U
+    Phi      = model.Phi
+    dU       = model.dU
+    S        = model.S
+    B        = model.B
+    H        = S - B
+    x        = model.x
+    W        = model.W_r
+    R        = model.R
+    rhoi     = model.rhoi
+    rhow     = model.rhow
+    g        = model.g
+    beta     = model.beta
+    w        = model.w
+    N        = model.N
+    D        = model.D
     
-    gradS         = model.gradS
-    gradB         = model.gradB
+    gradS    = model.gradS
+    gradB    = model.gradB
 
     dx       = model.dx
     dx_s     = dx(1)
@@ -390,9 +387,6 @@ class VelocityDukowiczBP(Physics):
     
     #===========================================================================
     # define variational problem :
-    Phi      = TestFunction(Q2)
-    dU       = TrialFunction(Q2)
-    
     du,  dv  = dU
     u,   v   = U
 
@@ -428,6 +422,7 @@ class VelocityDukowiczBP(Physics):
     # Variational principle
     A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd + Sl_shf*dFlt
     if (not config['periodic_boundary_conditions']
+        and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
       A += Pb*dSde #+ Db*ds(7)
 
@@ -589,11 +584,11 @@ class VelocityBP(Physics):
     f_w    = rhoi*g*(S - x[2]) + rhow*g*D               # lateral
     p_a    = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)        # surface pressure
     
-    Ne       = H + rhow/rhoi * D
-    p        = -0.383
-    q        = -0.349
-    Unorm    = sqrt(inner(U,U) + DOLFIN_EPS)
-    coef     = 1/(beta * Ne**(q/p))
+    #Ne       = H + rhow/rhoi * D
+    #P        = -0.383
+    #Q        = -0.349
+    #Unorm    = sqrt(inner(U,U) + DOLFIN_EPS)
+    #Coef     = 1/(beta * Ne**(q/p))
     
     # residual :
     R1 = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_s \
@@ -602,14 +597,13 @@ class VelocityBP(Physics):
          + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
          + rhoi * g * gradS[0] * phi * dx \
          + rhoi * g * gradS[1] * psi * dx \
-         + coef * abs(u + DOLFIN_EPS)**(1/p) * u/Unorm * phi * dGnd \
-         + coef * abs(v + DOLFIN_EPS)**(1/p) * v/Unorm * psi * dGnd \
-         #+ beta**2 * u * phi * dGnd \
-         #+ beta**2 * v * psi * dGnd \
-         #+ Constant(DOLFIN_EPS) * u * phi * dFlt \
-         #+ Constant(DOLFIN_EPS) * v * psi * dFlt \
+         + beta**2 * u * phi * dGnd \
+         + beta**2 * v * psi * dGnd \
+         + Constant(DOLFIN_EPS) * u * phi * dFlt \
+         + Constant(DOLFIN_EPS) * v * psi * dFlt \
     
     if (not config['periodic_boundary_conditions']
+        and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
       R1 -= f_w * (N[0]*phi + N[1]*psi) * dSde \
     
@@ -777,6 +771,7 @@ class VelocityBPFull(Physics):
          + Constant(1e-10) * dot(U, Phi) * dFlt \
     
     if (not config['periodic_boundary_conditions']
+        and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
       R1 -= f_w * dot(N, Phi) * dSde \
     
@@ -1007,10 +1002,10 @@ class Enthalpy(Physics):
     # surface boundary condition : 
     self.bc_theta = []
     self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 2) )
+    self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 6) )
     
     # apply T_w conditions of portion of ice in contact with water :
     self.bc_theta.append( DirichletBC(Q, theta_float,   model.ff, 5) )
-    self.bc_theta.append( DirichletBC(Q, theta_surface, model.ff, 6) )
     
     # apply lateral boundaries if desired : 
     if config['enthalpy']['lateral_boundaries'] == 'surface':
@@ -1633,7 +1628,6 @@ class AdjointDukowiczVelocity(Physics):
     self.model  = model
     self.config = config
 
-    Q        = model.Q
     u_ob     = model.u_ob
     v_ob     = model.v_ob
     adot     = model.adot
@@ -1670,8 +1664,8 @@ class AdjointDukowiczVelocity(Physics):
 
     # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'log':
-      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                         / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      self.I = ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                   / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
       s   = "    - using log objective function -"
     
     elif config['adjoint']['objective_function'] == 'kinematic':
@@ -1687,8 +1681,8 @@ class AdjointDukowiczVelocity(Physics):
       g1     = config['adjoint']['gamma1']
       g2     = config['adjoint']['gamma2']
       self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
-               + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                                / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+               + g2 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                          / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
       s   = "    - using log/linear hybrid objective -"
 
     else:
@@ -1701,29 +1695,29 @@ class AdjointDukowiczVelocity(Physics):
     
     # form regularization term 'R' :
     for a,c in zip(alpha,control):
-      s   = "    - regularization parameter alpha = %.2E -" % a
-      print_text(s, self.color())
+      if isinstance(a, int) or isinstance(a, float):
+        s   = "    - regularization parameter alpha = %.2E -" % a
+        print_text(s, self.color())
       if a == 0:
         s = "    - using no regularization -"
       else:
         if config['adjoint']['regularization_type'] == 'TV':
           s   = "    - using total variation regularization -"
-          R = a * 0.5 * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                              + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+          R = a * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
         elif config['adjoint']['regularization_type'] == 'Tikhonov':
           s   = "    - using Tikhonov regularization -"
-          R = a * 0.5 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+          R = a * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
         else:
           s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to Tikhonov regularization -"
-          R = a * 0.5 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                          + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+          R = a * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
         self.I += R
       print_text(s, self.color())
 
     Phi        = TestFunction(Q_adj)
-    model.Lam  = Function(Q_adj)
     L          = TrialFunction(Q_adj)
     
     # Derivative, with trial function L.  These are the momentum equations 
@@ -1749,12 +1743,18 @@ class AdjointDukowiczVelocity(Physics):
     # Differentiation wrt to the control variable in the direction of a test 
     # function yields a vector.  Assembly of this vector yields dJ/dbeta
     self.J = []
-    rho    = TestFunction(Q)
+    rho    = TestFunction(model.Q)
     for c in control:
       self.J.append(derivative(I_gradient, c, rho))
     
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)
+    
+    # FIXME: this is a hack.
+    self.bcs = []
+    U_sp     = model.U.function_space()
+    self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
     
   def solve(self):
     """
@@ -1769,6 +1769,8 @@ class AdjointDukowiczVelocity(Physics):
       
     aw = assemble(self.aw)
     Lw = assemble(self.Lw)
+    for bc in self.bcs:
+      bc.apply(aw, Lw)
 
     if config['model_order'] == 'stokes':
       a_solver = LUSolver('mumps')
@@ -1776,13 +1778,29 @@ class AdjointDukowiczVelocity(Physics):
       a_solver = KrylovSolver('cg', 'hypre_amg')
 
     a_solver.solve(aw, model.Lam.vector(), Lw)
-    
-    model.Lam.vector()[model.shf_dofs] = 0.0
+
+    lam_nx, lam_ny = model.Lam.split(True)
+    lam_ix, lam_iy = model.Lam.split()
+
+    if config['adjoint']['surface_integral'] == 'shelves':
+      lam_nx.vector()[model.gnd_dofs] = 0.0
+      lam_ny.vector()[model.gnd_dofs] = 0.0
+    elif config['adjoint']['surface_integral'] == 'grounded':
+      lam_nx.vector()[model.shf_dofs] = 0.0
+      lam_ny.vector()[model.shf_dofs] = 0.0
+
+    # function assigner translates between mixed space and P1 space :
+    U_sp = model.U.function_space()
+    assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
+    assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
+
+    assx.assign(lam_ix, lam_nx)
+    assy.assign(lam_iy, lam_ny)
     
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",
     #                           "preconditioner" : "hypre_amg"})
-    print_min_max(model.Lam, 'Lam')
+    print_min_max(norm(model.Lam), '||Lam||')
 
 
 class AdjointVelocity(Physics):
@@ -1912,6 +1930,12 @@ class AdjointVelocity(Physics):
     
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)
+    
+    # FIXME: this is a hack.
+    self.bcs = []
+    U_sp     = model.U.function_space()
+    self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
 
   def solve(self):
     """
@@ -1926,13 +1950,33 @@ class AdjointVelocity(Physics):
       
     aw = assemble(self.aw)
     Lw = assemble(self.Lw)
-
+    for bc in self.bcs:
+      bc.apply(aw, Lw)
+    
     #if config['model_order'] == 'stokes':
     #  a_solver = LUSolver('mumps')
     #else:
     a_solver = KrylovSolver('cg', 'hypre_amg')
 
     a_solver.solve(aw, model.Lam.vector(), Lw)
+
+    lam_nx, lam_ny = model.Lam.split(True)
+    lam_ix, lam_iy = model.Lam.split()
+
+    if config['adjoint']['surface_integral'] == 'shelves':
+      lam_nx.vector()[model.gnd_dofs] = 0.0
+      lam_ny.vector()[model.gnd_dofs] = 0.0
+    elif config['adjoint']['surface_integral'] == 'grounded':
+      lam_nx.vector()[model.shf_dofs] = 0.0
+      lam_ny.vector()[model.shf_dofs] = 0.0
+
+    # function assigner translates between mixed space and P1 space :
+    U_sp = model.U.function_space()
+    assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
+    assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
+
+    assx.assign(lam_ix, lam_nx)
+    assy.assign(lam_iy, lam_ny)
     
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",

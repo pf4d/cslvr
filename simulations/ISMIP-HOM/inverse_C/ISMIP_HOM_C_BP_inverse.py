@@ -22,14 +22,15 @@ parameters['form_compiler']['quadrature_degree']    = 2
 config = default_config()
 config['log_history']                     = False
 config['output_path']                     = './results/initial/'
-config['use_dukowicz']                    = True
+config['model_order']                     = 'BP'
+config['use_dukowicz']                    = False
 config['periodic_boundary_conditions']    = True
 config['use_pressure_boundary']           = True
 config['velocity']['newton_params']       = nparams
 config['velocity']['vert_solve_method']   = 'mumps'
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
+mesh  = BoxMesh(0, 0, 0, L, L, 1, 25, 25, 10)
 
 model = Model(config)
 model.set_mesh(mesh)
@@ -51,6 +52,11 @@ model.init_mask(0.0)
 
 F = SteadySolver(model, config)
 F.solve()
+
+model.save_pvd(model.U, 'U_test')
+
+import sys
+sys.exit(0)
 
 model.init_viscosity_mode('linear')
 model.save_pvd(model.beta, 'beta_true')
@@ -96,30 +102,30 @@ for a in alpha_v:
 
 
 
-if model.MPI_rank == 0:
-  from pylab import *
-  
-  fig = figure()
-  ax  = fig.add_subplot(111)
-  ax.plot(alpha_v, f_v, 'ro-', lw=2.0)
-  ax.grid()
-  ax.set_xscale('log')
-  ax.set_yscale('log')
-  ax.set_xlabel(r'$\alpha$')
-  ax.set_ylabel(r'$\mathcal{J(\alpha)}$')
-  tight_layout()
-  show()
-  
-  fig = figure()
-  ax  = fig.add_subplot(111)
-  ax.plot(alpha_v, D_v, 'ro-', lw=2.0)
-  ax.grid()
-  ax.set_xscale('log')
-  ax.set_yscale('log')
-  ax.set_xlabel(r'$\alpha$')
-  ax.set_ylabel(r'$\mathcal{D(\alpha)}$')
-  tight_layout()
-  show()
+#if model.MPI_rank == 0:
+#  from pylab import *
+#  
+#  fig = figure()
+#  ax  = fig.add_subplot(111)
+#  ax.plot(alpha_v, f_v, 'ro-', lw=2.0)
+#  ax.grid()
+#  ax.set_xscale('log')
+#  ax.set_yscale('log')
+#  ax.set_xlabel(r'$\alpha$')
+#  ax.set_ylabel(r'$\mathcal{J(\alpha)}$')
+#  tight_layout()
+#  show()
+#  
+#  fig = figure()
+#  ax  = fig.add_subplot(111)
+#  ax.plot(alpha_v, D_v, 'ro-', lw=2.0)
+#  ax.grid()
+#  ax.set_xscale('log')
+#  ax.set_yscale('log')
+#  ax.set_xlabel(r'$\alpha$')
+#  ax.set_ylabel(r'$\mathcal{D(\alpha)}$')
+#  tight_layout()
+#  show()
 
 
 

@@ -73,6 +73,8 @@ class VelocityDukowiczStokes(Physics):
     Q             = model.Q
     Q4            = model.Q4
     U             = model.U
+    dU            = model.dU
+    Phi           = model.Phi
     n             = model.n
     b_shf         = model.b_shf
     b_gnd         = model.b_gnd
@@ -108,9 +110,6 @@ class VelocityDukowiczStokes(Physics):
     #===========================================================================
     # define variational problem :
    
-    Phi   = TestFunction(Q4)
-    dU    = TrialFunction(Q4)
- 
     phi, psi, xsi, kappa = Phi
     du,  dv,  dw,  dP    = dU
     u,   v,   w,   P     = U
@@ -212,6 +211,8 @@ class VelocityStokes(Physics):
     V             = model.MV
     Q             = model.Q
     G             = model.U
+    dU            = model.dU
+    Tst           = model.Phi
     n             = model.n
     eta_shf       = model.eta_shf
     eta_gnd       = model.eta_gnd
@@ -246,16 +247,13 @@ class VelocityStokes(Physics):
     dx       = dx(1) + dx(0) # entire internal
     ds       = model.ds  
     dGnd     = ds(3)         # grounded bed
-    dFlt     = ds(5)         # floating bed
+    dShf     = ds(5)         # floating bed
     dSde     = ds(4)         # sides
-    dBed     = dGnd + dFlt   # bed
+    dBed     = dGnd + dShf   # bed
     dSrf     = ds(2) + ds(6)
     
     #===========================================================================
     # define variational problem :
-    dU  = TrialFunction(V)
-    Tst = TestFunction(V)
-    
     du,  dp = split(dU)
     U,   P  = split(G)
     Phi, xi = split(Tst)
@@ -263,18 +261,83 @@ class VelocityStokes(Physics):
     u,   v,   w   = U
     phi, psi, chi = Phi
     
-    k   = as_vector([0, 0, 1])
-    f_w = rhoi*g*(S - x[2]) + rhow*g*D
-    p_a = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)
+    #k     = as_vector([0, 0, 1])
+    #f_w   = rhoi*g*(S - x[2]) + rhow*g*D
+    #p_a   = p0 * (1 - g*x[2]/(ci*T0))**(ci*M/R)
+    #f     = rhoi*g*k
+    #I     = Identity(3)
+    #alpha = Constant(1.0/10)
+    #delta = Constant(100.0)
+    #u_n   = Constant(0.0)
 
-    epi = model.strain_rate_tensor(U)
-    I   = Identity(3)
+    #def epsilon(u):     return 0.5*(grad(u) + grad(u).T)
+    #def sigma(u,p,eta): return 2*eta*epsilon(u) - p*I
+    #def L(u,p,eta):     return -div(sigma(u,p,eta))
+    #
+    #epi   = epsilon(U)
+    #ep_xx = epi[0,0]
+    #ep_yy = epi[1,1]
+    #ep_zz = epi[2,2]
+    #ep_xy = epi[0,1]
+    #ep_xz = epi[0,2]
+    #ep_yz = epi[1,2]
+    #
+    #epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+    #                + ep_xy**2 + ep_xz**2 + ep_yz**2
+    #
+    #n = model.n
+    #eta_shf = model.b_shf * (epsdot + model.eps_reg)**((1-n)/(2*n))
+    #eta_gnd = model.b_gnd * (epsdot + model.eps_reg)**((1-n)/(2*n))
+    #
+    #epi   = epsilon(Phi)
+    #ep_xx = epi[0,0]
+    #ep_yy = epi[1,1]
+    #ep_zz = epi[2,2]
+    #ep_xy = epi[0,1]
+    #ep_xz = epi[0,2]
+    #ep_yz = epi[1,2]
+    #
+    #phidot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+    #                + ep_xy**2 + ep_xz**2 + ep_yz**2
+    #
+    #eta_s_a = model.b_shf * (phidot + model.eps_reg)**((1-n)/(2*n))
+    #eta_g_a = model.b_gnd * (phidot + model.eps_reg)**((1-n)/(2*n))
 
-    sigma_shf = 2*eta_shf*epi - P*I
-    sigma_gnd = 2*eta_gnd*epi - P*I
+    #B_o = + inner(sigma(U,P,eta_shf), grad(Phi)) * dx_s \
+    #      + inner(sigma(U,P,eta_gnd), grad(Phi)) * dx_g \
+    #      - div(U) * xi * dx \
+    #      - alpha * h**2 * inner(L(U,P,eta_shf), L(Phi,xi,eta_s_a)) * dx_s \
+    #      - alpha * h**2 * inner(L(U,P,eta_shf), L(Phi,xi,eta_g_a)) * dx_g \
+    #
+    #B_g = - dot(Phi,N) * dot(N, dot(sigma(U,  P,  eta_shf), N)) * dShf \
+    #      - dot(Phi,N) * dot(N, dot(sigma(U,  P,  eta_gnd), N)) * dGnd \
+    #      - dot(U,  N) * dot(N, dot(sigma(Phi,xi, eta_s_a), N)) * dShf \
+    #      - dot(U,  N) * dot(N, dot(sigma(Phi,xi, eta_g_a), N)) * dGnd \
+    #      + delta/h * dot(U,N) * dot(Phi,N) * dBed \
+    #      + beta**2 * dot(U, Phi) * dBed \
+    #
+    #F   = + dot(f,Phi) * dx \
+    #      - alpha * h**2 * inner(f, L(Phi,xi,eta_s_a)) * dx_s \
+    #      - alpha * h**2 * inner(f, L(Phi,xi,eta_g_a)) * dx_g \
+    #      - u_n * dot(N, dot(sigma(Phi, xi, eta_s_a), N)) * dShf \
+    #      - u_n * dot(N, dot(sigma(Phi, xi, eta_g_a), N)) * dGnd \
+    #      + delta/h * u_n * dot(Phi,N) * dBed \
+    #
+    #if (not config['periodic_boundary_conditions']
+    #    and not config['velocity']['use_lat_bcs']
+    #    and config['use_pressure_boundary']):
+    #  F += f_w * dot(Phi, N) * dSde
+
+    #self.A = B_o + B_g - F
 
     # gravity vector :
-    gv = as_vector([0, 0, g])
+    gv   = as_vector([0, 0, g])
+    f_w  = rhoi*g*(S - x[2]) + rhow*g*D
+    I    = Identity(3)
+
+    epi       = model.strain_rate_tensor(U)
+    sigma_shf = 2*eta_shf*epi - P*I
+    sigma_gnd = 2*eta_gnd*epi - P*I
     
     # conservation of momentum :
     R1 = + inner(sigma_shf, grad(Phi)) * dx_s \
@@ -290,7 +353,7 @@ class VelocityStokes(Physics):
     
     # conservation of mass :
     R2 = + div(U) * xi * dx \
-    #     - dot(U, N) * xi * dBed \
+         + dot(U, N) * xi * dBed \
     
     # total residual :
     self.A = R1 + R2

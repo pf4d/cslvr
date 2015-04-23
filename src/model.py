@@ -1477,6 +1477,7 @@ class Model(object):
 
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
+    ep_zz = epi[2,2]
     ep_xy = epi[0,1]
     ep_xz = epi[0,2]
     ep_yz = epi[1,2]
@@ -1484,6 +1485,9 @@ class Model(object):
     # Second invariant of the strain rate tensor squared
     self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
                   + ep_xy**2 + ep_xz**2 + ep_yz**2
+    # this is equivalent due to how BP_strain_rate_tensor function is designed :
+    #self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+    #                     + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
 
   def init_stokes_variables(self):
@@ -1492,12 +1496,16 @@ class Model(object):
     s = "    - initializing full-stokes variables -"
     print_text(s, self.color)
     # velocity :
-    if config['use_dukowicz']:
+    if self.config['use_dukowicz']:
       self.U   = Function(self.Q4)
+      self.dU  = TrialFunction(self.Q4)
+      self.Phi = TestFunction(self.Q4)
       self.Lam = Function(self.Q4)
-      U        = as_vector([U[0], U[1], U[2]])
+      U        = as_vector([self.U[0], self.U[1], self.U[2]])
     else:
       self.U   = Function(self.MV)
+      self.dU  = TrialFunction(self.MV)
+      self.Phi = TestFunction(self.MV)
       self.Lam = Function(self.MV)
       U, P     = split(self.U)
     
@@ -1505,12 +1513,13 @@ class Model(object):
     epi   = self.strain_rate_tensor(U)
     ep_xx = epi[0,0]
     ep_yy = epi[1,1]
+    ep_zz = epi[2,2]
     ep_xy = epi[0,1]
     ep_xz = epi[0,2]
     ep_yz = epi[1,2]
     
-    self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-                  + ep_xy**2 + ep_xz**2 + ep_yz**2
+    self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                         + ep_xy**2 + ep_xz**2 + ep_yz**2
     self.init_higher_order_variables()
 
   def init_higher_order_variables(self):

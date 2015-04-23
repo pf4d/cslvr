@@ -1842,8 +1842,12 @@ class AdjointDukowiczVelocity(Physics):
 
     a_solver.solve(aw, model.Lam.vector(), Lw)
 
-    lam_nx, lam_ny = model.Lam.split(True)
-    lam_ix, lam_iy = model.Lam.split()
+    if config['model_order'] == 'stokes':
+      lam_nx, lam_ny, lam_nz, lam_np = model.Lam.split(True)
+      lam_ix, lam_iy, lam_iz, lam_ip = model.Lam.split()
+    elif config['model_order'] == 'BP':
+      lam_nx, lam_ny = model.Lam.split(True)
+      lam_ix, lam_iy = model.Lam.split()
 
     if config['adjoint']['surface_integral'] == 'shelves':
       lam_nx.vector()[model.gnd_dofs] = 0.0

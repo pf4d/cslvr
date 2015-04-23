@@ -483,7 +483,7 @@ class VelocityDukowiczBP(Physics):
     Db       = u**2*N[0] + v**2*N[1]
 
     # Variational principle
-    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd + Sl_shf*dFlt
+    A        = Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx + Sl_gnd*dGnd
     if (not config['periodic_boundary_conditions']
         and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
@@ -516,8 +516,8 @@ class VelocityDukowiczBP(Physics):
       
     # add boundary condition for the divide :
     # FIXME: this is a hack
-    self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
+    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
+    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
 
     # keep the residual for adjoint solves :
     model.A       = A
@@ -551,14 +551,14 @@ class VelocityDukowiczBP(Physics):
     s  = "::: solving Dukowicz BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    aw       = assemble(self.aw)
-    Lw       = assemble(self.Lw)
-    if self.bc_w != None:
-      self.bc_w.apply(aw, Lw)
-    w_solver = LUSolver(sm)
-    w_solver.solve(aw, model.w.vector(), Lw)
-    #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
-    #      solver_parameters = {"linear_solver" : sm})#,
+    #aw       = assemble(self.aw)
+    #Lw       = assemble(self.Lw)
+    #if self.bc_w != None:
+    #  self.bc_w.apply(aw, Lw)
+    #w_solver = LUSolver(sm)
+    #w_solver.solve(aw, model.w.vector(), Lw)
+    solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
+          solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True})
     print_min_max(model.w, 'w')
           
@@ -1830,43 +1830,43 @@ class AdjointDukowiczVelocity(Physics):
     s    = "::: solving Dukowicz adjoint velocity :::"
     print_text(s, self.color())
       
-    aw = assemble(self.aw)
-    Lw = assemble(self.Lw)
-    for bc in self.bcs:
-      bc.apply(aw, Lw)
+    #aw = assemble(self.aw)
+    #Lw = assemble(self.Lw)
+    #for bc in self.bcs:
+    #  bc.apply(aw, Lw)
 
-    if config['model_order'] == 'stokes':
-      a_solver = LUSolver('mumps')
-    else:
-      a_solver = KrylovSolver('cg', 'hypre_amg')
+    #if config['model_order'] == 'stokes':
+    #  a_solver = LUSolver('mumps')
+    #else:
+    #  a_solver = KrylovSolver('cg', 'hypre_amg')
 
-    a_solver.solve(aw, model.Lam.vector(), Lw)
+    #a_solver.solve(aw, model.Lam.vector(), Lw)
 
-    if config['model_order'] == 'stokes':
-      lam_nx, lam_ny, lam_nz, lam_np = model.Lam.split(True)
-      lam_ix, lam_iy, lam_iz, lam_ip = model.Lam.split()
-    elif config['model_order'] == 'BP':
-      lam_nx, lam_ny = model.Lam.split(True)
-      lam_ix, lam_iy = model.Lam.split()
+    #if config['model_order'] == 'stokes':
+    #  lam_nx, lam_ny, lam_nz, lam_np = model.Lam.split(True)
+    #  lam_ix, lam_iy, lam_iz, lam_ip = model.Lam.split()
+    #elif config['model_order'] == 'BP':
+    #  lam_nx, lam_ny = model.Lam.split(True)
+    #  lam_ix, lam_iy = model.Lam.split()
 
-    if config['adjoint']['surface_integral'] == 'shelves':
-      lam_nx.vector()[model.gnd_dofs] = 0.0
-      lam_ny.vector()[model.gnd_dofs] = 0.0
-    elif config['adjoint']['surface_integral'] == 'grounded':
-      lam_nx.vector()[model.shf_dofs] = 0.0
-      lam_ny.vector()[model.shf_dofs] = 0.0
+    #if config['adjoint']['surface_integral'] == 'shelves':
+    #  lam_nx.vector()[model.gnd_dofs] = 0.0
+    #  lam_ny.vector()[model.gnd_dofs] = 0.0
+    #elif config['adjoint']['surface_integral'] == 'grounded':
+    #  lam_nx.vector()[model.shf_dofs] = 0.0
+    #  lam_ny.vector()[model.shf_dofs] = 0.0
 
-    # function assigner translates between mixed space and P1 space :
-    U_sp = model.U.function_space()
-    assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
-    assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
+    ## function assigner translates between mixed space and P1 space :
+    #U_sp = model.U.function_space()
+    #assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
+    #assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
 
-    assx.assign(lam_ix, lam_nx)
-    assy.assign(lam_iy, lam_ny)
+    #assx.assign(lam_ix, lam_nx)
+    #assy.assign(lam_iy, lam_ny)
     
-    #solve(self.aw == self.Lw, model.Lam,
-    #      solver_parameters = {"linear_solver"  : "cg",
-    #                           "preconditioner" : "hypre_amg"})
+    solve(self.aw == self.Lw, model.Lam,
+          solver_parameters = {"linear_solver"  : "cg",
+                               "preconditioner" : "hypre_amg"})
     print_min_max(norm(model.Lam), '||Lam||')
 
 

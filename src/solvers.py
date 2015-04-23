@@ -827,8 +827,8 @@ class AdjointSolver(Solver):
       print text
     
     # minimize function I with initial guess beta_0 and gradient function J :
-    mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds, m=50,
-                               maxiter=maxfun-2, iprint=iprint, factr=1e-8)
+    mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
+                               maxiter=maxfun-2, iprint=iprint)
     model.f_adj = f  # save the function value for later use 
 
     n = len(mopt)/len(control)

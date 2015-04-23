@@ -1390,17 +1390,23 @@ class Model(object):
       print_text(s, self.color)
       n         = self.n
       eps_reg   = self.eps_reg
-      u_cpy     = self.u.copy(True)
-      v_cpy     = self.v.copy(True)
-      w_cpy     = self.w.copy(True)
-      epi       = self.strain_rate_tensor(as_vector([u_cpy, v_cpy, w_cpy]))
-      ep_xx     = epi[0,0]
-      ep_yy     = epi[1,1]
-      ep_xy     = epi[0,1]
-      ep_xz     = epi[0,2]
-      ep_yz     = epi[1,2]
-      epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-                  + ep_xy**2 + ep_xz**2 + ep_yz**2
+      u         = self.u.copy(True)
+      v         = self.v.copy(True)
+      w         = self.w.copy(True)
+      #u_cpy     = self.u.copy(True)
+      #v_cpy     = self.v.copy(True)
+      #w_cpy     = self.w.copy(True)
+      #epi       = self.strain_rate_tensor(as_vector([u_cpy, v_cpy, w_cpy]))
+      #ep_xx     = epi[0,0]
+      #ep_yy     = epi[1,1]
+      #ep_xy     = epi[0,1]
+      #ep_xz     = epi[0,2]
+      #ep_yz     = epi[1,2]
+      #epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
+      #            + ep_xy**2 + ep_xz**2 + ep_yz**2
+      epsdot = 0.5 * (0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
+                             + (u.dx(1) + v.dx(0))**2) \
+             + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
       self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       self.Vd_shf  = self.eta_shf * self.epsdot
@@ -1482,9 +1488,14 @@ class Model(object):
     ep_xz = epi[0,2]
     ep_yz = epi[1,2]
 
+    u,v = self.U
+
     # Second invariant of the strain rate tensor squared
-    self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-                  + ep_xy**2 + ep_xz**2 + ep_yz**2
+    #self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
+    #              + ep_xy**2 + ep_xz**2 + ep_yz**2
+    self.epsdot = 0.5 * (0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
+                                + (u.dx(1) + v.dx(0))**2) \
+                  + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
     # this is equivalent due to how BP_strain_rate_tensor function is designed :
     #self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
     #                     + ep_xy**2 + ep_xz**2 + ep_yz**2
@@ -1520,6 +1531,10 @@ class Model(object):
     
     self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
                          + ep_xy**2 + ep_xz**2 + ep_yz**2
+    #self.epsdot = + 0.5 * (+ 0.5*(   (u.dx(1) + v.dx(0))**2  \
+    #                               + (u.dx(2) + w.dx(0))**2  \
+    #                               + (v.dx(2) + w.dx(1))**2) \
+    #                       + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2) 
     self.init_higher_order_variables()
 
   def init_higher_order_variables(self):

@@ -1699,7 +1699,7 @@ class AdjointDukowiczVelocity(Physics):
     A        = model.A
     U        = model.U
     N        = model.N
-    
+
     dx       = model.dx
     dx_s     = dx(1)
     dx_g     = dx(0)
@@ -1737,7 +1737,7 @@ class AdjointDukowiczVelocity(Physics):
       s   = "    - using kinematic objective function -"
 
     elif config['adjoint']['objective_function'] == 'linear':
-      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.I = Constant(0.5) * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
       s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
@@ -1763,6 +1763,8 @@ class AdjointDukowiczVelocity(Physics):
         print_text(s, self.color())
       if a == 0:
         s = "    - using no regularization -"
+        R = Constant(0.0) * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
       else:
         if config['adjoint']['regularization_type'] == 'TV':
           s   = "    - using total variation regularization -"
@@ -1770,18 +1772,20 @@ class AdjointDukowiczVelocity(Physics):
                         + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
         elif config['adjoint']['regularization_type'] == 'Tikhonov':
           s   = "    - using Tikhonov regularization -"
-          R = a * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+          R = Constant(0.5*a) * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                     + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
         else:
           s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to Tikhonov regularization -"
           R = a * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
                     + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
-        self.I += R
+      self.I += R
       print_text(s, self.color())
 
-    Phi        = TestFunction(Q_adj)
-    L          = TrialFunction(Q_adj)
+    #Phi        = TestFunction(Q_adj)
+    #L          = TrialFunction(Q_adj)
+    Phi = model.Phi
+    L   = model.dU
     
     # Derivative, with trial function L.  These are the momentum equations 
     # in weak form multiplied by L and integrated by parts
@@ -1814,16 +1818,16 @@ class AdjointDukowiczVelocity(Physics):
     self.Lw = rhs(self.dI)
     
     # FIXME: this is a hack.
-    self.bcs = []
-    U_sp     = model.U.function_space()
-    self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
+    #self.bcs = []
+    #U_sp     = model.U.function_space()
+    #self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
+    #self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
     
   def solve(self):
     """
     Solves the bilinear residual created by differentiation of the 
     variational principle in combination with an objective function.
-    """
+   """
     model  = self.model
     config = self.config
 
@@ -1867,7 +1871,7 @@ class AdjointDukowiczVelocity(Physics):
     solve(self.aw == self.Lw, model.Lam,
           solver_parameters = {"linear_solver"  : "cg",
                                "preconditioner" : "hypre_amg"})
-    print_min_max(norm(model.Lam), '||Lam||')
+    print_min_max(model.Lam, 'Lam')
 
 
 class AdjointVelocity(Physics):
@@ -2048,7 +2052,8 @@ class AdjointVelocity(Physics):
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",
     #                           "preconditioner" : "hypre_amg"})
-    print_min_max(norm(model.Lam), '||Lam||')
+    #print_min_max(norm(model.Lam), '||Lam||')
+    print_min_max(model.Lam, 'Lam')
     
 
 class SurfaceClimate(Physics):

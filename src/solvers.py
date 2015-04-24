@@ -154,8 +154,9 @@ class SteadySolver(Solver):
     while inner_error > inner_tol and counter < max_iter:
      
       # reset the velocity for Newton solve to converge : 
-      model.assign_variable(model.U, DOLFIN_EPS)
-      model.assign_variable(model.w, DOLFIN_EPS)
+      if counter > 0:
+        model.assign_variable(model.U, DOLFIN_EPS)
+        #model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
@@ -782,7 +783,7 @@ class AdjointSolver(Solver):
       self.Lam_file << model.Lam
  
       # calculate and print misfit : 
-      model.calc_misfit(config['adjoint']['surface_integral'])
+      #model.calc_misfit(config['adjoint']['surface_integral'])
 
       Js = []
       for JJ in self.adjoint_instance.J:

@@ -21,7 +21,7 @@ class Model(object):
     """
     Create and instance of the model.
     """
-    PETScOptions.set("mat_mumps_icntl_14", 10000.0)
+    #PETScOptions.set("mat_mumps_icntl_14", 10000.0)
     if config == None:
       self.config = default_config()
     else:
@@ -421,6 +421,8 @@ class Model(object):
     """
     s = "::: initializing rate factor over grounded ice :::"
     print_text(s, self.color)
+    if type(self.b_gnd) != Function:
+      self.b_gnd = Function(self.Q)
     self.assign_variable(self.b_gnd, b_gnd)
     print_min_max(self.b_gnd, 'b_gnd')
   
@@ -598,9 +600,10 @@ class Model(object):
     self.assign_variable(self.betaSIA, beta_0_v)
     print_min_max(self.betaSIA, 'betaSIA')
     
-    self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, 3)
-    bc_beta.apply(self.beta.vector())
+    self.assign_variable(self.beta, self.betaSIA)
+    #self.assign_variable(self.beta, DOLFIN_EPS)
+    #bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, 3)
+    #bc_beta.apply(self.beta.vector())
     print_min_max(self.beta, 'beta')
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
@@ -1298,9 +1301,16 @@ class Model(object):
       u.vector().set_local(var)
       u.vector().apply('insert')
     
-    elif isinstance(var, Expression) or isinstance(var, Constant) \
-         or isinstance(var, GenericVector) or isinstance(var, Function):
+    elif isinstance(var, Expression) or isinstance(var, Constant):
       u.interpolate(var)
+
+    elif isinstance(var, GenericVector):
+      u.vector().set_local(var.array())
+      u.vector().apply('insert')
+   
+    elif isinstance(var, Function):
+      u.vector().set_local(var.vector().array())
+      u.vector().apply('insert')
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1390,9 +1400,13 @@ class Model(object):
       print_text(s, self.color)
       n         = self.n
       eps_reg   = self.eps_reg
-      u         = self.u.copy(True)
-      v         = self.v.copy(True)
-      w         = self.w.copy(True)
+      u         = Function(self.Q)
+      v         = Function(self.Q)
+      w         = Function(self.Q)
+      self.assign_variable(u, self.u)
+      self.assign_variable(v, self.v)
+      self.assign_variable(w, self.w)
+      #u,v      = self.U
       #u_cpy     = self.u.copy(True)
       #v_cpy     = self.v.copy(True)
       #w_cpy     = self.w.copy(True)
@@ -1404,11 +1418,20 @@ class Model(object):
       #ep_yz     = epi[1,2]
       #epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
       #            + ep_xy**2 + ep_xz**2 + ep_yz**2
-      epsdot = 0.5 * (0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
-                             + (u.dx(1) + v.dx(0))**2) \
-             + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-      self.eta_shf = self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      T       = self.T
+      W       = self.W
+      R       = self.R
+      E_shf   = self.E_shf
+      E_gnd   = self.E_gnd
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      self.b_shf   = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      self.b_gnd   = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      epsdot       = 0.5 * (0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
+                                   + (u.dx(1) + v.dx(0))**2) \
+                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
+      self.eta_shf = self.b_shf * epsdot**((1-n)/(2*n))
+      self.eta_gnd = self.b_gnd * epsdot**((1-n)/(2*n))
       self.Vd_shf  = self.eta_shf * self.epsdot
       self.Vd_gnd  = self.eta_gnd * self.epsdot
     

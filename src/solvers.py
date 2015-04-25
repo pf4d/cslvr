@@ -153,10 +153,9 @@ class SteadySolver(Solver):
     # difference is less than tolerance
     while inner_error > inner_tol and counter < max_iter:
      
-      # reset the velocity for Newton solve to converge : 
-      if counter > 0:
-        model.assign_variable(model.U, DOLFIN_EPS)
-        #model.assign_variable(model.w, DOLFIN_EPS)
+      # need zero initial guess for Newton solve to converge : 
+      model.assign_variable(model.U, DOLFIN_EPS)
+      #model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
@@ -621,15 +620,6 @@ class AdjointSolver(Solver):
     self.beta_file = File(config['output_path'] + 'beta_a.pvd')
     self.Lam_file  = File(config['output_path'] + 'Lam_a.pvd')
   
-  def set_velocity(self, u, v, w):
-    """
-    set the velocity.
-    """
-    model = self.model
-    model.assign_variable(model.u, u)
-    model.assign_variable(model.v, v)
-    model.assign_variable(model.w, w)
-
   def set_target_velocity(self, u=None, v=None, U=None):
     """ 
     Set target velocity.
@@ -754,6 +744,8 @@ class AdjointSolver(Solver):
 
       Solve forward model with given control, calculate objective function
       """
+      s = '::: calculating objective function value :::'
+      print_text(s, self.color())
       n = len(c_array)/len(control)
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
@@ -762,7 +754,13 @@ class AdjointSolver(Solver):
       s = '::: saving friction variable %sbeta_a.pvd file :::'
       print_text(s % config['output_path'], self.color())
       self.beta_file << model.beta
+      if config['adjoint']['objective_function'] == 'log_lin_hybrid':
+        I1 = assemble(self.adjoint_instance.I1)
+        I2 = assemble(self.adjoint_instance.I2)
+        print_min_max(I1, 'I1')
+        print_min_max(I2, 'I2')
       I = assemble(self.adjoint_instance.I)
+      print_min_max(I, 'I')
       return I
  
     def J(c_array, *args):

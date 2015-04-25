@@ -551,15 +551,14 @@ class VelocityDukowiczBP(Physics):
     s  = "::: solving Dukowicz BP vertical velocity :::"
     print_text(s, self.color())
     sm = config['velocity']['vert_solve_method']
-    #aw       = assemble(self.aw)
-    #Lw       = assemble(self.Lw)
-    #if self.bc_w != None:
-    #  self.bc_w.apply(aw, Lw)
-    #w_solver = LUSolver(sm)
-    #w_solver.solve(aw, model.w.vector(), Lw)
-    solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
-          solver_parameters = {"linear_solver" : sm})#,
-    #                           "symmetric" : True})
+    aw       = assemble(self.aw)
+    Lw       = assemble(self.Lw)
+    if self.bc_w != None:
+      self.bc_w.apply(aw, Lw)
+    w_solver = LUSolver(sm)
+    w_solver.solve(aw, model.w.vector(), Lw)
+    #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
+    #      solver_parameters = {"linear_solver" : sm})
     print_min_max(model.w, 'w')
           
     # solve for pressure :
@@ -980,8 +979,8 @@ class Enthalpy(Physics):
     model.assign_variable(Kcoef, 1.0)
 
     # Define test and trial functions       
-    psi = TestFunction(Q)
-    dtheta  = TrialFunction(Q)
+    psi    = TestFunction(Q)
+    dtheta = TrialFunction(Q)
 
     # Pressure melting point
     s    = "::: calculating pressure-melting temperature :::"
@@ -1727,33 +1726,34 @@ class AdjointDukowiczVelocity(Physics):
 
     # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'log':
-      self.I = ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                   / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                         / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
       s   = "    - using log objective function -"
     
     elif config['adjoint']['objective_function'] == 'kinematic':
       self.I = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
-                      - (U[2] + adot))**2 * dSrf + R
+                      - (U[2] + adot))**2 * dSrf
       s   = "    - using kinematic objective function -"
 
     elif config['adjoint']['objective_function'] == 'linear':
-      self.I = Constant(0.5) * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
       s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
       g1     = config['adjoint']['gamma1']
       g2     = config['adjoint']['gamma2']
       self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
-               + g2 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                          / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+               + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                                / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
       s   = "    - using log/linear hybrid objective -"
 
     else:
       s = "    - WARNING: adjoint objection function may be 'linear', " + \
-          "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'linear' -"
+          "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'log' -"
       print_text(s, 'red', 1)
-      s   = "    - using linear objective function -"
-      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                         / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      s   = "    - using log objective function -"
     print_text(s, self.color())
     
     # form regularization term 'R' :
@@ -1763,33 +1763,26 @@ class AdjointDukowiczVelocity(Physics):
         print_text(s, self.color())
       if a == 0:
         s = "    - using no regularization -"
-        R = Constant(0.0) * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                  + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
       else:
         if config['adjoint']['regularization_type'] == 'TV':
           s   = "    - using total variation regularization -"
-          R = a * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+          R = a/2.0 * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                            + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
         elif config['adjoint']['regularization_type'] == 'Tikhonov':
           s   = "    - using Tikhonov regularization -"
-          R = Constant(0.5*a) * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+          R = a/2.0 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
         else:
           s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to Tikhonov regularization -"
-          R = a * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                    + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
-      self.I += R
+          R = a/2.0 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+        self.I += R
       print_text(s, self.color())
 
-    #Phi        = TestFunction(Q_adj)
-    #L          = TrialFunction(Q_adj)
-    Phi = model.Phi
-    L   = model.dU
-    
-    # Derivative, with trial function L.  These are the momentum equations 
-    # in weak form multiplied by L and integrated by parts
-    F_adjoint  = derivative(A, U, L)
+    # Derivative, with trial function dU.  These are the momentum equations 
+    # in weak form multiplied by dU and integrated by parts
+    F_adjoint  = derivative(A, U, model.dU)
     
     # Objective function constrained to obey the forward model
     I_adjoint  = self.I + F_adjoint
@@ -1797,7 +1790,7 @@ class AdjointDukowiczVelocity(Physics):
     # Gradient of this with respect to U in the direction of a test 
     # function yields a bilinear residual, which when solved yields the 
     # value of the adjoint variable
-    self.dI    = derivative(I_adjoint, U, Phi)
+    self.dI    = derivative(I_adjoint, U, model.Phi)
 
     # Instead of treating the Lagrange multiplier as a trial function, treat 
     # it as a function.
@@ -1834,17 +1827,17 @@ class AdjointDukowiczVelocity(Physics):
     s    = "::: solving Dukowicz adjoint velocity :::"
     print_text(s, self.color())
       
-    #aw = assemble(self.aw)
-    #Lw = assemble(self.Lw)
-    #for bc in self.bcs:
-    #  bc.apply(aw, Lw)
+    aw = assemble(self.aw)
+    Lw = assemble(self.Lw)
+    for bc in self.bcs:
+      bc.apply(aw, Lw)
 
-    #if config['model_order'] == 'stokes':
-    #  a_solver = LUSolver('mumps')
-    #else:
-    #  a_solver = KrylovSolver('cg', 'hypre_amg')
+    if config['model_order'] == 'stokes':
+      a_solver = LUSolver('mumps')
+    else:
+      a_solver = KrylovSolver('cg', 'hypre_amg')
 
-    #a_solver.solve(aw, model.Lam.vector(), Lw)
+    a_solver.solve(aw, model.Lam.vector(), Lw)
 
     #if config['model_order'] == 'stokes':
     #  lam_nx, lam_ny, lam_nz, lam_np = model.Lam.split(True)
@@ -1868,9 +1861,9 @@ class AdjointDukowiczVelocity(Physics):
     #assx.assign(lam_ix, lam_nx)
     #assy.assign(lam_iy, lam_ny)
     
-    solve(self.aw == self.Lw, model.Lam,
-          solver_parameters = {"linear_solver"  : "cg",
-                               "preconditioner" : "hypre_amg"})
+    #solve(self.aw == self.Lw, model.Lam,
+    #      solver_parameters = {"linear_solver"  : "cg",
+    #                           "preconditioner" : "hypre_amg"})
     print_min_max(model.Lam, 'Lam')
 
 
@@ -1938,12 +1931,14 @@ class AdjointVelocity(Physics):
       s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
-      g1     = config['adjoint']['gamma1']
-      g2     = config['adjoint']['gamma2']
-      self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
-               + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+      g1      = config['adjoint']['gamma1']
+      g2      = config['adjoint']['gamma2']
+      self.I1 = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.I2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
                                 / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
-      s   = "    - using log/linear hybrid objective -"
+      self.I  = self.I1 + self.I2
+      s   = "    - using log/linear hybrid objective with gamma_1 = " \
+            " %d and gamma_2 = %d -" % (g1, g2)
 
     else:
       s = "    - WARNING: adjoint objection function may be 'linear', " + \
@@ -2024,30 +2019,30 @@ class AdjointVelocity(Physics):
     for bc in self.bcs:
       bc.apply(aw, Lw)
     
-    #if config['model_order'] == 'stokes':
-    #  a_solver = LUSolver('mumps')
-    #else:
-    a_solver = KrylovSolver('cg', 'hypre_amg')
+    if config['model_order'] == 'stokes':
+      a_solver = LUSolver('mumps')
+    else:
+      a_solver = KrylovSolver('cg', 'hypre_amg')
 
     a_solver.solve(aw, model.Lam.vector(), Lw)
 
-    lam_nx, lam_ny = model.Lam.split(True)
-    lam_ix, lam_iy = model.Lam.split()
+    #lam_nx, lam_ny = model.Lam.split(True)
+    #lam_ix, lam_iy = model.Lam.split()
 
-    if config['adjoint']['surface_integral'] == 'shelves':
-      lam_nx.vector()[model.gnd_dofs] = 0.0
-      lam_ny.vector()[model.gnd_dofs] = 0.0
-    elif config['adjoint']['surface_integral'] == 'grounded':
-      lam_nx.vector()[model.shf_dofs] = 0.0
-      lam_ny.vector()[model.shf_dofs] = 0.0
+    #if config['adjoint']['surface_integral'] == 'shelves':
+    #  lam_nx.vector()[model.gnd_dofs] = 0.0
+    #  lam_ny.vector()[model.gnd_dofs] = 0.0
+    #elif config['adjoint']['surface_integral'] == 'grounded':
+    #  lam_nx.vector()[model.shf_dofs] = 0.0
+    #  lam_ny.vector()[model.shf_dofs] = 0.0
 
-    # function assigner translates between mixed space and P1 space :
-    U_sp = model.U.function_space()
-    assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
-    assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
+    ## function assigner translates between mixed space and P1 space :
+    #U_sp = model.U.function_space()
+    #assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
+    #assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
 
-    assx.assign(lam_ix, lam_nx)
-    assy.assign(lam_iy, lam_ny)
+    #assx.assign(lam_ix, lam_nx)
+    #assy.assign(lam_iy, lam_ny)
     
     #solve(self.aw == self.Lw, model.Lam,
     #      solver_parameters = {"linear_solver"  : "cg",

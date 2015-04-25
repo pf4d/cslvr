@@ -652,7 +652,7 @@ def default_config():
                'gamma1'              : 1.0,
                'gamma2'              : 100.0,
                'max_fun'             : 20,
-               'objective_function'  : 'logarithmic',
+               'objective_function'  : 'log',
                'surface_integral'    : 'grounded',
                'bounds'              : None,
                'control_variable'    : None,

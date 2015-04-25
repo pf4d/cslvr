@@ -616,10 +616,6 @@ class AdjointSolver(Solver):
     else:
       self.adjoint_instance = AdjointVelocity(model, config)
         
-    # create file to save control varialble #FIXME : hax
-    self.beta_file = File(config['output_path'] + 'beta_a.pvd')
-    self.Lam_file  = File(config['output_path'] + 'Lam_a.pvd')
-  
   def set_target_velocity(self, u=None, v=None, U=None):
     """ 
     Set target velocity.
@@ -744,22 +740,21 @@ class AdjointSolver(Solver):
 
       Solve forward model with given control, calculate objective function
       """
-      s = '::: calculating objective function value :::'
-      print_text(s, self.color())
       n = len(c_array)/len(control)
       for ii,c in enumerate(control):
         set_local_from_global(c, c_array[ii*n:(ii+1)*n])
       self.forward_model.solve()
+      s = '::: calculating objective function value :::'
+      print_text(s, self.color())
       # save the output :
-      s = '::: saving friction variable %sbeta_a.pvd file :::'
-      print_text(s % config['output_path'], self.color())
-      self.beta_file << model.beta
       if config['adjoint']['objective_function'] == 'log_lin_hybrid':
         I1 = assemble(self.adjoint_instance.I1)
         I2 = assemble(self.adjoint_instance.I2)
         print_min_max(I1, 'I1')
         print_min_max(I2, 'I2')
+      R = assemble(self.adjoint_instance.R)
       I = assemble(self.adjoint_instance.I)
+      print_min_max(R, 'R')
       print_min_max(I, 'I')
       return I
  
@@ -776,15 +771,17 @@ class AdjointSolver(Solver):
       for i,c in enumerate(control):
         print_min_max(c, 'c_' + str(i))
       
-      s = '::: saving adjoint variable %sLam_a.pvd file :::'
-      print_text(s % config['output_path'], self.color())
-      self.Lam_file << model.Lam
- 
       # calculate and print misfit : 
       #model.calc_misfit(config['adjoint']['surface_integral'])
+      
+      s = '::: calc. Gateaux derivative of the Hamiltonian w.r.t. the' + \
+          ' control variable(s) :::'
+      print_text(s, self.color())
 
       Js = []
-      for JJ in self.adjoint_instance.J:
+      for i,JJ in enumerate(self.adjoint_instance.J):
+        dHdc = assemble(JJ)
+        print_min_max(dHdc, 'dH/dc%i' % i)
         Js.extend(get_global(assemble(JJ)))
       Js   = array(Js)
       return Js

@@ -1917,13 +1917,13 @@ class AdjointVelocity(Physics):
 
     # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'log':
-      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                         / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                         / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
       s   = "    - using log objective function -"
     
     elif config['adjoint']['objective_function'] == 'kinematic':
       self.I = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
-                      - (U[2] + adot))**2 * dSrf + R
+                      - (U[2] + adot))**2 * dSrf
       s   = "    - using kinematic objective function -"
 
     elif config['adjoint']['objective_function'] == 'linear':
@@ -1934,18 +1934,19 @@ class AdjointVelocity(Physics):
       g1      = config['adjoint']['gamma1']
       g2      = config['adjoint']['gamma2']
       self.I1 = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
-      self.I2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                                / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      self.I2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                                 / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
       self.I  = self.I1 + self.I2
       s   = "    - using log/linear hybrid objective with gamma_1 = " \
-            " %d and gamma_2 = %d -" % (g1, g2)
+            "%.1e and gamma_2 = %.1e -" % (g1, g2)
 
     else:
       s = "    - WARNING: adjoint objection function may be 'linear', " + \
-          "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'linear' -"
+          "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'log' -"
       print_text(s, 'red', 1)
-      s   = "    - using linear objective function -"
-      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                         / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
+      s   = "    - using log objective function -"
     print_text(s, self.color())
     
     # form regularization term 'R' :
@@ -1954,34 +1955,35 @@ class AdjointVelocity(Physics):
       print_text(s, self.color())
       if a == 0:
         s = "    - using no regularization -"
+        self.R = Constant(DOLFIN_EPS) * dGnd
       else:
         if config['adjoint']['regularization_type'] == 'TV':
-          s   = "    - using total variation regularization -"
-          R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dGnd
+          s      = "    - using total variation regularization -"
+          self.R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dGnd
         elif config['adjoint']['regularization_type'] == 'Tikhonov':
-          s   = "    - using Tikhonov regularization -"
-          R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
+          s      = "    - using Tikhonov regularization -"
+          self.R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
         else:
-          s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
-              + " defaulting to Tikhonov regularization -"
-          R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
-        self.I += R
+          s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
+                   + " defaulting to no regularization -"
+          self.R = Constant(DOLFIN_EPS) * dGnd
+        self.I += self.R
       print_text(s, self.color())
 
     # this is the adjoint of the momentum residual, the Lagrangian :
     L        = replace(A, {Phi:dU})
 
-    # the Hamiltonian:
+    # the Hamiltonian :
     H_U      = self.I + L
 
     # we desire the derivative of the Hamiltonian w.r.t. the model state U
     # in the direction of the test function Phi to vanish :
     self.dI  = derivative(H_U, U, Phi)
 
-    # we need to evaluate the Hamiltonian with the values of lam computed from
+    # we need to evaluate the Hamiltonian with the values of Lam computed from
     # self.dI in order to get the derivative of the Hamiltonian w.r.t. the 
     # control variables.  Hence we need a new Lagrangian with the trial 
-    # functions replaced with the computed lam values.
+    # functions replaced with the computed Lam values.
     L_lam    = replace(L, {dU:model.Lam})
 
     # the Hamiltonian with unknowns replaced with computed Lam :

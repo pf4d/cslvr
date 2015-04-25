@@ -599,6 +599,7 @@ def default_config():
                'newton_params'       : default_nonlin_solver_params(),
                'ffc_options'         : default_ffc_options(),
                'vert_solve_method'   : 'mumps',
+               'solve_vert_velocity' : True,
                'eta_gnd'             : None,
                'eta_shf'             : None,
                'use_U0'              : False,

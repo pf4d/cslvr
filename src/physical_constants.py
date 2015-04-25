@@ -1,8 +1,3 @@
-"""
-This module contains the classes that hold known 
-physical constants relavent to the simulations and a class to create new 
-constants
-"""
 
 class PhysicalConstant(float):
   """

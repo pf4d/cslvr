@@ -155,7 +155,7 @@ class SteadySolver(Solver):
      
       # need zero initial guess for Newton solve to converge : 
       model.assign_variable(model.U, DOLFIN_EPS)
-      #model.assign_variable(model.w, DOLFIN_EPS)
+      model.assign_variable(model.w, DOLFIN_EPS)
       
       # Solve surface mass balance and temperature boundary condition
       if config['surface_climate']['on']:
@@ -592,8 +592,8 @@ class AdjointSolver(Solver):
     self.model  = model
     self.config = config
     
-    config['mode'] = 'steady' # adjoint only solves steady-state
-    
+    config['mode']  = 'steady' # adjoint only solves steady-state
+   
     # ensure that we have lists : 
     if type(config['adjoint']['bounds']) != list:
       config['adjoint']['bounds'] = [config['adjoint']['bounds']]
@@ -616,34 +616,21 @@ class AdjointSolver(Solver):
     else:
       self.adjoint_instance = AdjointVelocity(model, config)
         
-  def set_target_velocity(self, u=None, v=None, U=None):
+  def set_target_velocity_from_surface(self, U):
     """ 
-    Set target velocity.
-
-    Accepts a list of surface velocity data, and generates a dolfin
-    expression from these.  Then projects this onto the velocity 
-    function space.  The sum square error between this velocity 
-    and modelled surface velocity is the objective function.
-    
-    :param u : Surface velocity
-    :param v : Surface velocity perpendicular to :attr:`u`
-    :param U : 2-D surface velocity data
-    
+    Set target velocity u_ob, v_ob from surface magnitude <U>, going down 
+    the surface gradient.
     """
-    model = self.model
-    S     = model.S
-    Q     = model.Q
+    model  = self.model
+    S      = model.S
+    Q      = model.Q
     
-    if u != None and v != None:
-      model.assign_variable(model.u_ob, u)
-      model.assign_variable(model.v_ob, v)
+    Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + DOLFIN_EPS), Q)
+    u_n    = project(-U * S.dx(0) / Smag, Q)
+    v_n    = project(-U * S.dx(1) / Smag, Q)      
 
-    elif U != None:
-      Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + 1e-10), Q)
-      u_n    = project(-U * S.dx(0) / Smag, Q)
-      v_n    = project(-U * S.dx(1) / Smag, Q)      
-      model.assign_variable(model.u_ob, u_n)
-      model.assign_variable(model.v_ob, v_n)
+    model.assign_variable(model.u_ob, u_n)
+    model.assign_variable(model.v_ob, v_n)
 
   def solve(self):
     r""" 
@@ -782,7 +769,7 @@ class AdjointSolver(Solver):
       for i,JJ in enumerate(self.adjoint_instance.J):
         dHdc = assemble(JJ)
         print_min_max(dHdc, 'dH/dc%i' % i)
-        Js.extend(get_global(assemble(JJ)))
+        Js.extend(get_global(dHdc))
       Js   = array(Js)
       return Js
 
@@ -826,6 +813,13 @@ class AdjointSolver(Solver):
     mopt, f, d = fmin_l_bfgs_b(I, beta_0, fprime=J, bounds=bounds,
                                maxiter=maxfun-2, iprint=iprint)
     model.f_adj = f  # save the function value for later use 
+
+    # if we've turned off the vert velocity, now we want it :
+    if not config['velocity']['solve_vert_velocity']:
+      s = '::: re-calculating velocity with vertical solve :::'
+      print_text(s, self.color())
+      config['velocity']['solve_vert_velocity'] = True
+      self.forward_model.solve()
 
     n = len(mopt)/len(control)
     for ii,c in enumerate(control):

@@ -23,14 +23,14 @@ config = default_config()
 config['log_history']                     = False
 config['output_path']                     = './results/initial/'
 config['model_order']                     = 'BP'
-config['use_dukowicz']                    = False
+config['use_dukowicz']                    = True
 config['periodic_boundary_conditions']    = True
 config['use_pressure_boundary']           = True
 config['velocity']['newton_params']       = nparams
 config['velocity']['vert_solve_method']   = 'mumps'
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 25, 25, 10)
+mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
 
 model = Model(config)
 model.set_mesh(mesh)
@@ -53,11 +53,6 @@ model.init_mask(0.0)
 F = SteadySolver(model, config)
 F.solve()
 
-model.save_pvd(model.U, 'U_test')
-
-import sys
-sys.exit(0)
-
 model.init_viscosity_mode('linear')
 model.save_pvd(model.beta, 'beta_true')
 
@@ -67,6 +62,7 @@ U_e = model.get_norm(as_vector([model.u, model.v]), 'linf')[1] / 200
 print_min_max(U_e, 'U_e')
 n   = len(u_o)
 
+config['velocity']['solve_vert_velocity'] = False
 config['adjoint']['objective_function']   = 'linear'
 config['adjoint']['bounds']               = (10, 100.0)
 config['adjoint']['control_variable']     = model.beta

@@ -522,6 +522,29 @@ class VelocityDukowiczBP(Physics):
     # keep the residual for adjoint solves :
     model.A       = A
 
+  def solve_vert_velocity(self):
+    """ 
+    Perform the Newton solve of the first order equations 
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve for vertical velocity :
+    s  = "::: solving Dukowicz BP vertical velocity :::"
+    print_text(s, self.color())
+    
+    sm = config['velocity']['vert_solve_method']
+    
+    aw       = assemble(self.aw)
+    Lw       = assemble(self.Lw)
+    if self.bc_w != None:
+      self.bc_w.apply(aw, Lw)
+    w_solver = LUSolver(sm)
+    w_solver.solve(aw, model.w.vector(), Lw)
+    #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
+    #      solver_parameters = {"linear_solver" : sm})
+    print_min_max(model.w, 'w')
+
   def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
@@ -548,19 +571,9 @@ class VelocityDukowiczBP(Physics):
     print_min_max(model.v, 'v')
     
     # solve for vertical velocity :
-    s  = "::: solving Dukowicz BP vertical velocity :::"
-    print_text(s, self.color())
-    sm = config['velocity']['vert_solve_method']
-    aw       = assemble(self.aw)
-    Lw       = assemble(self.Lw)
-    if self.bc_w != None:
-      self.bc_w.apply(aw, Lw)
-    w_solver = LUSolver(sm)
-    w_solver.solve(aw, model.w.vector(), Lw)
-    #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
-    #      solver_parameters = {"linear_solver" : sm})
-    print_min_max(model.w, 'w')
-          
+    if config['velocity']['solve_vert_velocity']:
+      self.solve_vert_velocity()
+     
     # solve for pressure :
     if config['velocity']['calc_pressure']:
       s    = "::: solving BP pressure :::"
@@ -696,6 +709,30 @@ class VelocityBP(Physics):
     # keep the residual for adjoint solves :
     model.A     = self.R1
 
+  def solve_vert_velocity(self):
+    """ 
+    Perform the Newton solve of the first order equations 
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve for vertical velocity :
+    s  = "::: solving BP vertical velocity :::"
+    print_text(s, self.color())
+    
+    sm = config['velocity']['vert_solve_method']
+    
+    aw       = assemble(lhs(self.R2))
+    Lw       = assemble(rhs(self.R2))
+    if self.bc_w != None:
+      self.bc_w.apply(aw, Lw)
+    w_solver = LUSolver(sm)
+    w_solver.solve(aw, model.w.vector(), Lw)
+    #solve(lhs(self.R2) == rhs(self.R2), model.w, bcs = self.bc_w,
+    #      solver_parameters = {"linear_solver" : sm})#,
+    #                           "symmetric" : True})
+    print_min_max(model.w, 'w')
+    
   def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
@@ -723,19 +760,8 @@ class VelocityBP(Physics):
     print_min_max(model.v, 'v')
     
     # solve for vertical velocity :
-    s  = "::: solving BP vertical velocity :::"
-    print_text(s, self.color())
-    sm = config['velocity']['vert_solve_method']
-    aw       = assemble(lhs(self.R2))
-    Lw       = assemble(rhs(self.R2))
-    if self.bc_w != None:
-      self.bc_w.apply(aw, Lw)
-    w_solver = LUSolver(sm)
-    w_solver.solve(aw, model.w.vector(), Lw)
-    #solve(lhs(self.R2) == rhs(self.R2), model.w, bcs = self.bc_w,
-    #      solver_parameters = {"linear_solver" : sm})#,
-    #                           "symmetric" : True})
-    print_min_max(model.w, 'w')
+    if config['velocity']['solve_vert_velocity']:
+      self.solve_vert_velocity()
     
     # solve for pressure :
     if config['velocity']['calc_pressure']:
@@ -1740,11 +1766,12 @@ class AdjointDukowiczVelocity(Physics):
       s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
-      g1     = config['adjoint']['gamma1']
-      g2     = config['adjoint']['gamma2']
-      self.I = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf \
-               + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
-                                / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      g1      = config['adjoint']['gamma1']
+      g2      = config['adjoint']['gamma2']
+      self.I1 = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.I2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 1.0) \
+                                 / (sqrt(u_ob**2 + v_ob**2) + 1.0))**2 * dSrf
+      self.I  = self.I1 + self.I2
       s   = "    - using log/linear hybrid objective -"
 
     else:
@@ -1763,23 +1790,24 @@ class AdjointDukowiczVelocity(Physics):
         print_text(s, self.color())
       if a == 0:
         s = "    - using no regularization -"
+        self.R = Constant(DOLFIN_EPS) * dGnd
       else:
         if config['adjoint']['regularization_type'] == 'TV':
-          s   = "    - using total variation regularization -"
-          R = a/2.0 * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                            + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
+          s      = "    - using total variation regularization -"
+          self.R = a/2.0 * sqrt( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                              + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 + 1e-3) * dGnd
         elif config['adjoint']['regularization_type'] == 'Tikhonov':
           s   = "    - using Tikhonov regularization -"
-          R = a/2.0 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+          self.R = a/2.0 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                             + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
         else:
           s = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
               + " defaulting to Tikhonov regularization -"
-          R = a/2.0 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
-                        + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
-        self.I += R
+          self.R = a/2.0 * ( + (c.dx(0)*N[2] - c.dx(1)*N[0])**2 \
+                             + (c.dx(1)*N[2] - c.dx(2)*N[1])**2 ) * dGnd
+      self.I += self.R
       print_text(s, self.color())
-
+    
     # Derivative, with trial function dU.  These are the momentum equations 
     # in weak form multiplied by dU and integrated by parts
     F_adjoint  = derivative(A, U, model.dU)
@@ -1811,10 +1839,10 @@ class AdjointDukowiczVelocity(Physics):
     self.Lw = rhs(self.dI)
     
     # FIXME: this is a hack.
-    #self.bcs = []
-    #U_sp     = model.U.function_space()
-    #self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
-    #self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
+    self.bcs = []
+    U_sp     = model.U.function_space()
+    self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
+    self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
     
   def solve(self):
     """
@@ -1967,7 +1995,7 @@ class AdjointVelocity(Physics):
           s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
                    + " defaulting to no regularization -"
           self.R = Constant(DOLFIN_EPS) * dGnd
-        self.I += self.R
+      self.I += self.R
       print_text(s, self.color())
 
     # this is the adjoint of the momentum residual, the Lagrangian :

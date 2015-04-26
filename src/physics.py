@@ -1131,7 +1131,6 @@ class Enthalpy(Physics):
     Mb         = model.Mb
     W          = model.W
     W0         = model.W0
-    W_r        = model.W_r
     L          = model.L
     Kcoef      = model.Kcoef
     q_geo      = model.q_geo

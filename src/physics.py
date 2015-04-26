@@ -425,7 +425,6 @@ class VelocityDukowiczBP(Physics):
     B        = model.B
     H        = S - B
     x        = model.x
-    W        = model.W_r
     R        = model.R
     rhoi     = model.rhoi
     rhow     = model.rhow
@@ -1186,14 +1185,11 @@ class Enthalpy(Physics):
     # update water content :
     W_v             = W_n.vector().array()
     W_v[cold]       = 0.0
-    W_v[W_v > 1.00] = 1.00
+    #W_v[W_v > 1.00] = 1.00  # for reality
+    W_v[W_v > 0.01] = 0.01  # for rheology
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
     print_min_max(W,  'W')
-    
-    # update capped variable for rheology : 
-    W_v[W_v > 0.01] = 0.01
-    model.assign_variable(W_r, W_v)
     
     # calculate melt-rate : 
     s = "::: calculating basal melt-rate :::"

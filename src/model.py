@@ -1614,7 +1614,6 @@ class Model(object):
     self.q_geo         = Function(self.Q)
     self.W0            = Function(self.Q)
     self.W             = Function(self.Q)
-    self.W_r           = Function(self.Q)
     self.Mb            = Function(self.Q)
     self.thetahat      = Function(self.Q) # Midpoint values
     self.uhat          = Function(self.Q) # Midpoint values

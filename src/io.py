@@ -127,7 +127,7 @@ class DataInput(object):
     create_proj = True.
     """
     self.chg_proj = True
-    self.new_p    = di.p
+    self.new_p    = di.proj
 
   def get_xy(self,lon,lat):
     """
@@ -143,7 +143,7 @@ class DataInput(object):
     # FIXME : need a fast way to convert all the x, y. Currently broken
     s = "::: transforming coordinates from %s to %s :::" % (di.name, self.name)
     print_text(s, self.color)
-    xn, yn = transform(di.p, self.proj, di.x, di.y)
+    xn, yn = transform(di.proj, self.proj, di.x, di.y)
     return (xn, yn)
 
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):

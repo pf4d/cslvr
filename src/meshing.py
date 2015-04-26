@@ -84,7 +84,7 @@ class MeshGenerator(object):
     s = "::: transforming contour coordinates from %s to %s :::"
     print_text(s % (di.name, self.dd.name), self.color)
     x,y    = self.longest_cont.T
-    xn, yn = transform(self.dd.p, di.p, x, y)
+    xn, yn = transform(self.dd.proj, di.proj, x, y)
     self.longest_cont = array([xn, yn]).T
 
   def set_contour(self,cont_array):

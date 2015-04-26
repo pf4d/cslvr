@@ -468,26 +468,28 @@ def print_min_max(u, title, color='yellow'):
   if isinstance(u, GenericVector):
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())
+    s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
+    print_text(s, color)
   elif isinstance(u, Function):
     uMin = MPI.min(mpi_comm_world(), u.vector().min())
     uMax = MPI.max(mpi_comm_world(), u.vector().max())
+    s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
+    print_text(s, color)
   elif isinstance(u, ndarray):
     er = "warning, input to print_min_max() is a NumPy array, local min " + \
-         " / max only"
+         " / max of process 0 only"
     print_text(er, 'red', 1)
     uMin = u.min()
     uMax = u.max()
-  elif isinstance(u, int) or isinstance(u, float):
-    uMin = uMax = u
-  else:
-    if MPI.rank(mpi_comm_world())==0:
-      er = "print_min_max function requires a Vector, Function, array," \
-           + " int or float, not %s." % type(u)
-      print_text(er, 'red', 1)
-    uMin = uMax = nan
-  if MPI.rank(mpi_comm_world())==0:
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
     print_text(s, color)
+  elif isinstance(u, int) or isinstance(u, float):
+    s    = title + ' : %.3e' % u
+    print_text(s, color)
+  else:
+    er = "print_min_max function requires a Vector, Function, array," \
+         + " int or float, not %s." % type(u)
+    print_text(er, 'red', 1)
 
 
 def print_text(text, color='white', atrb=0):

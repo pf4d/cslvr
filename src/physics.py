@@ -1976,20 +1976,16 @@ class AdjointVelocity(Physics):
     for a,c in zip(alpha,control):
       s   = "    - regularization parameter alpha = %.2E -" % a
       print_text(s, self.color())
-      if a == 0:
-        s = "    - using no regularization -"
-        self.R = Constant(DOLFIN_EPS) * dGnd
+      if config['adjoint']['regularization_type'] == 'TV':
+        s      = "    - using total variation regularization -"
+        self.R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dGnd
+      elif config['adjoint']['regularization_type'] == 'Tikhonov':
+        s      = "    - using Tikhonov regularization -"
+        self.R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
       else:
-        if config['adjoint']['regularization_type'] == 'TV':
-          s      = "    - using total variation regularization -"
-          self.R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dGnd
-        elif config['adjoint']['regularization_type'] == 'Tikhonov':
-          s      = "    - using Tikhonov regularization -"
-          self.R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
-        else:
-          s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
-                   + " defaulting to no regularization -"
-          self.R = Constant(DOLFIN_EPS) * dGnd
+        s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
+                 + " defaulting to Tikhonov regularization -"
+        self.R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
       self.I += self.R
       print_text(s, self.color())
 

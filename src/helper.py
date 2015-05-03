@@ -655,6 +655,7 @@ def default_config():
                'max_fun'             : 20,
                'objective_function'  : 'log',
                'surface_integral'    : 'grounded',
+               'control_domain'      : 'bed',
                'bounds'              : None,
                'control_variable'    : None,
                'regularization_type' : 'Tikhonov',

@@ -617,8 +617,10 @@ class VelocityBP(Physics):
     N             = model.N
     D             = model.D
     
-    gradS         = model.gradS
-    gradB         = model.gradB
+    #gradS         = model.gradS
+    #gradB         = model.gradB
+    gradS         = grad(S)
+    gradB         = grad(B)
      
     # new constants :
     p0     = 101325
@@ -1971,6 +1973,19 @@ class AdjointVelocity(Physics):
                          / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
       s   = "    - using log objective function -"
     print_text(s, self.color())
+
+    if config['adjoint']['control_domain'] == 'bed':
+      dR  = dBed
+      s   = "    - regularizing over bed -"
+    elif config['adjoint']['control_domain'] == 'surface':
+      dR  = dSrf
+      s   = "    - regularizing over surface -"
+    elif config['adjoint']['control_domain'] == 'complete':
+      if config['adjoint']['surface_integral'] == 'shelves':
+        dR  = dx_s
+      elif config['adjoint']['surface_integral'] == 'grounded':
+        dR  = dx_g
+      s   = "    - regularizing over entire domain -"
     
     # form regularization term 'R' :
     for a,c in zip(alpha,control):
@@ -1978,14 +1993,14 @@ class AdjointVelocity(Physics):
       print_text(s, self.color())
       if config['adjoint']['regularization_type'] == 'TV':
         s      = "    - using total variation regularization -"
-        self.R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dGnd
+        self.R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
         s      = "    - using Tikhonov regularization -"
-        self.R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
+        self.R = a * 0.5 * inner(grad(c), grad(c)) * dR
       else:
         s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
                  + " defaulting to Tikhonov regularization -"
-        self.R = a * 0.5 * inner(grad(c), grad(c)) * dGnd
+        self.R = a * 0.5 * inner(grad(c), grad(c)) * dR
       self.I += self.R
       print_text(s, self.color())
 

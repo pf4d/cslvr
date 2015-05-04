@@ -259,7 +259,7 @@ class VelocityStokes(Physics):
     Phi, xi = split(Tst)
     
     # gravity vector :
-    gv   = as_vector([0, 0, g])
+    gv   = as_vector([0, 0, -g])
     f_w  = rhoi*g*(S - x[2]) + rhow*g*D
     I    = Identity(3)
 
@@ -270,8 +270,8 @@ class VelocityStokes(Physics):
     # conservation of momentum :
     R1 = + inner(sigma_shf, grad(Phi)) * dx_s \
          + inner(sigma_gnd, grad(Phi)) * dx_g \
-         + rhoi * dot(gv, Phi) * dx \
-         + beta**2 * dot(U, Phi) * dBed \
+         - rhoi * dot(gv, Phi) * dx \
+         + beta**2 * dot(U, Phi) * dGnd \
          #- p_a * dot(N, Phi) * dSrf \
     
     if (not config['periodic_boundary_conditions']
@@ -280,7 +280,7 @@ class VelocityStokes(Physics):
       R1 -= f_w * dot(N, Phi) * dSde \
     
     # conservation of mass :
-    R2 = div(U)*xi*dx - dot(U, N)*xi*dBed
+    R2 = div(U)*xi*dx + dot(U, N)*xi*dBed
     
     # total residual :
     self.A = R1 + R2
@@ -312,6 +312,7 @@ class VelocityStokes(Physics):
     alpha  = params['newton_solver']['relaxation_parameter']
     s      = "::: solving full-Stokes equations with %i max iterations" + \
              " and step size = %.1f :::"
+    print_text(s % (maxit, alpha), self.color())
     
     # compute solution :
     solve(self.A == 0, model.U, bcs=self.bcs, J = self.J, 

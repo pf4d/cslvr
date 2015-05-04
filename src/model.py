@@ -113,12 +113,17 @@ class Model(object):
       self.Q3     = MixedFunctionSpace([self.Q]*3)
       self.Q4     = MixedFunctionSpace([self.Q]*4)
       # Define function spaces
+      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+      # mini elements :
       B           = FunctionSpace(self.mesh, "B", 4, 
                                   constrained_domain=self.pBC)
       M           = self.Q + B
       M3          = MixedFunctionSpace([M,M,M])
       self.MV     = MixedFunctionSpace([M3,self.Q])
-      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+      # Taylor-Hood elements :
+      #V           = VectorFunctionSpace(self.mesh, "CG", 2,
+      #                                  constrained_domain=self.pBC)
+      #self.MV     = V * self.Q
     else:
       poly_degree = self.config['velocity']['poly_degree']
       N_T         = self.config['enthalpy']['N_T']

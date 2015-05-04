@@ -352,8 +352,7 @@ class VelocityStokes(Physics):
       R1 -= f_w * dot(N, Phi) * dSde \
     
     # conservation of mass :
-    R2 = + div(U) * xi * dx \
-         + dot(U, N) * xi * dBed \
+    R2 = div(U)*xi*dx - dot(U, N)*xi*dBed
     
     # total residual :
     self.A = R1 + R2
@@ -378,9 +377,13 @@ class VelocityStokes(Physics):
     model  = self.model
     config = self.config
     
-    # Solve the nonlinear equations via Newton's method
-    s    = "::: solving full-Stokes equations :::"
-    print_text(s, self.color())
+    # solve nonlinear system :
+    params = config['velocity']['newton_params']
+    rtol   = params['newton_solver']['relative_tolerance']
+    maxit  = params['newton_solver']['maximum_iterations']
+    alpha  = params['newton_solver']['relaxation_parameter']
+    s      = "::: solving full-Stokes equations with %i max iterations" + \
+             " and step size = %.1f :::"
     
     # compute solution :
     solve(self.A == 0, model.U, bcs=self.bcs, J = self.J, 
@@ -684,7 +687,7 @@ class VelocityBP(Physics):
       R1 -= f_w * (N[0]*phi + N[1]*psi) * dSde \
     
     R2 = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
-         - (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed \
+         + (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed \
   
     # residuals :  
     self.R1 = R1
@@ -826,6 +829,7 @@ class VelocityBPFull(Physics):
     dFlt   = ds(5)         # floating bed
     dSde   = ds(4)         # sides
     dBed   = dGnd + dFlt   # bed
+    dSrf   = ds(2) + ds(6) # surface
     
     #===========================================================================
     # define variational problem :
@@ -834,12 +838,15 @@ class VelocityBPFull(Physics):
     u, v, w        = U
     phi, psi, chi  = Phi
     
-    epi_1  = as_vector([   2*u.dx(0) + v.dx(1), 
+    epi_1  = as_vector([     u.dx(0) - w.dx(2), 
                         0.5*(u.dx(1) + v.dx(0)),
-                        0.5* u.dx(2)            ])
-    epi_2  = as_vector([0.5*(u.dx(1) + v.dx(0)),
-                             u.dx(0) + 2*v.dx(1),
-                        0.5* v.dx(2)            ])
+                        0.5*(u.dx(2) + w.dx(0)) ])
+    epi_2  = as_vector([0.5*(v.dx(0) + u.dx(1)),
+                             v.dx(1) - w.dx(2),
+                        0.5*(v.dx(2) + w.dx(1)) ])
+    epi_3  = as_vector([0.5*(w.dx(0) + u.dx(2)),
+                        0.5*(w.dx(1) + v.dx(2)),
+                        0.0                     ])
    
     # boundary integral terms : 
     f_w    = rhoi*g*(S - x[2]) + rhow*g*D               # lateral
@@ -855,18 +862,24 @@ class VelocityBPFull(Physics):
          + 2 * eta_shf * dot(epi_2, grad(psi)) * dx_s \
          + 2 * eta_gnd * dot(epi_1, grad(phi)) * dx_g \
          + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
-         + rhoi * g * dot(gradS, Phi) * dx \
-         + beta**2 * dot(U, Phi) * dGnd \
-         + Constant(1e-10) * dot(U, Phi) * dFlt \
+         + rhoi * g * gradS[0] * phi * dx \
+         + rhoi * g * gradS[1] * psi * dx \
+         + beta**2 * u * phi * dGnd \
+         + beta**2 * v * psi * dGnd \
+         #+ 2 * eta_shf * dot(epi_3, grad(chi)) * dx_s \
+         #+ 2 * eta_gnd * dot(epi_3, grad(chi)) * dx_g \
+         #+ rhoi * g * dot(gradS, Phi) * dx \
+         #+ beta**2 * dot(U, Phi) * dGnd \
     
     if (not config['periodic_boundary_conditions']
         and not config['velocity']['use_lat_bcs']
         and config['use_pressure_boundary']):
       R1 -= f_w * dot(N, Phi) * dSde \
     
-    R2 = div(U)*chi*dx - dot(U, N)*chi*dBed
+    R2 = div(U)*chi*dx + dot(U, N)*chi*dBed
+    #R2 = -dot(U, grad(chi))*dx + dot(U, N)*chi*dSrf
      
-    # residual :  
+    # residual :
     self.A = R1 + R2
     
     # Jacobian :

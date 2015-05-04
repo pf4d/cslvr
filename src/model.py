@@ -21,7 +21,7 @@ class Model(object):
     """
     Create and instance of the model.
     """
-    PETScOptions.set("mat_mumps_icntl_14", 10000.0)
+    PETScOptions.set("mat_mumps_icntl_14", 100.0)
     if config == None:
       self.config = default_config()
     else:
@@ -1484,12 +1484,14 @@ class Model(object):
     ep_xy = epi[0,1]
     ep_xz = epi[0,2]
     ep_yz = epi[1,2]
-
-    u,v = self.U
-
+    
     # Second invariant of the strain rate tensor squared
-    self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-                  + ep_xy**2 + ep_xz**2 + ep_yz**2
+    if self.config['velocity']['full_BP']:
+      self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                           + ep_xy**2 + ep_xz**2 + ep_yz**2
+    else:
+      self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
     #self.epsdot = 0.5 * (0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
     #                            + (u.dx(1) + v.dx(0))**2) \
     #              + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )

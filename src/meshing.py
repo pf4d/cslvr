@@ -13,14 +13,15 @@ import os
 import Image
 from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
-from pylab             import array, linspace, ones, meshgrid, figure, show, \
+from pylab             import array, linspace, ones, meshgrid, figure, \
                               size, hstack, vstack, argmin, zeros, shape, \
                               sqrt, show
 from fenics            import Mesh, MeshEditor, Point, File
 from pyproj            import transform
 from io                import print_text, print_min_max
 #from scipy.spatial     import ConvexHull
-from shapely.geometry  import Polygon, Point
+from shapely.geometry  import Polygon
+from shapely.geometry  import Point as shapelyPoint
 from shapely.ops       import cascaded_union
 
 
@@ -339,7 +340,7 @@ class MeshGenerator(object):
     xml = self.direc + xmlfile + '.xml'
 
     cmd = 'dolfin-convert ' + msh + ' ' + xml
-    s   = "\nExecuting :\n\n\t", cmd, "\n\n"
+    s   = "\nExecuting :\n\n\t %s\n\n" % cmd
     print_text(s, self.color)
     subprocess.call(cmd.split())
 
@@ -635,14 +636,14 @@ class GetBasin(object):
   http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php
 
   INPUTS:
-    di : 
-      an instance of a DataInput obect (see above) needed for the projection 
+    di :
+      an instance of a DataInput obect (see above) needed for the projection
       function
 
-    edeg_resolution: 
+    edeg_resolution:
       distance between points on boundary
 
-    basin: 
+    basin:
       basin number. If left as None, the program will prompt you to pick a basin
 
   TODO: Now working to extend the domain beyond the present day ice margin for
@@ -657,7 +658,7 @@ class GetBasin(object):
     """
     self.color  = 'grey_46'
     self.di     = di
-    
+
     s    = "::: INITIALIZING BASIN GENERATOR :::"
     print_text(s, self.color)
 
@@ -832,7 +833,7 @@ class GetBasin(object):
     polygons = []
     for i, v in enumerate(xycoords):
       if edge[i]:
-        polygons.append(Point(v[0],v[1]).buffer(r))
+        polygons.append(shapelyPoint(v[0],v[1]).buffer(r))
 
     # union of our original polygon and convex hull
     p1 = cascaded_union(polygons)
@@ -911,6 +912,3 @@ class GetBasin(object):
     """
     self.check_dist()
     return self.xycoords
-
-
-

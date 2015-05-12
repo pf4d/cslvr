@@ -1,7 +1,7 @@
-import sys
-from varglas.io         import DataInput, DataOutput
+from varglas.io         import DataInput
 from varglas.data.data_factory import DataFactory
-from fenics                     import *
+from fenics                     import File, Mesh, set_log_active, \
+                                       VectorFunctionSpace, project, as_vector
 
 """
 A simple, but useful script that projects a complete set of ice sheet modeling
@@ -11,9 +11,9 @@ corresponding to each can be written for inspection of the data on the mesh.
 """
 
 # set the output directory :
-output_path = 'NEGIS_1H/'
+output_path = 'data_xmls/6.2/NEGIS_1H_ZERO_ICE_EDGE/'
 # set the mesh :
-mesh = Mesh("meshes/NEGIS_1H.xml")
+mesh = Mesh("meshes/6.2/NEGIS_1H_ZERO_ICE_EDGE.xml")
 # write pvd files too?
 PVD = True
 
@@ -52,8 +52,8 @@ vy      = drg.get_interpolation('vy')
 vmag   = drg.get_interpolation('U_ob')
 verr   = drg.get_interpolation('v_err')
 
-Q = VectorFunctionSpace(mesh,'CG',1,dim=2) 
-U = project(as_vector([vx,vy]),Q) 
+Q = VectorFunctionSpace(mesh,'CG',1,dim=2)
+U = project(as_vector([vx,vy]),Q)
 H_file = File(output_path+'H.xml')
 Herr_file = File(output_path+'Herr.xml')
 adot_file = File(output_path+'adot.xml')

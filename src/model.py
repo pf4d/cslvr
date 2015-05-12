@@ -115,10 +115,10 @@ class Model(object):
       # Define function spaces
       self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
       # mini elements :
-      B           = FunctionSpace(self.mesh, "B", 4, 
+      self.Bub    = FunctionSpace(self.mesh, "B", 4, 
                                   constrained_domain=self.pBC)
-      M           = self.Q + B
-      M3          = MixedFunctionSpace([M,M,M])
+      self.MQ     = self.Q + self.Bub
+      M3          = MixedFunctionSpace([self.MQ]*3)
       self.MV     = MixedFunctionSpace([M3,self.Q])
       # Taylor-Hood elements :
       #V           = VectorFunctionSpace(self.mesh, "CG", 2,
@@ -1617,6 +1617,7 @@ class Model(object):
     self.theta_surface = Function(self.Q)
     self.theta_float   = Function(self.Q)
     self.theta         = Function(self.Q)
+    self.theta0        = Function(self.Q) # initial enthalpy
     self.T             = Function(self.Q)
     self.q_geo         = Function(self.Q)
     self.W0            = Function(self.Q)
@@ -1627,7 +1628,6 @@ class Model(object):
     self.vhat          = Function(self.Q) # Midpoint values
     self.what          = Function(self.Q) # Midpoint values
     self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.theta0        = Function(self.Q) # initial enthalpy
     self.T0            = Function(self.Q) # pressure-melting point
     self.kappa         = Function(self.Q)
     self.Kcoef         = Function(self.Q)

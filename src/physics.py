@@ -886,8 +886,8 @@ class Enthalpy(Physics):
     theta       = model.theta
     theta0      = model.theta0
     n           = model.n
-    b_gnd       = model.b_gnd
-    b_shf       = model.b_shf
+    eta_gnd     = model.eta_gnd
+    eta_shf     = model.eta_shf
     T           = model.T
     T0          = model.T0
     Mb          = model.Mb
@@ -985,14 +985,17 @@ class Enthalpy(Physics):
 
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
-      U      = as_vector([u, v, w])
+      U       = as_vector([u, v, w])
+      #epi     = model.strain_rate_tensor(U)
+      #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
+      #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
 
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
-      psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
+      psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
       # residual of model :
       self.a = + rho * dot(U, grad(dtheta)) * psihat * dx \
@@ -1002,7 +1005,6 @@ class Enthalpy(Physics):
                + Q_s_gnd * psihat * dx_g \
                + Q_s_shf * psihat * dx_s
       
-
     # configure the module to run in transient mode :
     elif config['mode'] == 'transient':
       dt = config['time_step']

@@ -555,6 +555,22 @@ class Model(object):
        containing model-relavent parameters
     """
     self.params = params
+  
+  def get_surface_mesh(self):
+    """
+    Returns the surface of the mesh for this model instance.
+    """
+    s = "::: extracting bed mesh :::"
+    print_text(s, self.color)
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = CellFunction("size_t", bmesh, 0)
+    for c in cells(bmesh):
+      if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)
+    return submesh
 
   def get_bed_mesh(self):
     """
@@ -567,7 +583,7 @@ class Model(object):
     cellmap = bmesh.entity_map(2)
     pb      = CellFunction("size_t", bmesh, 0)
     for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() < 0:
+      if Facet(self.mesh, cellmap[c.index()]).normal().z() < 1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     return submesh

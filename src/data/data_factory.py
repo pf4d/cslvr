@@ -686,9 +686,9 @@ class DataFactory(object):
     # retrieve data :
     x     = array(data.variables['x1'][:])
     y     = array(data.variables['y1'][:])
-    h     = array(data.variables['usrf'][:][0])
+    S     = array(data.variables['usrf'][:][0])
     adot  = array(data.variables['smb'][:][0])
-    b     = array(data.variables['topg'][:][0])
+    B     = array(data.variables['topg'][:][0])
     T     = array(data.variables['surftemp'][:][0]) + 273.15
     q_geo = array(data.variables['bheatflx'][:][0]) * 60 * 60 * 24 * 365
     lat   = array(data.variables['lat'][:][0])
@@ -699,11 +699,11 @@ class DataFactory(object):
     direc = home + "/greenland/searise/smooth_target.mat" 
     U_ob  = loadmat(direc)['st']
     
-    H             = h - b
-    h[H < thklim] = b[H < thklim] + thklim
+    H             = S - B
+    S[H < thklim] = B[H < thklim] + thklim
     H[H < thklim] = thklim
 
-    Tn            = 41.83 - 6.309e-3*h - 0.7189*lat - 0.0672*lon + 273
+    Tn            = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + 273
     
     # extents of domain :
     east  = max(x)
@@ -737,7 +737,7 @@ class DataFactory(object):
  
     names = ['H', 'S', 'adot', 'B', 'T', 'q_geo','U_sar', \
              'U_ob', 'lat', 'lon', 'Tn','dhdt']
-    ftns  = [H, h, adot, b, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
+    ftns  = [H, S, adot, B, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
 
     vara['dataset']   = 'searise'
     vara['continent'] = 'greenland'

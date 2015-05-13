@@ -1886,26 +1886,26 @@ class AdjointVelocity(Physics):
 
     # Objective function; least squares over the surface.
     if config['adjoint']['objective_function'] == 'log':
-      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+      self.J = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                          / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
       s   = "    - using log objective function -"
     
     elif config['adjoint']['objective_function'] == 'kinematic':
-      self.I = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
+      self.J = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) \
                       - (U[2] + adot))**2 * dSrf
       s   = "    - using kinematic objective function -"
 
     elif config['adjoint']['objective_function'] == 'linear':
-      self.I = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.J = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
       s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
       g1      = config['adjoint']['gamma1']
       g2      = config['adjoint']['gamma2']
-      self.I1 = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
-      self.I2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+      self.J1 = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.J2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                                  / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
-      self.I  = self.I1 + self.I2
+      self.J  = self.J1 + self.J2
       s   = "    - using log/linear hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e -" % (g1, g2)
 
@@ -1913,7 +1913,7 @@ class AdjointVelocity(Physics):
       s = "    - WARNING: adjoint objection function may be 'linear', " + \
           "'log', 'kinematic', or 'log_lin_hybrid'.  Defaulting to 'log' -"
       print_text(s, 'red', 1)
-      self.I = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+      self.J = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                          / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
       s   = "    - using log objective function -"
     print_text(s, self.color())
@@ -1945,7 +1945,7 @@ class AdjointVelocity(Physics):
         s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
                  + " defaulting to Tikhonov regularization -"
         self.R = a * 0.5 * inner(grad(c), grad(c)) * dR
-      self.I += self.R
+      self.I = self.J + self.R
       print_text(s, self.color())
 
     # this is the adjoint of the momentum residual, the Lagrangian :
@@ -1969,10 +1969,10 @@ class AdjointVelocity(Physics):
 
     # the derivative of the Hamiltonian w.r.t. the control variables in the 
     # direction of a P1 test function :
-    self.J = []
-    phi    = TestFunction(Q)
+    self.dHdc = []
+    phi       = TestFunction(Q)
     for c in control:
-      self.J.append(derivative(H_lam, c, phi))
+      self.dHdc.append(derivative(H_lam, c, phi))
     
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)

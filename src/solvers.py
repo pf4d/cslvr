@@ -141,7 +141,8 @@ class SteadySolver(Solver):
     counter     = 0
    
     # previous velocity for norm calculation
-    u_prev      = model.u.vector().array()
+    #u_prev      = model.u.vector().array()
+    U_prev      = project(as_vector([model.u, model.v, model.w]))
     
     # set an inner tolerance for PI
     inner_tol   = config['coupled']['inner_tol']
@@ -232,10 +233,12 @@ class SteadySolver(Solver):
       counter += 1
       # Calculate L_infinity norm
       if config['coupled']['on']:
-        u_new         = model.u.vector().array()
-        diff          = (u_prev - u_new)
-        inner_error_n = MPI.max(mpi_comm_world(), diff.max())
-        u_prev        = u_new
+        #u_new         = model.u.vector().array()
+        #diff          = (u_prev - u_new)
+        #inner_error_n = MPI.max(mpi_comm_world(), diff.max())
+        #u_prev        = u_new
+        inner_error_n = norm(project(U_prev - U))
+        U_prev        = U
         if self.model.MPI_rank==0:
           s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
           s2    = 'r0 = %.3e'  % inner_error
@@ -735,10 +738,10 @@ class AdjointSolver(Solver):
       print_text(s, self.color())
       # save the output :
       if config['adjoint']['objective_function'] == 'log_lin_hybrid':
-        I1 = assemble(self.adjoint_instance.I1)
-        I2 = assemble(self.adjoint_instance.I2)
-        print_min_max(I1, 'I1')
-        print_min_max(I2, 'I2')
+        J1 = assemble(self.adjoint_instance.J1)
+        J2 = assemble(self.adjoint_instance.J2)
+        print_min_max(J1, 'J1')
+        print_min_max(J2, 'J2')
       R = assemble(self.adjoint_instance.R)
       I = assemble(self.adjoint_instance.I)
       print_min_max(R, 'R')
@@ -765,13 +768,13 @@ class AdjointSolver(Solver):
           ' control variable(s) :::'
       print_text(s, self.color())
 
-      Js = []
-      for i,JJ in enumerate(self.adjoint_instance.J):
-        dHdc = assemble(JJ)
+      dHdcs = []
+      for i,dHdci in enumerate(self.adjoint_instance.dHdc):
+        dHdc = assemble(dHdci)
         print_min_max(dHdc, 'dH/dc%i' % i)
-        Js.extend(get_global(dHdc))
-      Js   = array(Js)
-      return Js
+        dHdcs.extend(get_global(dHdc))
+      dHdcs = array(dHdcs)
+      return dHdcs
 
     #===========================================================================
     # begin the optimization :

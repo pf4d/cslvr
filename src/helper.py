@@ -37,15 +37,16 @@ meshes used in the simulations.
 """
 
 import inspect
-import pylab              as pl
-import numpy              as np
-from pylab                import plt
-from fenics               import *
-from termcolor            import colored, cprint
-from mpl_toolkits.basemap import Basemap
-from matplotlib           import colors
-from pyproj               import *
-from io                   import DataInput
+import pylab                 as pl
+import numpy                 as np
+from pylab                   import plt
+from fenics                  import *
+from termcolor               import colored, cprint
+from mpl_toolkits.basemap    import Basemap
+from matplotlib              import colors
+from pyproj                  import *
+from io                      import DataInput
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 pl.mpl.rcParams['font.family']     = 'serif'
 pl.mpl.rcParams['legend.fontsize'] = 'medium'
@@ -839,6 +840,63 @@ def get_bed_mesh(mesh):
   submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
   return submesh
 
+def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
+                  umin=None, umax=None, tp=False, tpAlpha=0.5):
+  """
+  """
+  mesh = u.function_space().mesh()
+  v    = u.compute_vertex_values(mesh)
+  x    = mesh.coordinates()[:,0]
+  y    = mesh.coordinates()[:,1]
+  t    = mesh.cells()
+  
+  d    = os.path.dirname(direc)
+  if not os.path.exists(d):
+    os.makedirs(d)
+
+  if umin != None:
+    vmin = umin
+  else:
+    vmin = v.min()
+  if umax != None:
+    vmax = umax
+  else:
+    vmax = v.max()
+  
+  # countour levels :
+  if scale == 'log':
+    from matplotlib.ticker import LogFormatter
+    levels              = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
+    formatter           = LogFormatter(10, labelOnlyBase=False)
+    norm                = colors.LogNorm()
+  
+  elif scale == 'lin':
+    from matplotlib.ticker import ScalarFormatter
+    levels    = np.linspace(vmin, vmax, numLvls)
+    formatter = ScalarFormatter()
+    norm      = None
+  
+  elif scale == 'bool':
+    from matplotlib.ticker import ScalarFormatter
+    levels    = [0, 1, 2]
+    formatter = ScalarFormatter()
+    norm      = None
+
+  fig = plt.figure()
+  ax  = fig.add_subplot(111)
+  
+  c = ax.tricontourf(x, y, t, v, levels=levels, norm=norm, 
+                     cmap=pl.get_cmap(cmap))
+  if tp == True:
+    p = ax.triplot(x, y, t, '-', lw=0.2, alpha=tpAlpha)
+  ax.set_xlim([x.min(), x.max()])
+  ax.set_ylim([y.min(), y.max()])
+  ax.set_xlabel(r'$x$')
+  ax.set_ylabel(r'$y$')
+  fig.colorbar(c)
+  plt.tight_layout()
+  plt.savefig(direc + name + '.png', dpi=200)
+  plt.show()
 
 def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='', 
             numLvls=12, tp=False, tpAlpha=0.5):
@@ -921,7 +979,7 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
   elif di.cont == 'greenland':
     w   = 1532453.49654
     h   = 2644074.78236
-    fig = plt.figure(figsize=(8,10))
+    fig = plt.figure(figsize=(8,11.5))
     ax  = fig.add_axes()
     
     # new projection :
@@ -944,7 +1002,7 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
   # convert to new projection coordinates from lon,lat :
   x, y  = m(lon, lat)
  
-  m.drawcoastlines(linewidth=0.25, color = 'black')
+  m.drawcoastlines(linewidth=0.5, color = 'black')
   #m.shadedrelief()
   #m.bluemarble()
   #m.etopo()
@@ -956,18 +1014,18 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
   # countour levels :
   if scale == 'log':
     from matplotlib.ticker import LogFormatter
-    vmax                = np.ceil(v.max())
-    vmin                = np.floor(v.min())
-    v[np.where(v<=1.0)] = 1.0
-    levels              = np.logspace(0.0, np.log10(vmax+1), numLvls)
+    vmax                = v.max()
+    vmin                = v.min()
+    #v[np.where(v<=1.0)] = 1.0
+    levels              = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
     formatter           = LogFormatter(10, labelOnlyBase=False)
     norm                = colors.LogNorm()
   
   elif scale == 'lin':
     from matplotlib.ticker import ScalarFormatter
-    vmin      = np.floor(v.min())
-    vmax      = np.ceil(v.max())
-    levels    = np.linspace(vmin, vmax+1, numLvls)
+    vmin      = v.min()
+    vmax      = v.max()
+    levels    = np.linspace(vmin, vmax, numLvls)
     formatter = ScalarFormatter()
     norm      = None
   
@@ -994,15 +1052,17 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
     tp = plt.triplot(x, y, fi, '-', lw=0.2, alpha=tpAlpha)
 
   # include colorbar :
-  cbar = m.colorbar(cs, format=formatter, 
-                    ticks=np.around(levels,decimals=1), 
-                    location='right', pad="5%")
+  divider = make_axes_locatable(plt.gca())
+  cax  = divider.append_axes("right", "5%", pad="3%")
+  cbar = plt.colorbar(cs, cax=cax, format=formatter, 
+                      ticks=np.around(levels,decimals=1)) 
   
   # title :
   #tit = plt.title(name)
   #tit.set_fontsize(40)
   
-  plt.savefig(directory + '/' + name + '.png', dpi=250)
+  plt.tight_layout(rect=[.03,.03,0.97,0.97])
+  #plt.savefig(directory + '/' + name + '.png', dpi=250)
   plt.show()
 
 

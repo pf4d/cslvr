@@ -205,8 +205,8 @@ class SteadySolver(Solver):
               self.W_file    << model.W    # save water content
             else:
               File(outpath + 'T.pvd')   << model.T
-              File(outpath + 'W.pvd')   << model.Mb
-              File(outpath + 'Mb.pvd')  << model.W
+              File(outpath + 'W.pvd')   << model.W
+              File(outpath + 'Mb.pvd')  << model.Mb
     
       # re-compute the friction field :
       if config['velocity']['use_stat_beta']:
@@ -569,6 +569,219 @@ class TransientSolver(Solver):
       self.M_prev = M
       t          += dt
       self.step_time.append(time() - tic)
+
+
+class AdjointSolverNew(Solver):
+  """
+  """
+
+  def __init__(self, model, config):
+    """
+    Initialize the model with a forward instance (SteadySolver) and adjoint
+    solver (AdjointDukowiczVelocity, AdjointVelocity).
+    """
+    s    = "::: INITIALIZING NEW ADJOINT SOLVER :::"
+    print_text(s, self.color())
+    self.model  = model
+    self.config = config
+    
+    config['mode']  = 'steady' # adjoint only solves steady-state
+   
+    # ensure that we have lists : 
+    if type(config['adjoint']['bounds']) != list:
+      config['adjoint']['bounds'] = [config['adjoint']['bounds']]
+    if type(config['adjoint']['control_variable']) != list:
+      cv = config['adjoint']['control_variable']
+      config['adjoint']['control_variable'] = [cv]
+    if type(config['adjoint']['alpha']) != list:
+      config['adjoint']['alpha'] = [config['adjoint']['alpha']]
+
+    # Switching over to the parallel version of the optimization that is found 
+    # in the dolfin-adjoint optimize.py file:
+    self.maxfun      = config['adjoint']['max_fun']
+    self.bounds_list = config['adjoint']['bounds']
+    self.control     = config['adjoint']['control_variable']
+    
+    # initialize instances of the forward model, and the adjoint physics : 
+    self.forward_model    = SteadySolver(model, config)
+    if config['use_dukowicz']:
+      self.adjoint_instance = AdjointDukowiczVelocity(model, config)
+    else:
+      self.adjoint_instance = AdjointVelocity(model, config)
+        
+  def set_target_velocity_from_surface(self, U):
+    """ 
+    Set target velocity u_ob, v_ob from surface magnitude <U>, going down 
+    the surface gradient.
+    """
+    model  = self.model
+    S      = model.S
+    Q      = model.Q
+    
+    Smag   = project(sqrt(S.dx(0)**2 + S.dx(1)**2 + DOLFIN_EPS), Q)
+    u_n    = project(-U * S.dx(0) / Smag, Q)
+    v_n    = project(-U * S.dx(1) / Smag, Q)      
+
+    model.assign_variable(model.u_ob, u_n)
+    model.assign_variable(model.v_ob, v_n)
+
+  def solve(self):
+    r""" 
+    Perform the optimization.
+    """
+    s    = '::: solving AdjointSolverNew :::'
+    print_text(s, self.color())
+    model       = self.model
+    config      = self.config
+    bounds_list = self.bounds_list
+    control     = self.control
+    maxfun      = self.maxfun
+   
+    def p():
+      """
+      Calculate Gateaux derivative of the Hamiltonian w.r.t. beta. 
+      """
+      # calculate and print misfit : 
+      #model.calc_misfit(config['adjoint']['surface_integral'])
+      
+      s = '::: calc. Gateaux derivative of the Hamiltonian w.r.t. the' + \
+          ' control variable(s) :::'
+      print_text(s, self.color())
+
+      p_a  = []
+      pf_a = []
+      for i,dHdci in enumerate(self.adjoint_instance.dHdc):
+        dHdc = assemble(dHdci)
+        print_min_max(dHdc, 'dH/dc%i' % i)
+        pf_a.append(dHdc)
+        p_a.append(dHdc.array())
+      p_a = array(p_a)
+      return pf_a, p_a
+
+    def c():
+      """
+      Get the control variables in vector form.
+      """
+      c_a = []
+      for i,c in enumerate(control):
+        print_min_max(c, 'c_' + str(i))
+        c_a.append(c.vector().array())
+      c_a = array(c_a)
+      return c_a
+
+    def H(a_n=None, p_n=None):
+      """
+      Evaluate the hamiltonian.
+      """
+      s = '::: evaluating the Hamiltonian :::'
+      print_text(s, self.color())
+      
+      if a_n != None and p_n != None:
+        txt = 'H_n'
+        for c,a,p in zip(control, a_n, p_n):
+          c_a = c.vector().array()
+          model.assign_variable(c, c_a - a*p)
+          print_min_max(c, 'c')
+      else:
+        txt = 'H0'
+      
+      #H_n = assemble(H)
+      H_n = assemble(self.adjoint_instance.H_lam)
+      print_min_max(H_n, txt)
+      
+      return H_n
+
+    def LS(p_n, c_n, cf):
+      """
+      Return the step length alpha_n.
+      """
+      s = '::: performing line-search for step length :::'
+      print_text(s, self.color())
+
+      a_n  = ones(len(control))
+      rho  = 9/10.
+      c    = 10**(-4)
+      H0   = H()
+      Hn   = H(a_n, p_n)
+
+      #while Hn >= H0 + c*a_n*np.dot(p_n, p_n) or any(c_n - a_n*p_n < 0):
+      #while Hn > H0 or any(c_n - a_n*p_n < 0):
+      while Hn > H0 + c*a_n*np.dot(p_n, p_n) or any(c_n - a_n*p_n < 0):
+        a_n = rho*a_n
+        Hn  = H(a_n, p_n)
+        model.assign_variable(cf, c_n)
+      #model.assign_variable(cf, c_n)
+      return a_n 
+
+
+    #===========================================================================
+    # begin the optimization :
+    r         = inf
+    counter   = 0
+    dHdb_norm = inf
+
+    while dHdb_norm > 1e-10 and counter < maxfun:
+      
+      self.forward_model.solve()
+      self.adjoint_instance.solve()
+      
+      pf_a, p_a = p()
+      c_a       = c()
+
+      a_a = []
+      for p_n, c_n, cf in zip(p_a, c_a, control):
+        a_a.append(LS(p_n, c_n, cf))
+      a_a = array(a_a)
+
+      c_n = c_a - np.dot(a_a, p_a)
+
+      dHdb_norm_a = []
+      for pii in p_a:
+        dHdb_norm_a.append(MPI.max(mpi_comm_world(), abs(pii).max()))
+      dHdb_norm_a = array(dHdb_norm_a)
+      if len(control) == 1:
+        dHdb_norm = dHdb_norm_a[0]
+      else:
+        dHdb_norm = MPI.max(mpi_comm_world(), abs(dHdb_norm_a))
+      print_min_max(dHdb_norm, '||dHdb||')
+
+      counter += 1
+      ## Calculate L_infinity norm
+      ##u_new         = model.u.vector().array()
+      ##diff          = (u_prev - u_new)
+      ##inner_error_n = MPI.max(mpi_comm_world(), diff.max())
+      ##u_prev        = u_new
+      #inner_error_n = norm(project(U_prev - U))
+      #U_prev        = U
+      #if self.model.MPI_rank==0:
+      #  s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
+      #  s2    = 'r0 = %.3e'  % inner_error
+      #  s3    = ', '
+      #  s4    = 'r = %.3e ' % inner_error_n
+      #  s5    = '(tol %.3e)' % inner_tol
+      #  text1 = colored(s1, 'blue')
+      #  text2 = colored(s2, 'red', attrs=['bold'])
+      #  text3 = colored(s3, 'blue')
+      #  text4 = colored(s4, 'red', attrs=['bold'])
+      #  text5 = colored(s5, 'blue')
+      #  print text1 + text2 + text3 + text4 + text5
+      #inner_error = inner_error_n
+
+      #for ci, ci_n in zip(control, c_n):
+      #  model.assign_variable(ci, ci_n)
+    
+    # if we've turned off the vert velocity, now we want it :
+    if not config['velocity']['solve_vert_velocity']:
+      s = '::: re-calculating velocity with vertical solve :::'
+      print_text(s, self.color())
+      config['velocity']['solve_vert_velocity'] = True
+      self.forward_model.solve()
+
+    # save the output :
+    for i,c in enumerate(control):
+      s = '::: saving control variable %sc%i.pvd file :::'
+      print_text(s % (config['output_path'], i), self.color())
+      File(config['output_path'] + 'c' + str(i) + '.pvd') << c
 
 
 class AdjointSolver(Solver):

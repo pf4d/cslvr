@@ -841,7 +841,8 @@ def get_bed_mesh(mesh):
   return submesh
 
 def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
-                  umin=None, umax=None, tp=False, tpAlpha=0.5):
+                  umin=None, umax=None, tp=False, tpAlpha=0.5, show=True,
+                  hide_ax_tick_labels=False, label_axes=True):
   """
   """
   mesh = u.function_space().mesh()
@@ -891,12 +892,19 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
     p = ax.triplot(x, y, t, '-', lw=0.2, alpha=tpAlpha)
   ax.set_xlim([x.min(), x.max()])
   ax.set_ylim([y.min(), y.max()])
-  ax.set_xlabel(r'$x$')
-  ax.set_ylabel(r'$y$')
+  if label_axes:
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$y$')
+  if hide_ax_tick_labels:
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
   fig.colorbar(c)
   plt.tight_layout()
   plt.savefig(direc + name + '.png', dpi=200)
-  plt.show()
+  if show:
+    plt.show()
+  else:
+    plt.close(fig)
 
 def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='', 
             numLvls=12, tp=False, tpAlpha=0.5):

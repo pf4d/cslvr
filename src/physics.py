@@ -968,7 +968,8 @@ class Enthalpy(Physics):
     # overestimating frictional heat, and underestimating strain heat.
 
     # Frictional heating :
-    q_friction = 0.5 * beta**2 * H**r * (u**2 + v**2)
+    #q_friction = 0.5 * beta**2 * H**r * (u**2 + v**2)
+    q_friction = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
 
     # Strain heating = stress*strain
     Q_s_gnd = model.Vd_gnd
@@ -986,15 +987,25 @@ class Enthalpy(Physics):
     # configure the module to run in steady state :
     if config['mode'] == 'steady':
       U       = as_vector([u, v, w])
-      #epi     = model.strain_rate_tensor(U)
+      epi     = model.strain_rate_tensor(U)
+      ep_xx   = epi[0,0]
+      ep_yy   = epi[1,1]
+      ep_zz   = epi[2,2]
+      ep_xy   = epi[0,1]
+      ep_xz   = epi[0,2]
+      ep_yz   = epi[1,2]
+      epsdot  = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                       + ep_xy**2 + ep_xz**2 + ep_yz**2
       #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
       #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
+      #Q_s_gnd = 4 * eta_gnd * epsdot
+      #Q_s_shf = 4 * eta_shf * epsdot
 
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
-      T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
+      #T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
       # residual of model :
@@ -1009,15 +1020,28 @@ class Enthalpy(Physics):
     elif config['mode'] == 'transient':
       dt = config['time_step']
     
+      U       = as_vector([uhat, vhat, what - mhat])
+      epi     = model.strain_rate_tensor(U)
+      ep_xx   = epi[0,0]
+      ep_yy   = epi[1,1]
+      ep_zz   = epi[2,2]
+      ep_xy   = epi[0,1]
+      ep_xz   = epi[0,2]
+      ep_yz   = epi[1,2]
+      epsdot  = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                       + ep_xy**2 + ep_xz**2 + ep_yz**2
+      #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
+      #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
+      Q_s_gnd = 4 * eta_gnd * epsdot
+      Q_s_shf = 4 * eta_shf * epsdot
+
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.
-      U = as_vector([uhat, vhat, what - mhat])
-
       Unorm  = sqrt(dot(U, U) + 1.0)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
-      T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
-      psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
+      #T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
+      psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
       nu = 0.5
       # Crank Nicholson method
@@ -1130,8 +1154,7 @@ class Enthalpy(Physics):
     # update water content :
     W_v             = W_n.vector().array()
     W_v[cold]       = 0.0
-    #W_v[W_v > 1.00] = 1.00  # for reality
-    W_v[W_v > 0.01] = 0.01  # for rheology
+    W_v[W_v > 0.01] = 0.01  # for rheology; instant water run-off
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
     print_min_max(W,  'W')
@@ -1900,12 +1923,16 @@ class AdjointVelocity(Physics):
       s   = "    - using linear objective function -"
     
     elif config['adjoint']['objective_function'] == 'log_lin_hybrid':
-      g1      = config['adjoint']['gamma1']
-      g2      = config['adjoint']['gamma2']
-      self.J1 = + g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
-      self.J2 = + g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
-                                 / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
-      self.J  = self.J1 + self.J2
+      g1       = config['adjoint']['gamma1']
+      g2       = config['adjoint']['gamma2']
+      self.J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.J2  = g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                                / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
+      self.J1p = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dSrf
+      self.J2p = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dSrf
+      self.J   = self.J1  + self.J2
+      self.Jp  = self.J1p + self.J2p
       s   = "    - using log/linear hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e -" % (g1, g2)
 
@@ -1936,43 +1963,46 @@ class AdjointVelocity(Physics):
       s   = "    - regularization parameter alpha = %.2E -" % a
       print_text(s, self.color())
       if config['adjoint']['regularization_type'] == 'TV':
-        s      = "    - using total variation regularization -"
-        self.R = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
+        s       = "    - using total variation regularization -"
+        self.R  = a * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
+        self.Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
       elif config['adjoint']['regularization_type'] == 'Tikhonov':
-        s      = "    - using Tikhonov regularization -"
-        self.R = a * 0.5 * inner(grad(c), grad(c)) * dR
+        s       = "    - using Tikhonov regularization -"
+        self.R  = a * 0.5 * inner(grad(c), grad(c)) * dR
+        self.Rp = 0.5 * inner(grad(c), grad(c)) * dR
       else:
-        s      = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
-                 + " defaulting to Tikhonov regularization -"
-        self.R = a * 0.5 * inner(grad(c), grad(c)) * dR
+        s       = "    - Valid regularizations are 'TV' and 'Tikhonov';" + \
+                  + " defaulting to Tikhonov regularization -"
+        self.R  = a * 0.5 * inner(grad(c), grad(c)) * dR
+        self.Rp = 0.5 * inner(grad(c), grad(c)) * dR
       self.I = self.J + self.R
       print_text(s, self.color())
 
     # this is the adjoint of the momentum residual, the Lagrangian :
-    L        = replace(A, {Phi:dU})
+    L          = replace(A, {Phi:dU})
 
     # the Hamiltonian :
-    H_U      = self.I + L
+    H_U        = self.I + L
 
     # we desire the derivative of the Hamiltonian w.r.t. the model state U
     # in the direction of the test function Phi to vanish :
-    self.dI  = derivative(H_U, U, Phi)
+    self.dI    = derivative(H_U, U, Phi)
 
     # we need to evaluate the Hamiltonian with the values of Lam computed from
     # self.dI in order to get the derivative of the Hamiltonian w.r.t. the 
     # control variables.  Hence we need a new Lagrangian with the trial 
     # functions replaced with the computed Lam values.
-    L_lam    = replace(L, {dU:model.Lam})
+    L_lam      = replace(L, {dU:model.Lam})
 
     # the Hamiltonian with unknowns replaced with computed Lam :
-    H_lam    = self.I + L_lam
+    self.H_lam = self.I + L_lam
 
     # the derivative of the Hamiltonian w.r.t. the control variables in the 
     # direction of a P1 test function :
     self.dHdc = []
     phi       = TestFunction(Q)
     for c in control:
-      self.dHdc.append(derivative(H_lam, c, phi))
+      self.dHdc.append(derivative(self.H_lam, c, phi))
     
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)

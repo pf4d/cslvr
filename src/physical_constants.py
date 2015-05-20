@@ -47,7 +47,8 @@ class IceParameters(object):
     
     :rtype: Python dictionary
     """
-    spy = 365*24*60*60
+    spy = 31556926.0
+    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * kg/a^3
 
     d_params = \
     {'eps_reg': (1e-15,   'strain rate regularization parameter','t^{-1}'),
@@ -65,7 +66,7 @@ class IceParameters(object):
      'ci'     : (2009.0,  'heat capacity of ice','J kg^{-1} K^{-1}'),
      'cw'     : (4217.6,  'Heat capacity of water at 273K','J Kg^{-1} K^{-1}'),
      'L'      : (3.35e5,  'latent heat of ice','J kg^{-1}'),
-     'ghf'    : (1324512, 'geothermal heat flux','42 mW m^{-2}'),
+     'ghf'    : (ghf,     'geothermal heat flux','42 mW m^{-2}'),
      'gamma'  : (8.71e-4, 'pressure melting point depth dependence','K m^{-1}'),
      'nu'     : (3.5e3,   'moisture diffusivity','kg m^{-1} a^{-1}'),
      'T_w'    : (273.15,  'Triple point of water','K'),

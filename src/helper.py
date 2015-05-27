@@ -907,7 +907,7 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
     plt.close(fig)
 
 def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='', 
-            numLvls=12, tp=False, tpAlpha=0.5):
+            umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5):
   """
   INPUTS :
 
@@ -921,7 +921,7 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
     cmap :
       colormap to use - see images directory for sample and name
     scale :
-      scale to plot, either 'log' or 'lin'
+      scale to plot, either 'log', 'lin', or 'bool'
     name :
       title of the plot, latex accepted
     numLvls :
@@ -1018,21 +1018,26 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
 
   #=============================================================================
   # plotting :
+  if umin != None:
+    vmin = umin
+  else:
+    vmin = v.min()
+  if umax != None:
+    vmax = umax
+  else:
+    vmax = v.max()
   
   # countour levels :
   if scale == 'log':
+    if any(v < 3e-16):
+      v[v < 3e-16] = 3e-16 # remove negative values
     from matplotlib.ticker import LogFormatter
-    vmax                = v.max()
-    vmin                = v.min()
-    #v[np.where(v<=1.0)] = 1.0
-    levels              = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
-    formatter           = LogFormatter(10, labelOnlyBase=False)
-    norm                = colors.LogNorm()
+    levels      = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
+    formatter   = LogFormatter(10, labelOnlyBase=False)
+    norm        = colors.LogNorm()
   
   elif scale == 'lin':
     from matplotlib.ticker import ScalarFormatter
-    vmin      = v.min()
-    vmax      = v.max()
     levels    = np.linspace(vmin, vmax, numLvls)
     formatter = ScalarFormatter()
     norm      = None
@@ -1060,10 +1065,11 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
     tp = plt.triplot(x, y, fi, '-', lw=0.2, alpha=tpAlpha)
 
   # include colorbar :
-  divider = make_axes_locatable(plt.gca())
-  cax  = divider.append_axes("right", "5%", pad="3%")
-  cbar = plt.colorbar(cs, cax=cax, format=formatter, 
-                      ticks=np.around(levels,decimals=1)) 
+  if scale != 'bool':
+    divider = make_axes_locatable(plt.gca())
+    cax  = divider.append_axes("right", "5%", pad="3%")
+    cbar = plt.colorbar(cs, cax=cax, format=formatter, 
+                        ticks=np.around(levels,decimals=1)) 
   
   # title :
   #tit = plt.title(name)

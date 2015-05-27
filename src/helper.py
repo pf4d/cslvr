@@ -840,6 +840,7 @@ def get_bed_mesh(mesh):
   submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
   return submesh
 
+
 def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
                   umin=None, umax=None, tp=False, tpAlpha=0.5, show=True,
                   hide_ax_tick_labels=False, label_axes=True):
@@ -906,7 +907,8 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
   else:
     plt.close(fig)
 
-def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='', 
+
+def plotIce(di, u, name, direc, cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5):
   """
   INPUTS :
@@ -916,14 +918,14 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
     u :
       solution to plot; can be either a function on a 2D mesh, or a string 
       key to matrix variable in <di>.data.
-    directory :
+    name :
+      title of the plot, latex accepted
+    direc :
       directory string location to save image.
     cmap :
       colormap to use - see images directory for sample and name
     scale :
       scale to plot, either 'log', 'lin', or 'bool'
-    name :
-      title of the plot, latex accepted
     numLvls :
       number of levels for field values
     tp :
@@ -1076,7 +1078,7 @@ def plotIce(di, u, directory, cmap='gist_yarg',  scale='lin', name='',
   #tit.set_fontsize(40)
   
   plt.tight_layout(rect=[.03,.03,0.97,0.97])
-  #plt.savefig(directory + '/' + name + '.png', dpi=250)
+  plt.savefig(direc + name + '.png', dpi=200)
   plt.show()
 
 

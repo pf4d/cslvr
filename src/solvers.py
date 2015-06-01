@@ -1215,16 +1215,10 @@ class HybridTransientSolver(Solver):
           s    = '::: saving velocity %sU.pvd file :::' % outpath
           print_text(s, self.color())
           U    = project(as_vector([model.u, model.v, model.w]))
-          self.file_U << U
-      
-      # calculate free surface :
-      if config['free_surface']['on']:
-        self.surface_instance.solve()
-        if config['log']:
-          s    = '::: saving thickness %sH.pvd file :::' % outpath
-          print_text(s, self.color())
-          self.file_H << model.H
-        model.H0.interpolate(model.H)
+          if config['log_history']:
+            self.file_U << U
+          else:
+            File(outpath + 'U.pvd')  << U
 
       # calculate energy
       if config['enthalpy']['on']:
@@ -1233,9 +1227,25 @@ class HybridTransientSolver(Solver):
           s    = '::: saving surface and bed temperature Ts and Tb .pvd ' + \
                  'files to %s :::' % outpath
           print_text(s, self.color())
-          self.file_Ts << model.Ts
-          self.file_Tb << model.Tb
+          if config['log_history']:
+            self.file_Ts << model.Ts
+            self.file_Tb << model.Tb
+          else:
+            File(outpath + 'Ts.pvd')  << model.Ts
+            File(outpath + 'Tb.pvd')  << model.Tb
         model.T0_.interpolate(model.T_)  # update previous temp
+      
+      # calculate free surface :
+      if config['free_surface']['on']:
+        self.surface_instance.solve()
+        if config['log']:
+          s    = '::: saving thickness %sH.pvd file :::' % outpath
+          print_text(s, self.color())
+          if config['log_history']:
+            self.file_H << model.H
+          else:
+            File(outpath + 'H.pvd') << model.H
+        model.H0.interpolate(model.H)
     
       # calculate surface climate solver :
       if config['surface_climate']['on']:
@@ -1247,7 +1257,10 @@ class HybridTransientSolver(Solver):
         if config['log']:
           s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
           print_text(s, self.color())
-          self.file_Ubar << model.Ubar
+          if config['log_history']:
+            self.file_Ubar << model.Ubar
+          else:
+            File(outpath + 'Ubar.pvd') << model.Ubar
       
       # re-compute the friction field :
       if config['velocity']['use_stat_beta']:
@@ -1272,7 +1285,10 @@ class HybridTransientSolver(Solver):
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath
           print_text(s, self.color())
-          self.file_beta << model.beta
+          if config['log_history']:
+            self.file_beta << model.beta
+          else:
+            File(outpath + 'beta.pvd') << model.beta
 
       # store information : 
       if self.config['log']:

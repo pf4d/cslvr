@@ -2059,7 +2059,7 @@ class AdjointVelocity(Physics):
     #                           "preconditioner" : "hypre_amg"})
     #print_min_max(norm(model.Lam), '||Lam||')
     print_min_max(model.Lam, 'Lam')
-    
+
 
 class SurfaceClimate(Physics):
 
@@ -2912,7 +2912,7 @@ class MassBalanceHybrid(Physics):
     vi = VerticalIntegrator(points, weights)
     
     #D = 2.*(rho*g)**n*A/(n+2.)*H**(n+2)*dot(grad(S),grad(S))**((n-1.)/2.)
-    D = 2*(rho*g)**n*H**(n+2)*dot(grad(S),grad(S))**((n-1)/2)*vi.intz(sia_int) + rho*g*H**2/beta**2
+    D = 2.0*(rho*g)**n*H**(n+2)*dot(grad(S),grad(S))**((n-1.0)/2.0)*vi.intz(sia_int) + rho*g*H**2/beta**2
     
     ubar = U[0]
     vbar = U[1]

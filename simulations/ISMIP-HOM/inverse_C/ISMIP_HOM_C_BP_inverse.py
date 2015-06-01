@@ -79,6 +79,7 @@ config['adjoint']['bounds']               = (10, 100.0)
 config['adjoint']['control_variable']     = model.beta
 config['adjoint']['alpha']                = 1.0
 config['adjoint']['max_fun']              = 100
+config['adjoint']['control_domain']       = 'bed'
 config['velocity']['solve_vert_velocity'] = False
 
 nparams['newton_solver']['relaxation_parameter']    = 1.0

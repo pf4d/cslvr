@@ -2865,7 +2865,7 @@ class MassBalanceHybrid(Physics):
     beta   = model.beta
     adot   = model.adot
     ubar_c = model.ubar_c 
-    vbar_c = model.ubar_c
+    vbar_c = model.vbar_c
     H      = model.H
     H0     = model.H0
     U      = model.U

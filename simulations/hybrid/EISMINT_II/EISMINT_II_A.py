@@ -48,7 +48,6 @@ config['enthalpy']['N_T']              = 8
 config['free_surface']['on']           = True
 config['free_surface']['thklim']       = thklim
 #config['balance_velocity']['on']       = True
-config['velocity']['use_stat_beta']    = False
 
 model = Model(config)
 model.set_mesh(mesh)

@@ -1632,7 +1632,7 @@ class Model(object):
     self.vhat          = Function(self.Q) # Midpoint values
     self.what          = Function(self.Q) # Midpoint values
     self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.T0            = Function(self.Q) # pressure-melting point
+    self.T_melt        = Function(self.Q) # pressure-melting point
     self.kappa         = Function(self.Q)
     self.Kcoef         = Function(self.Q)
 

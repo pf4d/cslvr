@@ -889,7 +889,7 @@ class Enthalpy(Physics):
     eta_gnd     = model.eta_gnd
     eta_shf     = model.eta_shf
     T           = model.T
-    T0          = model.T0
+    T_melt      = model.T_melt
     Mb          = model.Mb
     L           = model.L
     ci          = model.ci
@@ -954,12 +954,12 @@ class Enthalpy(Physics):
     # Pressure melting point
     s    = "::: calculating pressure-melting temperature :::"
     print_text(s, self.color())
-    model.assign_variable(T0, project(T_w - gamma * (S - x[2]), Q))
-    print_min_max(T0, 'T0')
+    model.assign_variable(T_melt, project(T_w - gamma * (S - x[2]), Q))
+    print_min_max(T_melt, 'T_melt')
    
     # Surface boundary condition
     model.assign_variable(theta_surface, project(T_surface * ci))
-    model.assign_variable(theta_float,   project(ci*T0))
+    model.assign_variable(theta_float,   project(ci*T_melt))
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -1095,7 +1095,7 @@ class Enthalpy(Physics):
     mesh       = model.mesh
     V          = model.V
     Q          = model.Q
-    T0         = model.T0
+    T_melt     = model.T_melt
     theta      = model.theta
     T          = model.T
     Mb         = model.Mb
@@ -1133,10 +1133,10 @@ class Enthalpy(Physics):
     
     # update temperature for wet/dry areas :
     T_n_v        = T_n.vector().array()
-    T0_v         = T0.vector().array()
-    warm         = T_n_v >= T0_v
-    cold         = T_n_v <  T0_v
-    T_n_v[warm]  = T0_v[warm]
+    T_melt_v     = T_melt.vector().array()
+    warm         = T_n_v >= T_melt_v
+    cold         = T_n_v <  T_melt_v
+    T_n_v[warm]  = T_melt_v[warm]
     model.assign_variable(T, T_n_v)
     print_min_max(T,  'T')
     
@@ -1149,7 +1149,7 @@ class Enthalpy(Physics):
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, self.color())
-    W_n  = project((theta - ci*T0)/L, Q)
+    W_n  = project((theta - ci*T_melt)/L, Q)
     
     # update water content :
     W_v             = W_n.vector().array()
@@ -1198,7 +1198,7 @@ class EnthalpyDG(Physics):
     b_gnd       = model.b_gnd
     b_shf       = model.b_shf
     T           = model.T
-    T0          = model.T0
+    T_melt          = model.T_melt
     Mb          = model.Mb
     L           = model.L
     ci          = model.ci
@@ -1259,14 +1259,14 @@ class EnthalpyDG(Physics):
     dtheta  = TrialFunction(DQ)
 
     # Pressure melting point
-    T0 = Function(DQ)
-    model.assign_variable(T0, project(T_w - gamma * (S - x[2]), DQ))
+    T_melt = Function(DQ)
+    model.assign_variable(T_melt, project(T_w - gamma * (S - x[2]), DQ))
    
     # Surface boundary condition
     theta_surface = Function(DQ)
     theta_float   = Function(DQ)
     model.assign_variable(theta_surface, project(T_surface * ci, DQ))
-    model.assign_variable(theta_float,   project(ci*T0, DQ))
+    model.assign_variable(theta_float,   project(ci*T_melt, DQ))
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -1351,7 +1351,7 @@ class EnthalpyDG(Physics):
     model.theta         = Function(DQ)
     model.T_surface = T_surface
     model.q_geo     = q_geo
-    model.T0        = T0
+    model.T_melt        = T_melt
     model.theta_surface = theta_surface
     model.theta_float   = theta_float
     
@@ -1384,7 +1384,7 @@ class EnthalpyDG(Physics):
     V          = model.V
     Q          = model.Q
     DQ         = model.DQ
-    T0         = model.T0
+    T_melt         = model.T_melt
     theta          = model.theta
     theta_surface  = model.theta_surface
     theta_float    = model.theta_float  
@@ -1434,14 +1434,14 @@ class EnthalpyDG(Physics):
     
     # update temperature for wet/dry areas :
     T_n_v        = T_n.vector().array()
-    T0_v         = T0.vector().array()
-    warm         = T_n_v >= T0_v
-    cold         = T_n_v <  T0_v
-    T_n_v[warm]  = T0_v[warm]
+    T_melt_v         = T_melt.vector().array()
+    warm         = T_n_v >= T_melt_v
+    cold         = T_n_v <  T_melt_v
+    T_n_v[warm]  = T_melt_v[warm]
     model.assign_variable(T, T_n_v)
     
     # water content solved diagnostically :
-    W_n  = project((theta - ci*T0)/L, Q)
+    W_n  = project((theta - ci*T_melt)/L, Q)
     
     # update water content :
     W_v        = W_n.vector().array()
@@ -3165,11 +3165,12 @@ class EnergyHybrid(Physics):
     print_text(s, self.color())
     T_melt  = project(self.Tm)
     Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
+    model.assign_variable(model.T_melt, Tb_m)
     print_min_max(T_melt, 'T_melt')
     
     #  correct for pressure melting point :
-    T_v      = T_.vector().array()
-    T_melt_v = T_melt.vector().array()
+    T_v                 = T_.vector().array()
+    T_melt_v            = T_melt.vector().array()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
     model.assign_variable(T_, T_v)
     

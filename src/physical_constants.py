@@ -55,7 +55,7 @@ class IceParameters(object):
      'n'      : (3.0,     'viscosity nonlinearity parameter','dimensionless'),
      'spy'    : (spy,     'seconds per year', 's'),
      'A0'     : (1e-16,   'flow rate factor', 'Pa^{-n} a^{-1}'),
-     'rhoi'   : (917,     'ice density','kg m^{-3}'),
+     'rhoi'   : (910,     'ice density','kg m^{-3}'),
      'rhow'   : (1000,    'water density', 'kg m^{-3}'),
      'g'      : (9.81,    'gravitational acceleration','m s^{-2}'),
      'a0'     : (5.45e10, 'ice hardness limit','a^{-1} Pa^{-1}'),

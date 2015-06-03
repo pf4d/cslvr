@@ -1263,13 +1263,11 @@ class HybridTransientSolver(Solver):
             File(outpath + 'Ubar.pvd') << model.Ubar
       
       # re-compute the friction field :
-      if config['velocity']['use_stat_beta']:
-        
+      if config['velocity']['transient_beta'] == 'stats':
         s    = "::: calculating new statistical beta :::"
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)
         print_min_max(beta, 'beta')
-    
         s    = "::: removing negative values of beta :::"
         print_text(s, self.color())
         beta_v = beta.vector().array()
@@ -1280,10 +1278,29 @@ class HybridTransientSolver(Solver):
         model.assign_variable(model.beta, beta_v)
         #model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')
-        
         # save beta : 
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath
+          print_text(s, self.color())
+          if config['log_history']:
+            self.file_beta << model.beta
+          else:
+            File(outpath + 'beta.pvd') << model.beta
+      
+      elif config['velocity']['transient_beta'] == 'eismint_H':
+        s    = "::: calculating new beta from pressure melting point :::"
+        print_text(s, self.color())
+        T_tol = 1.0
+        beta = model.beta.vector()
+        Tb   = model.Tb.vector()
+        Tb_m = model.T_melt.vector()
+
+        beta[Tb >  (Tb_m - T_tol)] = sqrt(1e3)
+        beta[Tb <= (Tb_m - T_tol)] = sqrt(1e9)
+        print_min_max(model.beta, 'beta')
+        # save beta : 
+        if config['log']:
+          s    = '::: saving updated %sbeta.pvd file :::' % outpath
           print_text(s, self.color())
           if config['log_history']:
             self.file_beta << model.beta

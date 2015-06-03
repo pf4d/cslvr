@@ -609,7 +609,7 @@ def default_config():
                'E'                   : 1.0,
                'use_lat_bcs'         : False,
                'calc_pressure'       : False,
-               'use_stat_beta'       : False,
+               'transient_beta'      : 'na',
              },
              'enthalpy' : 
              { 

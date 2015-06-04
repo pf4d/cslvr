@@ -1162,7 +1162,7 @@ class Enthalpy(Physics):
     # calculate melt-rate : 
     s = "::: calculating basal melt-rate :::"
     print_text(s, self.color())
-    nMb   = project(-(q_geo + q_friction) / (L*rhoi))
+    nMb   = project((q_geo + q_friction) / (L*rhoi))
     model.assign_variable(Mb,  nMb)
     print_min_max(Mb, 'Mb')
 

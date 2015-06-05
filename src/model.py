@@ -1466,6 +1466,12 @@ class Model(object):
     
     # hybrid momentum :
     self.U             = Function(self.HV)
+    self.u_s           = Function(self.Q)
+    self.v_s           = Function(self.Q)
+    self.w_s           = Function(self.Q)
+    self.u_b           = Function(self.Q)
+    self.v_b           = Function(self.Q)
+    self.w_b           = Function(self.Q)
     
   def init_BP_variables(self):
     """

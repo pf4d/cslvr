@@ -83,6 +83,7 @@ class SteadySolver(Solver):
         if config['enthalpy']['log']:
           self.Ts_file  = File(outpath + 'Ts.pvd')
           self.Tb_file  = File(outpath + 'Tb.pvd')
+          self.Mb_file  = File(outpath + 'Mb.pvd')
       else:
         self.enthalpy_instance = Enthalpy(model, config)
         if config['enthalpy']['log']:
@@ -187,15 +188,17 @@ class SteadySolver(Solver):
         self.enthalpy_instance.solve()
         if config['enthalpy']['log'] and config['log']: 
           if config['model_order'] == 'L1L2':
-            s  = '::: saving surface and bed temperature Ts, and Tb .pvd ' + \
-                 'files to %s :::'
+            s  = '::: saving surface and bed temperature Ts, Tb, and Mb' + \
+                 ' .pvd files to %s :::'
             print_text(s % outpath, self.color())
             if config['log_history']:
               self.Ts_file    << model.Ts   # save temperature
               self.Tb_file    << model.Tb   # save melt rate
+              self.Mb_file    << model.Mb   # save melt rate
             else:
               File(outpath + 'Ts.pvd')   << model.Ts
               File(outpath + 'Tb.pvd')   << model.Tb
+              File(outpath + 'Mb.pvd')   << model.Mb
           else :
             s  = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
             print_text(s % outpath, self.color())
@@ -1177,8 +1180,10 @@ class HybridTransientSolver(Solver):
     if config['log']:
       self.file_Ubar = File(outpath + 'Ubar.pvd')
       self.file_U    = File(outpath + 'U.pvd')
+      self.file_U_b  = File(outpath + 'Ub.pvd')
       self.file_Ts   = File(outpath + 'Ts.pvd')
       self.file_Tb   = File(outpath + 'Tb.pvd')
+      self.file_Mb   = File(outpath + 'Mb.pvd')
       self.file_H    = File(outpath + 'H.pvd')
       self.file_beta = File(outpath + 'beta.pvd')
       self.t_log     = []
@@ -1214,25 +1219,30 @@ class HybridTransientSolver(Solver):
         if config['velocity']['log']:
           s    = '::: saving velocity %sU.pvd file :::' % outpath
           print_text(s, self.color())
-          U    = project(as_vector([model.u, model.v, model.w]))
+          U    = project(as_vector([model.u,   model.v,   model.w]))
+          U_b  = project(as_vector([model.u_b, model.v_b, model.w_b]))
           if config['log_history']:
-            self.file_U << U
+            self.file_U   << U
+            self.file_U_b << U_b
           else:
-            File(outpath + 'U.pvd')  << U
+            File(outpath + 'U.pvd')   << U
+            File(outpath + 'Ub.pvd')  << U_b
 
       # calculate energy
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['enthalpy']['log']:
-          s    = '::: saving surface and bed temperature Ts and Tb .pvd ' + \
-                 'files to %s :::' % outpath
+          s    = '::: saving surface and bed temperature Ts, Tb, and Mb' + \
+                 ' .pvd files to %s :::' % outpath
           print_text(s, self.color())
           if config['log_history']:
             self.file_Ts << model.Ts
             self.file_Tb << model.Tb
+            self.file_Mb << model.Mb
           else:
             File(outpath + 'Ts.pvd')  << model.Ts
             File(outpath + 'Tb.pvd')  << model.Tb
+            File(outpath + 'Mb.pvd')  << model.Mb
         model.T0_.interpolate(model.T_)  # update previous temp
       
       # calculate free surface :
@@ -1266,6 +1276,11 @@ class HybridTransientSolver(Solver):
       if config['velocity']['transient_beta'] == 'stats':
         s    = "::: calculating new statistical beta :::"
         print_text(s, self.color())
+
+        model.assign_variable(model.u, model.u_b)
+        model.assign_variable(model.v, model.v_b)
+        model.assign_variable(model.w, model.w_b)
+
         beta = project(model.beta_f, model.Q)
         print_min_max(beta, 'beta')
         s    = "::: removing negative values of beta :::"
@@ -1273,11 +1288,17 @@ class HybridTransientSolver(Solver):
         beta_v = beta.vector().array()
         #betaSIA_v = model.betaSIA.vector().array()
         #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        beta_v[beta_v < 0.0]    = 0.0
+        beta_v[beta_v < 1e-15]    = 1e-15
         #beta_v[beta_v > 2500.0] = 2500.0
         model.assign_variable(model.beta, beta_v)
         #model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')
+
+        Ubar_v = model.Ubar.vector().array()
+        #Ubar_v[Ubar_v < 0]    = 0
+        #Ubar_v[Ubar_v > 3000] = 3000
+        model.assign_variable(model.Ubar, Ubar_v)
+
         # save beta : 
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath

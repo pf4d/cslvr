@@ -1162,7 +1162,7 @@ class Enthalpy(Physics):
     # calculate melt-rate : 
     s = "::: calculating basal melt-rate :::"
     print_text(s, self.color())
-    nMb   = project(-(q_geo + q_friction) / (L*rhoi))
+    nMb   = project((q_geo + q_friction) / (L*rhoi))
     model.assign_variable(Mb,  nMb)
     print_min_max(Mb, 'Mb')
 
@@ -1454,7 +1454,7 @@ class EnthalpyDG(Physics):
     model.assign_variable(W_r, W_v)
     
     # calculate melt-rate : 
-    nMb   = project(-(q_geo + q_friction) / (L*rhoi))
+    nMb   = project((q_geo + q_friction) / (L*rhoi))
     model.assign_variable(Mb,  nMb)
 
     # calculate bulk density :
@@ -2225,11 +2225,10 @@ class VelocityBalance(Physics):
     dSdy        = model.dSdy
     d_x         = model.d_x
     d_y         = model.d_y
-    kappa       = model.kappa
     adot        = model.adot
    
     # assign the variables something that the user specifies : 
-    model.assign_variable(kappa, config['balance_velocity']['kappa'])
+    kappa = config['balance_velocity']['kappa']
         
     #===========================================================================
     # form to calculate direction of flow (down driving stress gradient) :
@@ -2831,13 +2830,21 @@ class VelocityHybrid(Physics):
 
     self.m_solver.solve()
 
-    model.assign_variable(model.u, project(self.u(0.0), Q))
-    model.assign_variable(model.v, project(self.v(0.0), Q))
-    model.assign_variable(model.w, project(self.w(0.0), Q))
+    model.assign_variable(model.u_s, project(self.u(0.0), Q))
+    model.assign_variable(model.v_s, project(self.v(0.0), Q))
+    model.assign_variable(model.w_s, project(self.w(0.0), Q))
 
     print_min_max(model.u, 'u_s')
     print_min_max(model.v, 'v_s')
     print_min_max(model.w, 'w_s')
+
+    model.assign_variable(model.u_b, project(self.u(1.0), Q))
+    model.assign_variable(model.v_b, project(self.v(1.0), Q))
+    model.assign_variable(model.w_b, project(self.w(1.0), Q))
+
+    print_min_max(model.u_b, 'u_b')
+    print_min_max(model.v_b, 'v_b')
+    print_min_max(model.w_b, 'w_b')
 
 
 class MassBalanceHybrid(Physics):
@@ -3151,6 +3158,14 @@ class EnergyHybrid(Physics):
     
     Q      = model.Q
     T_     = model.T_
+    rhoi   = model.rhoi
+    L      = model.L
+    q_geo  = model.q_geo
+    beta   = model.beta
+    u_b    = model.u_b
+    v_b    = model.v_b
+    w_b    = model.w_b
+    q_fric = 0.5 * beta**2 * (u_b**2 + v_b**2 + w_b**2)
 
     ffc_options = config['enthalpy']['ffc_options']
 
@@ -3181,6 +3196,13 @@ class EnergyHybrid(Physics):
 
     print_min_max(model.Ts, 'T_S')
     print_min_max(model.Tb, 'T_B')
+    
+    # calculate melt-rate : 
+    s = "::: calculating basal melt-rate :::"
+    print_text(s, self.color())
+    nMb   = project((q_geo + q_fric) / (L*rhoi))
+    model.assign_variable(model.Mb,  nMb)
+    print_min_max(model.Mb, 'Mb')
 
 
 

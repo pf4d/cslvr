@@ -43,7 +43,7 @@ from pylab                   import plt
 from fenics                  import *
 from termcolor               import colored, cprint
 from mpl_toolkits.basemap    import Basemap
-from matplotlib              import colors
+from matplotlib              import colors, ticker
 from pyproj                  import *
 from io                      import DataInput
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -1040,6 +1040,8 @@ def plotIce(di, u, name, direc, cmap='gist_yarg',  scale='lin',
   
   elif scale == 'lin':
     from matplotlib.ticker import ScalarFormatter
+    v[v < vmin] = vmin
+    v[v > vmax] = vmax
     levels    = np.linspace(vmin, vmax, numLvls)
     formatter = ScalarFormatter()
     norm      = None
@@ -1071,7 +1073,9 @@ def plotIce(di, u, name, direc, cmap='gist_yarg',  scale='lin',
     divider = make_axes_locatable(plt.gca())
     cax  = divider.append_axes("right", "5%", pad="3%")
     cbar = plt.colorbar(cs, cax=cax, format=formatter, 
-                        ticks=np.around(levels,decimals=1)) 
+                        ticks=levels) 
+    #cbar = plt.colorbar(cs, cax=cax, format=formatter, 
+    #                    ticks=np.around(levels,decimals=1)) 
   
   # title :
   #tit = plt.title(name)

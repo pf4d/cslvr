@@ -73,7 +73,7 @@ class SteadySolver(Solver):
       if config['velocity']['log']:
         self.U_file = File(outpath + 'U.pvd')
         self.P_file = File(outpath + 'P.pvd')
-      if config['velocity']['use_stat_beta']:
+      if config['velocity']['transient_beta']:
         self.beta_file = File(outpath + 'beta.pvd')
     
     # enthalpy model :
@@ -209,7 +209,7 @@ class SteadySolver(Solver):
               File(outpath + 'Mb.pvd')  << model.Mb
     
       # re-compute the friction field :
-      if config['velocity']['use_stat_beta']:
+      if config['velocity']['transient_beta'] == 'stats':
         s    = "::: updating statistical beta :::"
         print_text(s, self.color())
         beta = project(model.beta_f, model.Q)

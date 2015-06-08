@@ -71,8 +71,10 @@ class SteadySolver(Solver):
         s = "Please use 'BP', 'stokes', or 'L1L2'. "
         print_text(s, self.color())
       if config['velocity']['log']:
-        self.U_file = File(outpath + 'U.pvd')
-        self.P_file = File(outpath + 'P.pvd')
+        self.U_s_file = File(outpath + 'Us.pvd')
+        self.U_b_file = File(outpath + 'Ub.pvd')
+        self.U_file   = File(outpath + 'U.pvd')
+        self.P_file   = File(outpath + 'P.pvd')
       if config['velocity']['transient_beta']:
         self.beta_file = File(outpath + 'beta.pvd')
     
@@ -167,21 +169,34 @@ class SteadySolver(Solver):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         if config['velocity']['log'] and config['log']:
-          s    = '::: saving velocity %sU.pvd file :::' % outpath
-          print_text(s, self.color())
-          U = project(as_vector([model.u, model.v, model.w]))
-          if config['log_history']:
-            self.U_file << U
-          else:
-            File(outpath + 'U.pvd')  << U
-          # save pressure if desired :
-          if config['velocity']['calc_pressure']:
-            s    = '::: saving pressure %sP.pvd file :::' % outpath
-            print_text(s, self.color())
+          if config['model_order'] == 'L1L2':
+            s  = '::: saving surface and bed velocity Us and Ub' + \
+                 ' .pvd files to %s :::'
+            print_text(s % outpath, self.color())
+            U_s  = project(as_vector([model.u_s, model.v_s, model.w_s]))
+            U_b  = project(as_vector([model.u_b, model.v_b, model.w_b]))
             if config['log_history']:
-              self.P_file << model.P
+              self.U_s_file << U_s
+              self.U_b_file << U_b
             else:
-              File(outpath + 'P.pvd') << model.P
+              File(outpath + 'Us.pvd')  << U_s
+              File(outpath + 'Ub.pvd')  << U_b
+          else:
+            s    = '::: saving velocity %sU.pvd file :::' % outpath
+            print_text(s, self.color())
+            U = project(as_vector([model.u, model.v, model.w]))
+            if config['log_history']:
+              self.U_file << U
+            else:
+              File(outpath + 'U.pvd')  << U
+            # save pressure if desired :
+            if config['velocity']['calc_pressure']:
+              s    = '::: saving pressure %sP.pvd file :::' % outpath
+              print_text(s, self.color())
+              if config['log_history']:
+                self.P_file << model.P
+              else:
+                File(outpath + 'P.pvd') << model.P
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
@@ -1179,7 +1194,7 @@ class HybridTransientSolver(Solver):
     # Set up files for logging time dependent solutions to paraview files.
     if config['log']:
       self.file_Ubar = File(outpath + 'Ubar.pvd')
-      self.file_U    = File(outpath + 'U.pvd')
+      self.file_U_s  = File(outpath + 'Us.pvd')
       self.file_U_b  = File(outpath + 'Ub.pvd')
       self.file_Ts   = File(outpath + 'Ts.pvd')
       self.file_Tb   = File(outpath + 'Tb.pvd')
@@ -1217,15 +1232,16 @@ class HybridTransientSolver(Solver):
       if config['velocity']['on']:
         self.velocity_instance.solve()
         if config['velocity']['log']:
-          s    = '::: saving velocity %sU.pvd file :::' % outpath
+          s    = '::: saving surface and bed velocity Us and Ub .pvd' + \
+                 ' files to %s :::' % outpath
           print_text(s, self.color())
-          U    = project(as_vector([model.u,   model.v,   model.w]))
+          U_s  = project(as_vector([model.u_s, model.v_s, model.w_s]))
           U_b  = project(as_vector([model.u_b, model.v_b, model.w_b]))
           if config['log_history']:
-            self.file_U   << U
+            self.file_U_s << U_s
             self.file_U_b << U_b
           else:
-            File(outpath + 'U.pvd')   << U
+            File(outpath + 'Us.pvd')  << U_s
             File(outpath + 'Ub.pvd')  << U_b
 
       # calculate energy
@@ -1288,8 +1304,8 @@ class HybridTransientSolver(Solver):
         beta_v = beta.vector().array()
         #betaSIA_v = model.betaSIA.vector().array()
         #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        beta_v[beta_v < 1e-15]    = 1e-15
-        #beta_v[beta_v > 2500.0] = 2500.0
+        beta_v[beta_v < sqrt(1e3)]  = sqrt(1e3)
+        beta_v[beta_v > sqrt(1e9)]  = sqrt(1e9)
         model.assign_variable(model.beta, beta_v)
         #model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')

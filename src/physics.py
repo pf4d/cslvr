@@ -2834,6 +2834,10 @@ class VelocityHybrid(Physics):
     model.assign_variable(model.v_s, project(self.v(0.0), Q))
     model.assign_variable(model.w_s, project(self.w(0.0), Q))
 
+    model.assign_variable(model.u, model.u_s)
+    model.assign_variable(model.v, model.v_s)
+    model.assign_variable(model.w, model.w_s)
+
     print_min_max(model.u, 'u_s')
     print_min_max(model.v, 'v_s')
     print_min_max(model.w, 'w_s')

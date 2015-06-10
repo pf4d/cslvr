@@ -1329,6 +1329,7 @@ class HybridTransientSolver(Solver):
         model.assign_variable(model.u, model.u_b)
         model.assign_variable(model.v, model.v_b)
         model.assign_variable(model.w, model.w_b)
+        model.assign_variable(model.T, model.Tb)
 
         beta = project(model.beta_f, model.Q)
         print_min_max(beta, 'beta')

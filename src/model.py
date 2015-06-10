@@ -689,7 +689,7 @@ class Model(object):
     Q     = self.Q
     B     = self.B
     S     = self.S
-    T     = self.Tb
+    T     = self.T
     T_s   = self.T_surface
 
     adot_v = adot.vector().array()
@@ -700,14 +700,16 @@ class Model(object):
     Ubar_v[Ubar_v < 0] = 0
     self.assign_variable(Ubar, Ubar_v)
 
-    absB  = Function(Q)
-    B_v   = np.abs(B.vector().array())
-    self.assign_variable(absB, B_v)
+    D     = Function(Q)
+    B_v   = B.vector().array()
+    D_v   = D.vector().array()
+    D_v[B_v < 0] = 1.0
+    self.assign_variable(D, D_v)
 
-    absMb = Function(Q)
-    Mb_v  = np.abs(Mb.vector().array())
-    Mb_v[Mb_v > 40] = 40
-    self.assign_variable(absMb, Mb_v)
+    Mb_v = Mb.vector().array()
+    Mb_v[Mb_v < 0.0]  = 0.0
+    Mb_v[Mb_v > 10.0] = 10.0
+    self.assign_variable(Mb, Mb_v)
 
     nS   = Function(Q)
     gSx  = project(S.dx(0)).vector().array()
@@ -726,7 +728,7 @@ class Model(object):
     x0   = S
     x1   = T_s
     x2   = nS
-    x3   = absB
+    x3   = D
     x4   = nB
     x5   = S - B
     x6   = self.u
@@ -736,52 +738,40 @@ class Model(object):
     x10  = adot
     x11  = ln(Ubar + 1)
     x12  = T
-    x13  = absMb
-    x14  = ln(sqrt(inner(U_v,U_v) + DOLFIN_EPS))
+    x13  = Mb
+    x14  = ln(sqrt(inner(U_v,U_v) + DOLFIN_EPS) + 1)
 
     #X    = [x0,x1,x2,x3,x4,x5,x10,x11]
-    X    = [x0,x1,x2,x3,x4,x5,x6,x7,x8,x10,x11,x12,x13,x14]
+    #X    = [x0,x1,x2,x3,x4,x5,x6,x7,x8,x10,x11,x12,x13,x14]
+    X    = [x0,x1,x2,x3,x4,x5,x10,x11,x12,x13,x14]
 
     for i,xx in enumerate(X):
       print_min_max(xx, 'x' + str(i))
 
     # GLM greenland :
-    bhat = [ 1.24442229e+02,   3.89132651e-03,  -5.31296458e-01,
-             6.74726571e+00,  -6.58701708e-03,  -1.42634414e+01,
-            -7.44111508e-03,  -3.03337162e-02,  -3.78262742e-02,
-             2.63820235e-01,   1.14097280e+00,   4.06338070e-01,
-            -3.87822131e-01,   2.81290706e+02,   1.94740238e-01,
-            -2.12217647e-05,  -2.20669951e-03,   1.02829268e-08,
-             1.44057779e-03,  -1.87604764e-08,  -6.11781421e-07,
-             2.11307019e-06,  -1.07997981e-06,  -1.68390637e-04,
-             5.83599652e-05,   3.89130151e-06,   1.56680124e-04,
-             6.50637934e-05,   9.30754721e-02,   3.90389750e-05,
-             8.60323523e-02,   4.02062472e-05,   1.17390866e-04,
-             1.79270504e-04,  -5.23608468e-04,  -5.57339679e-04,
-             2.07964732e-03,   1.75571180e-03,  -7.57533306e-01,
-             4.96926145e-03,   2.50657044e-03,  -1.52977763e+01,
-             1.00773543e-03,  -5.18829903e-04,   8.53202608e-04,
-            -8.09516717e-02,   1.00733635e-01,  -2.20101221e-01,
-            -9.62943030e-02,  -6.61575702e+01,  -5.13629390e-02,
-            -1.23646012e-03,   8.76340837e-08,   1.07134636e-06,
-            -1.16677378e-06,  -2.25844346e-06,   1.81577588e-04,
-            -8.62840785e-05,  -1.03971419e-05,   1.74114941e-03,
-            -8.03309762e-05,  -1.10879134e-03,  -1.98444058e-03,
-            -2.68737886e-03,  -3.56765897e-02,  -1.55315592e-01,
-             1.34245972e-01,  -2.79546175e-02,  -6.63108152e+01,
-             1.81693786e-01,   1.54419965e-06,  -1.14491904e-06,
-            -1.05208609e-06,   2.32728977e-04,   1.38276640e-05,
-            -8.63968974e-06,   1.84796524e-03,  -1.32398068e-04,
-             2.22106009e-07,  -4.34624728e-07,   1.94854378e-04,
-            -3.48619113e-06,  -7.75169580e-06,  -1.75159775e-03,
-             2.46699311e-04,  -2.71190824e-06,  -1.13743104e-04,
-            -3.14476525e-04,  -4.61931154e-05,  -3.17336052e-03,
-             9.52877947e-04,   4.97002058e-04,   8.29600804e-04,
-            -5.70210205e-04,  -1.98910490e-02,   4.92765267e-03,
-            -6.39503588e-03,  -3.41559754e-03,   4.88502681e-01,
-            -2.48805807e-02,  -3.32967719e-03,   3.79798093e-01,
-            -2.41636120e-02,  -2.59183497e-01,  -6.74303811e-03,
-            -1.83116699e+00]
+    bhat = [  1.12969015e+02,  -7.03089571e-04,  -4.80388882e-01,
+              1.04728732e+01,  -2.35738886e+00,  -1.58589160e+01,
+             -1.85892677e-03,   1.98232164e+00,   5.40087900e-01,
+             -3.48879703e-01,   1.24709495e+02,  -3.20120524e-01,
+              1.21090089e-06,   2.75252502e-05,   1.10197427e-04,
+              1.56775481e-04,  -4.66196445e-08,   3.05280681e-05,
+             -3.99891105e-05,   2.54849033e-06,   6.07948043e-04,
+             -9.24583626e-06,   9.11510866e-02,   4.08099271e-03,
+              1.19485302e-01,   1.51751066e-05,  -4.31087350e-03,
+              2.73848399e-03,   1.58175033e-03,  -3.53660319e-01,
+              5.40688437e-03,   5.15207855e-01,  -1.35485381e+01,
+             -1.23527871e-03,   1.30067570e-01,  -1.82549040e-01,
+             -1.10123948e-01,  -3.75844550e+01,  -2.32178148e-02,
+              2.49403652e-01,  -3.53253359e-05,  -1.10152405e-02,
+             -2.90309289e-02,   5.19834841e-03,   8.60039906e-01,
+             -2.46954146e-02,   3.77891240e-04,  -1.48137445e-01,
+             -2.42348351e-02,  -5.18187117e-02,  -9.92962934e+00,
+             -1.22320918e-01,   6.95520850e-05,   1.09910385e-04,
+             -8.04502791e-06,  -1.59918662e-03,  -6.52457771e-05,
+             -5.26705679e-03,  -3.06153602e-03,   3.28928683e-01,
+             -1.64058971e-02,  -4.50693280e-03,   6.38575687e-02,
+             -1.43488545e-02,  -8.79778349e-02,  -5.35017800e-03,
+             -6.44700182e-01]
 
     X_i  = []
     X_i.extend(X)
@@ -790,17 +780,18 @@ class Model(object):
       for yy in X[i+1:]:
         X_i.append(xx*yy)
     
-    self.beta_f = exp(Constant(bhat[0]))
+    #self.beta_f = exp(Constant(bhat[0]))
+    self.beta_f = Constant(bhat[0])
     
     for xx,bb in zip(X_i, bhat[1:]):
-      self.beta_f *= exp(Constant(bb)*xx)
-      #self.beta_f += Constant(bb)*xx
-    #self.beta_f = exp(self.beta_f)
+      self.beta_f += Constant(bb)*xx
+      #self.beta_f *= exp(Constant(bb)*xx)
+    self.beta_f = exp(self.beta_f)
     
-    beta                    = project(self.beta_f, Q)
-    beta_v                  = beta.vector().array()
-    beta_v[beta_v < 0.0]    = 0.0
-    self.assign_variable(self.beta, beta)
+    beta                   = project(self.beta_f, Q)
+    beta_v                 = beta.vector().array()
+    beta_v[beta_v < 0.0]   = 0.0
+    self.assign_variable(self.beta, beta_v)
     print_min_max(self.beta, 'beta0')
     #self.init_beta_SIA(Ubar)
      
@@ -876,29 +867,6 @@ class Model(object):
     M       = assemble(psi_i * psi_j * dx)
     eta     = assemble(eta_shf*psi_i*dx_s + eta_gnd*psi_i*dx_g)
     solve(M, self.eta.vector(), eta)
-    print_min_max(self.eta, 'eta')
-
-  def calc_eta(self):
-    #FIXME: not working due to no 'E' anymore.
-    s     = "::: calculating visosity :::"
-    print_text(s, self.color)
-    R       = self.R
-    E       = self.E
-    T       = self.T
-    W       = self.W
-    eps_reg = self.eps_reg
-    u       = self.u
-    v       = self.v
-    w       = self.w
-    n       = self.n
-    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    b       = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-    term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
-                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-    epsdot  = term + eps_reg
-    eta     = project(b * epsdot**((1-n)/(2*n)), self.Q)
-    self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
 
   def strain_rate_tensor(self, U):

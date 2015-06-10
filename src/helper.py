@@ -672,12 +672,6 @@ def default_config():
                'on'                  : False,
                'log'                 : True,
                'vert_integrate'      : False,
-               'viscosity_mode'      : 'isothermal',
-               'A'                   : 1e-16,
-               'eta'                 : None,
-               'T'                   : None,
-               'W'                   : None,
-               'E'                   : None,
              }}
   return config
 

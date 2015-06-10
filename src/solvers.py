@@ -28,6 +28,41 @@ class Solver(object):
     return 'turquoise_2'
 
 
+class BalanceVelocitySolver(Solver):
+    
+  def __init__(self, model, config):
+    s    = "::: INITIALIZING BALANCE VELOCITY SOLVER :::"
+    print_text(s, self.color())
+    self.model  = model
+    self.config = config
+    outpath     = config['output_path']
+      
+    self.BV_instance = VelocityBalance(model, config)
+    
+    if self.config['balance_velocity']['log']:
+      self.BV_file = File(outpath + 'Ubar.pvd')
+
+  def solve(self):
+    """
+    Solves for the velocity balance.
+    """
+    s    = '::: solving BalanceVelocitySolver :::'
+    print_text(s, self.color())
+    model   = self.model
+    config  = self.config
+    outpath = config['output_path']
+
+    self.BV_instance.solve()
+
+    if self.config['balance_velocity']['log']:
+      s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
+      print_text(s, self.color())
+      if config['log_history']:
+        self.BV_file << model.Ubar
+      else:
+        File(outpath + 'Ubar.pvd') << model.Ubar
+  
+
 class SteadySolver(Solver):
   """
   This class solves for velocity, enthalpy (temperature), surface mass balance, 
@@ -230,15 +265,13 @@ class SteadySolver(Solver):
       if config['velocity']['transient_beta'] == 'stats':
         s    = "::: updating statistical beta :::"
         print_text(s, self.color())
-        beta = project(model.beta_f, model.Q)
-        print_min_max(beta, 'beta')
-        #beta_v = beta.vector().array()
+        beta   = project(model.beta_f, model.Q)
+        beta_v = beta.vector().array()
         ##betaSIA_v = model.betaSIA.vector().array()
         ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        #beta_v[beta_v < 0.0]    = 0.0
-        ##beta_v[beta_v > 2500.0] = 2500.0
-        model.assign_variable(model.beta, beta)
-        #model.assign_variable(model.beta, np.sqrt(beta_v))
+        beta_v[beta_v < 0.0]    = 0.0
+        #beta_v[beta_v > 2500.0] = 2500.0
+        model.assign_variable(model.beta, beta_v)
         print_min_max(model.beta, 'beta')
         if config['log']:
           s    = '::: saving stats %sbeta.pvd file :::' % outpath

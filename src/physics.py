@@ -1163,7 +1163,10 @@ class Enthalpy(Physics):
     s = "::: calculating basal melt-rate :::"
     print_text(s, self.color())
     nMb   = project((q_geo + q_friction) / (L*rhoi))
-    model.assign_variable(Mb,  nMb)
+    nMb_v = nMb.vector().array()
+    nMb_v[nMb_v < 0.0]  = 0.0
+    nMb_v[nMb_v > 10.0] = 10.0
+    model.assign_variable(Mb,  nMb_v)
     print_min_max(Mb, 'Mb')
 
     # calculate bulk density :
@@ -2349,7 +2352,6 @@ class StokesBalance3D(Physics):
     rhow     = model.rhow
     g        = model.g
     x        = model.x
-    eps_reg  = model.eps_reg
     N        = model.N
     D        = model.D
     
@@ -2407,40 +2409,6 @@ class StokesBalance3D(Physics):
                              dudn + 2*dvdt,
                         0.5*dvdz             ])
     
-    if   config['stokes_balance']['viscosity_mode'] == 'isothermal':
-      A = config['stokes_balance']['A']
-      s = "    - using isothermal visosity formulation -"
-      print_text(s, self.color())
-      print_min_max(A, 'A')
-      b     = Constant(A**(-1/n))
-    
-    elif config['stokes_balance']['viscosity_mode'] == 'linear':
-      s = "    - using linear visosity formulation -"
-      print_text(s, self.color())
-      b = Function(Q)
-      model.assign_variable(b, config['stokes_balance']['eta'])
-      print_min_max(eta, 'eta')
-      n     = 1.0
-    
-    elif config['stokes_balance']['viscosity_mode'] == 'full':
-      s     = "    - using full visosity formulation -"
-      print_text(s, self.color())
-      model.assign_variable(model.E, config['stokes_balance']['E'])
-      model.assign_variable(model.T, config['stokes_balance']['T'])
-      model.assign_variable(model.W, config['stokes_balance']['W'])
-      R     = model.R
-      T     = model.T
-      E     = model.E
-      W     = model.W
-      a_T   = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T   = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b     = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-    
-    term   = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
-                    + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-    epsdot = term + eps_reg
-    eta    = b * epsdot**((1-n)/(2*n))
-    
     tau_dn = phi * rhoi * g * gradS[0] * dx
     tau_dt = psi * rhoi * g * gradS[1] * dx
     
@@ -2470,6 +2438,7 @@ class StokesBalance3D(Physics):
     """
     """
     model = self.model
+    model.unify_eta()
     
     s    = "::: solving '3D-stokes-balance' for flow direction :::"
     print_text(s, self.color())
@@ -2489,7 +2458,6 @@ class StokesBalance3D(Physics):
     s    = "solving '3D-stokes-balance' for stress terms :::" 
     print_text(s, self.color())
 
-    outpath = config['output_path']
     Q       = model.Q
     N       = model.N
     beta    = model.beta

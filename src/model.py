@@ -204,27 +204,6 @@ class Model(object):
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
 
-    # FIXME: this doesn't work with adjoint self.lam
-    #shf_cells = SubsetIterator(self.cf, 1)
-    #dofmap    = self.Q.dofmap()
-    #
-    ## Dofs in domain
-    #dofs = sum((dofmap.cell_dofs(cell.index()).tolist()
-    #           for cell in shf_cells), [])
-    ## Get unique dofs in local numbering that the process sees. 
-    ## Some might not be owned
-    #dofs = set(dofs)
-    #
-    ## Where in global vector are dofs owned by the process
-    #my_first, my_last = dofmap.ownership_range()
-    #
-    ## Keep only owned ones, ie those whose global index is in ownership range
-    #shf_dofs = filter(lambda dof: my_first <= \
-    #                              dofmap.local_to_global_index(dof) \
-    #                              < my_last, \
-    #                  dofs)
-    #self.shf_dofs = shf_dofs
-
   def calculate_boundaries(self, mask=None, adot=None):
     """
     Determines the boundaries of the current model mesh
@@ -853,20 +832,55 @@ class Model(object):
 
   def unify_eta(self):
     """
+    Unifies viscosity defined over grounded and shelves to model.eta.
     """
     s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
     print_text(s, self.color)
+    
     eta_shf = self.eta_shf
     eta_gnd = self.eta_gnd
-    dx      = self.dx
-    dx_s    = dx(1)
-    dx_g    = dx(0)
-    Q       = self.Q
-    psi_i   = TestFunction(Q)
-    psi_j   = TrialFunction(Q)
-    M       = assemble(psi_i * psi_j * dx)
-    eta     = assemble(eta_shf*psi_i*dx_s + eta_gnd*psi_i*dx_g)
-    solve(M, self.eta.vector(), eta)
+   
+    # remove areas where viscosities overlap : 
+    eta_shf.vector()[self.gnd_dofs] = 0.0
+    eta_gnd.vector()[self.shf_dofs] = 0.0
+
+    eta = project(eta_shf + eta_gnd, self.Q)
+    self.assign_variable(self.eta, eta)
+
+    #dx      = self.dx
+    #dx_s    = dx(1)
+    #dx_g    = dx(0)
+    #Q       = self.Q
+    #psi_i   = TestFunction(Q)
+    #psi_j   = TrialFunction(Q)
+    #M       = assemble(psi_i * psi_j * dx)
+    #eta     = assemble(eta_shf*psi_i*dx_s + eta_gnd*psi_i*dx_g)
+    #solve(M, self.eta.vector(), eta)
+    print_min_max(self.eta, 'eta')
+ 
+  def calc_eta(self):
+    """
+    Calculates viscosity and assigns to model.eta.
+    """
+    #FIXME: not working due to no 'E' anymore.
+    s     = "::: calculating visosity :::"
+    print_text(s, self.color)
+    R       = self.R
+    T       = self.T
+    W       = self.W
+    eps_reg = self.eps_reg
+    u       = self.u
+    v       = self.v
+    w       = self.w
+    n       = self.n
+    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    b       = ( a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
+                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
+    epsdot  = term + eps_reg
+    eta     = project(b * epsdot**((1-n)/(2*n)), self.Q)
+    self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
 
   def strain_rate_tensor(self, U):

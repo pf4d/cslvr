@@ -902,8 +902,9 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
     plt.close(fig)
 
 
-def plotIce(di, u, name, direc, cmap='gist_yarg',  scale='lin',
-            umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5):
+def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
+            umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5,
+            show=True):
   """
   INPUTS :
 
@@ -1034,8 +1035,8 @@ def plotIce(di, u, name, direc, cmap='gist_yarg',  scale='lin',
   
   elif scale == 'lin':
     from matplotlib.ticker import ScalarFormatter
-    v[v < vmin] = vmin
-    v[v > vmax] = vmax
+    v[v < vmin] = vmin + 1e-12
+    v[v > vmax] = vmax - 1e-12
     levels    = np.linspace(vmin, vmax, numLvls)
     formatter = ScalarFormatter()
     norm      = None
@@ -1072,12 +1073,14 @@ def plotIce(di, u, name, direc, cmap='gist_yarg',  scale='lin',
     #                    ticks=np.around(levels,decimals=1)) 
   
   # title :
-  #tit = plt.title(name)
+  tit = plt.title(title)
   #tit.set_fontsize(40)
   
   plt.tight_layout(rect=[.03,.03,0.97,0.97])
   plt.savefig(direc + name + '.png', dpi=200)
-  plt.show()
+  if show:
+    plt.show()
+  plt.close(fig)
 
 
 # VERTICAL BASIS REPLACES A NORMAL FUNCTION, SUCH THAT VERTICAL DERIVATIVES

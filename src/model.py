@@ -837,8 +837,8 @@ class Model(object):
     s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
     print_text(s, self.color)
     
-    eta_shf = self.eta_shf
-    eta_gnd = self.eta_gnd
+    eta_shf = project(self.eta_shf, self.Q)
+    eta_gnd = project(self.eta_gnd, self.Q)
    
     # remove areas where viscosities overlap : 
     eta_shf.vector()[self.gnd_dofs] = 0.0
@@ -862,26 +862,49 @@ class Model(object):
     """
     Calculates viscosity and assigns to model.eta.
     """
-    #FIXME: not working due to no 'E' anymore.
-    s     = "::: calculating visosity :::"
+    s     = "::: calculating viscosity :::"
     print_text(s, self.color)
+    Q       = self.Q
     R       = self.R
     T       = self.T
     W       = self.W
-    eps_reg = self.eps_reg
-    u       = self.u
-    v       = self.v
-    w       = self.w
     n       = self.n
-    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    b       = ( a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-    term    = 0.5 * (0.5 * (u.dx(2)**2 + v.dx(2)**2 + (u.dx(1) + v.dx(0))**2) \
-                     + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-    epsdot  = term + eps_reg
-    eta     = project(b * epsdot**((1-n)/(2*n)), self.Q)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
+    epsdot  = self.epsdot
+    eps_reg = self.eps_reg
+    E_shf   = self.E_shf
+    E_gnd   = self.E_gnd
+    E       = self.E
+
+    # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
+    #a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    #Q_T    = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    a_T     = Function(Q)
+    Q_T     = Function(Q)
+    T_v     = T.vector().array()
+    a_T_v   = a_T.vector().array()
+    Q_T_v   = Q_T.vector().array()
+    a_T_v[T_v  < 263.15] = 1.1384496e-5
+    a_T_v[T_v >= 263.15] = 5.45e10 
+    Q_T_v[T_v  < 263.15] = 6e4
+    Q_T_v[T_v >= 263.15] = 13.9e4 
+    self.assign_variable(a_T, a_T_v)
+    self.assign_variable(Q_T, Q_T_v)
+   
+    # unify the enhancement factor over shelves and grounded ice : 
+    E   = Function(Q)
+    E_v = E.vector().array()
+    E_gnd_v = E_gnd.vector().array()
+    E_shf_v = E_shf.vector().array()
+    E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
+    E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
+    self.assign_variable(E, E_v)
+    
+    # calculate viscosity :
+    b       = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+    eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
+    #eta     = project(0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n)), Q)
+    #self.assign_variable(self.eta, eta)
+    #print_min_max(self.eta, 'eta')
 
   def strain_rate_tensor(self, U):
     """
@@ -902,6 +925,16 @@ class Model(object):
                         [epi[1,0],  epi[1,1],  epi12],
                         [epi02,     epi12,     epi22]])
     return epsdot
+
+  def stress_tensor(self, U):
+    """
+    return the Cauchy stress tensor.
+    """
+    epi = self.strain_rate_tensor(self.U)
+    eta = self.calc_eta()
+
+    sigma = 2*eta*epi - self.p*I
+
   
   def calc_thickness(self):
     """
@@ -1595,6 +1628,7 @@ class Model(object):
     self.P             = Function(self.Q)
     self.beta          = Function(self.Q)
     self.mhat          = Function(self.Q)
+    self.E             = Function(self.Q)
     self.E_gnd         = Function(self.Q)
     self.E_shf         = Function(self.Q)
     self.eta           = Function(self.Q)

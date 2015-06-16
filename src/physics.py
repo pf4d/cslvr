@@ -1154,6 +1154,7 @@ class Enthalpy(Physics):
     # update water content :
     W_v             = W_n.vector().array()
     W_v[cold]       = 0.0
+    W_v[W_v < 0.0]  = 0.0
     W_v[W_v > 0.01] = 0.01  # for rheology; instant water run-off
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
@@ -2438,7 +2439,7 @@ class StokesBalance3D(Physics):
     """
     """
     model = self.model
-    model.unify_eta()
+    model.calc_eta()
     
     s    = "::: solving '3D-stokes-balance' for flow direction :::"
     print_text(s, self.color())

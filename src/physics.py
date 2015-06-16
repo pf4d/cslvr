@@ -455,7 +455,7 @@ class VelocityDukowiczBP(Physics):
 
   def solve_vert_velocity(self):
     """ 
-    Perform the Newton solve of the first order equations 
+    Solve for the vertical velocity 'w'. 
     """
     model  = self.model
     config = self.config
@@ -475,6 +475,40 @@ class VelocityDukowiczBP(Physics):
     #solve(self.aw == self.Lw, model.w, bcs = self.bc_w,
     #      solver_parameters = {"linear_solver" : sm})
     print_min_max(model.w, 'w')
+
+  def solve_pressure(self):
+    """
+    Solve for the BP pressure 'p'.
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve for vertical velocity :
+    s  = "::: solving Dukowicz BP pressure :::"
+    print_text(s, self.color())
+    
+    Q       = model.Q
+    rhoi    = model.rhoi
+    g       = model.g
+    S       = model.S
+    x       = model.x
+    w       = model.w
+    p       = model.p
+    eta_shf = model.eta_shf
+    eta_gnd = model.eta_gnd
+
+    p_shf   = project(rhoi*g*(S - x[2]) + 2*eta_shf*w.dx(2), Q)
+    p_gnd   = project(rhoi*g*(S - x[2]) + 2*eta_gnd*w.dx(2), Q)
+    
+    # unify the enhancement factor over shelves and grounded ice : 
+    p_v     = p.vector().array()
+    p_gnd_v = p_gnd.vector().array()
+    p_shf_v = p_shf.vector().array()
+    p_v[self.gnd_dofs] = p_gnd_v[self.gnd_dofs]
+    p_v[self.shf_dofs] = p_shf_v[self.shf_dofs]
+    self.assign_variable(p, p_v)
+    
+    print_min_max(p, 'p')
 
   def solve(self):
     """ 
@@ -507,10 +541,7 @@ class VelocityDukowiczBP(Physics):
      
     # solve for pressure :
     if config['velocity']['calc_pressure']:
-      s    = "::: solving BP pressure :::"
-      print_text(s, self.color())
-      model.calc_pressure()
-      print_min_max(model.P, 'P')
+      self.solve_pressure()
 
 
 class VelocityBP(Physics):
@@ -642,6 +673,40 @@ class VelocityBP(Physics):
     # keep the residual for adjoint solves :
     model.A     = self.R1
 
+  def solve_pressure(self):
+    """
+    Solve for the BP pressure 'p'.
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve for vertical velocity :
+    s  = "::: solving BP pressure :::"
+    print_text(s, self.color())
+    
+    Q       = model.Q
+    rhoi    = model.rhoi
+    g       = model.g
+    S       = model.S
+    x       = model.x
+    w       = model.w
+    p       = model.p
+    eta_shf = model.eta_shf
+    eta_gnd = model.eta_gnd
+
+    p_shf   = project(rhoi*g*(S - x[2]) + 2*eta_shf*w.dx(2), Q)
+    p_gnd   = project(rhoi*g*(S - x[2]) + 2*eta_gnd*w.dx(2), Q)
+    
+    # unify the enhancement factor over shelves and grounded ice : 
+    p_v     = p.vector().array()
+    p_gnd_v = p_gnd.vector().array()
+    p_shf_v = p_shf.vector().array()
+    p_v[self.gnd_dofs] = p_gnd_v[self.gnd_dofs]
+    p_v[self.shf_dofs] = p_shf_v[self.shf_dofs]
+    self.assign_variable(p, p_v)
+    
+    print_min_max(p, 'p')
+
   def solve_vert_velocity(self):
     """ 
     Perform the Newton solve of the first order equations 
@@ -698,10 +763,7 @@ class VelocityBP(Physics):
     
     # solve for pressure :
     if config['velocity']['calc_pressure']:
-      s    = "::: solving BP pressure :::"
-      print_text(s, self.color())
-      model.calc_pressure()
-      print_min_max(model.P, 'P')
+      self.solve_pressure()
 
 
 class VelocityBPFull(Physics):
@@ -830,6 +892,40 @@ class VelocityBPFull(Physics):
     # keep the residual for adjoint solves :
     model.A       = self.A
 
+  def solve_pressure(self):
+    """
+    Solve for the BP pressure 'p'.
+    """
+    model  = self.model
+    config = self.config
+    
+    # solve for vertical velocity :
+    s  = "::: solving full BP pressure :::"
+    print_text(s, self.color())
+    
+    Q       = model.Q
+    rhoi    = model.rhoi
+    g       = model.g
+    S       = model.S
+    x       = model.x
+    w       = model.w
+    p       = model.p
+    eta_shf = model.eta_shf
+    eta_gnd = model.eta_gnd
+
+    p_shf   = project(rhoi*g*(S - x[2]) + 2*eta_shf*w.dx(2), Q)
+    p_gnd   = project(rhoi*g*(S - x[2]) + 2*eta_gnd*w.dx(2), Q)
+    
+    # unify the enhancement factor over shelves and grounded ice : 
+    p_v     = p.vector().array()
+    p_gnd_v = p_gnd.vector().array()
+    p_shf_v = p_shf.vector().array()
+    p_v[self.gnd_dofs] = p_gnd_v[self.gnd_dofs]
+    p_v[self.shf_dofs] = p_shf_v[self.shf_dofs]
+    self.assign_variable(p, p_v)
+    
+    print_min_max(p, 'p')
+
   def solve(self):
     """ 
     Perform the Newton solve of the first order equations 
@@ -860,10 +956,7 @@ class VelocityBPFull(Physics):
     
     # solve for pressure :
     if config['velocity']['calc_pressure']:
-      s    = "::: solving BP pressure :::"
-      print_text(s, self.color())
-      model.calc_pressure()
-      print_min_max(model.P, 'P')
+      self.solve_pressure()
     
 
 class Enthalpy(Physics):

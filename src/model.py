@@ -902,6 +902,7 @@ class Model(object):
     # calculate viscosity :
     b       = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
+    self.eta = eta
     #eta     = project(0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n)), Q)
     #self.assign_variable(self.eta, eta)
     #print_min_max(self.eta, 'eta')
@@ -930,10 +931,30 @@ class Model(object):
     """
     return the Cauchy stress tensor.
     """
+    s     = "::: forming the Cauchy stress tensor :::"
+    print_text(s, self.color)
     epi = self.strain_rate_tensor(self.U)
     eta = self.calc_eta()
+    dim = self.mesh.ufl_cell().topological_dimension()
+    I   = Identity(dim)
 
     sigma = 2*eta*epi - self.p*I
+    return sigma
+
+  def BP_stress_tensor(self, U):
+    """
+    return the Cauchy stress tensor.
+    """
+    s     = "::: forming the BP Cauchy stress tensor :::"
+    print_text(s, self.color)
+    epi = self.BP_strain_rate_tensor(self.U)
+    self.calc_eta()
+    dim = self.mesh.ufl_cell().topological_dimension()
+    I   = Identity(dim)
+    p   = self.calc_BP_pressure()
+
+    sigma = 2*eta*epi - self.p*I
+    return sigma
   
   def calc_thickness(self):
     """
@@ -946,7 +967,7 @@ class Model(object):
     print_min_max(H, 'H')
     return H
   
-  def calc_pressure(self):
+  def calc_BP_pressure(self):
     """
     Calculate the continuous pressure field.
     """
@@ -957,7 +978,7 @@ class Model(object):
     g       = self.g
     S       = self.S
     x       = self.x
-    P       = rhoi*g*(S - x[2])
+    P       = rhoi*g*(S - x[2]) + 2*
     self.P  = project(P, Q)
     #dx      = self.dx
     #dx_s    = dx(1)

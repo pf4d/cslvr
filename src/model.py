@@ -702,7 +702,7 @@ class Model(object):
     nB_v = np.sqrt(gBx**2 + gBy**2 + DOLFIN_EPS)
     self.assign_variable(nB, nB_v)
 
-    U_v  = as_vector([self.u, self.v])
+    U_v  = as_vector([self.u, self.v, self.w])
 
     x0   = S
     x1   = T_s
@@ -891,7 +891,7 @@ class Model(object):
 
   def BP_strain_rate_tensor(self,U):
     """
-    return the strain-rate tensor of <U>.
+    return the 'Blatter-Pattyn' simplified strain-rate tensor of <U>.
     """
     u,v,w = U
     epi   = 0.5 * (grad(U) + grad(U).T)
@@ -902,6 +902,15 @@ class Model(object):
                         [epi[1,0],  epi[1,1],  epi12],
                         [epi02,     epi12,     epi22]])
     return epsdot
+
+  def stress_tensor(self, U):
+    """
+    return the Cauchy stress tensor.
+    """
+    epi = self.strain_rate_tensor(self.U)
+    eta = self.calc_eta()
+
+    sigma = 2*eta*epi - self.p*I
   
   def calc_thickness(self):
     """
@@ -1056,6 +1065,18 @@ class Model(object):
     s    = "||U - U_ob|| : %.3E" % D
     print_text(s, '208', 1)
     self.misfit = D
+
+  def get_theta(self):
+    """
+    Returns the angle Function object in radians of the u and v components of velocity 
+    from the x-axis.
+    """
+    u_v     = self.u.vector().array()
+    v_v     = self.v.vector().array()
+    theta_v = np.arctan2(u_v, v_v)
+    theta   = Function(self.Q)
+    self.assign_variable(theta, theta_v)
+    return theta
 
   def rotate(self, M, theta):
     """

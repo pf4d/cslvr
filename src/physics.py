@@ -2417,14 +2417,14 @@ class VelocityBalance(Physics):
     Ubar_v[Ubar_v < 0] = 0
     model.assign_variable(model.Ubar, Ubar_v)
     print_min_max(model.Ubar, 'Ubar')
-    
 
-class StokesBalance3D(Physics):
+
+class BPBalance(Physics):
 
   def __init__(self, model, config):
     """
     """
-    s    = "::: INITIALIZING STOKES-BALANCE PHYSICS :::"
+    s    = "::: INITIALIZING BP-BALANCE PHYSICS :::"
     print_text(s, self.color())
 
     self.model  = model
@@ -2436,18 +2436,17 @@ class StokesBalance3D(Physics):
     Q2       = model.Q2
     u        = model.u
     v        = model.v
-    w        = model.w
     S        = model.S
     B        = model.B
     H        = S - B
     beta     = model.beta
-    eta      = model.eta
     rhoi     = model.rhoi
     rhow     = model.rhow
     g        = model.g
     x        = model.x
     N        = model.N
     D        = model.D
+    eta      = model.eta
     
     dx       = model.dx
     dx_s     = dx(1)
@@ -2468,57 +2467,68 @@ class StokesBalance3D(Physics):
     
     U        = as_vector([u, v])
     U_nm     = model.normalize_vector(U)
-    U        = as_vector([U[0],     U[1],  ])
     U_n      = as_vector([U_nm[0],  U_nm[1]])
     U_t      = as_vector([U_nm[1], -U_nm[0]])
     
-    u_s      = dot(dU, U_n)
-    v_s      = dot(dU, U_t)
-    U_s      = as_vector([u_s,       v_s      ])
-    gradu    = as_vector([u_s.dx(0), u_s.dx(1)])
-    gradv    = as_vector([v_s.dx(0), v_s.dx(1)])
-    dudn     = dot(gradu, U_n)
-    dudt     = dot(gradu, U_t)
-    dudz     = u_s.dx(2)
-    dvdn     = dot(gradv, U_n)
-    dvdt     = dot(gradv, U_t)
-    dvdz     = v_s.dx(2)
+    s        = dot(dU, U_n)
+    t        = dot(dU, U_t)
+    U_s      = as_vector([s,       t      ])
+    grads    = as_vector([s.dx(0), s.dx(1)])
+    gradt    = as_vector([t.dx(0), t.dx(1)])
+    dsdi     = dot(grads, U_n)
+    dsdj     = dot(grads, U_t)
+    dsdz     = s.dx(2)
+    dtdi     = dot(gradt, U_n)
+    dtdj     = dot(gradt, U_t)
+    dtdz     = t.dx(2)
     gradphi  = as_vector([phi.dx(0), phi.dx(1)])
     gradpsi  = as_vector([psi.dx(0), psi.dx(1)])
     gradS    = as_vector([S.dx(0),   S.dx(1)  ])
-    dphidn   = dot(gradphi, U_n)
-    dphidt   = dot(gradphi, U_t)
-    dpsidn   = dot(gradpsi, U_n)
-    dpsidt   = dot(gradpsi, U_t)
-    dSdn     = dot(gradS,   U_n)
-    dSdt     = dot(gradS,   U_t)
-    gradphi  = as_vector([dphidn,    dphidt,  phi.dx(2)])
-    gradpsi  = as_vector([dpsidn,    dpsidt,  psi.dx(2)])
-    gradS    = as_vector([dSdn,      dSdt,    S.dx(2)  ])
+    dphidi   = dot(gradphi, U_n)
+    dphidj   = dot(gradphi, U_t)
+    dpsidi   = dot(gradpsi, U_n)
+    dpsidj   = dot(gradpsi, U_t)
+    dSdi     = dot(gradS,   U_n)
+    dSdj     = dot(gradS,   U_t)
+    gradphi  = as_vector([dphidi,    dphidj,  phi.dx(2)])
+    gradpsi  = as_vector([dpsidi,    dpsidj,  psi.dx(2)])
+    gradS    = as_vector([dSdi,      dSdj,    S.dx(2)  ])
     
-    epi_1  = as_vector([2*dudn + dvdt, 
-                        0.5*(dudt + dvdn),
-                        0.5*dudz             ])
-    epi_2  = as_vector([0.5*(dudt + dvdn),
-                             dudn + 2*dvdt,
-                        0.5*dvdz             ])
+    #epi_1  = as_vector([dsdi, 
+    #                    0.5*(dsdj + dtdi),
+    #                    0.5*dsdz             ])
+    #epi_2  = as_vector([0.5*(dtdi + dsdj),
+    #                    dtdj,
+    #                    0.5*dtdz             ])
     
-    tau_dn = phi * rhoi * g * gradS[0] * dx
-    tau_dt = psi * rhoi * g * gradS[1] * dx
+    epi_1  = as_vector([2*dsdi + dtdj, 
+                        0.5*(dsdj + dtdi),
+                        0.5*dsdz             ])
+    epi_2  = as_vector([0.5*(dsdj + dtdi),
+                             dsdi + 2*dtdj,
+                        0.5*dtdz             ])
     
-    tau_bn = - beta**2 * u_s * phi * dBed
-    tau_bt = - beta**2 * v_s * psi * dBed
+    #F_id = + phi * rhoi * g * gradS[0] * dx \
+    #       - 2 * eta * w.dx(2) * dphidi * dx
+    #F_jd = + psi * rhoi * g * gradS[1] * dx \
+    #       - 2 * eta * w.dx(2) * dpsidj * dx
     
-    tau_pn = f_w * N[0] * phi * dSde
-    tau_pt = f_w * N[1] * psi * dSde
+    F_id = phi * rhoi * g * gradS[0] * dx
+    F_jd = psi * rhoi * g * gradS[1] * dx
     
-    tau_1  = - 2 * eta * dot(epi_1, gradphi) * dx
-    tau_2  = - 2 * eta * dot(epi_2, gradpsi) * dx
+    F_ib = - beta**2 * s * phi * dBed
+    F_jb = - beta**2 * t * psi * dBed
     
-    tau_n  = tau_1 + tau_bn + tau_pn - tau_dn
-    tau_t  = tau_2 + tau_bt + tau_pt - tau_dt
+    F_ip = f_w * N[0] * phi * dSde
+    F_jp = f_w * N[1] * psi * dSde
     
-    delta  = tau_n + tau_t
+    F_1  = - 2 * eta * dot(epi_1, gradphi) * dx
+    F_2  = - 2 * eta * dot(epi_2, gradpsi) * dx
+    
+    delta_1  = F_1 + F_ib + F_ip - F_id
+    delta_2  = F_2 + F_jb + F_jp - F_jd
+    
+    delta  = delta_1 + delta_2
     U_s    = Function(Q2)
 
     # make the variables available to solve :
@@ -2534,33 +2544,33 @@ class StokesBalance3D(Physics):
     model = self.model
     model.calc_eta()
     
-    s    = "::: solving '3D-stokes-balance' for flow direction :::"
+    s    = "::: solving 'BPBalance' for flow direction :::"
     print_text(s, self.color())
     solve(lhs(self.delta) == rhs(self.delta), self.U_s)
-    u_s, v_s = self.U_s.split(True)
+    u_s, u_t = self.U_s.split(True)
     model.assign_variable(model.u_s, u_s)
-    model.assign_variable(model.v_s, v_s)
-    print_min_max(model.u_s, 'u_s')
-    print_min_max(model.v_s, 'v_s')
+    model.assign_variable(model.u_t, u_t)
+    print_min_max(model.u_s, 's')
+    print_min_max(model.u_t, 't')
 
-  def component_stress_stokes(self):  
+  def solve_component_stress(self):  
     """
     """
     model  = self.model
     config = self.config
     
-    s    = "solving '3D-stokes-balance' for stress terms :::" 
+    s    = "solving 'BPBalance' for stress terms :::" 
     print_text(s, self.color())
 
     Q       = model.Q
     N       = model.N
     beta    = model.beta
-    eta     = model.eta
     S       = model.S
     B       = model.B
     H       = S - B
     rhoi    = model.rhoi
     g       = model.g
+    eta     = model.eta
     
     dx      = model.dx
     dx_s    = dx(1)
@@ -2584,134 +2594,142 @@ class StokesBalance3D(Physics):
 
     phi     = TestFunction(Q)
     dtau    = TrialFunction(Q)
-            
-    u_s     = dot(U_s, U_n)
-    v_s     = dot(U_s, U_t)
-    U_s     = as_vector([u_s,       v_s      ])
-    gradu   = as_vector([u_s.dx(0), u_s.dx(1)])
-    gradv   = as_vector([v_s.dx(0), v_s.dx(1)])
-    dudn    = dot(gradu, U_n)
-    dudt    = dot(gradu, U_t)
-    dudz    = u_s.dx(2)
-    dvdn    = dot(gradv, U_n)
-    dvdt    = dot(gradv, U_t)
-    dvdz    = v_s.dx(2)
+    
+    s       = dot(U_s, U_n)
+    t       = dot(U_s, U_t)
+    U_s     = as_vector([s,       t      ])
+    grads   = as_vector([s.dx(0), s.dx(1)])
+    gradt   = as_vector([t.dx(0), t.dx(1)])
+    dsdi    = dot(grads, U_n)
+    dsdj    = dot(grads, U_t)
+    dsdz    = s.dx(2)
+    dtdi    = dot(gradt, U_n)
+    dtdj    = dot(gradt, U_t)
+    dtdz    = t.dx(2)
+    dwdz    = -(dsdi + dtdj)
     gradphi = as_vector([phi.dx(0), phi.dx(1)])
     gradS   = as_vector([S.dx(0),   S.dx(1)  ])
-    dphidn  = dot(gradphi, U_n)
-    dphidt  = dot(gradphi, U_t)
-    dSdn    = dot(gradS,   U_n)
-    dSdt    = dot(gradS,   U_t)
-    gradphi = as_vector([dphidn, dphidt, phi.dx(2)])
-    gradS   = as_vector([dSdn,   dSdt,   S.dx(2)  ])
+    dphidi  = dot(gradphi, U_n)
+    dphidj  = dot(gradphi, U_t)
+    dSdi    = dot(gradS,   U_n)
+    dSdj    = dot(gradS,   U_t)
+    gradphi = as_vector([dphidi,    dphidj,  phi.dx(2)])
+    gradS   = as_vector([dSdi,      dSdj,    S.dx(2)  ])
     
-    epi_1  = as_vector([2*dudn + dvdt, 
-                        0.5*(dudt + dvdn),
-                        0.5*dudz             ])
-    epi_2  = as_vector([0.5*(dudt + dvdn),
-                             dudn + 2*dvdt,
-                        0.5*dvdz             ])
+    epi_1   = as_vector([dsdi, 
+                         0.5*(dsdj + dtdi),
+                         0.5*dsdz             ])
+    epi_2   = as_vector([0.5*(dtdi + dsdj),
+                         dtdj,
+                         0.5*dtdz             ])
     
-    tau_dn_s = phi * rhoi * g * gradS[0] * dx
-    tau_dt_s = phi * rhoi * g * gradS[1] * dx
+    #epi_1  = as_vector([2*dsdi + dtdj, 
+    #                    0.5*(dsdj + dtdi),
+    #                    0.5*dsdz             ])
+    #epi_2  = as_vector([0.5*(dsdj + dtdi),
+    #                         dsdi + 2*dtdj,
+    #                    0.5*dtdz             ])
     
-    tau_bn_s = - beta**2 * u_s * phi * dBed
-    tau_bt_s = - beta**2 * v_s * phi * dBed
+    F_id_s = + phi * rhoi * g * gradS[0] * dx \
+             - 2 * eta * dwdz * dphidi * dx
+    F_jd_s = + phi * rhoi * g * gradS[1] * dx \
+             - 2 * eta * dwdz * dphidj * dx
     
-    tau_pn_s = f_w * N[0] * phi * dSde
-    tau_pt_s = f_w * N[1] * phi * dSde
+    #F_id_s = phi * rhoi * g * gradS[0] * dx
+    #F_jd_s = phi * rhoi * g * gradS[1] * dx
     
-    tau_nn_s = - 2 * eta * epi_1[0] * gradphi[0] * dx
-    tau_nt_s = - 2 * eta * epi_1[1] * gradphi[1] * dx
-    tau_nz_s = - 2 * eta * epi_1[2] * gradphi[2] * dx
+    F_ib_s = - beta**2 * s * phi * dBed
+    F_jb_s = - beta**2 * t * phi * dBed
     
-    tau_tn_s = - 2 * eta * epi_2[0] * gradphi[0] * dx
-    tau_tt_s = - 2 * eta * epi_2[1] * gradphi[1] * dx
-    tau_tz_s = - 2 * eta * epi_2[2] * gradphi[2] * dx
+    F_ip_s = f_w * N[0] * phi * dSde
+    F_jp_s = f_w * N[1] * phi * dSde
+    
+    F_pn_s = f_w * N[0] * phi * dSde
+    F_pt_s = f_w * N[1] * phi * dSde
+     
+    F_ii_s = - 2 * eta * epi_1[0] * gradphi[0] * dx
+    F_ij_s = - 2 * eta * epi_1[1] * gradphi[1] * dx
+    F_iz_s = - 2 * eta * epi_1[2] * gradphi[2] * dx
+     
+    F_ji_s = - 2 * eta * epi_2[0] * gradphi[0] * dx
+    F_jj_s = - 2 * eta * epi_2[1] * gradphi[1] * dx
+    F_jz_s = - 2 * eta * epi_2[2] * gradphi[2] * dx
     
     # mass matrix :
     M = assemble(phi*dtau*dx)
     
     # solve the linear system :
-    solve(M, model.tau_dn.vector(), assemble(tau_dn_s))
-    print_min_max(model.tau_dn, 'tau_dn')
-    solve(M, model.tau_dt.vector(), assemble(tau_dt_s))
-    print_min_max(model.tau_dt, 'tau_dt')
-    solve(M, model.tau_bn.vector(), assemble(tau_bn_s))
-    print_min_max(model.tau_bn, 'tau_bn')
-    solve(M, model.tau_bt.vector(), assemble(tau_bt_s))
-    print_min_max(model.tau_bt, 'tau_bt')
-    solve(M, model.tau_pn.vector(), assemble(tau_pn_s))
-    print_min_max(model.tau_pn, 'tau_pn')
-    solve(M, model.tau_pt.vector(), assemble(tau_pt_s))
-    print_min_max(model.tau_pt, 'tau_pt')
-    solve(M, model.tau_nn.vector(), assemble(tau_nn_s))
-    print_min_max(model.tau_nn, 'tau_nn')
-    solve(M, model.tau_nt.vector(), assemble(tau_nt_s))
-    print_min_max(model.tau_nt, 'tau_nt')
-    solve(M, model.tau_nz.vector(), assemble(tau_nz_s))
-    print_min_max(model.tau_nz, 'tau_nz')
-    solve(M, model.tau_tn.vector(), assemble(tau_tn_s))
-    print_min_max(model.tau_tn, 'tau_tn')
-    solve(M, model.tau_tt.vector(), assemble(tau_tt_s))
-    print_min_max(model.tau_tt, 'tau_tt')
-    solve(M, model.tau_tz.vector(), assemble(tau_tz_s))
-    print_min_max(model.tau_tz, 'tau_tz')
+    solve(M, model.F_id.vector(), assemble(F_id_s))
+    print_min_max(model.F_id, 'F_id')
+    solve(M, model.F_jd.vector(), assemble(F_jd_s))
+    print_min_max(model.F_jd, 'F_jd')
+    solve(M, model.F_ib.vector(), assemble(F_ib_s))
+    print_min_max(model.F_ib, 'F_ib')
+    solve(M, model.F_jb.vector(), assemble(F_jb_s))
+    print_min_max(model.F_jb, 'F_jb')
+    solve(M, model.F_ip.vector(), assemble(F_ip_s))
+    print_min_max(model.F_ip, 'F_ip')
+    solve(M, model.F_jp.vector(), assemble(F_jp_s))
+    print_min_max(model.F_jp, 'F_jp')
+    solve(M, model.F_ii.vector(), assemble(F_ii_s))
+    print_min_max(model.F_ii, 'F_ii')
+    solve(M, model.F_ij.vector(), assemble(F_ij_s))
+    print_min_max(model.F_ij, 'F_ij')
+    solve(M, model.F_iz.vector(), assemble(F_iz_s))
+    print_min_max(model.F_iz, 'F_iz')
+    solve(M, model.F_ji.vector(), assemble(F_ji_s))
+    print_min_max(model.F_ji, 'F_ji')
+    solve(M, model.F_jj.vector(), assemble(F_jj_s))
+    print_min_max(model.F_jj, 'F_jj')
+    solve(M, model.F_jz.vector(), assemble(F_jz_s))
+    print_min_max(model.F_jz, 'F_jz')
    
     if config['stokes_balance']['vert_integrate']: 
-      s    = "::: vertically integrating '3D-stokes-balance' terms :::"
+      s    = "::: vertically integrating 'BPBalance' terms :::"
       print_text(s, self.color())
       
-      tau_nn   = model.vert_integrate(model.tau_nn, Q)
-      tau_nn   = model.extrude(tau_nn, [2,6], 2, Q)
-      tau_nt   = model.vert_integrate(model.tau_nt, Q)
-      tau_nt   = model.extrude(tau_nt, [2,6], 2, Q)
-      tau_nz   = model.vert_integrate(model.tau_nz, Q)
-      tau_nz   = model.extrude(tau_nz, [2,6], 2, Q)
+      tau_ii   = model.vert_integrate(model.F_ii, d='down')
+      tau_ij   = model.vert_integrate(model.F_ij, d='down')
+      tau_iz   = model.vert_integrate(model.F_iz, d='down')
       
-      tau_tn   = model.vert_integrate(model.tau_tn, Q)
-      tau_tn   = model.extrude(tau_tn, [2,6], 2, Q)
-      tau_tt   = model.vert_integrate(model.tau_tt, Q)
-      tau_tt   = model.extrude(tau_tt, [2,6], 2, Q)
-      tau_tz   = model.vert_integrate(model.tau_tz, Q)
-      tau_tz   = model.extrude(tau_tz, [2,6], 2, Q)
+      tau_ji   = model.vert_integrate(model.F_ji, d='down')
+      tau_jj   = model.vert_integrate(model.F_jj, d='down')
+      tau_jz   = model.vert_integrate(model.F_jz, d='down')
       
-      tau_dn   = model.vert_integrate(model.tau_dn, Q)
-      tau_dn   = model.extrude(tau_dn, [2,6], 2, Q)
-      tau_dt   = model.vert_integrate(model.tau_dt, Q)
-      tau_dt   = model.extrude(tau_dt, [2,6], 2, Q)
+      tau_id   = model.vert_integrate(model.F_id, d='down')
+      tau_jd   = model.vert_integrate(model.F_jd, d='down')
       
-      tau_pn   = model.vert_integrate(model.tau_pn, Q)
-      tau_pt   = model.vert_integrate(model.tau_pt, Q)
+      tau_ip   = model.vert_integrate(model.F_ip, d='down')
+      tau_jp   = model.vert_integrate(model.F_jp, d='down')
       
-      tau_bn   = model.extrude(model.tau_bn, [3,5], 2, Q)
-      tau_bt   = model.extrude(model.tau_bt, [3,5], 2, Q)
+      tau_ib   = model.extrude(model.F_ib, [3,5], 2)
+      tau_jb   = model.extrude(model.F_jb, [3,5], 2)
      
-      model.assign_variable(model.tau_dn, tau_dn)
-      model.assign_variable(model.tau_dt, tau_dt)
-      model.assign_variable(model.tau_bn, tau_bn)
-      model.assign_variable(model.tau_bt, tau_bt)
-      model.assign_variable(model.tau_pn, tau_pn)
-      model.assign_variable(model.tau_pt, tau_pt)
-      model.assign_variable(model.tau_nn, tau_nn)
-      model.assign_variable(model.tau_nt, tau_nt)
-      model.assign_variable(model.tau_nz, tau_nz)
-      model.assign_variable(model.tau_tn, tau_tn)
-      model.assign_variable(model.tau_tt, tau_tt)
-      model.assign_variable(model.tau_tz, tau_tz)
+      model.assign_variable(model.tau_id, tau_id)
+      model.assign_variable(model.tau_jd, tau_jd)
+      model.assign_variable(model.tau_ib, tau_ib)
+      model.assign_variable(model.tau_jb, tau_jb)
+      model.assign_variable(model.tau_ip, tau_ip)
+      model.assign_variable(model.tau_jp, tau_jp)
+      model.assign_variable(model.tau_ii, tau_ii)
+      model.assign_variable(model.tau_ij, tau_ij)
+      model.assign_variable(model.tau_iz, tau_iz)
+      model.assign_variable(model.tau_ji, tau_ji)
+      model.assign_variable(model.tau_jj, tau_jj)
+      model.assign_variable(model.tau_jz, tau_jz)
     
-      print_min_max(model.tau_dn, 'int_tau_dn')
-      print_min_max(model.tau_dt, 'int_tau_dt')
-      print_min_max(model.tau_bn, 'int_tau_bn')
-      print_min_max(model.tau_bt, 'int_tau_bt')
-      print_min_max(model.tau_pn, 'int_tau_pn')
-      print_min_max(model.tau_pt, 'int_tau_pt')
-      print_min_max(model.tau_nn, 'int_tau_nn')
-      print_min_max(model.tau_nt, 'int_tau_nt')
-      print_min_max(model.tau_nz, 'int_tau_nz')
-      print_min_max(model.tau_tn, 'int_tau_tn')
-      print_min_max(model.tau_tt, 'int_tau_tt')
-      print_min_max(model.tau_tz, 'int_tau_tz')
+      print_min_max(model.tau_id, 'tau_id')
+      print_min_max(model.tau_jd, 'tau_jd')
+      print_min_max(model.tau_ib, 'tau_ib')
+      print_min_max(model.tau_jb, 'tau_jb')
+      print_min_max(model.tau_ip, 'tau_ip')
+      print_min_max(model.tau_jp, 'tau_jp')
+      print_min_max(model.tau_ii, 'tau_ii')
+      print_min_max(model.tau_ij, 'tau_ij')
+      print_min_max(model.tau_iz, 'tau_iz')
+      print_min_max(model.tau_ji, 'tau_ji')
+      print_min_max(model.tau_jj, 'tau_jj')
+      print_min_max(model.tau_jz, 'tau_jz')
 
 
 class VelocityHybrid(Physics):

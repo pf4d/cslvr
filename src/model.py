@@ -523,7 +523,7 @@ class Model(object):
     print_text(s, self.color)
     self.assign_variable(self.mask, mask)
     print_min_max(self.mask, 'mask')
-    self.shf_dofs = np.where(self.mask.vector().array() == 1.0)[0]
+    self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
     self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
 
   def set_parameters(self, params):
@@ -844,51 +844,51 @@ class Model(object):
     eta_shf.vector()[self.gnd_dofs] = 0.0
     eta_gnd.vector()[self.shf_dofs] = 0.0
 
+    # unify eta to self.eta :
     eta = project(eta_shf + eta_gnd, self.Q)
     self.assign_variable(self.eta, eta)
-
-    #dx      = self.dx
-    #dx_s    = dx(1)
-    #dx_g    = dx(0)
-    #Q       = self.Q
-    #psi_i   = TestFunction(Q)
-    #psi_j   = TrialFunction(Q)
-    #M       = assemble(psi_i * psi_j * dx)
-    #eta     = assemble(eta_shf*psi_i*dx_s + eta_gnd*psi_i*dx_g)
-    #solve(M, self.eta.vector(), eta)
     print_min_max(self.eta, 'eta')
  
   def calc_eta(self):
     """
-    Calculates viscosity and assigns to model.eta.
+    Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
     print_text(s, self.color)
+    config  = self.config
     Q       = self.Q
     R       = self.R
     T       = self.T
     W       = self.W
     n       = self.n
-    epsdot  = self.epsdot
+    u       = self.u
+    v       = self.v
+    w       = self.w
     eps_reg = self.eps_reg
     E_shf   = self.E_shf
     E_gnd   = self.E_gnd
     E       = self.E
+    U       = as_vector([u,v,w])
+    
+    if config['velocity']['full_BP'] or config['model_order'] == 'stokes':
+      epsdot = self.effective_strain(U)
+    else:
+      epsdot = self.BP_effective_strain(U)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
-    #a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    #Q_T    = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    a_T     = Function(Q)
-    Q_T     = Function(Q)
-    T_v     = T.vector().array()
-    a_T_v   = a_T.vector().array()
-    Q_T_v   = Q_T.vector().array()
-    a_T_v[T_v  < 263.15] = 1.1384496e-5
-    a_T_v[T_v >= 263.15] = 5.45e10 
-    Q_T_v[T_v  < 263.15] = 6e4
-    Q_T_v[T_v >= 263.15] = 13.9e4 
-    self.assign_variable(a_T, a_T_v)
-    self.assign_variable(Q_T, Q_T_v)
+    a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T    = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    #a_T     = Function(Q)
+    #Q_T     = Function(Q)
+    #T_v     = T.vector().array()
+    #a_T_v   = a_T.vector().array()
+    #Q_T_v   = Q_T.vector().array()
+    #a_T_v[T_v  < 263.15] = 1.1384496e-5
+    #a_T_v[T_v >= 263.15] = 5.45e10 
+    #Q_T_v[T_v  < 263.15] = 6e4
+    #Q_T_v[T_v >= 263.15] = 13.9e4 
+    #self.assign_variable(a_T, a_T_v)
+    #self.assign_variable(Q_T, Q_T_v)
    
     # unify the enhancement factor over shelves and grounded ice : 
     E   = Function(Q)
@@ -898,14 +898,13 @@ class Model(object):
     E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
     E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
     self.assign_variable(E, E_v)
-    
+
     # calculate viscosity :
-    b       = ( E*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+    b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
-    self.eta = eta
-    #eta     = project(0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n)), Q)
-    #self.assign_variable(self.eta, eta)
-    #print_min_max(self.eta, 'eta')
+    eta     = project(eta, Q)
+    self.assign_variable(self.eta, eta)
+    print_min_max(self.eta, 'eta')
 
   def strain_rate_tensor(self, U):
     """
@@ -913,7 +912,7 @@ class Model(object):
     """
     return 0.5 * (grad(U) + grad(U).T)
 
-  def BP_strain_rate_tensor(self,U):
+  def BP_strain_rate_tensor(self, U):
     """
     return the 'Blatter-Pattyn' simplified strain-rate tensor of <U>.
     """
@@ -926,35 +925,84 @@ class Model(object):
                         [epi[1,0],  epi[1,1],  epi12],
                         [epi02,     epi12,     epi22]])
     return epsdot
+    
+  def effective_strain(self, U):
+    """
+    return the effective strain rate squared.
+    """
+    epi    = self.strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
+    
+  def BP_effective_strain(self, U):
+    """
+    return the BP effective strain rate squared.
+    """
+    epi    = self.BP_strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
+             + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
 
-  def stress_tensor(self, U):
+  def stress_tensor(self):
     """
     return the Cauchy stress tensor.
     """
-    s     = "::: forming the Cauchy stress tensor :::"
+    s   = "::: forming the Cauchy stress tensor :::"
     print_text(s, self.color)
-    epi = self.strain_rate_tensor(self.U)
-    eta = self.calc_eta()
+    U   = as_vector([self.u, self.v, self.w])
+    epi = self.strain_rate_tensor(U)
     dim = self.mesh.ufl_cell().topological_dimension()
     I   = Identity(dim)
 
-    sigma = 2*eta*epi - self.p*I
+    sigma = 2*self.eta*epi - self.P*I
     return sigma
 
-  def BP_stress_tensor(self, U):
+  def BP_stress_tensor(self):
     """
     return the Cauchy stress tensor.
     """
-    s     = "::: forming the BP Cauchy stress tensor :::"
+    s   = "::: forming the BP Cauchy stress tensor :::"
     print_text(s, self.color)
-    epi = self.BP_strain_rate_tensor(self.U)
-    self.calc_eta()
+    U   = as_vector([self.u, self.v, self.w])
+    epi = self.BP_strain_rate_tensor(U)
     dim = self.mesh.ufl_cell().topological_dimension()
     I   = Identity(dim)
-    p   = self.calc_BP_pressure()
 
-    sigma = 2*eta*epi - self.p*I
+    sigma = 2*self.eta*epi - self.P*I
     return sigma
+  
+  def calc_BP_pressure(self):
+    """
+    Calculate the continuous pressure field.
+    """
+    s    = "::: calculating pressure :::"
+    print_text(s, self.color)
+    rhoi = self.rhoi
+    g    = self.g
+    S    = self.S
+    x    = self.x
+    eta  = self.eta
+    w    = self.w
+    p    = project(rhoi*g*(S - x[2]) + 2*eta*w.dx(2), self.Q)
+    self.assign_variable(self.P, p)
+    print_min_max(self.P, 'p')
   
   def calc_thickness(self):
     """
@@ -966,33 +1014,6 @@ class Model(object):
     H = project(self.S - self.x[2], self.Q)
     print_min_max(H, 'H')
     return H
-  
-  def calc_BP_pressure(self):
-    """
-    Calculate the continuous pressure field.
-    """
-    s = "::: calculating pressure :::"
-    print_text(s, self.color)
-    Q       = self.Q
-    rhoi    = self.rhoi
-    g       = self.g
-    S       = self.S
-    x       = self.x
-    P       = rhoi*g*(S - x[2]) + 2*
-    self.P  = project(P, Q)
-    #dx      = self.dx
-    #dx_s    = dx(1)
-    #dx_g    = dx(0)
-    #dGamma  = dx_s + dx_g
-    #eta_shf = project(self.eta_shf, Q)
-    #eta_gnd = project(self.eta_gnd, Q)
-    #w       = self.w
-    #P       = TrialFunction(Q)
-    #phi     = TestFunction(Q)
-    #M       = assemble(phi*P*dx)
-    #P_f     = + rhoi * g * (S - x[2]) * phi * dGamma \
-    #          + Constant(2.0) * w.dx(2) * phi * (eta_shf*dx_s + eta_gnd*dx_g)
-    #solve(M, self.P.vector(), assemble(P_f))
   
   def extrude(self, f, b, d, Q='self'):
     r"""
@@ -1032,7 +1053,7 @@ class Model(object):
     print_min_max(v, 'extruded function')
     return v
   
-  def vert_integrate(self, u, Q='self'):
+  def vert_integrate(self, u, d='up', Q='self'):
     """
     Integrate <u> from the bed to the surface.
     """
@@ -1044,10 +1065,15 @@ class Model(object):
     ff  = self.ff
     phi = TestFunction(Q)
     v   = TrialFunction(Q)
-    # integral is zero on bed (ff = 3,5) 
     bcs = []
-    bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
-    bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
+    # integral is zero on bed (ff = 3,5) 
+    if d == 'up':
+      bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
+    # integral is zero on surface (ff = 2,6) 
+    elif d == 'down':
+      bcs.append(DirichletBC(Q, 0.0, ff, 2))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, 6))  # shelves
     a      = v.dx(2) * phi * dx
     L      = u * phi * dx
     v      = Function(Q)
@@ -1112,8 +1138,8 @@ class Model(object):
 
   def get_theta(self):
     """
-    Returns the angle Function object in radians of the u and v components of velocity 
-    from the x-axis.
+    Returns the angle in radians of the horizontal velocity vector from 
+    the x-axis.
     """
     u_v     = self.u.vector().array()
     v_v     = self.v.vector().array()
@@ -1175,172 +1201,6 @@ class Model(object):
 
     # return a UFL vector :
     return as_vector(U_f)
-
-  def calc_component_stress(self, u_dir, Q='self'):
-    """
-    Calculate the deviatoric component of stress in the direction of 
-    the UFL vector <u_dir>.
-    """
-    s = "::: calculating component stress :::"
-    print_text(s, self.color)
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff     = self.ff                           # facet function for boundaries
-    #sig    = self.calc_tau()                   # deviatoric stress tensor
-    sig    = self.calc_R()                     # resistive stress tensor
-    com    = dot(sig, u_dir)                   # component of stress in u-dir.
-    com_n  = project(sqrt(inner(com, com)),Q)  # magnitude of com
-    #u      = u_dir[0]
-    #v      = u_dir[1]
-    #w      = u_dir[2]
-    #theta  = atan(u/v)
-    #com    = self.rotate(sig, theta)
-    #com_n  = com[0,0]
-    phi    = TestFunction(Q)                   # test function
-    v      = TrialFunction(Q)                  # trial function
-    bc     = DirichletBC(Q, 0.0, ff, 3)        # boundary condition
-    a      = v.dx(2) * phi * dx                # bilinear part
-    L      = com_n * phi * dx                  # linear part
-    v      = Function(Q)                       # solution function
-    solve(a == L, v, bc)                       # solve
-    v      = self.extrude(v, 2, 2)             # extrude the integral
-    dvdx   = grad(v)                           # spatial derivative
-    dvdu   = dot(dvdx, u_dir)                  # projection of dvdx onto dir
-    return dvdu
-  
-  def calc_component_stress_c(self, u_dir, Q='self'):
-    """
-    Calculate the deviatoric component of stress in the direction of U.
-    """
-    s = "::: calculating component stress :::"
-    print_text(s, self.color)
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff     = self.ff                           # facet function for boundaries
-    #sig    = self.calc_tau()                   # deviatoric stress tensor
-    sig    = self.calc_R()                     # resistive stress tensor
-    x      = u_dir[0]                          # first component of sig
-    y      = u_dir[1]                          # second component of sig
-    com    = sig[x,y]                          # component of stress
-    phi    = TestFunction(Q)                   # test function
-    v      = TrialFunction(Q)                  # trial function
-    bc     = DirichletBC(Q, 0.0, ff, 3)        # boundary condition
-    a      = v.dx(2) * phi * dx                # bilinear part
-    L      = com * phi * dx                    # linear part
-    v      = Function(Q)                       # solution function
-    solve(a == L, v, bc)                       # solve
-    v      = self.extrude(v, 2, 2)             # extrude the integral
-    dvdx   = v.dx(y)                           # derivative w.r.t. 2nd comp.
-    return dvdx
-
-  def calc_tau_bas(self, Q='self'):
-    """
-    """
-    s = "::: calculating tau_bas :::"
-    print_text(s, self.color)
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    beta  = self.beta
-    u     = self.u
-    v     = self.v
-    w     = self.w
-    H     = self.S - self.B
-  
-    beta_e  = self.extrude(beta, 3, 2, Q)
-    u_bas_e = self.extrude(u,    3, 2, Q)
-    v_bas_e = self.extrude(v,    3, 2, Q)
-    w_bas_e = self.extrude(w,    3, 2, Q)
-
-    tau_bas_u = project(beta_e*H*u_bas_e, Q)
-    tau_bas_v = project(beta_e*H*v_bas_e, Q)
-    tau_bas_w = project(beta_e*H*w_bas_e, Q)
-
-    return as_vector([tau_bas_u, tau_bas_v, tau_bas_w]) 
-
-  def calc_tau_drv(self, Q='self'):
-    """
-    """
-    s = "::: calculating tau_drv :::"
-    print_text(s, self.color)
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff    = self.ff
-    S     = self.S
-    B     = self.B
-    rhoi  = self.rhoi
-    g     = self.g
-    H     = S - B
-    gradS = grad(S)
-    
-    gradS_u = gradS[0]
-    gradS_v = gradS[1]
-    gradS_w = gradS[2]
-  
-    tau_drv_u = project(rhoi*g*H*gradS_u, Q)
-    tau_drv_v = project(rhoi*g*H*gradS_v, Q)
-    tau_drv_w = project(rhoi*g*H*gradS_w, Q)
-
-    return as_vector([tau_drv_u, tau_drv_v, tau_drv_w])
-
-  def component_stress(self):
-    """
-    Calculate each of the component stresses which define the full stress
-    of the ice-sheet.
-    
-    RETURNS:
-      tau_lon - longitudinal stress field
-      tau_lat - lateral stress field
-      tau_vrt - vertical stress field
-      tau_bas - frictional sliding stress at the bed
-      tau_drv - driving stress of the system 
-    
-    Note: tau_drv = tau_lon + tau_lat + tau_bas
-    
-    """
-    s = "::: calculating 'stress-balance' :::"
-    print_text(s, self.color)
-    Q       = self.Q
-    u       = self.u
-    v       = self.v
-    w       = self.w
-    
-    ## normailze the vector :
-    #U_n     = self.normalize_vector(as_vector([u,v]))    
-    #u_n     = U_n[0]
-    #v_n     = U_n[1]
-    #
-    ## unit-vectors along (n) and across (t) flow :
-    #U_n = as_vector([u_n, v_n, 0])
-    #U_t = as_vector([v_n,-u_n, 0])
-    # 
-    ## calculate components :
-    #tau_lon   = project(self.calc_component_stress(U_n))
-    #tau_lat   = project(self.calc_component_stress(U_t))
-    #tau_bas   = self.calc_tau_bas()
-    #tau_drv   = self.calc_tau_drv()
-
-    ## calculate the component of driving stress and basal drag along flow (n) :
-    #tau_bas_n = project(dot(tau_bas, U_n))
-    #tau_drv_n = project(dot(tau_drv, U_n))
-    
-    # calculate components :
-    tau_lon   = project(self.calc_component_stress_c([0,0]))
-    tau_lat   = project(self.calc_component_stress_c([0,1]))
-    tau_bas   = self.calc_tau_bas()
-    tau_drv   = self.calc_tau_drv()
-
-    # calculate the component of driving stress and basal drag along flow (n) :
-    tau_bas_n = tau_bas[0]
-    tau_drv_n = tau_drv[0]
-    
-    # write them to the specified directory :
-    File(out_dir + 'tau_drv_s.pvd') << tau_drv_n
-    File(out_dir + 'tau_bas_s.pvd') << tau_bas_n
-    File(out_dir + 'tau_lon_s.pvd') << tau_lon
-    File(out_dir + 'tau_lat_s.pvd') << tau_lat
- 
-    # return the values for further analysis :
-    return tau_lon, tau_lat, tau_bas_n, tau_drv_n
 
   def assign_variable(self, u, var):
     """
@@ -1418,6 +1278,8 @@ class Model(object):
     s = "::: initializing viscosity :::"
     print_text(s, self.color)
 
+    config = self.config
+
     # Set the value of b, the temperature dependent ice hardness parameter,
     # using the most recently calculated temperature field.
     #
@@ -1452,14 +1314,11 @@ class Model(object):
       u_cpy     = self.u.copy(True)
       v_cpy     = self.v.copy(True)
       w_cpy     = self.w.copy(True)
-      epi       = self.strain_rate_tensor(as_vector([u_cpy, v_cpy, w_cpy]))
-      ep_xx     = epi[0,0]
-      ep_yy     = epi[1,1]
-      ep_xy     = epi[0,1]
-      ep_xz     = epi[0,2]
-      ep_yz     = epi[1,2]
-      epsdot    = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-                  + ep_xy**2 + ep_xz**2 + ep_yz**2
+      U         = as_vector([u_cpy, v_cpy, w_cpy])
+      if config['velocity']['full_BP'] or config['model_order'] == 'stokes':
+        epsdot  = self.effective_strain(U)
+      else:
+        epsdot  = self.BP_effective_strain(U)
       self.eta_shf = 0.5 * self.b_shf * epsdot**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * epsdot**((1-n)/(2*n))
       self.Vd_shf  = 2 * self.eta_shf * self.epsdot
@@ -1478,8 +1337,8 @@ class Model(object):
       E_gnd   = self.E_gnd
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      self.b_shf   = ( E_shf*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
-      self.b_gnd   = ( E_gnd*(a_T*(1 + 181.25*W))*exp(-Q_T/(R*T)) )**(-1/n)
+      self.b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      self.b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
       self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
@@ -1529,37 +1388,20 @@ class Model(object):
       self.dU  = TrialFunction(self.Q3)
       self.Phi = TestFunction(self.Q3)
       self.Lam = Function(self.Q3)
-      epi      = self.strain_rate_tensor(self.U)
     else :
       s = "    - initializing BP variables -"
       self.U   = Function(self.Q2)
       self.dU  = TrialFunction(self.Q2)
       self.Phi = TestFunction(self.Q2)
       self.Lam = Function(self.Q2)
-      U_t      = as_vector([self.U[0], self.U[1], 0.0])
-      epi      = self.BP_strain_rate_tensor(U_t)
     print_text(s, self.color)
-
-    ep_xx = epi[0,0]
-    ep_yy = epi[1,1]
-    ep_zz = epi[2,2]
-    ep_xy = epi[0,1]
-    ep_xz = epi[0,2]
-    ep_yz = epi[1,2]
     
     # Second invariant of the strain rate tensor squared
     if self.config['velocity']['full_BP']:
-      self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                           + ep_xy**2 + ep_xz**2 + ep_yz**2
+      self.epsdot = self.effective_strain(self.U)
     else:
-      self.epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-                    + ep_xy**2 + ep_xz**2 + ep_yz**2
-    #self.epsdot = 0.5 * (0.5 * (+ u.dx(2)**2 + v.dx(2)**2 \
-    #                            + (u.dx(1) + v.dx(0))**2) \
-    #              + u.dx(0)**2 + v.dx(1)**2 + (u.dx(0) + v.dx(1))**2 )
-    # this is equivalent due to how BP_strain_rate_tensor function is designed :
-    #self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-    #                     + ep_xy**2 + ep_xz**2 + ep_yz**2
+      U_t = as_vector([self.U[0], self.U[1], 0.0])
+      self.epsdot = self.BP_effective_strain(U_t)
     self.init_higher_order_variables()
 
   def init_stokes_variables(self):
@@ -1582,20 +1424,7 @@ class Model(object):
       U, P     = split(self.U)
     
     # Second invariant of the strain rate tensor squared
-    epi   = self.strain_rate_tensor(U)
-    ep_xx = epi[0,0]
-    ep_yy = epi[1,1]
-    ep_zz = epi[2,2]
-    ep_xy = epi[0,1]
-    ep_xz = epi[0,2]
-    ep_yz = epi[1,2]
-    
-    self.epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                         + ep_xy**2 + ep_xz**2 + ep_yz**2
-    #self.epsdot = + 0.5 * (+ 0.5*(   (u.dx(1) + v.dx(0))**2  \
-    #                               + (u.dx(2) + w.dx(0))**2  \
-    #                               + (v.dx(2) + w.dx(1))**2) \
-    #                       + u.dx(0)**2 + v.dx(1)**2 + w.dx(2)**2) 
+    self.epsdot = self.effective_strain(U)
     self.init_higher_order_variables()
 
   def init_higher_order_variables(self):
@@ -1717,19 +1546,31 @@ class Model(object):
     
     # Stokes-balance model :
     self.u_s           = Function(self.Q)
-    self.v_s           = Function(self.Q)
-    self.tau_dn        = Function(self.Q)
-    self.tau_dt        = Function(self.Q)
-    self.tau_bn        = Function(self.Q)
-    self.tau_bt        = Function(self.Q)
-    self.tau_pn        = Function(self.Q)
-    self.tau_pt        = Function(self.Q)
-    self.tau_nn        = Function(self.Q)
-    self.tau_nt        = Function(self.Q)
-    self.tau_nz        = Function(self.Q)
-    self.tau_tn        = Function(self.Q)
-    self.tau_tt        = Function(self.Q)
-    self.tau_tz        = Function(self.Q)
+    self.u_t           = Function(self.Q)
+    self.F_id          = Function(self.Q)
+    self.F_jd          = Function(self.Q)
+    self.F_ib          = Function(self.Q)
+    self.F_jb          = Function(self.Q)
+    self.F_ip          = Function(self.Q)
+    self.F_jp          = Function(self.Q)
+    self.F_ii          = Function(self.Q)
+    self.F_ij          = Function(self.Q)
+    self.F_iz          = Function(self.Q)
+    self.F_ji          = Function(self.Q)
+    self.F_jj          = Function(self.Q)
+    self.F_jz          = Function(self.Q)
+    self.tau_id        = Function(self.Q)
+    self.tau_jd        = Function(self.Q)
+    self.tau_ib        = Function(self.Q)
+    self.tau_jb        = Function(self.Q)
+    self.tau_ip        = Function(self.Q)
+    self.tau_jp        = Function(self.Q)
+    self.tau_ii        = Function(self.Q)
+    self.tau_ij        = Function(self.Q)
+    self.tau_iz        = Function(self.Q)
+    self.tau_ji        = Function(self.Q)
+    self.tau_jj        = Function(self.Q)
+    self.tau_jz        = Function(self.Q)
     
     if   config['model_order'] == 'stokes':
       self.init_stokes_variables()

@@ -39,9 +39,6 @@ class BalanceVelocitySolver(Solver):
       
     self.BV_instance = VelocityBalance(model, config)
     
-    if self.config['balance_velocity']['log']:
-      self.BV_file = File(outpath + 'Ubar.pvd')
-
   def solve(self):
     """
     Solves for the velocity balance.
@@ -50,17 +47,14 @@ class BalanceVelocitySolver(Solver):
     print_text(s, self.color())
     model   = self.model
     config  = self.config
-    outpath = config['output_path']
 
     self.BV_instance.solve()
 
     if self.config['balance_velocity']['log']:
-      s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
-      print_text(s, self.color())
       if config['log_history']:
         self.BV_file << model.Ubar
       else:
-        File(outpath + 'Ubar.pvd') << model.Ubar
+        model.save_pvd(model.Ubar, 'Ubar')
   
 
 class SteadySolver(Solver):
@@ -83,7 +77,6 @@ class SteadySolver(Solver):
     self.model          = model
     self.config         = config
     self.config['mode'] = 'steady'
-    outpath             = config['output_path']
 
     # velocity model :
     if self.config['velocity']['on']:
@@ -105,53 +98,25 @@ class SteadySolver(Solver):
       else:
         s = "Please use 'BP', 'stokes', or 'L1L2'. "
         print_text(s, self.color())
-      if config['velocity']['log']:
-        self.U_s_file = File(outpath + 'Us.pvd')
-        self.U_b_file = File(outpath + 'Ub.pvd')
-        self.U_file   = File(outpath + 'U.pvd')
-        self.P_file   = File(outpath + 'P.pvd')
-      if config['velocity']['transient_beta']:
-        self.beta_file = File(outpath + 'beta.pvd')
     
     # enthalpy model :
     if config['enthalpy']['on']:
       if   self.config['model_order'] == 'L1L2':
         self.enthalpy_instance = EnergyHybrid(model, config)
-        if config['enthalpy']['log']:
-          self.Ts_file  = File(outpath + 'Ts.pvd')
-          self.Tb_file  = File(outpath + 'Tb.pvd')
-          self.Mb_file  = File(outpath + 'Mb.pvd')
       else:
         self.enthalpy_instance = Enthalpy(model, config)
-        if config['enthalpy']['log']:
-          self.T_file   = File(outpath + 'T.pvd')
-          self.W_file   = File(outpath + 'W.pvd')
-          self.M_file   = File(outpath + 'Mb.pvd')
 
     # age model :
     if config['age']['on']:
       self.age_instance = Age(model, config)
-      if config['age']['log']:
-        self.a_file = File(outpath + 'age.pvd')
 
     # balance velocity model :
     if config['balance_velocity']['on']:
       self.balance_velocity_instance = VelocityBalance(model, config)
-      if config['balance_velocity']['log']:
-        self.Ubar_file = File(outpath + 'Ubar.pvd')
 
     # stress balance model :
     if config['stokes_balance']['on']:
       self.stokes_balance_instance = StokesBalance3D(model, config)
-      if config['stokes_balance']['log']:
-        self.memb_n_file   = File(outpath + "memb_n.pvd")
-        self.memb_t_file   = File(outpath + "memb_t.pvd")
-        self.membrane_file = File(outpath + "membrane.pvd")
-        self.driving_file  = File(outpath + "driving.pvd")
-        self.basal_file    = File(outpath + "basal.pvd")
-        self.basal_2_file  = File(outpath + "basal_2.pvd")
-        self.pressure_file = File(outpath + "pressure.pvd")
-        self.total_file    = File(outpath + "total.pvd")
     
     # surface climate model :
     if config['surface_climate']['on']:
@@ -169,7 +134,6 @@ class SteadySolver(Solver):
     print_text(s, self.color())
     model   = self.model
     config  = self.config
-    outpath = config['output_path']
     
     # Set the initial Picard iteration (PI) parameters
     # L_\infty norm in velocity between iterations
@@ -205,61 +169,29 @@ class SteadySolver(Solver):
         self.velocity_instance.solve()
         if config['velocity']['log'] and config['log']:
           if config['model_order'] == 'L1L2':
-            s  = '::: saving surface and bed velocity Us and Ub' + \
-                 ' .pvd files to %s :::'
-            print_text(s % outpath, self.color())
             U_s  = project(as_vector([model.u_s, model.v_s, model.w_s]))
             U_b  = project(as_vector([model.u_b, model.v_b, model.w_b]))
-            if config['log_history']:
-              self.U_s_file << U_s
-              self.U_b_file << U_b
-            else:
-              File(outpath + 'Us.pvd')  << U_s
-              File(outpath + 'Ub.pvd')  << U_b
+            model.save_pvd(U_s, 'Us')
+            model.save_pvd(U_b, 'Ub')
           else:
-            s    = '::: saving velocity %sU.pvd file :::' % outpath
-            print_text(s, self.color())
             U = project(as_vector([model.u, model.v, model.w]))
-            if config['log_history']:
-              self.U_file << U
-            else:
-              File(outpath + 'U.pvd')  << U
+            model.save_pvd(U, 'U')
             # save pressure if desired :
             if config['velocity']['calc_pressure']:
-              s    = '::: saving pressure %sP.pvd file :::' % outpath
-              print_text(s, self.color())
-              if config['log_history']:
-                self.P_file << model.P
-              else:
-                File(outpath + 'P.pvd') << model.P
+              model.save_pvd(model.P, 'P')
 
       # Solve enthalpy (temperature, water content)
       if config['enthalpy']['on']:
         self.enthalpy_instance.solve()
         if config['enthalpy']['log'] and config['log']: 
           if config['model_order'] == 'L1L2':
-            s  = '::: saving surface and bed temperature Ts, Tb, and Mb' + \
-                 ' .pvd files to %s :::'
-            print_text(s % outpath, self.color())
-            if config['log_history']:
-              self.Ts_file    << model.Ts   # save temperature
-              self.Tb_file    << model.Tb   # save melt rate
-              self.Mb_file    << model.Mb   # save melt rate
-            else:
-              File(outpath + 'Ts.pvd')   << model.Ts
-              File(outpath + 'Tb.pvd')   << model.Tb
-              File(outpath + 'Mb.pvd')   << model.Mb
+            model.save_pvd(model.Ts, 'Ts')
+            model.save_pvd(model.Tb, 'Tb')
+            model.save_pvd(model.Mb, 'Mb')
           else :
-            s  = '::: saving enthalpy fields T, Mb, and W .pvd files to %s :::'
-            print_text(s % outpath, self.color())
-            if config['log_history']:
-              self.T_file    << model.T    # save temperature
-              self.M_file    << model.Mb   # save melt rate
-              self.W_file    << model.W    # save water content
-            else:
-              File(outpath + 'T.pvd')   << model.T
-              File(outpath + 'W.pvd')   << model.W
-              File(outpath + 'Mb.pvd')  << model.Mb
+            model.save_pvd(model.T,  'T')
+            model.save_pvd(model.W,  'W')
+            model.save_pvd(model.Mb, 'Mb')
     
       # re-compute the friction field :
       if config['velocity']['transient_beta'] == 'stats':
@@ -274,12 +206,7 @@ class SteadySolver(Solver):
         model.assign_variable(model.beta, beta_v)
         print_min_max(model.beta, 'beta')
         if config['log']:
-          s    = '::: saving stats %sbeta.pvd file :::' % outpath
-          print_text(s, self.color())
-          if config['log_history']:
-            self.beta_file << model.extrude(model.beta, [3,5], 2)
-          else:
-            File(outpath + 'beta.pvd') << model.extrude(model.beta, [3,5], 2)
+          model.save_pvd(model.extrude(model.beta, [3,5], 2), 'beta')
 
       counter += 1
       # Calculate L_infinity norm
@@ -308,39 +235,27 @@ class SteadySolver(Solver):
     if config['age']['on']:
       self.age_instance.solve()
       if config['age']['log'] and config['log']: 
-        s    = '::: saving age %sage.pvd file :::' % outpath
-        print_text(s, self.color())
-        if config['log_history']:
-          self.a_file << model.age  # save age
-        else:
-          File(outpath + 'age.pvd')  << model.age
+        model.save_pvd(model.age, 'age')
 
     # solve balance velocity :
     if config['balance_velocity']['on']:
       self.balance_velocity_instance.solve()
       if config['balance_velocity']['log'] and config['log']: 
-        s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
-        print_text(s, self.color())
-        if config['log_history']:
-          self.Ubar_file << model.Ubar
-        else:
-          File(outpath + 'Ubar.pvd')  << model.Ubar
+        model.save_pvd(model.Ubar, 'Ubar')
 
     # solve stress balance :
     if config['stokes_balance']['on']:
       self.stokes_balance_instance.solve()
       if config['stokes_balance']['log'] and config['log']: 
-        s    = '::: saving stokes balance .pvd files to %s :::' % outpath
-        print_text(s, self.color())
-        memb_n   = as_vector([model.tau_nn, model.tau_nt, model.tau_nz])
-        memb_t   = as_vector([model.tau_tn, model.tau_tt, model.tau_tz])
-        memb_x   = model.tau_nn + model.tau_nt + model.tau_nz
-        memb_y   = model.tau_tn + model.tau_tt + model.tau_tz
+        memb_n   = as_vector([model.tau_ii, model.tau_ij, model.tau_iz])
+        memb_t   = as_vector([model.tau_ji, model.tau_jj, model.tau_jz])
+        memb_x   = model.tau_ii + model.tau_ij + model.tau_iz
+        memb_y   = model.tau_ji + model.tau_jj + model.tau_jz
         membrane = as_vector([model.memb_x, model.memb_y, 0.0])
-        driving  = as_vector([model.tau_dn, model.tau_dt, 0.0])
-        basal    = as_vector([model.tau_bn, model.tau_bt, 0.0])
-        basal_2  = as_vector([model.tau_nz, model.tau_tz, 0.0])
-        pressure = as_vector([model.tau_pn, model.tau_pt, 0.0])
+        driving  = as_vector([model.tau_id, model.tau_jd, 0.0])
+        basal    = as_vector([model.tau_ib, model.tau_jb, 0.0])
+        basal_2  = as_vector([model.tau_iz, model.tau_jz, 0.0])
+        pressure = as_vector([model.tau_ip, model.tau_jp, 0.0])
         
         total    = membrane + basal + pressure - driving
         
@@ -366,24 +281,13 @@ class SteadySolver(Solver):
         print_min_max(pressure, "pressure")
         print_min_max(total,    "total")
 
-        if config['log_history']:
-          self.memb_n_file   << memb_n
-          self.memb_t_file   << memb_t
-          self.membrane_file << membrane
-          self.driving_file  << driving
-          self.basal_file    << basal
-          self.basal_2_file  << basal_2
-          self.pressure_file << pressure
-          self.total_file    << total
-        else:
-          File(outpath + "memb_n.pvd")    << memb_n
-          File(outpath + "memb_t.pvd")    << memb_t
-          File(outpath + "membrane.pvd")  << membrane
-          File(outpath + "driving.pvd")   << driving
-          File(outpath + "basal.pvd")     << basal
-          File(outpath + "basal_2.pvd")   << basal_2
-          File(outpath + "pressure.pvd")  << pressure
-          File(outpath + "total.pvd")     << total
+        model.save_pvd(memb_n,   'memb_n')
+        model.save_pvd(memb_t,   'memb_t')
+        model.save_pvd(membrane, 'membrane')
+        model.save_pvd(driving,  'driving')
+        model.save_pvd(basal,    'basal')
+        model.save_pvd(pressure, 'pressure')
+        model.save_pvd(total,    'total')
     
 
 
@@ -1128,7 +1032,7 @@ class StokesBalanceSolver(Solver):
     self.model  = model
     self.config = config
     
-    self.stress_balance_instance = StokesBalance3D(model, config)
+    self.stress_balance_instance = BPBalance(model, config)
 
   def solve(self):
     """ 
@@ -1138,28 +1042,27 @@ class StokesBalanceSolver(Solver):
    
     model   = self.model
     config  = self.config
-    outpath = self.config['output_path']
     
     # calculate ubar, vbar :
     self.stress_balance_instance.solve()
     if config['log']:
-      U_s = as_vector([model.u_s, model.v_s])
-      File(outpath + 'U_s.pvd') << project(U_s)
+      U_s = as_vector([model.u_s, model.u_t])
+      model.save_pvd(project(U_s), 'U_s')
     
     # solve for the stress balance given the appropriate vertically 
     # averaged velocities :
-    self.stress_balance_instance.component_stress_stokes()
+    self.stress_balance_instance.solve_component_stress()
     if config['log']: 
-      memb_n   = as_vector([model.tau_nn, model.tau_nt, model.tau_nz])
-      memb_t   = as_vector([model.tau_tn, model.tau_tt, model.tau_tz])
-      memb_x   = model.tau_nn + model.tau_nt + model.tau_nz
-      memb_y   = model.tau_tn + model.tau_tt + model.tau_tz
+      memb_n   = as_vector([model.tau_ii, model.tau_ij, model.tau_iz])
+      memb_t   = as_vector([model.tau_ji, model.tau_jj, model.tau_jz])
+      memb_x   = model.tau_ii + model.tau_ij + model.tau_iz
+      memb_y   = model.tau_ji + model.tau_jj + model.tau_jz
       membrane = as_vector([memb_x,       memb_y,       0.0])
-      driving  = as_vector([model.tau_dn, model.tau_dt, 0.0])
-      basal    = as_vector([model.tau_bn, model.tau_bt, 0.0])
-      pressure = as_vector([model.tau_pn, model.tau_pt, 0.0])
+      driving  = as_vector([model.tau_id, model.tau_jd, 0.0])
+      basal    = as_vector([model.tau_ib, model.tau_jb, 0.0])
+      pressure = as_vector([model.tau_ip, model.tau_jp, 0.0])
       
-      total    = membrane + basal + pressure - driving
+      total    = membrane - driving
       
       # attach the results to the model :
       s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
@@ -1181,13 +1084,25 @@ class StokesBalanceSolver(Solver):
       print_min_max(pressure, "pressure")
       print_min_max(total,    "total")
       
-      File(outpath + "memb_n.pvd")   << memb_n
-      File(outpath + "memb_t.pvd")   << memb_t
-      File(outpath + "membrane.pvd") << membrane
-      File(outpath + "driving.pvd")  << driving
-      File(outpath + "basal.pvd")    << basal
-      File(outpath + "pressure.pvd") << pressure
-      File(outpath + "total.pvd")    << total
+      model.save_pvd(model.F_id, 'F_id')
+      model.save_pvd(model.F_jd, 'F_jd')
+      model.save_pvd(model.F_ib, 'F_ib')
+      model.save_pvd(model.F_jb, 'F_jb')
+      model.save_pvd(model.F_ip, 'F_ip')
+      model.save_pvd(model.F_jp, 'F_jp')
+      model.save_pvd(model.F_ii, 'F_ii')
+      model.save_pvd(model.F_ij, 'F_ij')
+      model.save_pvd(model.F_iz, 'F_iz')
+      model.save_pvd(model.F_ji, 'F_ji')
+      model.save_pvd(model.F_jj, 'F_jj')
+      model.save_pvd(model.F_jz, 'F_jz')
+      model.save_pvd(memb_n,     'memb_n')
+      model.save_pvd(memb_t,     'memb_t')
+      model.save_pvd(membrane,   'membrane')
+      model.save_pvd(driving,    'driving')
+      model.save_pvd(basal,      'basal')
+      model.save_pvd(pressure,   'pressure')
+      model.save_pvd(total,      'total')
  
 
 class HybridTransientSolver(Solver):

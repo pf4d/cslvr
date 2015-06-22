@@ -116,7 +116,7 @@ class SteadySolver(Solver):
 
     # stress balance model :
     if config['stokes_balance']['on']:
-      self.stokes_balance_instance = StokesBalance3D(model, config)
+      self.stokes_balance_instance = BP_Balance(model, config)
     
     # surface climate model :
     if config['surface_climate']['on']:
@@ -1032,7 +1032,10 @@ class StokesBalanceSolver(Solver):
     self.model  = model
     self.config = config
     
-    self.stress_balance_instance = BPBalance(model, config)
+    if config['model_order'] == 'BP':
+      self.stress_balance_instance = BP_Balance(model, config)
+    elif config['model_order'] == 'SSA':
+      self.stress_balance_instance = SSA_Balance(model, config)
 
   def solve(self):
     """ 
@@ -1053,56 +1056,122 @@ class StokesBalanceSolver(Solver):
     # averaged velocities :
     self.stress_balance_instance.solve_component_stress()
     if config['log']: 
-      memb_n   = as_vector([model.tau_ii, model.tau_ij, model.tau_iz])
-      memb_t   = as_vector([model.tau_ji, model.tau_jj, model.tau_jz])
-      memb_x   = model.tau_ii + model.tau_ij + model.tau_iz
-      memb_y   = model.tau_ji + model.tau_jj + model.tau_jz
-      membrane = as_vector([memb_x,       memb_y,       0.0])
-      driving  = as_vector([model.tau_id, model.tau_jd, 0.0])
-      basal    = as_vector([model.tau_ib, model.tau_jb, 0.0])
-      pressure = as_vector([model.tau_ip, model.tau_jp, 0.0])
-      
-      total    = membrane - driving
-      
-      # attach the results to the model :
-      s    = "::: projecting '3D-stokes-balance' terms onto vector space :::"
-      print_text(s, self.color())
-      
-      memb_n   = project(memb_n)
-      memb_t   = project(memb_t)
-      membrane = project(membrane)
-      driving  = project(driving)
-      basal    = project(basal)
-      pressure = project(pressure)
-      total    = project(total)
-      
-      print_min_max(memb_n,   "memb_n")
-      print_min_max(memb_t,   "memb_t")
-      print_min_max(membrane, "membrane")
-      print_min_max(driving,  "driving")
-      print_min_max(basal,    "basal")
-      print_min_max(pressure, "pressure")
-      print_min_max(total,    "total")
-      
-      model.save_pvd(model.F_id, 'F_id')
-      model.save_pvd(model.F_jd, 'F_jd')
-      model.save_pvd(model.F_ib, 'F_ib')
-      model.save_pvd(model.F_jb, 'F_jb')
-      model.save_pvd(model.F_ip, 'F_ip')
-      model.save_pvd(model.F_jp, 'F_jp')
-      model.save_pvd(model.F_ii, 'F_ii')
-      model.save_pvd(model.F_ij, 'F_ij')
-      model.save_pvd(model.F_iz, 'F_iz')
-      model.save_pvd(model.F_ji, 'F_ji')
-      model.save_pvd(model.F_jj, 'F_jj')
-      model.save_pvd(model.F_jz, 'F_jz')
-      model.save_pvd(memb_n,     'memb_n')
-      model.save_pvd(memb_t,     'memb_t')
-      model.save_pvd(membrane,   'membrane')
-      model.save_pvd(driving,    'driving')
-      model.save_pvd(basal,      'basal')
-      model.save_pvd(pressure,   'pressure')
-      model.save_pvd(total,      'total')
+     
+      if config['model_order'] == 'BP':
+        memb_n   = as_vector([model.F_ii, model.F_ij, model.F_iz])
+        memb_t   = as_vector([model.F_ji, model.F_jj, model.F_jz])
+        memb_x   = model.F_ii + model.F_ij + model.F_iz
+        memb_y   = model.F_ji + model.F_jj + model.F_jz
+        membrane = as_vector([memb_x,     memb_y,     0.0])
+        driving  = as_vector([model.F_id, model.F_jd, 0.0])
+        basal    = as_vector([model.F_ib, model.F_jb, 0.0])
+        pressure = as_vector([model.F_ip, model.F_jp, 0.0])
+        
+        total    = membrane - driving
+        
+        # attach the results to the model :
+        s    = "::: projecting 'BPBalance' force terms onto vector space :::"
+        print_text(s, self.color())
+        
+        memb_n   = project(memb_n)
+        memb_t   = project(memb_t)
+        membrane = project(membrane)
+        driving  = project(driving)
+        basal    = project(basal)
+        pressure = project(pressure)
+        total    = project(total)
+        
+        print_min_max(memb_n,    'F_memb_n')
+        print_min_max(memb_t,    'F_memb_t')
+        print_min_max(membrane,  'F_membrane')
+        print_min_max(driving,   'F_driving')
+        print_min_max(basal,     'F_basal')
+        print_min_max(pressure,  'F_pressure')
+        print_min_max(total,     'F_total')
+        
+        model.save_pvd(memb_n,   'F_memb_n')
+        model.save_pvd(memb_t,   'F_memb_t')
+        model.save_pvd(membrane, 'F_membrane')
+        model.save_pvd(driving,  'F_driving')
+        model.save_pvd(basal,    'F_basal')
+        model.save_pvd(pressure, 'F_pressure')
+        model.save_pvd(total,    'F_total')
+        
+        if config['stokes_balance']['vert_integrate']: 
+          memb_n   = as_vector([model.tau_ii, model.tau_ij, model.tau_iz])
+          memb_t   = as_vector([model.tau_ji, model.tau_jj, model.tau_jz])
+          memb_x   = model.tau_ii + model.tau_ij + model.tau_iz
+          memb_y   = model.tau_ji + model.tau_jj + model.tau_jz
+          membrane = as_vector([memb_x,       memb_y,       0.0])
+          driving  = as_vector([model.tau_id, model.tau_jd, 0.0])
+          basal    = as_vector([model.tau_ib, model.tau_jb, 0.0])
+          pressure = as_vector([model.tau_ip, model.tau_jp, 0.0])
+          
+          total    = membrane - driving
+          
+          # attach the results to the model :
+          s    = "::: projecting 'BPBalance' stress terms onto vector space :::"
+          print_text(s, self.color())
+          
+          memb_n   = project(memb_n)
+          memb_t   = project(memb_t)
+          membrane = project(membrane)
+          driving  = project(driving)
+          basal    = project(basal)
+          pressure = project(pressure)
+          total    = project(total)
+          
+          print_min_max(memb_n,   'tau_memb_n')
+          print_min_max(memb_t,   'tau_memb_t')
+          print_min_max(membrane, 'tau_membrane')
+          print_min_max(driving,  'tau_driving')
+          print_min_max(basal,    'tau_basal')
+          print_min_max(pressure, 'tau_pressure')
+          print_min_max(total,    'tau_total')
+        
+          model.save_pvd(memb_n,   'tau_memb_n')
+          model.save_pvd(memb_t,   'tau_memb_t')
+          model.save_pvd(membrane, 'tau_membrane')
+          model.save_pvd(driving,  'tau_driving')
+          model.save_pvd(basal,    'tau_basal')
+          model.save_pvd(pressure, 'tau_pressure')
+          model.save_pvd(total,    'tau_total')
+        
+      elif config['model_order'] == 'SSA':
+        memb_n   = as_vector([model.tau_ii, model.tau_ij])
+        memb_t   = as_vector([model.tau_ji, model.tau_jj])
+        memb_x   = model.tau_ii + model.tau_ij
+        memb_y   = model.tau_ji + model.tau_jj
+        membrane = as_vector([memb_x,       memb_y      ])
+        driving  = as_vector([model.tau_id, model.tau_jd])
+        basal    = as_vector([model.tau_ib, model.tau_jb])
+        
+        total    = membrane + basal - driving
+        
+        # attach the results to the model :
+        s    = "::: projecting 'BPBalance' stress terms onto vector space :::"
+        print_text(s, self.color())
+        
+        memb_n   = project(memb_n)
+        memb_t   = project(memb_t)
+        membrane = project(membrane)
+        driving  = project(driving)
+        basal    = project(basal)
+        total    = project(total)
+        
+        print_min_max(memb_n,   'tau_memb_n')
+        print_min_max(memb_t,   'tau_memb_t')
+        print_min_max(membrane, 'tau_membrane')
+        print_min_max(driving,  'tau_driving')
+        print_min_max(basal,    'tau_basal')
+        print_min_max(total,    'tau_total')
+        
+        model.save_pvd(memb_n,   'tau_memb_n')
+        model.save_pvd(memb_t,   'tau_memb_t')
+        model.save_pvd(membrane, 'tau_membrane')
+        model.save_pvd(driving,  'tau_driving')
+        model.save_pvd(basal,    'tau_basal')
+        model.save_pvd(total,    'tau_total')
  
 
 class HybridTransientSolver(Solver):

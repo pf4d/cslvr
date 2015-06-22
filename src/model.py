@@ -434,6 +434,32 @@ class Model(object):
     self.assign_variable(self.E_gnd, E_gnd)
     print_min_max(self.E_gnd, 'E_gnd')
   
+  def init_eta(self, eta):
+    """
+    """
+    s = "::: initializing viscosity :::"
+    print_text(s, self.color)
+    self.assign_variable(self.eta, eta)
+    print_min_max(self.eta, 'eta')
+  
+  def init_etabar(self, etabar):
+    """
+    """
+    s = "::: initializing vertically averaged viscosity :::"
+    print_text(s, self.color)
+    self.assign_variable(self.etabar, etabar)
+    print_min_max(self.etabar, 'etabar')
+  
+  def init_component_Ubar(self, ubar, vbar):
+    """
+    """
+    s = "::: initializing vertically averaged horizontal velocity :::"
+    print_text(s, self.color)
+    self.assign_variable(self.ubar, ubar)
+    self.assign_variable(self.vbar, vbar)
+    print_min_max(self.ubar, 'ubar')
+    print_min_max(self.vbar, 'vbar')
+  
   def init_T_surface(self, T_s):
     """
     """
@@ -1070,11 +1096,12 @@ class Model(object):
     if d == 'up':
       bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
       bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
+      a      = v.dx(2) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
       bcs.append(DirichletBC(Q, 0.0, ff, 2))  # grounded
       bcs.append(DirichletBC(Q, 0.0, ff, 6))  # shelves
-    a      = v.dx(2) * phi * dx
+      a      = v.dx(2) * phi * dx
     L      = u * phi * dx
     v      = Function(Q)
     solve(a == L, v, bcs)
@@ -1174,9 +1201,9 @@ class Model(object):
 
     # calculate the norm :
     if type == 'l2':
-      norm_u = np.sqrt(sum(U_v**2))
+      norm_u = np.sqrt(np.sum(U_v**2,axis=0))
     elif type == 'linf':
-      norm_u = np.max(U_v)
+      norm_u = np.amax(U_v,axis=0)
     
     return U_v, norm_u
 
@@ -1188,6 +1215,8 @@ class Model(object):
       Q = self.Q
 
     U_v, norm_u = self.get_norm(U)
+
+    norm_u[norm_u <= 0.0] = 1e-15
     
     # normalize the vector :
     U_v /= norm_u
@@ -1379,6 +1408,24 @@ class Model(object):
     self.v_b           = Function(self.Q)
     self.w_b           = Function(self.Q)
     
+  def init_SSA_variables(self):
+    """
+    """
+    s = "    - initializing BP variables -"
+    print_text(s, self.color)
+    
+    self.U   = Function(self.Q2)
+    self.dU  = TrialFunction(self.Q2)
+    self.Phi = TestFunction(self.Q2)
+    self.Lam = Function(self.Q2)
+
+    self.etabar = Function(self.Q)
+    self.ubar   = Function(self.Q)
+    self.vbar   = Function(self.Q)
+    
+    #self.epsdot = self.effective_strain(self.U)
+    #self.init_higher_order_variables()
+
   def init_BP_variables(self):
     """
     """
@@ -1576,11 +1623,13 @@ class Model(object):
       self.init_stokes_variables()
     elif config['model_order'] == 'BP':
       self.init_BP_variables()
+    elif config['model_order'] == 'SSA':
+      self.init_SSA_variables()
     elif config['model_order'] == 'L1L2':
       self.init_hybrid_variables()
     else:
       s = "    - PLEASE SPECIFY A MODEL ORDER; MAY BE 'stokes', 'BP', " + \
-          "or 'L1L2' -"
+          "SSA, or 'L1L2' -"
       print_text(s, 'red', 1)
       sys.exit(1)
 

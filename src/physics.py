@@ -2349,10 +2349,16 @@ class VelocityBalance(Physics):
       dS      = as_vector([d_x, d_y, 0.0])
     elif model.mesh.ufl_cell().topological_dimension() == 2:
       dS      = as_vector([d_x, d_y])
-    phihat  = phi + h/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
+    #phihat  = phi + h/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
+    phihat  = phi + h/(2*H) * (H*dS[0]*phi.dx(0) + H*dS[1]*phi.dx(1))
     
     def L(u, uhat):
-      return div(uhat)*u + dot(grad(u), uhat)
+      if model.mesh.ufl_cell().topological_dimension() == 3:
+        return div(uhat)*u + dot(grad(u), uhat)
+      elif model.mesh.ufl_cell().topological_dimension() == 2:
+        l = + (uhat[0].dx(0) + uhat[1].dx(1))*u \
+            + u.dx(0)*uhat[0] + u.dx(1)*uhat[1]
+        return l
     
     B = L(Ubar*H, dS) * phihat * dx
     a = adot * phihat * dx
@@ -2701,6 +2707,7 @@ class BP_Balance(Physics):
 
     # make the variables available to solve :
     self.delta = delta
+    self.U_nm  = U_nm
     self.U_s   = U_s
     self.U_n   = U_n
     self.U_t   = U_t
@@ -2759,6 +2766,7 @@ class BP_Balance(Physics):
     U_s     = self.U_s
     U_n     = self.U_n
     U_t     = self.U_t
+    U_nm    = self.U_nm
 
     phi     = TestFunction(Q)
     dtau    = TrialFunction(Q)
@@ -2781,8 +2789,8 @@ class BP_Balance(Physics):
     dphidj  = dot(gradphi, U_t)
     dSdi    = dot(gradS,   U_n)
     dSdj    = dot(gradS,   U_t)
-    gradphi = as_vector([dphidi,    dphidj,  phi.dx(2)])
-    gradS   = as_vector([dSdi,      dSdj,    S.dx(2)  ])
+    gradphi = as_vector([dphidi, dphidj, phi.dx(2)])
+    gradS   = as_vector([dSdi,   dSdj,   S.dx(2)  ])
     
     epi_1   = as_vector([dsdi, 
                          0.5*(dsdj + dtdi),
@@ -2792,9 +2800,11 @@ class BP_Balance(Physics):
                          0.5*dtdz             ])
     
     F_id_s = + phi * rhoi * g * gradS[0] * dx \
-             - 2 * eta * dwdz * dphidi * dx
+             - 2 * eta * dwdz * dphidi * dx #\
+    #         + 2 * eta * dwdz * phi * N[0] * U_n[0] * ds
     F_jd_s = + phi * rhoi * g * gradS[1] * dx \
-             - 2 * eta * dwdz * dphidj * dx
+             - 2 * eta * dwdz * dphidj * dx #\
+    #         + 2 * eta * dwdz * phi * N[1] * U_n[1] * ds
     
     F_ib_s = - beta**2 * s * phi * dBed
     F_jb_s = - beta**2 * t * phi * dBed
@@ -2805,13 +2815,23 @@ class BP_Balance(Physics):
     F_pn_s = f_w * N[0] * phi * dSde
     F_pt_s = f_w * N[1] * phi * dSde
      
-    F_ii_s = - 2 * eta * epi_1[0] * gradphi[0] * dx + F_ip_s
-    F_ij_s = - 2 * eta * epi_1[1] * gradphi[1] * dx + F_jp_s
-    F_iz_s = - 2 * eta * epi_1[2] * gradphi[2] * dx + F_ib_s
+    F_ii_s = - 2 * eta * epi_1[0] * gradphi[0] * dx# \
+    #         + 2 * eta * epi_1[0] * phi * N[0] * U_n[0] * ds
+    #         + f_w * N[0] * phi * U_n[0] * dSde
+    F_ij_s = - 2 * eta * epi_1[1] * gradphi[1] * dx# \
+    #         + 2 * eta * epi_1[1] * phi * N[1] * U_n[1] * ds
+    #         + f_w * N[1] * phi * U_n[1] * dSde
+    F_iz_s = - 2 * eta * epi_1[2] * gradphi[2] * dx + F_ib_s #\
+    #        + 2 * eta * epi_1[2] * phi * N[2] * ds
      
-    F_ji_s = - 2 * eta * epi_2[0] * gradphi[0] * dx + F_ip_s
-    F_jj_s = - 2 * eta * epi_2[1] * gradphi[1] * dx + F_jp_s
-    F_jz_s = - 2 * eta * epi_2[2] * gradphi[2] * dx + F_jb_s
+    F_ji_s = - 2 * eta * epi_2[0] * gradphi[0] * dx# \
+    #         + 2 * eta * epi_2[0] * phi * N[0] * U_t[0] * ds
+    #         + f_w * N[0] * phi * U_t[0] * dSde
+    F_jj_s = - 2 * eta * epi_2[1] * gradphi[1] * dx# \
+    #         + 2 * eta * epi_2[0] * phi * N[1] * U_t[1] * ds
+    #         + f_w * N[1] * phi * U_t[1] * dSde
+    F_jz_s = - 2 * eta * epi_2[2] * gradphi[2] * dx + F_jb_s #\
+    #         + 2 * eta * epi_2[2] * phi * N[2] * ds
     
     # mass matrix :
     M = assemble(phi*dtau*dx)
@@ -2860,8 +2880,8 @@ class BP_Balance(Physics):
       tau_ip   = model.vert_integrate(model.F_ip, d='down')
       tau_jp   = model.vert_integrate(model.F_jp, d='down')
       
-      tau_ib   = model.extrude(model.F_ib, [3,5], 2)
-      tau_jb   = model.extrude(model.F_jb, [3,5], 2)
+      tau_ib   = model.vert_extrude(model.F_ib, d='up')
+      tau_jb   = model.vert_extrude(model.F_jb, d='up')
      
       model.assign_variable(model.tau_id, tau_id)
       model.assign_variable(model.tau_jd, tau_jd)

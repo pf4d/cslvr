@@ -1067,7 +1067,7 @@ class StokesBalanceSolver(Solver):
         basal    = as_vector([model.F_ib, model.F_jb, 0.0])
         pressure = as_vector([model.F_ip, model.F_jp, 0.0])
         
-        total    = membrane - driving
+        total    = membrane + pressure - driving
         
         # attach the results to the model :
         s    = "::: projecting 'BPBalance' force terms onto vector space :::"
@@ -1107,7 +1107,7 @@ class StokesBalanceSolver(Solver):
           basal    = as_vector([model.tau_ib, model.tau_jb, 0.0])
           pressure = as_vector([model.tau_ip, model.tau_jp, 0.0])
           
-          total    = membrane - driving
+          total    = membrane + pressure - driving
           
           # attach the results to the model :
           s    = "::: projecting 'BPBalance' stress terms onto vector space :::"

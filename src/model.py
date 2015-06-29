@@ -588,7 +588,7 @@ class Model(object):
     cellmap = bmesh.entity_map(2)
     pb      = CellFunction("size_t", bmesh, 0)
     for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() < 1e-3:
+      if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     return submesh
@@ -701,10 +701,6 @@ class Model(object):
     adot_v[adot_v < -1000] = 0
     self.assign_variable(adot, adot_v)
 
-    Ubar_v = Ubar.vector().array()
-    Ubar_v[Ubar_v < 0] = 0
-    self.assign_variable(Ubar, Ubar_v)
-
     D     = Function(Q)
     B_v   = B.vector().array()
     D_v   = D.vector().array()
@@ -716,19 +712,25 @@ class Model(object):
     Mb_v[Mb_v > 10.0] = 10.0
     self.assign_variable(Mb, Mb_v)
 
-    nS   = Function(Q)
-    gSx  = project(S.dx(0)).vector().array()
-    gSy  = project(S.dx(1)).vector().array()
-    nS_v = np.sqrt(gSx**2 + gSy**2 + DOLFIN_EPS)
-    self.assign_variable(nS, nS_v)
+    #nS   = Function(Q)
+    #gSx  = project(S.dx(0)).vector().array()
+    #gSy  = project(S.dx(1)).vector().array()
+    #nS_v = np.sqrt(gSx**2 + gSy**2 + DOLFIN_EPS)
+    #self.assign_variable(nS, nS_v)
 
-    nB   = Function(Q)
-    gBx  = project(B.dx(0)).vector().array()
-    gBy  = project(B.dx(1)).vector().array()
-    nB_v = np.sqrt(gBx**2 + gBy**2 + DOLFIN_EPS)
-    self.assign_variable(nB, nB_v)
+    nS   = sqrt(inner(grad(S), grad(S)) + DOLFIN_EPS)
+
+    #nB   = Function(Q)
+    #gBx  = project(B.dx(0)).vector().array()
+    #gBy  = project(B.dx(1)).vector().array()
+    #nB_v = np.sqrt(gBx**2 + gBy**2 + DOLFIN_EPS)
+    #self.assign_variable(nB, nB_v)
+
+    nB   = sqrt(inner(grad(B), grad(B)) + DOLFIN_EPS)
 
     U_v  = as_vector([self.u, self.v, self.w])
+
+    ini  = sqrt(917.0 * 9.8 * (S - B) * nS / (Ubar + 0.1))
 
     x0   = S
     x1   = T_s
@@ -736,53 +738,43 @@ class Model(object):
     x3   = D
     x4   = nB
     x5   = S - B
-    x6   = self.u
-    x7   = self.v
-    x8   = self.w
-    x9   = q_geo
-    x10  = adot
-    x11  = ln(Ubar + 1)
-    x12  = T
-    x13  = Mb
+    x6   = q_geo
+    x7   = adot
+    x8   = T
+    x9   = Mb
+    x10  = self.u
+    x11  = self.v
+    x12  = self.w
+    x13  = ln(Ubar + 1)
     x14  = ln(sqrt(inner(U_v,U_v) + DOLFIN_EPS) + 1)
+    x15  = ini
 
-    #X    = [x0,x1,x2,x3,x4,x5,x10,x11]
-    #X    = [x0,x1,x2,x3,x4,x5,x6,x7,x8,x10,x11,x12,x13,x14]
-    X    = [x0,x1,x2,x3,x4,x5,x10,x11,x12,x13,x14]
+    X    = [x0,x1,x2,x4,x5,x7,x13,x15]
 
     for i,xx in enumerate(X):
       print_min_max(xx, 'x' + str(i))
 
-    # GLM greenland :
-    bhat = [  1.12969015e+02,  -7.03089571e-04,  -4.80388882e-01,
-              1.04728732e+01,  -2.35738886e+00,  -1.58589160e+01,
-             -1.85892677e-03,   1.98232164e+00,   5.40087900e-01,
-             -3.48879703e-01,   1.24709495e+02,  -3.20120524e-01,
-              1.21090089e-06,   2.75252502e-05,   1.10197427e-04,
-              1.56775481e-04,  -4.66196445e-08,   3.05280681e-05,
-             -3.99891105e-05,   2.54849033e-06,   6.07948043e-04,
-             -9.24583626e-06,   9.11510866e-02,   4.08099271e-03,
-              1.19485302e-01,   1.51751066e-05,  -4.31087350e-03,
-              2.73848399e-03,   1.58175033e-03,  -3.53660319e-01,
-              5.40688437e-03,   5.15207855e-01,  -1.35485381e+01,
-             -1.23527871e-03,   1.30067570e-01,  -1.82549040e-01,
-             -1.10123948e-01,  -3.75844550e+01,  -2.32178148e-02,
-              2.49403652e-01,  -3.53253359e-05,  -1.10152405e-02,
-             -2.90309289e-02,   5.19834841e-03,   8.60039906e-01,
-             -2.46954146e-02,   3.77891240e-04,  -1.48137445e-01,
-             -2.42348351e-02,  -5.18187117e-02,  -9.92962934e+00,
-             -1.22320918e-01,   6.95520850e-05,   1.09910385e-04,
-             -8.04502791e-06,  -1.59918662e-03,  -6.52457771e-05,
-             -5.26705679e-03,  -3.06153602e-03,   3.28928683e-01,
-             -1.64058971e-02,  -4.50693280e-03,   6.38575687e-02,
-             -1.43488545e-02,  -8.79778349e-02,  -5.35017800e-03,
-             -6.44700182e-01]
+    bhat = [ -1.02331153e+02,   1.11778868e-02,   7.98617990e-01,
+             -2.49213406e+01,   7.01725486e+00,  -2.41266098e-03,
+              2.69270964e+00,   1.09757497e+00,   5.09616214e-03,
+             -2.93709460e-07,  -4.02852494e-05,   1.36192751e-03,
+             -1.92061602e-04,   8.21958184e-08,   6.25273008e-05,
+             -6.90628736e-05,  -1.28536531e-07,  -1.50452597e-03,
+              9.56728797e-02,  -4.13422401e-02,   8.22401828e-06,
+             -1.07791900e-02,  -3.99334789e-03,  -1.62785666e-05,
+             -7.98760499e+00,   7.68069728e+00,  -9.24810351e-03,
+             -7.59511137e-01,   3.23938736e-01,  -1.41462938e-04,
+             -8.56973153e-01,   1.56510813e-04,   7.42539169e-01,
+              3.45749805e-01,   4.91766770e-04,   5.96908631e-08,
+              1.31701943e-04,  -8.65126169e-05,  -2.92338831e-07,
+             -9.48427894e-02,   6.19006380e-03,   3.09552357e-05,
+             -4.77862981e-04,   3.32653316e-03,   4.38710297e-08]
 
     X_i  = []
     X_i.extend(X)
      
     for i,xx in enumerate(X):
-      for yy in X[i+1:]:
+      for yy in X[i:]:
         X_i.append(xx*yy)
     
     #self.beta_f = exp(Constant(bhat[0]))
@@ -798,7 +790,6 @@ class Model(object):
     beta_v[beta_v < 0.0]   = 0.0
     self.assign_variable(self.beta, beta_v)
     print_min_max(self.beta, 'beta0')
-    #self.init_beta_SIA(Ubar)
      
   def init_b(self, b, U_ob, gradS):
     r"""
@@ -1041,23 +1032,19 @@ class Model(object):
     print_min_max(H, 'H')
     return H
   
-  def extrude(self, f, b, d, Q='self'):
+  def vert_extrude(self, u, d='up', Q='self'):
     r"""
-    This extrudes a function <f> defined along a boundary list <b> out onto
-    the domain in the direction <d>.  It does this by formulating a 
-    variational problem:
+    This extrudes a function <u> vertically in the direction <d> = 'up' or
+    'down'.
+    It does this by formulating a variational problem:
   
     :Conditions: 
     .. math::
-    \frac{\partial u}{\partial d} = 0
+    \frac{\partial v}{\partial z} = 0
     
-    u|_b = f
+    v|_b = u
   
     and solving.  
-    
-    :param f  : Dolfin function defined along a boundary
-    :param b  : Boundary condition
-    :param d  : Subdomain over which to perform differentiation
     """
     s = "::: extruding function :::"
     print_text(s, self.color)
@@ -1066,16 +1053,20 @@ class Model(object):
     ff  = self.ff
     phi = TestFunction(Q)
     v   = TrialFunction(Q)
-    a   = v.dx(d) * phi * dx
+    a   = v.dx(2) * phi * dx
     L   = DOLFIN_EPS * phi * dx
     bcs = []
-    if type(b) != list:
-      b = [b]
-    for boundary in b:
-      bcs.append(DirichletBC(Q, f, ff, boundary))
+    # extrude bed (ff = 3,5) 
+    if d == 'up':
+      bcs.append(DirichletBC(Q, u, ff, 3))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, 5))  # shelves
+    # extrude surface (ff = 2,6) 
+    elif d == 'down':
+      bcs.append(DirichletBC(Q, u, ff, 2))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, 6))  # shelves
     v   = Function(Q)
     solve(a == L, v, bcs)
-    print_min_max(f, 'function to be extruded')
+    print_min_max(u, 'function to be extruded')
     print_min_max(v, 'extruded function')
     return v
   
@@ -1101,7 +1092,7 @@ class Model(object):
     elif d == 'down':
       bcs.append(DirichletBC(Q, 0.0, ff, 2))  # grounded
       bcs.append(DirichletBC(Q, 0.0, ff, 6))  # shelves
-      a      = v.dx(2) * phi * dx
+      a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
     v      = Function(Q)
     solve(a == L, v, bcs)
@@ -1116,12 +1107,12 @@ class Model(object):
     :rtype:   Dolfin projection and Function of the vertical average
     """
     H    = self.S - self.B
-    uhat = self.vert_integrate(u)
+    uhat = self.vert_integrate(u, d='up')
     s = "::: calculating vertical average :::"
     print_text(s, self.color)
     ubar = project(uhat/H, self.Q)
     print_min_max(ubar, 'ubar')
-    ubar = self.extrude(ubar, [2,6], 2)
+    ubar = self.vert_extrude(ubar, d='down')
     return ubar
 
   def calc_misfit(self, integral):

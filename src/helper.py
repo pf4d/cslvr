@@ -904,7 +904,7 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5,
-            show=True):
+            extend='neither', show=True):
   """
   INPUTS :
 
@@ -1024,10 +1024,15 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   else:
     vmax = v.max()
   
+  # set the extended colormap :  
+  cmap = pl.get_cmap(cmap)
+  #cmap.set_under(under)
+  #cmap.set_over(over)
+  
   # countour levels :
   if scale == 'log':
-    if any(v < 3e-16):
-      v[v < 3e-16] = 3e-16 # remove negative values
+    v[v < vmin] = vmin + 1e-12
+    v[v > vmax] = vmax - 1e-12
     from matplotlib.ticker import LogFormatter
     levels      = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
     formatter   = LogFormatter(10, labelOnlyBase=False)
@@ -1043,6 +1048,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   
   elif scale == 'bool':
     from matplotlib.ticker import ScalarFormatter
+    v[v < 0.0] = 0.0
     levels    = [0, 1, 2]
     formatter = ScalarFormatter()
     norm      = None
@@ -1050,14 +1056,26 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
 
   if isinstance(u, str):
     #cs = plt.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
-    cs = plt.contourf(x, y, v, levels=levels, 
-                      cmap=pl.get_cmap(cmap), norm=norm)
+    if scale != 'log':
+      #cs = plt.contourf(x, y, v, levels=levels, 
+      #                  cmap=cmap, norm=norm, extend=extend)
+      cs = plt.contourf(x, y, v, levels=levels, 
+                        cmap=cmap, norm=norm)
+    else:
+      cs = plt.contourf(x, y, v, levels=levels, 
+                        cmap=cmap, norm=norm)
   
   elif isinstance(u, Function):
     #cs = plt.tripcolor(x, y, fi, v, shading='gouraud', 
     #                   cmap=get_cmap(cmap), norm=norm)
-    cs = plt.tricontourf(x, y, fi, v, levels=levels, 
-                         cmap=pl.get_cmap(cmap), norm=norm)
+    if scale != 'log':
+      #cs = plt.tricontourf(x, y, fi, v, levels=levels, 
+      #                     cmap=cmap, norm=norm, extend=extend)
+      cs = plt.tricontourf(x, y, fi, v, levels=levels, 
+                           cmap=cmap, norm=norm)
+    else:
+      cs = plt.tricontourf(x, y, fi, v, levels=levels, 
+                           cmap=cmap, norm=norm)
   
   # plot triangles :
   if tp == True:
@@ -1077,7 +1095,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   #tit.set_fontsize(40)
   
   plt.tight_layout(rect=[.03,.03,0.97,0.97])
-  plt.savefig(direc + name + '.png', dpi=200)
+  plt.savefig(direc + name + '.png', dpi=300)
   if show:
     plt.show()
   plt.close(fig)

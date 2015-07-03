@@ -373,6 +373,12 @@ class Model(object):
     print_text(s, self.color)
     self.assign_variable(self.adot, adot)
     print_min_max(self.adot, 'adot')
+    s = "::: removing junk accumulation :::"
+    print_text(s, self.color)
+    adot_v = self.adot.vector().array()
+    adot_v[adot_v < -100] = 0
+    self.assign_variable(self.adot, adot_v)
+    print_min_max(self.adot, 'adot')
   
   def init_beta(self, beta):
     """
@@ -681,63 +687,75 @@ class Model(object):
     #self.betaSIA = Function(Q)
     #self.assign_variable(self.betaSIA, beta_0_v)
     
-  def init_beta_stats(self):
+  def init_beta_stats(self, mdl='U'):
     """
     """
     s    = "::: initializing beta from stats :::"
     print_text(s, self.color)
-    q_geo = self.q_geo
-    T_s   = self.T_surface
-    adot  = self.adot
-    Mb    = self.Mb
-    Ubar  = self.Ubar
-    Q     = self.Q
-    B     = self.B
-    S     = self.S
-    T     = self.T
-    T_s   = self.T_surface
+    
+    config = self.config
+    q_geo  = self.q_geo
+    T_s    = self.T_surface
+    adot   = self.adot
+    Mb     = self.Mb
+    Ubar   = self.Ubar
+    Q      = self.Q
+    B      = self.B
+    S      = self.S
+    T      = self.T
+    T_s    = self.T_surface
+    rho    = self.rhoi
+    g      = self.g
+    H      = S - B
 
-    adot_v = adot.vector().array()
-    adot_v[adot_v < -1000] = 0
-    self.assign_variable(adot, adot_v)
-
-    D     = Function(Q)
-    B_v   = B.vector().array()
-    D_v   = D.vector().array()
-    D_v[B_v < 0] = 1.0
+    if mdl == 'Ubar':
+      config['balance_velocity']['on']    = True
+      config['balance_velocity']['kappa'] = 5.0
+   
+    elif mdl == 'stress':
+      config['stokes_balance']['on']      = True
+           
+    D      = Function(Q)
+    B_v    = B.vector().array()
+    D_v    = D.vector().array()
+    D_v[B_v < 0] = B_v[B_v < 0]
     self.assign_variable(D, D_v)
 
-    Mb_v = Mb.vector().array()
-    Mb_v[Mb_v < 0.0]  = 0.0
-    Mb_v[Mb_v > 10.0] = 10.0
-    self.assign_variable(Mb, Mb_v)
+    gradS = as_vector([S.dx(0), S.dx(1), 0.0])
+    gradB = as_vector([B.dx(0), B.dx(1), 0.0])
+    gradH = as_vector([H.dx(0), H.dx(1), 0.0])
 
-    #nS   = Function(Q)
-    #gSx  = project(S.dx(0)).vector().array()
-    #gSy  = project(S.dx(1)).vector().array()
-    #nS_v = np.sqrt(gSx**2 + gSy**2 + DOLFIN_EPS)
-    #self.assign_variable(nS, nS_v)
+    nS   = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
+    nB   = sqrt(inner(gradB, gradB) + DOLFIN_EPS)
+    nH   = sqrt(inner(gradH, gradH) + DOLFIN_EPS)
+    
+    if mdl == 'Ubar':
+      u_x    = -rho * g * H * S.dx(0)
+      v_x    = -rho * g * H * S.dx(1)
+      U_i    = as_vector([u_x,  v_x, 0.0])
+      U_j    = as_vector([v_x, -u_x, 0.0])
+    elif mdl == 'U':
+      U_i    = as_vector([self.u,  self.v, 0.0])
+      U_j    = as_vector([self.v, -self.u, 0.0])
+    Umag   = sqrt(inner(U_i,U_i) + DOLFIN_EPS)
+    Uhat_i = U_i / Umag
+    Uhat_j = U_j / Umag
 
-    nS   = sqrt(inner(grad(S), grad(S)) + DOLFIN_EPS)
+    dBdi = dot(gradB, Uhat_i)
+    dBdj = dot(gradB, Uhat_j)
+    dSdi = dot(gradS, Uhat_i)
+    dSdj = dot(gradS, Uhat_j)
+    dHdi = dot(gradH, Uhat_i)
+    dHdj = dot(gradH, Uhat_j)
 
-    #nB   = Function(Q)
-    #gBx  = project(B.dx(0)).vector().array()
-    #gBy  = project(B.dx(1)).vector().array()
-    #nB_v = np.sqrt(gBx**2 + gBy**2 + DOLFIN_EPS)
-    #self.assign_variable(nB, nB_v)
-
-    nB   = sqrt(inner(grad(B), grad(B)) + DOLFIN_EPS)
-
-    U_v  = as_vector([self.u, self.v, self.w])
-
-    ini  = sqrt(917.0 * 9.8 * (S - B) * nS / (Ubar + 0.1))
+    ini  = sqrt(rho * g * H * nS / (Umag + 0.1))
 
     x0   = S
     x1   = T_s
     x2   = nS
     x3   = D
     x4   = nB
-    x5   = S - B
+    x5   = H
     x6   = q_geo
     x7   = adot
     x8   = T
@@ -746,35 +764,101 @@ class Model(object):
     x11  = self.v
     x12  = self.w
     x13  = ln(Ubar + 1)
-    x14  = ln(sqrt(inner(U_v,U_v) + DOLFIN_EPS) + 1)
+    x14  = ln(Umag + 1)
     x15  = ini
+    x16  = dBdi
+    x17  = dBdj
+    x18  = dSdi
+    x19  = dSdj
+    x20  = nH
+    x21  = self.tau_id
+    x22  = self.tau_jd
+    x23  = self.tau_ii
+    x24  = self.tau_ij
+    x25  = self.tau_ji
+    x26  = self.tau_jj
 
-    X    = [x0,x1,x2,x4,x5,x7,x13,x15]
+    names = ['S', 'T_s', 'gradS', 'D', 'gradB', 'H', 'q_geo', 'adot', 'T',
+             'Mb', 'u', 'v', 'w', 'ln(Ubar + 1)', 'ln(Umag + 1)', 'ini',
+             'dBdi', 'dBdj', 'dSdi', 'dSdj', 'nablaH', 'tau_id', 'tau_jd',
+             'tau_ii', 'tau_ij', 'tau_ji', 'tau_jj']
+    names = np.array(names)
 
-    for i,xx in enumerate(X):
-      print_min_max(xx, 'x' + str(i))
-
-    bhat = [ -1.02331153e+02,   1.11778868e-02,   7.98617990e-01,
-             -2.49213406e+01,   7.01725486e+00,  -2.41266098e-03,
-              2.69270964e+00,   1.09757497e+00,   5.09616214e-03,
-             -2.93709460e-07,  -4.02852494e-05,   1.36192751e-03,
-             -1.92061602e-04,   8.21958184e-08,   6.25273008e-05,
-             -6.90628736e-05,  -1.28536531e-07,  -1.50452597e-03,
-              9.56728797e-02,  -4.13422401e-02,   8.22401828e-06,
-             -1.07791900e-02,  -3.99334789e-03,  -1.62785666e-05,
-             -7.98760499e+00,   7.68069728e+00,  -9.24810351e-03,
-             -7.59511137e-01,   3.23938736e-01,  -1.41462938e-04,
-             -8.56973153e-01,   1.56510813e-04,   7.42539169e-01,
-              3.45749805e-01,   4.91766770e-04,   5.96908631e-08,
-              1.31701943e-04,  -8.65126169e-05,  -2.92338831e-07,
-             -9.48427894e-02,   6.19006380e-03,   3.09552357e-05,
-             -4.77862981e-04,   3.32653316e-03,   4.38710297e-08]
+    if mdl == 'Ubar':
+      X    = [x0,x1,x5,x7,x13,x16,x18]
+      idx  = [ 0, 1, 5, 7, 13, 16, 18]
+      bhat = [ -9.63588782e+01,   7.72425495e-03,   7.75290054e-01,
+               -5.15903231e-04,  -1.19375869e+00,   7.62129279e-01,
+               -1.92858017e+01,   1.81704079e+01,  -1.86892508e-07,
+               -2.73649416e-05,   1.69668196e-08,  -5.55049255e-05,
+               -4.96409716e-05,   8.12800433e-04,  -2.09305387e-03,
+               -1.49997208e-03,   1.35271404e-06,   4.99163431e-03,
+               -2.56564438e-03,   7.18877449e-02,  -7.70535978e-02,
+                2.31004410e-08,   2.03177355e-04,  -7.66343932e-05,
+               -1.77654530e-05,  -7.50096886e-03,  -5.33005668e-02,
+               -1.06676191e-02,  -7.37130572e-01,   1.96781083e+00,
+               -2.30702944e-02,   6.36448906e-03,  -1.23889912e+00,
+               -1.64371627e+01,   2.44131036e+01,  -3.66279428e+01]
+    
+    elif mdl == 'U':
+      X    = [x0,x1,x5,x7,x14,x16,x18]
+      idx  = [ 0, 1, 5, 7, 14, 16, 18]
+      bhat = [ -9.19655199e+01,   5.53215515e-03,   7.38029087e-01,
+                2.78836497e-03,  -1.49949916e-01,  -1.99341616e+00,
+               -1.55949559e+01,  -6.79879431e+01,  -7.16364470e-08,
+               -2.11817126e-05,  -5.33340712e-08,   6.07883518e-05,
+                3.19328554e-05,   1.19704619e-04,   1.11880964e-04,
+               -1.40137581e-03,  -9.20405467e-06,   6.23852514e-04,
+                5.60798826e-03,   5.75333588e-02,   2.08608114e-01,
+               -1.14251901e-07,   9.06340643e-05,   3.68001438e-06,
+                7.18234498e-04,  -1.09548939e-02,  -3.31759856e-02,
+               -3.53937145e-02,  -3.05016700e-01,  -4.77429610e-01,
+                6.27651113e-03,  -3.64483501e-02,   3.01727129e-01,
+               -1.99609788e+00,  -9.04769088e+00,  -7.64735880e+01] 
+    
+    elif mdl == 'stress':
+      X    = [x0,x1,x5,x7,x14,x16,x18,x21,x22,x24,x25,x26]
+      idx  = [ 0, 1, 5, 7, 14, 16, 18, 21, 23, 24, 25, 26]
+      bhat = [  5.47574225e+00,   9.14001489e-04,  -1.03229081e-03,
+               -7.04987042e-04,   2.15686223e+00,  -1.52869679e+00,
+               -1.74593819e+01,  -2.05459701e+01,  -1.23768850e-05,
+                2.01460255e-05,   1.97622781e-05,   3.68067438e-05,
+                6.63468606e-06,  -3.69046174e-06,  -4.47828887e-08,
+               -3.67070759e-05,   2.53827543e-05,  -1.88069561e-05,
+                2.05942231e-03,  -5.95566325e-10,   1.00881255e-09,
+                6.11553989e-10,  -4.11737126e-10,   6.27370976e-10,
+                3.42275389e-06,  -8.17017771e-03,   4.01803819e-03,
+                6.78767571e-02,   4.29444354e-02,   4.45551518e-08,
+               -8.23509210e-08,  -7.90182526e-08,  -1.48650850e-07,
+               -2.36138203e-08,  -4.75130905e-05,  -1.81655894e-05,
+                9.79852186e-04,  -1.49411705e-02,  -2.35701903e-10,
+                2.32406866e-09,   1.48224703e-09,  -1.09016625e-09,
+               -1.31162142e-09,   1.47593911e-02,  -1.84965301e-01,
+               -1.62413731e-01,   2.38867744e-07,   2.09579112e-07,
+                6.11572155e-07,   1.44891826e-06,  -4.94537953e-07,
+               -3.30400642e-01,   7.93664407e-01,   7.76571489e-08,
+               -1.64476914e-07,  -2.13414311e-07,   4.75810302e-07,
+                2.55787543e-07,  -6.37972323e+00,  -3.77364196e-06,
+                8.65062737e-08,   6.13207853e-06,   8.39233482e-07,
+               -3.76402983e-06,  -2.02633500e-05,  -7.28788200e-06,
+               -2.72030382e-05,  -1.33298507e-05,   1.11838930e-05,
+                9.74762098e-14,  -2.37844072e-14,  -1.11310490e-13,
+                8.91237008e-14,   1.16770903e-13,   5.77230478e-15,
+               -4.87322338e-14,   9.62949381e-14,  -2.12122129e-13,
+                1.55871983e-13]
+   
+    for xx,nam in zip(X, names[idx]):
+      print_min_max(xx, nam)
 
     X_i  = []
     X_i.extend(X)
      
     for i,xx in enumerate(X):
-      for yy in X[i:]:
+      if mdl == 'U' or mdl == 'Ubar':
+        k = i
+      else:
+        k = i+1
+      for yy in X[k:]:
         X_i.append(xx*yy)
     
     #self.beta_f = exp(Constant(bhat[0]))
@@ -788,7 +872,8 @@ class Model(object):
     beta                   = project(self.beta_f, Q)
     beta_v                 = beta.vector().array()
     beta_v[beta_v < 0.0]   = 0.0
-    self.assign_variable(self.beta, beta_v)
+    #self.assign_variable(self.beta, beta_v)
+    self.assign_variable(self.beta, 200)
     print_min_max(self.beta, 'beta0')
      
   def init_b(self, b, U_ob, gradS):

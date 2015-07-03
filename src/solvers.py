@@ -1203,6 +1203,10 @@ class HybridTransientSolver(Solver):
     # initialize free surface solver :
     if config['free_surface']['on']:
       self.surface_instance = MassBalanceHybrid(model, config)
+
+    # initialize stress balance solver :
+    if config['stokes_balance']['on']:
+      self.stokes_balance_instance = SSA_Balance(model, config)
     
     # balance velocity model :
     if config['balance_velocity']['on']:
@@ -1218,6 +1222,12 @@ class HybridTransientSolver(Solver):
       self.file_Mb   = File(outpath + 'Mb.pvd')
       self.file_H    = File(outpath + 'H.pvd')
       self.file_beta = File(outpath + 'beta.pvd')
+      self.file_tau_ii = File(outpath + 'tau_ii.pvd')
+      self.file_tau_ij = File(outpath + 'tau_ij.pvd')
+      self.file_tau_jj = File(outpath + 'tau_jj.pvd')
+      self.file_tau_ji = File(outpath + 'tau_ji.pvd')
+      self.file_tau_id = File(outpath + 'tau_id.pvd')
+      self.file_tau_jd = File(outpath + 'tau_jd.pvd')
       self.t_log     = []
 
     self.step_time = []
@@ -1304,6 +1314,28 @@ class HybridTransientSolver(Solver):
             self.file_Ubar << model.Ubar
           else:
             File(outpath + 'Ubar.pvd') << model.Ubar
+     
+      # solve the stress-balance :   
+      if config['stokes_balance']['on']:
+        self.stokes_balance_instance.solve()
+        if config['log']:
+          s    = '::: saving stress terms tau_ii, tau_ij,' \
+                 ' tau_jj, tau_ji, tau_id, and tau_jd .pvd files to %s :::'
+          print_text(s % outpath , self.color())
+          if config['log_history']:
+            self.file_tau_ii << model.tau_ii
+            self.file_tau_ij << model.tau_ij
+            self.file_tau_jj << model.tau_jj
+            self.file_tau_ji << model.tau_ji
+            self.file_tau_id << model.tau_id
+            self.file_tau_jd << model.tau_jd
+          else:
+            File(outpath + 'tau_ii.pvd') << model.tau_ii
+            File(outpath + 'tau_ij.pvd') << model.tau_ij
+            File(outpath + 'tau_jj.pvd') << model.tau_jj
+            File(outpath + 'tau_ji.pvd') << model.tau_ji
+            File(outpath + 'tau_id.pvd') << model.tau_id
+            File(outpath + 'tau_jd.pvd') << model.tau_jd
       
       # re-compute the friction field :
       if config['velocity']['transient_beta'] == 'stats':
@@ -1323,6 +1355,7 @@ class HybridTransientSolver(Solver):
         #betaSIA_v = model.betaSIA.vector().array()
         #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
         beta_v[beta_v < sqrt(1e3)]  = sqrt(1e3)
+        #beta_v[beta_v < 1e-2]  = 1e-2
         beta_v[beta_v > sqrt(1e9)]  = sqrt(1e9)
         model.assign_variable(model.beta, beta_v)
         #model.assign_variable(model.beta, np.sqrt(beta_v))

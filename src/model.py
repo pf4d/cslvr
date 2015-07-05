@@ -781,7 +781,7 @@ class Model(object):
     x26  = self.tau_jj
 
     names = ['S', 'T_s', 'gradS', 'D', 'gradB', 'H', 'q_geo', 'adot', 'T',
-             'Mb', 'u', 'v', 'w', 'ln(Ubar + 1)', 'ln(Umag + 1)', 'ini',
+             'Mb', 'u', 'v', 'w', 'ln(Ubar)', 'ln(Umag)', 'ini',
              'dBdi', 'dBdj', 'dSdi', 'dSdj', 'nablaH', 'tau_id', 'tau_jd',
              'tau_ii', 'tau_ij', 'tau_ji', 'tau_jj']
     names = np.array(names)

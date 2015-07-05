@@ -487,8 +487,8 @@ def print_min_max(u, title, color='yellow'):
     s    = title + ' : %.3e' % u
     print_text(s, color)
   else:
-    er = "print_min_max function requires a Vector, Function, array," \
-         + " int or float, not %s." % type(u)
+    er = title + "print_min_max function requires a Vector, Function, array," \
+         + " int or float, not %s." % (title, type(u))
     print_text(er, 'red', 1)
 
 

@@ -2349,8 +2349,8 @@ class VelocityBalance(Physics):
       dS      = as_vector([d_x, d_y, 0.0])
     elif model.mesh.ufl_cell().topological_dimension() == 2:
       dS      = as_vector([d_x, d_y])
-    #phihat  = phi + h/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
-    phihat  = phi + h/(2*H) * (H*dS[0]*phi.dx(0) + H*dS[1]*phi.dx(1))
+    phihat  = phi + h/(2*H) * ((H*dS[0]*phi).dx(0) + (H*dS[1]*phi).dx(1))
+    #phihat  = phi + h/(2*H) * (H*dS[0]*phi.dx(0) + H*dS[1]*phi.dx(1))
     
     def L(u, uhat):
       if model.mesh.ufl_cell().topological_dimension() == 3:

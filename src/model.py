@@ -97,8 +97,10 @@ class Model(object):
 
   def generate_function_spaces(self):
     """
+    Generates the appropriate finite-element function spaces from parameters
+    specified in the config file for the model.
     """
-    s = "::: generating function spaces :::"
+    s = "::: generating %s function spaces :::" % self.config['model_order']
     print_text(s, self.color)
     if self.config['periodic_boundary_conditions']:
       self.generate_pbc()
@@ -106,29 +108,34 @@ class Model(object):
       self.pBC = None
     self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
                                 constrained_domain=self.pBC)
-    if self.config['model_order'] != 'L1L2':
+    if     self.config['model_order'] != 'L1L2' \
+       and self.config['model_order'] != 'SSA':
       self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
                                   constrained_domain=self.pBC)
-      self.Q2     = MixedFunctionSpace([self.Q]*2)
-      self.Q3     = MixedFunctionSpace([self.Q]*3)
-      self.Q4     = MixedFunctionSpace([self.Q]*4)
-      # Define function spaces
+      if self.config['model_order'] == 'BP':
+        if self.config['velocity']['full_BP']:
+          self.Q3     = MixedFunctionSpace([self.Q]*3)
+        else:
+          self.Q2     = MixedFunctionSpace([self.Q]*2)
+      elif self.config['model_order'] == 'stokes':
+        self.Q4     = MixedFunctionSpace([self.Q]*4)
+        # mini elements :
+        self.Bub    = FunctionSpace(self.mesh, "B", 4, 
+                                    constrained_domain=self.pBC)
+        self.MQ     = self.Q + self.Bub
+        M3          = MixedFunctionSpace([self.MQ]*3)
+        self.MV     = MixedFunctionSpace([M3,self.Q])
+        # Taylor-Hood elements :
+        #V           = VectorFunctionSpace(self.mesh, "CG", 2,
+        #                                  constrained_domain=self.pBC)
+        #self.MV     = V * self.Q
       self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
-      # mini elements :
-      self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-                                  constrained_domain=self.pBC)
-      self.MQ     = self.Q + self.Bub
-      M3          = MixedFunctionSpace([self.MQ]*3)
-      self.MV     = MixedFunctionSpace([M3,self.Q])
-      # Taylor-Hood elements :
-      #V           = VectorFunctionSpace(self.mesh, "CG", 2,
-      #                                  constrained_domain=self.pBC)
-      #self.MV     = V * self.Q
     else:
       poly_degree = self.config['velocity']['poly_degree']
       N_T         = self.config['enthalpy']['N_T']
       self.HV     = MixedFunctionSpace([self.Q]*2*poly_degree) # VELOCITY
       self.Z      = MixedFunctionSpace([self.Q]*N_T)           # TEMPERATURE
+      self.Q2     = MixedFunctionSpace([self.Q]*2)
     
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
 
@@ -709,11 +716,15 @@ class Model(object):
     H      = S - B
 
     if mdl == 'Ubar' or mdl == 'U_Ubar':
-      config['balance_velocity']['on']    = True
+      #config['balance_velocity']['on']    = True
       config['balance_velocity']['kappa'] = 5.0
    
     elif mdl == 'stress':
       config['stokes_balance']['on']      = True
+
+    Ubar_v = Ubar.vector().array()
+    Ubar_v[Ubar_v < 1e-10] = 1e-10
+    self.assign_variable(Ubar, Ubar_v)
            
     D      = Function(Q)
     B_v    = B.vector().array()
@@ -966,11 +977,18 @@ class Model(object):
       #self.beta_f *= exp(Constant(bb)*xx)
     self.beta_f = exp(self.beta_f)
     
-    beta                   = project(self.beta_f, Q)
-    beta_v                 = beta.vector().array()
-    beta_v[beta_v < 0.0]   = 0.0
-    #self.assign_variable(self.beta, beta_v)
-    self.assign_variable(self.beta, 200)
+    if config['mode'] == 'steady':
+      beta0                   = project(self.beta_f, Q)
+      beta0_v                 = beta0.vector().array()
+      beta0_v[beta0_v < 1e-2] = 1e-2
+      self.assign_variable(beta0, beta0_v)
+    
+      self.assign_variable(self.beta, 1e-2)
+      bc_beta = DirichletBC(self.Q, beta0, self.ff, 3)
+      bc_beta.apply(self.beta.vector())
+    elif config['mode'] == 'transient':
+      self.assign_variable(self.beta, 200.0)
+    
     print_min_max(self.beta, 'beta0')
      
   def init_b(self, b, U_ob, gradS):

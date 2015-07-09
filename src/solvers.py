@@ -193,20 +193,20 @@ class SteadySolver(Solver):
             model.save_pvd(model.W,  'W')
             model.save_pvd(model.Mb, 'Mb')
     
-      # re-compute the friction field :
-      if config['velocity']['transient_beta'] == 'stats':
-        s    = "::: updating statistical beta :::"
-        print_text(s, self.color())
-        beta   = project(model.beta_f, model.Q)
-        beta_v = beta.vector().array()
-        ##betaSIA_v = model.betaSIA.vector().array()
-        ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-        beta_v[beta_v < 0.0]    = 0.0
-        #beta_v[beta_v > 2500.0] = 2500.0
-        model.assign_variable(model.beta, beta_v)
-        print_min_max(model.beta, 'beta')
-        if config['log']:
-          model.save_pvd(model.extrude(model.beta, [3,5], 2), 'beta')
+      ## re-compute the friction field :
+      #if config['velocity']['transient_beta'] == 'stats':
+      #  s    = "::: updating statistical beta :::"
+      #  print_text(s, self.color())
+      #  beta   = project(model.beta_f, model.Q)
+      #  beta_v = beta.vector().array()
+      #  ##betaSIA_v = model.betaSIA.vector().array()
+      #  ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+      #  beta_v[beta_v < 0.0]    = 0.0
+      #  #beta_v[beta_v > 2500.0] = 2500.0
+      #  model.assign_variable(model.beta, beta_v)
+      #  print_min_max(model.beta, 'beta')
+      #  if config['log']:
+      #    model.save_pvd(model.extrude(model.beta, [3,5], 2), 'beta')
 
       counter += 1
       # Calculate L_infinity norm
@@ -1273,6 +1273,13 @@ class HybridTransientSolver(Solver):
 
       # calculate energy
       if config['enthalpy']['on']:
+        #if 0 < t and t <= 100.0:
+        #  s    = '::: updating surface temperature :::'
+        #  print_text(s, self.color())
+        #  T_v  = model.T_surface.vector().array()
+        #  T_v += 5.0 / 100.0 * dt
+        #  model.assign_variable(model.T_surface, T_v)
+        #  print_min_max(model.T_surface, 'T_surface')
         self.enthalpy_instance.solve()
         if config['enthalpy']['log']:
           s    = '::: saving surface and bed temperature Ts, Tb, and Mb' + \
@@ -1398,6 +1405,14 @@ class HybridTransientSolver(Solver):
       # store information : 
       if self.config['log']:
         self.t_log.append(t)
+
+      if t % 100 == 0:
+        model.save_xml(model.S,    'S_%i' % t)
+        model.save_xml(model.H,    'H_%i' % t)
+        model.save_xml(model.u_s,  'u_s_%i' % t)
+        model.save_xml(model.v_s,  'v_s_%i' % t)
+        model.save_xml(model.w_s,  'w_s_%i' % t)
+        model.save_xml(model.beta, 'beta_%i' % t)
 
       # increment time step :
       if self.model.MPI_rank==0:

@@ -1675,14 +1675,6 @@ class Model(object):
     self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
     print_min_max(self.sigma, 'sigma')
 
-    # surface gradient :
-    self.gradS         = project(grad(self.S), self.V)
-    print_min_max(self.gradS, 'grad(S)')
-
-    # bed gradient :
-    self.gradB         = project(grad(self.B), self.V)
-    print_min_max(self.gradB, 'grad(B)')
-
     # free surface model :
     self.Shat          = Function(self.Q_flat)
     self.dSdt          = Function(self.Q_flat)

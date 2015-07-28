@@ -62,6 +62,14 @@ class MeshFactory(object):
 
   
   @staticmethod
+  def get_antarctica_2D_medium():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/antarctica/antarctica_2D_medium_mesh.xdmf')
+    return mesh
+
+  
+  @staticmethod
   def get_antarctica_3D_50H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))

@@ -94,8 +94,8 @@ class VelocityDukowiczStokes(Physics):
     N             = model.N
     D             = model.D
 
-    gradS         = model.gradS
-    gradB         = model.gradB
+    gradS         = grad(S)
+    gradB         = grad(B)
 
     dx       = model.dx
     dx_s     = dx(1)
@@ -232,8 +232,8 @@ class VelocityStokes(Physics):
     N             = model.N
     D             = model.D
 
-    gradS         = model.gradS
-    gradB         = model.gradB
+    gradS         = grad(S)
+    gradB         = grad(B)
      
     # new constants :
     p0     = 101325
@@ -366,8 +366,8 @@ class VelocityDukowiczBP(Physics):
     N        = model.N
     D        = model.D
     
-    gradS    = model.gradS
-    gradB    = model.gradB
+    gradS    = grad(S)
+    gradB    = grad(B)
 
     dx       = model.dx
     dx_s     = dx(1)
@@ -580,8 +580,6 @@ class VelocityBP(Physics):
     N             = model.N
     D             = model.D
     
-    #gradS         = model.gradS
-    #gradB         = model.gradB
     gradS         = grad(S)
     gradB         = grad(B)
      
@@ -802,8 +800,8 @@ class VelocityBPFull(Physics):
     N             = model.N
     D             = model.D
     
-    gradS         = model.gradS
-    gradB         = model.gradB
+    gradS         = grad(S)
+    gradB         = grad(B)
      
     # new constants :
     p0     = 101325
@@ -2224,21 +2222,30 @@ class Age(Physics):
     # Trial and test
     a   = TrialFunction(model.Q)
     phi = TestFunction(model.Q)
+    #self.age = Function(model.MQ)
 
     # Steady state
     if config['mode'] == 'steady':
-      # SUPG method :
+      s    = "    - using steady-state -"
+      print_text(s, self.color())
+      
+      ## SUPG method :
       U      = as_vector([model.u, model.v, model.w])
       Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
       phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
       
       # Residual 
-      R = dot(U,grad(a)) - 1.0
+      R = dot(U,grad(a)) - Constant(1.0)
+      self.a = dot(U,grad(a)) * phi * dx
+      self.L = Constant(1.0) * phi * dx
 
       # Weak form of residual
       self.F = R * phihat * dx
 
     else:
+      s    = "    - using transient -"
+      print_text(s, self.color())
+      
       # Starting and midpoint quantities
       ahat   = model.ahat
       a0     = model.a0
@@ -2263,6 +2270,19 @@ class Age(Physics):
                + dot(U, grad(a_mid)) * phihat * dx \
                - 1.0 * phihat * dx
 
+    # form the boundary conditions :
+    if config['age']['use_smb_for_ela']:
+      s    = "    - using adot (SMB) boundary condition -"
+      print_text(s, self.color())
+      self.bc_age = DirichletBC(model.Q, 0.0, model.ff_acc, 1)
+    
+    else:
+      s    = "    - using ELA boundary condition -"
+      print_text(s, self.color())
+      def above_ela(x,on_boundary):
+        return x[2] > config['age']['ela'] and on_boundary
+      self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
+
   def solve(self, ahat=None, a0=None, uhat=None, what=None, vhat=None):
     """ 
     Solve the system
@@ -2283,19 +2303,13 @@ class Age(Physics):
       model.assign_variable(model.uhat, uhat)
       model.assign_variable(model.vhat, vhat)
       model.assign_variable(model.what, what)
-   
-    if config['age']['use_smb_for_ela']:
-      self.bc_age = DirichletBC(model.Q, 0.0, model.ff_acc, 1)
-    
-    else:
-      def above_ela(x,on_boundary):
-        return x[2] > config['age']['ela'] and on_boundary
-      self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
     # Solve!
     s    = "::: solving age :::"
     print_text(s, self.color())
     solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
+    #solve(self.a == self.L, self.age, self.bc_age)
+    #model.age.interpolate(self.age)
     print_min_max(model.age, 'age')
 
 

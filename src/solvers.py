@@ -193,28 +193,24 @@ class SteadySolver(Solver):
             model.save_pvd(model.W,  'W')
             model.save_pvd(model.Mb, 'Mb')
     
-      ## re-compute the friction field :
-      #if config['velocity']['transient_beta'] == 'stats':
-      #  s    = "::: updating statistical beta :::"
-      #  print_text(s, self.color())
-      #  beta   = project(model.beta_f, model.Q)
-      #  beta_v = beta.vector().array()
-      #  ##betaSIA_v = model.betaSIA.vector().array()
-      #  ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
-      #  beta_v[beta_v < 0.0]    = 0.0
-      #  #beta_v[beta_v > 2500.0] = 2500.0
-      #  model.assign_variable(model.beta, beta_v)
-      #  print_min_max(model.beta, 'beta')
-      #  if config['log']:
-      #    model.save_pvd(model.extrude(model.beta, [3,5], 2), 'beta')
+      # re-compute the friction field :
+      if config['velocity']['transient_beta'] == 'stats':
+        s    = "::: updating statistical beta :::"
+        print_text(s, self.color())
+        beta   = project(model.beta_f, model.Q)
+        beta_v = beta.vector().array()
+        ##betaSIA_v = model.betaSIA.vector().array()
+        ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+        beta_v[beta_v < 0.0]    = 0.0
+        #beta_v[beta_v > 2500.0] = 2500.0
+        model.assign_variable(model.beta, beta_v)
+        print_min_max(model.beta, 'beta')
+        if config['log']:
+          model.save_pvd(model.extrude(model.beta, [3,5], 2), 'beta')
 
       counter += 1
       # Calculate L_infinity norm
       if config['coupled']['on']:
-        #u_new         = model.u.vector().array()
-        #diff          = (u_prev - u_new)
-        #inner_error_n = MPI.max(mpi_comm_world(), diff.max())
-        #u_prev        = u_new
         inner_error_n = norm(project(U_prev - U))
         U_prev        = U
         if self.model.MPI_rank==0:

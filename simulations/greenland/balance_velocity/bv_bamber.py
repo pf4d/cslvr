@@ -11,20 +11,19 @@ from termcolor                    import colored
 thklim = 10.0
 
 # collect the raw data :
-bm1 = DataFactory.get_bedmap1(thklim = thklim)
-bm2 = DataFactory.get_bedmap2(thklim = thklim)
+searise = DataFactory.get_searise(thklim = thklim)
+bamber  = DataFactory.get_bamber(thklim = thklim)
 
 # load a mesh :
-mesh  = MeshFactory.get_antarctica_2D_medium()
+mesh  = MeshFactory.get_greenland_2D_5H()
 
 # create data objects to use with varglas :
-d1     = DataInput(bm1, mesh=mesh)
-d2     = DataInput(bm2, mesh=mesh)
+dsr   = DataInput(searise, mesh=mesh)
+dbm   = DataInput(bamber,  mesh=mesh)
 
-# get projections for use with FEniCS :
-S     = d2.get_expression("S",        near=True)
-B     = d2.get_expression("B",        near=True)
-adot  = d1.get_expression("acca",     near=True)
+B     = dbm.get_expression("B")
+S     = dbm.get_expression("S")
+adot  = dsr.get_interpolation("adot")
 
 config = default_config()
 config['output_path']               = 'results/'
@@ -59,8 +58,6 @@ if model.MPI_rank == 0:
   s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
   text = colored(s, 'red', attrs=['bold'])
   print text
-
-
 
 
 

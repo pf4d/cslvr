@@ -413,7 +413,7 @@ class DataOutput(object):
     file_handle = File(self.directory + name + extension)
     file_handle << data
 
-  def write_matlab(self, di, f, filename, val=e, size=None):
+  def write_matlab(self, di, f, filename, val=e):
     """
     Using the projections that are read in as data files, create Matlab
     version 4 files to output the regular gridded data in a field.  Will accept
@@ -426,8 +426,7 @@ class DataOutput(object):
       f        : a FEniCS function, to be mapped onto the regular grid that is
                  in di, established from the regular gridded data to start the
                  simulation.
-      filename : a file name for the matlab file output (include the
-                 extension) values not in mesh are set to <val>.
+      filename : file name to save.
       val      : value to make values outside of mesh.  Default is 'e'.
     OUTPUT:
       A single file will be written with name, outfile.
@@ -450,15 +449,15 @@ class DataOutput(object):
     print_min_max(fa, filename + 'matrix')
     outfile = self.directory + filename + '.mat'
     savemat(outfile, {'map_data'          : fa,
+                      'continent'         : di.cont,
+                      'nx'                : di.nx,
+                      'ny'                : di.ny,
                       'map_eastern_edge'  : di.x_max,
                       'map_western_edge'  : di.x_min,
                       'map_northern_edge' : di.y_max,
                       'map_southern_edge' : di.y_min,
                       'map_name'          : outfile,
-                      'projection'        : di.proj,
-                      'standard lat'      : di.lat_0,
-                      'standard lon'      : di.lon_0,
-                      'lat true scale'    : di.lat_ts})
+                      'projection'        : di.proj.srs})
 
 
 def print_min_max(u, title, color='yellow'):

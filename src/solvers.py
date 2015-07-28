@@ -1399,6 +1399,14 @@ class HybridTransientSolver(Solver):
       if self.config['log']:
         self.t_log.append(t)
 
+      if t % 100 == 0:
+        model.save_xml(model.S,    'S_%i' % t)
+        model.save_xml(model.H,    'H_%i' % t)
+        model.save_xml(model.u_s,  'u_s_%i' % t)
+        model.save_xml(model.v_s,  'v_s_%i' % t)
+        model.save_xml(model.w_s,  'w_s_%i' % t)
+        model.save_xml(model.beta, 'beta_%i' % t)
+
       # increment time step :
       if self.model.MPI_rank==0:
         s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'

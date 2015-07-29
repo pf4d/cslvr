@@ -87,12 +87,19 @@ class Model(object):
     print_text(s, self.color)
     self.mesh       = mesh
     self.flat_mesh  = Mesh(mesh)
+    self.dim        = self.mesh.ufl_cell().topological_dimension()
     self.mesh.init(1,2)
-    self.num_facets = self.mesh.size_global(2)
-    self.num_cells  = self.mesh.size_global(3)
-    self.dof        = self.mesh.size_global(0)
-    s = "    - mesh set, %i cells, %i facets, %i vertices - "
-    print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
+    if self.dim == 3:
+      self.num_facets = self.mesh.size_global(2)
+      self.num_cells  = self.mesh.size_global(3)
+      self.dof        = self.mesh.size_global(0)
+    elif self.dim == 2:
+      self.num_facets = self.mesh.size_global(1)
+      self.num_cells  = self.mesh.size_global(2)
+      self.dof        = self.mesh.size_global(0)
+    s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
+        % (self.dim, self.num_cells, self.num_facets, self.dof)
+    print_text(s, self.color)
     self.generate_function_spaces()
 
   def generate_function_spaces(self):

@@ -111,11 +111,18 @@ class DataInput(object):
         self.func_space_dg = FunctionSpace(self.mesh, "DG", 1)
 
       self.mesh.init(1,2)
-      self.num_facets = self.mesh.size_global(2)
-      self.num_cells  = self.mesh.size_global(3)
-      self.dof        = self.mesh.size_global(0)
-      s = "    - using mesh with %i cells, %i facets, %i vertices - "
-      print_text(s % (self.num_cells, self.num_facets, self.dof), self.color)
+      self.dim        = self.mesh.ufl_cell().topological_dimension()
+      if self.dim == 3:
+        self.num_facets = self.mesh.size_global(2)
+        self.num_cells  = self.mesh.size_global(3)
+        self.dof        = self.mesh.size_global(0)
+      elif self.dim == 2:
+        self.num_facets = self.mesh.size_global(1)
+        self.num_cells  = self.mesh.size_global(2)
+        self.dof        = self.mesh.size_global(0)
+      s = "    - using %iD mesh with %i cells, %i facets, %i vertices - " \
+          % (self.dim, self.num_cells, self.num_facets, self.dof)
+      print_text(s, self.color)
     else:
       s = "    - not using a mesh - "
       print_text(s, self.color)

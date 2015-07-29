@@ -1,6 +1,7 @@
 import varglas.solvers            as solvers
 import varglas.model              as model
 from varglas.helper               import default_config
+from varglas.helper               import plotIce
 from varglas.data.data_factory    import DataFactory
 from varglas.mesh.mesh_factory    import MeshFactory
 from varglas.io                   import DataInput, DataOutput
@@ -13,13 +14,24 @@ thklim = 10.0
 # collect the raw data :
 searise = DataFactory.get_searise(thklim = thklim)
 bamber  = DataFactory.get_bamber(thklim = thklim)
+rignot  = DataFactory.get_rignot()
 
 # load a mesh :
-mesh  = MeshFactory.get_greenland_2D_5H()
+mesh  = MeshFactory.get_greenland_2D_1H()
 
 # create data objects to use with varglas :
 dsr   = DataInput(searise, mesh=mesh)
 dbm   = DataInput(bamber,  mesh=mesh)
+drg   = DataInput(rignot,  mesh=mesh)
+
+# the mesh is in Rignot coordinates, so transform :
+dsr.change_projection(drg)
+dbm.change_projection(drg)
+
+#plotIce(dsr, 'adot', name='', direc='.', title=r'$\dot{a}$', cmap='gist_yarg',
+#        scale='lin', numLvls=12, tp=False, tpAlpha=0.5)
+#import sys
+#sys.exit(0)
 
 B     = dbm.get_expression("B")
 S     = dbm.get_expression("S")

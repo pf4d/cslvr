@@ -2218,11 +2218,14 @@ class Age(Physics):
     self.config = config
 
     h = model.h
+    
+    Bub = FunctionSpace(model.mesh, "B", 4, constrained_domain=model.pBC)
+    model.MQ  = model.Q + Bub
 
     # Trial and test
-    a   = TrialFunction(model.Q)
-    phi = TestFunction(model.Q)
-    #self.age = Function(model.MQ)
+    a   = TrialFunction(model.MQ)
+    phi = TestFunction(model.MQ)
+    self.age = Function(model.MQ)
 
     # Steady state
     if config['mode'] == 'steady':
@@ -2274,7 +2277,7 @@ class Age(Physics):
     if config['age']['use_smb_for_ela']:
       s    = "    - using adot (SMB) boundary condition -"
       print_text(s, self.color())
-      self.bc_age = DirichletBC(model.Q, 0.0, model.ff_acc, 1)
+      self.bc_age = DirichletBC(model.MQ, 0.0, model.ff_acc, 1)
     
     else:
       s    = "    - using ELA boundary condition -"
@@ -2307,9 +2310,9 @@ class Age(Physics):
     # Solve!
     s    = "::: solving age :::"
     print_text(s, self.color())
-    solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
-    #solve(self.a == self.L, self.age, self.bc_age)
-    #model.age.interpolate(self.age)
+    #solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
+    solve(self.a == self.L, self.age, self.bc_age)
+    model.age.interpolate(self.age)
     print_min_max(model.age, 'age')
 
 

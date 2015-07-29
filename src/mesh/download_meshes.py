@@ -84,8 +84,8 @@ download_file(url, home, fldr, extract=True)
 
 # 2D 1H greenland mesh :
 fldr = 'greenland'
-url  = 'https://www.dropbox.com/s/2wkfzkha7jtjyxq/greenland' + \
-       '_2D_1H_mesh.tar.gz?dl=1'
+url  = 'https://www.dropbox.com/s/2wkfzkha7jtjyxq/' + \
+       'greenland_2D_1H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
 # 2D 5H greenland mesh :

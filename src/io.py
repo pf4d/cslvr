@@ -133,13 +133,18 @@ class DataInput(object):
     projection.  The works only if the object was created with the parameter
     create_proj = True.
     """
+    s    = "::: changing '%s' DataInput object projection to that of '%s' :::" \
+           % (self.name, di.name)
+    print_text(s, self.color)
+
     self.chg_proj = True
     self.new_p    = di.proj
 
   def get_xy(self,lon,lat):
     """
     Returns the (x,y) flat map coordinates corresponding to a given (lon,lat)
-    coordinate pair using the DataInput object's current projection."""
+    coordinate pair using the DataInput object's current projection.
+    """
     return self.proj(lon,lat)
 
   def transform_xy(self, di):

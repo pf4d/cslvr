@@ -144,7 +144,7 @@ class DataFactory(object):
  
   
   @staticmethod
-  def get_gre_gimp():
+  def get_gimp():
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -194,7 +194,7 @@ class DataFactory(object):
  
   
   @staticmethod
-  def get_gre_rignot():
+  def get_rignot():
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))

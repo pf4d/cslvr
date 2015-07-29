@@ -28,7 +28,7 @@ thklim = 200.0
 searise  = DataFactory.get_searise(thklim = thklim)
 bamber   = DataFactory.get_bamber(thklim = thklim)
 fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
-rignot   = DataFactory.get_gre_rignot_updated()
+rignot   = DataFactory.get_rignot_updated()
 
 # define the mesh :
 mesh = MeshFactory.get_greenland_detailed()

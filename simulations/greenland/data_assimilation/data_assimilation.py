@@ -8,10 +8,6 @@ from varglas.helper               import default_nonlin_solver_params, \
                                          default_config
 from varglas.utilities            import DataInput, DataOutput
 from fenics                       import *
-from time                         import time
-from termcolor                    import colored, cprint
-
-t0 = time()
 
 # get the input args :
 i = int(sys.argv[2])           # assimilation number
@@ -158,18 +154,5 @@ File(out_dir + 'eta.xml')   << project(model.eta, model.Q)
 #f.write(model.U,     'U')
 #f.write(model.eta,   'eta')
     
-tf = time()
-
-# calculate total time to compute
-s = tf - t0
-m = s / 60.0
-h = m / 60.0
-s = s % 60
-m = m % 60
-if model.MPI_rank == 0:
-  s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
-  text = colored(s, 'red', attrs=['bold'])
-  print text
-
 
 

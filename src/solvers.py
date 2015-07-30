@@ -45,6 +45,9 @@ class BalanceVelocitySolver(Solver):
     """
     s    = '::: solving BalanceVelocitySolver :::'
     print_text(s, self.color())
+
+    t0 = time()
+
     model   = self.model
     config  = self.config
 
@@ -55,6 +58,15 @@ class BalanceVelocitySolver(Solver):
         self.BV_file << model.Ubar
       else:
         model.save_pvd(model.Ubar, 'Ubar')
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
   
 
 class SteadySolver(Solver):
@@ -132,6 +144,9 @@ class SteadySolver(Solver):
     """
     s    = '::: solving SteadySolver :::'
     print_text(s, self.color())
+
+    t0   = time()
+
     model   = self.model
     config  = self.config
     
@@ -284,7 +299,15 @@ class SteadySolver(Solver):
         model.save_pvd(basal,    'basal')
         model.save_pvd(pressure, 'pressure')
         model.save_pvd(total,    'total')
-    
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
 
 
 class TransientSolver(Solver):
@@ -433,6 +456,9 @@ class TransientSolver(Solver):
     """
     s    = '::: solving TransientSolver :::'
     print_text(s, self.color())
+
+    t0     = time()
+
     model  = self.model
     config = self.config
     
@@ -512,14 +538,22 @@ class TransientSolver(Solver):
         self.mass.append(M)
 
       # increment time step :
-      if self.model.MPI_rank==0:
-        s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<'
-        text = colored(s, 'red', attrs=['bold'])
-        print text % (t, time()-tic, M/self.M_prev)
+      s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<' \
+          % (t, time()-tic, M/self.M_prev)
+      print_text(s, 'red', 1)
 
       self.M_prev = M
       t          += dt
       self.step_time.append(time() - tic)
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
 
 
 class AdjointSolverNew(Solver):
@@ -827,6 +861,9 @@ class AdjointSolver(Solver):
     """
     s    = '::: solving AdjointSolver :::'
     print_text(s, self.color())
+
+    t0 = time()
+
     model       = self.model
     config      = self.config
     bounds_list = self.bounds_list
@@ -1006,6 +1043,15 @@ class AdjointSolver(Solver):
       print_text(s % (config['output_path'], i), self.color())
       File(config['output_path'] + 'c' + str(i) + '.pvd') << c
 
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
+
 
 class StokesBalanceSolver(Solver):
 
@@ -1038,6 +1084,8 @@ class StokesBalanceSolver(Solver):
     """
     s    = "::: solving StokesBalanceSolver :::"
     print_text(s, self.color())
+
+    t0 = time()
    
     model   = self.model
     config  = self.config
@@ -1168,6 +1216,15 @@ class StokesBalanceSolver(Solver):
         model.save_pvd(driving,  'tau_driving')
         model.save_pvd(basal,    'tau_basal')
         model.save_pvd(total,    'tau_total')
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
  
 
 class HybridTransientSolver(Solver):
@@ -1237,6 +1294,9 @@ class HybridTransientSolver(Solver):
     """
     s    = '::: solving HybridTransientSolver :::'
     print_text(s, self.color())
+
+    t0 = time()
+
     model   = self.model
     config  = self.config
     outpath = config['output_path']
@@ -1418,6 +1478,15 @@ class HybridTransientSolver(Solver):
 
       t += dt
       self.step_time.append(time() - tic)
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
 
 
 

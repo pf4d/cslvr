@@ -7,10 +7,6 @@ from varglas.data.data_factory    import DataFactory
 from varglas.helper               import default_nonlin_solver_params
 from varglas.utilities            import DataInput, DataOutput
 from fenics                       import *
-from time                         import time
-from termcolor                    import colored, cprint
-
-t0 = time()
 
 out_dir = './stress_balance_stokes_5H/'
 in_dir  = './stokes_5H/'
@@ -88,19 +84,6 @@ F.solve()
 #File(out_dir + 'tau_tot_s.pvd')      << tau_tot
 #File(out_dir + 'tau_lat_p_lon.pvd')  << tau_lat_p_lon
 #File(out_dir + 'tau_drv_p_bas.pvd')  << tau_drv_p_bas
-
-tf = time()
-
-# calculate total time to compute
-s = tf - t0
-m = s / 60.0
-h = m / 60.0
-s = s % 60
-m = m % 60
-if model.MPI_rank == 0:
-  s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
-  text = colored(s, 'red', attrs=['bold'])
-  print text
 
 
 

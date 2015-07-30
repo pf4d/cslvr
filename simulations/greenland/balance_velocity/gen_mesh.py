@@ -43,7 +43,7 @@ dbm.data['ref'][dbm.data['ref'] < 1000.0] = 1000.0
 
 m = MeshGenerator(dbm, 'mesh', out_dir)
 
-m.create_contour('H', zero_cntr=1.0, skip_pts=4)
+m.create_contour('H', zero_cntr=1.0, skip_pts=1)
 m.eliminate_intersections(dist=40)
 m.eliminate_intersections(dist=40)
 #m.transform_contour(drg)

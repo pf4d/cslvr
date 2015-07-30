@@ -470,15 +470,17 @@ class Model(object):
     self.assign_variable(self.etabar, etabar)
     print_min_max(self.etabar, 'etabar')
   
-  def init_component_Ubar(self, ubar, vbar):
+  def init_component_Ubar(self, ubar, vbar, wbar):
     """
     """
-    s = "::: initializing vertically averaged horizontal velocity :::"
+    s = "::: initializing vertically averaged velocity :::"
     print_text(s, self.color)
     self.assign_variable(self.ubar, ubar)
     self.assign_variable(self.vbar, vbar)
+    self.assign_variable(self.wbar, wbar)
     print_min_max(self.ubar, 'ubar')
     print_min_max(self.vbar, 'vbar')
+    print_min_max(self.wbar, 'wbar')
   
   def init_T_surface(self, T_s):
     """
@@ -1620,6 +1622,7 @@ class Model(object):
     self.etabar = Function(self.Q)
     self.ubar   = Function(self.Q)
     self.vbar   = Function(self.Q)
+    self.wbar   = Function(self.Q)
     
     #self.epsdot = self.effective_strain(self.U)
     #self.init_higher_order_variables()

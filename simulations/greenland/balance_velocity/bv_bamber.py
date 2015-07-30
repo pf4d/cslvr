@@ -6,8 +6,6 @@ from varglas.data.data_factory    import DataFactory
 from varglas.mesh.mesh_factory    import MeshFactory
 from varglas.io                   import DataInput, DataOutput
 from fenics                       import *
-from time                         import time
-from termcolor                    import colored
 
 thklim = 10.0
 
@@ -50,25 +48,12 @@ model.init_adot(adot)
 
 F = solvers.BalanceVelocitySolver(model, config)
 
-t0 = time()
 F.solve()
-tf = time()
 
 model.save_xml(model.Ubar, 'Ubar')
 
 #do = DataOutput(out_dir)
 #do.write_matlab(bm1, model.Ubar, 'Ubar_5', val=0.0)
-
-# calculate total time to compute
-s = tf - t0
-m = s / 60.0
-h = m / 60.0
-s = s % 60
-m = m % 60
-if model.MPI_rank == 0:
-  s    = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
-  text = colored(s, 'red', attrs=['bold'])
-  print text
 
 
 

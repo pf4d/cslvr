@@ -578,7 +578,7 @@ def default_config():
              'use_dukowicz'                 : True,
              't_start'                      : None,
              't_end'                        : None,
-             'time_step'                    : 1.0,
+             'time_step'                    : Constant(1.0),
              'output_path'                  : None,
              'wall_markers'                 : [],
              'periodic_boundary_conditions' : False,

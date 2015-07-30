@@ -11,9 +11,9 @@ corresponding to each can be written for inspection of the data on the mesh.
 """
 
 # set the output directory :
-output_path = 'data_xmls/6.2/NEGIS_1H_ZERO_ICE_EDGE/'
+output_path = 'Issun_2H/'
 # set the mesh :
-mesh = Mesh("meshes/6.2/NEGIS_1H_ZERO_ICE_EDGE.xml")
+mesh = Mesh("meshes/Issun_2H.xml")
 # write pvd files too?
 PVD = True
 

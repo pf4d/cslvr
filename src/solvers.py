@@ -3,7 +3,7 @@ from fenics         import project, File, vertex_to_dof_map, Function, \
                            assemble, sqrt, DoubleArray, Constant, function, MPI
 from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
-from time           import time
+import time
 from termcolor      import colored, cprint
 from helper         import raiseNotDefined
 from io             import print_min_max, print_text
@@ -336,19 +336,12 @@ class TransientSolver(Solver):
           self.velocity_instance = VelocityDukowiczStokes(model, config)
         else:
           self.velocity_instance = VelocityStokes(model, config)
-      
-      elif config['model_order'] == 'L1L2':
-        self.velocity_instance = VelocityHybrid(model, config)
-      
       else:
-        s =  "Please choose 'BP' or 'stokes'. "
+        s =  "Please choose 'BP' or 'stokes'. For hybrid models, use the HybridTransientSolver. "
         print_text(s, self.color())
     
     # initialized enthalpy solver : 
     if self.config['enthalpy']['on']:
-      if   self.config['model_order'] == 'L1L2':
-        self.enthalpy_instance = EnergyHybrid(model, config)
-      else:
         self.enthalpy_instance = Enthalpy(model, config)
 
     # initialize age solver :
@@ -361,9 +354,6 @@ class TransientSolver(Solver):
 
     # initialize free surface solver :
     if config['free_surface']['on']:
-      if   self.config['model_order'] == 'L1L2':
-        self.surface_instance = MassBalanceHybrid(model, config)
-      else:
         self.surface_instance = FreeSurface(model, config)
         self.M_prev           = 1.0
 
@@ -442,7 +432,7 @@ class TransientSolver(Solver):
     
     t      = config['t_start']
     t_end  = config['t_end']
-    dt     = config['time_step']
+    dt     = config['time_step'](0)
     thklim = config['free_surface']['thklim']
    
     mesh   = model.mesh 
@@ -464,7 +454,7 @@ class TransientSolver(Solver):
       B_a = B.compute_vertex_values()
       S_v = S.compute_vertex_values()
       
-      tic = time()
+      tic = time.clock()
 
       S_0 = S_v
       f_0 = self.rhs_func_explicit(t, S_0)
@@ -519,11 +509,11 @@ class TransientSolver(Solver):
       if self.model.MPI_rank==0:
         s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<'
         text = colored(s, 'red', attrs=['bold'])
-        print text % (t, time()-tic, M/self.M_prev)
+        print text % (t, time.clock()-tic, M/self.M_prev)
 
       self.M_prev = M
       t          += dt
-      self.step_time.append(time() - tic)
+      self.step_time.append(time.clock() - tic)
 
 
 class AdjointSolverNew(Solver):
@@ -1175,6 +1165,7 @@ class StokesBalanceSolver(Solver):
  
 
 class HybridTransientSolver(Solver):
+
   """
   This abstract class outlines the structure of a VarGlaS solver.
   """
@@ -1202,7 +1193,7 @@ class HybridTransientSolver(Solver):
 
     # initialize free surface solver :
     if config['free_surface']['on']:
-      self.surface_instance = MassBalanceHybrid(model, config)
+      self.surface_instance = MassTransportHybrid(model, config)
 
     # initialize stress balance solver :
     if config['stokes_balance']['on']:
@@ -1230,8 +1221,155 @@ class HybridTransientSolver(Solver):
       self.file_tau_jd = File(outpath + 'tau_jd.pvd')
       self.t_log     = []
 
+      # Static functions needed for the consistant writting of data to a file
+      # otherwise the new variable confuses Paraview, and the colormap has to be
+      # reset at each time step, making movies impossible.
+      self.Ubar_ = Function(self.model.Q2, name="Vertically averaged velocity")
+      self.Us_   = Function(self.model.Q3, name="Surface velocity")
+      self.Ub_   = Function(self.model.Q3, name="Basal velocity")
+      self.Ts_   = Function(self.model.Q, name="Surface temperature")
+      self.Tb_   = Function(self.model.Q, name="Basal temperature")
+      self.Mb_   = Function(self.model.Q, name="Basal melt rate")
+      self.beta_ = Function(self.model.Q, name="Basal traction parameter")
+      self.H_    = Function(self.model.Q, name="Ice thickness")
+
     self.step_time = []
     self.M_prev    = 1.0
+
+  def adaptive_update(self,dt,config,t):
+    print_text(":::Entering adpative solver.:::",self.color())
+    stars = "****************************************************************************"
+    time_start = time.clock()
+    SOLVED_U = False
+    relaxation_parameter = self.velocity_instance.m_solver.parameters['newton_solver']['relaxation_parameter']
+    while not SOLVED_U:
+      if relaxation_parameter < 0.2:
+        status_U = [False,False]
+        break
+      status_U = self.velocity_instance.solve()
+      SOLVED_U = status_U[1]
+      if not SOLVED_U:
+        self.velocity_instance.m_solver.parameters['newton_solver']['relaxation_parameter'] /= 1.43
+        print_text(stars,'red')
+        print_text("WARNING: Newton relaxation parameter lowered to: "+str(relaxation_parameter),'red')
+        print_text(stars,'red')
+
+    # Solve mass equations, lowering time step on failure:
+    SOLVED_H = False
+    while not SOLVED_H:
+      if dt < 1.e-5:
+        status_H = [False,False]
+        break
+      status_H = self.surface_instance.solve()
+      SOLVED_H = status_H[1]
+      if t <= 100:
+        SOLVED_H = True
+      if not SOLVED_H:
+        dt /= 2.
+        config['time_step'].assign(dt)
+        print_text(stars,'red')
+        print_text("WARNING: Time step lowered to: "+str(dt),'red')
+        print_text(stars,'red')
+
+    # Energy balance is not really adaptive.
+    if config['enthalpy']['on']:
+      self.enthalpy_instance.solve()
+      self.model.T0_.interpolate(self.model.T_)  # update previous temp
+
+    time_end = time.clock()
+    run_time = time_end - time_start
+    print_text("++++++++++++++++++++++++++++++++++++++++++++",'green')
+    print_text("Current time               : "+str(t),'green')
+    print_text("Current time step          : "+str(dt),'green')
+    print_text("Momentum Newton iterations : "+str(status_U[0]),'green')
+    print_text("Mass Newton iterations     : "+str(status_H[0]),'green')
+    print_text("Time for to solve all (s) : "+str(run_time),'green')
+    print_text("Time remaining est. (h)    : "+str((config['t_end']-t)/dt * run_time/60./60),'green')
+    print_text("++++++++++++++++++++++++++++++++++++++++++++",'green')
+ 
+    t+=dt
+    if SOLVED_U and SOLVED_H or t<100:
+        return True,dt,t
+    else:
+        return False,dt,t
+
+  def model_output(self,config,t):
+    outpath = config['output_path']
+    model = self.model
+
+    if config['log'] and config['free_surface']['on']:
+      s    = '::: saving thickness %sH.pvd file :::' % outpath
+      print_text(s, self.color())
+      if config['log_history']:
+        self.file_H << (model.H,t)
+      else:
+        File(outpath + 'H.pvd') << model.H
+
+    if config['enthalpy']['log']:
+      s    = '::: saving surface and bed temperature Ts, Tb, and Mb' + \
+             ' .pvd files to %s :::' % outpath
+      print_text(s, self.color())
+      if config['log_history']:
+        self.Ts_.interpolate(model.Ts)
+        self.Tb_.interpolate(model.Tb)
+        self.Mb_.interpolate(model.Mb)
+        self.file_Ts << (self.Ts_,t)
+        self.file_Tb << (self.Tb_,t)
+        self.file_Mb << (self.Mb_,t)
+      else:
+        File(outpath + 'Ts.pvd')  << model.Ts
+        File(outpath + 'Tb.pvd')  << model.Tb
+        File(outpath + 'Mb.pvd')  << model.Mb
+
+    if config['velocity']['log']:
+      s    = '::: saving surface and bed velocity Us and Ub .pvd' + \
+             ' files to %s :::' % outpath
+      print_text(s, self.color())
+      U_s  = project(as_vector([model.u_s, model.v_s, model.w_s]))
+      U_b  = project(as_vector([model.u_b, model.v_b, model.w_b]))
+      if config['log_history']:
+        self.Us_.interpolate(U_s)
+        self.Ub_.interpolate(U_b)
+        self.file_U_s << (self.Us_,t)
+        self.file_U_b << (self.Ub_,t)
+      else:
+        File(outpath + 'Us.pvd')  << U_s
+        File(outpath + 'Ub.pvd')  << U_b
+
+    if config['log'] and config['balance_velocity']['on']:
+      s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
+      print_text(s, self.color())
+      if config['log_history']:
+        self.file_Ubar << (Ubar_.interpolate(model.Ubar),t)
+      else:
+        File(outpath + 'Ubar.pvd') << model.Ubar
+
+    if config['log'] and config['stokes_balance']['on']:
+      s    = '::: saving stress terms tau_ii, tau_ij,' \
+             ' tau_jj, tau_ji, tau_id, and tau_jd .pvd files to %s :::'
+      print_text(s % outpath , self.color())
+      if config['log_history']:
+        self.file_tau_ii << model.tau_ii
+        self.file_tau_ij << model.tau_ij
+        self.file_tau_jj << model.tau_jj
+        self.file_tau_ji << model.tau_ji
+        self.file_tau_id << model.tau_id
+        self.file_tau_jd << model.tau_jd
+      else:
+        File(outpath + 'tau_ii.pvd') << model.tau_ii
+        File(outpath + 'tau_ij.pvd') << model.tau_ij
+        File(outpath + 'tau_jj.pvd') << model.tau_jj
+        File(outpath + 'tau_ji.pvd') << model.tau_ji
+        File(outpath + 'tau_id.pvd') << model.tau_id
+        File(outpath + 'tau_jd.pvd') << model.tau_jd
+    # save beta : 
+    if config['log'] and config['velocity']['transient_beta'] == 'stats':
+      s    = '::: saving stats %sbeta.pvd file :::' % outpath
+      print_text(s, self.color())
+      if config['log_history']:
+        self.file_beta << model.beta
+      else:
+        File(outpath + 'beta.pvd') << model.beta
 
   def solve(self):
     """
@@ -1239,67 +1377,36 @@ class HybridTransientSolver(Solver):
     well as storing the velocity, temperature, and the age in vtk files.
 
     """
-    s    = '::: solving HybridTransientSolver :::'
+    s    = '::: entering HybridTransientSolver :::'
     print_text(s, self.color())
     model   = self.model
     config  = self.config
-    outpath = config['output_path']
     
     t      = config['t_start']
     t_end  = config['t_end']
-    dt     = config['time_step']
+    dt     = config['time_step'](0)
+    out_t  = config['time_step'](0) # Desired output interval is the intitial time step
+
+    h = CellSize(model.mesh)
+    hmin = project(h,model.Q).vector().min()
    
     # Loop over all times
     while t <= t_end:
 
-      # start the timer :
-      tic = time()
-       
-      # calculate velocity : 
-      if config['velocity']['on']:
-        self.velocity_instance.solve()
-        if config['velocity']['log']:
-          s    = '::: saving surface and bed velocity Us and Ub .pvd' + \
-                 ' files to %s :::' % outpath
-          print_text(s, self.color())
-          U_s  = project(as_vector([model.u_s, model.v_s, model.w_s]))
-          U_b  = project(as_vector([model.u_b, model.v_b, model.w_b]))
-          if config['log_history']:
-            self.file_U_s << U_s
-            self.file_U_b << U_b
-          else:
-            File(outpath + 'Us.pvd')  << U_s
-            File(outpath + 'Ub.pvd')  << U_b
+      # Set time step according to CFL condition:
+      Us  = project(as_vector([model.u_s, model.v_s, model.w_s]))
+      umag = sqrt(dot(Us,Us))
+      dt = min(hmin / max(2*project(umag,model.Q).vector().max(),1.),200)
+      print_text("::: CFL calculation sets time step to be: "+str(dt)+" :::",self.color())
+      config['time_step'].assign(dt)
 
-      # calculate energy
-      if config['enthalpy']['on']:
-        self.enthalpy_instance.solve()
-        if config['enthalpy']['log']:
-          s    = '::: saving surface and bed temperature Ts, Tb, and Mb' + \
-                 ' .pvd files to %s :::' % outpath
-          print_text(s, self.color())
-          if config['log_history']:
-            self.file_Ts << model.Ts
-            self.file_Tb << model.Tb
-            self.file_Mb << model.Mb
-          else:
-            File(outpath + 'Ts.pvd')  << model.Ts
-            File(outpath + 'Tb.pvd')  << model.Tb
-            File(outpath + 'Mb.pvd')  << model.Mb
-        model.T0_.interpolate(model.T_)  # update previous temp
+      # Coupled solve with adaptive time step:
+      # If not coupled, solve individually without adaptation:
       
-      # calculate free surface :
-      if config['free_surface']['on']:
-        self.surface_instance.solve()
-        if config['log']:
-          s    = '::: saving thickness %sH.pvd file :::' % outpath
-          print_text(s, self.color())
-          if config['log_history']:
-            self.file_H << model.H
-          else:
-            File(outpath + 'H.pvd') << model.H
-        model.H0.interpolate(model.H)
-    
+      SOLVED = True
+      SOLVED,dt,t = self.adaptive_update(dt,config,t)
+      config['time_step'].assign(dt)
+            
       # calculate surface climate solver :
       if config['surface_climate']['on']:
         self.surface_climate_instance.solve()
@@ -1307,35 +1414,10 @@ class HybridTransientSolver(Solver):
       # balance velocity model :
       if config['balance_velocity']['on']:
         self.balance_velocity_instance.solve()
-        if config['log']:
-          s    = '::: saving balance velocity %sUbar.pvd file :::' % outpath
-          print_text(s, self.color())
-          if config['log_history']:
-            self.file_Ubar << model.Ubar
-          else:
-            File(outpath + 'Ubar.pvd') << model.Ubar
      
-      # solve the stress-balance :   
+      # determine and write the along/across flow stress-balance:   
       if config['stokes_balance']['on']:
         self.stokes_balance_instance.solve()
-        if config['log']:
-          s    = '::: saving stress terms tau_ii, tau_ij,' \
-                 ' tau_jj, tau_ji, tau_id, and tau_jd .pvd files to %s :::'
-          print_text(s % outpath , self.color())
-          if config['log_history']:
-            self.file_tau_ii << model.tau_ii
-            self.file_tau_ij << model.tau_ij
-            self.file_tau_jj << model.tau_jj
-            self.file_tau_ji << model.tau_ji
-            self.file_tau_id << model.tau_id
-            self.file_tau_jd << model.tau_jd
-          else:
-            File(outpath + 'tau_ii.pvd') << model.tau_ii
-            File(outpath + 'tau_ij.pvd') << model.tau_ij
-            File(outpath + 'tau_jj.pvd') << model.tau_jj
-            File(outpath + 'tau_ji.pvd') << model.tau_ji
-            File(outpath + 'tau_id.pvd') << model.tau_id
-            File(outpath + 'tau_jd.pvd') << model.tau_jd
       
       # re-compute the friction field :
       if config['velocity']['transient_beta'] == 'stats':
@@ -1352,29 +1434,13 @@ class HybridTransientSolver(Solver):
         s    = "::: removing negative values of beta :::"
         print_text(s, self.color())
         beta_v = beta.vector().array()
-        #betaSIA_v = model.betaSIA.vector().array()
-        #beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
         beta_v[beta_v < sqrt(1e3)]  = sqrt(1e3)
-        #beta_v[beta_v < 1e-2]  = 1e-2
         beta_v[beta_v > sqrt(1e9)]  = sqrt(1e9)
         model.assign_variable(model.beta, beta_v)
-        #model.assign_variable(model.beta, np.sqrt(beta_v))
         print_min_max(model.beta, 'beta')
 
         Ubar_v = model.Ubar.vector().array()
-        #Ubar_v[Ubar_v < 0]    = 0
-        #Ubar_v[Ubar_v > 3000] = 3000
         model.assign_variable(model.Ubar, Ubar_v)
-
-        # save beta : 
-        if config['log']:
-          s    = '::: saving stats %sbeta.pvd file :::' % outpath
-          print_text(s, self.color())
-          if config['log_history']:
-            self.file_beta << model.beta
-          else:
-            File(outpath + 'beta.pvd') << model.beta
-      
       elif config['velocity']['transient_beta'] == 'eismint_H':
         s    = "::: calculating new beta from pressure melting point :::"
         print_text(s, self.color())
@@ -1386,27 +1452,21 @@ class HybridTransientSolver(Solver):
         beta[Tb >  (Tb_m - T_tol)] = sqrt(1e3)
         beta[Tb <= (Tb_m - T_tol)] = sqrt(1e9)
         print_min_max(model.beta, 'beta')
-        # save beta : 
-        if config['log']:
-          s    = '::: saving updated %sbeta.pvd file :::' % outpath
-          print_text(s, self.color())
-          if config['log_history']:
-            self.file_beta << model.beta
-          else:
-            File(outpath + 'beta.pvd') << model.beta
-
+        
+      # Final stage of time stepping:
+      t += dt
       # store information : 
       if self.config['log']:
         self.t_log.append(t)
 
-      # increment time step :
-      if self.model.MPI_rank==0:
-        s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
-        text = colored(s, 'red', attrs=['bold'])
-        print text % (t, time()-tic)
-
-      t += dt
-      self.step_time.append(time() - tic)
-
-
-
+      if (out_t - t) % out_t <= dt or not SOLVED:
+          # Finish tiny step before writing
+        if t % out_t != 0 and SOLVED:
+          dt = out_t - t % out_t
+          print_text("::: Taking time step of "+str(dt)+" to get to write interval. :::", self.color())
+          SOLVED,dt,t = self.adaptive_update(dt,config,t)
+          config['time_step'].assign(dt)
+          self.model_output(config,t) 
+        if not SOLVED: 
+          print_text("Adaptive solver failed, terminating loop over time.",'red')
+          break

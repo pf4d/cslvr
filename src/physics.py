@@ -3070,11 +3070,12 @@ class VelocityHybrid(Physics):
     
     self.m_solver.parameters['nonlinear_solver']                      = 'newton'
     self.m_solver.parameters['newton_solver']['relaxation_parameter']    = 0.7
-    self.m_solver.parameters['newton_solver']['relative_tolerance']      = 1e-3
+    self.m_solver.parameters['newton_solver']['relative_tolerance']      = 1e-5
     self.m_solver.parameters['newton_solver']['absolute_tolerance']      = 1e7
     self.m_solver.parameters['newton_solver']['maximum_iterations']      = 20
     self.m_solver.parameters['newton_solver']['error_on_nonconvergence'] = False
     self.m_solver.parameters['newton_solver']['linear_solver']        = 'mumps'
+    self.m_solver.parameters['newton_solver']['report']        = True
   
   def solve(self):
     """
@@ -3086,7 +3087,7 @@ class VelocityHybrid(Physics):
     model = self.model
     Q     = model.Q
 
-    self.m_solver.solve()
+    solver_return = self.m_solver.solve()
 
     model.assign_variable(model.u_s, project(self.u(0.0), Q))
     model.assign_variable(model.v_s, project(self.v(0.0), Q))
@@ -3108,8 +3109,10 @@ class VelocityHybrid(Physics):
     print_min_max(model.v_b, 'v_b')
     print_min_max(model.w_b, 'w_b')
 
+    return solver_return
 
-class MassBalanceHybrid(Physics):
+
+class MassTransportHybrid(Physics):
   """
   New 2D hybrid model.
   """
@@ -3154,7 +3157,7 @@ class MassBalanceHybrid(Physics):
     
     # TIME STEP AND REGULARIZATION
     eps_reg = model.eps_reg
-    dt      = config['time_step']
+    self.dt      = config['time_step']
     thklim  = config['free_surface']['thklim']
    
     # function spaces : 
@@ -3196,7 +3199,7 @@ class MassBalanceHybrid(Physics):
     self.M  = dH*xsi*dx
     
     # residual :
-    R_thick = + (H-H0) / dt * xsi * dx \
+    R_thick = + (H-H0) / self.dt * xsi * dx \
               + D * dot(grad(S), grad(xsi)) * dx \
               + (Dx(ubar_c*H,0) + Dx(vbar_c*H,1)) * xsi * dx \
               - adot * xsi * dx
@@ -3211,11 +3214,12 @@ class MassBalanceHybrid(Physics):
     self.mass_solver  = NonlinearVariationalSolver(mass_problem)
     self.mass_solver.parameters['nonlinear_solver']                  = 'snes'
     self.mass_solver.parameters['snes_solver']['method']             = 'vinewtonrsls'
-    self.mass_solver.parameters['snes_solver']['relative_tolerance'] = 1e-3
-    self.mass_solver.parameters['snes_solver']['absolute_tolerance'] = 1e-3
+    self.mass_solver.parameters['snes_solver']['relative_tolerance'] = 1e-6
+    self.mass_solver.parameters['snes_solver']['absolute_tolerance'] = 1e-6
     self.mass_solver.parameters['snes_solver']['maximum_iterations'] = 20
     self.mass_solver.parameters['snes_solver']['error_on_nonconvergence'] = False
     self.mass_solver.parameters['snes_solver']['linear_solver'] = 'mumps'
+    self.mass_solver.parameters['snes_solver']['report'] = True
 
   def solve(self):
     """
@@ -3229,19 +3233,22 @@ class MassBalanceHybrid(Physics):
     # Find corrective velocities
     s    = "::: solving for corrective velocities :::"
     print_text(s, self.color())
+
     solve(self.M == self.ubar_proj, model.ubar_c, 
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=ffc_options)
+
     solve(self.M == self.vbar_proj, model.vbar_c, 
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=ffc_options)
+
     print_min_max(model.ubar_c, 'ubar_c')
     print_min_max(model.vbar_c, 'vbar_c')
 
     # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
-    s    = "::: solving hybrid mass-balance :::"
+    s    = "::: solving hybrid mass-balance with time step "+str(self.dt(0))+" :::"
     print_text(s, self.color())
-    self.mass_solver.solve(model.H_min, model.H_max)
+    solver_return = self.mass_solver.solve(model.H_min, model.H_max)
 
     print_min_max(model.H, 'H')
     
@@ -3250,8 +3257,9 @@ class MassBalanceHybrid(Physics):
     print_text(s, self.color())
     S    = project(model.B + model.H, model.Q)
     model.assign_variable(model.S, S)
+    model.assign_variable(model.H0,model.H)
     print_min_max(model.S, 'S')
-    
+    return solver_return
 
 class EnergyHybrid(Physics):
   """
@@ -3465,6 +3473,3 @@ class EnergyHybrid(Physics):
     nMb   = project((q_geo + q_fric) / (L*rhoi))
     model.assign_variable(model.Mb,  nMb)
     print_min_max(model.Mb, 'Mb')
-
-
-

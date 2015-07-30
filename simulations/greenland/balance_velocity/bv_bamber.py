@@ -24,9 +24,8 @@ dsr   = DataInput(searise, mesh=mesh)
 dbm   = DataInput(bamber,  mesh=mesh)
 drg   = DataInput(rignot,  mesh=mesh)
 
-# the mesh is in Rignot coordinates, so transform :
-dsr.change_projection(drg)
-dbm.change_projection(drg)
+# the mesh is in Bamber coordinates, so transform :
+drg.change_projection(dbm)
 
 #plotIce(dsr, 'adot', name='', direc='.', title=r'$\dot{a}$', cmap='gist_yarg',
 #        scale='lin', numLvls=12, tp=False, tpAlpha=0.5)

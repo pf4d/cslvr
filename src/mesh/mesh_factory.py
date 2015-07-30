@@ -46,6 +46,14 @@ class MeshFactory(object):
  
   
   @staticmethod
+  def get_greenland_2D_5H_sealevel():
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    home     = os.path.dirname(os.path.abspath(filename))
+    mesh     = Mesh(home + '/greenland/greenland_2D_5H_sealevel.xml')
+    return mesh
+ 
+  
+  @staticmethod
   def get_greenland_3D_5H():
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))

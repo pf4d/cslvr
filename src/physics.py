@@ -3265,10 +3265,12 @@ class MassBalanceHybrid(Physics):
 
     # Jacobian :
     J_thick = derivative(R_thick, H, dH)
+
+    bc = []#DirichletBC(Q, thklim, 'on_boundary')
     
     #Define variational solver for the mass problem
     ffc_options  = config['free_surface']['ffc_options']
-    mass_problem = NonlinearVariationalProblem(R_thick, H, J=J_thick,
+    mass_problem = NonlinearVariationalProblem(R_thick, H, J=J_thick, bcs=bc,
                                         form_compiler_parameters=ffc_options)
     self.mass_solver  = NonlinearVariationalSolver(mass_problem)
     self.mass_solver.parameters['nonlinear_solver']                  = 'snes'

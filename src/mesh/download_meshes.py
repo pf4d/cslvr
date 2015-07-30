@@ -94,6 +94,12 @@ url  = 'https://www.dropbox.com/s/pyclc3p1caxx85n/greenland_' + \
        '2D_5H_mesh.tar.gz?dl=1'
 download_file(url, home, fldr, extract=True)
 
+# 2D 5H sealevel greenland mesh :
+fldr = 'greenland'
+url  = 'https://www.dropbox.com/s/plkc5gxk61e06ay/' + \
+       'greenland_2D_5H_sealevel.tar.gz?dl=1'
+download_file(url, home, fldr, extract=True)
+
 # coarse, no-shelf antarctica mesh :
 fldr = 'antarctica'
 url  = 'https://www.dropbox.com/s/n99zjixyzo2c2i8/antarctica.tar.gz?dl=1'

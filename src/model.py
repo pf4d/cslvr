@@ -139,6 +139,9 @@ class Model(object):
       self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
     else:
       poly_degree = self.config['velocity']['poly_degree']
+      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+      self.Q2     = MixedFunctionSpace([self.Q]*2)
+      self.Q3     = MixedFunctionSpace([self.Q]*3)
       N_T         = self.config['enthalpy']['N_T']
       self.HV     = MixedFunctionSpace([self.Q]*2*poly_degree) # VELOCITY
       self.Z      = MixedFunctionSpace([self.Q]*N_T)           # TEMPERATURE
@@ -390,7 +393,7 @@ class Model(object):
     s = "::: removing junk accumulation :::"
     print_text(s, self.color)
     adot_v = self.adot.vector().array()
-    adot_v[adot_v < -100] = 0
+    #adot_v[adot_v < -100] = 0
     self.assign_variable(self.adot, adot_v)
     print_min_max(self.adot, 'adot')
   

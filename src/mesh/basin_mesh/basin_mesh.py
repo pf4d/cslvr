@@ -1,31 +1,48 @@
+"""
 from varglas.meshing    import MeshGenerator, MeshRefiner, GetBasin
 from varglas.io         import DataInput
 from varglas.data.data_factory import DataFactory
 import os
+"""
+
+from varglas.meshing    import MeshGenerator, MeshRefiner
+from varglas.io         import DataInput
+from varglas.data.data_factory import DataFactory
+from varglas.meshing    import GetBasin
+from pylab                     import *
+import os
+
 
 
 # SET THE FOLLOWING BEFORE RUNNING THE SCRIPT
-output_path = 'meshes/test/'
-mesh_name = 'TEST'
-edge_res = 1000   # How closely will edges be resolved (m)?
-Hmin = 1000.    # minimum ice thickness in terms of how mesh is created
+output_path = 'meshes/'
+mesh_name = 'Issun_2H'
+edge_res = 2000   # How closely will edges be resolved (m)?
+Hmin = 500.    # minimum ice thickness in terms of how mesh is created
 ice_thicknesses = 2.0 # How many ice thicknesses to create mesh
 
 # Get data needed for operation:
 bamber_factory = DataFactory.get_bamber()
+rignot_factory = DataFactory.get_gre_rignot()  
 
 # process the data :
 bamber = DataInput(bamber_factory, gen_space=False)
+rignot = DataInput(rignot_factory, gen_space=False)
+
+rignot.change_projection(bamber)
 
 # create file if it does not exist
 if not os.path.exists(output_path):
       os.makedirs(output_path)
 
-mb = MeshGenerator(bamber,mesh_name,output_path)
-mb.create_contour('H',1,1)
+#mb = MeshGenerator(rignot,mesh_name,output_path)
+#mb.create_contour('U_ob',1.0,2)
 
-gb = GetBasin(bamber,basin='6.2', edge_resolution=edge_res)
-gb.extend_edge(20000)
+mb = MeshGenerator(bamber,mesh_name,output_path)
+mb.create_contour('H',10.0,2)
+
+gb = GetBasin(bamber, edge_resolution=edge_res)
+gb.extend_edge(5000)
 gb.intersection(mb.longest_cont)
 contour = gb.get_xy_contour()
 

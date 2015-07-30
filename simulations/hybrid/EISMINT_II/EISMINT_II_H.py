@@ -7,47 +7,30 @@ set_log_active(False)
 
 parameters['form_compiler']['quadrature_degree'] = 2
 parameters['form_compiler']['precision']         = 30
-#parameters['form_compiler']['optimize']          = True
+parameters['form_compiler']['optimize']          = True
 parameters['form_compiler']['cpp_optimize']      = True
 parameters['form_compiler']['representation']    = 'quadrature'
 
-mesh = Mesh('meshes/circle_mesh.xml')
+mesh = Mesh('meshes/circle.xml')
 
 thklim = 1.0
-L      = 800000.
-xmin   = -L
-xmax   =  L
-ymin   = -L
-ymax   =  L
-
-# width and origin of the domain for deforming x coord :
-width_x  = xmax - xmin
-offset_x = xmin
-
-# width and origin of the domain for deforming y coord :
-width_y  = ymax - ymin
-offset_y = ymin
-for x in mesh.coordinates():
-  # transform x :
-  x[0]  = x[0]  * width_x
-  # transform y :
-  x[1]  = x[1]  * width_y
 
 config = default_config()
 config['log']                          = True
+config['log_history']                  = True
 config['mode']                         = 'transient'
 config['model_order']                  = 'L1L2'
-config['output_path']                  = './H/'
+config['output_path']                  = './EISMINT_H_Results/'
 config['t_start']                      = 0.0
-config['t_end']                        = 200000.0
-config['time_step']                    = 10.0
+config['t_end']                        = 100000.0
+config['time_step']                    = Constant(250.0)
 config['periodic_boundary_conditions'] = False
 config['velocity']['poly_degree']      = 2
 config['enthalpy']['on']               = True
 config['enthalpy']['N_T']              = 8
 config['free_surface']['on']           = True
 config['free_surface']['thklim']       = thklim
-#config['balance_velocity']['on']       = True
+config['balance_velocity']['on']       = False
 config['velocity']['transient_beta']   = 'eismint_H'
 
 model = Model(config)
@@ -93,12 +76,8 @@ model.init_T_surface(T_s)
 model.init_H(thklim)
 model.init_H_bounds(thklim, 1e4)
 model.init_q_geo(model.ghf)
-#model.init_beta_stats()
 
 model.eps_reg = 1e-10
 
 T = HybridTransientSolver(model, config)
 T.solve()
-
-
-

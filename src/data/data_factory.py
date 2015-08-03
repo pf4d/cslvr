@@ -156,10 +156,12 @@ class DataFactory(object):
     nx    =  16620
     ny    =  30000
     dx    =  90
-    west  = -935727.9959405478
-    east  =  west  + nx*dx
-    south = -3698069.596373792
-    north =  south + ny*dx
+    west  = -639955.0
+    east  =  855845.0
+    #east  =  west  + nx*dx
+    north = -655595.0
+    south = -3355595.0
+    #north =  south + ny*dx
 
     #projection info :
     proj   = 'stere'
@@ -173,7 +175,7 @@ class DataFactory(object):
            + " +lat_ts=" + lat_ts \
            + " +lon_0="  + lon_0 \
            + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
-           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+           + " +ellps=WGS84 +to_meter=1"
     p    = Proj(txt)
     
     # save the data in matlab format :

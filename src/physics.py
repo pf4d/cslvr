@@ -1254,10 +1254,11 @@ class Enthalpy(Physics):
     # calculate melt-rate : 
     s = "::: calculating basal melt-rate :::"
     print_text(s, self.color())
-    nMb   = project((q_geo + q_friction) / (L*rhoi))
+    dHdn  = rho * kappa * dot(grad(theta), grad(B))
+    nMb   = project((q_geo + q_friction - dHdn) / (L*rhoi))
     nMb_v = nMb.vector().array()
-    nMb_v[nMb_v < 0.0]  = 0.0
-    nMb_v[nMb_v > 10.0] = 10.0
+    #nMb_v[nMb_v < 0.0]  = 0.0
+    #nMb_v[nMb_v > 10.0] = 10.0
     model.assign_variable(Mb,  nMb_v)
     print_min_max(Mb, 'Mb')
 
@@ -3219,7 +3220,7 @@ class MassTransportHybrid(Physics):
     
     # TIME STEP AND REGULARIZATION
     eps_reg = model.eps_reg
-    self.dt      = config['time_step']
+    self.dt = config['time_step']
     thklim  = config['free_surface']['thklim']
    
     # function spaces : 

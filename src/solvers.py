@@ -3,7 +3,7 @@ from fenics         import project, File, vertex_to_dof_map, Function, \
                            assemble, sqrt, DoubleArray, Constant, function, MPI
 from physics        import *
 from scipy.optimize import fmin_l_bfgs_b
-import time
+from time           import time
 from termcolor      import colored, cprint
 from helper         import raiseNotDefined
 from io             import print_min_max, print_text
@@ -476,7 +476,7 @@ class TransientSolver(Solver):
       B_a = B.compute_vertex_values()
       S_v = S.compute_vertex_values()
       
-      tic = time.clock()
+      tic = time()
 
       S_0 = S_v
       f_0 = self.rhs_func_explicit(t, S_0)
@@ -534,7 +534,7 @@ class TransientSolver(Solver):
 
       self.M_prev = M
       t          += dt
-      self.step_time.append(time.clock() - tic)
+      self.step_time.append(time() - tic)
 
     # calculate total time to compute
     s = time() - t0
@@ -1231,6 +1231,9 @@ class HybridTransientSolver(Solver):
     self.config         = config
     self.config['mode'] = 'transient'
     outpath             = config['output_path']
+    
+    if type(config['time_step']) != Constant:
+      config['time_step'] = Constant(config['time_step'])
 
     # initialize velocity solver :
     if self.config['velocity']['on']:
@@ -1292,7 +1295,7 @@ class HybridTransientSolver(Solver):
   def adaptive_update(self,dt,config,t):
     print_text(":::Entering adpative solver.:::",self.color())
     stars = "****************************************************************************"
-    time_start = time.clock()
+    time_start = time()
     SOLVED_U = False
     relaxation_parameter = self.velocity_instance.m_solver.parameters['newton_solver']['relaxation_parameter']
     while not SOLVED_U:
@@ -1303,9 +1306,9 @@ class HybridTransientSolver(Solver):
       SOLVED_U = status_U[1]
       if not SOLVED_U:
         self.velocity_instance.m_solver.parameters['newton_solver']['relaxation_parameter'] /= 1.43
-        print_text(stars,'red')
-        print_text("WARNING: Newton relaxation parameter lowered to: "+str(relaxation_parameter),'red')
-        print_text(stars,'red')
+        print_text(stars,'red',1)
+        print_text("WARNING: Newton relaxation parameter lowered to: "+str(relaxation_parameter),'red',1)
+        print_text(stars,'red',1)
 
     # Solve mass equations, lowering time step on failure:
     SOLVED_H = False
@@ -1329,7 +1332,7 @@ class HybridTransientSolver(Solver):
       self.enthalpy_instance.solve()
       self.model.T0_.interpolate(self.model.T_)  # update previous temp
 
-    time_end = time.clock()
+    time_end = time()
     run_time = time_end - time_start
     print_text("++++++++++++++++++++++++++++++++++++++++++++",'green')
     print_text("Current time               : "+str(t),'green')
@@ -1443,18 +1446,18 @@ class HybridTransientSolver(Solver):
     dt     = config['time_step'](0)
     out_t  = config['time_step'](0) # Desired output interval is the intitial time step
 
-    h = CellSize(model.mesh)
-    hmin = project(h,model.Q).vector().min()
+    h    = model.h
+    hmin = model.mesh.hmin()
    
     # Loop over all times
     while t <= t_end:
 
-      # Set time step according to CFL condition:
-      Us  = project(as_vector([model.u_s, model.v_s, model.w_s]))
-      umag = sqrt(dot(Us,Us))
-      dt = min(hmin / max(2*project(umag,model.Q).vector().max(),1.),200)
-      print_text("::: CFL calculation sets time step to be: "+str(dt)+" :::",self.color())
-      config['time_step'].assign(dt)
+      ## Set time step according to CFL condition:
+      #Us   = as_vector([model.u_s, model.v_s, model.w_s])
+      #umag = sqrt(dot(Us,Us))
+      #dt   = min(hmin / max(2*project(umag,model.Q).vector().max(),1.),200)
+      #print_text("::: CFL calculation sets time step to be: "+str(dt)+" :::",self.color())
+      #config['time_step'].assign(dt)
 
       # Coupled solve with adaptive time step:
       # If not coupled, solve individually without adaptation:
@@ -1511,7 +1514,6 @@ class HybridTransientSolver(Solver):
         
       # Final stage of time stepping:
       t += dt
-      self.step_time.append(time() - tic)
       # store information : 
       if self.config['log']:
         self.t_log.append(t)
@@ -1524,11 +1526,6 @@ class HybridTransientSolver(Solver):
         model.save_xml(model.w_s,  'w_s_%i' % t)
         model.save_xml(model.beta, 'beta_%i' % t)
 
-      # increment time step :
-      if self.model.MPI_rank==0:
-        s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
-        text = colored(s, 'red', attrs=['bold'])
-        print text % (t, time()-tic)
       if (out_t - t) % out_t <= dt or not SOLVED:
           # Finish tiny step before writing
         if t % out_t != 0 and SOLVED:

@@ -270,6 +270,10 @@ class DataInput(object):
     set the minimum value of a data array with filename <fn> below <boundary>
     to value <val>.
     """
+    s    = "::: setting any value of %s's %s field below %.3e to %.3e :::" \
+           % (self.name, fn, boundary, val)
+    print_text(s, self.color)
+    
     d                = self.data[fn]
     d[d <= boundary] = val
     self.data[fn]    = d
@@ -279,6 +283,10 @@ class DataInput(object):
     set the maximum value of a data array with filename <fn> above <boundary>
     to value <val>.
     """
+    s    = "::: setting any value of %s's %s field above %.3e to %.3e :::" \
+           % (self.name, fn, boundary, val)
+    print_text(s, self.color)
+    
     d                = self.data[fn]
     d[d >= boundary] = val
     self.data[fn]    = d
@@ -288,6 +296,10 @@ class DataInput(object):
     set all values of the matrix with filename <fn> equal to <old_val>
     to <new_val>.
     """
+    s    = "::: setting all values of %s's %s field equal to %.3e to %.3e :::" \
+           % (self.name, fn, old_val, new_val)
+    print_text(s, self.color)
+    
     d                = self.data[fn]
     d[d == old_val]  = new_val
     self.data[fn]    = d

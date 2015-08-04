@@ -1254,7 +1254,8 @@ class Enthalpy(Physics):
     # calculate melt-rate : 
     s = "::: calculating basal melt-rate :::"
     print_text(s, self.color())
-    dHdn  = rho * kappa * dot(grad(theta), grad(B))
+    B_mag = sqrt(inner(grad(B), grad(B)) + DOLFIN_EPS)
+    dHdn  = rho * kappa * dot(grad(theta), grad(B) / B_mag)
     nMb   = project((q_geo + q_friction - dHdn) / (L*rhoi))
     nMb_v = nMb.vector().array()
     #nMb_v[nMb_v < 0.0]  = 0.0

@@ -160,9 +160,9 @@ class VelocityDukowiczStokes(Physics):
       
     # add lateral boundary conditions :  
     if config['velocity']['use_lat_bcs']:
-      self.bcs.append(DirichletBC(Q3.sub(0), model.u_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(Q3.sub(1), model.v_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(Q3.sub(2), model.w_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(Q3.sub(0), model.u_lat, model.ff, 4))
+      self.bcs.append(DirichletBC(Q3.sub(1), model.v_lat, model.ff, 4))
+      #self.bcs.append(DirichletBC(Q3.sub(2), model.w_lat, model.ff, 4))
     
     # keep the residual for adjoint solves :
     model.A       = A
@@ -291,9 +291,9 @@ class VelocityStokes(Physics):
       
     # add lateral boundary conditions :  
     if config['velocity']['use_lat_bcs']:
-      self.bcs.append(DirichletBC(V.sub(0), model.u_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), model.w_lat_bc, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 4))
+      #self.bcs.append(DirichletBC(V.sub(2), model.w_lat, model.ff, 4))
 
     # keep the residual for adjoint solves :
     model.A       = self.A
@@ -441,15 +441,10 @@ class VelocityDukowiczBP(Physics):
       
     # add lateral boundary conditions :  
     if config['velocity']['use_lat_bcs']:
-      self.bcs.append(DirichletBC(Q2.sub(0), model.u_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(Q2.sub(1), model.v_lat_bc, model.ff, 4))
-      self.bc_w = DirichletBC(Q, model.w_lat_bc, model.ff, 4)
+      self.bcs.append(DirichletBC(Q2.sub(0), model.u_lat, model.ff, 4))
+      self.bcs.append(DirichletBC(Q2.sub(1), model.v_lat, model.ff, 4))
+      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, 4)
       
-    # add boundary condition for the divide :
-    # FIXME: this is a hack
-    #self.bcs.append(DirichletBC(Q2.sub(0), 0.0, model.ff, 7))
-    #self.bcs.append(DirichletBC(Q2.sub(1), 0.0, model.ff, 7))
-
     # keep the residual for adjoint solves :
     model.A       = A
 
@@ -504,9 +499,9 @@ class VelocityDukowiczBP(Physics):
     p_v     = p.vector().array()
     p_gnd_v = p_gnd.vector().array()
     p_shf_v = p_shf.vector().array()
-    p_v[self.gnd_dofs] = p_gnd_v[self.gnd_dofs]
-    p_v[self.shf_dofs] = p_shf_v[self.shf_dofs]
-    self.assign_variable(p, p_v)
+    p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
+    p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
+    model.assign_variable(p, p_v)
     
     print_min_max(p, 'p')
 
@@ -660,13 +655,12 @@ class VelocityBP(Physics):
       
     # add lateral boundary conditions :  
     if config['velocity']['use_lat_bcs']:
-      self.bcs.append(DirichletBC(V.sub(0), model.u_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v_lat_bc, model.ff, 4))
-      self.bc_w = DirichletBC(Q, model.w_lat_bc, model.ff, 4)
+      s = "    - using lateral boundary conditions -"
+      print_text(s, self.color())
 
-    # add boundary condition for the divide :
-    self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 7))
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 4))
+      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, 4)
 
     # keep the residual for adjoint solves :
     model.A     = self.R1
@@ -688,7 +682,7 @@ class VelocityBP(Physics):
     S       = model.S
     x       = model.x
     w       = model.w
-    p       = model.p
+    p       = model.P
     eta_shf = model.eta_shf
     eta_gnd = model.eta_gnd
 
@@ -699,10 +693,10 @@ class VelocityBP(Physics):
     p_v     = p.vector().array()
     p_gnd_v = p_gnd.vector().array()
     p_shf_v = p_shf.vector().array()
-    p_v[self.gnd_dofs] = p_gnd_v[self.gnd_dofs]
-    p_v[self.shf_dofs] = p_shf_v[self.shf_dofs]
-    self.assign_variable(p, p_v)
-    
+    p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
+    p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
+    model.assign_variable(p, p_v)
+   
     print_min_max(p, 'p')
 
   def solve_vert_velocity(self):
@@ -879,13 +873,9 @@ class VelocityBPFull(Physics):
       
     # add lateral boundary conditions :  
     if config['velocity']['use_lat_bcs']:
-      self.bcs.append(DirichletBC(V.sub(0), model.u_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v_lat_bc, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(2), model.w_lat_bc, model.ff, 4))
-
-    # add boundary condition for the divide :
-    self.bcs.append(DirichletBC(V.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(V.sub(1), 0.0, model.ff, 7))
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 4))
+      #self.bcs.append(DirichletBC(V.sub(2), model.w_lat, model.ff, 4))
 
     # keep the residual for adjoint solves :
     model.A       = self.A
@@ -918,9 +908,9 @@ class VelocityBPFull(Physics):
     p_v     = p.vector().array()
     p_gnd_v = p_gnd.vector().array()
     p_shf_v = p_shf.vector().array()
-    p_v[self.gnd_dofs] = p_gnd_v[self.gnd_dofs]
-    p_v[self.shf_dofs] = p_shf_v[self.shf_dofs]
-    self.assign_variable(p, p_v)
+    p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
+    p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
+    model.assign_variable(p, p_v)
     
     print_min_max(p, 'p')
 
@@ -1254,8 +1244,8 @@ class Enthalpy(Physics):
     # calculate melt-rate : 
     s = "::: calculating basal melt-rate :::"
     print_text(s, self.color())
-    B_mag = sqrt(inner(grad(B), grad(B)) + DOLFIN_EPS)
-    dHdn  = rho * kappa * dot(grad(theta), grad(B) / B_mag)
+    gradB = as_vector([B.dx(0), B.dx(1), -1])
+    dHdn  = rho * kappa * dot(grad(theta), gradB)
     nMb   = project((q_geo + q_friction - dHdn) / (L*rhoi))
     nMb_v = nMb.vector().array()
     #nMb_v[nMb_v < 0.0]  = 0.0
@@ -1899,12 +1889,6 @@ class AdjointDukowiczVelocity(Physics):
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)
     
-    # FIXME: this is a hack.
-    self.bcs = []
-    U_sp     = model.U.function_space()
-    self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
-    
   def solve(self):
     """
     Solves the bilinear residual created by differentiation of the 
@@ -2104,12 +2088,6 @@ class AdjointVelocity(Physics):
     self.aw = lhs(self.dI)
     self.Lw = rhs(self.dI)
     
-    # FIXME: this is a hack.
-    self.bcs = []
-    U_sp     = model.U.function_space()
-    self.bcs.append(DirichletBC(U_sp.sub(0), 0.0, model.ff, 7))
-    self.bcs.append(DirichletBC(U_sp.sub(1), 0.0, model.ff, 7))
-
   def solve(self):
     """
     Solves the bilinear residual created by differentiation of the 

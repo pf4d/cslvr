@@ -634,7 +634,7 @@ class Model(object):
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
-    gradS    = self.gradS
+    gradS    = grad(self.S)
     H        = self.S - self.B
     U_s      = Function(Q)
     if U_mag == None:

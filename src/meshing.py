@@ -455,7 +455,7 @@ class MeshRefiner(object):
     Creates a 2D or 3D mesh based on contour .geo file <gmsh_file_name>.
     Refinements are done on DataInput object <di> with data field index <fn>.
     """
-    self.color = 'grey_74'
+    self.color = '43'
     s    = "::: initializing MeshRefiner on \"%s.geo\" :::" % gmsh_file_name
     print_text(s, self.color)
 
@@ -524,6 +524,8 @@ class MeshRefiner(object):
     Otherwise, create the .msh file with dimension <dim> and filename
     <out_file_name>.msh.
     """
+    self.out_file_name = out_file_name
+
     #launch the GUI
     if gui:
       print_text("::: opening GUI :::", self.color)
@@ -535,7 +537,23 @@ class MeshRefiner(object):
       print_text(s, self.color)
       self.m.mesh(dim)
       self.m.save(out_file_name + ".msh")
+  
+  def convert_msh_to_xml(self):
+    """
+    convert <mshfile> .msh file to .xml file <xmlfile> via dolfin-convert.
+    """
+    msh = self.out_file_name + '.msh'
+    xml = self.out_file_name + '.xml'
 
+    cmd = 'dolfin-convert ' + msh + ' ' + xml
+    s   = "\nExecuting :\n\n\t %s\n\n" % cmd
+    print_text(s, self.color)
+    subprocess.call(cmd.split())
+    
+    cmd = 'gzip ' + xml
+    s   = "\nExecuting :\n\n\t %s\n\n" % cmd
+    print_text(s, self.color)
+    subprocess.call(cmd.split())
 
 
 class MeshExtruder(object):

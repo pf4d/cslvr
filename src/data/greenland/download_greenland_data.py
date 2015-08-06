@@ -154,9 +154,5 @@ merged  = 'https://www.dropbox.com/s/ov5bl30jsojws8g/velocity_' + \
 fldr    = 'rignot'
 download_file(merged, home, fldr, extract=True)
 
-# gimp ice-mask :
-mask    = 'ftp://ftp.bpcrc.osu.edu/downloads/gdg/gimpicemask/' + \
-          'GimpIceMask_90m.tif'
-fldr    = 'gimp'
-download_file(mask, home, fldr, extract=False)
+
 

@@ -246,7 +246,7 @@ class Model(object):
     shf_dofs     = []
     gnd_dofs     = []
     
-    tol = 1e-6
+    tol = 1e-3
     
     # iterate through the facets and mark each if on a boundary :
     #
@@ -285,11 +285,11 @@ class Model(object):
           self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff[f] = 4
-        #else:
-        #  self.ff[f] = 7
-        self.ff[f] = 4
+        if mask_xy > 0:
+          self.ff[f] = 4
+        else:
+          self.ff[f] = 7
+        #self.ff[f] = 4
     
     for f in facets(self.flat_mesh):
       n       = f.normal()
@@ -311,11 +311,11 @@ class Model(object):
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff_flat[f] = 4
-        #else:
-        #  self.ff_flat[f] = 7
-        self.ff_flat[f] = 4
+        if mask_xy > 0:
+          self.ff_flat[f] = 4
+        else:
+          self.ff_flat[f] = 7
+        #self.ff_flat[f] = 4
     
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, self.color)

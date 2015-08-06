@@ -6,8 +6,11 @@ from scipy.io          import loadmat, netcdf_file
 from scipy.interpolate import griddata
 from osgeo             import gdal
 from pyproj            import Proj, transform
+from varglas.io        import print_text
 
 class DataFactory(object):
+
+  color = '229'
  
   @staticmethod 
   def print_dim(rg):
@@ -144,59 +147,10 @@ class DataFactory(object):
  
   
   @staticmethod
-  def get_gimp():
-    
-    filename = inspect.getframeinfo(inspect.currentframe()).filename
-    home     = os.path.dirname(os.path.abspath(filename))
-    
-    from tifffile.tifffile import TiffFile
-    vara     = dict()
-     
-    # extents of domain :
-    nx    =  16620
-    ny    =  30000
-    dx    =  90
-    west  = -639955.0
-    east  =  855845.0
-    #east  =  west  + nx*dx
-    north = -655595.0
-    south = -3355595.0
-    #north =  south + ny*dx
-
-    #projection info :
-    proj   = 'stere'
-    lat_0  = '90'
-    lat_ts = '70'
-    lon_0  = '-45'
-    
-    # create projection :
-    txt  =   " +proj="   + proj \
-           + " +lat_0="  + lat_0 \
-           + " +lat_ts=" + lat_ts \
-           + " +lon_0="  + lon_0 \
-           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
-           + " +ellps=WGS84 +to_meter=1"
-    p    = Proj(txt)
-    
-    # save the data in matlab format :
-    vara['pyproj_Proj']       = p
-    vara['map_western_edge']  = west 
-    vara['map_eastern_edge']  = east 
-    vara['map_southern_edge'] = south 
-    vara['map_northern_edge'] = north
-    vara['nx']                = nx
-    vara['ny']                = ny
-    
-    # retrieve data :
-    data              = TiffFile(home + '/greenland/gimp/GimpIceMask_90m.tif')
-    vara['dataset']   = 'gimp'
-    vara['continent'] = 'greenland'
-    vara['mask']      = data.asarray()[::-1, :]
-    return vara
- 
-  
-  @staticmethod
   def get_rignot():
+    
+    s    = "::: getting Rignot data from DataFactory :::"
+    print_text(s, DataFactory.color)
     
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
@@ -205,11 +159,23 @@ class DataFactory(object):
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     
+    needed_vars = {'vx'  : 'vx',
+                   'vy'  : 'vy',
+                   'err' : 'v_err'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Bamber : %-*s key : %s '%(30,v, txt), '230')
+    
     # retrieve data :
     vx   = array(data.variables['vx'][:])
     vy   = array(data.variables['vy'][:])
     err  = array(data.variables['err'][:])
-    vmag = sqrt(vx**2 + vy**2)
      
     # extents of domain :
     ny,nx =  shape(vx)
@@ -243,8 +209,8 @@ class DataFactory(object):
     vara['nx']                = nx
     vara['ny']                = ny
     
-    names = ['vx', 'vy', 'v_err', 'U_ob']
-    ftns  = [ vx,   vy,   err,     vmag]
+    names = ['vx', 'vy', 'v_err']
+    ftns  = [ vx,   vy,   err   ]
     
     # save the data in matlab format :
     vara['dataset']   = 'Rignot'
@@ -614,12 +580,30 @@ class DataFactory(object):
   @staticmethod
   def get_bamber(thklim = 0.0):
     
+    s    = "::: getting Bamber data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
    
     direc = home + '/greenland/bamber13/Greenland_bedrock_topography_V2.nc' 
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
+    
+    needed_vars = {'BedrockElevation' : 'B',
+                   'SurfaceElevation' : 'S',
+                   'IceThickness'     : 'H',
+                   'BedrockError'     : 'Herr',
+                   'LandMask'         : 'mask'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Bamber : %-*s key : %s '%(30,v, txt), '230')
     
     # retrieve data :
     x    = array(data.variables['projection_x_coordinate'][:])
@@ -628,11 +612,11 @@ class DataFactory(object):
     S    = array(data.variables['SurfaceElevation'][:])
     H    = array(data.variables['IceThickness'][:])
     Herr = array(data.variables['BedrockError'][:])
-    mask = array(data.variables['IceShelfSourceMask'][:])
-
-    S[H < thklim] = B[H < thklim] + thklim
-    H[H < thklim] = thklim
-    B             = S - H
+    mask = array(data.variables['LandMask'][:])
+    
+    #S[H < thklim] = B[H < thklim] + thklim
+    #H[H < thklim] = thklim
+    #B             = S - H
 
     # extents of domain :
     east  = max(x)
@@ -678,12 +662,33 @@ class DataFactory(object):
   @staticmethod
   def get_searise(thklim = 0.0):
     
+    s    = "::: getting Searise data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     home     = os.path.dirname(os.path.abspath(filename))
  
     direc = home + "/greenland/searise/Greenland_5km_dev1.2.nc"
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
+    
+    needed_vars = {'topg'       : 'B',
+                   'usrf'       : 'S',
+                   'surftemp'   : 'T',
+                   'smb'        : 'adot',
+                   'bheatflx'   : 'q_geo',
+                   'dhdt'       : 'dhdt',
+                   'surfvelmag' : 'U_sar'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Bamber : %-*s key : %s '%(30,v, txt), '230')
+    
     
     # retrieve data :
     x     = array(data.variables['x1'][:])
@@ -703,7 +708,6 @@ class DataFactory(object):
     
     H             = S - B
     S[H < thklim] = B[H < thklim] + thklim
-    H[H < thklim] = thklim
 
     Tn            = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + 273
     
@@ -737,9 +741,9 @@ class DataFactory(object):
     vara['nx']                = len(x)
     vara['ny']                = len(y)
  
-    names = ['H', 'S', 'adot', 'B', 'T', 'q_geo','U_sar', \
+    names = ['S', 'adot', 'B', 'T', 'q_geo','U_sar', \
              'U_ob', 'lat', 'lon', 'Tn','dhdt']
-    ftns  = [H, S, adot, B, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
+    ftns  = [S, adot, B, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
 
     vara['dataset']   = 'searise'
     vara['continent'] = 'greenland'

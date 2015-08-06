@@ -658,8 +658,8 @@ class VelocityBP(Physics):
       s = "    - using lateral boundary conditions -"
       print_text(s, self.color())
 
-      self.bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 4))
-      self.bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 4))
+      self.bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 7))
+      self.bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 7))
       #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, 4)
 
     # keep the residual for adjoint solves :
@@ -2101,8 +2101,6 @@ class AdjointVelocity(Physics):
       
     aw = assemble(self.aw)
     Lw = assemble(self.Lw)
-    for bc in self.bcs:
-      bc.apply(aw, Lw)
     
     if config['model_order'] == 'stokes':
       a_solver = LUSolver('mumps')

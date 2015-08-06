@@ -47,6 +47,7 @@ from matplotlib              import colors, ticker
 from pyproj                  import *
 from io                      import DataInput
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from varglas.io              import print_text
 
 pl.mpl.rcParams['font.family']     = 'serif'
 pl.mpl.rcParams['legend.fontsize'] = 'medium'
@@ -957,10 +958,14 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   
   # get the original projection coordinates and data :
   if isinstance(u, str):
+    s = "::: plotting %s's \"%s\" field data directly :::" % (di.name, u)
+    print_text(s, '242')
     vx,vy  = np.meshgrid(di.x, di.y)
     v      = di.data[u]
 
   elif isinstance(u, Function):
+    s = "::: plotting FEniCS Function \"%s\" :::" % name
+    print_text(s, '242')
     mesh  = u.function_space().mesh()
     coord = mesh.coordinates()
     fi    = mesh.cells()

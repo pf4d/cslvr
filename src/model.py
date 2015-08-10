@@ -246,7 +246,7 @@ class Model(object):
     shf_dofs     = []
     gnd_dofs     = []
     
-    tol = 1e-3
+    tol = 1e-6
     
     # iterate through the facets and mark each if on a boundary :
     #
@@ -273,16 +273,18 @@ class Model(object):
       if   n.z() >=  tol and f.exterior():
         if adot_xy > 0:
           self.ff_acc[f] = 1
-        if mask_xy > 0:
-          self.ff[f] = 6
-        else:
-          self.ff[f] = 2
+        #if mask_xy > 0:
+        #  self.ff[f] = 6
+        #else:
+        #  self.ff[f] = 2
+        self.ff[f] = 2
     
       elif n.z() <= -tol and f.exterior():
-        if mask_xy > 0:
-          self.ff[f] = 5
-        else:
-          self.ff[f] = 3
+        #if mask_xy > 0:
+        #  self.ff[f] = 5
+        #else:
+        #  self.ff[f] = 3
+        self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         if mask_xy > 0:

@@ -330,7 +330,67 @@ class MeshGenerator(object):
     s = "\nExecuting :\n\n\t", cmd, "\n\n"
     print_text(s, self.color)
     subprocess.call(cmd.split())
+  
+  def check_dist(self, dist=1.0):
+    """
+    remove points in contour that are not a linear distance of at least
+    <dist> from previous point.
+    """
+    lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
+    xycoords = self.longest_cont
+
+    mask = ones(len(xycoords), dtype=bool)
+
+    i = 0
+    while(i < len(xycoords)-1):
+      p1 = xycoords[i]
+      j = i + 1
+      while(j < len(xycoords) and \
+            lin_dist(p1, xycoords[j]) < dist):
+        mask[j] = 0
+        j += 1
+      i = j
+
+    # fix end of array
+    i = -1
+    while(len(xycoords) + i >= 0 and (not mask[i] or \
+          lin_dist(xycoords[0],xycoords[i]) < dist)):
+      mask[i] = 0
+      i -= 1
+
+    # print results
+    s    = "::: removed %s points closer than %s m to one another :::"% \
+            (str(len(mask) - sum(mask)), dist)
+    print_text(s, self.color)
+
+    self.longest_cont = xycoords[mask]
+
+  def intersection(self, new_contour):
+    """
+    Take the geometric intersection of current coordinates with <new_contour>.
+    Used primarily to replace the edge with something from a different
+    (better) data set.
+    """
+    contour = self.longest_cont
+
+    p1 = Polygon(zip(contour[:,0],     contour[:,1]))
+    p2 = Polygon(zip(new_contour[:,0], new_contour[:,1]))
+
+    intersection = p1.intersection(p2)
+
+    # check if multi-polygon is created. If so, take polygon 
+    # with greatest area
+    import collections
+    if isinstance(intersection, collections.Iterable):
+      p3 = max(intersection, key = lambda x: x.area)
+    else:
+      p3 = intersection
+
+    contour_intersect = zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1])
+    self.longest_cont = array(contour_intersect)[1:]
+    s    = "::: intersection contour created, length %s nodes :::"
+    print_text(s % shape(self.longest_cont)[0], self.color)
 
   def convert_msh_to_xml(self, mshfile, xmlfile):
     """
@@ -807,7 +867,7 @@ class GetBasin(object):
 
   def check_dist(self):
     """
-    Remove points in xycoords that are not a linear distance of at least
+    remove points in xycoords that are not a linear distance of at least
     <dist> from previous point.
     """
     lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)

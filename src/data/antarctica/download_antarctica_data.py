@@ -5,11 +5,11 @@ import zipfile
 import tarfile
 import inspect
 
-def download_file(url, direc, folder, extract=False, name = None):
+
+def download_file(url, direc, folder, extract=False):
   """
   download a file with url <url> into directory <direc>/<folder>.  If <extract>
   is True, extract the .zip file into the directory and delete the .zip file.
-  If name is specified, the file will be changed to the string passed as name.
   """
   # make the directory if needed :
   direc = direc + '/' + folder + '/'
@@ -19,47 +19,34 @@ def download_file(url, direc, folder, extract=False, name = None):
 
   # url file info :
   fn   = url.split('/')[-1]
-
-  # Only download files that don't exist. 
-  # This will allow a restart of a terminated download
-  if name:
-      fn = name
-
-  EXISTS = os.path.isfile(direc+fn)
-    
-  if not EXISTS:
-    u    = urllib2.urlopen(url)
-    f    = open(direc + fn, 'wb')
-    meta = u.info()
-    fs   = int(meta.getheaders("Content-Length")[0])
-    
-    s    = "Downloading: %s Bytes: %s" % (fn, fs)
-    print s
-    
-    fs_dl  = 0
-    blk_sz = 8192
-
-    
-    # download the file and print status :
-    while True:
-      buffer = u.read(blk_sz)
-      if not buffer:
-        break
-    
-      fs_dl += len(buffer)
-      f.write(buffer)
-      status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
-      status = status + chr(8)*(len(status)+1)
-      sys.stdout.write(status)
-      sys.stdout.flush()
-    
-    f.close()
-  else:
-    print "WARNING: "+fn+" already downloaded. \nDelete file if it is was" +\
-          " partial download"
-
+  u    = urllib2.urlopen(url)
+  f    = open(direc + fn, 'wb')
+  meta = u.info()
+  fs   = int(meta.getheaders("Content-Length")[0])
+  
+  s    = "Downloading: %s Bytes: %s" % (fn, fs)
+  print s
+  
+  fs_dl  = 0
+  blk_sz = 8192
+  
+  # download the file and print status :
+  while True:
+    buffer = u.read(blk_sz)
+    if not buffer:
+      break
+  
+    fs_dl += len(buffer)
+    f.write(buffer)
+    status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
+    status = status + chr(8)*(len(status)+1)
+    sys.stdout.write(status)
+    sys.stdout.flush()
+  
+  f.close()
+  
   # extract the zip/tar.gz file if necessary :
-  if extract and not EXISTS:
+  if extract:
     ty = fn.split('.')[-1]
     if ty == 'zip':
       cf = zipfile.ZipFile(direc + fn)
@@ -68,9 +55,7 @@ def download_file(url, direc, folder, extract=False, name = None):
     cf.extractall(direc)
     os.remove(direc + fn)
 
-  if name and not EXISTS:
-    os.rename(direc+fn,direc+name)
-  
+ 
 def convert_measures_projection(direc, var):
   """
   convert the measures .tif files to _new.tif files with the projection we 

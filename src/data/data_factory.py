@@ -170,7 +170,7 @@ class DataFactory(object):
         txt = '"' + needed_vars[v] + '"'
       except KeyError:
         txt = ''
-      print_text('      Bamber : %-*s key : %s '%(30,v, txt), '230')
+      print_text('      Rignot : %-*s key : %s '%(30,v, txt), '230')
     
     # retrieve data :
     vx   = array(data.variables['vx'][:])
@@ -687,7 +687,7 @@ class DataFactory(object):
         txt = '"' + needed_vars[v] + '"'
       except KeyError:
         txt = ''
-      print_text('      Bamber : %-*s key : %s '%(30,v, txt), '230')
+      print_text('      Searise : %-*s key : %s '%(30,v, txt), '230')
     
     
     # retrieve data :
@@ -745,7 +745,7 @@ class DataFactory(object):
              'U_ob', 'lat', 'lon', 'Tn','dhdt']
     ftns  = [S, adot, B, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
 
-    vara['dataset']   = 'searise'
+    vara['dataset']   = 'Searise'
     vara['continent'] = 'greenland'
     for n, f in zip(names, ftns):
       vara[n] = f

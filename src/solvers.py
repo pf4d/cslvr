@@ -767,6 +767,44 @@ class AdjointSolverNew(Solver):
     File(config['output_path'] + 'c.pvd') << c
 
 
+class DolfinAdjointSolver(Solver):
+  """
+  """
+  def __init__(self, model, config):
+    """
+    Initialize the model with a forward instance (SteadySolver) and adjoint
+    solver (AdjointVelocityBP, only adjoint currently available).
+    """
+    s    = "::: INITIALIZING ADJOINT SOLVER :::"
+    print_text(s, self.color())
+    self.model  = model
+    self.config = config
+    
+    config['mode']  = 'steady' # adjoint only solves steady-state
+   
+    # ensure that we have lists : 
+    if type(config['adjoint']['bounds']) != list:
+      config['adjoint']['bounds'] = [config['adjoint']['bounds']]
+    if type(config['adjoint']['control_variable']) != list:
+      cv = config['adjoint']['control_variable']
+      config['adjoint']['control_variable'] = [cv]
+    if type(config['adjoint']['alpha']) != list:
+      config['adjoint']['alpha'] = [config['adjoint']['alpha']]
+
+    # Switching over to the parallel version of the optimization that is found 
+    # in the dolfin-adjoint optimize.py file:
+    self.maxfun      = config['adjoint']['max_fun']
+    self.bounds_list = config['adjoint']['bounds']
+    self.control     = config['adjoint']['control_variable']
+    
+    # initialize instances of the forward model, and the adjoint physics : 
+    self.forward_model    = SteadySolver(model, config)
+    if config['use_dukowicz']:
+      self.adjoint_instance = AdjointDukowiczVelocity(model, config)
+    else:
+      self.adjoint_instance = AdjointVelocity(model, config)
+
+
 class AdjointSolver(Solver):
   """
   This class minimizes the misfit between an observed surface velocity and 

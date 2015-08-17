@@ -1,10 +1,7 @@
-from fenics       import *
-from ufl.indexed  import Indexed
-from abc          import ABCMeta, abstractmethod
-from physics      import Physics
-from solvers      import Solver
-from helper       import default_config
-from io           import print_text, print_min_max
+from fenics         import *
+from dolfin_adjoint import *
+from helper         import default_config
+from io             import print_text, print_min_max
 import numpy              as np
 import physical_constants as pc
 import sys
@@ -16,6 +13,13 @@ class Model(object):
   physics but rather the interface to use physics in different simulation 
   types.
   """
+    
+  GAMMA_S_GND = 2   # grounded upper surface
+  GAMMA_B_GND = 3   # grounded lower surface (bedrock)
+  GAMMA_S_SHF = 4   # shelf upper surface
+  GAMMA_B_SHF = 5   # shelf lower surface
+  GAMMA_D     = 6   # basin divides
+  GAMMA_T     = 7   # terminus
 
   def __init__(self, config=None):
     """
@@ -27,14 +31,14 @@ class Model(object):
     else:
       self.config = config
     self.MPI_rank = MPI.rank(mpi_comm_world())
-    self.color    = '148'#'purple_1a'
+    self.model_color = '148'
 
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
     """
     s = "    - using periodic boundaries -"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
 
     xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
     xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
@@ -83,269 +87,70 @@ class Model(object):
     
     :param mesh : Dolfin mesh to be written
     """
-    s = "::: setting mesh :::"
-    print_text(s, self.color)
-    self.mesh       = mesh
-    self.flat_mesh  = Mesh(mesh)
-    self.dim        = self.mesh.ufl_cell().topological_dimension()
-    self.mesh.init(1,2)
-    if self.dim == 3:
-      self.num_facets = self.mesh.size_global(2)
-      self.num_cells  = self.mesh.size_global(3)
-      self.dof        = self.mesh.size_global(0)
-    elif self.dim == 2:
-      self.num_facets = self.mesh.size_global(1)
-      self.num_cells  = self.mesh.size_global(2)
-      self.dof        = self.mesh.size_global(0)
-    s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
-        % (self.dim, self.num_cells, self.num_facets, self.dof)
-    print_text(s, self.color)
-    self.generate_function_spaces()
+    raiseNotDefined()
+
+  def calculate_boundaries(self, mask=None, adot=None):
+    """
+    Determines the boundaries of the current model mesh
+    """
+    raiseNotDefined()
 
   def generate_function_spaces(self):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    s = "::: generating %s function spaces :::" % self.config['model_order']
-    print_text(s, self.color)
+    s = "::: generating fundamental function spaces :::"
+    print_text(s, self.model_color)
+
     if self.config['periodic_boundary_conditions']:
       self.generate_pbc()
     else:
       self.pBC = None
     self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
                                 constrained_domain=self.pBC)
-    if     self.config['model_order'] != 'L1L2' \
-       and self.config['model_order'] != 'SSA':
-      self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                  constrained_domain=self.pBC)
-      if self.config['model_order'] == 'BP':
-        if self.config['velocity']['full_BP']:
-          self.Q3     = MixedFunctionSpace([self.Q]*3)
-        else:
-          self.Q2     = MixedFunctionSpace([self.Q]*2)
-      elif self.config['model_order'] == 'stokes':
-        self.Q4     = MixedFunctionSpace([self.Q]*4)
-        # mini elements :
-        self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-                                    constrained_domain=self.pBC)
-        self.MQ     = self.Q + self.Bub
-        M3          = MixedFunctionSpace([self.MQ]*3)
-        self.MV     = MixedFunctionSpace([M3,self.Q])
-        # Taylor-Hood elements :
-        #V           = VectorFunctionSpace(self.mesh, "CG", 2,
-        #                                  constrained_domain=self.pBC)
-        #self.MV     = V * self.Q
-      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
-    else:
-      poly_degree = self.config['velocity']['poly_degree']
-      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
-      self.Q2     = MixedFunctionSpace([self.Q]*2)
-      self.Q3     = MixedFunctionSpace([self.Q]*3)
-      N_T         = self.config['enthalpy']['N_T']
-      self.HV     = MixedFunctionSpace([self.Q]*2*poly_degree) # VELOCITY
-      self.Z      = MixedFunctionSpace([self.Q]*N_T)           # TEMPERATURE
-      self.Q2     = MixedFunctionSpace([self.Q]*2)
-    
+    self.Q2     = MixedFunctionSpace([self.Q, self.Q])
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
 
-    s = "    - function spaces created - "
-    print_text(s, self.color)
-    
-  def set_surface_and_bed(self, S, B):
-    """
-    Set the Functions for the surface <S> and bed <B>.
-    """
-    s = "::: setting the surface and bed functions :::"
-    print_text(s, self.color)
-    self.S = S
-    self.B = B
-    print_min_max(S, 'S')
-    print_min_max(B, 'B')
+    s = "    - fundamental function spaces created - "
+    print_text(s, self.model_color)
   
-  def set_geometry(self, surface, bed, deform=True):
-    """
-    Sets the geometry of the surface and bed of the ice sheet.
-    
-    :param surface : Expression representing the surface of the mesh
-    :param bed     : Expression representing the base of the mesh
-    :param mask    : Expression representing a mask of grounded (0) and 
-                     floating (1) areas of the ice.
-    """
-    s = "::: setting geometry :::"
-    print_text(s, self.color)
-
-    self.S_ex = surface
-    self.B_ex = bed
-    
-    if deform:
-      self.deform_mesh_to_geometry()
-    
-    self.S = interpolate(self.S_ex, self.Q_non_periodic)
-    self.B = interpolate(self.B_ex, self.Q_non_periodic)
-    print_min_max(self.S, 'S')
-    print_min_max(self.B, 'B')
-
-  def deform_mesh_to_geometry(self):
-    """
-    Deforms the mesh to the geometry.
-    """
-    s = "::: deforming mesh to geometry :::"
-    print_text(s, self.color)
-    
-    # transform z :
-    # thickness = surface - base, z = thickness + base
-    # Get the height of the mesh, assumes that the base is at z=0
-    max_height  = self.mesh.coordinates()[:,2].max()
-    min_height  = self.mesh.coordinates()[:,2].min()
-    mesh_height = max_height - min_height
-    
-    s = "    - iterating through %i vertices - " % self.dof
-    print_text(s, self.color)
-    
-    for x in self.mesh.coordinates():
-      x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
-                                      - self.B_ex(x[0],x[1],x[2]) )
-      x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
-
   def set_subdomains(self, ff, cf, ff_acc):
     """
     Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
     to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
     """
     s = "::: setting subdomains :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.ff     = ff
     self.cf     = cf
     self.ff_acc = ff_acc
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
-
-  def calculate_boundaries(self, mask=None, adot=None):
+    
+  def init_S(self, S):
     """
-    Determines the boundaries of the current model mesh
+    Set the Function for the surface <S>. 
     """
-    # default to all grounded ice :
-    if mask == None:
-      mask = Expression('0.0', element=self.Q.ufl_element())
-    
-    # default to all positive accumulation :
-    if adot == None:
-      adot = Expression('1.0', element=self.Q.ufl_element())
-    
-    s = "::: calculating boundaries :::"
-    print_text(s, self.color)
-    
-    # this function contains markers which may be applied to facets of the mesh
-    self.ff      = FacetFunction('size_t', self.mesh,      0)
-    self.ff_acc  = FacetFunction('size_t', self.mesh,      0)
-    self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
-    
-    self.cf      = CellFunction('size_t',  self.mesh,      0)
-    dofmap       = self.Q.dofmap()
-    shf_dofs     = []
-    gnd_dofs     = []
-    
-    tol = 1e-6
-    
-    # iterate through the facets and mark each if on a boundary :
-    #
-    #   2 = high slope, upward facing ................ grounded surface
-    #   3 = grounded high slope, downward facing ..... grounded base
-    #   4 = low slope, upward or downward facing ..... sides
-    #   5 = floating ................................. floating base
-    #   6 = floating ................................. floating surface
-    #   7 = floating sides
-    #
-    # facet for accumulation :
-    #
-    #   1 = high slope, upward facing ................ positive adot
-    s = "    - iterating through %i facets - " % self.num_facets
-    print_text(s, self.color)
-    for f in facets(self.mesh):
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-      adot_xy = adot(x_m, y_m, z_m)
-      
-      if   n.z() >=  tol and f.exterior():
-        if adot_xy > 0:
-          self.ff_acc[f] = 1
-        #if mask_xy > 0:
-        #  self.ff[f] = 6
-        #else:
-        #  self.ff[f] = 2
-        self.ff[f] = 2
-    
-      elif n.z() <= -tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff[f] = 5
-        #else:
-        #  self.ff[f] = 3
-        self.ff[f] = 3
-    
-      elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff[f] = 4
-        else:
-          self.ff[f] = 7
-        #self.ff[f] = 4
-    
-    for f in facets(self.flat_mesh):
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-    
-      if   n.z() >=  tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 6
-        else:
-          self.ff_flat[f] = 2
-    
-      elif n.z() <= -tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 5
-        else:
-          self.ff_flat[f] = 3
-    
-      elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 4
-        else:
-          self.ff_flat[f] = 7
-        #self.ff_flat[f] = 4
-    
-    s = "    - iterating through %i cells - " % self.num_cells
-    print_text(s, self.color)
-    for c in cells(self.mesh):
-      x_m     = c.midpoint().x()
-      y_m     = c.midpoint().y()
-      z_m     = c.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
+    s = "::: initializng surface topography :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.S, S)
+    print_min_max(self.S, 'S')
 
-      if mask_xy > 0:
-        self.cf[c] = 1
-        shf_dofs.extend(dofmap.cell_dofs(c.index()))
-      else:
-        self.cf[c] = 0
-        gnd_dofs.extend(dofmap.cell_dofs(c.index()))
-
-    self.shf_dofs = list(set(shf_dofs))
-    self.gnd_dofs = list(set(gnd_dofs))
-
-    self.ds      = Measure('ds')[self.ff]
-    self.ds_flat = Measure('ds')[self.ff_flat]
-    self.dx      = Measure('dx')[self.cf]
+  def init_B(self, B):
+    """
+    Set the Function for the bed <B>.
+    """
+    s = "::: initializng bed topography :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.B, B)
+    print_min_max(self.B, 'B')
 
   def init_U(self, u, v, w):
     """
     """
     s = "::: initializing velocity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.u, u)
     self.assign_variable(self.v, v)
     self.assign_variable(self.w, w)
@@ -353,19 +158,19 @@ class Model(object):
     print_min_max(self.v, 'v')
     print_min_max(self.w, 'w')
   
-  def init_P(self, P):
+  def init_P(self, p):
     """
     """
     s = "::: initializing pressure :::"
-    print_text(s, self.color)
-    self.assign_variable(self.P, P)
-    print_min_max(self.P, 'P')
+    print_text(s, self.model_color)
+    self.assign_variable(self.p, p)
+    print_min_max(self.p, 'p')
   
   def init_T(self, T):
     """
     """
     s = "::: initializing temperature :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.T, T)
     print_min_max(self.T, 'T')
   
@@ -373,7 +178,7 @@ class Model(object):
     """
     """
     s = "::: initializing water content :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.W, W)
     print_min_max(self.W, 'W')
   
@@ -381,7 +186,7 @@ class Model(object):
     """
     """
     s = "::: initializing basal melt rate :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.Mb, Mb)
     print_min_max(self.Mb, 'Mb')
   
@@ -389,21 +194,15 @@ class Model(object):
     """
     """
     s = "::: initializing accumulation :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.adot, adot)
-    print_min_max(self.adot, 'adot')
-    s = "::: removing junk accumulation :::"
-    print_text(s, self.color)
-    adot_v = self.adot.vector().array()
-    #adot_v[adot_v < -100] = 0
-    self.assign_variable(self.adot, adot_v)
     print_min_max(self.adot, 'adot')
   
   def init_beta(self, beta):
     """
     """
-    s = "::: initializing basal friction coefficient :::"
-    print_text(s, self.color)
+    s = "::: initializing basal traction coefficient :::"
+    print_text(s, self.model_color)
     self.assign_variable(self.beta, beta)
     print_min_max(self.beta, 'beta')
   
@@ -411,7 +210,7 @@ class Model(object):
     """
     """
     s = "::: initializing rate factor over grounded and shelves :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.init_b_shf(b)
     self.init_b_gnd(b)
   
@@ -419,9 +218,7 @@ class Model(object):
     """
     """
     s = "::: initializing rate factor over shelves :::"
-    print_text(s, self.color)
-    if type(self.b_shf) != Function:
-      self.b_shf = Function(self.Q)
+    print_text(s, self.model_color)
     self.assign_variable(self.b_shf, b_shf)
     print_min_max(self.b_shf, 'b_shf')
   
@@ -429,9 +226,7 @@ class Model(object):
     """
     """
     s = "::: initializing rate factor over grounded ice :::"
-    print_text(s, self.color)
-    if type(self.b_gnd) != Function:
-      self.b_gnd = Function(self.Q)
+    print_text(s, self.model_color)
     self.assign_variable(self.b_gnd, b_gnd)
     print_min_max(self.b_gnd, 'b_gnd')
   
@@ -439,7 +234,7 @@ class Model(object):
     """
     """
     s = "::: initializing enhancement factor over grounded and shelves :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.init_E_shf(E)
     self.init_E_gnd(E)
   
@@ -447,7 +242,7 @@ class Model(object):
     """
     """
     s = "::: initializing enhancement factor over shelves :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.E_shf, E_shf)
     print_min_max(self.E_shf, 'E_shf')
   
@@ -455,7 +250,7 @@ class Model(object):
     """
     """
     s = "::: initializing enhancement factor over grounded ice :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.E_gnd, E_gnd)
     print_min_max(self.E_gnd, 'E_gnd')
   
@@ -463,7 +258,7 @@ class Model(object):
     """
     """
     s = "::: initializing viscosity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
   
@@ -471,7 +266,7 @@ class Model(object):
     """
     """
     s = "::: initializing vertically averaged viscosity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.etabar, etabar)
     print_min_max(self.etabar, 'etabar')
   
@@ -479,7 +274,7 @@ class Model(object):
     """
     """
     s = "::: initializing vertically averaged velocity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.ubar, ubar)
     self.assign_variable(self.vbar, vbar)
     self.assign_variable(self.wbar, wbar)
@@ -491,7 +286,7 @@ class Model(object):
     """
     """
     s = "::: initializing surface temperature :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.T_surface, T_s)
     print_min_max(self.T_surface, 'T_surface')
   
@@ -499,7 +294,7 @@ class Model(object):
     """
     """
     s = "::: initializing geothermal heat flux :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.q_geo, q_geo)
     print_min_max(self.q_geo, 'q_geo')
   
@@ -507,7 +302,7 @@ class Model(object):
     """
     """
     s = "::: initializing surface velocity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.u_ob, u_ob)
     self.assign_variable(self.v_ob, v_ob)
     u_v      = self.u_ob.vector().array()
@@ -522,7 +317,7 @@ class Model(object):
     """
     """
     s = "::: initializing thickness :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.H,  H)
     self.assign_variable(self.H0, H)
     print_min_max(self.H, 'H')
@@ -531,7 +326,7 @@ class Model(object):
     """
     """
     s = "::: initializing bounds on thickness :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.H_min, H_min)
     self.assign_variable(self.H_max, H_max)
     print_min_max(self.H_min, 'H_min')
@@ -541,7 +336,7 @@ class Model(object):
     """
     """
     s = "::: initializing balance velocity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.Ubar, Ubar)
     print_min_max(self.Ubar, 'Ubar')
   
@@ -549,7 +344,7 @@ class Model(object):
     """
     """
     s = "::: initializing u lateral boundary condition :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.u_lat, u_lat)
     print_min_max(self.u_lat, 'u_lat')
   
@@ -557,7 +352,7 @@ class Model(object):
     """
     """
     s = "::: initializing v lateral boundary condition :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.v_lat, v_lat)
     print_min_max(self.v_lat, 'v_lat')
   
@@ -565,7 +360,7 @@ class Model(object):
     """
     """
     s = "::: initializing w lateral boundary condition :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.w_lat, w_lat)
     print_min_max(self.w_lat, 'w_lat')
   
@@ -573,7 +368,7 @@ class Model(object):
     """
     """
     s = "::: initializing shelf mask :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     self.assign_variable(self.mask, mask)
     print_min_max(self.mask, 'mask')
     self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
@@ -588,38 +383,6 @@ class Model(object):
     """
     self.params = params
   
-  def get_surface_mesh(self):
-    """
-    Returns the surface of the mesh for this model instance.
-    """
-    s = "::: extracting bed mesh :::"
-    print_text(s, self.color)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
-    for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    return submesh
-
-  def get_bed_mesh(self):
-    """
-    Returns the bed of the mesh for this model instance.
-    """
-    s = "::: extracting bed mesh :::"
-    print_text(s, self.color)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
-    for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    return submesh
-      
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -631,14 +394,13 @@ class Model(object):
     
     """
     s = "::: initializing beta from SIA :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
-    S        = self.S
-    B        = self.B
-    H        = S - B
+    gradS    = grad(self.S)
+    H        = self.S - self.B
     U_s      = Function(Q)
     if U_mag == None:
       U_v = self.U_ob.vector().array()
@@ -646,17 +408,16 @@ class Model(object):
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
     self.assign_variable(U_s, U_v)
-    print_min_max(U_s, 'U_s')
-    S_mag    = sqrt(inner(grad(S), grad(S)) + DOLFIN_EPS)
+    S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < 1e-3] = 1e-3
-    self.betaSIA = Function(Q)
+    self.betaSIA = Function(Q, name='betaSIA')
     self.assign_variable(self.betaSIA, beta_0_v)
     print_min_max(self.betaSIA, 'betaSIA')
     
     self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, 3)
+    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, GAMMA_B_GND)
     bc_beta.apply(self.beta.vector())
     print_min_max(self.beta, 'beta')
       
@@ -671,7 +432,7 @@ class Model(object):
     
     """
     s = "::: initializing new sliding beta from SIA :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
@@ -704,7 +465,7 @@ class Model(object):
     #self.assign_variable(self.beta, beta_0)
     
     self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, beta_0, self.ff, 3)
+    bc_beta = DirichletBC(self.Q, beta_0, self.ff, GAMMA_B_GND)
     bc_beta.apply(self.beta.vector())
     
     #self.betaSIA = Function(Q)
@@ -714,7 +475,7 @@ class Model(object):
     """
     """
     s    = "::: initializing beta from stats :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     
     config = self.config
     q_geo  = self.q_geo
@@ -1000,7 +761,7 @@ class Model(object):
       self.assign_variable(beta0, beta0_v)
     
       self.assign_variable(self.beta, 1e-2)
-      bc_beta = DirichletBC(self.Q, beta0, self.ff, 3)
+      bc_beta = DirichletBC(self.Q, beta0, self.ff, GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
     elif config['mode'] == 'transient':
       self.assign_variable(self.beta, 200.0)
@@ -1012,7 +773,7 @@ class Model(object):
     Init rate-factor b from U_ob. 
     """
     s = "::: initializing b from U_ob :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
    
     x      = self.x
     S      = self.S
@@ -1035,7 +796,7 @@ class Model(object):
     b_f    = TrialFunction(Q)
     phi    = TestFunction(Q)
 
-    epi    = self.BP_strain_rate(U_ob)
+    epi    = self.strain_rate(U_ob)
     ep_xx  = epi[0,0]
     ep_yy  = epi[1,1]
     ep_xy  = epi[0,1]
@@ -1068,7 +829,7 @@ class Model(object):
     Unifies viscosity defined over grounded and shelves to model.eta.
     """
     s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     
     eta_shf = project(self.eta_shf, self.Q)
     eta_gnd = project(self.eta_gnd, self.Q)
@@ -1087,7 +848,7 @@ class Model(object):
     Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     config  = self.config
     Q       = self.Q
     R       = self.R
@@ -1103,10 +864,7 @@ class Model(object):
     E       = self.E
     U       = as_vector([u,v,w])
     
-    if config['velocity']['full_BP'] or config['model_order'] == 'stokes':
-      epsdot = self.effective_strain(U)
-    else:
-      epsdot = self.BP_effective_strain(U)
+    epsdot = self.effective_strain(U)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
     a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
@@ -1143,177 +901,31 @@ class Model(object):
     """
     return the strain-rate tensor of <U>.
     """
-    return 0.5 * (grad(U) + grad(U).T)
+    raiseNotDefined()
 
-  def BP_strain_rate_tensor(self, U):
-    """
-    return the 'Blatter-Pattyn' simplified strain-rate tensor of <U>.
-    """
-    u,v,w = U
-    epi   = 0.5 * (grad(U) + grad(U).T)
-    epi02 = 0.5*u.dx(2)
-    epi12 = 0.5*v.dx(2)
-    epi22 = -u.dx(0) - v.dx(1)  # incompressibility
-    epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02],
-                        [epi[1,0],  epi[1,1],  epi12],
-                        [epi02,     epi12,     epi22]])
-    return epsdot
-    
   def effective_strain(self, U):
     """
     return the effective strain rate squared.
     """
-    epi    = self.strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
+    raiseNotDefined()
     
-    # Second invariant of the strain rate tensor squared
-    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                    + ep_xy**2 + ep_xz**2 + ep_yz**2
-    return epsdot
-    
-  def BP_effective_strain(self, U):
-    """
-    return the BP effective strain rate squared.
-    """
-    epi    = self.BP_strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-             + ep_xy**2 + ep_xz**2 + ep_yz**2
-    return epsdot
-
   def stress_tensor(self):
     """
     return the Cauchy stress tensor.
     """
-    s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color)
-    U   = as_vector([self.u, self.v, self.w])
-    epi = self.strain_rate_tensor(U)
-    dim = self.mesh.ufl_cell().topological_dimension()
-    I   = Identity(dim)
-
-    sigma = 2*self.eta*epi - self.P*I
-    return sigma
-
-  def BP_stress_tensor(self):
-    """
-    return the Cauchy stress tensor.
-    """
-    s   = "::: forming the BP Cauchy stress tensor :::"
-    print_text(s, self.color)
-    U   = as_vector([self.u, self.v, self.w])
-    epi = self.BP_strain_rate_tensor(U)
-    dim = self.mesh.ufl_cell().topological_dimension()
-    I   = Identity(dim)
-
-    sigma = 2*self.eta*epi - self.P*I
-    return sigma
+    raiseNotDefined()
   
-  def calc_BP_pressure(self):
+  def effective_stress(self, U):
     """
-    Calculate the continuous pressure field.
+    return the effective stress squared.
     """
-    s    = "::: calculating pressure :::"
-    print_text(s, self.color)
-    rhoi = self.rhoi
-    g    = self.g
-    S    = self.S
-    x    = self.x
-    eta  = self.eta
-    w    = self.w
-    p    = project(rhoi*g*(S - x[2]) + 2*eta*w.dx(2), self.Q)
-    self.assign_variable(self.P, p)
-    print_min_max(self.P, 'p')
-  
-  def calc_thickness(self):
-    """
-    Calculate the continuous thickness field which increases from 0 at the 
-    surface to the actual thickness at the bed.
-    """
-    s = "::: calculating z-varying thickness :::"
-    print_text(s, self.color)
-    H = project(self.S - self.x[2], self.Q)
-    print_min_max(H, 'H')
-    return H
-  
-  def vert_extrude(self, u, d='up', Q='self'):
-    r"""
-    This extrudes a function <u> vertically in the direction <d> = 'up' or
-    'down'.
-    It does this by formulating a variational problem:
-  
-    :Conditions: 
-    .. math::
-    \frac{\partial v}{\partial z} = 0
-    
-    v|_b = u
-  
-    and solving.  
-    """
-    s = "::: extruding function :::"
-    print_text(s, self.color)
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff  = self.ff
-    phi = TestFunction(Q)
-    v   = TrialFunction(Q)
-    a   = v.dx(2) * phi * dx
-    L   = DOLFIN_EPS * phi * dx
-    bcs = []
-    # extrude bed (ff = 3,5) 
-    if d == 'up':
-      bcs.append(DirichletBC(Q, u, ff, 3))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, 5))  # shelves
-    # extrude surface (ff = 2,6) 
-    elif d == 'down':
-      bcs.append(DirichletBC(Q, u, ff, 2))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, 6))  # shelves
-    v   = Function(Q)
-    solve(a == L, v, bcs)
-    print_min_max(u, 'function to be extruded')
-    print_min_max(v, 'extruded function')
-    return v
+    raiseNotDefined()
   
   def vert_integrate(self, u, d='up', Q='self'):
     """
     Integrate <u> from the bed to the surface.
     """
-    s = "::: vertically integrating function :::"
-    print_text(s, self.color)
-
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff  = self.ff
-    phi = TestFunction(Q)
-    v   = TrialFunction(Q)
-    bcs = []
-    # integral is zero on bed (ff = 3,5) 
-    if d == 'up':
-      bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
-      a      = v.dx(2) * phi * dx
-    # integral is zero on surface (ff = 2,6) 
-    elif d == 'down':
-      bcs.append(DirichletBC(Q, 0.0, ff, 2))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, 6))  # shelves
-      a      = -v.dx(2) * phi * dx
-    L      = u * phi * dx
-    v      = Function(Q)
-    solve(a == L, v, bcs)
-    print_min_max(u, 'vertically integrated function')
-    return v
+    raiseNotDefined()
 
   def calc_vert_average(self, u):
     """
@@ -1322,14 +934,7 @@ class Model(object):
     :param u: Function representing the model's function space
     :rtype:   Dolfin projection and Function of the vertical average
     """
-    H    = self.S - self.B
-    uhat = self.vert_integrate(u, d='up')
-    s = "::: calculating vertical average :::"
-    print_text(s, self.color)
-    ubar = project(uhat/H, self.Q)
-    print_min_max(ubar, 'ubar')
-    ubar = self.vert_extrude(ubar, d='down')
-    return ubar
+    raiseNotDefined()
 
   def calc_misfit(self, integral):
     """
@@ -1341,21 +946,19 @@ class Model(object):
     updates model.misfit with D for plotting.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, self.color)
+    print_text(s % integral, self.model_color)
 
-    Q2     = self.Q2
-    ff     = self.ff
-    U_s    = Function(Q2)
-    U_ob_s = Function(Q2)
+    U_s    = Function(self.Q2)
+    U_ob_s = Function(self.Q2)
     U      = as_vector([self.u,    self.v])
     U_ob   = as_vector([self.u_ob, self.v_ob])
 
     if integral == 'shelves':
-      bc_U    = DirichletBC(self.Q2, U,    ff, 6)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 6)
+      bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_SHF)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_SHF)
     elif integral == 'grounded':
-      bc_U    = DirichletBC(self.Q2, U,    ff, 2)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 2)
+      bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_GND)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_GND)
     
     bc_U.apply(U_s.vector())
     bc_U_ob.apply(U_ob_s.vector())
@@ -1485,7 +1088,7 @@ class Model(object):
     """
     outpath = self.config['output_path']
     s       = "::: saving %s%s.pvd file :::" % (outpath, name)
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     File(outpath + name + '.pvd') << var
 
   def save_xml(self, var, name):
@@ -1495,7 +1098,7 @@ class Model(object):
     """
     outpath = self.config['output_path']
     s       = "::: saving %s%s.xml file :::" % (outpath, name)
-    print_text(s, self.color)
+    print_text(s, self.model_color)
     File(outpath + '/' +  name + '.xml') << var
 
   def init_viscosity_mode(self, mode):
@@ -1512,7 +1115,7 @@ class Model(object):
 
     """
     s = "::: initializing viscosity :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
 
     config = self.config
 
@@ -1527,34 +1130,27 @@ class Model(object):
     #
     if   mode == 'isothermal':
       s  = "    - using isothermal visosity formulation -"
-      print_text(s, self.color)
-      print_min_max(self.A0, 'A')
-      A0         = self.A0
-      n          = self.n
-      epsdot     = self.epsdot
-      eps_reg    = self.eps_reg
-      b          = A0**(-1/n)
-      self.b_shf = b
-      self.b_gnd = b
-      print_min_max(self.b_shf, 'b')
+      print_text(s, self.model_color)
+      A0           = self.A0
+      n            = self.n
+      epsdot       = self.epsdot
+      eps_reg      = self.eps_reg
+      b            = A0**(-1/n)
+      self.b_shf   = b
+      self.b_gnd   = b
       self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
       self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
+      print_min_max(self.A0, 'A')
+      print_min_max(self.b,  'b')
     
     elif mode == 'linear':
       s     = "    - using linear viscosity formulation -"
-      print_text(s, self.color)
-      n         = self.n
-      eps_reg   = self.eps_reg
-      u_cpy     = self.u.copy(True)
-      v_cpy     = self.v.copy(True)
-      w_cpy     = self.w.copy(True)
-      U         = as_vector([u_cpy, v_cpy, w_cpy])
-      if config['velocity']['full_BP'] or config['model_order'] == 'stokes':
-        epsdot  = self.effective_strain(U)
-      else:
-        epsdot  = self.BP_effective_strain(U)
+      print_text(s, self.model_color)
+      n            = self.n
+      eps_reg      = self.eps_reg
+      epsdot       = self.effective_strain(self.U3.copy(True))
       self.eta_shf = 0.5 * self.b_shf * epsdot**((1-n)/(2*n))
       self.eta_gnd = 0.5 * self.b_gnd * epsdot**((1-n)/(2*n))
       self.Vd_shf  = 2 * self.eta_shf * self.epsdot
@@ -1562,17 +1158,17 @@ class Model(object):
     
     elif mode == 'full':
       s     = "    - using full viscosity formulation -"
-      print_text(s, self.color)
-      n       = self.n
-      epsdot  = self.epsdot
-      eps_reg = self.eps_reg
-      T       = self.T
-      W       = self.W
-      R       = self.R
-      E_shf   = self.E_shf
-      E_gnd   = self.E_gnd
-      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      print_text(s, self.model_color)
+      n            = self.n
+      epsdot       = self.epsdot
+      eps_reg      = self.eps_reg
+      T            = self.T
+      W            = self.W
+      R            = self.R
+      E_shf        = self.E_shf
+      E_gnd        = self.E_gnd
+      a_T          = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T          = conditional( lt(T, 263.15), 6e4,          13.9e4)
       self.b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
       self.b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
       self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
@@ -1586,128 +1182,13 @@ class Model(object):
       print_text(s, 'red', 1)
       sys.exit(1)
     
-  def init_hybrid_variables(self):
-    """
-    """
-    # hybrid mass-balance :
-    self.H             = Function(self.Q)
-    self.H0            = Function(self.Q)
-    self.ubar_c        = Function(self.Q)
-    self.vbar_c        = Function(self.Q)
-    self.H_min         = Function(self.Q)
-    self.H_max         = Function(self.Q)
-
-    # hybrid energy-balance :
-    N_T                = self.config['enthalpy']['N_T']
-    self.deltax        = 1./(N_T-1.)
-    self.sigmas        = np.linspace(0, 1, N_T, endpoint=True)
-    self.T_            = Function(self.Z)
-    self.T0_           = Function(self.Z)
-    self.Ts            = Function(self.Q)
-    self.Tb            = Function(self.Q)
-    
-    # hybrid momentum :
-    self.U             = Function(self.HV)
-    self.u_s           = Function(self.Q)
-    self.v_s           = Function(self.Q)
-    self.w_s           = Function(self.Q)
-    self.u_b           = Function(self.Q)
-    self.v_b           = Function(self.Q)
-    self.w_b           = Function(self.Q)
-    
-  def init_SSA_variables(self):
-    """
-    """
-    s = "    - initializing BP variables -"
-    print_text(s, self.color)
-    
-    self.U   = Function(self.Q2)
-    self.dU  = TrialFunction(self.Q2)
-    self.Phi = TestFunction(self.Q2)
-    self.Lam = Function(self.Q2)
-
-    self.etabar = Function(self.Q)
-    self.ubar   = Function(self.Q)
-    self.vbar   = Function(self.Q)
-    self.wbar   = Function(self.Q)
-    
-    #self.epsdot = self.effective_strain(self.U)
-    #self.init_higher_order_variables()
-
-  def init_BP_variables(self):
-    """
-    """
-    if self.config['velocity']['full_BP']:
-      s = "    - initializing full BP variables -"
-      self.U   = Function(self.Q3)
-      self.dU  = TrialFunction(self.Q3)
-      self.Phi = TestFunction(self.Q3)
-      self.Lam = Function(self.Q3)
-    else :
-      s = "    - initializing BP variables -"
-      self.U   = Function(self.Q2)
-      self.dU  = TrialFunction(self.Q2)
-      self.Phi = TestFunction(self.Q2)
-      self.Lam = Function(self.Q2)
-    print_text(s, self.color)
-    
-    # Second invariant of the strain rate tensor squared
-    if self.config['velocity']['full_BP']:
-      self.epsdot = self.effective_strain(self.U)
-    else:
-      U_t = as_vector([self.U[0], self.U[1], 0.0])
-      self.epsdot = self.BP_effective_strain(U_t)
-    self.init_higher_order_variables()
-
-  def init_stokes_variables(self):
-    """
-    """
-    s = "    - initializing full-stokes variables -"
-    print_text(s, self.color)
-    # velocity :
-    if self.config['use_dukowicz']:
-      self.U   = Function(self.Q4)
-      self.dU  = TrialFunction(self.Q4)
-      self.Phi = TestFunction(self.Q4)
-      self.Lam = Function(self.Q4)
-      U        = as_vector([self.U[0], self.U[1], self.U[2]])
-    else:
-      self.U   = Function(self.MV)
-      self.dU  = TrialFunction(self.MV)
-      self.Phi = TestFunction(self.MV)
-      self.Lam = Function(self.MV)
-      U, P     = split(self.U)
-    
-    # Second invariant of the strain rate tensor squared
-    self.epsdot = self.effective_strain(U)
-    self.init_higher_order_variables()
-
-  def init_higher_order_variables(self):
-    """
-    """
-    s = "    - initializing higher-order variables -"
-    print_text(s, self.color)
-
-    # sigma coordinate :
-    self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
-    print_min_max(self.sigma, 'sigma')
-
-    # free surface model :
-    self.Shat          = Function(self.Q_flat)
-    self.dSdt          = Function(self.Q_flat)
-    self.ahat          = Function(self.Q_flat)
-    self.uhat_f        = Function(self.Q_flat)
-    self.vhat_f        = Function(self.Q_flat)
-    self.what_f        = Function(self.Q_flat)
-    self.M             = Function(self.Q_flat)
-    
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
     s = "::: initializing variables :::"
-    print_text(s, self.color)
+    print_text(s, self.model_color)
 
     config = self.config
     
@@ -1721,119 +1202,64 @@ class Model(object):
     self.N             = FacetNormal(self.mesh)
 
     # shelf mask (1 if shelf) :
-    self.mask          = Function(self.Q)
-    
-    # Depth below sea level :
-    class Depth(Expression):
-      def eval(self, values, x):
-        values[0] = min(0, x[2])
-    self.D = Depth(element=self.Q.ufl_element())
+    self.mask          = Function(self.Q, name='mask')
 
+    # topography :
+    self.S             = Function(self.Q_non_periodic)
+    self.B             = Function(self.Q_non_periodic)
+    
+    # velocity observations :
+    self.U_ob          = Function(self.Q_non_periodic)
+    self.u_ob          = Function(self.Q_non_periodic)
+    self.v_ob          = Function(self.Q_non_periodic)
+    
     # Velocity model
-    self.u             = Function(self.Q)
-    self.v             = Function(self.Q)
-    self.w             = Function(self.Q)
-    self.P             = Function(self.Q)
-    self.beta          = Function(self.Q)
-    self.mhat          = Function(self.Q)
-    self.E             = Function(self.Q)
-    self.E_gnd         = Function(self.Q)
-    self.E_shf         = Function(self.Q)
-    self.eta           = Function(self.Q)
-    self.u_ob          = Function(self.Q)
-    self.v_ob          = Function(self.Q)
-    self.U_ob          = Function(self.Q)
-    self.u_lat         = Function(self.Q)
-    self.v_lat         = Function(self.Q)
-    self.w_lat         = Function(self.Q)
+    self.p             = Function(self.Q, name='p')
+    self.beta          = Function(self.Q, name='beta')
+    self.E             = Function(self.Q, name='E')
+    self.E_gnd         = Function(self.Q, name='E_gnd')
+    self.E_shf         = Function(self.Q, name='E_shf')
+    self.b             = Function(self.Q, name='b')
+    self.b_gnd         = Function(self.Q, name='b_gnd')
+    self.b_shf         = Function(self.Q, name='b_shf')
+    self.u_lat         = Function(self.Q, name='u_lat')
+    self.v_lat         = Function(self.Q, name='v_lat')
+    self.w_lat         = Function(self.Q, name='w_lat')
     
     # Enthalpy model
-    self.theta_surface = Function(self.Q)
-    self.theta_float   = Function(self.Q)
-    self.theta         = Function(self.Q)
-    self.theta0        = Function(self.Q) # initial enthalpy
-    self.T             = Function(self.Q)
-    self.q_geo         = Function(self.Q)
-    self.W0            = Function(self.Q)
-    self.W             = Function(self.Q)
-    self.Mb            = Function(self.Q)
-    self.thetahat      = Function(self.Q) # Midpoint values
-    self.uhat          = Function(self.Q) # Midpoint values
-    self.vhat          = Function(self.Q) # Midpoint values
-    self.what          = Function(self.Q) # Midpoint values
-    self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.T_melt        = Function(self.Q) # pressure-melting point
-    self.kappa         = Function(self.Q)
-    self.Kcoef         = Function(self.Q)
-
-    # Age model   
-    self.age           = Function(self.Q)
-    self.a0            = Function(self.Q)
-
-    # Surface climate model
-    self.smb           = Function(self.Q)
-    self.precip        = Function(self.Q)
-    self.T_surface     = Function(self.Q)
-
+    self.T             = Function(self.Q, name='T')
+    self.q_geo         = Function(self.Q, name='q_geo')
+    self.W             = Function(self.Q, name='W')
+    self.Mb            = Function(self.Q, name='Mb')
+    self.T_melt        = Function(self.Q, name='T_melt') # pressure-melting
+    self.T_surface     = Function(self.Q, name='T_surface')
+    
     # Adjoint model
-    self.adot          = Function(self.Q)
     self.adj_f         = 0.0              # objective function value at end
     self.misfit        = 0.0              # ||U - U_ob||
 
     # Balance Velocity model :
-    self.kappa         = Function(self.Q)
-    self.adot          = Function(self.Q)
-    self.dSdx          = Function(self.Q)
-    self.dSdy          = Function(self.Q)
-    self.d_x           = Function(self.Q)
-    self.d_y           = Function(self.Q)
-    self.Ubar          = Function(self.Q)
-    self.Nx            = Function(self.Q)
-    self.Ny            = Function(self.Q)
+    self.adot          = Function(self.Q, name='adot')
+    self.dSdx          = Function(self.Q, name='dSdx')
+    self.dSdy          = Function(self.Q, name='dSdy')
+    self.d_x           = Function(self.Q, name='d_x')
+    self.d_y           = Function(self.Q, name='d_y')
+    self.Ubar          = Function(self.Q, name='Ubar')
+    self.Nx            = Function(self.Q, name='Nx')
+    self.Ny            = Function(self.Q, name='Ny')
     
     # Stokes-balance model :
-    self.u_s           = Function(self.Q)
-    self.u_t           = Function(self.Q)
-    self.F_id          = Function(self.Q)
-    self.F_jd          = Function(self.Q)
-    self.F_ib          = Function(self.Q)
-    self.F_jb          = Function(self.Q)
-    self.F_ip          = Function(self.Q)
-    self.F_jp          = Function(self.Q)
-    self.F_ii          = Function(self.Q)
-    self.F_ij          = Function(self.Q)
-    self.F_iz          = Function(self.Q)
-    self.F_ji          = Function(self.Q)
-    self.F_jj          = Function(self.Q)
-    self.F_jz          = Function(self.Q)
-    self.tau_id        = Function(self.Q)
-    self.tau_jd        = Function(self.Q)
-    self.tau_ib        = Function(self.Q)
-    self.tau_jb        = Function(self.Q)
-    self.tau_ip        = Function(self.Q)
-    self.tau_jp        = Function(self.Q)
-    self.tau_ii        = Function(self.Q)
-    self.tau_ij        = Function(self.Q)
-    self.tau_iz        = Function(self.Q)
-    self.tau_ji        = Function(self.Q)
-    self.tau_jj        = Function(self.Q)
-    self.tau_jz        = Function(self.Q)
-    
-    if   config['model_order'] == 'stokes':
-      self.init_stokes_variables()
-    elif config['model_order'] == 'BP':
-      self.init_BP_variables()
-    elif config['model_order'] == 'SSA':
-      self.init_SSA_variables()
-    elif config['model_order'] == 'L1L2':
-      self.init_hybrid_variables()
-    else:
-      s = "    - PLEASE SPECIFY A MODEL ORDER; MAY BE 'stokes', 'BP', " + \
-          "SSA, or 'L1L2' -"
-      print_text(s, 'red', 1)
-      sys.exit(1)
-
-    
-
+    self.u_s           = Function(self.Q, name='u_s')
+    self.u_t           = Function(self.Q, name='u_t')
+    self.tau_id        = Function(self.Q, name='tau_id')
+    self.tau_jd        = Function(self.Q, name='tau_jd')
+    self.tau_ib        = Function(self.Q, name='tau_ib')
+    self.tau_jb        = Function(self.Q, name='tau_jb')
+    self.tau_ip        = Function(self.Q, name='tau_ip')
+    self.tau_jp        = Function(self.Q, name='tau_jp')
+    self.tau_ii        = Function(self.Q, name='tau_ii')
+    self.tau_ij        = Function(self.Q, name='tau_ij')
+    self.tau_ji        = Function(self.Q, name='tau_ji')
+    self.tau_jj        = Function(self.Q, name='tau_jj')
 
 

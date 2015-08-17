@@ -613,10 +613,11 @@ class DataFactory(object):
     H    = array(data.variables['IceThickness'][:])
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['LandMask'][:])
-    
-    #S[H < thklim] = B[H < thklim] + thklim
-    #H[H < thklim] = thklim
-    #B             = S - H
+   
+    H[H == -9999.0] = 0.0 # remove the junk data. 
+    S[H < thklim] = B[H < thklim] + thklim
+    H[H < thklim] = thklim
+    B             = S - H
 
     # extents of domain :
     east  = max(x)

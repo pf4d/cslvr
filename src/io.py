@@ -14,6 +14,7 @@ from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
                               File
+from dolfin_adjoint    import *
 from pyproj            import Proj, transform
 from colored           import fg, attr
 
@@ -515,6 +516,18 @@ def print_min_max(u, title, color='yellow'):
     print_text(er, 'red', 1)
 
 
+def get_text(text, color='white', atrb=0):
+  """
+  Returns text <text> from calling class <cl> for later printing.
+  """
+  if MPI.rank(mpi_comm_world())==0:
+    if atrb != 0:
+      text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))
+    else:
+      text = ('%s' + text + '%s') % (fg(color), attr(0))
+    return text
+
+
 def print_text(text, color='white', atrb=0):
   """
   Print text <text> from calling class <cl> to the screen.
@@ -525,5 +538,6 @@ def print_text(text, color='white', atrb=0):
     else:
       text = ('%s' + text + '%s') % (fg(color), attr(0))
     print text
+
 
 

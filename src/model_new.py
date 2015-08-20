@@ -1,6 +1,5 @@
 from fenics         import *
 from dolfin_adjoint import *
-from helper         import default_config
 from io             import print_text, print_min_max
 import numpy              as np
 import physical_constants as pc
@@ -21,17 +20,78 @@ class Model(object):
   GAMMA_D     = 6   # basin divides
   GAMMA_T     = 7   # terminus
 
-  def __init__(self, config=None):
+  def __init__(self, out_dir='./results/'):
     """
     Create and instance of the model.
     """
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
-    if config == None:
-      self.config = default_config()
-    else:
-      self.config = config
+    self.out_dir = out_dir
     self.MPI_rank = MPI.rank(mpi_comm_world())
     self.model_color = '148'
+    
+    spy = 31556926.0
+    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * kg/a^3
+
+    # Constants :
+    self.r       = Constant(0.0)
+    self.r.rename('r', 'thickness exponent in sliding law')
+
+    self.eps_reg = Constant(1e-15)
+    self.eps_reg.rename('eps_reg', 'strain rate regularization parameter')
+
+    self.n       = Constant(3.0)
+    self.n.rename('n', 'viscosity nonlinearity parameter')
+
+    self.spy     = Constant(spy)
+    self.spy.rename('spy', 'seconds per year')
+
+    self.A0      = Constant(1e-16)
+    self.A0.rename('A0', 'flow rate factor')
+
+    self.rhoi    = Constant(917)
+    self.rhoi.rename('rhoi', 'ice density')
+
+    self.rhow    = Constant(1000)
+    self.rhow.rename('rhow', 'water density')
+
+    self.g       = Constant(9.81)
+    self.g.rename('g', 'gravitational acceleration')
+
+    self.a0      = Constant(5.45e10)
+    self.a0.rename('a0', 'ice hardness limit')
+
+    self.Q0      = Constant(13.9e4)
+    self.Q0.rename('Q0', 'ice activation energy')
+
+    self.R       = Constant(8.314)
+    self.R.rename('R', 'universal gas constant')
+
+    self.ki      = Constant(2.1)
+    self.ki.rename('ki', 'thermal conductivity of ice')
+
+    self.kw      = Constant(0.561)
+    self.kw.rename('kw', 'thermal conductivity of water')
+
+    self.ci      = Constant(2009.0)
+    self.ci.rename('ci', 'heat capacity of ice')
+    
+    self.cw      = Constant(4217.6)
+    self.cw.rename('cw', 'Heat capacity of water at 273K')
+
+    self.L       = Constant(3.35e5)
+    self.L.rename('L', 'latent heat of ice')
+
+    self.ghf     = Constant(ghf)
+    self.ghf.rename('ghf', 'geothermal heat flux')
+
+    self.gamma   = Constant(8.71e-4)
+    self.gamma.rename('gamma', 'pressure melting point depth dependence')
+
+    self.nu      = Constant(3.5e3)
+    self.nu.rename('nu', 'moisture diffusivity')
+
+    self.T_w     = Constant(273.15)
+    self.T_w.rename('T_w', 'Triple point of water')
 
   def generate_pbc(self):
     """
@@ -80,6 +140,7 @@ class Model(object):
           y[2] = x[2]
 
     self.pBC = PeriodicBoundary()
+    self.use_periodic_boundaries = True
 
   def set_mesh(self, mesh):
     """
@@ -94,16 +155,21 @@ class Model(object):
     Determines the boundaries of the current model mesh
     """
     raiseNotDefined()
-
-  def generate_function_spaces(self):
+  
+  def set_out_dir(self, out_dir):
     """
-    Generates the appropriate finite-element function spaces from parameters
-    specified in the config file for the model.
+    Set the output directory to something new.
+    """
+    self.out_dir = out_dir
+
+  def generate_function_spaces(self, use_periodic=False):
+    """
+    Generates the finite-element function spaces used by all children of model.
     """
     s = "::: generating fundamental function spaces :::"
     print_text(s, self.model_color)
 
-    if self.config['periodic_boundary_conditions']:
+    if use_periodic:
       self.generate_pbc()
     else:
       self.pBC = None
@@ -219,6 +285,8 @@ class Model(object):
     """
     s = "::: initializing rate factor over shelves :::"
     print_text(s, self.model_color)
+    if type(self.b_shf) != Function:
+      self.b_shf = Function(self.Q, name='b_shf')
     self.assign_variable(self.b_shf, b_shf)
     print_min_max(self.b_shf, 'b_shf')
   
@@ -227,8 +295,27 @@ class Model(object):
     """
     s = "::: initializing rate factor over grounded ice :::"
     print_text(s, self.model_color)
+    if type(self.b_gnd) != Function:
+      self.b_gnd = Function(self.Q, name='b_gnd')
     self.assign_variable(self.b_gnd, b_gnd)
     print_min_max(self.b_gnd, 'b_gnd')
+    
+  def init_full_b(self):
+    """
+    """
+    s = "::: initializing temp-dependent rate factor :::"
+    print_text(s, self.model_color)
+    n            = self.n
+    eps_reg      = self.eps_reg
+    T            = self.T
+    W            = self.W
+    R            = self.R
+    E_shf        = self.E_shf
+    E_gnd        = self.E_gnd
+    a_T          = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T          = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    self.b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    self.b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
   
   def init_E(self, E):
     """
@@ -374,15 +461,6 @@ class Model(object):
     self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
     self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
 
-  def set_parameters(self, params):
-    """
-    Sets the model's dictionary of parameters
-    
-    :param params: :class:`~src.physical_constants.IceParameters` object 
-       containing model-relavent parameters
-    """
-    self.params = params
-  
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -767,8 +845,23 @@ class Model(object):
       self.assign_variable(self.beta, 200.0)
     
     print_min_max(self.beta, 'beta0')
+ 
+  def update_stats_beta(self):
+    """
+    Re-compute the statistical friction field and save into model.beta.
+    """
+    s    = "::: updating statistical beta :::"
+    print_text(s, self.D3Model_color)
+    beta   = project(self.beta_f, self.Q, annotate=False)
+    beta_v = beta.vector().array()
+    ##betaSIA_v = self.betaSIA.vector().array()
+    ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+    beta_v[beta_v < 0.0]    = 0.0
+    #beta_v[beta_v > 2500.0] = 2500.0
+    self.assign_variable(self.beta, beta_v)
+    print_min_max(self.beta, 'beta')
      
-  def init_b(self, b, U_ob, gradS):
+  def init_b_SIA(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """
@@ -849,7 +942,6 @@ class Model(object):
     """
     s     = "::: calculating viscosity :::"
     print_text(s, self.model_color)
-    config  = self.config
     Q       = self.Q
     R       = self.R
     T       = self.T
@@ -864,7 +956,7 @@ class Model(object):
     E       = self.E
     U       = as_vector([u,v,w])
     
-    epsdot = self.effective_strain(U)
+    epsdot = self.effective_strain_rate(U)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
     a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
@@ -897,13 +989,13 @@ class Model(object):
     self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
 
-  def strain_rate_tensor(self, U):
+  def strain_rate_tensor(self):
     """
     return the strain-rate tensor of <U>.
     """
     raiseNotDefined()
 
-  def effective_strain(self, U):
+  def effective_strain_rate(self, U):
     """
     return the effective strain rate squared.
     """
@@ -1057,7 +1149,8 @@ class Model(object):
       u.vector().apply('insert')
     
     elif isinstance(var, Expression) or isinstance(var, Constant)  \
-         or isinstance(var, GenericVector) or isinstance(var, Function):
+         or isinstance(var, GenericVector) or isinstance(var, Function) \
+         or isinstance(var, dolfin.functions.function.Function):
       u.interpolate(var)
 
     elif isinstance(var, str):
@@ -1069,7 +1162,7 @@ class Model(object):
            " int, Vector, Expression, or string path to .xml, not \n" + \
            "%s.  Replacing object entirely\n" + \
            "*************************************************************"
-      print_text(s % type(var) , 'red')
+      print_text(s % type(var) , 'red', 1)
       u = var
 
   def globalize_parameters(self, namespace=None):
@@ -1084,104 +1177,21 @@ class Model(object):
   def save_pvd(self, var, name):
     """
     Save a <name>.pvd file of the FEniCS Function <var> to this model's log 
-    directory specified by the config['output_path'] field.
+    directory specified by the self.out_dir.
     """
-    outpath = self.config['output_path']
-    s       = "::: saving %s%s.pvd file :::" % (outpath, name)
+    s       = "::: saving %s%s.pvd file :::" % (self.out_dir, name)
     print_text(s, self.model_color)
-    File(outpath + name + '.pvd') << var
+    File(self.out_dir + name + '.pvd') << var
 
   def save_xml(self, var, name):
     """
     Save a <name>.xml file of the FEniCS Function <var> to this model's log 
-    directory specified by the config['output_path'] field.
+    directory specified by model.out_dir.
     """
-    outpath = self.config['output_path']
-    s       = "::: saving %s%s.xml file :::" % (outpath, name)
+    s       = "::: saving %s%s.xml file :::" % (self.out_dir, name)
     print_text(s, self.model_color)
-    File(outpath + '/' +  name + '.xml') << var
-
-  def init_viscosity_mode(self, mode):
-    """
-    Initialize the rate-factor b, viscosit eta, and viscous dissipation term 
-    used by the Enthalpy and Dukowicz velocity solvers.  The values of <mode>
-    may be :
-    
-      'isothermal' :  use the values of model.A0 for b = A0^{-1/n}
-      'linear'     :  use the values in the current model.u, model.v, 
-                      and model.w to form the viscosity; requires that b has 
-                      been initialized previously
-      'full'       :  use the full temperature-dependent rate factor.
-
-    """
-    s = "::: initializing viscosity :::"
-    print_text(s, self.model_color)
-
-    config = self.config
-
-    # Set the value of b, the temperature dependent ice hardness parameter,
-    # using the most recently calculated temperature field.
-    #
-    #   eta = visosity,
-    #   b   = rate factor
-    #   Vd  = viscous dissipation
-    #   shf = volume over shelves
-    #   gnd = volume over grounded ice
-    #
-    if   mode == 'isothermal':
-      s  = "    - using isothermal visosity formulation -"
-      print_text(s, self.model_color)
-      A0           = self.A0
-      n            = self.n
-      epsdot       = self.epsdot
-      eps_reg      = self.eps_reg
-      b            = A0**(-1/n)
-      self.b_shf   = b
-      self.b_gnd   = b
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
-      print_min_max(self.A0, 'A')
-      print_min_max(self.b,  'b')
-    
-    elif mode == 'linear':
-      s     = "    - using linear viscosity formulation -"
-      print_text(s, self.model_color)
-      n            = self.n
-      eps_reg      = self.eps_reg
-      epsdot       = self.effective_strain(self.U3.copy(True))
-      self.eta_shf = 0.5 * self.b_shf * epsdot**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * epsdot**((1-n)/(2*n))
-      self.Vd_shf  = 2 * self.eta_shf * self.epsdot
-      self.Vd_gnd  = 2 * self.eta_gnd * self.epsdot
-    
-    elif mode == 'full':
-      s     = "    - using full viscosity formulation -"
-      print_text(s, self.model_color)
-      n            = self.n
-      epsdot       = self.epsdot
-      eps_reg      = self.eps_reg
-      T            = self.T
-      W            = self.W
-      R            = self.R
-      E_shf        = self.E_shf
-      E_gnd        = self.E_gnd
-      a_T          = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T          = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      self.b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      self.b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
-    
-    else:
-      s = "    - ACCEPTABLE CHOICES FOR VISCOSITY ARE 'linear', " + \
-          "'isothermal', OR 'full' -"
-      print_text(s, 'red', 1)
-      sys.exit(1)
-    
+    File(self.out_dir + '/' +  name + '.xml') << var
+  
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -1189,12 +1199,6 @@ class Model(object):
     """
     s = "::: initializing variables :::"
     print_text(s, self.model_color)
-
-    config = self.config
-    
-    # initialize constants and make them globally available :
-    self.set_parameters(pc.IceParameters())
-    self.params.globalize_parameters(self)
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
@@ -1205,13 +1209,13 @@ class Model(object):
     self.mask          = Function(self.Q, name='mask')
 
     # topography :
-    self.S             = Function(self.Q_non_periodic)
-    self.B             = Function(self.Q_non_periodic)
+    self.S             = Function(self.Q_non_periodic, name='S')
+    self.B             = Function(self.Q_non_periodic, name='B')
     
     # velocity observations :
-    self.U_ob          = Function(self.Q_non_periodic)
-    self.u_ob          = Function(self.Q_non_periodic)
-    self.v_ob          = Function(self.Q_non_periodic)
+    self.U_ob          = Function(self.Q_non_periodic, name='U_ob')
+    self.u_ob          = Function(self.Q_non_periodic, name='u_ob')
+    self.v_ob          = Function(self.Q_non_periodic, name='v_ob')
     
     # Velocity model
     self.p             = Function(self.Q, name='p')

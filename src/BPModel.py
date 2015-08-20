@@ -89,6 +89,18 @@ class BPModel(D3Model):
 
     U_t         = as_vector([self.U[0], self.U[1], 0.0])
     self.epsdot = self.effective_strain(U_t)
+
+  def default_nonlin_solver_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    nparams = {'linear_solver'            : 'cg',
+               'preconditioner'           : 'hypre_amg',
+               'relative_tolerance'       : 1e-8,
+               'relaxation_parameter'     : 1.0,
+               'maximum_iterations'       : 25,
+               'error_on_nonconvergence'  : False}
+    return {'newton_solver' : nparams}
     
   def init_momentum(self):
     """ 
@@ -266,11 +278,14 @@ class BPModel(D3Model):
     self.assz.assign(self.w, self.wf)
     print_min_max(self.wf, 'w')
     
-  def solve_momentum(self, annotate=True):
+  def solve_momentum(self, annotate=True, params=None):
     """ 
     Perform the Newton solve of the first order equations 
     """
     config = self.config
+
+    if params == None:
+      params = self.default_nonlin_solver_params()
     
     # solve nonlinear system :
     params = config['velocity']['newton_params']
@@ -283,8 +298,7 @@ class BPModel(D3Model):
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
-          annotate=annotate)
-    #      solver_parameters = params)
+          annotate=annotate, solver_parameters = params)
     u, v = self.U.split()
 
     #self.assign_variable(self.u, u)
@@ -293,6 +307,11 @@ class BPModel(D3Model):
     self.assy.assign(self.v, v)
 
     print_min_max(self.U, 'U')
+      
+    if config['velocity']['solve_vert_velocity']:
+      self.solve_vert_velocity()
+    if config['velocity']['solve_pressure']:
+      self.solve_pressure()
 
 
 

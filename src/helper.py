@@ -548,14 +548,13 @@ def default_nonlin_solver_params():
   """ 
   Returns a set of default solver parameters that yield good performance
   """
-  stokes_params = NonlinearVariationalSolver.default_parameters()
-  #stokes_params['newton_solver']['maximum_iterations']      = 25
-  #stokes_params['newton_solver']['error_on_nonconvergence'] = True
-  #stokes_params['newton_solver']['relaxation_parameter']    = 0.7
-  #stokes_params['newton_solver']['method']                  = 'lu'
-  #stokes_params['newton_solver']['relative_tolerance']      = 1e-3
-  #stokes_params['newton_solver']['report']                  = True
-  return stokes_params
+  nparams = {'linear_solver'            : 'cg',
+             'preconditioner'           : 'hypre_amg',
+             'relative_tolerance'       : 1e-8,
+             'relaxation_parameter'     : 1.0,
+             'maximum_iterations'       : 25,
+             'error_on_nonconvergence'  : False}
+  return {'newton_solver' : nparams}
 
 
 def default_ffc_options():
@@ -609,7 +608,7 @@ def default_config():
                'r'                   : 0.0,
                'E'                   : 1.0,
                'use_lat_bcs'         : False,
-               'calc_pressure'       : False,
+               'solve_pressure'      : False,
                'transient_beta'      : 'na',
              },
              'energy' : 

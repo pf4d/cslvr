@@ -54,7 +54,7 @@ class MomentumBP(Momentum):
   """				
   """
   def __init__(self, model, solve_params=None,
-               linear=False, use_lat_bcs=False):
+               linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     Initializes the class's variables to default values that are then set
     by the individually created model.
@@ -184,7 +184,9 @@ class MomentumBP(Momentum):
                  + Constant(DOLFIN_EPS) * v * psi * dFlt
     
     if (not model.use_periodic_boundaries 
-        and not use_lat_bc and use_pressure_bc):
+        and not use_lat_bcs and use_pressure_bc):
+      s = "    - using cliff-pressure boundary condition -"
+      print_text(s, self.color())
       self.mom_F -= f_w * (N[0]*phi + N[1]*psi) * dSde
     
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
@@ -204,7 +206,7 @@ class MomentumBP(Momentum):
 
       self.mom_bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 7))
       self.mom_bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 7))
-      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, 4)
+      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, 7)
     
     self.U       = U 
     self.wf      = wf
@@ -382,10 +384,13 @@ class MomentumBP(Momentum):
     if params['solve_pressure']:
       self.solve_pressure()
   
-  def get_obj_ftn(self, kind='log', integral=2, g1=0.01, g2=1000):
+  def form_obj_ftn(self, kind='log', integral=2, g1=0.01, g2=1000):
     """
-    Returns an objective functional for use with adjoint.
+    Forms and returns an objective functional for use with adjoint.
+    Saves to self.J.
     """
+    self.obj_ftn_type = kind   # need to save this for printing values.
+    
     model    = self.model
 
     dGamma   = model.ds(integral)
@@ -412,6 +417,9 @@ class MomentumBP(Momentum):
       J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
       J2  = g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
+      self.J1  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
+      self.J2  = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
       J   = J1  + J2
       s   = "::: getting log/linear hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
@@ -422,12 +430,16 @@ class MomentumBP(Momentum):
       print_text(s, 'red', 1)
       sys.exit(1)
     print_text(s, self.color())
+    self.J = J
     return J
 
-  def get_reg_ftn(self, c, kind='Tikhonov', integral=2, alpha=1.0):
+  def form_reg_ftn(self, c, kind='Tikhonov', integral=2, alpha=1.0):
     """
-    Returns a regularization functional for used with adjoint.
+    Forms and returns regularization functional for used with adjoint, saved to 
+    self.Reg.
     """
+    self.alpha = alpha   # need to save this for printing values.
+
     dR = self.model.ds(integral)
     
     # form regularization term 'R' :
@@ -435,15 +447,28 @@ class MomentumBP(Momentum):
       s    =   ">>> VALID REGULARIZATIONS ARE 'TV' AND 'Tikhonov' <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
-    if kind == 'TV':
+    elif kind == 'TV':
       R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
-      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
     elif kind == 'Tikhonov':
       R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
-      Rp = 0.5 * inner(grad(c), grad(c)) * dR
     s   = "::: forming %s regularization with parameter alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
+    self.Reg = R
     return R
+ 
+  def print_eval_ftns(self):
+    """
+    Used to facilitate printing the objective function in adjoint solves.
+    """
+    if self.obj_ftn_type == 'log_lin_hybrid':
+      J1 = assemble(self.J1)
+      J2 = assemble(self.J2)
+      print_min_max(J1, 'J1')
+      print_min_max(J2, 'J2')
+    R = assemble(self.Reg)
+    J = assemble(self.J)
+    print_min_max(R, 'R')
+    print_min_max(J, 'J')
     
   def Lagrangian(self):
     """

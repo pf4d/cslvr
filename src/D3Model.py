@@ -54,6 +54,7 @@ class D3Model(Model):
     
     s = "    - 3D function spaces created - "
     print_text(s, self.D3Model_color)
+    self.initialize_variables()
     
   def calculate_boundaries(self, mask=None, adot=None):
     """

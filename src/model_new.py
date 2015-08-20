@@ -29,6 +29,8 @@ class Model(object):
     self.MPI_rank = MPI.rank(mpi_comm_world())
     self.model_color = '148'
     
+    self.use_periodic_boundaries = False
+    
     spy = 31556926.0
     ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * kg/a^3
 
@@ -473,8 +475,8 @@ class Model(object):
     """
     s = "::: initializing beta from SIA :::"
     print_text(s, self.model_color)
-    r        = 0.0
-    Q        = self.Q
+    r        = self.r
+    Q        = self.Q_non_periodic
     rhoi     = self.rhoi
     g        = self.g
     gradS    = grad(self.S)
@@ -495,7 +497,7 @@ class Model(object):
     print_min_max(self.betaSIA, 'betaSIA')
     
     self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, GAMMA_B_GND)
+    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
     bc_beta.apply(self.beta.vector())
     print_min_max(self.beta, 'beta')
       

@@ -17,7 +17,7 @@ parameters['form_compiler']['quadrature_degree']  = 2
 parameters["std_out_all_processes"]               = False
 
 #BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 25, 25, 10)
+mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
 
 model = D3Model(out_dir = out_dir + 'initial/')
 model.set_mesh(mesh)
@@ -32,7 +32,6 @@ beta    = Expression('sqrt(1000 - 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L))',
 
 model.calculate_boundaries()
 model.deform_mesh_to_geometry(surface, bed)
-model.initialize_variables()
 
 model.init_S(surface)
 model.init_B(bed)
@@ -72,7 +71,7 @@ def cb_ftn():
   model.save_pvd(model.Mb,    'Mb')
   model.save_pvd(model.rho_b, 'rho_b')
 
-model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=3)
+model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=2)
 
 u,v,w = model.U3.split(True)
 u_o   = u.vector().array()
@@ -96,42 +95,46 @@ model.save_pvd(model.beta, 'beta_true')
 nparams['newton_solver']['relaxation_parameter']    = 1.0
 nparams['newton_solver']['maximum_iterations']      = 10
 
-model.init_beta(30.0)
+#model.init_beta(30.0)
+model.init_beta_SIA()
+model.save_pvd(model.beta, 'beta_SIA')
 
 mom = MomentumBP(model, m_params, linear=True)
 mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')
   
-J = mom.get_obj_ftn('log_lin_hybrid', integral=model.GAMMA_S_GND,
-                    g1=0.01, g2=1000)
-R = mom.get_reg_ftn(model.beta, 'Tikhonov', integral=model.GAMMA_B_GND,
-                    alpha=1.0)
+J = mom.form_obj_ftn('log_lin_hybrid', integral=model.GAMMA_S_GND,
+                     g1=0.01, g2=1000)
+R = mom.form_reg_ftn(model.beta, 'Tikhonov', integral=model.GAMMA_B_GND,
+                     alpha=10000.0)
 I = J + R
 
-L = mom.Lagrangian()
-
-H = mom.Hamiltonian(I)
-
-dHdc = mom.dHdc(I, L, model.beta)
-
-mom.solve_adjoint_momentum(H)
-
-model.save_pvd(mom.Lam, 'Lam')
+controls = File(out_dir + "beta_control.pvd")
+beta_viz = Function(model.Q, name="beta_control")
   
-controls = File(out_dir + "control_iterations.pvd")
-a_viz = Function(model.Q, name="ControlVisualisation")
-def eval_cb(j, a):
-  a_viz.assign(a)
-  controls << a_viz
+def eval_cb(j, m):
+  #mom.print_eval_ftns()
+  #print_min_max(mom.U, 'U')
+  print_min_max(j, 'I')
 
+def deriv_cb(j, dj, m):
+  print_min_max(dj, 'dJdb')
+  print_min_max(m,  'beta')
+  beta_viz.assign(m)
+  controls << beta_viz
 
-m = Control(model.beta)
-F = ReducedFunctional(Functional(I), m, eval_cb=eval_cb)
+def hessian_cb(j, ddj, m):
+  print_min_max(ddj, 'd/db dJ/db')
+
+m = FunctionControl('beta')
+F = ReducedFunctional(Functional(I), m, eval_cb=eval_cb,
+                      derivative_cb = deriv_cb,
+                      hessian_cb = hessian_cb)
   
-problem = MinimizationProblem(F, bounds=(10, 100))
+problem = MinimizationProblem(F, bounds=(0, 500))
 parameters = {"acceptable_tol"     : 1.0e-200,
-              "maximum_iterations" : 10,
+              "maximum_iterations" : 100,
               "linear_solver"      : "ma97"}
 
 solver = IPOPTSolver(problem, parameters=parameters)
@@ -141,9 +144,7 @@ b_opt = solver.solve()
 #                 options={"disp"    : True,
 #                          "maxiter" : 100})
 
-model.save_pvd(model.beta, 'beta')
-model.save_pvd(b_opt,      'b_opt')
-model.save_pvd(mom.U,      'U')
+model.save_pvd(b_opt, 'b_opt')
 
 #A = DolfinAdjointSolver(model, config)
 #A.solve()

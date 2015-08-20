@@ -494,7 +494,8 @@ def print_min_max(u, title, color='yellow'):
     uMax = MPI.max(mpi_comm_world(), u.max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
     print_text(s, color)
-  elif isinstance(u, Function):
+  elif isinstance(u, Function) \
+       or isinstance(u, dolfin.functions.function.Function):
     uMin = MPI.min(mpi_comm_world(), u.vector().min())
     uMax = MPI.max(mpi_comm_world(), u.vector().max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)

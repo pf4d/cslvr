@@ -608,10 +608,10 @@ def default_config():
                'r'                   : 0.0,
                'E'                   : 1.0,
                'use_lat_bcs'         : False,
-               'solve_pressure'      : False,
+               'calc_pressure'       : False,
                'transient_beta'      : 'na',
              },
-             'energy' : 
+             'enthalpy' : 
              { 
                'on'                  : False,
                'log'                 : True,

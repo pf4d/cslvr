@@ -141,11 +141,25 @@ class Enthalpy(Energy):
     q_friction = 0.5 * beta**2 * inner(U,U)
 
     # Strain heating = stress*strain
+    #epi     = 0.5 * (grad(U) + grad(U).T)
+    #ep_xx   = epi[0,0]
+    #ep_yy   = epi[1,1]
+    #ep_zz   = epi[2,2]
+    #ep_xy   = epi[0,1]
+    #ep_xz   = epi[0,2]
+    #ep_yz   = epi[1,2]
+    #epsdot  = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+    #                 + ep_xy**2 + ep_xz**2 + ep_yz**2
+    #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
+    #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
+    #Q_s_gnd = 4 * eta_gnd * epsdot
+    #Q_s_shf = 4 * eta_shf * epsdot
+
     epsdot  = model.effective_strain_rate()
-    eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-    Q_s_gnd = 2 * eta_shf * epsdot
-    Q_s_shf = 2 * eta_gnd * epsdot
+    eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    Q_s_gnd = (2*n)/(n+1) * eta_shf * epsdot
+    Q_s_shf = (2*n)/(n+1) * eta_gnd * epsdot
 
     # thermal conductivity (Greve and Blatter 2009) :
     ki    =  9.828 * exp(-0.0057*T)
@@ -158,20 +172,6 @@ class Enthalpy(Energy):
 
     # configure the module to run in steady state :
     if mode == 'steady':
-      #epi     = 0.5 * (grad(U) + grad(U).T)
-      #ep_xx   = epi[0,0]
-      #ep_yy   = epi[1,1]
-      #ep_zz   = epi[2,2]
-      #ep_xy   = epi[0,1]
-      #ep_xz   = epi[0,2]
-      #ep_yz   = epi[1,2]
-      #epsdot  = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-      #                 + ep_xy**2 + ep_xz**2 + ep_yz**2
-      #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
-      #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
-      #Q_s_gnd = 4 * eta_gnd * epsdot
-      #Q_s_shf = 4 * eta_shf * epsdot
-
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*kappa)
@@ -190,20 +190,6 @@ class Enthalpy(Energy):
     # configure the module to run in transient mode :
     elif mode == 'transient':
       dt      = model.time_step
-    
-      epi     = 0.5 * (grad(U) + grad(U).T)
-      ep_xx   = epi[0,0]
-      ep_yy   = epi[1,1]
-      ep_zz   = epi[2,2]
-      ep_xy   = epi[0,1]
-      ep_xz   = epi[0,2]
-      ep_yz   = epi[1,2]
-      epsdot  = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                       + ep_xy**2 + ep_xz**2 + ep_yz**2
-      #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
-      #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
-      Q_s_gnd = 4 * eta_gnd * epsdot
-      Q_s_shf = 4 * eta_shf * epsdot
 
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.

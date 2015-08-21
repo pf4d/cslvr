@@ -118,11 +118,11 @@ class MomentumBP(Momentum):
     gradB      = grad(B)
 
     if linear:
-      s   = "::: using linear form of momentum using model.U3 in epsdot :::"
+      s   = "    - using linear form of momentum using model.U3 in epsdot -"
       print_text(s, self.color())
       epsdot = self.effective_strain_rate(model.U3.copy(True))
     else:
-      s   = "::: using nonlinear form of momentum :::"
+      s   = "    - using nonlinear form of momentum -"
       print_text(s, self.color())
       U_t      = as_vector([U[0], U[1], 0])
       epsdot   = self.effective_strain_rate(U_t)
@@ -180,8 +180,9 @@ class MomentumBP(Momentum):
                  + rhoi * g * gradS[1] * psi * dx \
                  + beta**2 * u * phi * dGnd \
                  + beta**2 * v * psi * dGnd \
-                 + Constant(DOLFIN_EPS) * u * phi * dFlt \
-                 + Constant(DOLFIN_EPS) * v * psi * dFlt
+                 - f_w * (N[0]*phi + N[1]*psi) * dFlt
+                 #+ Constant(1e-2) * u * phi * dFlt \
+                 #+ Constant(1e-2) * v * psi * dFlt \
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):

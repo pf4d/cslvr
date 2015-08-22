@@ -49,6 +49,258 @@ class Momentum(Physics):
     raiseNotDefined()
 
 
+class MomentumStokes(Momentum):
+  """  
+  """
+  def __init__(self, model, solve_params=None,
+               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.
+    """
+    s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
+    print_text(s, self.color())
+    
+    if type(model) != D3Model:
+      s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+
+    model.generate_stokes_function_spaces()
+    
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
+
+    self.model  = model
+    
+    # momenturm and adjoint :
+    G      = Function(model.MV, name = 'G')
+    dU     = TrialFunction(model.MV)
+    Tst    = TestFunction(model.MV)
+    Lam    = Function(model.MV)
+   
+    # function assigner goes from the U function solve to U3 vector 
+    # function used to save :
+    self.assx   = FunctionAssigner(model.V.sub(0), model.Q)
+    self.assy   = FunctionAssigner(model.V.sub(1), model.Q)
+    self.assz   = FunctionAssigner(model.V.sub(2), model.Q)
+    self.assp   = FunctionAssigner(model.Q,        model.MV.sub(1))
+
+    mesh          = model.mesh
+    r             = model.r
+    S             = model.S
+    B             = model.B
+    H             = S - B
+    x             = model.x
+    W             = model.W
+    R             = model.R
+    rhoi          = model.rhoi
+    rhow          = model.rhow
+    g             = model.g
+    beta          = model.beta
+    h             = model.h
+    N             = model.N
+    D             = model.D
+
+    gradS         = grad(S)
+    gradB         = grad(B)
+    
+    dx_s       = model.dx_s
+    dx_g       = model.dx_g
+    dx         = model.dx
+    dGnd       = model.dGnd
+    dFlt       = model.dFlt
+    dSde       = model.dSde
+    dBed       = model.dBed
+     
+    # new constants :
+    p0            = 101325
+    T0            = 288.15
+    M             = 0.0289644
+    ci            = model.ci
+    
+    #===========================================================================
+    # define variational problem :
+    du,  dp = split(dU)
+    U,   p  = split(G)
+    Phi, xi = split(Tst)
+
+    u,   v,   w   = U
+    phi, psi, chi = Phi
+   
+    # form the viscosity : 
+    if linear:
+      s   = "    - using linear form of momentum using model.U3 in epsdot -"
+      print_text(s, self.color())
+      epsdot = self.effective_strain_rate(model.U3.copy(True))
+    else:
+      s   = "    - using nonlinear form of momentum -"
+      print_text(s, self.color())
+      epsdot   = self.effective_strain_rate(U)
+    
+    eps_reg    = model.eps_reg
+    n          = model.n
+    b_shf      = model.b_shf
+    b_gnd      = model.b_gnd
+    
+    eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+    
+    # gravity vector :
+    gv   = as_vector([0, 0, -g])
+    f_w  = rhoi*g*(S - x[2]) + rhow*g*D
+    I    = Identity(3)
+
+    epi       = self.strain_rate_tensor(U)
+    tau_shf   = 2*eta_shf*epi
+    tau_gnd   = 2*eta_gnd*epi
+    sigma_shf = tau_shf - p*I
+    sigma_gnd = tau_gnd - p*I
+    
+    # conservation of momentum :
+    R1 = + inner(sigma_shf, grad(Phi)) * dx_s \
+         + inner(sigma_gnd, grad(Phi)) * dx_g \
+         - rhoi * dot(gv, Phi) * dx \
+         + beta**2 * u * phi * dGnd \
+         + beta**2 * v * psi * dGnd \
+         - dot(dot(N, dot(tau_gnd, N)) * N, Phi) * dGnd \
+         - f_w * dot(N, Phi) * dFlt \
+         #- p_a * dot(N, Phi) * dSrf \
+         #+ beta**2 * dot(U, Phi) * dGnd \
+    
+    if (not model.use_periodic_boundaries 
+        and not use_lat_bcs and use_pressure_bc):
+      s = "    - using cliff-pressure boundary condition -"
+      print_text(s, self.color())
+      R1 -= f_w * dot(N, Phi) * dSde \
+    
+    # conservation of mass :
+    R2 = div(U)*xi*dx + (w - u*B.dx(0) - v*B.dx(1))*xi*dBed #dot(U, N)*xi*dBed
+    
+    # total residual :
+    self.mom_F = R1 + R2
+    
+    self.mom_Jac = derivative(self.mom_F, G, dU)
+   
+    self.mom_bcs = []
+      
+    # add lateral boundary conditions :  
+    if use_lat_bcs:
+      s = "    - using lateral boundary conditions -"
+      print_text(s, self.color())
+
+      self.mom_bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 7))
+      self.mom_bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 7))
+      self.mom_bcs.append(DirichletBC(V.sub(2), model.w_lat, model.ff, 7))
+    
+    self.G       = G
+    self.U       = U 
+    self.p       = p
+    self.dU      = dU
+    self.Tst     = Tst
+    self.Lam     = Lam
+    self.epsdot  = epsdot
+    self.eta_shf = eta_shf
+    self.eta_gnd = eta_gnd
+  
+  def get_residual(self):
+    """
+    Returns the momentum residual.
+    """
+    return self.mom_F
+
+  def get_U(self):
+    """
+    Return the velocity Function.
+    """
+    return self.U
+
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+  
+  def strain_rate_tensor(self, U):
+    """
+    return the strain-rate tensor of <U>.
+    """
+    return 0.5 * (grad(U) + grad(U).T)
+
+  def effective_strain_rate(self, U):
+    """
+    return the effective strain rate squared.
+    """
+    epi    = self.strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
+
+  def stress_tensor(self):
+    """
+    return the BP Cauchy stress tensor.
+    """
+    # FIXME: needs eta
+    s   = "::: forming the Cauchy stress tensor :::"
+    print_text(s, self.color())
+    epi   = self.strain_rate_tensor(self.U)
+    I     = Identity(3)
+
+    sigma = 2*self.eta*epi - self.p*I
+    return sigma
+
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                                  'relative_tolerance'       : 1e-8,
+                                  'relaxation_parameter'     : 1.0,
+                                  'maximum_iterations'       : 25,
+                                  'error_on_nonconvergence'  : False}}
+    m_params  = {'solver'      : nparams}
+    return m_params
+
+  def solve(self, annotate=True):
+    """ 
+    Perform the Newton solve of the full-Stokes equations 
+    """
+    model  = self.model
+    params = self.solve_params
+    
+    # solve nonlinear system :
+    rtol   = params['solver']['newton_solver']['relative_tolerance']
+    maxit  = params['solver']['newton_solver']['maximum_iterations']
+    alpha  = params['solver']['newton_solver']['relaxation_parameter']
+    s      = "::: solving BP horizontal velocity with %i max iterations" + \
+             " and step size = %.1f :::"
+    print_text(s % (maxit, alpha), self.color())
+    
+    # compute solution :
+    solve(self.mom_F == 0, self.G, J = self.mom_Jac, bcs = self.mom_bcs,
+          annotate = annotate, solver_parameters = params['solver'])
+    U, p = self.G.split()
+    u, v, w = split(U)
+
+    self.assx.assign(model.u, project(u, model.Q, annotate=False))
+    self.assy.assign(model.v, project(v, model.Q, annotate=False))
+    self.assz.assign(model.w, project(w, model.Q, annotate=False))
+    self.assp.assign(model.p, p)
+
+    print_min_max(model.U3, 'U')
+    print_min_max(model.p,  'p')
+
+
 
 class MomentumBP(Momentum):
   """				
@@ -70,7 +322,7 @@ class MomentumBP(Momentum):
       sys.exit(1)
     
     if solve_params == None:
-      self.solve_params = self.default_nonlin_solver_params()
+      self.solve_params = self.default_solve_params()
     else:
       self.solve_params = solve_params
 

@@ -55,6 +55,31 @@ class D3Model(Model):
     s = "    - 3D function spaces created - "
     print_text(s, self.D3Model_color)
     self.initialize_variables()
+
+  def generate_stokes_function_spaces(self):
+    """
+    Generates the appropriate finite-element function spaces from parameters
+    specified in the config file for the model.
+    """
+    s = "::: generating Stokes function spaces :::"
+    # FIXME: this will have to be done every time a MomentumStokes object is 
+    #        initialized, not good.
+    print_text(s, self.D3Model_color)
+        
+    self.Q4     = MixedFunctionSpace([self.Q]*4)
+    # mini elements :
+    self.Bub    = FunctionSpace(self.mesh, "B", 4, 
+                                constrained_domain=self.pBC)
+    self.MQ     = self.Q + self.Bub
+    M3          = MixedFunctionSpace([self.MQ]*3)
+    self.MV     = MixedFunctionSpace([M3,self.Q])
+    # Taylor-Hood elements :
+    #V           = VectorFunctionSpace(self.mesh, "CG", 2,
+    #                                  constrained_domain=self.pBC)
+    #self.MV     = V * self.Q
+    
+    s = "    - Stokes function spaces created - "
+    print_text(s, self.D3Model_color)
     
   def calculate_boundaries(self, mask=None, adot=None):
     """

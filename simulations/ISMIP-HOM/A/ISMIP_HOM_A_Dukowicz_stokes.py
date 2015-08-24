@@ -1,5 +1,5 @@
 from varglas.D3Model  import D3Model
-from varglas.momentum import MomentumStokes
+from varglas.momentum import MomentumDukowiczStokes
 from fenics           import parameters, Point, BoxMesh, Expression, sqrt, pi
 
 parameters['form_compiler']['quadrature_degree'] = 2
@@ -30,11 +30,13 @@ model.init_mask(0.0)  # all grounded
 model.init_beta(sqrt(1000))
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
-mom = MomentumStokes(model)
+mom = MomentumDukowiczStokes(model)
 mom.solve()
 
 model.save_pvd(model.p,  'p')
 model.save_pvd(model.U3, 'U')
+
+model.save_pvd(model.ff, 'ff')
 
 
 

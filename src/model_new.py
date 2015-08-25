@@ -32,7 +32,7 @@ class Model(object):
     self.use_periodic_boundaries = False
     
     spy = 31556926.0
-    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * kg/a^3
+    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(s*m^2)
 
     # Constants :
     self.r       = Constant(0.0)

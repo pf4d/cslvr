@@ -164,14 +164,13 @@ class MomentumStokes(Momentum):
          - rhoi * dot(gv, Phi) * dx \
          + beta**2 * u * phi * dGnd \
          + beta**2 * v * psi * dGnd \
+         + beta**2 * w * chi * dGnd \
          - (2*eta_gnd*u.dx(0) - tau_n)*N[0] * phi * dGnd \
-         - eta_gnd*(u.dx(1) + v.dx(0))*N[1] * psi * dGnd \
-         - eta_gnd*(u.dx(2) + w.dx(0))*N[2] * chi * dGnd \
-         - eta_gnd*(u.dx(1) + v.dx(0))*N[0] * phi * dGnd \
+         - eta_gnd*(u.dx(1) + v.dx(0))*N[1] * phi * dGnd \
+         - eta_gnd*(u.dx(2) + w.dx(0))*N[2] * phi * dGnd \
+         - eta_gnd*(u.dx(1) + v.dx(0))*N[0] * psi * dGnd \
          - (2*eta_gnd*v.dx(1) - tau_n)*N[1] * psi * dGnd \
-         - eta_gnd*(v.dx(2) + w.dx(1))*N[2] * chi * dGnd \
-         #+ beta**2*(u*B.dx(0) + v*B.dx(1))*chi*dGnd \
-         #+ beta**2 * w * chi * dGnd \
+         - eta_gnd*(v.dx(2) + w.dx(1))*N[2] * psi * dGnd \
          #- f_w * dot(N, Phi) * dFlt \
          #- dot(dot(N, dot(tau_gnd, N)) * N, Phi) * dGnd \
          #- p_a * dot(N, Phi) * dSrf \
@@ -185,7 +184,8 @@ class MomentumStokes(Momentum):
      
     # conservation of mass :
     R2 = + div(U)*xi*dx \
-         + dot(U, N)*xi*dBed
+         #+ beta**2*(u*B.dx(0) + v*B.dx(1))*chi*dGnd \
+         #+ dot(U, N)*xi*dBed
     
     # total residual :
     self.mom_F = R1 + R2
@@ -206,9 +206,9 @@ class MomentumStokes(Momentum):
       self.mom_bcs.append(DirichletBC(MV.sub(0).sub(1), model.v_lat, ff, 7))
       self.mom_bcs.append(DirichletBC(MV.sub(0).sub(2), model.w_lat, ff, 7))
 
-    self.mom_bcs.append(DirichletBC(model.MV.sub(0), 
-                                    Constant((0,0,0)), model.ff, 
-                                    model.GAMMA_B_GND))
+    #self.mom_bcs.append(DirichletBC(model.MV.sub(0), 
+    #                                Constant((0,0,0)), model.ff, 
+    #                                model.GAMMA_B_GND))
     
     self.G       = G
     self.U       = U 

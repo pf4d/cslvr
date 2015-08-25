@@ -53,12 +53,17 @@ class D3Model(Model):
     self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
     self.Q4     = MixedFunctionSpace([self.Q]*4)
     
-    # mini elements :
-    self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-                                constrained_domain=self.pBC)
-    self.MQ     = self.Q + self.Bub
-    M3          = MixedFunctionSpace([self.MQ]*3)
-    self.MV     = MixedFunctionSpace([M3,self.Q])
+    ## mini elements :
+    #self.Bub    = FunctionSpace(self.mesh, "B", 4, 
+    #                            constrained_domain=self.pBC)
+    #self.MQ     = self.Q + self.Bub
+    #M3          = MixedFunctionSpace([self.MQ]*3)
+    #self.MV     = MixedFunctionSpace([M3,self.Q])
+    
+    # Taylor-Hood elements :
+    V           = VectorFunctionSpace(self.mesh, "CG", 2,
+                                      constrained_domain=self.pBC)
+    self.MV     = V * self.Q
     
     s = "    - 3D function spaces created - "
     print_text(s, self.D3Model_color)
@@ -81,10 +86,10 @@ class D3Model(Model):
     #self.MQ     = self.Q + self.Bub
     #M3          = MixedFunctionSpace([self.MQ]*3)
     #self.MV     = MixedFunctionSpace([M3,self.Q])
-    # Taylor-Hood elements :
-    V           = VectorFunctionSpace(self.mesh, "CG", 2,
-                                      constrained_domain=self.pBC)
-    self.MV     = V * self.Q
+    ## Taylor-Hood elements :
+    #V           = VectorFunctionSpace(self.mesh, "CG", 2,
+    #                                  constrained_domain=self.pBC)
+    #self.MV     = V * self.Q
     
     s = "    - Stokes function spaces created - "
     print_text(s, self.D3Model_color)

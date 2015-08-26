@@ -415,7 +415,7 @@ class MomentumDukowiczStokes(Momentum):
 
     # 3) Dissipation by sliding
     Sl_gnd = 0.5 * beta**2 * H**r * (u**2 + v**2 + w**2)
-    Sl_shf = 0.5 * Constant(1e-10) * (u**2 + v**2 + w**2)
+    Sl_shf = 0.5 * Constant(1e-2) * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
     Pc     = -p * (u.dx(0) + v.dx(1) + w.dx(2)) 
@@ -426,15 +426,19 @@ class MomentumDukowiczStokes(Momentum):
     # 6) pressure boundary
     Pb     = - (rhoi*g*(S - x[2]) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
-    f       = rhoi * Constant((0.0, 0.0, g))
-    tau_shf = h**2 / (12 * b_shf * rhoi**2)
-    tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
-    Lsq_shf = -tau_shf * dot( (grad(p) + f), (grad(p) + f) )
-    Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
+    #f       = rhoi * Constant((0.0, 0.0, g))
+    #tau_shf = h**2 / (12 * b_shf * rhoi**2)
+    #tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
+    #Lsq_shf = -tau_shf * dot( (grad(p) + f), (grad(p) + f) )
+    #Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
+    
+    #A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
+    #         + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
     
     # Variational principle
-    A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
-             + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc)*dx \
+             + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
@@ -443,7 +447,7 @@ class MomentumDukowiczStokes(Momentum):
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
-    self.mom_F = derivative(A, U, Phi)   
+    self.mom_F = derivative(A, U, Phi)
 
     # Calculate the first variation of the action (the Jacobian) in
     # the direction of a small perturbation in U

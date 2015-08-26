@@ -30,7 +30,14 @@ model.init_mask(0.0)  # all grounded
 model.init_beta(sqrt(1000))
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
-mom = MomentumDukowiczStokes(model)
+nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                              'relative_tolerance'       : 1e-8,
+                              'relaxation_parameter'     : 1.0,
+                              'maximum_iterations'       : 25,
+                              'error_on_nonconvergence'  : False}}
+nparams = {'solver'        : nparams}
+
+mom = MomentumDukowiczStokes(model, solve_params=nparams)
 mom.solve()
 
 model.save_pvd(model.p,  'p')

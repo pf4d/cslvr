@@ -1,6 +1,6 @@
 from varglas.D3Model  import D3Model
-from varglas.momentum import MomentumStokes
-from fenics           import Point, BoxMesh, sqrt, pi
+from varglas.momentum import MomentumBP
+from fenics           import Expression, Point, BoxMesh, sqrt, pi
 
 alpha = 0.5 * pi / 180 
 L     = 40000

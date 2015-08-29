@@ -1,10 +1,10 @@
-from fenics         import *
-from dolfin_adjoint import *
-from io             import print_text, print_min_max
-from d3model        import D3Model
-from d2model        import D2Model
-from physics_new    import Physics
-from helper         import VerticalBasis, VerticalFDBasis
+from fenics                 import *
+from dolfin_adjoint         import *
+from varglas.io             import print_text, print_min_max
+from varglas.d3model        import D3Model
+from varglas.d2model        import D2Model
+from varglas.physics_new    import Physics
+from varglas.helper         import VerticalBasis, VerticalFDBasis
 import sys
 
 
@@ -397,7 +397,7 @@ class EnergyHybrid(Energy):
   """
   New 2D hybrid model.
   """
-  def __init__(self, model, solve_params=None):
+  def __init__(self, model, mode='steady', solve_params=None):
     """ 
     Set up energy equation residual. 
     """
@@ -430,7 +430,7 @@ class EnergyHybrid(Energy):
     beta    = model.beta
     T_s     = model.T_surface
     T_w     = model.T_w
-    U       = model.U
+    U       = model.UHV
     H       = model.H
     H0      = model.H0
     T_      = model.T_
@@ -439,8 +439,8 @@ class EnergyHybrid(Energy):
     sigmas  = model.sigmas
     eps_reg = model.eps_reg
     h       = model.h
-    dt      = config['time_step']
-    N_T     = config['enthalpy']['N_T']
+    dt      = model.time_step
+    N_T     = model.N_T
     
     Bc      = 3.61e-13*year
     Bw      = 1.73e3*year  # model.a0 ice hardness
@@ -470,6 +470,7 @@ class EnergyHybrid(Energy):
 
     # initialize surface temperature :
     model.assign_variable(T0_, project(as_vector([T_s]*N_T), Z))
+    #model.assign_variable(T_, project(as_vector([T_s]*N_T), Z))
 
     T  = VerticalFDBasis(T_,  deltax, coef, sigmas)
     T0 = VerticalFDBasis(T0_, deltax, coef, sigmas)
@@ -515,8 +516,10 @@ class EnergyHybrid(Energy):
       s = i/(N_T-1.0)
     
       # EFFECTIVE VERTICAL VELOCITY
-      w_eff = + u(s)*dsdx(s) + v(s)*dsdy(s) + w(s)*dsdz(s) \
-              + 1.0/H*(1.0 - s)*(H - H0)/dt
+      w_eff = u(s)*dsdx(s) + v(s)*dsdy(s) + w(s)*dsdz(s)
+
+      if mode == 'transient':
+        w_eff += 1.0/H*(1.0 - s)*(H - H0)/dt
     
       # STRAIN HEAT
       #Phi_strain = (2*n)/(n+1)*2*eta_v(s)*epsilon_dot(s)
@@ -527,15 +530,11 @@ class EnergyHybrid(Energy):
       tau    = h/(2*Umag)
       Psihat = Psi[i] + tau*(u(s)*Psi[i].dx(0) + v(s)*Psi[i].dx(1))
     
-      # TIME DERIVATIVE
-      dTdt = (T(i) - T0(i))/dt
-    
       # SURFACE BOUNDARY
       if i==0:
         R_T += Psi[i]*(T(i) - T_s)*dx
       # BASAL BOUNDARY
       elif i==(N_T-1):
-        R_T += dTdt*Psi[i]*dx
         R_T += (u(s)*T.dx(i,0) + v(s)*T.dx(i,1))*Psihat*dx
         R_T += -Phi_strain/(rho*Cp)*Psi[i]*dx 
         R_T += -w_eff*q_geo/(rho*Cp*kappa*dsdz(s))*Psi[i]*dx
@@ -544,11 +543,14 @@ class EnergyHybrid(Energy):
                                      - f/deltax)*Psi[i]*dx
       # INTERIOR
       else:
-        R_T += dTdt*Psi[i]*dx
         R_T += -kappa*dsdz(s)**2.*T.d2s(i)*Psi[i]*dx
         R_T += w_eff*T.ds(i)*Psi[i]*dx
         R_T += (u(s)*T.dx(i,0) + v(s)*T.dx(i,1))*Psihat*dx
         R_T += -Phi_strain/(rho*Cp)*Psi[i]*dx 
+   
+      if mode == 'transient': 
+        dTdt = (T(i) - T0(i))/dt
+        R_T += dTdt*Psi[i]*dx
     
     # PRETEND THIS IS LINEAR (A GOOD APPROXIMATION IN THE TRANSIENT CASE)
     self.R_T = replace(R_T, {T_:dT})
@@ -562,7 +564,7 @@ class EnergyHybrid(Energy):
     """
     return self.solve_params
 
-  def default_ffc_options():
+  def default_ffc_options(self):
     """ 
     Returns a set of default ffc options that yield good performance
     """

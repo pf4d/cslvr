@@ -1,8 +1,8 @@
-from fenics         import *
-from dolfin_adjoint import *
-from io             import print_text, get_text, print_min_max
-from model_new      import Model
-from pylab          import inf, np
+from fenics            import *
+from dolfin_adjoint    import *
+from varglas.io        import print_text, get_text, print_min_max
+from varglas.model_new import Model
+from pylab             import inf, np
 import sys
 
 class D2Model(Model):
@@ -15,6 +15,52 @@ class D2Model(Model):
     """
     Model.__init__(self, out_dir)
     self.D2Model_color = '150'
+
+  def generate_pbc(self):
+    """
+    return a SubDomain of periodic lateral boundaries.
+    """
+    s = "    - using 2D periodic boundaries -"
+    print_text(s, self.model_color)
+
+    xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
+    xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
+    ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
+    ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+    
+    self.use_periodic_boundaries = True
+    
+    class PeriodicBoundary(SubDomain):
+      
+      def inside(self, x, on_boundary):
+        """
+        Return True if on left or bottom boundary AND NOT on one 
+        of the two corners (0, 1) and (1, 0).
+        """
+        return bool((near(x[0], xmin) or near(x[1], ymin)) and \
+                    (not ((near(x[0], xmin) and near(x[1], ymax)) \
+                     or (near(x[0], xmax) and near(x[1], ymin)))) \
+                     and on_boundary)
+
+      def map(self, x, y):
+        """
+        Remap the values on the top and right sides to the bottom and left
+        sides.
+        """
+        if near(x[0], xmax) and near(x[1], ymax):
+          y[0] = x[0] - xmax
+          y[1] = x[1] - ymax
+        elif near(x[0], xmax):
+          y[0] = x[0] - xmax
+          y[1] = x[1]
+        elif near(x[1], ymax):
+          y[0] = x[0]
+          y[1] = x[1] - ymax
+        else:
+          y[0] = x[0]
+          y[1] = x[1]
+
+    self.pBC = PeriodicBoundary()
   
   def set_mesh(self, mesh):
     """
@@ -58,6 +104,35 @@ class D2Model(Model):
     s = "    - 2D function spaces created - "
     print_text(s, self.D2Model_color)
     self.initialize_variables()
+  
+  def init_T(self, T):
+    """
+    """
+    s = "::: initializing temperature :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.T,   T)
+    self.assign_variable(self.T_,  T)
+    self.assign_variable(self.T0_, T)
+    print_min_max(self.T, 'T')
+    
+  def init_H(self, H):
+    """
+    """
+    s = "::: initializing thickness :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.H,  H)
+    self.assign_variable(self.H0, H)
+    print_min_max(self.H, 'H')
+
+  def init_H_bounds(self, H_min, H_max):
+    """
+    """
+    s = "::: initializing bounds on thickness :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.H_min, H_min)
+    self.assign_variable(self.H_max, H_max)
+    print_min_max(self.H_min, 'H_min')
+    print_min_max(self.H_max, 'H_max')
 
   def initialize_variables(self):
     """
@@ -86,6 +161,7 @@ class D2Model(Model):
     self.Tb            = Function(self.Q, name='Tb')
     
     # unified basal velocity :
+    self.UHV           = Function(self.HV, name='UHV')
     self.U3_b          = Function(self.Q3, name='U3_b')
     u_b, v_b, w_b      = self.U3_b.split()
     u_b.rename('u_b', '')

@@ -1,7 +1,5 @@
-from varglas import MomentumDukowiczReduced
-from fenics           import parameters, Point, BoxMesh, Expression, sqrt, pi
-
-parameters['form_compiler']['quadrature_degree'] = 2
+from varglas import D3Model, MomentumDukowiczStokesReduced
+from fenics  import Point, BoxMesh, Expression, sqrt, pi
 
 alpha = 0.5 * pi / 180 
 L     = 5000
@@ -29,16 +27,11 @@ model.init_mask(0.0)  # all grounded
 model.init_beta(sqrt(1000))
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
-mom = MomentumDukowiczStokesReduced(model)
+mom = MomentumDukowiczStokesReduced(model, isothermal=True)
 mom.solve()
 
 #model.save_pvd(model.p,  'p')
 model.save_pvd(model.U3, 'U')
-
-u = model.u
-v = model.v
-B = model.B
-z = model.x[2]
 
 
 

@@ -26,12 +26,12 @@ based on lapse rates
 :class:`~src.physics.VelocityBP` -- Blatter-Pattyn momentum balance
 """
 
-from pylab      import ndarray, where
-from fenics     import *
-from termcolor  import colored, cprint
-from helper     import raiseNotDefined, VerticalBasis, VerticalFDBasis, \
-                       VerticalIntegrator
-from io         import print_text, print_min_max
+from pylab          import ndarray, where
+from fenics         import *
+from termcolor      import colored, cprint
+from varglas.helper import raiseNotDefined, VerticalBasis, VerticalFDBasis, \
+                           VerticalIntegrator
+from varglas.io     import print_text, print_min_max
 import numpy as np
 import numpy.linalg as linalg
 

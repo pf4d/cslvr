@@ -1,15 +1,15 @@
-from fenics          import *
-#from varglas.d2model import D2Model
+from fenics  import *
 from varglas import *
+from varglas.energy import EnergyHybrid
 
-set_log_active(False)
+#set_log_active(False)
 
 parameters['form_compiler']['precision']         = 30
 parameters['form_compiler']['optimize']          = True
 parameters['form_compiler']['cpp_optimize']      = True
 parameters['form_compiler']['representation']    = 'quadrature'
 
-mesh = Mesh('meshes/circle_mesh.xml')
+mesh = Mesh('meshes/circle_mesh.xml.gz')
 
 thklim = 1.0
 L      = 800000.
@@ -65,6 +65,7 @@ model.init_B(0.0)
 model.init_adot(adot)
 model.init_beta(1e9)
 model.init_T_surface(T_s)
+model.init_T(T_s)
 model.init_H(thklim)
 model.init_H_bounds(thklim, 1e4)
 model.init_q_geo(model.ghf)
@@ -72,6 +73,10 @@ model.init_q_geo(model.ghf)
 
 model.eps_reg.assign(1e-10)
 
+mom = MomentumHybrid(model)
+nrg = EnergyHybrid(model)
+
+mom.solve()
 
 
 

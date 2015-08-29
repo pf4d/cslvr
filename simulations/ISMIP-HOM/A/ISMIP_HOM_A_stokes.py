@@ -1,28 +1,16 @@
-from varglas.model   import Model
-from varglas.solvers import SteadySolver
-from varglas.helper  import default_nonlin_solver_params, default_config
-from varglas.io      import print_min_max, print_text
-from fenics          import File, Expression, pi, BoxMesh, sqrt, parameters
+from varglas import D3Model, MomentumStokes
+from fenics  import Point, BoxMesh, Expression, sqrt, pi
 
 alpha = 0.5 * pi / 180 
 L     = 40000
 
-nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['linear_solver']  = 'mumps'
+p1    = Point(0.0, 0.0, 0.0)
+p2    = Point(L,   L,   1)
+mesh  = BoxMesh(p1, p2, 25, 25, 10)
 
-config = default_config()
-config['output_path']                  = './results_stokes/'
-config['periodic_boundary_conditions'] = True
-config['velocity']['newton_params']    = nonlin_solver_params
-config['model_order']                  = 'stokes'
-config['use_dukowicz']                 = False
-parameters['form_compiler']['quadrature_degree'] = 2
-
-#BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 20, 20, 10)
-
-model = Model(config)
+model = D3Model(out_dir = './results_stokes/')
 model.set_mesh(mesh)
+model.generate_function_spaces(use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
@@ -31,14 +19,19 @@ bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
                      alpha=alpha, L=L, element=model.Q.ufl_element())
 
 model.calculate_boundaries()
-model.set_geometry(surface, bed, deform=True)
-model.initialize_variables()
+model.deform_mesh_to_geometry(surface, bed)
 
-model.init_beta(sqrt(1000))
-model.init_viscosity_mode('isothermal')
+model.init_S(surface)
+model.init_B(bed)
+model.init_mask(0.0)  # all grounded
+model.init_beta(1000)
+model.init_b(model.A0(0)**(-1/model.n(0)))
 
-F = SteadySolver(model, config)
-F.solve()
+mom = MomentumStokes(model, isothermal=True)
+mom.solve()
+
+model.save_pvd(model.p,  'p')
+model.save_pvd(model.U3, 'U')
 
 
 

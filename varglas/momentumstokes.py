@@ -1,16 +1,16 @@
-from fenics         import *
-from dolfin_adjoint import *
-from io             import print_text, print_min_max
-from d3model        import D3Model
-from physics_new    import Physics
-from momentum       import Momentum
+from fenics                 import *
+from dolfin_adjoint         import *
+from varglas.io             import print_text, print_min_max
+from varglas.d3model        import D3Model
+from varglas.physics_new    import Physics
+from varglas.momentum       import Momentum
 import sys
 
 
 class MomentumStokes(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None,
+  def __init__(self, model, solve_params=None, isothermal=True,
                linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
@@ -43,6 +43,8 @@ class MomentumStokes(Momentum):
     self.assp  = FunctionAssigner(model.Q,         model.MV.sub(1))
 
     mesh       = model.mesh
+    eps_reg    = model.eps_reg
+    n          = model.n
     r          = model.r
     S          = model.S
     B          = model.B
@@ -94,10 +96,24 @@ class MomentumStokes(Momentum):
       print_text(s, self.color())
       epsdot   = self.effective_strain_rate(U)
     
-    eps_reg    = model.eps_reg
-    n          = model.n
-    b_shf      = model.b_shf
-    b_gnd      = model.b_gnd
+    if isothermal:
+      s   = "    - using isothermal rate-factor -"
+      print_text(s, self.color())
+      b_shf = model.b_shf
+      b_gnd = model.b_gnd
+
+    else:
+      s   = "    - using temperature-dependent rate-factor -"
+      print_text(s, self.color())
+      T       = model.T
+      W       = model.W
+      R       = model.R
+      E_shf   = model.E_shf
+      E_gnd   = model.E_gnd
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     
     eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
     eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
@@ -275,7 +291,7 @@ class MomentumStokes(Momentum):
 class MomentumDukowiczStokesReduced(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None,
+  def __init__(self, model, solve_params=None, isothermal=True,
                linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
@@ -352,8 +368,25 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     eps_reg    = model.eps_reg
     n          = model.n
-    b_shf      = model.b_shf
-    b_gnd      = model.b_gnd
+    
+    if isothermal:
+      s   = "    - using isothermal rate-factor -"
+      print_text(s, self.color())
+      b_shf = model.b_shf
+      b_gnd = model.b_gnd
+
+    else:
+      s   = "    - using temperature-dependent rate-factor -"
+      print_text(s, self.color())
+      T       = model.T
+      W       = model.W
+      R       = model.R
+      E_shf   = model.E_shf
+      E_gnd   = model.E_gnd
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:
@@ -539,7 +572,7 @@ class MomentumDukowiczStokesReduced(Momentum):
 class MomentumDukowiczStokes(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None,
+  def __init__(self, model, solve_params=None, isothermal=True,
                linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
@@ -612,8 +645,25 @@ class MomentumDukowiczStokes(Momentum):
     
     eps_reg    = model.eps_reg
     n          = model.n
-    b_shf      = model.b_shf
-    b_gnd      = model.b_gnd
+    
+    if isothermal:
+      s   = "    - using isothermal rate-factor -"
+      print_text(s, self.color())
+      b_shf = model.b_shf
+      b_gnd = model.b_gnd
+
+    else:
+      s   = "    - using temperature-dependent rate-factor -"
+      print_text(s, self.color())
+      T       = model.T
+      W       = model.W
+      R       = model.R
+      E_shf   = model.E_shf
+      E_gnd   = model.E_gnd
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:

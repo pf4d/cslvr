@@ -1,4 +1,5 @@
-import numpy as np
+import numpy      as np
+import matplotlib as mpl
 from matplotlib import colors
 from mpl_toolkits.basemap import Basemap
 import pyproj

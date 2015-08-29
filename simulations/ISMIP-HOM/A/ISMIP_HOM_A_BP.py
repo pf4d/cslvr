@@ -1,6 +1,5 @@
-from varglas.d3model    import D3Model
-from varglas.momentumbp import MomentumBP
-from fenics             import Expression, Point, BoxMesh, sqrt, pi
+from varglas import D3Model, MomentumBP
+from fenics  import Expression, Point, BoxMesh, sqrt, pi
 
 alpha = 0.5 * pi / 180 
 L     = 5000
@@ -28,7 +27,7 @@ model.init_mask(0.0)  # all grounded
 model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
-mom = MomentumBP(model)
+mom = MomentumBP(model, isothermal=True)
 mom.solve()
 
 model.save_pvd(model.p,  'p')

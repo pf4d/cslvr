@@ -1,12 +1,12 @@
-from fenics       import *
-from ufl.indexed  import Indexed
-from abc          import ABCMeta, abstractmethod
-from physics      import Physics
-from solvers      import Solver
-from helper       import default_config
-from io           import print_text, print_min_max
-import numpy              as np
-import physical_constants as pc
+from fenics               import *
+from ufl.indexed          import Indexed
+from abc                  import ABCMeta, abstractmethod
+from varglas.physics      import Physics
+from varglas.solvers      import Solver
+from varglas.helper       import default_config
+from varglas.io           import print_text, print_min_max
+import numpy                      as np
+import varglas.physical_constants as pc
 import sys
 
 class Model(object):

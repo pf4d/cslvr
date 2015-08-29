@@ -1,10 +1,9 @@
-from varglas.D3Model  import D3Model
-from varglas.momentum import MomentumDukowiczStokes
-from varglas.energy   import Enthalpy 
-from varglas.io       import print_text, print_min_max
-from scipy            import random
-from fenics           import *
-from dolfin_adjoint   import *
+from varglas        import D3Model, MomentumDukowiczStokes, \
+                           print_text, print_min_max
+from varglas.energy import Enthalpy
+from scipy          import random
+from fenics         import *
+from dolfin_adjoint import *
 
 #set_log_active(False)
 

@@ -1,10 +1,11 @@
-from fenics         import *
-from dolfin_adjoint import *
-from io             import print_text, print_min_max
-from d2model        import D2Model
-from physics_new    import Physics
-from momentum       import Momentum
-from helper         import VerticalBasis, VerticalFDBasis, VerticalIntegrator
+from fenics              import *
+from dolfin_adjoint      import *
+from varglas.io          import print_text, print_min_max
+from varglas.d2model     import D2Model
+from varglas.physics_new import Physics
+from varglas.momentum    import Momentum
+from varglas.helper      import VerticalBasis, VerticalFDBasis, \
+                                VerticalIntegrator
 import sys
 
 
@@ -12,7 +13,7 @@ class MomentumHybrid(Momentum):
   """
   2D hybrid model.
   """
-  def __init__(self, model, solve_params=None, linear=False):
+  def __init__(self, model, solve_params=None, linear=False, isothermal=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
@@ -35,16 +36,18 @@ class MomentumHybrid(Momentum):
     self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
     
     # CONSTANTS
-    year    = model.spy
-    rho     = model.rhoi
-    g       = model.g
-    n       = model.n
-    
+    year    = model.spy(0)
+    rho     = model.rhoi(0)
+    g       = model.g(0)
+    n       = model.n(0)
+   
+    S       = model.S 
     B       = model.B
+    H       = S - B
     beta    = model.beta
     eps_reg = model.eps_reg
-    H       = model.H
-    S       = B + H
+    #H       = model.H
+    #S       = B + H
     deltax  = model.deltax
     sigmas  = model.sigmas
     T0_     = model.T0_
@@ -55,16 +58,12 @@ class MomentumHybrid(Momentum):
     Qc      = 6e4
     Qw      = model.Q0    # ice act. energy
     Rc      = model.R     # gas constant
-
-    # FUNCTION SPACES
-    Q       = model.Q
-    HV      = model.HV
     
     # MOMENTUM
-    U       = Function(HV, name='U')
-    Lam     = Function(HV, name='Lam')
-    Phi     = TestFunction(HV)
-    dU      = TrialFunction(HV)
+    U       = Function(model.HV, name='U')
+    Lam     = Function(model.HV, name='Lam')
+    Phi     = TestFunction(model.HV)
+    dU      = TrialFunction(model.HV)
     
     # ANSATZ    
     coef    = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
@@ -94,8 +93,16 @@ class MomentumHybrid(Momentum):
     def dsdz(s):
       return -1./H
 
-    def A_v(T):
-      return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+    if isothermal:
+      s = "    - using isothermal rate-factor -"
+      print_text(s, self.color())
+      def A_v(T):
+        return model.b**(-model.n(0)) 
+    else:
+      s = "    - using temperature-dependent rate-factor -"
+      print_text(s, self.color())
+      def A_v(T):
+        return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
     
     def epsilon_dot(s):
       return ( + (u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
@@ -110,16 +117,24 @@ class MomentumHybrid(Momentum):
       return A_v(T0.eval(s))**(-1./n)/2.*epsilon_dot(s)**((1.-n)/(2*n))
     
     def membrane_xx(s):
-      return (phi.dx(s,0) + phi.ds(s)*dsdx(s))*H*eta_v(s)*(4*(u.dx(s,0) + u.ds(s)*dsdx(s)) + 2*(v.dx(s,1) + v.ds(s)*dsdy(s)))
+      return (phi.dx(s,0) + phi.ds(s)*dsdx(s))*H*eta_v(s) \
+             * (+ 4*(u.dx(s,0) + u.ds(s)*dsdx(s)) \
+                + 2*(v.dx(s,1) + v.ds(s)*dsdy(s)))
     
     def membrane_xy(s):
-      return (phi.dx(s,1) + phi.ds(s)*dsdy(s))*H*eta_v(s)*((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))
+      return (phi.dx(s,1) + phi.ds(s)*dsdy(s))*H*eta_v(s) \
+             * (+ (u.dx(s,1) + u.ds(s)*dsdy(s)) \
+                + (v.dx(s,0) + v.ds(s)*dsdx(s)))
     
     def membrane_yx(s):
-      return (psi.dx(s,0) + psi.ds(s)*dsdx(s))*H*eta_v(s)*((u.dx(s,1) + u.ds(s)*dsdy(s)) + (v.dx(s,0) + v.ds(s)*dsdx(s)))
+      return (psi.dx(s,0) + psi.ds(s)*dsdx(s))*H*eta_v(s) \
+             * (+ (u.dx(s,1) + u.ds(s)*dsdy(s)) \
+                + (v.dx(s,0) + v.ds(s)*dsdx(s)))
     
     def membrane_yy(s):
-      return (psi.dx(s,1) + psi.ds(s)*dsdy(s))*H*eta_v(s)*(2*(u.dx(s,0) + u.ds(s)*dsdx(s)) + 4*(v.dx(s,1) + v.ds(s)*dsdy(s)))
+      return (psi.dx(s,1) + psi.ds(s)*dsdy(s))*H*eta_v(s) \
+             * (+ 2*(u.dx(s,0) + u.ds(s)*dsdx(s)) \
+                + 4*(v.dx(s,1) + v.ds(s)*dsdy(s)))
     
     def shear_xz(s):
       return dsdz(s)**2*phi.ds(s)*H*eta_v(s)*u.ds(s)
@@ -203,7 +218,7 @@ class MomentumHybrid(Momentum):
     """
     return self.solve_params
 
-  def default_ffc_options():
+  def default_ffc_options(self):
     """ 
     Returns a set of default ffc options that yield good performance
     """
@@ -228,13 +243,7 @@ class MomentumHybrid(Momentum):
                  'ffc_params'  : self.default_ffc_options()}
     return m_params
   
-  def solve(self, annotate=True, params=None):
-    """ 
-    Perform the Newton solve of the momentum equations 
-    """
-    raiseNotDefined()
-  
-  def solve(self):
+  def solve(self, annotate=True):
     """
     Solves for hybrid velocity.
     """
@@ -251,8 +260,11 @@ class MomentumHybrid(Momentum):
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac,
-           annotate = annotate, solver_parameters = params['solver'],
-           form_compiler_parameters = params['ffc_params'])
+          annotate = annotate, solver_parameters = params['solver'],
+          form_compiler_parameters = params['ffc_params'])
+    print_min_max(self.U, 'U')
+
+    model.UHV.assign(self.U)
 
     self.assx.assign(model.u,   project(self.u(0.0), model.Q, annotate=False))
     self.assy.assign(model.v,   project(self.v(0.0), model.Q, annotate=False))

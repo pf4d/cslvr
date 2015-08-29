@@ -46,7 +46,6 @@ from termcolor               import colored, cprint
 from mpl_toolkits.basemap    import Basemap
 from matplotlib              import colors, ticker
 from pyproj                  import *
-from io                      import DataInput
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from varglas.io              import print_text
 

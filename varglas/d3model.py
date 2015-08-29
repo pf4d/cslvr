@@ -1,8 +1,8 @@
-from fenics         import *
-from dolfin_adjoint import *
-from io             import print_text, get_text, print_min_max
-from model_new      import Model
-from pylab          import inf
+from fenics            import *
+from dolfin_adjoint    import *
+from varglas.io        import print_text, get_text, print_min_max
+from varglas.model_new import Model
+from pylab             import inf
 import sys
 
 class D3Model(Model):
@@ -15,6 +15,56 @@ class D3Model(Model):
     """
     Model.__init__(self, out_dir)
     self.D3Model_color = '150'
+
+  def generate_pbc(self):
+    """
+    return a SubDomain of periodic lateral boundaries.
+    """
+    s = "    - using 3D periodic boundaries -"
+    print_text(s, self.model_color)
+
+    xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
+    xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
+    ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
+    ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+    
+    self.use_periodic_boundaries = True
+    
+    class PeriodicBoundary(SubDomain):
+      
+      def inside(self, x, on_boundary):
+        """
+        Return True if on left or bottom boundary AND NOT on one 
+        of the two corners (0, 1) and (1, 0).
+        """
+        return bool((near(x[0], xmin) or near(x[1], ymin)) and \
+                    (not ((near(x[0], xmin) and near(x[1], ymax)) \
+                     or (near(x[0], xmax) and near(x[1], ymin)))) \
+                     and on_boundary)
+
+      def map(self, x, y):
+        """
+        Remap the values on the top and right sides to the bottom and left
+        sides.
+        """
+        if near(x[0], xmax) and near(x[1], ymax):
+          y[0] = x[0] - xmax
+          y[1] = x[1] - ymax
+          y[2] = x[2]
+        elif near(x[0], xmax):
+          y[0] = x[0] - xmax
+          y[1] = x[1]
+          y[2] = x[2]
+        elif near(x[1], ymax):
+          y[0] = x[0]
+          y[1] = x[1] - ymax
+          y[2] = x[2]
+        else:
+          y[0] = x[0]
+          y[1] = x[1]
+          y[2] = x[2]
+
+    self.pBC = PeriodicBoundary()
   
   def set_mesh(self, mesh):
     """

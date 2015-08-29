@@ -1,8 +1,7 @@
 from fenics         import *
 from dolfin_adjoint import *
-from io             import print_text, print_min_max
-import numpy              as np
-import physical_constants as pc
+from varglas.io     import print_text, get_text, print_min_max
+import numpy        as np
 import sys
 
 class Model(object):
@@ -98,55 +97,14 @@ class Model(object):
     self.T_w     = Constant(273.15)
     self.T_w.rename('T_w', 'Triple point of water')
 
+    self.time_step = 200.0
+
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
     """
-    s = "    - using periodic boundaries -"
-    print_text(s, self.model_color)
-
-    xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
-    xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
-    ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
-    ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+    raiseNotDefined()
     
-    class PeriodicBoundary(SubDomain):
-      
-      def inside(self, x, on_boundary):
-        """
-        Return True if on left or bottom boundary AND NOT on one 
-        of the two corners (0, 1) and (1, 0).
-        """
-        return bool((near(x[0], xmin) or near(x[1], ymin)) and \
-                    (not ((near(x[0], xmin) and near(x[1], ymax)) \
-                     or (near(x[0], xmax) and near(x[1], ymin)))) \
-                     and on_boundary)
-
-      def map(self, x, y):
-        """
-        Remap the values on the top and right sides to the bottom and left
-        sides.
-        """
-        if near(x[0], xmax) and near(x[1], ymax):
-          y[0] = x[0] - xmax
-          y[1] = x[1] - ymax
-          y[2] = x[2]
-        elif near(x[0], xmax):
-          y[0] = x[0] - xmax
-          y[1] = x[1]
-          y[2] = x[2]
-        elif near(x[1], ymax):
-          y[0] = x[0]
-          y[1] = x[1] - ymax
-          y[2] = x[2]
-        else:
-          y[0] = x[0]
-          y[1] = x[1]
-          y[2] = x[2]
-
-    self.pBC = PeriodicBoundary()
-    self.use_periodic_boundaries = True
-
   def set_mesh(self, mesh):
     """
     Sets the mesh.
@@ -244,7 +202,7 @@ class Model(object):
     """
     s = "::: initializing temperature :::"
     print_text(s, self.model_color)
-    self.assign_variable(self.T, T)
+    self.assign_variable(self.T,   T)
     print_min_max(self.T, 'T')
   
   def init_W(self, W):
@@ -284,6 +242,8 @@ class Model(object):
     """
     s = "::: initializing rate factor over grounded and shelves :::"
     print_text(s, self.model_color)
+    self.assign_variable(self.b, b)
+    print_min_max(self.b, 'b')
     self.init_b_shf(b)
     self.init_b_gnd(b)
   
@@ -292,8 +252,6 @@ class Model(object):
     """
     s = "::: initializing rate factor over shelves :::"
     print_text(s, self.model_color)
-    if type(self.b_shf) != Function:
-      self.b_shf = Function(self.Q, name='b_shf')
     self.assign_variable(self.b_shf, b_shf)
     print_min_max(self.b_shf, 'b_shf')
   
@@ -302,28 +260,9 @@ class Model(object):
     """
     s = "::: initializing rate factor over grounded ice :::"
     print_text(s, self.model_color)
-    if type(self.b_gnd) != Function:
-      self.b_gnd = Function(self.Q, name='b_gnd')
     self.assign_variable(self.b_gnd, b_gnd)
     print_min_max(self.b_gnd, 'b_gnd')
     
-  def init_full_b(self):
-    """
-    """
-    s = "::: initializing temp-dependent rate factor :::"
-    print_text(s, self.model_color)
-    n            = self.n
-    eps_reg      = self.eps_reg
-    T            = self.T
-    W            = self.W
-    R            = self.R
-    E_shf        = self.E_shf
-    E_gnd        = self.E_gnd
-    a_T          = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T          = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    self.b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-    self.b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-  
   def init_E(self, E):
     """
     """
@@ -406,25 +345,6 @@ class Model(object):
     print_min_max(self.u_ob, 'u_ob')
     print_min_max(self.v_ob, 'v_ob')
     print_min_max(self.U_ob, 'U_ob')
-    
-  def init_H(self, H):
-    """
-    """
-    s = "::: initializing thickness :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.H,  H)
-    self.assign_variable(self.H0, H)
-    print_min_max(self.H, 'H')
-
-  def init_H_bounds(self, H_min, H_max):
-    """
-    """
-    s = "::: initializing bounds on thickness :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.H_min, H_min)
-    self.assign_variable(self.H_max, H_max)
-    print_min_max(self.H_min, 'H_min')
-    print_min_max(self.H_max, 'H_max')
   
   def init_Ubar(self, Ubar):
     """
@@ -1139,10 +1059,7 @@ class Model(object):
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
     """
-    if   isinstance(var, pc.PhysicalConstant):
-      u.vector()[:] = var.real
-
-    elif isinstance(var, float) or isinstance(var, int):
+    if isinstance(var, float) or isinstance(var, int):
       u.vector()[:] = var
     
     elif isinstance(var, np.ndarray):
@@ -1274,10 +1191,10 @@ class Model(object):
     Perform thermo-mechanical coupling between momentum and energy.
     """
     s    = '::: performing thermo-mechanical coupling :::'
-    print_text(s, self.D2Model_color)
+    print_text(s, self.model_color)
     
-    from Momentum import Momentum
-    from Energy   import Energy
+    from varglas.momentum import Momentum
+    from varglas.energy   import Energy
     
     if momentum.__class__.__base__ != Momentum:
       s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
@@ -1292,7 +1209,7 @@ class Model(object):
     t0   = time()
 
     # L_\infty norm in velocity between iterations :
-    inner_error = inf
+    inner_error = np.inf
    
     # number of iterations
     counter     = 0
@@ -1326,18 +1243,18 @@ class Model(object):
         s5    = '(tol %.3e)' % rtol
         s6    = ' <<<'
         text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1, self.D2Model_color)
+        text1 = get_text(s1, self.model_color)
         text2 = get_text(s2, 'red', 1)
-        text3 = get_text(s3, self.D2Model_color)
+        text3 = get_text(s3, self.model_color)
         text4 = get_text(s4, 'red', 1)
-        text5 = get_text(s5, self.D2Model_color)
+        text5 = get_text(s5, self.model_color)
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
       inner_error = inner_error_n
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, self.D2Model_color)
+        print_text(s, self.model_color)
         callback()
 
     # calculate total time to compute

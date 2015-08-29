@@ -1,7 +1,5 @@
-from varglas.D3Model  import D3Model
-from varglas.momentum import MomentumBP
+from varglas          import D3Model, MomentumBP, print_text, print_min_max
 from varglas.energy   import Enthalpy 
-from varglas.io       import print_text, print_min_max
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *
@@ -16,8 +14,9 @@ L     = 40000
 parameters['form_compiler']['quadrature_degree']  = 2
 parameters["std_out_all_processes"]               = False
 
-#BoxMesh(x0, y0, z0, x1, y1, z1, nx, ny, nz)
-mesh  = BoxMesh(0, 0, 0, L, L, 1, 50, 50, 10)
+p1    = Point(0.0, 0.0, 0.0)
+p2    = Point(L,   L,   1)
+mesh  = BoxMesh(p1, p2, 25, 25, 10)
 
 model = D3Model(out_dir = out_dir + 'initial/')
 model.set_mesh(mesh)
@@ -128,8 +127,8 @@ def hessian_cb(j, ddj, m):
   print_min_max(ddj, 'd/db dJ/db')
 
 m = FunctionControl('beta')
-F = ReducedFunctional(Functional(I), m, eval_cb=eval_cb,
-                      derivative_cb = deriv_cb,
+F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+                      derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
   
 problem = MinimizationProblem(F, bounds=(0, 500))

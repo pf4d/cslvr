@@ -1,6 +1,6 @@
-from physics_new import Physics
+from varglas.physics_new import Physics
 
-class VelocityBalance(Physics):
+class BalanceVelocity(Physics):
   
   def __init__(self, model, config):
     """

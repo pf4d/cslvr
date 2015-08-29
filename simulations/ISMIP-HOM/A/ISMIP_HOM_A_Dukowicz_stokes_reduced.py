@@ -1,5 +1,4 @@
-from varglas.D3Model  import D3Model
-from varglas.momentum import MomentumDukowiczStokesReduced
+from varglas import MomentumDukowiczReduced
 from fenics           import parameters, Point, BoxMesh, Expression, sqrt, pi
 
 parameters['form_compiler']['quadrature_degree'] = 2

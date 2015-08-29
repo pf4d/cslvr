@@ -5,6 +5,14 @@ class Physics(object):
   """
   This abstract class outlines the structure of a physics calculation.
   """
+
+  def __new__(self, model):
+    """
+    Creates and returns a new Physics object.
+    """
+    instance = object.__new__(self)
+    instance.model = model
+    return instance
   
   def color(self):
     """

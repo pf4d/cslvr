@@ -5,7 +5,7 @@ from fenics           import parameters, Point, BoxMesh, Expression, sqrt, pi
 parameters['form_compiler']['quadrature_degree'] = 2
 
 alpha = 0.5 * pi / 180 
-L     = 40000
+L     = 5000
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)

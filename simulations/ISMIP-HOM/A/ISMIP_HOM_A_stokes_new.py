@@ -27,7 +27,7 @@ model.deform_mesh_to_geometry(surface, bed)
 model.init_S(surface)
 model.init_B(bed)
 model.init_mask(0.0)  # all grounded
-model.init_beta(sqrt(1000))
+model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
 mom = MomentumStokes(model)

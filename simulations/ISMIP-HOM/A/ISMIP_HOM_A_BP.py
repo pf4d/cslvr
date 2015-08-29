@@ -3,7 +3,7 @@ from varglas.momentum import MomentumBP
 from fenics           import Expression, Point, BoxMesh, sqrt, pi
 
 alpha = 0.5 * pi / 180 
-L     = 40000
+L     = 5000
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
@@ -25,7 +25,7 @@ model.deform_mesh_to_geometry(surface, bed)
 model.init_S(surface)
 model.init_B(bed)
 model.init_mask(0.0)  # all grounded
-model.init_beta(sqrt(1000))
+model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
 mom = MomentumBP(model)

@@ -24,6 +24,9 @@ class Model(object):
     """
     Create and instance of the model.
     """
+    parameters['form_compiler']['quadrature_degree']  = 2
+    parameters["std_out_all_processes"]               = False
+
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
     self.out_dir = out_dir
     self.MPI_rank = MPI.rank(mpi_comm_world())
@@ -177,7 +180,9 @@ class Model(object):
       self.pBC = None
     self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
                                 constrained_domain=self.pBC)
-    self.Q2     = MixedFunctionSpace([self.Q, self.Q])
+    self.Q2     = MixedFunctionSpace([self.Q]*2)
+    self.Q3     = MixedFunctionSpace([self.Q]*3)
+    self.Q4     = MixedFunctionSpace([self.Q]*4)
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
 
     s = "    - fundamental function spaces created - "
@@ -470,7 +475,7 @@ class Model(object):
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
-    \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    \beta \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
     s = "::: initializing beta from SIA :::"
@@ -489,9 +494,9 @@ class Model(object):
     U_v[U_v < eps] = eps
     self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
+    beta_0   = project((rhoi*g*H*S_mag) / (H**r * U_s), Q)
     beta_0_v = beta_0.vector().array()
-    beta_0_v[beta_0_v < 1e-3] = 1e-3
+    beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
     self.assign_variable(self.betaSIA, beta_0_v)
     print_min_max(self.betaSIA, 'betaSIA')
@@ -508,7 +513,7 @@ class Model(object):
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
-    \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    \beta \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
     s = "::: initializing new sliding beta from SIA :::"
@@ -832,7 +837,7 @@ class Model(object):
     for xx,bb in zip(X_i, bhat[1:]):
       self.beta_f += Constant(bb)*xx
       #self.beta_f *= exp(Constant(bb)*xx)
-    self.beta_f = exp(self.beta_f)
+    self.beta_f = sqrt(exp(self.beta_f))
     
     if config['mode'] == 'steady':
       beta0                   = project(self.beta_f, Q)
@@ -1015,12 +1020,6 @@ class Model(object):
     """
     raiseNotDefined()
   
-  def vert_integrate(self, u, d='up', Q='self'):
-    """
-    Integrate <u> from the bed to the surface.
-    """
-    raiseNotDefined()
-
   def calc_vert_average(self, u):
     """
     Calculates the vertical average of a given function space and function.  
@@ -1167,15 +1166,6 @@ class Model(object):
       print_text(s % type(var) , 'red', 1)
       u = var
 
-  def globalize_parameters(self, namespace=None):
-    """
-    This function converts the parameter dictinary into global object
-    
-    :param namespace: Optional namespace in which to place the global variables
-    """
-    for v in self.variables.iteritems():
-      vars(namespace)[v[0]] = v[1]
-
   def save_pvd(self, var, name):
     """
     Save a <name>.pvd file of the FEniCS Function <var> to this model's log 
@@ -1218,6 +1208,16 @@ class Model(object):
     self.U_ob          = Function(self.Q_non_periodic, name='U_ob')
     self.u_ob          = Function(self.Q_non_periodic, name='u_ob')
     self.v_ob          = Function(self.Q_non_periodic, name='v_ob')
+    
+    # unified velocity :
+    self.U3            = Function(self.Q3, name='U3')
+    u,v,w              = self.U3.split()
+    u.rename('u', '')
+    v.rename('v', '')
+    w.rename('w', '')
+    self.u             = u
+    self.v             = v
+    self.w             = w
     
     # Velocity model
     self.p             = Function(self.Q, name='p')
@@ -1267,5 +1267,86 @@ class Model(object):
     self.tau_ij        = Function(self.Q, name='tau_ij')
     self.tau_ji        = Function(self.Q, name='tau_ji')
     self.tau_jj        = Function(self.Q, name='tau_jj')
+
+  def thermo_solve(self, momentum, energy, callback=None, 
+                   rtol=1e-6, max_iter=15):
+    """ 
+    Perform thermo-mechanical coupling between momentum and energy.
+    """
+    s    = '::: performing thermo-mechanical coupling :::'
+    print_text(s, self.D2Model_color)
+    
+    from Momentum import Momentum
+    from Energy   import Energy
+    
+    if momentum.__class__.__base__ != Momentum:
+      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+      print_text(s % type(momentum) , 'red', 1)
+      sys.exit(1)
+    
+    if energy.__class__.__base__ != Energy:
+      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+      print_text(s % type(energy) , 'red', 1)
+      sys.exit(1)
+
+    t0   = time()
+
+    # L_\infty norm in velocity between iterations :
+    inner_error = inf
+   
+    # number of iterations
+    counter     = 0
+   
+    # previous velocity for norm calculation
+    U_prev      = self.U3.copy(True)
+
+    # perform a Picard iteration until the L_\infty norm of the velocity 
+    # difference is less than tolerance :
+    while inner_error > rtol and counter < max_iter:
+     
+      # need zero initial guess for Newton solve to converge : 
+      self.assign_variable(momentum.get_U(),  DOLFIN_EPS)
+      
+      # solve velocity :
+      momentum.solve(annotate=False)
+
+      # solve energy (temperature, water content) :
+      energy.solve()
+
+      # calculate L_infinity norm, increment counter :
+      counter       += 1
+      inner_error_n  = norm(project(U_prev - self.U3, annotate=False))
+      U_prev         = self.U3.copy(True)
+      if self.MPI_rank==0:
+        s0    = '>>> '
+        s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
+        s2    = 'r0 = %.3e'  % inner_error
+        s3    = ', '
+        s4    = 'r = %.3e ' % inner_error_n
+        s5    = '(tol %.3e)' % rtol
+        s6    = ' <<<'
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1, self.D2Model_color)
+        text2 = get_text(s2, 'red', 1)
+        text3 = get_text(s3, self.D2Model_color)
+        text4 = get_text(s4, 'red', 1)
+        text5 = get_text(s5, self.D2Model_color)
+        text6 = get_text(s6, 'red', 1)
+        print text0 + text1 + text2 + text3 + text4 + text5 + text6
+      inner_error = inner_error_n
+
+      if callback != None:
+        s    = '::: calling callback function :::'
+        print_text(s, self.D2Model_color)
+        callback()
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
 
 

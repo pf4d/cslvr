@@ -1618,7 +1618,7 @@ class Model(object):
   def init_SSA_variables(self):
     """
     """
-    s = "    - initializing BP variables -"
+    s = "    - initializing SSA variables -"
     print_text(s, self.color)
     
     self.U   = Function(self.Q2)

@@ -1169,15 +1169,28 @@ class VerticalFDBasis(object):
     return self.u[i].dx(x)        
 
 
-# PERFORMS GAUSSIAN QUADRATURE FOR ARBITRARY FUNCTION OF SIGMA, QUAD POINTS, AND WEIGHTS
+# PERFORMS GAUSSIAN QUADRATURE FOR ARBITRARY FUNCTION OF SIGMA, 
+# QUAD POINTS, AND WEIGHTS
 class VerticalIntegrator(object):
-  def __init__(self,points,weights):
+  def __init__(self, order=4):
+    if order == 4:
+      points  = np.array([0.0,       0.4688, 0.8302, 1.0   ])
+      weights = np.array([0.4876/2., 0.4317, 0.2768, 0.0476])
+    if order == 6:
+      points  = np.array([1.0,     0.89976,   0.677186, 0.36312,   0.0        ])
+      weights = np.array([0.02778, 0.1654595, 0.274539, 0.3464285, 0.371519/2.])
+    if order == 8:
+      points  = np.array([1,         0.934001, 0.784483, 
+                          0.565235,  0.295758, 0          ])
+      weights = np.array([0.0181818, 0.10961,  0.18717,  
+                          0.248048,  0.28688,  0.300218/2.])
     self.points  = points
     self.weights = weights
   def integral_term(self,f,s,w):
     return w*f(s)
   def intz(self,f):
-    return sum([self.integral_term(f,s,w) for s,w in zip(self.points,self.weights)])
+    return sum([self.integral_term(f,s,w) 
+                for s,w in zip(self.points,self.weights)])
 
 
 

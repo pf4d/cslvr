@@ -3303,6 +3303,7 @@ class MassTransportHybrid(Physics):
     print_min_max(model.S, 'S')
     return solver_return
 
+
 class EnergyHybrid(Physics):
   """
   New 2D hybrid model.

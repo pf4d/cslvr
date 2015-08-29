@@ -11,7 +11,7 @@ class D3Model(Model):
 
   def __init__(self, out_dir='./results/'):
     """
-    Create and instance of the model.
+    Create and instance of a 3D model.
     """
     Model.__init__(self, out_dir)
     self.D3Model_color = '150'
@@ -38,7 +38,7 @@ class D3Model(Model):
       self.dof        = self.mesh.size_global(0)
     s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
         % (self.dim, self.num_cells, self.num_facets, self.dof)
-    print_text(s, self.model_color)
+    print_text(s, self.D3Model_color)
 
   def generate_function_spaces(self, use_periodic=False):
     """
@@ -49,9 +49,6 @@ class D3Model(Model):
 
     s = "::: generating 3D function spaces :::"
     print_text(s, self.D3Model_color)
-    
-    self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
-    self.Q4     = MixedFunctionSpace([self.Q]*4)
     
     ## mini elements :
     #self.Bub    = FunctionSpace(self.mesh, "B", 4, 
@@ -482,12 +479,6 @@ class D3Model(Model):
                     + tu_xy**2 + tu_xz**2 + tu_yz**2
     return taudot
   
-  def vert_integrate(self, u, d='up', Q='self'):
-    """
-    Integrate <u> from the bed to the surface.
-    """
-    raiseNotDefined()
-
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -504,17 +495,6 @@ class D3Model(Model):
         values[0] = min(0, x[2])
     self.D = Depth(element=self.Q.ufl_element())
     
-    # unified velocity :
-    self.U3            = Function(self.V, name='U3')
-    u,v,w              = self.U3.split()
-    u.rename('u', '')
-    v.rename('v', '')
-    w.rename('w', '')
-    self.u             = u
-    self.v             = v
-    self.w             = w
-    self.p             = Function(self.Q, name='p')
-
     # Enthalpy model
     self.theta_surface = Function(self.Q, name='theta_surface')
     self.theta_float   = Function(self.Q, name='theta_float')
@@ -552,304 +532,6 @@ class D3Model(Model):
     self.F_jz          = Function(self.Q, name='F_jz')
     self.tau_iz        = Function(self.Q, name='tau_iz')
     self.tau_jz        = Function(self.Q, name='tau_jz')
-  
-  def init_age(self):
-    """ 
-    Set up the equations 
-    """
-    s    = "::: INITIALIZING AGE PHYSICS :::"
-    print_text(s, self.D3Model_color)
 
-    config = self.config
-    h      = self.h
-    U      = self.U3
-    
-    #Bub = FunctionSpace(self.mesh, "B", 4, constrained_domain=self.pBC)
-    self.MQ  = self.Q# + Bub
-
-    # Trial and test
-    a   = TrialFunction(self.MQ)
-    phi = TestFunction(self.MQ)
-    #self.age = Function(self.MQ)
-
-    # Steady state
-    if config['mode'] == 'steady':
-      s    = "    - using steady-state -"
-      print_text(s, self.D3Model_color)
-      
-      # SUPG method :
-      Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
-      phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
-      
-      # Residual 
-      self.age_F = (dot(U,grad(a)) - Constant(1.0)) * phihat * dx
-      self.a_a   = dot(U,grad(a)) * phi * dx
-      self.a_L   = Constant(1.0) * phi * dx
-
-    else:
-      s    = "    - using transient -"
-      print_text(s, self.D3Model_color)
-      
-      # Starting and midpoint quantities
-      ahat   = self.ahat
-      a0     = self.a0
-      uhat   = self.uhat
-      vhat   = self.vhat
-      what   = self.what
-      mhat   = self.mhat
-
-      # Time step
-      dt     = config['time_step']
-
-      # SUPG method (note subtraction of mesh velocity) :
-      U      = as_vector([uhat, vhat, what-mhat])
-      Unorm  = sqrt(dot(U,U) + DOLFIN_EPS)
-      phihat = phi + h/(2*Unorm) * dot(U,grad(phi))
-
-      # Midpoint value of age for Crank-Nicholson
-      a_mid = 0.5*(a + self.ahat)
-      
-      # Weak form of time dependent residual
-      self.age_F = + (a - a0)/dt * phi * dx \
-                   + dot(U, grad(a_mid)) * phihat * dx \
-                   - 1.0 * phihat * dx
-
-    # form the boundary conditions :
-    if config['age']['use_smb_for_ela']:
-      s    = "    - using adot (SMB) boundary condition -"
-      print_text(s, self.D3Model_color)
-      self.age_bc = DirichletBC(self.MQ, 0.0, self.ff_acc, 1)
-    
-    else:
-      s    = "    - using ELA boundary condition -"
-      print_text(s, self.D3Model_color)
-      def above_ela(x,on_boundary):
-        return x[2] > config['age']['ela'] and on_boundary
-      self.age_bc = DirichletBC(self.Q, 0.0, above_ela)
-
-  def solve_age(self, ahat=None, a0=None, uhat=None, what=None, vhat=None):
-    """ 
-    Solve the system
-    
-    :param ahat   : Observable estimate of the age
-    :param a0     : Initial age of the ice
-    :param uhat   : Horizontal velocity
-    :param vhat   : Horizontal velocity perpendicular to :attr:`uhat`
-    :param what   : Vertical velocity
-    """
-    # Assign values to midpoint quantities and mesh velocity
-    if ahat:
-      self.assign_variable(self.ahat, ahat)
-      self.assign_variable(self.a0,   a0)
-      self.assign_variable(self.uhat, uhat)
-      self.assign_variable(self.vhat, vhat)
-      self.assign_variable(self.what, what)
-
-    # Solve!
-    s    = "::: solving age :::"
-    print_text(s, self.D3Model_color)
-    solve(lhs(self.age_F) == rhs(self.age_F), self.age, self.age_bc,
-          annotate=False)
-    #solve(self.a_a == self.a_L, self.age, self.age_bc, annotate=False)
-    #self.age.interpolate(self.age)
-    print_min_max(self.age, 'age')
-  
-  def init_free_surface(self):
-    """
-    """
-    s    = "::: INITIALIZING FREE-SURFACE PHYSICS :::"
-    print_text(s, self.D3Model_color)
-    
-    # sigma coordinate :
-    self.sigma = project((self.x[2] - self.B) / (self.S - self.B),
-                         annotate=False)
-    print_min_max(self.sigma, 'sigma')
-
-    Q      = self.Q
-    Q_flat = self.Q_flat
-
-    phi    = TestFunction(Q_flat)
-    dS     = TrialFunction(Q_flat)
-    
-    Shat   = Function(Q_flat) # surface elevation velocity 
-    ahat   = Function(Q_flat) # accumulation velocity
-    uhat   = Function(Q_flat) # horizontal velocity
-    vhat   = Function(Q_flat) # horizontal velocity perp. to uhat
-    what   = Function(Q_flat) # vertical velocity
-    mhat   = Function(Q_flat) # mesh velocity
-    dSdt   = Function(Q_flat) # surface height change
-    M      = Function(Q_flat) # mass
-    ds     = self.ds_flat
-    dSurf  = ds(2)
-    dBase  = ds(3)
-    
-    self.static_boundary = DirichletBC(Q, 0.0, self.ff_flat, 4)
-    h = CellSize(self.flat_mesh)
-
-    # upwinded trial function :
-    unorm       = sqrt(self.uhat**2 + self.vhat**2 + 1e-1)
-    upwind_term = h/(2.*unorm)*(self.uhat*phi.dx(0) + self.vhat*phi.dx(1))
-    phihat      = phi + upwind_term
-
-    mass_matrix = dS * phihat * dSurf
-    lumped_mass = phi * dSurf
-
-    stiffness_matrix = - self.uhat * self.Shat.dx(0) * phihat * dSurf \
-                       - self.vhat * self.Shat.dx(1) * phihat * dSurf\
-                       + (self.what + self.ahat) * phihat * dSurf
-    
-    # Calculate the nonlinear residual dependent scalar
-    term1            = self.Shat.dx(0)**2 + self.Shat.dx(1)**2 + 1e-1
-    term2            = + self.uhat*self.Shat.dx(0) \
-                       + self.vhat*self.Shat.dx(1) \
-                       - (self.what + self.ahat)
-    C                = 10.0*h/(2*unorm) * term1 * term2**2
-    diffusion_matrix = C * dot(grad(phi), grad(self.Shat)) * dSurf
-    
-    # Set up the Galerkin-least squares formulation of the Stokes' functional
-    A_pro         = - phi.dx(2)*dS*dx - dS*phi*dBase + dSdt*phi*dSurf 
-    M.vector()[:] = 1.0
-    self.M        = M*dx
-
-    self.newz                   = Function(self.Q)
-    self.mass_matrix            = mass_matrix
-    self.stiffness_matrix       = stiffness_matrix
-    self.diffusion_matrix       = diffusion_matrix
-    self.lumped_mass            = lumped_mass
-    self.A_pro                  = A_pro
-    self.Shat                   = Shat
-    self.ahat                   = ahat
-    self.uhat                   = uhat
-    self.vhat                   = vhat
-    self.what                   = what
-    self.mhat                   = mhat
-    self.dSdt                   = dSdt
-    
-  def solve_free_surface(self):
-    """
-    """
-    config = self.config
-   
-    self.assign_variable(self.Shat, self.S) 
-    self.assign_variable(self.ahat, self.adot) 
-    self.assign_variable(self.uhat, self.u) 
-    self.assign_variable(self.vhat, self.v) 
-    self.assign_variable(self.what, self.w) 
-
-    m = assemble(self.mass_matrix,      keep_diagonal=True)
-    r = assemble(self.stiffness_matrix, keep_diagonal=True)
-
-    s    = "::: solving free-surface :::"
-    print_text(s, self.D3Model_color)
-    if config['free_surface']['lump_mass_matrix']:
-      m_l = assemble(self.lumped_mass)
-      m_l = m_l.get_local()
-      m_l[m_l==0.0]=1.0
-      m_l_inv = 1./m_l
-
-    if config['free_surface']['static_boundary_conditions']:
-      self.static_boundary.apply(m,r)
-
-    if config['free_surface']['use_shock_capturing']:
-      k = assemble(self.diffusion_matrix)
-      r -= k
-      print_min_max(r, 'D')
-
-    if config['free_surface']['lump_mass_matrix']:
-      self.assign_variable(self.dSdt, m_l_inv * r.get_local())
-    else:
-      m.ident_zeros()
-      solve(m, self.dSdt.vector(), r, annotate=False)
-
-    A = assemble(lhs(self.A_pro))
-    p = assemble(rhs(self.A_pro))
-    q = Vector()  
-    solve(A, q, p, annotate=False)
-    self.assign_variable(self.dSdt, q)
- 
-  def thermo_solve(self, momentum, energy, callback=None, 
-                   rtol=1e-6, max_iter=15):
-    """ 
-    Perform thermo-mechanical coupling between momentum and energy.
-    """
-    s    = '::: performing thermo-mechanical coupling :::'
-    print_text(s, self.D3Model_color)
-    
-    from momentum import Momentum
-    from energy   import Energy
-    
-    if momentum.__class__.__base__ != Momentum:
-      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
-      print_text(s % type(momentum) , 'red', 1)
-      sys.exit(1)
-    
-    if energy.__class__.__base__ != Energy:
-      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
-      print_text(s % type(energy) , 'red', 1)
-      sys.exit(1)
-
-    t0   = time()
-
-    # L_\infty norm in velocity between iterations :
-    inner_error = inf
-   
-    # number of iterations
-    counter     = 0
-   
-    # previous velocity for norm calculation
-    U_prev      = self.U3.copy(True)
-
-    #adj_checkpointing(strategy='multistage', steps=max_iter, 
-    #                  snaps_on_disk=0, snaps_in_ram=2, verbose=True)
-    
-    # perform a Picard iteration until the L_\infty norm of the velocity 
-    # difference is less than tolerance :
-    while inner_error > rtol and counter < max_iter:
-     
-      # need zero initial guess for Newton solve to converge : 
-      self.assign_variable(momentum.get_U(),  DOLFIN_EPS)
-      
-      # solve velocity :
-      momentum.solve(annotate=False)
-
-      # solve energy (temperature, water content) :
-      energy.solve()
-
-      # calculate L_infinity norm, increment counter :
-      #adj_inc_timestep()
-      counter       += 1
-      inner_error_n  = norm(project(U_prev - self.U3, annotate=False))
-      U_prev         = self.U3.copy(True)
-      if self.MPI_rank==0:
-        s0    = '>>> '
-        s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
-        s2    = 'r0 = %.3e'  % inner_error
-        s3    = ', '
-        s4    = 'r = %.3e ' % inner_error_n
-        s5    = '(tol %.3e)' % rtol
-        s6    = ' <<<'
-        text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1, self.D3Model_color)
-        text2 = get_text(s2, 'red', 1)
-        text3 = get_text(s3, self.D3Model_color)
-        text4 = get_text(s4, 'red', 1)
-        text5 = get_text(s5, self.D3Model_color)
-        text6 = get_text(s6, 'red', 1)
-        print text0 + text1 + text2 + text3 + text4 + text5 + text6
-      inner_error = inner_error_n
-
-      if callback != None:
-        s    = '::: calling callback function :::'
-        print_text(s, self.D3Model_color)
-        callback()
-
-    # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
-    print_text(text, 'red', 1)
 
 

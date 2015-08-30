@@ -1,59 +1,6 @@
-import urllib2
-import sys
-import os
-import zipfile
-import tarfile
+from varglas import download_file
 import inspect
-
-
-def download_file(url, direc, folder, extract=False):
-  """
-  download a file with url <url> into directory <direc>/<folder>.  If <extract>
-  is True, extract the .zip file into the directory and delete the .zip file.
-  """
-  # make the directory if needed :
-  direc = direc + '/' + folder + '/'
-  d     = os.path.dirname(direc)
-  if not os.path.exists(d):
-    os.makedirs(d)
-
-  # url file info :
-  fn   = url.split('/')[-1]
-  u    = urllib2.urlopen(url)
-  f    = open(direc + fn, 'wb')
-  meta = u.info()
-  fs   = int(meta.getheaders("Content-Length")[0])
-  
-  s    = "Downloading: %s Bytes: %s" % (fn, fs)
-  print s
-  
-  fs_dl  = 0
-  blk_sz = 8192
-  
-  # download the file and print status :
-  while True:
-    buffer = u.read(blk_sz)
-    if not buffer:
-      break
-  
-    fs_dl += len(buffer)
-    f.write(buffer)
-    status = r"%10d  [%3.2f%%]" % (fs_dl, fs_dl * 100. / fs)
-    status = status + chr(8)*(len(status)+1)
-    sys.stdout.write(status)
-    sys.stdout.flush()
-  
-  f.close()
-  
-  # extract the zip/tar.gz file if necessary :
-  if extract:
-    ty = fn.split('.')[-1]
-    if ty == 'zip':
-      cf = zipfile.ZipFile(direc + fn)
-    else:
-      cf = tarfile.open(direc + fn, 'r:gz')
-    cf.extractall(direc)
-    os.remove(direc + fn)
+import os
 
 def convert_measures_projection(direc, var):
   """
@@ -75,39 +22,39 @@ def convert_measures_projection(direc, var):
 
 #===============================================================================
 filename = inspect.getframeinfo(inspect.currentframe()).filename
-home     = os.path.dirname(os.path.abspath(filename)) + '/data/greenland'
+home     = os.path.dirname(os.path.abspath(filename)) + '/../data/greenland'
 
-## measures velocity dataset :
-#fldr = 'measures'
-#meas = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
-#       'nsidc0478_MEASURES_greenland_V01/2008/' + \
-#       'greenland_vel_mosaic500_2008_2009'
-#download_file(meas + '_sp.tif', home, fldr)
-#download_file(meas + '_vx.tif', home, fldr)
-#download_file(meas + '_vy.tif', home, fldr)
-#
-## get errors in .tif format
-#errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
-#          'greenland_measures_error.tar.gz?dl=1&token_hash=AAEp' +\
-#          '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
-#download_file(errors, home, fldr, extract=True)
-#
-### convert to searise projection via raster warp :
-##convert_measures_projection(home + '/' + fldr, 'vx')
-##convert_measures_projection(home + '/' + fldr, 'vy')
-##convert_measures_projection(home + '/' + fldr, 'ex')
-##convert_measures_projection(home + '/' + fldr, 'ey')
-##convert_measures_projection(home + '/' + fldr, 'sp')
-#
-## Fox Maule et al. (2005) basal heat flux :
-#q_geo   = 'http://websrv.cs.umt.edu/isis/images/d/da/Greenland_heat_flux_5km.nc'
-#fldr    = 'fox_maule'
-#download_file(q_geo, home, fldr)
-#
-## searise dataset :
-#searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
-#fldr    = 'searise'
-#download_file(searise, home, fldr)
+# measures velocity dataset :
+fldr = 'measures'
+meas = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
+       'nsidc0478_MEASURES_greenland_V01/2008/' + \
+       'greenland_vel_mosaic500_2008_2009'
+download_file(meas + '_sp.tif', home, fldr)
+download_file(meas + '_vx.tif', home, fldr)
+download_file(meas + '_vy.tif', home, fldr)
+
+# get errors in .tif format
+errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
+          'greenland_measures_error.tar.gz?dl=1&token_hash=AAEp' +\
+          '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
+download_file(errors, home, fldr, extract=True)
+
+## convert to searise projection via raster warp :
+#convert_measures_projection(home + '/' + fldr, 'vx')
+#convert_measures_projection(home + '/' + fldr, 'vy')
+#convert_measures_projection(home + '/' + fldr, 'ex')
+#convert_measures_projection(home + '/' + fldr, 'ey')
+#convert_measures_projection(home + '/' + fldr, 'sp')
+
+# Fox Maule et al. (2005) basal heat flux :
+q_geo   = 'http://websrv.cs.umt.edu/isis/images/d/da/Greenland_heat_flux_5km.nc'
+fldr    = 'fox_maule'
+download_file(q_geo, home, fldr)
+
+# searise dataset :
+searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
+fldr    = 'searise'
+download_file(searise, home, fldr)
 
 # NASA basins dataset for Greenland:
 basins_shape  = 'https://umt.box.com/shared/static/' + \
@@ -115,28 +62,28 @@ basins_shape  = 'https://umt.box.com/shared/static/' + \
 basins_image  = 'https://umt.box.com/shared/static/' + \
                 'pgo62nopbwid6hkuc5suyvggjozvywqv.png'
 fldr    = 'basins'
-download_file(basins_shape, home, fldr)# ,name = 'GrnDrainageSystems_Ekholm.txt')
-download_file(basins_image, home, fldr)# ,name = 'Grn_Drainage_Systems.png')
-#
-## smooth target matlab matrix :
-#smooth  = 'https://dl.dropboxusercontent.com/s/e8r0x37mil03hvu/' +\
-#          'smooth_target.tar.gz?dl=1&token_hash=AAGafyrXdL72vZL' +\
-#          'ffoBX3_kfAcEzvFhvrw8rERNx2WQShA'
-#fldr    = 'searise'
-#download_file(smooth, home, fldr, extract=True)
-#
-## Bamber 2013 bedrock topography dataset :
-#v2      = 'https://dl.dropboxusercontent.com/s/qd02y99d1xrkdz3/' + \
-#          'Greenland_bedrock_topography_V2.tar.gz?dl=1&token_ha' + \
-#          'sh=AAFzWa8fuvcKC2tBYqY9VzDLctRWwqX2EuN-179bJ74XEg'
-#fldr    = 'bamber13'
-#download_file(v2, home, fldr, extract=True)
-#
-## updated Rignot 2014 velocity data :
-#merged  = 'https://www.dropbox.com/s/ov5bl30jsojws8g/velocity_' + \
-#          'greenland_v4Aug2014.tar.gz?dl=1'
-#fldr    = 'rignot'
-#download_file(merged, home, fldr, extract=True)
+download_file(basins_shape, home, fldr)
+download_file(basins_image, home, fldr)
+
+# smooth target matlab matrix :
+smooth  = 'https://dl.dropboxusercontent.com/s/e8r0x37mil03hvu/' +\
+          'smooth_target.tar.gz?dl=1&token_hash=AAGafyrXdL72vZL' +\
+          'ffoBX3_kfAcEzvFhvrw8rERNx2WQShA'
+fldr    = 'searise'
+download_file(smooth, home, fldr, extract=True)
+
+# Bamber 2013 bedrock topography dataset :
+v2      = 'https://dl.dropboxusercontent.com/s/qd02y99d1xrkdz3/' + \
+          'Greenland_bedrock_topography_V2.tar.gz?dl=1&token_ha' + \
+          'sh=AAFzWa8fuvcKC2tBYqY9VzDLctRWwqX2EuN-179bJ74XEg'
+fldr    = 'bamber13'
+download_file(v2, home, fldr, extract=True)
+
+# updated Rignot 2014 velocity data :
+merged  = 'https://www.dropbox.com/s/ov5bl30jsojws8g/velocity_' + \
+          'greenland_v4Aug2014.tar.gz?dl=1'
+fldr    = 'rignot'
+download_file(merged, home, fldr, extract=True)
 
 
 

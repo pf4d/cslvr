@@ -62,6 +62,7 @@ def raiseNotDefined():
   print text % (method, line, fileName)
   sys.exit(1)
 
+  
 def download_file(url, direc, folder, extract=False):
   """
   download a file with url <url> into directory <direc>/<folder>.  If <extract>
@@ -81,14 +82,14 @@ def download_file(url, direc, folder, extract=False):
 
   # url file info :
   fn   = url.split('/')[-1]
+  fn   = fn.split('?')[0]
   u    = urllib2.urlopen(url)
   f    = open(direc + fn, 'wb')
   meta = u.info()
   fs   = int(meta.getheaders("Content-Length")[0])
   
   s    = "Downloading: %s Bytes: %s" % (fn, fs)
-  text = colored(s, 'green')
-  print text % (counter, max_iter, inner_error, inner_tol)
+  print s
   
   fs_dl  = 0
   blk_sz = 8192

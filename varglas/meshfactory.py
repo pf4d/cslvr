@@ -7,7 +7,7 @@ class MeshFactory(object):
     
   global home 
   filename = inspect.getframeinfo(inspect.currentframe()).filename
-  home     = os.path.dirname(os.path.abspath(filename)) + '/../mesh'
+  home     = os.path.dirname(os.path.abspath(filename)) + '/../meshes'
  
   @staticmethod
   def get_greenland_detailed():

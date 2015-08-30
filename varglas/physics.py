@@ -3070,17 +3070,7 @@ class VelocityHybrid(Physics):
                             - 1./(n+1)*(s**(n+2) - 1.)*H.dx(1))
       return (u(1)*B.dx(0) + v(1)*B.dx(1)) - 1./dsdz(s)*(w_0 + w_2) 
     
-    # O(4)
-    points  = np.array([0.0,       0.4688, 0.8302, 1.0   ])
-    weights = np.array([0.4876/2., 0.4317, 0.2768, 0.0476])
-    # O(6)
-    #points  = np.array([1.0,     0.89976,   0.677186, 0.36312,   0.0        ])
-    #weights = np.array([0.02778, 0.1654595, 0.274539, 0.3464285, 0.371519/2.])
-    # O(8)
-    #points  = np.array([1,         0.934001, 0.784483, 0.565235, 0.295758, 0          ])
-    #weights = np.array([0.0181818, 0.10961,  0.18717,  0.248048, 0.28688,  0.300218/2.])
-    
-    vi = VerticalIntegrator(points, weights)
+    vi = VerticalIntegrator(order=4)
 
     R_x = - vi.intz(membrane_xx) \
           - vi.intz(membrane_xy) \
@@ -3211,17 +3201,7 @@ class MassTransportHybrid(Physics):
     def sia_int(s):
       return A_v(T.eval(s))*s**(n+1)
     
-    # O(4)
-    points  = np.array([0.0,       0.4688, 0.8302, 1.0   ])
-    weights = np.array([0.4876/2., 0.4317, 0.2768, 0.0476])
-    # O(6)
-    #points  = np.array([1.0,     0.89976,   0.677186, 0.36312,   0.0        ])
-    #weights = np.array([0.02778, 0.1654595, 0.274539, 0.3464285, 0.371519/2.])
-    # O(8)
-    #points  = np.array([1,         0.934001, 0.784483, 0.565235, 0.295758, 0          ])
-    #weights = np.array([0.0181818, 0.10961,  0.18717,  0.248048, 0.28688,  0.300218/2.])
-    
-    vi = VerticalIntegrator(points, weights)
+    vi = VerticalIntegrator(order=4)
     
     #D = 2.*(rho*g)**n*A/(n+2.)*H**(n+2)*dot(grad(S),grad(S))**((n-1.)/2.)
     D = 2.0*(rho*g)**n*H**(n+2)*dot(grad(S),grad(S))**((n-1.0)/2.0)*vi.intz(sia_int) + rho*g*H**2/beta**2

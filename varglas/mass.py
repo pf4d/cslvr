@@ -162,6 +162,7 @@ class MassTransportHybrid(Physics):
     deltax = model.deltax
     sigmas = model.sigmas
     h      = model.h
+    dt     = model.time_step
     S      = B + H
     coef   = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
     T      = VerticalFDBasis(T_, deltax, coef, sigmas)
@@ -171,10 +172,6 @@ class MassTransportHybrid(Physics):
     Qc    = 6e4
     Qw    = model.Q0 # ice act. energy
     Rc    = model.R  # gas constant
-    
-    # TIME STEP AND REGULARIZATION
-    eps_reg = model.eps_reg
-    dt      = model.time_step
    
     # function spaces : 
     dH  = TrialFunction(Q)
@@ -184,7 +181,7 @@ class MassTransportHybrid(Physics):
       s = "    - using isothermal rate-factor -"
       print_text(s, self.color())
       def A_v(T):
-        return model.b**(-model.n(0)) 
+        return model.b**(-n) 
     else:
       s = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
@@ -193,13 +190,16 @@ class MassTransportHybrid(Physics):
     
     # SIA DIFFUSION COEFFICIENT INTEGRAL TERM.
     def sia_int(s):
-      return A_v(T.eval(s))*s**(n+1)
+      return A_v(T.eval(s)) * s**(n+1)
     
     vi = VerticalIntegrator(order=4)
     
-    #D = 2.*(rho*g)**n*A/(n+2.)*H**(n+2)*dot(grad(S),grad(S))**((n-1.)/2.)
-    D = 2 * (rho*g)**n * H**(n+2) * dot(grad(S),grad(S))**((n-1)/2) \
-        * vi.intz(sia_int) + rho*g*H**2/beta
+    #D = 2 * (rho*g)**n * A/(n+2) * H**(n+2) \
+    #      * dot(grad(S),grad(S))**((n-1)/2)
+    D = + 2 * (rho*g)**n * H**(n+2) \
+            * dot(grad(S),grad(S))**((n-1)/2) \
+            * vi.intz(sia_int) \
+        + rho * g * H**2 / beta
     
     ubar = U[0]
     vbar = U[1]
@@ -223,6 +223,7 @@ class MassTransportHybrid(Physics):
     self.J_thick = derivative(self.R_thick, H, dH)
 
     self.bc = []#DirichletBC(Q, thklim, 'on_boundary')
+    print_min_max(adot, 'adot')
 
   def default_ffc_options(self):
     """ 

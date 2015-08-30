@@ -511,6 +511,9 @@ def print_min_max(u, title, color='yellow'):
   elif isinstance(u, int) or isinstance(u, float):
     s    = title + ' : %.3e' % u
     print_text(s, color)
+  elif isinstance(u, Constant):
+    s    = title + ' : %.3e' % u(0)
+    print_text(s, color)
   else:
     er = title + ": print_min_max function requires a Vector, Function" \
          + ", array, int or float, not %s." % type(u)

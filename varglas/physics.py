@@ -3203,8 +3203,12 @@ class MassTransportHybrid(Physics):
     
     vi = VerticalIntegrator(order=4)
     
-    #D = 2.*(rho*g)**n*A/(n+2.)*H**(n+2)*dot(grad(S),grad(S))**((n-1.)/2.)
-    D = 2.0*(rho*g)**n*H**(n+2)*dot(grad(S),grad(S))**((n-1.0)/2.0)*vi.intz(sia_int) + rho*g*H**2/beta**2
+    #D = 2 * (rho*g)**n * A/(n+2) * H**(n+2) \
+    #      * dot(grad(S),grad(S))**((n-1)/2)
+    D = + 2 * (rho*g)**n * H**(n+2) \
+            * dot(grad(S),grad(S))**((n-1)/2) \
+            * vi.intz(sia_int) \
+        + rho * g * H**2 / beta**2
     
     ubar = U[0]
     vbar = U[1]

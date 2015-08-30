@@ -1066,7 +1066,11 @@ class Model(object):
     array, float, Expression, or Function.
     """
     if isinstance(var, float) or isinstance(var, int):
-      u.vector()[:] = var
+      if    isinstance(u, GenericVector) or isinstance(u, Function) \
+         or isinstance(u, dolfin.functions.function.Function):
+        u.vector()[:] = var
+      elif  isinstance(u, Constant):
+        u.assign(var)
     
     elif isinstance(var, np.ndarray):
       u.vector().set_local(var)
@@ -1286,8 +1290,6 @@ class Model(object):
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
     from varglas.physics_new import Physics
-
-    self.step_time = []
     
     if momentum.__class__.__base__ != Momentum:
       s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
@@ -1303,10 +1305,12 @@ class Model(object):
       s = ">>> thermo_solve REQUIRES A 'Physics' INSTANCE, NOT %s <<<"
       print_text(s % type(mass), 'red', 1)
       sys.exit(1)
+    
+    self.init_time_step(time_step)
+    self.step_time = []
 
     t0 = time()
     t  = t_start
-    dt = time_step
    
     # Loop over all times
     while t <= t_end:
@@ -1317,14 +1321,14 @@ class Model(object):
       # solve velocity :
       momentum.solve(annotate=annotate)
 
-      # solve energy :
-      energy.solve(annotate=annotate)
-
       # solve mass :
       mass.solve(annotate=annotate)
 
       # update pressure-melting point :
       energy.calc_T_melt(annotate=annotate)
+
+      # solve energy :
+      energy.solve(annotate=annotate)
 
       if callback != None:
         s    = '::: calling callback function :::'
@@ -1335,7 +1339,7 @@ class Model(object):
       s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
       print_text(s % (t, time()-tic), 'red', 1)
 
-      t += dt
+      t += time_step
       self.step_time.append(time() - tic)
 
     # calculate total time to compute

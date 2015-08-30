@@ -97,7 +97,7 @@ class MomentumHybrid(Momentum):
       s = "    - using isothermal rate-factor -"
       print_text(s, self.color())
       def A_v(T):
-        return model.b**(-model.n(0)) 
+        return model.b**(-n) 
     else:
       s = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
@@ -114,7 +114,7 @@ class MomentumHybrid(Momentum):
                + eps_reg)
     
     def eta_v(s):
-      return A_v(T0.eval(s))**(-1./n)/2.*epsilon_dot(s)**((1.-n)/(2*n))
+      return 0.5 * A_v(T0.eval(s))**(-1/n) * epsilon_dot(s)**((1-n)/(2*n))
     
     def membrane_xx(s):
       return (phi.dx(s,0) + phi.ds(s)*dsdx(s))*H*eta_v(s) \
@@ -266,18 +266,19 @@ class MomentumHybrid(Momentum):
     print_min_max(self.U, 'U')
 
     model.UHV.assign(self.U)
+    print_min_max(model.UHV, 'UHV')
 
     self.assx.assign(model.u,   project(self.u(0.0), model.Q, annotate=False))
     self.assy.assign(model.v,   project(self.v(0.0), model.Q, annotate=False))
     self.assz.assign(model.w,   project(self.w(0.0), model.Q, annotate=False))
 
-    print_min_max(model.U3, 'U3')
+    print_min_max(model.U3, 'U3_S')
     
     self.assx.assign(model.u_b, project(self.u(1.0), model.Q, annotate=False))
     self.assy.assign(model.v_b, project(self.v(1.0), model.Q, annotate=False))
     self.assz.assign(model.w_b, project(self.w(1.0), model.Q, annotate=False))
 
-    print_min_max(model.U3_b, 'U3_b')
+    print_min_max(model.U3_b, 'U3_B')
 
 
 

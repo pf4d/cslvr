@@ -122,7 +122,8 @@ class D2Model(Model):
     print_text(s, self.D2Model_color)
     self.assign_variable(self.H,  H)
     self.assign_variable(self.H0, H)
-    print_min_max(self.H, 'H')
+    print_min_max(self.H,  'H')
+    print_min_max(self.H0, 'H0')
 
   def init_H_bounds(self, H_min, H_max):
     """

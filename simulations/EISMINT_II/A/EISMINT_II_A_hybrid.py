@@ -77,8 +77,8 @@ Tb_file = File(out_dir + 'Tb.pvd')
 Ts_file = File(out_dir + 'Ts.pvd')
 def cb_ftn():
   model.save_pvd(model.U3, 'U3', U_file)
-  model.save_pvd(model.Ts, 'Ts', Tb_file)
-  model.save_pvd(model.Tb, 'Tb', Ts_file)
+  model.save_pvd(model.Tb, 'Tb', Tb_file)
+  model.save_pvd(model.Ts, 'Ts', Ts_file)
   model.save_pvd(model.S,  'S',  S_file)
 
 model.transient_solve(mom, nrg, mas, t_start=0.0, t_end=200000.0, 

@@ -21,7 +21,7 @@ class D2Model(Model):
     return a SubDomain of periodic lateral boundaries.
     """
     s = "    - using 2D periodic boundaries -"
-    print_text(s, self.model_color)
+    print_text(s, self.D2Model_color)
 
     xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
     xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
@@ -69,7 +69,7 @@ class D2Model(Model):
     :param mesh : Dolfin mesh to be written
     """
     s = "::: setting 2D mesh :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D2Model_color)
     self.mesh       = mesh
     self.flat_mesh  = Mesh(mesh)
     self.dim        = self.mesh.ufl_cell().topological_dimension()
@@ -105,21 +105,21 @@ class D2Model(Model):
     print_text(s, self.D2Model_color)
     self.initialize_variables()
   
-  def init_T(self, T):
+  def init_T_T0_(self, T):
     """
     """
     s = "::: initializing temperature :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.T,   T)
+    print_text(s, self.D2Model_color)
     self.assign_variable(self.T_,  T)
     self.assign_variable(self.T0_, T)
-    print_min_max(self.T, 'T')
+    print_min_max(self.T_,  'T_')
+    print_min_max(self.T0_, 'T0_')
     
   def init_H(self, H):
     """
     """
     s = "::: initializing thickness :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D2Model_color)
     self.assign_variable(self.H,  H)
     self.assign_variable(self.H0, H)
     print_min_max(self.H, 'H')
@@ -128,7 +128,7 @@ class D2Model(Model):
     """
     """
     s = "::: initializing bounds on thickness :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D2Model_color)
     self.assign_variable(self.H_min, H_min)
     self.assign_variable(self.H_max, H_max)
     print_min_max(self.H_min, 'H_min')
@@ -155,6 +155,7 @@ class D2Model(Model):
     # hybrid energy-balance :
     self.deltax        = 1.0 / (self.N_T - 1.0)
     self.sigmas        = np.linspace(0, 1, self.N_T, endpoint=True)
+    self.Tm            = Function(self.Z, name='Tm')
     self.T_            = Function(self.Z, name='T_')
     self.T0_           = Function(self.Z, name='T0_')
     self.Ts            = Function(self.Q, name='Ts')

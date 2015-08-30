@@ -11,9 +11,6 @@ out_dir = './results_new/'
 alpha = 0.1 * pi / 180
 L     = 40000
 
-parameters['form_compiler']['quadrature_degree']  = 2
-parameters["std_out_all_processes"]               = False
-
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
 mesh  = BoxMesh(p1, p2, 25, 25, 10)
@@ -40,7 +37,6 @@ model.init_T_surface(268.0)
 model.init_T(268.0)
 model.init_q_geo(model.ghf)
 model.init_E(1.0)
-model.init_full_b()
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
@@ -56,7 +52,7 @@ m_params  = {'solver'               : nparams,
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
-mom = MomentumBP(model, m_params)
+mom = MomentumBP(model, m_params, isothermal=False)
 nrg = Enthalpy(model, e_params)
 
 def cb_ftn():
@@ -98,7 +94,7 @@ nparams['newton_solver']['maximum_iterations']      = 10
 model.init_beta_SIA()
 model.save_pvd(model.beta, 'beta_SIA')
 
-mom = MomentumBP(model, m_params, linear=True)
+mom = MomentumBP(model, m_params, linear=True, isothermal=False)
 mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')

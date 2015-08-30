@@ -38,9 +38,8 @@ model.init_T_surface(268.0)
 model.init_T(268.0)
 model.init_q_geo(model.ghf)
 model.init_E(1.0)
-model.init_full_b()
 
-mom = MomentumDukowiczStokesReduced(model)
+mom = MomentumDukowiczStokesReduced(model, isothermal=False)
 nrg = Enthalpy(model)
 
 def cb_ftn():
@@ -79,7 +78,7 @@ model.save_pvd(model.beta, 'beta_true')
 model.init_beta_SIA()
 model.save_pvd(model.beta, 'beta_SIA')
 
-mom = MomentumDukowiczStokesReduced(model, linear=True)
+mom = MomentumDukowiczStokesReduced(model, linear=True, isothermal=False)
 mom.solve_params['solver']['newton_solver']['relaxation_parameter']    = 1.0
 mom.solve_params['solver']['newton_solver']['maximum_iterations']      = 10
 mom.solve(annotate=True)

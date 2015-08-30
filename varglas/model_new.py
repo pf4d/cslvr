@@ -97,8 +97,6 @@ class Model(object):
     self.T_w     = Constant(273.15)
     self.T_w.rename('T_w', 'Triple point of water')
 
-    self.time_step = 200.0
-
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
@@ -202,7 +200,7 @@ class Model(object):
     """
     s = "::: initializing temperature :::"
     print_text(s, self.model_color)
-    self.assign_variable(self.T,   T)
+    self.assign_variable(self.T, T)
     print_min_max(self.T, 'T')
   
   def init_W(self, W):
@@ -387,6 +385,14 @@ class Model(object):
     print_min_max(self.mask, 'mask')
     self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
     self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
+  
+  def init_time_step(self, dt):
+    """
+    """
+    s = "::: initializing time step :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.time_step, dt)
+    print_min_max(self.time_step, 'time_step')
 
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
@@ -1069,7 +1075,7 @@ class Model(object):
     elif isinstance(var, Expression) or isinstance(var, Constant)  \
          or isinstance(var, GenericVector) or isinstance(var, Function) \
          or isinstance(var, dolfin.functions.function.Function):
-      u.interpolate(var)
+      u.interpolate(var, annotate=False)
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1113,6 +1119,10 @@ class Model(object):
     self.x             = SpatialCoordinate(self.mesh)
     self.h             = CellSize(self.mesh)
     self.N             = FacetNormal(self.mesh)
+
+    # time step :
+    self.time_step = Constant(100.0)
+    self.time_step.rename('time_step', 'time step')
 
     # shelf mask (1 if shelf) :
     self.mask          = Function(self.Q, name='mask')
@@ -1265,5 +1275,77 @@ class Model(object):
     m = m % 60
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+
+  def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
+                      annotate=False, callback=None):
+    """
+    """
+    s    = '::: performing transient run :::'
+    print_text(s, self.model_color)
+    
+    from varglas.momentum import Momentum
+    from varglas.energy   import Energy
+    from varglas.physics_new import Physics
+
+    self.step_time = []
+    
+    if momentum.__class__.__base__ != Momentum:
+      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+      print_text(s % type(momentum), 'red', 1)
+      sys.exit(1)
+    
+    if energy.__class__.__base__ != Energy:
+      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+      print_text(s % type(energy), 'red', 1)
+      sys.exit(1)
+    
+    if mass.__class__.__base__ != Physics:
+      s = ">>> thermo_solve REQUIRES A 'Physics' INSTANCE, NOT %s <<<"
+      print_text(s % type(mass), 'red', 1)
+      sys.exit(1)
+
+    t0 = time()
+    t  = t_start
+    dt = time_step
+   
+    # Loop over all times
+    while t <= t_end:
+
+      # start the timer :
+      tic = time()
+      
+      # solve velocity :
+      momentum.solve(annotate=annotate)
+
+      # solve energy :
+      energy.solve(annotate=annotate)
+
+      # solve mass :
+      mass.solve(annotate=annotate)
+
+      # update pressure-melting point :
+      energy.calc_T_melt(annotate=annotate)
+
+      if callback != None:
+        s    = '::: calling callback function :::'
+        print_text(s, self.model_color)
+        callback()
+       
+      # increment time step :
+      s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
+      print_text(s % (t, time()-tic), 'red', 1)
+
+      t += dt
+      self.step_time.append(time() - tic)
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
+
 
 

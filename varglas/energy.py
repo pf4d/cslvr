@@ -62,7 +62,7 @@ class Enthalpy(Energy):
   """
   """ 
   
-  def __init__(self, model, solve_params=None, mode='steady',
+  def __init__(self, model, solve_params=None, transient=False,
                use_lat_bc=False):
     """ 
     Set up energy equation residual. 
@@ -136,12 +136,12 @@ class Enthalpy(Energy):
     dx_s          = model.dx_s
     dx_g          = model.dx_g
     
-    # Define test and trial functions       
+    # define test and trial functions : 
     psi    = TestFunction(Q)
     dtheta = TrialFunction(Q)
 
-    # Pressure melting point
-    self.calc_T_melt()
+    # pressure melting point, do not annotate for initial guess :
+    self.calc_T_melt(annotate=False)
 
     T_s_v = T_surface.vector().array()
     T_m_v = T_melt.vector().array()
@@ -161,7 +161,7 @@ class Enthalpy(Energy):
     # to conserve energy.  This also implies that heretofore, models have been 
     # overestimating frictional heat, and underestimating strain heat.
 
-    # Frictional heating :
+    # frictional heating :
     q_friction = beta * inner(U,U)
 
     # Strain heating = stress*strain
@@ -195,7 +195,7 @@ class Enthalpy(Energy):
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # configure the module to run in steady state :
-    if mode == 'steady':
+    if not transient:
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*kappa)
@@ -212,7 +212,7 @@ class Enthalpy(Energy):
                 + Q_s_shf * psihat * dx_s
       
     # configure the module to run in transient mode :
-    elif mode == 'transient':
+    else:
       dt      = model.time_step
 
       # Skewed test function.  Note that vertical velocity has 
@@ -235,11 +235,6 @@ class Enthalpy(Energy):
       theta_L = + (q_geo + q_friction) * psi * dGnd \
                 + Q_s_gnd * psihat * dx_g \
                 + Q_s_shf * psihat * dx_s
-    else:
-      s = ">>> Enthalpy 'mode' PARAMETER MAY BE EITHER 'steady " + \
-          "OR 'transient', not %s <<<"
-      print_text(s % mode, 'red', 1)
-      sys.exit(1)
 
     self.theta_a = theta_a
     self.theta_L = theta_L
@@ -262,7 +257,7 @@ class Enthalpy(Energy):
     self.kappa      = kappa
     self.q_friction = q_friction
     
-  def calc_T_melt(self):
+  def calc_T_melt(self, annotate=True):
     """
     Calculates pressure-melting point in model.T_melt.
     """
@@ -283,7 +278,7 @@ class Enthalpy(Energy):
     l = assemble((T_w - g * (S - x[2])) * phi * dx)
     a = assemble(u * phi * dx)
 
-    solve(a, model.T_melt.vector(), l, annotate=False)
+    solve(a, model.T_melt.vector(), annotate=annotate)
     print_min_max(model.T_melt, 'T_melt')
 
   def get_solve_params(self):
@@ -397,7 +392,7 @@ class EnergyHybrid(Energy):
   """
   New 2D hybrid model.
   """
-  def __init__(self, model, mode='steady', solve_params=None):
+  def __init__(self, model, transient=False, solve_params=None):
     """ 
     Set up energy equation residual. 
     """
@@ -468,10 +463,6 @@ class EnergyHybrid(Energy):
     Psi = TestFunction(Z)
     dT  = TrialFunction(Z)
 
-    # initialize surface temperature :
-    model.assign_variable(T0_, project(as_vector([T_s]*N_T), Z))
-    #model.assign_variable(T_, project(as_vector([T_s]*N_T), Z))
-
     T  = VerticalFDBasis(T_,  deltax, coef, sigmas)
     T0 = VerticalFDBasis(T0_, deltax, coef, sigmas)
 
@@ -518,7 +509,7 @@ class EnergyHybrid(Energy):
       # EFFECTIVE VERTICAL VELOCITY
       w_eff = u(s)*dsdx(s) + v(s)*dsdy(s) + w(s)*dsdz(s)
 
-      if mode == 'transient':
+      if transient:
         w_eff += 1.0/H*(1.0 - s)*(H - H0)/dt
     
       # STRAIN HEAT
@@ -548,15 +539,16 @@ class EnergyHybrid(Energy):
         R_T += (u(s)*T.dx(i,0) + v(s)*T.dx(i,1))*Psihat*dx
         R_T += -Phi_strain/(rho*Cp)*Psi[i]*dx 
    
-      if mode == 'transient': 
+      if transient: 
         dTdt = (T(i) - T0(i))/dt
         R_T += dTdt*Psi[i]*dx
     
     # PRETEND THIS IS LINEAR (A GOOD APPROXIMATION IN THE TRANSIENT CASE)
     self.R_T = replace(R_T, {T_:dT})
 
-    # pressure melting point stuff :
+    # pressure melting point calculation, do not annotate for initial calc :
     self.Tm  = as_vector([T_w - gamma*sigma*H for sigma in sigmas])
+    self.calc_T_melt(annotate=False)
 
   def get_solve_params(self):
     """
@@ -578,39 +570,33 @@ class EnergyHybrid(Energy):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    m_params  = {'solver'      : 'mumps',
+    m_params  = {'solver'      : {'linear_solver': 'mumps'},
                  'ffc_params'  : self.default_ffc_options()}
     return m_params
 
-  def solve(self):
+  def solve(self, annotate=True):
     """
     Solves for hybrid energy.
     """
     s    = "::: solving hybrid energy :::"
     print_text(s, self.color())
     
-    config = self.config
     model  = self.model
-    
-    Q      = model.Q
-    T_     = model.T_
-    T_melt = model.T_melt
-
-    ffc_options = config['enthalpy']['ffc_options']
 
     # SOLVE TEMPERATURE
     solve(lhs(self.R_T) == rhs(self.R_T), model.T_,
           solver_parameters=self.solve_params['solver'],
-          form_compiler_parameters=self.solve_params['ffc_params'])    
+          form_compiler_parameters=self.solve_params['ffc_params'],
+          annotate=annotate)
     print_min_max(model.T_, 'T_')
 
     #  correct for pressure melting point :
-    T_v                 = T_.vector().array()
-    T_melt_v            = T_melt.vector().array()
+    T_v                 = model.T_.vector().array()
+    T_melt_v            = model.Tm.vector().array()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
-    model.assign_variable(T_, T_v)
+    model.assign_variable(model.T_, T_v)
     
-    out_T = T_.split(True)            # deepcopy avoids projections
+    out_T = model.T_.split(True)            # deepcopy avoids projections
     
     model.assign_variable(model.Ts, out_T[0])
     model.assign_variable(model.Tb, out_T[-1]) 
@@ -618,24 +604,37 @@ class EnergyHybrid(Energy):
     print_min_max(model.Ts, 'T_S')
     print_min_max(model.Tb, 'T_B')
 
-  def calc_T_melt(self):
+  def calc_T_melt(self, annotate=True):
     """
     Calculates pressure-melting point in model.T_melt.
     """
     s    = "::: calculating pressure-melting temperature :::"
     print_text(s, self.color())
+
+    model   = self.model
     
-    T_melt  = project(self.Tm)
+    T_melt  = project(self.Tm, annotate=annotate)
+    
     Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
     model.assign_variable(model.T_melt, Tb_m)
-    print_min_max(T_melt, 'T_melt')
+    model.assign_variable(model.Tm,     T_melt)
+    print_min_max(model.T_melt, 'T_melt')
+    print_min_max(model.Tm,     'Tm')
     
   def solve_basal_melt_rate(self):
     """
     Solve for the basal melt rate stored in model.Mb.
     """ 
+    # FIXME: need to form an expression for dT/dz
+    s = "::: calculating basal melt-rate :::"
+    print_text(s, self.color())
+    
+    model  = self.model
+    B      = model.B
     rhoi   = model.rhoi
+    T      = model.Tb
     L      = model.L
+    ki     = model.ki
     q_geo  = model.q_geo
     beta   = model.beta
     u_b    = model.u_b
@@ -643,11 +642,15 @@ class EnergyHybrid(Energy):
     w_b    = model.w_b
     q_fric = beta * (u_b**2 + v_b**2 + w_b**2)
     
-    # calculate melt-rate : 
-    s = "::: calculating basal melt-rate :::"
-    print_text(s, self.color())
-    nMb   = project((q_geo + q_fric) / (L*rhoi))
-    model.assign_variable(model.Mb,  nMb)
+    gradB = as_vector([B.dx(0), B.dx(1), -1])
+    gradT = as_vector([T.dx(0), T.dx(1), 0.0])
+    dHdn  = k * dot(gradT, gradB)
+    nMb   = project((q_geo + q_friction - dHdn) / (L*rhoi), model.Q,
+                    annotate=False)
+    nMb_v = nMb.vector().array()
+    #nMb_v[nMb_v < 0.0]  = 0.0
+    #nMb_v[nMb_v > 10.0] = 10.0
+    model.assign_variable(model.Mb, nMb_v)
     print_min_max(model.Mb, 'Mb')
 
 

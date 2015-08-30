@@ -1,4 +1,10 @@
 from varglas.physics_new import Physics 
+from varglas.io          import print_text, print_min_max
+from varglas.d2model     import D2Model
+from varglas.helper      import VerticalBasis, VerticalFDBasis, \
+                                VerticalIntegrator
+from fenics         import *
+from dolfin_adjoint import *
 
 class FreeSurface(Physics):
   """
@@ -115,3 +121,187 @@ class FreeSurface(Physics):
     q = Vector()  
     solve(A, q, p, annotate=False)
     self.assign_variable(self.dSdt, q)
+
+
+class MassTransportHybrid(Physics):
+  """
+  New 2D hybrid model.
+  """
+  def __init__(self, model, solve_params=None, thklim=1.0, isothermal=True):
+    """
+    """
+    s = "::: INITIALIZING HYBRID MASS-BALANCE PHYSICS :::"
+    print_text(s, self.color())
+    
+    if type(model) != D2Model:
+      s = ">>> MassTransportHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+    
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
+    
+    # CONSTANTS
+    year   = model.spy
+    rho    = model.rhoi
+    g      = model.g
+    n      = model.n
+    
+    Q      = model.Q
+    B      = model.B
+    beta   = model.beta
+    adot   = model.adot
+    ubar_c = model.ubar_c 
+    vbar_c = model.vbar_c
+    H      = model.H
+    H0     = model.H0
+    U      = model.UHV
+    T_     = model.T_
+    deltax = model.deltax
+    sigmas = model.sigmas
+    h      = model.h
+    S      = B + H
+    coef   = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
+    T      = VerticalFDBasis(T_, deltax, coef, sigmas)
+    
+    Bc    = 3.61e-13*year
+    Bw    = 1.73e3*year #model.a0 ice hardness
+    Qc    = 6e4
+    Qw    = model.Q0 # ice act. energy
+    Rc    = model.R  # gas constant
+    
+    # TIME STEP AND REGULARIZATION
+    eps_reg = model.eps_reg
+    dt      = model.time_step
+   
+    # function spaces : 
+    dH  = TrialFunction(Q)
+    xsi = TestFunction(Q)
+
+    if isothermal:
+      s = "    - using isothermal rate-factor -"
+      print_text(s, self.color())
+      def A_v(T):
+        return model.b**(-model.n(0)) 
+    else:
+      s = "    - using temperature-dependent rate-factor -"
+      print_text(s, self.color())
+      def A_v(T):
+        return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+    
+    # SIA DIFFUSION COEFFICIENT INTEGRAL TERM.
+    def sia_int(s):
+      return A_v(T.eval(s))*s**(n+1)
+    
+    vi = VerticalIntegrator(order=4)
+    
+    #D = 2.*(rho*g)**n*A/(n+2.)*H**(n+2)*dot(grad(S),grad(S))**((n-1.)/2.)
+    D = 2 * (rho*g)**n * H**(n+2) * dot(grad(S),grad(S))**((n-1)/2) \
+        * vi.intz(sia_int) + rho*g*H**2/beta
+    
+    ubar = U[0]
+    vbar = U[1]
+    
+    ubar_si = -D/H*S.dx(0)
+    vbar_si = -D/H*S.dx(1)
+    
+    self.ubar_proj = (ubar-ubar_si)*xsi*dx
+    self.vbar_proj = (vbar-vbar_si)*xsi*dx
+
+    # mass term :
+    self.M  = dH*xsi*dx
+    
+    # residual :
+    self.R_thick = + (H-H0) / dt * xsi * dx \
+                   + D * dot(grad(S), grad(xsi)) * dx \
+                   + (Dx(ubar_c*H,0) + Dx(vbar_c*H,1)) * xsi * dx \
+                   - adot * xsi * dx
+
+    # Jacobian :
+    self.J_thick = derivative(self.R_thick, H, dH)
+
+    self.bc = []#DirichletBC(Q, thklim, 'on_boundary')
+
+  def default_ffc_options(self):
+    """ 
+    Returns a set of default ffc options that yield good performance
+    """
+    ffc_options = {"optimize"               : True,
+                   "eliminate_zeros"        : True,
+                   "precompute_basis_const" : True,
+                   "precompute_ip_const"    : True}
+    return ffc_options
+  
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    nparams = {'nonlinear_solver' : 'snes',
+               'snes_solver'      : {'method'                  : 'vinewtonrsls',
+                                     'linear_solver'           : 'mumps',
+                                     'relative_tolerance'      : 1e-6,
+                                     'absolute_tolerance'      : 1e-6,
+                                     'maximum_iterations'      : 20,
+                                     'error_on_nonconvergence' : False,
+                                     'report'                  : True}}
+    m_params  = {'solver'      : nparams,
+                 'ffc_params'  : self.default_ffc_options()}
+    return m_params
+
+  def solve(self, annotate=True):
+    """
+    Solves for hybrid conservation of mass.
+    """
+    model  = self.model
+    params = self.solve_params
+
+    # find corrective velocities :
+    s    = "::: solving for corrective velocities :::"
+    print_text(s, self.color())
+
+    solve(self.M == self.ubar_proj, model.ubar_c,
+          solver_parameters={'linear_solver':'mumps'},
+          form_compiler_parameters=params['ffc_params'],
+          annotate=annotate)
+
+    solve(self.M == self.vbar_proj, model.vbar_c,
+          solver_parameters={'linear_solver':'mumps'},
+          form_compiler_parameters=params['ffc_params'],
+          annotate=annotate)
+
+    print_min_max(model.ubar_c, 'ubar_c')
+    print_min_max(model.vbar_c, 'vbar_c')
+
+    # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
+    meth   = params['solver']['snes_solver']['method']
+    maxit  = params['solver']['snes_solver']['maximum_iterations']
+    s      = "::: solving hybrid mass-balance using method '%s' with %i " + \
+             "max iterations :::"
+    print_text(s % (meth, maxit), self.color())
+   
+    # define variational solver for the mass problem :
+    p = NonlinearVariationalProblem(self.R_thick, model.H, J=self.J_thick,
+          bcs=self.bc, form_compiler_parameters=params['ffc_params'])
+    p.set_bounds(model.H_min, model.H_max)
+    s = NonlinearVariationalSolver(p)
+    s.parameters.update(params['solver'])
+    s.solve(annotate=annotate)
+    
+    print_min_max(model.H, 'H')
+    
+    # update previous time step's H :
+    model.assign_variable(model.H0, model.H)
+    
+    # update the surface :
+    s    = "::: updating surface :::"
+    print_text(s, self.color())
+    B_v = model.B.vector().array()
+    H_v = model.H.vector().array()
+    S_v = B_v + H_v
+    model.assign_variable(model.S, S_v)
+    print_min_max(model.S, 'S')
+
+
+

@@ -36,10 +36,10 @@ class MomentumHybrid(Momentum):
     self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
     
     # CONSTANTS
-    year    = model.spy(0)
-    rho     = model.rhoi(0)
-    g       = model.g(0)
-    n       = model.n(0)
+    year    = model.spy
+    rho     = model.rhoi
+    g       = model.g
+    n       = model.n
    
     S       = model.S 
     B       = model.B
@@ -149,13 +149,14 @@ class MomentumHybrid(Momentum):
       return rho*g*H*S.dx(1)*psi(s)
     
     def w(s):
-      w_0 = (U[0].dx(0) + U[1].dx(1))*(s-1.)
-      w_2 = + (U[2].dx(0) + U[3].dx(1))*(s**(n+2) - s)/(n+1) \
-            + (n+2)/H*U[2]*(1./(n+1)*(s**(n+1) - 1.)*S.dx(0) \
-            - 1./(n+1)*(s**(n+2) - 1.)*H.dx(0)) \
-            + (n+2)/H*U[3]*(+ 1./(n+1)*(s**(n+1) - 1.)*S.dx(1) \
-                            - 1./(n+1)*(s**(n+2) - 1.)*H.dx(1))
-      return (u(1)*B.dx(0) + v(1)*B.dx(1)) - 1./dsdz(s)*(w_0 + w_2) 
+      s   = Constant(s)
+      w_0 = (U[0].dx(0) + U[1].dx(1))*(s-1)
+      w_2 = + (U[2].dx(0) + U[3].dx(1)) * (s**(n+2) - s)/(n+1) \
+            + (n+2)/H*U[2]*(+ 1/(n+1)*(s**(n+1) - 1)*S.dx(0) \
+                            - 1/(n+1)*(s**(n+2) - 1)*H.dx(0)) \
+            + (n+2)/H*U[3]*(+ 1/(n+1)*(s**(n+1) - 1)*S.dx(1) \
+                            - 1/(n+1)*(s**(n+2) - 1)*H.dx(1))
+      return (u(1)*B.dx(0) + v(1)*B.dx(1)) - 1/dsdz(s)*(w_0 + w_2)
     
     vi = VerticalIntegrator(order=4)
 

@@ -6,7 +6,7 @@ class Physics(object):
   This abstract class outlines the structure of a physics calculation.
   """
 
-  def __new__(self, model):
+  def __new__(self, model, *args, **kwargs):
     """
     Creates and returns a new Physics object.
     """

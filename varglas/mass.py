@@ -147,7 +147,7 @@ class MassTransportHybrid(Physics):
     year   = model.spy
     rho    = model.rhoi
     g      = model.g
-    n      = model.n
+    n      = model.n(0)
     
     Q      = model.Q
     B      = model.B
@@ -181,7 +181,7 @@ class MassTransportHybrid(Physics):
       s = "    - using isothermal rate-factor -"
       print_text(s, self.color())
       def A_v(T):
-        return model.b**(-n) 
+        return model.b**(-n)
     else:
       s = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
@@ -278,7 +278,7 @@ class MassTransportHybrid(Physics):
     # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
     meth   = params['solver']['snes_solver']['method']
     maxit  = params['solver']['snes_solver']['maximum_iterations']
-    s      = "::: solving hybrid mass-balance using method '%s' with %i " + \
+    s      = "::: solving 'MassTransportHybrid' using method '%s' with %i " + \
              "max iterations :::"
     print_text(s % (meth, maxit), self.color())
    

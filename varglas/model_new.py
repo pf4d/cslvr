@@ -1087,20 +1087,25 @@ class Model(object):
     else:
       s =  "*************************************************************\n" + \
            "assign_variable() function requires a Function, array, float,\n" + \
-           " int, Vector, Expression, or string path to .xml, not \n" + \
-           "%s.  Replacing object entirely\n" + \
+           " int, Vector, Expression, Constant, or string path to .xml,\n"   + \
+           "not %s.  Replacing object entirely\n" + \
            "*************************************************************"
       print_text(s % type(var) , 'red', 1)
       u = var
 
-  def save_pvd(self, var, name):
+  def save_pvd(self, var, name, f_file=None):
     """
     Save a <name>.pvd file of the FEniCS Function <var> to this model's log 
     directory specified by the self.out_dir.
     """
-    s       = "::: saving %s%s.pvd file :::" % (self.out_dir, name)
-    print_text(s, self.model_color)
-    File(self.out_dir + name + '.pvd') << var
+    if f_file != None:
+      s       = "::: saving %s.pvd file :::" % name
+      print_text(s, self.model_color)
+      f_file << var
+    else:
+      s       = "::: saving %s%s.pvd file :::" % (self.out_dir, name)
+      print_text(s, self.model_color)
+      File(self.out_dir + name + '.pvd') << var
 
   def save_xml(self, var, name):
     """

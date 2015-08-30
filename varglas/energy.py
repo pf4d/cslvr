@@ -578,7 +578,7 @@ class EnergyHybrid(Energy):
     """
     Solves for hybrid energy.
     """
-    s    = "::: solving hybrid energy :::"
+    s    = "::: solving 'EnergyHybrid' for temperature :::"
     print_text(s, self.color())
     
     model  = self.model

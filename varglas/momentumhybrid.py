@@ -39,7 +39,7 @@ class MomentumHybrid(Momentum):
     year    = model.spy
     rho     = model.rhoi
     g       = model.g
-    n       = model.n
+    n       = model.n(0)
    
     S       = model.S 
     B       = model.B
@@ -255,7 +255,7 @@ class MomentumHybrid(Momentum):
     rtol   = params['solver']['newton_solver']['relative_tolerance']
     maxit  = params['solver']['newton_solver']['maximum_iterations']
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
-    s      = "::: solving hybrid velocity with %i max iterations" + \
+    s      = "::: solving 'MomentumHybrid' with %i max iterations" + \
              " and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
     

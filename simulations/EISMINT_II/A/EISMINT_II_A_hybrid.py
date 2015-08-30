@@ -6,18 +6,19 @@ from varglas.mass   import MassTransportHybrid
 #set_log_active(False)
 
 parameters['form_compiler']['precision']         = 30
-#parameters['form_compiler']['optimize']          = True
+parameters['form_compiler']['optimize']          = True
 parameters['form_compiler']['cpp_optimize']      = True
 parameters['form_compiler']['representation']    = 'quadrature'
 
 mesh = MeshFactory.get_circle()
 
-thklim = 1.0
-L      = 800000.
-xmin   = -L
-xmax   =  L
-ymin   = -L
-ymax   =  L
+out_dir = './A_hybrid/'
+thklim  = 1.0
+L       = 800000.
+xmin    = -L
+xmax    =  L
+ymin    = -L
+ymax    =  L
 
 # width and origin of the domain for deforming x coord :
 width_x  = xmax - xmin
@@ -32,15 +33,7 @@ for x in mesh.coordinates():
   # transform y :
   x[1]  = x[1]  * width_y
 
-#config['mode']                         = 'transient'
-#config['t_start']                      = 0.0
-#config['t_end']                        = 200000.0
-#config['time_step']                    = 10.0
-#config['free_surface']['on']           = True
-#config['free_surface']['thklim']       = thklim
-#config['balance_velocity']['on']       = True
-
-model = D2Model(out_dir = './A/')
+model = D2Model(out_dir = out_dir)
 model.set_mesh(mesh)
 model.generate_function_spaces(use_periodic = False)
 
@@ -78,11 +71,15 @@ mom = MomentumHybrid(model, isothermal=False)
 nrg = EnergyHybrid(model, transient=True)
 mas = MassTransportHybrid(model, thklim=thklim, isothermal=False)
 
+U_file  = File(out_dir + 'U.pvd')
+S_file  = File(out_dir + 'S.pvd')
+Tb_file = File(out_dir + 'Tb.pvd')
+Ts_file = File(out_dir + 'Ts.pvd')
 def cb_ftn():
-  model.save_pvd(model.U3, 'U3')
-  model.save_pvd(model.Ts, 'Ts')
-  model.save_pvd(model.Tb, 'Tb')
-  model.save_pvd(model.S,  'S')
+  model.save_pvd(model.U3, 'U3', U_file)
+  model.save_pvd(model.Ts, 'Ts', Tb_file)
+  model.save_pvd(model.Tb, 'Tb', Ts_file)
+  model.save_pvd(model.S,  'S',  S_file)
 
 model.transient_solve(mom, nrg, mas, t_start=0.0, t_end=200000.0, 
                       time_step = 10.0, annotate=False, callback=cb_ftn)

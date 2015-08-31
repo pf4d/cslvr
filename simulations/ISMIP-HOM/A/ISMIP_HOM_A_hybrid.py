@@ -2,7 +2,7 @@ from varglas  import D2Model, MomentumHybrid
 from fenics   import Point, RectangleMesh, Expression, sqrt, pi
 
 alpha = 0.5 * pi / 180 
-L     = 5000
+L     = 40000
 
 p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)

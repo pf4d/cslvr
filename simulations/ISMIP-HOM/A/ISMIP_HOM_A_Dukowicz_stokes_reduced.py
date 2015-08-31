@@ -2,7 +2,7 @@ from varglas import D3Model, MomentumDukowiczStokesReduced
 from fenics  import Point, BoxMesh, Expression, sqrt, pi
 
 alpha = 0.5 * pi / 180 
-L     = 5000
+L     = 40000
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
@@ -24,7 +24,7 @@ model.deform_mesh_to_geometry(surface, bed)
 model.init_S(surface)
 model.init_B(bed)
 model.init_mask(0.0)  # all grounded
-model.init_beta(sqrt(1000))
+model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
 mom = MomentumDukowiczStokesReduced(model, isothermal=True)

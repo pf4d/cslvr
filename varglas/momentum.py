@@ -72,7 +72,7 @@ class Momentum(Physics):
     """
     raiseNotDefined()
   
-  def form_obj_ftn(self, kind='log', integral=2, g1=0.01, g2=1000):
+  def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
     """
     Forms and returns an objective functional for use with adjoint.
     Saves to self.J.
@@ -81,7 +81,7 @@ class Momentum(Physics):
     
     model    = self.model
 
-    dGamma   = model.ds(integral)
+    dGamma   = integral
     u_ob     = model.u_ob
     v_ob     = model.v_ob
     adot     = model.adot
@@ -121,14 +121,14 @@ class Momentum(Physics):
     self.J = J
     return J
 
-  def form_reg_ftn(self, c, kind='Tikhonov', integral=2, alpha=1.0):
+  def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
     """
     Forms and returns regularization functional for used with adjoint, saved to 
     self.Reg.
     """
     self.alpha = alpha   # need to save this for printing values.
 
-    dR = self.model.ds(integral)
+    dR = integral
     
     # form regularization term 'R' :
     if kind != 'TV' and kind != 'Tikhonov':

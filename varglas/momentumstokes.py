@@ -698,18 +698,18 @@ class MomentumDukowiczStokes(Momentum):
     # 6) pressure boundary
     Pb     = - (rhoi*g*(S - z) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
 
-    #f       = rhoi * Constant((0.0, 0.0, g))
-    #tau_shf = h**2 / (12 * b_shf * rhoi**2)
-    #tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
-    #Lsq_shf = -tau_shf * dot( (grad(p) + f), (grad(p) + f) )
-    #Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
+    f       = rhoi * Constant((0.0, 0.0, g))
+    tau_shf = h**2 / (12 * b_shf * rhoi**2)
+    tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
+    Lsq_shf = -tau_shf * dot( (grad(p) + f), (grad(p) + f) )
+    Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
     
-    #A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
-    #         + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
+             + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
     
-    # Variational principle
-    A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc)*dx \
-             + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    ## Variational principle
+    #A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc)*dx \
+    #         + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):

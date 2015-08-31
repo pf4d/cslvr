@@ -1,11 +1,3 @@
-"""
-io file:
-
-  This contains classes that are used by UM-FEISM to aid in the loading
-  of data and preparing data for use in DOLFIN based simulation.
-  Specifically the data are projected onto the mesh with appropriate
-  basis functions.
-"""
 from scipy.io          import loadmat, savemat
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, isnan, all, zeros, \
@@ -305,7 +297,7 @@ class DataInput(object):
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_interpolation(self, fn, near=False, bool_data=False, kx=3, ky=3):
+  def get_interpolation(self, fn, near=False, bool_data=False, kx=1, ky=1):
     """
     Return a projection of data with field name <fn> on the functionspace.
     If multiple instances of the DataInput class are present, both initialized
@@ -326,7 +318,7 @@ class DataInput(object):
 
     return interpolate(interp, self.func_space)
 
-  def get_expression(self, fn, kx=3, ky=3, bool_data=False, near=False):
+  def get_expression(self, fn, kx=1, ky=1, bool_data=False, near=False):
     """
     Creates a spline-interpolation expression for data <fn>.  Optional
     arguments <kx> and <ky> determine order of approximation in x and y

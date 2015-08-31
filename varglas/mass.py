@@ -1,22 +1,29 @@
 from varglas.physics_new import Physics 
 from varglas.io          import print_text, print_min_max
 from varglas.d2model     import D2Model
+from varglas.d3model     import D3Model
 from varglas.helper      import VerticalBasis, VerticalFDBasis, \
                                 VerticalIntegrator
 from fenics         import *
 from dolfin_adjoint import *
 
+
 class FreeSurface(Physics):
   """
   """  
-  def init_free_surface(self):
+  def __init_(self, model):
     """
     """
     s    = "::: INITIALIZING FREE-SURFACE PHYSICS :::"
     print_text(s, self.D3Model_color)
     
+    if type(model) != D3Model:
+      s = ">>> FreeSurface REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+    
     # sigma coordinate :
-    self.sigma = project((self.x[2] - self.B) / (self.S - self.B),
+    self.sigma = project((model.x[2] - model.B) / (model.S - model.B),
                          annotate=False)
     print_min_max(self.sigma, 'sigma')
 
@@ -80,7 +87,7 @@ class FreeSurface(Physics):
     self.mhat                   = mhat
     self.dSdt                   = dSdt
     
-  def solve_free_surface(self):
+  def solve(self):
     """
     """
     config = self.config

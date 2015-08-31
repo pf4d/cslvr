@@ -432,11 +432,32 @@ class DataFactory(object):
   @staticmethod
   def get_bedmap1(thklim = 0.0):
     
+    s    = "::: getting Bedmap 1 data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
     global home
  
     direc = home + '/antarctica/bedmap1/ALBMAPv1.nc'
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
+    
+    needed_vars = {'lsrf'       : 'B',
+                   'usrf'       : 'S',
+                   'temp'       : 'T',
+                   'acca'       : 'acca',
+                   'accr'       : 'accr',
+                   'ghffm'      : 'ghffm',
+                   'ghfsr'      : 'ghfsr'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Bedmap 1 : %-*s key : %s '%(30,v, txt), '230')
+    
     
     # retrieve data :
     x       = array(data.variables['x1'][:])
@@ -495,6 +516,9 @@ class DataFactory(object):
   
   @staticmethod
   def get_bedmap2(thklim = 0.0):
+    
+    s    = "::: getting Bedmap 2 data from DataFactory :::"
+    print_text(s, DataFactory.color)
 
     global home
     direc    = home + '/antarctica/bedmap2/bedmap2_tiff/' 
@@ -509,6 +533,7 @@ class DataFactory(object):
     b_uncert    = TiffFile(direc + 'bedmap2_grounded_bed_uncertainty.tif') 
     coverage    = TiffFile(direc + 'bedmap2_coverage.tif')
     gl04c_WGS84 = TiffFile(direc + 'gl04c_geiod_to_WGS84.tif')
+    
    
     B           = B.asarray()
     S           = S.asarray()

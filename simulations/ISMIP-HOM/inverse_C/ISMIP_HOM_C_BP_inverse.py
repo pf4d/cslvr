@@ -23,7 +23,7 @@ surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
 bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha, 
                      element=model.Q.ufl_element())
-beta    = Expression('sqrt(1000 - 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L))',
+beta    = Expression('1000 - 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
                      alpha=alpha, L=L, element=model.Q.ufl_element())
 
 model.calculate_boundaries()
@@ -33,10 +33,7 @@ model.init_S(surface)
 model.init_B(bed)
 model.init_mask(0.0)  # all grounded
 model.init_beta(beta)
-model.init_T_surface(268.0)
-model.init_T(268.0)
-model.init_q_geo(model.ghf)
-model.init_E(1.0)
+model.init_b(model.A0(0)**(-1/model.n(0)))
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
@@ -49,24 +46,8 @@ m_params  = {'solver'               : nparams,
              'solve_pressure'       : True,
              'vert_solve_method'    : 'mumps'}
 
-e_params  = {'solver'               : 'mumps',
-             'use_surface_climate'  : False}
-
 mom = MomentumBP(model, m_params, isothermal=False)
-nrg = Enthalpy(model, e_params)
-
-def cb_ftn():
-  nrg.solve_basal_melt_rate()
-  nrg.calc_bulk_density()
-  model.save_pvd(model.U3,    'U3')
-  model.save_pvd(model.p,     'p')
-  model.save_pvd(model.theta, 'theta')
-  model.save_pvd(model.T,     'T')
-  model.save_pvd(model.W,     'W')
-  model.save_pvd(model.Mb,    'Mb')
-  model.save_pvd(model.rho_b, 'rho_b')
-
-model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=2)
+mom.solve(annotate=False)
 
 u,v,w = model.U3.split(True)
 u_o   = u.vector().array()
@@ -87,21 +68,18 @@ model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')
 model.save_pvd(model.beta, 'beta_true')
 
-nparams['newton_solver']['relaxation_parameter']    = 1.0
-nparams['newton_solver']['maximum_iterations']      = 10
-
 #model.init_beta(30.0)
 model.init_beta_SIA()
 model.save_pvd(model.beta, 'beta_SIA')
 
-mom = MomentumBP(model, m_params, linear=True, isothermal=False)
+mom = MomentumBP(model, m_params, linear=True, isothermal=True)
 mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')
   
-J = mom.form_obj_ftn('log_lin_hybrid', integral=model.GAMMA_S_GND,
+J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
-R = mom.form_reg_ftn(model.beta, 'Tikhonov', integral=model.GAMMA_B_GND,
+R = mom.form_reg_ftn(model.beta, integral=dBed, kind='Tikhonov', 
                      alpha=10000.0)
 I = J + R
 
@@ -127,9 +105,9 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
   
-problem = MinimizationProblem(F, bounds=(0, 500))
+problem = MinimizationProblem(F, bounds=(0, 4000))
 parameters = {"acceptable_tol"     : 1.0e-200,
-              "maximum_iterations" : 100,
+              "maximum_iterations" : 200,
               "linear_solver"      : "ma97"}
 
 solver = IPOPTSolver(problem, parameters=parameters)

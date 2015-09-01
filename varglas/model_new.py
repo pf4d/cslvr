@@ -427,9 +427,12 @@ class Model(object):
     self.assign_variable(self.betaSIA, beta_0_v)
     print_min_max(self.betaSIA, 'betaSIA')
     
-    self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
-    bc_beta.apply(self.beta.vector())
+    if self.dim == 3:
+      self.assign_variable(self.beta, DOLFIN_EPS)
+      bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
+      bc_beta.apply(self.beta.vector())
+    elif self.dim == 2:
+      self.assign_variable(self.beta, self.betaSIA)
     print_min_max(self.beta, 'beta')
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):

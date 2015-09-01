@@ -1,5 +1,4 @@
 from varglas          import *
-from varglas.energy   import EnergyHybrid 
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *
@@ -54,18 +53,15 @@ model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')
 model.save_pvd(model.beta, 'beta_true')
 
-nparams['newton_solver']['relaxation_parameter']    = 1.0
-nparams['newton_solver']['maximum_iterations']      = 10
-
 #model.init_beta(30.0)
 model.init_beta_SIA()
 model.save_pvd(model.beta, 'beta_SIA')
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')
   
-J = mom.form_obj_ftn(integral=model.dx, kind='log_lin_hybrid', 
+J = mom.form_obj_ftn(integral=dx, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
-R = mom.form_reg_ftn(model.beta, integral=model.dx, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=dx, kind='Tikhonov', 
                      alpha=10000.0)
 I = J + R
 
@@ -91,9 +87,9 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
   
-problem = MinimizationProblem(F, bounds=(0, 500))
+problem = MinimizationProblem(F, bounds=(0, 4000))
 parameters = {"acceptable_tol"     : 1.0e-200,
-              "maximum_iterations" : 100,
+              "maximum_iterations" : 200,
               "linear_solver"      : "ma97"}
 
 solver = IPOPTSolver(problem, parameters=parameters)

@@ -113,9 +113,9 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
   
-problem = MinimizationProblem(F, bounds=(0, 500))
+problem = MinimizationProblem(F, bounds=(0, 4000))
 parameters = {"acceptable_tol"     : 1.0e-200,
-              "maximum_iterations" : 100,
+              "maximum_iterations" : 200,
               "linear_solver"      : "ma97"}
 
 solver = IPOPTSolver(problem, parameters=parameters)

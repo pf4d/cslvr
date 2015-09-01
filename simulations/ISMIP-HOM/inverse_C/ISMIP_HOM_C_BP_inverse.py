@@ -6,7 +6,7 @@ from dolfin_adjoint   import *
 
 #set_log_active(False)
 
-out_dir = './results_new/'
+out_dir = './results_BP/'
 
 alpha = 0.1 * pi / 180
 L     = 40000
@@ -46,7 +46,7 @@ m_params  = {'solver'               : nparams,
              'solve_pressure'       : True,
              'vert_solve_method'    : 'mumps'}
 
-mom = MomentumBP(model, m_params, isothermal=False)
+mom = MomentumBP(model, m_params, isothermal=True)
 mom.solve(annotate=False)
 
 u,v,w = model.U3.split(True)
@@ -68,9 +68,9 @@ model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')
 model.save_pvd(model.beta, 'beta_true')
 
-#model.init_beta(30.0)
-model.init_beta_SIA()
-model.save_pvd(model.beta, 'beta_SIA')
+model.init_beta(30.0**2)
+#model.init_beta_SIA()
+#model.save_pvd(model.beta, 'beta_SIA')
 
 mom = MomentumBP(model, m_params, linear=True, isothermal=True)
 mom.solve(annotate=True)
@@ -79,31 +79,39 @@ model.set_out_dir(out_dir = out_dir + 'inverted/')
   
 J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
-R = mom.form_reg_ftn(model.beta, integral=dBed, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
                      alpha=10000.0)
-I = J + R
+I = J# + R
 
 controls = File(out_dir + "beta_control.pvd")
 beta_viz = Function(model.Q, name="beta_control")
   
-def eval_cb(j, m):
+def eval_cb(I, beta):
+  #       commented out because the model variables are not updated by 
+  #       dolfin-adjoint (yet) :
   #mom.print_eval_ftns()
   #print_min_max(mom.U, 'U')
-  print_min_max(j, 'I')
+  print_min_max(I,    'I')
+  print_min_max(beta, 'beta')
 
-def deriv_cb(j, dj, m):
-  print_min_max(dj, 'dJdb')
-  print_min_max(m,  'beta')
-  beta_viz.assign(m)
+def deriv_cb(I, dI, beta):
+  print_min_max(I,     'I')
+  print_min_max(dI,    'dI/dbeta')
+  print_min_max(beta,  'beta')
+  beta_viz.assign(beta)
   controls << beta_viz
 
-def hessian_cb(j, ddj, m):
-  print_min_max(ddj, 'd/db dJ/db')
+def hessian_cb(I, ddI, beta):
+  print_min_max(ddI, 'd/db dI/db')
 
 m = FunctionControl('beta')
 F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
+
+#m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(0, 4000),
+#                 options={"disp"    : True,
+#                          "maxiter" : 200})
   
 problem = MinimizationProblem(F, bounds=(0, 4000))
 parameters = {"acceptable_tol"     : 1.0e-200,
@@ -112,12 +120,15 @@ parameters = {"acceptable_tol"     : 1.0e-200,
 
 solver = IPOPTSolver(problem, parameters=parameters)
 b_opt = solver.solve()
+print_min_max(b_opt, 'b_opt')
 
-#m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(10, 100),
-#                 options={"disp"    : True,
-#                          "maxiter" : 100})
+model.assign_variable(model.beta, b_opt)
+mom.solve(annotate=False)
+mom.print_eval_ftns()
 
-model.save_pvd(b_opt, 'b_opt')
+model.save_pvd(model.beta, 'beta_opt')
+model.save_pvd(model.U3,   'U_opt')
+
 
 #A = DolfinAdjointSolver(model, config)
 #A.solve()

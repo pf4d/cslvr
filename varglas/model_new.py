@@ -25,6 +25,7 @@ class Model(object):
     """
     parameters['form_compiler']['quadrature_degree']  = 2
     parameters["std_out_all_processes"]               = False
+    parameters['form_compiler']['cpp_optimize']       = True
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
     self.out_dir = out_dir

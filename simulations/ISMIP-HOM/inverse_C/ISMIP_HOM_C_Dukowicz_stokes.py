@@ -127,8 +127,4 @@ model.save_pvd(model.beta, 'beta_opt')
 model.save_pvd(model.U3,   'U_opt')
 
 
-#A = DolfinAdjointSolver(model, config)
-#A.solve()
-
-
 

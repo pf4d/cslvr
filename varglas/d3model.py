@@ -415,13 +415,13 @@ class D3Model(Model):
     bcs  = []
     # extrude bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, u, ff, 3))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, 5))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_SHF))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, u, ff, 2))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, 6))  # shelves
-    name = '%s extruded %s' % (u.name(), d) 
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_SHF))  # shelves
+    name = '%s extruded %s' % (u.name(), d)
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
     print_min_max(u, 'function to be extruded')

@@ -141,6 +141,7 @@ class Model(object):
     self.Q3     = MixedFunctionSpace([self.Q]*3)
     self.Q4     = MixedFunctionSpace([self.Q]*4)
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
+    self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
 
     s = "    - fundamental function spaces created - "
     print_text(s, self.model_color)
@@ -1077,6 +1078,8 @@ class Model(object):
         u.assign(var)
     
     elif isinstance(var, np.ndarray):
+      if var.dtype != np.float64:
+        var = var.astype(np.float64)
       u.vector().set_local(var)
       u.vector().apply('insert')
     
@@ -1145,9 +1148,9 @@ class Model(object):
     self.B             = Function(self.Q_non_periodic, name='B')
     
     # velocity observations :
-    self.U_ob          = Function(self.Q_non_periodic, name='U_ob')
-    self.u_ob          = Function(self.Q_non_periodic, name='u_ob')
-    self.v_ob          = Function(self.Q_non_periodic, name='v_ob')
+    self.U_ob          = Function(self.Q, name='U_ob')
+    self.u_ob          = Function(self.Q, name='u_ob')
+    self.v_ob          = Function(self.Q, name='v_ob')
     
     # unified velocity :
     self.U3            = Function(self.Q3, name='U3')

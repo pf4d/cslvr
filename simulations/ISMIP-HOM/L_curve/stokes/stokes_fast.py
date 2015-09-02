@@ -1,4 +1,5 @@
-from varglas          import D3Model, MomentumBP, print_text, print_min_max
+from varglas          import D3Model, MomentumDukowiczStokes, print_text, \
+                             print_min_max
 from varglas.energy   import Enthalpy 
 from scipy            import random
 from fenics           import *
@@ -6,10 +7,11 @@ from dolfin_adjoint   import *
 
 #set_log_active(False)
 
-out_dir = './results_BP/'
+out_dir = './fast/'
 
-alpha = 0.1 * pi / 180
-L     = 40000
+alpha = 0.5 * pi / 180
+L     = 25000
+H     = 1000.0
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
@@ -21,9 +23,9 @@ model.generate_function_spaces(use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                      element=model.Q.ufl_element())
-bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha, 
+bed     = Expression('- x[0] * tan(alpha) - H', alpha=alpha, H=H, 
                      element=model.Q.ufl_element())
-beta    = Expression('1000 - 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
+beta    = Expression('H - H * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)', H=H,
                      alpha=alpha, L=L, element=model.Q.ufl_element())
 
 model.calculate_boundaries()
@@ -35,34 +37,43 @@ model.init_mask(0.0)  # all grounded
 model.init_beta(beta)
 model.init_b(model.A0(0)**(-1/model.n(0)))
 
-nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                              'preconditioner'           : 'hypre_amg',
+nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
                               'relative_tolerance'       : 1e-8,
                               'relaxation_parameter'     : 1.0,
                               'maximum_iterations'       : 25,
                               'error_on_nonconvergence'  : False}}
-m_params  = {'solver'               : nparams,
-             'solve_vert_velocity'  : True,
-             'solve_pressure'       : True,
-             'vert_solve_method'    : 'mumps'}
+m_params  = {'solver'      : nparams}
 
-mom = MomentumBP(model, m_params, isothermal=True)
+mom = MomentumDukowiczStokes(model, m_params, isothermal=True)
 mom.solve(annotate=False)
 
 u,v,w = model.U3.split(True)
-u_o   = u.vector().array()
-v_o   = v.vector().array()
-n     = len(u_o)
-#U_e   = model.get_norm(as_vector([model.u, model.v]), 'linf')[1] / 500
-U_e   = 0.18
-print_min_max(U_e, 'U_e')
-  
+u_s   = model.vert_extrude(u, d='down')
+v_s   = model.vert_extrude(v, d='down')
+sigma = 100.0
+U_mag = model.get_norm(as_vector([u_s, v_s]), 'linf')[1]
+n     = len(U_mag)
+U_avg = sum(U_mag) / n
+U_e   = U_avg / sigma
+print_min_max(U_e, 'U_error')
+
+u_o     = u.vector().array()
+v_o     = v.vector().array()
+n       = len(u_o)
 u_error = U_e * random.randn(n)
 v_error = U_e * random.randn(n)
 u_ob    = u_o + u_error
 v_ob    = v_o + v_error
 
-model.init_U_ob(u_ob, v_ob)
+model.assign_variable(u, u_ob)
+model.assign_variable(v, v_ob)
+
+
+print_min_max(u_error, 'u_error')
+print_min_max(v_error, 'v_error')
+
+
+model.init_U_ob(u, v)
 
 model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')
@@ -72,7 +83,7 @@ model.init_beta(30.0**2)
 #model.init_beta_SIA()
 #model.save_pvd(model.beta, 'beta_SIA')
 
-mom = MomentumBP(model, m_params, linear=True, isothermal=True)
+mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
 mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')

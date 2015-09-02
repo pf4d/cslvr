@@ -9,9 +9,22 @@ from dolfin_adjoint   import *
 
 out_dir = './fast/'
 
-alpha = 0.5 * pi / 180
-L     = 25000
+#hs = [1000, 2000, 4000, 8000, 16000, 32000]
+#Hs = [250,  500,  750,  1000, 2000,  3000]
+#Gs = [0.1,  0.25, 0.5,  1,    2,     4]
+#
+#for h in hs:
+#  for H in Hs:
+#    for g in Gs:
+#      pass
+
+n     = 25
+h     = 1000.0
+g     = 0.5
+
 H     = 1000.0
+L     = n*h
+alpha = g * pi / 180
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)

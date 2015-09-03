@@ -108,23 +108,23 @@ class Momentum(Physics):
       self.J1  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
       self.J2  = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
-      J   = J1  + J2
+      J   = J1 + J2
       s   = "::: getting log/linear hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
 
     else:
       s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'linear', " + \
-          "'log', 'kinematic', OR 'log_lin_hybrid' <<<"
+          "'log', 'kinematic', OR 'log_lin_hybrid', NOT '%s' <<<" % kind
       print_text(s, 'red', 1)
       sys.exit(1)
     print_text(s, self.color())
-    self.J = J
+    self.J  = J
     return J
 
   def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
     """
     Forms and returns regularization functional for used with adjoint, saved to 
-    self.Reg.
+    self.R.
     """
     self.alpha = alpha   # need to save this for printing values.
 
@@ -137,11 +137,14 @@ class Momentum(Physics):
       sys.exit(1)
     elif kind == 'TV':
       R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
+      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
     elif kind == 'Tikhonov':
       R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
+      Rp = 0.5 * inner(grad(c), grad(c)) * dR
     s   = "::: forming %s regularization with parameter alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
-    self.Reg = R
+    self.R  = R
+    self.Rp = Rp
     return R
   
   def print_eval_ftns(self):
@@ -153,7 +156,7 @@ class Momentum(Physics):
       J2 = assemble(self.J2)
       print_min_max(J1, 'J1')
       print_min_max(J2, 'J2')
-    R = assemble(self.Reg)
+    R = assemble(self.R)
     J = assemble(self.J)
     print_min_max(R, 'R')
     print_min_max(J, 'J')

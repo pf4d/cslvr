@@ -92,6 +92,11 @@ model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')
 model.save_pvd(model.beta, 'beta_true')
 
+model.set_out_dir(model.out_dir + 'xml/')
+model.save_xml(model.U3,   'U_true')
+model.save_xml(model.U_ob, 'U_ob')
+model.save_xml(model.beta, 'beta_true')
+
 model.init_beta(30.0**2)
 #model.init_beta_SIA()
 #model.save_pvd(model.beta, 'beta_SIA')
@@ -99,59 +104,83 @@ model.init_beta(30.0**2)
 mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
 mom.solve(annotate=True)
 
-model.set_out_dir(out_dir = out_dir + 'inverted/')
+#alphas = [1e2, 1e3, 2.5e3, 5e3, 7.5e3, 1e4, 2.5e4, 5e4, 7.5e4, 1e5, 5e5]
+alphas = [1e2, 5e2, 1e3, 5e3, 1e4, 5e4, 1e5]
+Js     = []
+Rs     = []
+
+for alpha in alphas:
+
+  model.set_out_dir(out_dir = out_dir + 'alpha_%.1E/' % alpha)
   
-J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
-                     g1=0.01, g2=1000)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
-                     alpha=10000.0)
-I = J# + R
-
-controls = File(out_dir + "beta_control.pvd")
-beta_viz = Function(model.Q, name="beta_control")
+  J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
+                       g1=0.01, g2=1000)
+  R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
+                       alpha=10000.0)
+  I = J + R
   
-def eval_cb(I, beta):
-  #       commented out because the model variables are not updated by 
-  #       dolfin-adjoint (yet) :
-  #mom.print_eval_ftns()
-  #print_min_max(mom.U, 'U')
-  print_min_max(I,    'I')
-  print_min_max(beta, 'beta')
-
-def deriv_cb(I, dI, beta):
-  print_min_max(I,     'I')
-  print_min_max(dI,    'dI/dbeta')
-  print_min_max(beta,  'beta')
-  beta_viz.assign(beta)
-  controls << beta_viz
-
-def hessian_cb(I, ddI, beta):
-  print_min_max(ddI, 'd/db dI/db')
-
-m = FunctionControl('beta')
-F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-                      derivative_cb_post = deriv_cb,
-                      hessian_cb = hessian_cb)
-
-#m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(0, 4000),
-#                 options={"disp"    : True,
-#                          "maxiter" : 200})
+  controls = File(model.out_dir + "control_viz/beta_control.pvd")
+  beta_viz = Function(model.Q, name="beta_control")
+    
+  def eval_cb(I, beta):
+    #       commented out because the model variables are not updated by 
+    #       dolfin-adjoint (yet) :
+    #mom.print_eval_ftns()
+    #print_min_max(mom.U, 'U')
+    print_min_max(I,    'I')
+    print_min_max(beta, 'beta')
   
-problem = MinimizationProblem(F, bounds=(0, 4000))
-parameters = {"acceptable_tol"     : 1.0e-200,
-              "maximum_iterations" : 200,
-              "linear_solver"      : "ma97"}
+  def deriv_cb(I, dI, beta):
+    print_min_max(I,     'I')
+    print_min_max(dI,    'dI/dbeta')
+    print_min_max(beta,  'beta')
+    beta_viz.assign(beta)
+    controls << beta_viz
+  
+  def hessian_cb(I, ddI, beta):
+    print_min_max(ddI, 'd/db dI/db')
+  
+  m = FunctionControl('beta')
+  F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+                        derivative_cb_post = deriv_cb,
+                        hessian_cb = hessian_cb)
+  
+  #m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(0, 4000),
+  #                 options={"disp"    : True,
+  #                          "maxiter" : 200})
+    
+  problem = MinimizationProblem(F, bounds=(0, 4000))
+  parameters = {"acceptable_tol"     : 1e-6,
+                "maximum_iterations" : 1000000,
+                "linear_solver"      : "ma97"}
+  
+  solver = IPOPTSolver(problem, parameters=parameters)
+  b_opt = solver.solve()
+  print_min_max(b_opt, 'b_opt')
+  
+  model.assign_variable(model.beta, b_opt)
+  mom.solve(annotate=False)
+  mom.print_eval_ftns()
+    
+  Rs.append(assemble(mom.Rp))
+  Js.append(assemble(mom.J))
+  
+  model.save_pvd(model.beta, 'beta_opt')
+  model.save_pvd(model.U3,   'U_opt')
+  model.set_out_dir(model.out_dir + 'xml/')
+  model.save_xml(model.beta, 'beta_opt')
+  model.save_xml(model.U3,   'U_opt')
 
-solver = IPOPTSolver(problem, parameters=parameters)
-b_opt = solver.solve()
-print_min_max(b_opt, 'b_opt')
+from numpy import savetxt, array
+import os
 
-model.assign_variable(model.beta, b_opt)
-mom.solve(annotate=False)
-mom.print_eval_ftns()
-
-model.save_pvd(model.beta, 'beta_opt')
-model.save_pvd(model.U3,   'U_opt')
+if model.MPI_rank==0:
+  d = out_dir + 'plot/'
+  if not os.path.exists(d):
+    os.makedirs(d)
+  savetxt(d + 'Rs.txt', array(Rs))
+  savetxt(d + 'Js.txt', array(Js))
+  savetxt(d + 'as.txt', array(alphas))
 
 
 

@@ -96,27 +96,29 @@ model.set_out_dir(model.out_dir + 'xml/')
 model.save_xml(model.U3,   'U_true')
 model.save_xml(model.U_ob, 'U_ob')
 model.save_xml(model.beta, 'beta_true')
+  
+mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
 
-model.init_beta(30.0**2)
 #model.init_beta_SIA()
 #model.save_pvd(model.beta, 'beta_SIA')
 
-mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
-mom.solve(annotate=True)
-
 #alphas = [1e2, 1e3, 2.5e3, 5e3, 7.5e3, 1e4, 2.5e4, 5e4, 7.5e4, 1e5, 5e5]
-alphas = [1e2, 5e2, 1e3, 5e3, 1e4, 5e4, 1e5]
+alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 
+          1e1, 1e2, 1e3, 1e4, 1e5, 1e6]
 Js     = []
 Rs     = []
 
 for alpha in alphas:
+
+  model.init_beta(30.0**2)
+  mom.solve(annotate=True)
 
   model.set_out_dir(out_dir = out_dir + 'alpha_%.1E/' % alpha)
   
   J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
                        g1=0.01, g2=1000)
   R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
-                       alpha=10000.0)
+                       alpha=alpha)
   I = J + R
   
   controls = File(model.out_dir + "control_viz/beta_control.pvd")
@@ -150,8 +152,8 @@ for alpha in alphas:
   #                          "maxiter" : 200})
     
   problem = MinimizationProblem(F, bounds=(0, 4000))
-  parameters = {"acceptable_tol"     : 1e-6,
-                "maximum_iterations" : 1000000,
+  parameters = {"acceptable_tol"     : 1e-3,
+                "maximum_iterations" : 10000,
                 "linear_solver"      : "ma97"}
   
   solver = IPOPTSolver(problem, parameters=parameters)
@@ -170,6 +172,9 @@ for alpha in alphas:
   model.set_out_dir(model.out_dir + 'xml/')
   model.save_xml(model.beta, 'beta_opt')
   model.save_xml(model.U3,   'U_opt')
+  
+  # reset entire dolfin-adjoint state :
+  adj_reset()
 
 from numpy import savetxt, array
 import os

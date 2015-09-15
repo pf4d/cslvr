@@ -7,7 +7,7 @@ from dolfin_adjoint   import *
 
 #set_log_active(False)
 
-out_dir = './fast/'
+out_dir = 'dump/L_curve/stokes/fast_new_2/'
 
 #hs = [1000, 2000, 4000, 8000, 16000, 32000]
 #Hs = [250,  500,  750,  1000, 2000,  3000]
@@ -147,14 +147,17 @@ for alpha in alphas:
                         derivative_cb_post = deriv_cb,
                         hessian_cb = hessian_cb)
   
-  #m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(0, 4000),
+  #b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 4000),
   #                 options={"disp"    : True,
-  #                          "maxiter" : 200})
+  #                          "maxiter" : 10000,
+  #                          "gtol"    : 1e-5,
+  #                          "factr"   : 1e7})
     
   problem = MinimizationProblem(F, bounds=(0, 4000))
-  parameters = {"acceptable_tol"     : 1e-3,
-                "maximum_iterations" : 10000,
-                "linear_solver"      : "ma97"}
+  parameters = {"tol"                : 1e8,
+                "acceptable_tol"     : 1000.0,
+                "maximum_iterations" : 1000,
+                "linear_solver"      : "ma57"}
   
   solver = IPOPTSolver(problem, parameters=parameters)
   b_opt = solver.solve()

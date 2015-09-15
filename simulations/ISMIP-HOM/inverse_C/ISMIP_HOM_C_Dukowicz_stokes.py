@@ -59,7 +59,10 @@ v_error = U_e * random.randn(n)
 u_ob    = u_o + u_error
 v_ob    = v_o + v_error
 
-model.init_U_ob(u_ob, v_ob)
+model.assign_variable(u, u_ob)
+model.assign_variable(v, v_ob)
+
+model.init_U_ob(u, v)
 
 model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')

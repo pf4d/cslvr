@@ -52,17 +52,22 @@ mom.solve(annotate=False)
 u,v,w = model.U3.split(True)
 u_o   = u.vector().array()
 v_o   = v.vector().array()
-n     = len(u_o)
-#U_e   = model.get_norm(as_vector([model.u, model.v]), 'linf')[1] / 500
-U_e   = 0.18
-print_min_max(U_e, 'U_e')
-  
+sigma = 100.0
+U_mag = model.get_norm(as_vector([u, v]), 'linf')[1]
+n     = len(U_mag)
+U_avg = sum(U_mag) / n
+U_e   = U_avg / sigma
+print_min_max(U_e, 'U_error')
+
 u_error = U_e * random.randn(n)
 v_error = U_e * random.randn(n)
 u_ob    = u_o + u_error
 v_ob    = v_o + v_error
 
-model.init_U_ob(u_ob, v_ob)
+model.assign_variable(u, u_ob)
+model.assign_variable(v, v_ob)
+
+model.init_U_ob(u, v)
 
 model.save_pvd(model.U3,   'U_true')
 model.save_pvd(model.U_ob, 'U_ob')

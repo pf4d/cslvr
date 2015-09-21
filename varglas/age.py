@@ -17,15 +17,23 @@ class Age(Physics):
                   attributes such as velocties, age, and surface climate
   """
 
-  def __init__(self, model, config):
+  def __init__(self, model, solve_params=None, transient=False,
+               use_smb_for_ela=False, ela=None):
     """ 
     Set up the equations 
     """
     s    = "::: INITIALIZING AGE PHYSICS :::"
     print_text(s, self.color())
 
-    self.model  = model
-    self.config = config
+    if type(model) != D3Model:
+      s = ">>> Age REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+    
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
 
     h = model.h
     
@@ -38,7 +46,7 @@ class Age(Physics):
     self.age = Function(model.MQ)
 
     # Steady state
-    if config['mode'] == 'steady':
+    if not transient:
       s    = "    - using steady-state -"
       print_text(s, self.color())
       
@@ -68,7 +76,7 @@ class Age(Physics):
       mhat   = model.mhat
 
       # Time step
-      dt     = config['time_step']
+      dt     = model.time_step
 
       # SUPG method (note subtraction of mesh velocity) :
       U      = as_vector([uhat, vhat, what-mhat])
@@ -84,7 +92,7 @@ class Age(Physics):
                - 1.0 * phihat * dx
 
     # form the boundary conditions :
-    if config['age']['use_smb_for_ela']:
+    if use_smb_for_ela:
       s    = "    - using adot (SMB) boundary condition -"
       print_text(s, self.color())
       self.bc_age = DirichletBC(model.MQ, 0.0, model.ff_acc, 1)
@@ -93,7 +101,7 @@ class Age(Physics):
       s    = "    - using ELA boundary condition -"
       print_text(s, self.color())
       def above_ela(x,on_boundary):
-        return x[2] > config['age']['ela'] and on_boundary
+        return x[2] > ela and on_boundary
       self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
   def solve(self, ahat=None, a0=None, uhat=None, what=None, vhat=None):
@@ -107,7 +115,6 @@ class Age(Physics):
     :param what   : Vertical velocity
     """
     model  = self.model
-    config = self.config
 
     # Assign values to midpoint quantities and mesh velocity
     if ahat:
@@ -226,3 +233,91 @@ class Age(Physics):
     #solve(self.a_a == self.a_L, self.age, self.age_bc, annotate=False)
     #self.age.interpolate(self.age)
     print_min_max(self.age, 'age')
+
+
+class FirnAge(Physics):
+
+  def __init__(self, model, solve_params=None):
+    """
+    """
+    s    = "::: INITIALIZING FIRN AGE PHYSICS :::"
+    print_text(s, self.color())
+
+    if type(model) != D1Model:
+      s = ">>> FirnAge REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+    
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
+
+    Q       = model.Q
+    w       = model.w                         # velocity
+    w_1     = model.w_1                       # previous step's velocity
+    m       = model.m                         # mesh velocity
+    m_1     = model.m_1                       # previous mesh velocity
+    a       = model.a                         # age
+    a_1     = model.a_1                       # previous step's age
+    dt      = model.dt_v                      # timestep
+    
+    da      = TrialFunction(Q)
+    xi      = TestFunction(Q)
+    
+    model.assign_variable(a,   1.0)
+    model.assign_variable(a_1, 1.0)
+
+    # age residual :
+    # theta scheme (1=Backwards-Euler, 0.667=Galerkin, 0.878=Liniger, 
+    #               0.5=Crank-Nicolson, 0=Forward-Euler) :
+    # uses Taylor-Galerkin upwinding :
+    theta   = 0.5 
+    a_mid   = theta*a + (1-theta)*a_1
+    f       = + (a - a_1)/dt * xi * dx \
+              - 1 * xi * dx \
+              + w * a_mid.dx(0) * xi * dx \
+              - 0.5 * (w - w_1) * a_mid.dx(0) * xi * dx \
+              + w**2 * dt/2 * inner(a_mid.dx(0), xi.dx(0)) * dx \
+              - w * w.dx(0) * dt/2 * a_mid.dx(0) * xi * dx
+    
+    J       = derivative(f, a, da)
+    
+    self.ageBc = DirichletBC(Q, 0.0, model.surface)
+
+    self.f = f
+    self.J = J
+
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+  
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    params = {'solver' : {'relaxation_parameter'     : 1.0,
+                           'maximum_iterations'      : 25,
+                           'error_on_nonconvergence' : False,
+                           'relative_tolerance'      : 1e-10,
+                           'absolute_tolerance'      : 1e-10}}
+    return params
+
+  def solve(self):
+    """
+    """
+    s    = "::: solving FirnAge :::"
+    print_text(s, self.color())
+    
+    model  = self.model
+
+    # solve for age :
+    solve(self.f == 0, self.a, self.ageBc, J=self.J,
+          solver_parameters=self.solve_params['solver'])
+    model.age.interpolate(self.a)
+    print_min_max(model.a, 'age')
+
+
+

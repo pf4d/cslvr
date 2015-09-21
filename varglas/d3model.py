@@ -21,7 +21,7 @@ class D3Model(Model):
     return a SubDomain of periodic lateral boundaries.
     """
     s = "    - using 3D periodic boundaries -"
-    print_text(s, self.model_color)
+    print_text(s, self.D3Model_color)
 
     xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
     xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
@@ -73,7 +73,7 @@ class D3Model(Model):
     :param mesh : Dolfin mesh to be written
     """
     s = "::: setting 3D mesh :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D3Model_color)
     self.mesh       = mesh
     self.flat_mesh  = Mesh(mesh)
     self.dim        = self.mesh.ufl_cell().topological_dimension()
@@ -327,7 +327,7 @@ class D3Model(Model):
     surface <S> and bed <B>.
     """
     s = "::: deforming mesh to geometry :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D3Model_color)
     
     # transform z :
     # thickness = surface - base, z = thickness + base
@@ -337,14 +337,14 @@ class D3Model(Model):
     mesh_height = max_height - min_height
     
     s = "    - iterating through %i vertices - " % self.dof
-    print_text(s, self.model_color)
+    print_text(s, self.D3Model_color)
     
     for x in self.mesh.coordinates():
       x[2] = (x[2] / mesh_height) * ( + S(x[0],x[1],x[2]) \
                                       - B(x[0],x[1],x[2]) )
       x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
-    print_text(s, self.model_color)
+    print_text(s, self.D3Model_color)
 
   def get_surface_mesh(self):
     """

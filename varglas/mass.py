@@ -7,8 +7,32 @@ from varglas.helper      import VerticalBasis, VerticalFDBasis, \
 from fenics         import *
 from dolfin_adjoint import *
 
+class Mass(Physics):
+  """
+  Abstract class outlines the structure of a mass conservation.
+  """
 
-class FreeSurface(Physics):
+  def __new__(self, model, *args, **kwargs):
+    """
+    Creates and returns a new Energy object.
+    """
+    instance = Physics.__new__(self, model)
+    return instance
+  
+  def color(self):
+    """
+    return the default color for this class.
+    """
+    return 'white'
+  
+  def solve(self, annotate=True, params=None):
+    """ 
+    Perform the Newton solve of the energy equation.
+    """
+    raiseNotDefined()
+
+
+class FreeSurface(Mass):
   """
   """  
   def __init_(self, model):
@@ -130,7 +154,7 @@ class FreeSurface(Physics):
     self.assign_variable(self.dSdt, q)
 
 
-class MassTransportHybrid(Physics):
+class MassTransportHybrid(Mass):
   """
   New 2D hybrid model.
   """
@@ -232,6 +256,12 @@ class MassTransportHybrid(Physics):
     self.bc = []#DirichletBC(Q, thklim, 'on_boundary')
     print_min_max(adot, 'adot')
 
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+
   def default_ffc_options(self):
     """ 
     Returns a set of default ffc options that yield good performance
@@ -310,6 +340,44 @@ class MassTransportHybrid(Physics):
     S_v = B_v + H_v
     model.assign_variable(model.S, S_v)
     print_min_max(model.S, 'S')
+
+
+class FirnMass(Mass):
+
+  def __init__(self, model):
+    """
+    """
+    s = "::: INITIALIZING FIRN MASS-BALANCE PHYSICS :::"
+    print_text(s, self.color())
+    
+    if type(model) != D1Model:
+      s = ">>> FirnMass REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+
+  def solve(self):
+    """
+    If conserving the mass of the firn column, calculate height of each 
+    interval :
+    """
+    model  = self.model
+
+    zOld   = model.z
+    lnew   = append(0, model.lini) * model.rhoin / model.rhop
+    zSum   = model.B
+    zNew   = zeros(model.n)
+    for i in range(model.n):
+      zNew[i]  = zSum + lnew[i]
+      zSum    += lnew[i]
+    model.z    = zNew
+    model.l    = lnew[1:]
+    model.mp   = -(zNew - zOld) / model.dt
+    model.lnew = lnew
+    
+    model.assign_variable(model.m_1, model.m)
+    model.assign_variable(model.m,   model.mp)
+    model.mesh.coordinates()[:,0][model.index] = model.z # update the mesh coor
+    model.mesh.bounding_box_tree().build(model.mesh)     # rebuild the mesh tree
 
 
 

@@ -3,6 +3,7 @@ from dolfin_adjoint         import *
 from varglas.io             import print_text, print_min_max
 from varglas.d3model        import D3Model
 from varglas.d2model        import D2Model
+from varglas.d1model        import D1Model
 from varglas.physics_new    import Physics
 from varglas.helper         import VerticalBasis, VerticalFDBasis
 import sys
@@ -10,7 +11,7 @@ import sys
 
 class Energy(Physics):
   """
-  Abstract class outlines the structure of a momentum calculation.
+  Abstract class outlines the structure of an energy conservation.
   """
 
   def __new__(self, model, *args, **kwargs):
@@ -652,6 +653,175 @@ class EnergyHybrid(Energy):
     #nMb_v[nMb_v > 10.0] = 10.0
     model.assign_variable(model.Mb, nMb_v)
     print_min_max(model.Mb, 'Mb')
+
+
+class EnergyFirn(Energy):
+
+  def __init__(self, model, solve_params=None):
+    """
+    """
+    s    = "::: INITIALIZING FIRN ENERGY PHYSICS :::"
+    print_text(s, self.color())
+
+    if type(model) != D1Model:
+      s = ">>> FirnEnergy REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+    
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
+
+    mesh    = model.mesh
+    Q       = model.Q
+
+    H       = model.H                         # enthalpy
+    H_1     = model.H_1                       # previous enthalpy
+    T       = model.T                         # temperature
+    rho     = model.rho                       # density
+    w       = model.w                         # velocity
+    m       = model.m                         # mesh velocity
+    Tavg    = model.Tavg                      # average surface temperature
+    Kcoef   = model.Kcoef                     # enthalpy ceofficient
+    dt      = model.time_step                 # timestep
+    rhoi    = model.rhoi                      # density of ice
+    spy     = model.spy
+    ci      = model.ci
+    T       = model.T
+    T_      = model.T_w
+    L       = model.L
+    Hsp     = model.Hsp
+    u       = model.u
+    p       = model.p
+    ql      = model.ql
+    etaw    = model.etaw
+    rhow    = model.rhow
+    #w       = w - m
+    z       = model.x
+    g       = model.g
+    r       = model.r
+    S       = model.S
+    #omega   = model.omega
+    
+    psi   = TestFunction(Q)
+    dH    = TrialFunction(Q)
+    
+    # thermal parameters
+    ki  = 2.1*(rho / rhoi)**2
+    
+    T_v = T.vector().array()
+    model.assign_variable(H,   ci(0)*T_v)
+    model.assign_variable(H_1, ci(0)*T_v)
+    
+    self.HBc = DirichletBC(Q, model.T_surface*ci,  model.surface)
+   
+    # Darcy flux :
+    omega = conditional(lt(H, Hsp), 0.0, (H - ci*T_w) / L)
+    k     = 0.077 * r * exp(-7.8*rho/rhow)                # intrinsic perm.
+    phi   = 1 - rho/rhoi                                  # porosity
+    Smi   = 0.0057 / (1 - phi) + 0.017                    # irr. water content
+    Se    = (omega - Smi) / (1 - Smi)                     # effective sat.
+    K     = k * rhow * g / etaw
+    krw   = Se**3.0 
+    ql    = K * krw * (p / (rhow * g) + z).dx(0)          # water flux
+    u     = - k / etaw * p.dx(0)                          # darcy velocity
+    u     = - ql/phi                                      # darcy velocity
+
+    # enthalpy residual :
+    theta   = 1.0
+    H_mid   = theta*H + (1 - theta)*H_1
+    delta   = - ki/(rho*ci) * Kcoef * inner(H_mid.dx(0), psi.dx(0)) * dx \
+              + w * H_mid.dx(0) * psi * dx \
+              - (H - H_1)/dt * psi * dx \
+              + (ql * H_mid).dx(0) * psi * dx \
+    
+    # equation to be minimzed :
+    self.J  = derivative(delta, H, dH)   # temp/density jacobian
+
+    self.delta = delta
+    self.u     = u
+    self.ql    = ql
+    self.omega = omega
+    self.Smi   = Smi
+
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    params = {'solver' : {'relaxation_parameter'     : 1.0,
+                           'maximum_iterations'      : 25,
+                           'error_on_nonconvergence' : False,
+                           'relative_tolerance'      : 1e-10,
+                           'absolute_tolerance'      : 1e-10}}
+    return params
+
+  def solve(self, annotate=True):
+    """
+    """
+    s    = "::: solving FirnEnergy :::"
+    print_text(s, self.color())
+    
+    model = self.model
+
+    # newton's iterative method :
+    solve(self.delta == 0, model.H, self.HBc, J=self.J, 
+          solver_parameters=self.solve_params['solver'],
+          annotate=annotate)
+
+    model.assign_variable(model.omega, project(self.omega))
+    model.assign_variable(model.ql,    project(self.ql))
+    
+    T_w   = model.T_w
+    rhow  = model.rhow
+    rhoi  = model.rhoi
+    Hsp   = model.Hsp
+    g     = model.g
+    ci    = model.ci
+
+    # calculate omega :
+    omegap   = model.omega.vector().array()
+    omegap_1 = model.omega_1.vector().array()
+    domega   = omegap - omegap_1                 # water content change
+    model.assign_variable(model.omega_1, model.omega)
+    model.assign_variable(model.domega,  domega)
+
+    # update coefficients used by enthalpy :
+    Hp       = model.H.vector().array()
+    Hhigh    = where(Hp > Hsp(0))[0]
+    Hlow     = where(Hp < Hsp(0))[0]
+    
+    #KcoefNew         = ones(model.dof)
+    #KcoefNew[Hhigh]  = 1.0/2.0
+    #KcoefNew[Hlow]   = 1.0
+    #model.assign_variable(model.Kcoef, KcoefNew)
+    
+    # calculate T :
+    Tp         = Hp / ci(0)
+    Tp[Hhigh]  = T_w(0)
+    model.assign_variable(model.T, Tp)
+
+    print_min_max(model.T,     'T')
+    print_min_max(model.H,     'H')
+    print_min_max(model.omega, 'omega')
+    print_min_max(model.ql,    'ql')
+
+    p     = model.vert_integrate(rhow * g * model.omega)
+    rho   = model.rho
+    phi   = 1 - rho/rhoi                                    # porosity
+    Smi   = 0.0057 / (1 - phi) + 0.017                      # irr. water content
+    model.assign_variable(model.p,   p)
+    model.assign_variable(model.u,   project(self.u))
+    model.assign_variable(model.Smi, project(Smi))
+    print_min_max(model.pp, 'p')
+    print_min_max(model.up, 'u')
+    print_min_max((1-model.rhop/rhoi(0))*100 - model.omegap*100, 'phi - omega')
 
 
  

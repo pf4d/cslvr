@@ -36,8 +36,35 @@ class Model(object):
     
     spy = 31556926.0
     ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(s*m^2)
-
+    
     # Constants :
+    self.rhom    = Constant(550.0)
+    self.rhom.rename('rhom', 'density at 15 m')
+
+    self.rhoc    = Constant(815.0)
+    self.rhoc.rename('rhoc', 'firn density critical value')
+
+    self.kcHh    = Constant(3.7e-9)
+    self.kcHh.rename('kcHh', 'creep coefficient high')
+
+    self.kcLw    = Constant(9.2e-9)
+    self.kcLw.rename('kcLw', 'creep coefficient low ')
+
+    self.kg      = Constant(1.3e-7)
+    self.kg.rename('kg', 'grain growth coefficient')
+
+    self.Ec      = Constant(60e3)
+    self.Ec.rename('Ec', 'act. energy for water in ice')
+
+    self.Eg      = Constant(42.4e3)
+    self.Eg.rename('Eg', 'act. energy for grain growth')
+
+    self.Hsp     = Constant(2009.0 * 273.15)
+    self.Hsp.rename('Hsp', 'Enthalpy of ice at Tw')
+    
+    self.etaw    = Constant(1.787e-3)
+    self.etaw.rename('etaw', 'Dynamic viscosity of water at Tw')
+
     self.r       = Constant(0.0)
     self.r.rename('r', 'thickness exponent in sliding law')
 
@@ -1161,8 +1188,8 @@ class Model(object):
     self.u             = u
     self.v             = v
     self.w             = w
-    
-    # Velocity model
+
+    # momentum model :
     self.p             = Function(self.Q, name='p')
     self.beta          = Function(self.Q, name='beta')
     self.E             = Function(self.Q, name='E')
@@ -1175,7 +1202,7 @@ class Model(object):
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
     
-    # Enthalpy model
+    # energy model :
     self.T             = Function(self.Q, name='T')
     self.q_geo         = Function(self.Q, name='q_geo')
     self.W             = Function(self.Q, name='W')
@@ -1183,11 +1210,11 @@ class Model(object):
     self.T_melt        = Function(self.Q, name='T_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
     
-    # Adjoint model
+    # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
     self.misfit        = 0.0              # ||U - U_ob||
 
-    # Balance Velocity model :
+    # balance Velocity model :
     self.adot          = Function(self.Q, name='adot')
     self.dSdx          = Function(self.Q, name='dSdx')
     self.dSdy          = Function(self.Q, name='dSdy')
@@ -1301,20 +1328,20 @@ class Model(object):
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
-    from varglas.physics_new import Physics
+    from varglas.mass     import Mass
     
     if momentum.__class__.__base__ != Momentum:
-      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+      s = ">>> transient_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
       print_text(s % type(momentum), 'red', 1)
       sys.exit(1)
     
     if energy.__class__.__base__ != Energy:
-      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+      s = ">>> transient_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
       print_text(s % type(energy), 'red', 1)
       sys.exit(1)
     
-    if mass.__class__.__base__ != Physics:
-      s = ">>> thermo_solve REQUIRES A 'Physics' INSTANCE, NOT %s <<<"
+    if mass.__class__.__base__ != Mass:
+      s = ">>> transient_solve REQUIRES A 'Mass' INSTANCE, NOT %s <<<"
       print_text(s % type(mass), 'red', 1)
       sys.exit(1)
     

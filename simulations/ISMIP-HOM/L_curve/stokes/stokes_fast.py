@@ -103,8 +103,8 @@ mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
 #model.save_pvd(model.beta, 'beta_SIA')
 
 #alphas = [1e2, 1e3, 2.5e3, 5e3, 7.5e3, 1e4, 2.5e4, 5e4, 7.5e4, 1e5, 5e5]
-alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 
-          1e1, 1e2, 1e3, 1e4, 1e5, 1e6]
+alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0 
+          1e1,  1e2,  1e3,  1e4,  1e5,  1e6]
 Js     = []
 Rs     = []
 

@@ -57,7 +57,7 @@ class D1Model(Model):
     Set the Function for the surface <S>. 
     """
     s = "::: initializng surface topography :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D1Model_color)
     self.S = S
     print_min_max(self.S, 'S')
 
@@ -66,7 +66,7 @@ class D1Model(Model):
     Set the Function for the bed <B>.
     """
     s = "::: initializng bed topography :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D1Model_color)
     self.B = B
     print_min_max(self.B, 'B')
   
@@ -117,9 +117,10 @@ class D1Model(Model):
     """
     """
     s = "::: initializing accumulation :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D1Model_color)
     self.adot = adot
-    self.assign_variable(self.bdot, self.rhoi * adot / self.spy)
+    self.assign_variable(self.bdot, self.rhoi(0) * adot / self.spy(0))
+    print_min_max(self.adot, 'adot')
     print_min_max(self.bdot, 'bdot')
 
   def init_r(self, r):
@@ -241,6 +242,8 @@ class D1Model(Model):
       m    - counter used to keep track of calls
   
     """
+    s = "::: refining mesh :::"
+    print_text(s, self.D1Model_color)
     mesh  = self.mesh
     S     = self.S
     B     = self.B
@@ -262,25 +265,14 @@ class D1Model(Model):
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
+    super(D1Model, self).initialize_variables()
+
     self.z     = self.mesh.coordinates()[:,0]
     self.index = np.argsort(self.z)[::-1]
     self.z     = self.z[self.index]
     self.l     = np.diff(self.z)
     self.x     = SpatialCoordinate(self.mesh)[0]
    
-    dof   = self.dof
-    index = self.index 
-    ki    = self.ki
-    ci    = self.ci
-    rhoi  = self.rhoi
-    rhow  = self.rhow
-    adot  = self.adot
-    spy   = self.spy
-    kcHh  = self.kcHh
-    Tavg  = self.Tavg
-    Hsp   = self.Hsp
-    Q     = self.Q
-
     # surface Dirichlet boundary :
     def surface(x, on_boundary):
       return on_boundary and x[0] == self.S
@@ -295,35 +287,35 @@ class D1Model(Model):
     #===========================================================================
     # Define variational problem spaces :
 
-    self.m       = Function(Q)
-    self.m_1     = Function(Q)
-    self.T       = Function(Q)        
-    self.omega   = Function(Q)        
-    self.omega_1 = Function(Q)        
-    self.domega  = Function(Q)        
-    self.drhodt  = Function(Q)        
-    self.Kcoef   = Function(Q)
-    self.H       = Function(Q)
-    self.H_1     = Function(Q)
-    self.rho     = Function(Q)
-    self.rho_1   = Function(Q)
-    self.rhoCoef = Function(Q)
-    self.bdot    = Function(Q)
-    self.w       = Function(Q)
-    self.w_1     = Function(Q)
-    self.a       = Function(Q)
-    self.a_1     = Function(Q)
-    self.sigma   = Function(Q)
-    self.sigma_1 = Function(Q)
-    self.r       = Function(Q)
-    self.r_1     = Function(Q)
-    self.p       = Function(Q)
-    self.u       = Function(Q)
-    self.ql      = Function(Q)
-    self.Smi     = Function(Q)
+    self.m       = Function(self.Q)
+    self.m_1     = Function(self.Q)
+    self.T       = Function(self.Q)        
+    self.omega   = Function(self.Q)        
+    self.omega_1 = Function(self.Q)        
+    self.domega  = Function(self.Q)        
+    self.drhodt  = Function(self.Q)        
+    self.Kcoef   = Function(self.Q)
+    self.H       = Function(self.Q)
+    self.H_1     = Function(self.Q)
+    self.rho     = Function(self.Q)
+    self.rho_1   = Function(self.Q)
+    self.rhoCoef = Function(self.Q)
+    self.bdot    = Function(self.Q)
+    self.w       = Function(self.Q)
+    self.w_1     = Function(self.Q)
+    self.a       = Function(self.Q)
+    self.a_1     = Function(self.Q)
+    self.sigma   = Function(self.Q)
+    self.sigma_1 = Function(self.Q)
+    self.r       = Function(self.Q)
+    self.r_1     = Function(self.Q)
+    self.p       = Function(self.Q)
+    self.u       = Function(self.Q)
+    self.ql      = Function(self.Q)
+    self.Smi     = Function(self.Q)
 
     self.assign_variable(self.Kcoef,   1.0)
-    self.assign_variable(self.rhoCoef, kcHh)
+    self.assign_variable(self.rhoCoef, self.kcHh)
     
     self.lini    = self.l                    # initial height vector
     self.lnew    = self.l.copy()             # previous height vector
@@ -336,14 +328,14 @@ class D1Model(Model):
     self.drhodtp = self.drhodt.vector().array()
     self.ap      = self.a.vector().array()
     self.wp      = self.w.vector().array()
-    self.kp      = 2.1*(self.rhop / rhoi(0))**2
-    self.cp      = ci * ones(dof)
-    self.rp      = self.r_i.vector().array()
+    self.kp      = 2.1*(self.rhop / self.rhoi(0))**2
+    self.cp      = self.ci(0) * np.ones(self.dof)
+    self.rp      = self.r.vector().array()
     self.rhoinp  = self.rhop
-    self.agep    = np.zeros(dof)
-    self.pp      = np.zeros(dof)
-    self.up      = np.zeros(dof)
-    self.Smip    = np.zeros(dof)
+    self.agep    = np.zeros(self.dof)
+    self.pp      = np.zeros(self.dof)
+    self.up      = np.zeros(self.dof)
+    self.Smip    = np.zeros(self.dof)
     
     self.S_1     = self.S                    # previous time-step surface  
     self.zo      = self.S                    # z-coordinate of initial surface

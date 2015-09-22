@@ -682,7 +682,6 @@ class EnergyFirn(Energy):
     rho     = model.rho                       # density
     w       = model.w                         # velocity
     m       = model.m                         # mesh velocity
-    Tavg    = model.Tavg                      # average surface temperature
     Kcoef   = model.Kcoef                     # enthalpy ceofficient
     dt      = model.time_step                 # timestep
     rhoi    = model.rhoi                      # density of ice
@@ -697,6 +696,7 @@ class EnergyFirn(Energy):
     ql      = model.ql
     etaw    = model.etaw
     rhow    = model.rhow
+    T_w     = model.T_w
     #w       = w - m
     z       = model.x
     g       = model.g

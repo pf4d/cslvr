@@ -1,7 +1,7 @@
 from fenics                 import *
 from dolfin_adjoint         import *
 from varglas.io             import print_text, print_min_max
-from varglas.d3model        import D3Model
+from varglas.d1model        import D1Model
 from varglas.physics_new    import Physics
 from varglas.momentum       import Momentum
 import sys
@@ -26,6 +26,7 @@ class MomentumFirn(Momentum):
       self.solve_params = solve_params
 
     mesh    = model.mesh
+    Q       = model.Q
     Q3      = model.Q3
 
     kcHh    = model.kcHh
@@ -65,11 +66,6 @@ class MomentumFirn(Momentum):
     model.assign_variable(U,   U_i)
     model.assign_variable(U_1, U_i)
 
-    # initialize previous-time-step variables :
-    model.assign_variable(rho_1,   model.rho)
-    model.assign_variable(sigma_1, model.sigma)
-    model.assign_variable(r_1,     model.r)
-  
     # rho residual :
     theta     = 0.878
     rho_mid   = theta*rho + (1 - theta)*rho_1
@@ -110,7 +106,7 @@ class MomentumFirn(Momentum):
     rhoBc    = DirichletBC(Q3.sub(0), model.rho_surface,   model.surface)
     sigmaBc  = DirichletBC(Q3.sub(1), model.sigma_surface, model.surface)
     rBc      = DirichletBC(Q3.sub(2), model.r_surface,     model.surface)
-    self.wBc = DirichletBC(Q,         model.w_S,           model.surface)
+    self.wBc = DirichletBC(Q,         model.w_surface,     model.surface)
 
     self.bcs = [rhoBc, sigmaBc, rBc]
     

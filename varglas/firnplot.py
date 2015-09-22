@@ -28,32 +28,32 @@ class FirnPlot(object):
     """
     Initialize plots with model object as input.
     """   
-    self.model   = model
+    self.model  = model
     self.config = config
     
     # plotting extents :
-    zMin     = config['plot']['zMin'] 
-    zMax     = config['plot']['zMax'] 
-    wMin     = config['plot']['wMin'] 
-    wMax     = config['plot']['wMax'] 
-    uMin     = config['plot']['uMin'] 
-    uMax     = config['plot']['uMax'] 
-    rhoMin   = config['plot']['rhoMin'] 
-    rhoMax   = config['plot']['rhoMax'] 
-    rMin     = config['plot']['rMin'] 
-    rMax     = config['plot']['rMax'] 
-    Tmin     = config['plot']['Tmin'] 
-    Tmax     = config['plot']['Tmax'] 
-    ageMin   = config['plot']['ageMin'] 
-    ageMax   = config['plot']['ageMax'] 
-    omegaMin = config['plot']['omegaMin'] 
-    omegaMax = config['plot']['omegaMax'] 
+    zMin     = config['zMin'] 
+    zMax     = config['zMax'] 
+    wMin     = config['wMin'] 
+    wMax     = config['wMax'] 
+    uMin     = config['uMin'] 
+    uMax     = config['uMax'] 
+    rhoMin   = config['rhoMin'] 
+    rhoMax   = config['rhoMax'] 
+    rMin     = config['rMin'] 
+    rMax     = config['rMax'] 
+    Tmin     = config['Tmin'] 
+    Tmax     = config['Tmax'] 
+    ageMin   = config['ageMin'] 
+    ageMax   = config['ageMax'] 
+    omegaMin = config['omegaMin'] 
+    omegaMax = config['omegaMax'] 
 
     # plotting windows :
-    Tb       = config['enthalpy']['plot']
-    rhob     = config['density']['plot']
-    wb       = config['velocity']['plot']
-    ageb     = config['age']['plot']
+    Tb       = config['enthalpy']
+    rhob     = config['density']
+    wb       = config['velocity']
+    ageb     = config['age']
              
     blist    = [Tb, rhob, wb, ageb]
     totb     = 100 + 10 * sum(blist)
@@ -62,14 +62,14 @@ class FirnPlot(object):
     T      = model.Tp
     omega  = model.omegap
     rho    = model.rhop
-    w      = model.wp * model.spy * 1e2 # cm/a
-    u      = model.up * model.spy * 1e2 # cm/a
-    a      = model.ap /model.spy
+    w      = model.wp * model.spy(0) * 1e2 # cm/a
+    u      = model.up * model.spy(0) * 1e2 # cm/a
+    a      = model.ap /model.spy(0)
     Smi    = model.Smip
     r      = sqrt(model.rp) * 1000
     Ts     = model.Ts - 273.15
     rhos   = rho[0]
-    adot   = model.w_S.adot
+    adot   = model.w_surface.adot
 
     # y-value :
     z      = model.z
@@ -109,6 +109,8 @@ class FirnPlot(object):
       self.phTs,    = self.Tax.plot([Tmin, Tmax], [zs, zs], 'k-', lw=3)
       
       # original (beginning) surface height :
+      print Th
+      print 'zo', zo, type(zo)
       self.phTs_0,  = self.Tax.plot(Th, zo, 'go')
 
       # temperature surface boundary condition :

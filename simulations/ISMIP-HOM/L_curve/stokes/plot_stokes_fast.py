@@ -1,6 +1,6 @@
-from varglas          import D3Model, print_text, print_min_max
-from fenics           import *
-from numpy            import loadtxt, array
+from varglas     import D3Model, print_text, print_min_max, plot_variable
+from fenics      import *
+from numpy       import loadtxt, array
 import os
 
 out_dir = 'dump/stokes/fast_bfgs/'
@@ -15,7 +15,7 @@ out_dir = 'dump/stokes/fast_bfgs/'
 #      pass
 
 n     = 25
-h     = 1000.0
+h     = 1.0
 g     = 0.5
 
 H     = 1000.0
@@ -41,26 +41,55 @@ model.deform_mesh_to_geometry(surface, bed)
 model.init_S(surface)
 model.init_B(bed)
 model.init_mask(0.0)  # all grounded
-model.init_beta(beta)
-model.init_U_ob(u, v)
 
 lg      = LagrangeInterpolator()
-submesh = model.get_bed_mesh()
-Q_b     = FunctionSpace(submesh, 'CG', 1)
-Q3_b    = MixedFunctionSpace([Q_b]*3)
+bedmesh = model.get_bed_mesh()
+srfmesh = model.get_surface_mesh()
 
-beta_true_s = Function(Q_b)
-beta_opt_s  = Function(Q_b)
-U_true_s    = Function(Q3_b)
-U_opt_s     = Function(Q3_b)
-U_ob_s      = Function(Q3_b)
+Q_b     = FunctionSpace(bedmesh, 'CG', 1)
+Q_s     = FunctionSpace(srfmesh, 'CG', 1)
 
-d = out_dir + 'plot/'
-if not os.path.exists(d):
-  os.makedirs(d)
-savetxt(d + 'Rs.txt', array(Rs))
-savetxt(d + 'Js.txt', array(Js))
-savetxt(d + 'as.txt', array(alphas))
+beta_b  = Function(Q_b)
+U_ob_s  = Function(Q_s)
+U_s     = Function(Q_s)
+
+model.init_beta(out_dir + 'initial/xml/beta_true.xml')
+model.init_U(out_dir + 'initial/xml/u_true.xml',
+             out_dir + 'initial/xml/v_true.xml',
+             out_dir + 'initial/xml/w_true.xml')
+model.assign_variable(model.U_ob, out_dir + 'initial/xml/U_ob.xml')
+
+lg.interpolate(U_ob_s, model.U_ob)
+lg.interpolate(beta_b, model.beta)
+lg.interpolate(U_s,    model.U_mag)
+
+plot_variable(beta_b, name='beta_true', direc=out_dir + 'plot/initial/', 
+              cmap='gist_yarg', scale='lin', numLvls=12,
+              umin=None, umax=None, tp=True, tpAlpha=0.5, show=False,
+              hide_ax_tick_labels=False, label_axes=True, 
+              title=r'$\beta$',
+              use_colorbar=True, hide_axis=False, colorbar_loc='right')
+plot_variable(U_s, name='U_true', direc=out_dir + 'plot/initial/', 
+              cmap='gist_yarg', scale='lin', numLvls=12,
+              umin=None, umax=None, tp=True, tpAlpha=0.5, show=False,
+              hide_ax_tick_labels=False, label_axes=True, 
+              title=r'$\Vert \mathbf{u}_{\mathrm{true}} \Vert$',
+              use_colorbar=True, hide_axis=False, colorbar_loc='right')
+plot_variable(U_ob_s, name='U_ob', direc=out_dir + 'plot/initial/', 
+              cmap='gist_yarg', scale='lin', numLvls=12,
+              umin=None, umax=None, tp=True, tpAlpha=0.5, show=False,
+              hide_ax_tick_labels=False, label_axes=True, 
+              title=r'$\Vert \mathbf{u}_{\mathrm{ob}} \Vert$',
+              use_colorbar=True, hide_axis=False, colorbar_loc='right')
+
+for d in os.listdir(out_dir + 'assimilated'):
+  di = d + '/xml/'
+  print di
+
+#d = out_dir + 'plot/'
+#loadtxt(d + 'Rs.txt', array(Rs))
+#loadtxt(d + 'Js.txt', array(Js))
+#loadtxt(d + 'as.txt', array(alphas))
 
 
 

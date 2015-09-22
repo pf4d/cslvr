@@ -203,18 +203,6 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.B, B)
     print_min_max(self.B, 'B')
-
-  def init_U(self, u, v, w):
-    """
-    """
-    s = "::: initializing velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.u, u)
-    self.assign_variable(self.v, v)
-    self.assign_variable(self.w, w)
-    print_min_max(self.u, 'u')
-    print_min_max(self.v, 'v')
-    print_min_max(self.w, 'w')
   
   def init_P(self, p):
     """
@@ -357,6 +345,30 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.q_geo, q_geo)
     print_min_max(self.q_geo, 'q_geo')
+
+  def init_U(self, u, v, w):
+    """
+    """
+    s = "::: initializing velocity :::"
+    print_text(s, self.model_color)
+    u_t = Function(self.Q)
+    v_t = Function(self.Q)
+    w_t = Function(self.Q)
+    self.assign_variable(u_t, u)
+    self.assign_variable(v_t, v)
+    self.assign_variable(w_t, w)
+    self.assx.assign(self.u, u_t)
+    self.assy.assign(self.v, v_t)
+    self.assz.assign(self.w, w_t)
+    u_v      = u_t.vector().array()
+    v_v      = v_t.vector().array()
+    w_v      = w_t.vector().array()
+    U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + 1e-16)
+    self.assign_variable(self.U_mag, U_mag_v)
+    print_min_max(u_t, 'u')
+    print_min_max(v_t, 'v')
+    print_min_max(w_t, 'w')
+    print_min_max(self.U_mag, 'U_mag')
   
   def init_U_ob(self, u_ob, v_ob):
     """
@@ -1180,6 +1192,7 @@ class Model(object):
     self.v_ob          = Function(self.Q, name='v_ob')
     
     # unified velocity :
+    self.U_mag         = Function(self.Q,  name='U_mag')
     self.U3            = Function(self.Q3, name='U3')
     u,v,w              = self.U3.split()
     u.rename('u', '')
@@ -1188,6 +1201,10 @@ class Model(object):
     self.u             = u
     self.v             = v
     self.w             = w
+    
+    self.assx          = FunctionAssigner(self.Q3.sub(0), self.Q)
+    self.assy          = FunctionAssigner(self.Q3.sub(1), self.Q)
+    self.assz          = FunctionAssigner(self.Q3.sub(2), self.Q)
 
     # momentum model :
     self.p             = Function(self.Q, name='p')

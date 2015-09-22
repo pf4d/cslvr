@@ -93,7 +93,9 @@ model.save_pvd(model.U_ob, 'U_ob')
 model.save_pvd(model.beta, 'beta_true')
 
 model.set_out_dir(model.out_dir + 'xml/')
-model.save_xml(model.U3,   'U_true')
+model.save_xml(interpolate(model.u, model.Q),    'u_true')
+model.save_xml(interpolate(model.v, model.Q),    'v_true')
+model.save_xml(interpolate(model.w, model.Q),    'w_true')
 model.save_xml(model.U_ob, 'U_ob')
 model.save_xml(model.beta, 'beta_true')
   
@@ -103,7 +105,7 @@ mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
 #model.save_pvd(model.beta, 'beta_SIA')
 
 #alphas = [1e2, 1e3, 2.5e3, 5e3, 7.5e3, 1e4, 2.5e4, 5e4, 7.5e4, 1e5, 5e5]
-alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0 
+alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 
           1e1,  1e2,  1e3,  1e4,  1e5,  1e6]
 Js     = []
 Rs     = []
@@ -113,7 +115,7 @@ for alpha in alphas:
   model.init_beta(30.0**2)
   mom.solve(annotate=True)
 
-  model.set_out_dir(out_dir = out_dir + 'alpha_%.1E/' % alpha)
+  model.set_out_dir(out_dir = out_dir + 'assimilated/alpha_%.1E/' % alpha)
   
   J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
                        g1=0.01, g2=1000)
@@ -172,9 +174,13 @@ for alpha in alphas:
   
   model.save_pvd(model.beta, 'beta_opt')
   model.save_pvd(model.U3,   'U_opt')
+  
   model.set_out_dir(model.out_dir + 'xml/')
-  model.save_xml(model.beta, 'beta_opt')
-  model.save_xml(model.U3,   'U_opt')
+  
+  model.save_xml(model.beta,                    'beta_opt')
+  model.save_xml(interpolate(model.u, model.Q), 'u_opt')
+  model.save_xml(interpolate(model.v, model.Q), 'v_opt')
+  model.save_xml(interpolate(model.w, model.Q), 'w_opt')
   
   # reset entire dolfin-adjoint state :
   adj_reset()

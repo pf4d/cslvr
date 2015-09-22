@@ -350,7 +350,7 @@ class D3Model(Model):
     """
     Returns the surface of the mesh for this model instance.
     """
-    s = "::: extracting bed mesh :::"
+    s = "::: extracting surface mesh :::"
     print_text(s, self.D3Model_color)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')

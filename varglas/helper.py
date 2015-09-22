@@ -883,15 +883,15 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
     formatter = ScalarFormatter()
     norm      = None
 
-  fig = plt.figure(figsize=(5,5))
+  fig = plt.figure(figsize=(8,7))
   ax  = fig.add_subplot(111)
-  
+
   c = ax.tricontourf(x, y, t, v, levels=levels, norm=norm, 
                      cmap=pl.get_cmap(cmap))
   plt.axis('equal')
   
   if tp == True:
-    p = ax.triplot(x, y, t, '-', lw=0.2, alpha=tpAlpha)
+    p = ax.triplot(x, y, t, 'k-', lw=0.25, alpha=tpAlpha)
   ax.set_xlim([x.min(), x.max()])
   ax.set_ylim([y.min(), y.max()])
   if label_axes:
@@ -909,13 +909,12 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
     cax  = divider.append_axes(colorbar_loc, "5%", pad="3%")
     cbar = plt.colorbar(c, cax=cax, format=formatter, 
                         ticks=levels) 
+    pl.mpl.rcParams['axes.titlesize'] = 'small'
     tit = plt.title(title)
+
  
-  if use_colorbar: 
-    plt.tight_layout(rect=[.03,.03,0.97,0.97])
-  else:
-    plt.tight_layout()
-  plt.savefig(direc + name + '.png', dpi=300)
+  plt.tight_layout()
+  plt.savefig(direc + name + '.png', dpi=200)
   if show:
     plt.show()
   plt.close(fig)

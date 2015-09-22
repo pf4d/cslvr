@@ -8,7 +8,6 @@ import matplotlib          as plt
 import sys
 
 
-
 class D1Model(Model):
   """
   Data structure to hold firn model state data.
@@ -37,13 +36,50 @@ class D1Model(Model):
       print_text(s, 'red', 1)
       sys.exit(1)
     else:
-      self.num_facets = self.mesh.size_global(1)
-      self.num_cells  = self.mesh.size_global(2)
-      self.dof        = self.mesh.size_global(0)
-    s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
-        % (self.dim, self.num_cells, self.num_facets, self.dof)
+      self.num_cells = self.mesh.size_global(1)
+      self.dof       = self.mesh.size_global(0)
+    s = "    - %iD mesh set, %i cells, %i vertices - " \
+        % (self.dim, self.num_cells, self.dof)
     print_text(s, self.D1Model_color)
+
+    # set the geometry from the mesh :
+    zb = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
+    zs = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
+    self.init_S_bc(zs)
+    self.init_B_bc(zb)
   
+  def refine_mesh(self, divs, i, k,  m=1):
+    """
+    splits the mesh a <divs> times.
+  
+    INPUTS:
+      divs - number of times to split mesh
+      i    - fraction of the mesh from the surface to split
+      k    - multiple to decrease i by each step to reduce the distance from the
+             surface to split
+      m    - counter used to keep track of calls
+  
+    """
+    if m==1:
+      s = "::: entering recursive mesh refinement function :::"
+      print_text(s, self.D1Model_color)
+    
+    mesh  = self.mesh
+    S     = self.S_bc
+    B     = self.B_bc
+  
+    if m < divs :
+      cell_markers = CellFunction("bool", mesh)
+      cell_markers.set_all(False)
+      origin = Point(S)
+      for cell in cells(mesh):
+        p  = cell.midpoint()
+        if p.distance(origin) < (S - B) * i:
+          cell_markers[cell] = True
+      mesh = refine(mesh, cell_markers)
+      self.set_mesh(mesh)
+      return self.refine_mesh(divs, k/i, k, m=m+1)
+
   def generate_function_spaces(self, use_periodic=False):
     """
     Generates the appropriate finite-element function spaces from parameters
@@ -52,30 +88,30 @@ class D1Model(Model):
     super(D1Model, self).generate_function_spaces(use_periodic)
     self.initialize_variables()
     
-  def init_S(self, S):
+  def init_S_bc(self, S_bc):
     """
-    Set the Function for the surface <S>. 
+    Set the scalar-value for the surface. 
     """
-    s = "::: initializng surface topography :::"
+    s = "::: initializng surface boundary condition :::"
     print_text(s, self.D1Model_color)
-    self.S = S
-    print_min_max(self.S, 'S')
+    self.S_bc = S_bc
+    print_min_max(self.S_bc, 'S_bc')
 
-  def init_B(self, B):
+  def init_B_bc(self, B_bc):
     """
-    Set the Function for the bed <B>.
+    Set the scalar-value for bed.
     """
-    s = "::: initializng bed topography :::"
+    s = "::: initializng bed boundary condition :::"
     print_text(s, self.D1Model_color)
-    self.B = B
-    print_min_max(self.B, 'B')
+    self.B_bc = B_bc
+    print_min_max(self.B_bc, 'B_bc')
   
-  def init_T_surface(self, T_s):
+  def init_H_surface(self, H_s):
     """
     """
-    s = "::: initializing surface temperature :::"
+    s = "::: initializing surface energy :::"
     print_text(s, self.D1Model_color)
-    self.T_surface = T_s
+    self.H_surface = H_s
   
   def init_rho_surface(self, rho_s):
     """
@@ -209,8 +245,8 @@ class D1Model(Model):
     self.ff = FacetFunction('size_t', self.mesh)
     tol     = 1e-3
 
-    S = self.S
-    B = self.B
+    S = self.S_bc
+    B = self.B_bc
    
     # iterate through the facets and mark each if on a boundary :
     #
@@ -230,36 +266,6 @@ class D1Model(Model):
     B.mark(self.ff, 1)
     self.ds = ds[self.ff]
 
-  def refine_mesh(self, divs, i, k,  m=1):
-    """
-    splits the mesh a <divs> times.
-  
-    INPUTS:
-      divs - number of times to split mesh
-      i    - fraction of the mesh from the surface to split
-      k    - multiple to decrease i by each step to reduce the distance from the
-             surface to split
-      m    - counter used to keep track of calls
-  
-    """
-    s = "::: refining mesh :::"
-    print_text(s, self.D1Model_color)
-    mesh  = self.mesh
-    S     = self.S
-    B     = self.B
-  
-    if m < divs :
-      cell_markers = CellFunction("bool", mesh)
-      cell_markers.set_all(False)
-      origin = Point(S)
-      for cell in cells(mesh):
-        p  = cell.midpoint()
-        if p.distance(origin) < (S - B) * i:
-          cell_markers[cell] = True
-      mesh = refine(mesh, cell_markers)
-      self.set_mesh(mesh)
-      return self.refine_mesh(divs, k/i, k, m=m+1)
-
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -275,11 +281,11 @@ class D1Model(Model):
    
     # surface Dirichlet boundary :
     def surface(x, on_boundary):
-      return on_boundary and x[0] == self.S
+      return on_boundary and x[0] == self.S_bc
     
     # base Dirichlet boundary :
     def base(x, on_boundary):
-      return on_boundary and x[0] == self.B
+      return on_boundary and x[0] == self.B_bc
 
     self.surface = surface
     self.base    = base
@@ -289,11 +295,11 @@ class D1Model(Model):
 
     self.m       = Function(self.Q)
     self.m_1     = Function(self.Q)
-    self.T       = Function(self.Q)        
-    self.omega   = Function(self.Q)        
-    self.omega_1 = Function(self.Q)        
-    self.domega  = Function(self.Q)        
-    self.drhodt  = Function(self.Q)        
+    self.T       = Function(self.Q)
+    self.omega   = Function(self.Q)
+    self.omega_1 = Function(self.Q)
+    self.domega  = Function(self.Q)
+    self.drhodt  = Function(self.Q)
     self.Kcoef   = Function(self.Q)
     self.H       = Function(self.Q)
     self.H_1     = Function(self.Q)
@@ -337,18 +343,18 @@ class D1Model(Model):
     self.up      = np.zeros(self.dof)
     self.Smip    = np.zeros(self.dof)
     
-    self.S_1     = self.S                    # previous time-step surface  
-    self.zo      = self.S                    # z-coordinate of initial surface
-    self.ht      = [self.S]                  # list of surface heights
+    self.S_1     = self.S_bc                 # previous time-step surface  
+    self.zo      = self.S_bc                 # z-coordinate of initial surface
+    self.ht      = [self.S_bc]               # list of surface heights
     self.origHt  = [self.zo]                 # list of initial surface heights
     self.Ts      = self.Hp[0] / self.cp[0]   # temperature of surface
-  
+
   def update_Hbc(self): 
     """
     Adjust the enthalpy at the surface.
     """
-    self.H_S.t = self.t
-    self.H_S.c = self.cp[0]
+    self.H_surface.t = self.t
+    self.H_surface.c = self.cp[0]
   
   def update_Tbc(self): 
     """
@@ -371,7 +377,7 @@ class D1Model(Model):
     """
     self.w_surface.t    = self.t
     self.w_surface.rhos = self.rhop[0]
-    bdotNew             = (self.w_surface.adot * self.rhoi) / self.spy
+    bdotNew             = (self.w_surface.adot * self.rhoi(0)) / self.spy(0)
     self.assign_variable(self.bdot, bdotNew)
   
   def update_rhoBc(self):
@@ -381,13 +387,13 @@ class D1Model(Model):
     #domega_s = self.domega[self.index][-1]
     #if self.Ts > self.Tw:
     #  if domega_s > 0:
-    #    if self.rho_S.rhon < self.rhoi:
-    #      self.rho_S.rhon += domega_s*self.rhow
+    #    if self.rho_surface.rhon < self.rhoi(0):
+    #      self.rho_surface.rhon += domega_s*self.rhow(0)
     #  else:
-    #    self.rho_S.rhon += domega_s*self.rhow#83.0
+    #    self.rho_surface.rhon += domega_s*self.rhow(0)#83.0
     #else:
-    #  self.rho_S.rhon = self.rhos
-    self.rho_S.t = self.t
+    #  self.rho_surface.rhon = self.rhos
+    self.rho_surface.t = self.t
 
   def update_vars(self, t):
     """
@@ -417,7 +423,7 @@ class D1Model(Model):
     
     # surface Dirichlet boundary :
     def surface(x, on_boundary):
-      return on_boundary and x[0] == self.S
+      return on_boundary and x[0] == self.S_bc
     
     # integral is zero on surface
     bcs = DirichletBC(Q, 0.0, surface)
@@ -439,7 +445,7 @@ class D1Model(Model):
                        bounds_error=False,
                        fill_value=self.wp[0])
     wzo     = interp(self.zo)
-    dt      = self.dt
+    dt      = self.time_step(0)
     zs      = self.z[0]
     zb      = self.z[-1]
     zs_1    = self.S_1
@@ -480,7 +486,7 @@ class D1Model(Model):
     self.assign_variable(self.aF,    self.a)
     self.assign_variable(self.a_1,   self.a)
   
-  def transient_solve(self, momentum, energy, t_start, t_end, time_step,
+  def transient_solve(self, momentum, energy, t_start, t_mid, t_end, time_step,
                       dt_list=None, annotate=False, callback=None):
     """
     """
@@ -489,15 +495,15 @@ class D1Model(Model):
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
-    
+      
     if momentum.__class__.__base__ != Momentum:
-      s = ">>> transient_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
-      print_text(s % type(momentum), 'red', 1)
+      s = ">>> transient_solve REQUIRES A 'Momentum' CHILD INSTANCE, NOT %s <<<"
+      print_text(s % momentum.__class__.__base__, 'red', 1)
       sys.exit(1)
     
     if energy.__class__.__base__ != Energy:
-      s = ">>> transient_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
-      print_text(s % type(energy), 'red', 1)
+      s = ">>> transient_solve REQUIRES AN 'Energy' CHILD INSTANCE, NOT %s <<<"
+      print_text(s % energy.__class__.__base__, 'red', 1)
       sys.exit(1)
    
     # form time steps : 
@@ -530,17 +536,14 @@ class D1Model(Model):
       # update timestep :
       self.init_time_step(dt)
 
-      # update boundary conditions :
-      self.update_Hbc()
-      self.update_rhoBc()
-      self.update_wBc()
-      #self.update_omegaBc()
-    
-      # solve velocity :
+      # solve momentum :
       momentum.solve(annotate=annotate)
 
+      # solve energy :
+      energy.solve(annotate=annotate)
+
       # solve mass :
-      mass.solve(annotate=annotate)
+      #mass.solve(annotate=annotate)
       
       # update firn object :
       self.update_vars(t)
@@ -554,8 +557,8 @@ class D1Model(Model):
       
       # update model parameters :
       if t != times[-1]:
+         momentum.U_1.assign(momentum.U)
          self.H_1.assign(self.H)
-         self.U_1.assign(self.U)
          self.omega_1.assign(self.omega)
          self.w_1.assign(self.w)
          self.a_1.assign(self.a)
@@ -567,8 +570,8 @@ class D1Model(Model):
         callback()
         
       # increment time step :
-      s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
-      print_text(s % (t, time()-tic), 'red', 1)
+      s = '>>> Time: %g yr, CPU time for last dt: %.3f s <<<'
+      print_text(s % (t / self.spy(0), time()-tic), 'red', 1)
     
     # calculate total time to compute
     s = time() - t0

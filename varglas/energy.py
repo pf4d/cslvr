@@ -6,6 +6,7 @@ from varglas.d2model        import D2Model
 from varglas.d1model        import D1Model
 from varglas.physics_new    import Physics
 from varglas.helper         import VerticalBasis, VerticalFDBasis
+import numpy                    as np
 import sys
 
 
@@ -714,7 +715,7 @@ class EnergyFirn(Energy):
     model.assign_variable(H,   ci(0)*T_v)
     model.assign_variable(H_1, ci(0)*T_v)
     
-    self.HBc = DirichletBC(Q, model.T_surface*ci,  model.surface)
+    self.HBc = DirichletBC(Q, model.H_surface,  model.surface)
    
     # Darcy flux :
     omega = conditional(lt(H, Hsp), 0.0, (H - ci*T_w) / L)
@@ -755,12 +756,13 @@ class EnergyFirn(Energy):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    params = {'solver' : {'relaxation_parameter'     : 1.0,
-                           'maximum_iterations'      : 25,
-                           'error_on_nonconvergence' : False,
-                           'relative_tolerance'      : 1e-10,
-                           'absolute_tolerance'      : 1e-10}}
-    return params
+    params = {'newton_solver' : {'relaxation_parameter'     : 1.0,
+                                 'maximum_iterations'      : 25,
+                                 'error_on_nonconvergence' : False,
+                                 'relative_tolerance'      : 1e-10,
+                                 'absolute_tolerance'      : 1e-10}}
+    m_params  = {'solver' : params}
+    return m_params
 
   def solve(self, annotate=True):
     """
@@ -778,12 +780,12 @@ class EnergyFirn(Energy):
     model.assign_variable(model.omega, project(self.omega))
     model.assign_variable(model.ql,    project(self.ql))
     
-    T_w   = model.T_w
-    rhow  = model.rhow
-    rhoi  = model.rhoi
-    Hsp   = model.Hsp
-    g     = model.g
-    ci    = model.ci
+    T_w   = model.T_w(0)
+    rhow  = model.rhow(0)
+    rhoi  = model.rhoi(0)
+    Hsp   = model.Hsp(0)
+    g     = model.g(0)
+    ci    = model.ci(0)
 
     # calculate omega :
     omegap   = model.omega.vector().array()
@@ -794,17 +796,17 @@ class EnergyFirn(Energy):
 
     # update coefficients used by enthalpy :
     Hp       = model.H.vector().array()
-    Hhigh    = where(Hp > Hsp(0))[0]
-    Hlow     = where(Hp < Hsp(0))[0]
+    Hhigh    = np.where(Hp > Hsp)[0]
+    Hlow     = np.where(Hp < Hsp)[0]
     
-    #KcoefNew         = ones(model.dof)
+    #KcoefNew         = np.ones(model.dof)
     #KcoefNew[Hhigh]  = 1.0/2.0
     #KcoefNew[Hlow]   = 1.0
     #model.assign_variable(model.Kcoef, KcoefNew)
     
     # calculate T :
-    Tp         = Hp / ci(0)
-    Tp[Hhigh]  = T_w(0)
+    Tp         = Hp / ci
+    Tp[Hhigh]  = T_w
     model.assign_variable(model.T, Tp)
 
     print_min_max(model.T,     'T')
@@ -821,7 +823,7 @@ class EnergyFirn(Energy):
     model.assign_variable(model.Smi, project(Smi))
     print_min_max(model.pp, 'p')
     print_min_max(model.up, 'u')
-    print_min_max((1-model.rhop/rhoi(0))*100 - model.omegap*100, 'phi - omega')
+    print_min_max((1-model.rhop/rhoi)*100 - model.omegap*100, 'phi - omega')
 
 
  

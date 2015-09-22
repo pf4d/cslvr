@@ -4,6 +4,7 @@ from varglas.io             import print_text, print_min_max
 from varglas.d1model        import D1Model
 from varglas.physics_new    import Physics
 from varglas.momentum       import Momentum
+import numpy                    as np
 import sys
 
 
@@ -56,6 +57,10 @@ class MomentumFirn(Momentum):
     U       = Function(Q3)
     U_1     = Function(Q3)
     Phi     = TestFunction(Q3)
+    
+    self.assrho   = FunctionAssigner(model.Q, model.Q3.sub(0))
+    self.asssig   = FunctionAssigner(model.Q, model.Q3.sub(1))
+    self.assrss   = FunctionAssigner(model.Q, model.Q3.sub(2))
 
     rho,   sigma,   r    = U
     rho_1, sigma_1, r_1  = U_1
@@ -142,12 +147,13 @@ class MomentumFirn(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    params = {'solver' : {'relaxation_parameter'     : 1.0,
-                           'maximum_iterations'      : 25,
-                           'error_on_nonconvergence' : False,
-                           'relative_tolerance'      : 1e-10,
-                           'absolute_tolerance'      : 1e-10}}
-    return params
+    params = {'newton_solver' : {'relaxation_parameter'    : 1.0,
+                                 'maximum_iterations'      : 25,
+                                 'error_on_nonconvergence' : False,
+                                 'relative_tolerance'      : 1e-10,
+                                 'absolute_tolerance'      : 1e-10}}
+    m_params  = {'solver' : params}
+    return m_params
 
   def solve_compaction_velocity(self, annotate=True):
     """
@@ -169,17 +175,16 @@ class MomentumFirn(Momentum):
     print_text(s, self.color())
     
     model   = self.model
-    config = self.config
 
     # newton's iterative method :
     solve(self.delta == 0, self.U, bcs=self.bcs, J=self.J, 
           solver_parameters=self.solve_params['solver'],
           annotate=annotate)
-    rho, sigma, r = self.U.split(True)
+    rho, sigma, r = self.U.split()
 
-    model.assign_variable(model.rho,   rho)
-    model.assign_variable(model.sigma, sigma)
-    model.assign_variable(model.r,     r)
+    self.assrho.assign(model.rho,   rho)
+    self.asssig.assign(model.sigma, sigma)
+    self.assrss.assign(model.r,     r)
 
     rhop = model.rho.vector().array()
 
@@ -188,9 +193,9 @@ class MomentumFirn(Momentum):
     # if rho <= 550, kc = kcLow
     # with parameterizations given by ligtenberg et all 2011
     A                   = model.rhoi(0)/model.rhow(0) * 1e3 * model.adot
-    rhoCoefNew          = ones(model.dof)
-    rhoHigh             = where(rhop >  550)[0]
-    rhoLow              = where(rhop <= 550)[0]
+    rhoCoefNew          = np.ones(model.dof)
+    rhoHigh             = np.where(rhop >  550)[0]
+    rhoLow              = np.where(rhop <= 550)[0]
     rhoCoefNew[rhoHigh] = model.kcHh(0) * (2.366 - 0.293*ln(A))
     rhoCoefNew[rhoLow]  = model.kcLw(0) * (1.435 - 0.151*ln(A))
     model.assign_variable(model.rhoCoef, rhoCoefNew)

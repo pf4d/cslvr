@@ -109,8 +109,6 @@ class FirnPlot(object):
       self.phTs,    = self.Tax.plot([Tmin, Tmax], [zs, zs], 'k-', lw=3)
       
       # original (beginning) surface height :
-      print Th
-      print 'zo', zo, type(zo)
       self.phTs_0,  = self.Tax.plot(Th, zo, 'go')
 
       # temperature surface boundary condition :
@@ -248,36 +246,36 @@ class FirnPlot(object):
     plt.tight_layout()
     plt.show()
 
-  def update_plot(self):
+  def update(self):
     """
     Update the plot for each time step at time t.
     """
-    model   = self.model
+    model  = self.model
     config = self.config
     index  = model.index 
     T      = model.Tp
     omega  = model.omegap
-    Tw     = model.Tw
+    T_w    = model.T_w(0)
     rho    = model.rhop
-    w      = model.wp * model.spy * 1e2
-    u      = model.up * model.spy * 1e2
-    a      = model.ap / model.spy
+    w      = model.wp * model.spy(0) * 1e2
+    u      = model.up * model.spy(0) * 1e2
+    a      = model.ap / model.spy(0)
     Smi    = model.Smip
     r      = sqrt(model.rp) * 1000
     z      = model.z
     zo     = model.zo
     zs     = model.z[0]
-    Ts     = model.Ts - Tw
-    t      = model.t / model.spy
+    Ts     = model.Ts - T_w
+    t      = model.t / model.spy(0)
     
     phi   = 1 - rho/917.0
     Smi   = 0.0057 / (1 - phi) + 0.017
 
     self.fig.canvas.set_window_title('Time = %.2f yr' % t)
    
-    if config['enthalpy']['plot']: 
+    if config['enthalpy']: 
       self.Tsurf.set_text(r'$T_S$: %.1E $\degree$C' % Ts)
-      self.phT.set_xdata(T - Tw)
+      self.phT.set_xdata(T - T_w)
       self.phT.set_ydata(z)
       self.phTs.set_ydata(zs)
       self.phTs_0.set_ydata(zo)
@@ -293,7 +291,7 @@ class FirnPlot(object):
       self.phSmi_dot.set_xdata(Smi[0])
       self.phSmi_dot.set_ydata(zs)
       
-    if config['density']['plot']: 
+    if config['density']: 
       text = r'$\rho_S$: %.1E $\frac{\mathrm{kg}}{\mathrm{m}^3}$' % rho[-1]
       self.rhoSurf.set_text(text)
       self.phrho.set_xdata(rho)
@@ -306,9 +304,9 @@ class FirnPlot(object):
       self.phr_dot.set_xdata(r[0])
       self.phr_dot.set_ydata(zs)
       
-    if config['velocity']['plot']: 
+    if config['velocity']: 
       text = r'$\dot{a}$: %.1E i.e.$\frac{\mathrm{m}}{\mathrm{a}}$'
-      self.wSurf.set_text(text % model.w_S.adot )
+      self.wSurf.set_text(text % model.adot )
       self.phw.set_xdata(w)
       self.phw.set_ydata(z)
       self.phu.set_xdata(u)
@@ -319,7 +317,7 @@ class FirnPlot(object):
       self.uS_dot.set_xdata(u[0])
       self.uS_dot.set_ydata(zs)
      
-    if config['age']['plot']: 
+    if config['age']: 
       self.pha.set_xdata(a)
       self.pha.set_ydata(z)
       self.phaS.set_ydata(zs)

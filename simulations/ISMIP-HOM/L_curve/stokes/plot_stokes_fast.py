@@ -1,4 +1,5 @@
 from varglas     import D3Model, print_text, print_min_max, plot_variable
+from pylab       import *
 from fenics      import *
 from numpy       import loadtxt, array
 import os
@@ -63,33 +64,74 @@ lg.interpolate(U_ob_s, model.U_ob)
 lg.interpolate(beta_b, model.beta)
 lg.interpolate(U_s,    model.U_mag)
 
+umin = U_s.vector().min()
+umax = U_s.vector().max()
+
+betamin = beta_b.vector().min()
+betamax = beta_b.vector().max()
+
+
 plot_variable(beta_b, name='beta_true', direc=out_dir + 'plot/initial/', 
               cmap='gist_yarg', scale='lin', numLvls=12,
-              umin=None, umax=None, tp=True, tpAlpha=0.5, show=False,
+              umin=betamin, umax=betamax, tp=True, tpAlpha=0.5, show=False,
               hide_ax_tick_labels=False, label_axes=True, 
               title=r'$\beta$',
               use_colorbar=True, hide_axis=False, colorbar_loc='right')
 plot_variable(U_s, name='U_true', direc=out_dir + 'plot/initial/', 
               cmap='gist_yarg', scale='lin', numLvls=12,
-              umin=None, umax=None, tp=True, tpAlpha=0.5, show=False,
+              umin=umin, umax=umax, tp=True, tpAlpha=0.5, show=False,
               hide_ax_tick_labels=False, label_axes=True, 
               title=r'$\Vert \mathbf{u}_{\mathrm{true}} \Vert$',
               use_colorbar=True, hide_axis=False, colorbar_loc='right')
 plot_variable(U_ob_s, name='U_ob', direc=out_dir + 'plot/initial/', 
               cmap='gist_yarg', scale='lin', numLvls=12,
-              umin=None, umax=None, tp=True, tpAlpha=0.5, show=False,
+              umin=umin, umax=umax, tp=True, tpAlpha=0.5, show=False,
               hide_ax_tick_labels=False, label_axes=True, 
               title=r'$\Vert \mathbf{u}_{\mathrm{ob}} \Vert$',
               use_colorbar=True, hide_axis=False, colorbar_loc='right')
 
 for d in os.listdir(out_dir + 'assimilated'):
-  di = d + '/xml/'
-  print di
+  di = out_dir + 'assimilated/' + d + '/xml/'
+  do = out_dir + 'plot/assimilated/'
+  model.init_beta(di + 'beta_opt.xml')
+  model.init_U(di + 'u_opt.xml',
+               di + 'v_opt.xml',
+               di + 'w_opt.xml')
 
-#d = out_dir + 'plot/'
-#loadtxt(d + 'Rs.txt', array(Rs))
-#loadtxt(d + 'Js.txt', array(Js))
-#loadtxt(d + 'as.txt', array(alphas))
+  lg.interpolate(beta_b, model.beta)
+  lg.interpolate(U_s,    model.U_mag)
+
+  plot_variable(beta_b, name='beta_opt_' + d, direc=do + 'beta_opt/', 
+                cmap='gist_yarg', scale='lin', numLvls=12,
+                umin=betamin, umax=betamax, tp=True, tpAlpha=0.5, show=False,
+                hide_ax_tick_labels=False, label_axes=True, 
+                title=r'$\beta_{\mathrm{opt}}$',
+                use_colorbar=True, hide_axis=False, colorbar_loc='right')
+  plot_variable(U_s, name='U_opt_' + d, direc=do + 'U_opt/', 
+                cmap='gist_yarg', scale='lin', numLvls=12,
+                umin=umin, umax=umax, tp=True, tpAlpha=0.5, show=False,
+                hide_ax_tick_labels=False, label_axes=True, 
+                title=r'$\Vert \mathbf{u}_{\mathrm{opt}} \Vert$',
+                use_colorbar=True, hide_axis=False, colorbar_loc='right')
 
 
+di = out_dir + 'plot/'
+do = out_dir + 'plot/L_curve/'
 
+R  = loadtxt(di + 'Rs.txt')
+J  = loadtxt(di + 'Js.txt')
+a  = loadtxt(di + 'as.txt')
+
+
+fig = figure()
+ax  = fig.add_subplot(111)
+
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
+ax.set_xlabel(r'$\ln\left( \mathscr{J}\left(\alpha\right) \right)$')
+
+ax.plot(J, R, 'ko-', lw=2.0)
+grid()
+savefig(do + 'L_curve.png', dpi=200)
+show()

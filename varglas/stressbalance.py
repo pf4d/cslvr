@@ -1,15 +1,14 @@
 from physics_new import Physics
+from varglas.io  import print_text, print_min_max
+from fenics      import *
 
 class SSA_Balance(Physics):
 
-  def __init__(self, model, config):
+  def __init__(self, model):
     """
     """
     s    = "::: INITIALIZING SSA-BALANCE PHYSICS :::"
     print_text(s, self.color())
-
-    self.model  = model
-    self.config = config
 
     mesh     = model.mesh
     Q2       = model.Q2
@@ -94,14 +93,17 @@ class SSA_Balance(Physics):
     model.assign_variable(model.u_t, u_t)
     print_min_max(model.u_s, 'u_s')
     print_min_max(model.u_t, 'u_t')
+    
+    # solve for the individual stresses now that the corrected velocities 
+    # are found.
+    self.solve_component_stress()
 
   def solve_component_stress(self):  
     """
     """
     model  = self.model
-    config = self.config
     
-    s    = "solving 'SSA_Balance' for stresses :::" 
+    s      = "::: solving 'SSA_Balance' for stresses :::" 
     print_text(s, self.color())
 
     Q       = model.Q
@@ -113,10 +115,6 @@ class SSA_Balance(Physics):
     g       = model.g
     etabar  = model.etabar
     
-    # solve with corrected velociites :
-    model   = self.model
-    config  = self.config
-
     Q       = model.Q
     U_s     = self.U_s
     U_n     = self.U_n

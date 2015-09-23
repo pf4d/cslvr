@@ -255,12 +255,12 @@ class FirnAge(Physics):
 
     Q       = model.Q
     w       = model.w                         # velocity
-    w_1     = model.w_1                       # previous step's velocity
+    w_1     = model.w0                        # previous step's velocity
     m       = model.m                         # mesh velocity
-    m_1     = model.m_1                       # previous mesh velocity
-    a       = model.a                         # age
-    a_1     = model.a_1                       # previous step's age
-    dt      = model.dt_v                      # timestep
+    m_1     = model.m0                        # previous mesh velocity
+    a       = model.age                       # age
+    a_1     = model.age0                      # previous step's age
+    dt      = model.time_step                 # timestep
     
     da      = TrialFunction(Q)
     xi      = TestFunction(Q)

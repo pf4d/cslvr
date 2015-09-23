@@ -3,6 +3,7 @@ from dolfin_adjoint  import *
 from varglas         import FirnPlot, D1Model, MomentumFirn
 from varglas.energy  import EnergyFirn
 import sys
+import pylab as p
     
 n     =  100                   # num of z-positions
 zs    =  0.0                   # surface start .................. m
@@ -42,8 +43,9 @@ tm    = 500.0 * model.spy(0)
 # enthalpy BC :
 #code  = 'cp*(Tavg + 5*(sin(2*omega*t) + 5*sin(4*omega*t)))'
 #H_exp = Expression(code, cp=cpi, Tavg=Tavg, omega=pi/spy, t=t0)
-code  = 'c*(Tavg + 5*(sin(2*omega*t) + 5*sin(4*omega*t)))'
-H_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), t=t0, c=model.ci(0))
+code      = 'c*(Tavg + 5*(sin(2*omega*t) + 5*sin(4*omega*t)))'
+theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
+                       t=t0, c=model.ci(0))
 
 # surface density :
 rho_exp = Expression('rhon', rhon=rhos)
@@ -57,7 +59,7 @@ w_exp   = Expression(code, rhoi=model.rhoi(0), adot=adot,
 # grain radius of surface [cm^2] :
 r_exp   = Expression('r_s', r_s=rin)
 
-model.init_H_surface(H_exp)
+model.init_theta_surface(theta_exp)
 model.init_rho_surface(rho_exp)
 model.init_w_surface(w_exp)
 model.init_r_surface(r_exp)
@@ -87,8 +89,8 @@ plot_cfg = {  'on'       : bp,
               'Tmax'     : 5.0,
               'ageMin'   : 0.0,
               'ageMax'   : 100,
-              'omegaMin' : -0.01, 
-              'omegaMax' : 0.10,
+              'WMin'     : -0.01, 
+              'WMax'     : 0.10,
               'enthalpy' : True,
               'density'  : True,
               'velocity' : True,
@@ -98,24 +100,25 @@ mom = MomentumFirn(model)
 nrg = EnergyFirn(model)
 plt = FirnPlot(model, plot_cfg)
 
-
 def cb():
-  model.H_surface.t    = model.t
-  model.H_surface.c    = model.cp[0]
-  model.rho_surface.t  = model.t
-  model.w_surface.t    = model.t
-  model.w_surface.rhos = model.rhop[0]
-  bdotNew    = (model.w_surface.adot * model.rhoi(0)) / model.spy(0)
+  theta_exp.t = model.t
+  theta_exp.c = model.cp[0]
+  rho_exp.t   = model.t
+  w_exp.t     = model.t
+  w_exp.rhos  = model.rhop[0]
+  bdotNew     = (w_exp.adot * model.rhoi(0)) / model.spy(0)
   model.assign_variable(model.bdot, bdotNew)
   plt.update()
 
-model.transient_solve(mom, nrg, t0, tm, tf, dt, dt_list=[dt1,dt2], callback=cb)
+dt_list = [dt1,dt2]
+
+model.transient_solve(mom, nrg, t0, tm, tf, dt1, dt_list=dt_list, callback=cb)
   
-#plt.ioff()
-#plt.show()
+p.ioff()
+p.show()
 
 # plot the surface height trend :
-plt.plot_height(F.times, model.ht, model.origHt)
+#plt.plot_height(model.times, model.ht, model.origHt)
 
 
 

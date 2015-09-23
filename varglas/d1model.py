@@ -106,12 +106,12 @@ class D1Model(Model):
     self.B_bc = B_bc
     print_min_max(self.B_bc, 'B_bc')
   
-  def init_H_surface(self, H_s):
+  def init_theta_surface(self, theta_s):
     """
     """
     s = "::: initializing surface energy :::"
     print_text(s, self.D1Model_color)
-    self.H_surface = H_s
+    self.theta_surface = theta_s
   
   def init_rho_surface(self, rho_s):
     """
@@ -167,11 +167,11 @@ class D1Model(Model):
     self.assign_variable(self.r, r)
     print_min_max(self.r, 'r^2')
     
-  def set_boundary_conditions(self, H_exp, rho_exp, w_exp, r_exp):
+  def set_boundary_conditions(self, theta_exp, rho_exp, w_exp, r_exp):
     """
     """
     # enthalpy surface condition :
-    self.H_S     = H_exp
+    self.theta_S     = theta_exp
     
     # density surface condition :
     self.rho_S   = rho_exp
@@ -188,35 +188,35 @@ class D1Model(Model):
     # sigma suface condition (always zero at surface) :
     self.sigma_S = Constant(0.0)
     
-    L    = self.L(0) 
-    Hsp  = self.Hsp(0)
-    Tw   = self.Tw(0)
-    rhoi = self.rhoi(0)
-    rhow = self.rhow(0)
-    g    = self.g(0)
-    etaw = self.etaw(0)
+    L       = self.L(0) 
+    thetasp = self.thetasp(0)
+    Tw      = self.Tw(0)
+    rhoi    = self.rhoi(0)
+    rhow    = self.rhow(0)
+    g       = self.g(0)
+    etaw    = self.etaw(0)
 
     # water percentage on the surface :
-    class BComega(Expression):
-      def __init__(self, Hs, cps, rhos):
-        self.Hs   = Hs
+    class BCW(Expression):
+      def __init__(self, thetas, cps, rhos):
+        self.thetas   = thetas
         self.cps  = cps
         self.rhos = rhos
       def eval(self, values, x):
         #psis  = 1 - self.rhos/rhoi
         #Wmi   = 0.0057 / (1 - psis) + 0.017         # irr. water content
-        #if self.Hs > Hsp:
-        #  values[0] = Wmi + (self.Hs - self.cps*Tw) / L
+        #if self.thetas > thetasp:
+        #  values[0] = Wmi + (self.thetas - self.cps*Tw) / L
         #else:
         #  values[0] = Wmi
         values[0] = 0.08
     
     # water flux at the surface :
-    class BComegaFlux(Expression):
-      def __init__(self, rs, rhos, Hs, cps):
+    class BCWFlux(Expression):
+      def __init__(self, rs, rhos, thetas, cps):
         self.rs     = rs
         self.rhos   = rhos
-        self.Hs     = Hs
+        self.thetas     = thetas
         self.cps    = cps
       def eval(self, values, x):
         rhos  = self.rhos
@@ -225,8 +225,8 @@ class D1Model(Model):
         ks    = 0.0602 * exp(-0.00957 * rhos)
         psis  = 1 - rhos/rhoi
         Wmi = 0.0057 / (1 - psis) + 0.017         # irr. water content
-        if self.Hs > Hsp:
-          omg_s = (self.Hs - self.cps*Tw) / L
+        if self.thetas > thetasp:
+          omg_s = (self.thetas - self.cps*Tw) / L
         else:
           omg_s = Wmi
         Wes   = (omg_s - Wmi) / (psis - Wmi)
@@ -234,8 +234,8 @@ class D1Model(Model):
         Ks    = kws * rhow * g / etaw
         print "::::::::::::::::::::::::KS", Ks, rs, rhos, omg_s
         values[0] = Ks
-    self.omega_S = BComega(0.0, 0.0, 0.0)
-    #self.omega_S = BComegaFlux(0.0, 0.0, 0.0, 0.0)
+    self.W_S = BCW(0.0, 0.0, 0.0)
+    #self.W_S = BCWFlux(0.0, 0.0, 0.0, 0.0)
 
   def calculate_boundaries(self):
     """
@@ -294,50 +294,43 @@ class D1Model(Model):
     # Define variational problem spaces :
 
     self.m       = Function(self.Q)
-    self.m_1     = Function(self.Q)
-    self.T       = Function(self.Q)
-    self.omega   = Function(self.Q)
-    self.omega_1 = Function(self.Q)
-    self.domega  = Function(self.Q)
+    self.m0      = Function(self.Q)
+    self.W       = Function(self.Q)
+    self.W0      = Function(self.Q)
+    self.dW      = Function(self.Q)
     self.drhodt  = Function(self.Q)
-    self.Kcoef   = Function(self.Q)
-    self.H       = Function(self.Q)
-    self.H_1     = Function(self.Q)
+    self.theta   = Function(self.Q)
+    self.theta0  = Function(self.Q)
     self.rho     = Function(self.Q)
-    self.rho_1   = Function(self.Q)
     self.rhoCoef = Function(self.Q)
     self.bdot    = Function(self.Q)
     self.w       = Function(self.Q)
-    self.w_1     = Function(self.Q)
-    self.a       = Function(self.Q)
-    self.a_1     = Function(self.Q)
+    self.w0      = Function(self.Q)
+    self.age     = Function(self.Q)
+    self.age0    = Function(self.Q)
     self.sigma   = Function(self.Q)
-    self.sigma_1 = Function(self.Q)
     self.r       = Function(self.Q)
-    self.r_1     = Function(self.Q)
     self.p       = Function(self.Q)
     self.u       = Function(self.Q)
     self.ql      = Function(self.Q)
     self.Smi     = Function(self.Q)
 
-    self.assign_variable(self.Kcoef,   1.0)
     self.assign_variable(self.rhoCoef, self.kcHh)
     
     self.lini    = self.l                    # initial height vector
     self.lnew    = self.l.copy()             # previous height vector
     self.t       = 0.0                       # initialize time
     
-    self.Hp      = self.H.vector().array()
+    self.thetap  = self.theta.vector().array()
     self.Tp      = self.T.vector().array()
-    self.omegap  = self.omega.vector().array()
+    self.Wp      = self.W.vector().array()
     self.rhop    = self.rho.vector().array()
     self.drhodtp = self.drhodt.vector().array()
-    self.ap      = self.a.vector().array()
+    self.agep    = self.age.vector().array()
     self.wp      = self.w.vector().array()
     self.kp      = 2.1*(self.rhop / self.rhoi(0))**2
     self.cp      = self.ci(0) * np.ones(self.dof)
     self.rp      = self.r.vector().array()
-    self.rhoinp  = self.rhop
     self.agep    = np.zeros(self.dof)
     self.pp      = np.zeros(self.dof)
     self.up      = np.zeros(self.dof)
@@ -347,14 +340,14 @@ class D1Model(Model):
     self.zo      = self.S_bc                 # z-coordinate of initial surface
     self.ht      = [self.S_bc]               # list of surface heights
     self.origHt  = [self.zo]                 # list of initial surface heights
-    self.Ts      = self.Hp[0] / self.cp[0]   # temperature of surface
+    self.Ts      = self.thetap[0] / self.cp[0]   # temperature of surface
 
-  def update_Hbc(self): 
+  def update_thetabc(self): 
     """
     Adjust the enthalpy at the surface.
     """
-    self.H_surface.t = self.t
-    self.H_surface.c = self.cp[0]
+    self.theta_surface.t = self.t
+    self.theta_surface.c = self.cp[0]
   
   def update_Tbc(self): 
     """
@@ -362,14 +355,14 @@ class D1Model(Model):
     """
     self.T_surface.t = self.t
  
-  def update_omegaBc(self): 
+  def update_WBc(self): 
     """
     Adjust the water-content at the surface.
     """
-    self.omega_surface.Hs   = self.Hp[0]
-    self.omega_surface.cps  = self.cp[0]
-    self.omega_surface.rs   = self.rp[0]
-    self.omega_surface.rhos = self.rhop[0]
+    self.W_surface.thetas   = self.thetap[0]
+    self.W_surface.cps  = self.cp[0]
+    self.W_surface.rs   = self.rp[0]
+    self.W_surface.rhos = self.rhop[0]
       
   def update_wBc(self):
     """
@@ -384,13 +377,13 @@ class D1Model(Model):
     """
     Adjust the density at the surface.
     """
-    #domega_s = self.domega[self.index][-1]
+    #dW_s = self.dW[self.index][-1]
     #if self.Ts > self.Tw:
-    #  if domega_s > 0:
+    #  if dW_s > 0:
     #    if self.rho_surface.rhon < self.rhoi(0):
-    #      self.rho_surface.rhon += domega_s*self.rhow(0)
+    #      self.rho_surface.rhon += dW_s*self.rhow(0)
     #  else:
-    #    self.rho_surface.rhon += domega_s*self.rhow(0)#83.0
+    #    self.rho_surface.rhon += dW_s*self.rhow(0)#83.0
     #else:
     #  self.rho_surface.rhon = self.rhos
     self.rho_surface.t = self.t
@@ -400,22 +393,25 @@ class D1Model(Model):
     Project the variables onto the space V and update firn object.
     """
     self.t       = t
-    self.Hp      = self.H.vector().array()
+    self.thetap  = self.theta.vector().array()
     self.rhop    = self.rho.vector().array()
     self.wp      = self.w.vector().array()
-    self.ap      = self.a.vector().array()
+    self.agep    = self.age.vector().array()
     self.Tp      = self.T.vector().array()
-    self.omegap  = self.omega.vector().array()
+    self.Wp      = self.W.vector().array()
     self.rp      = self.r.vector().array()
     self.pp      = self.p.vector().array()
     self.up      = self.u.vector().array()
     self.Smip    = self.Smi.vector().array()
-    self.Ts      = self.Hp[0] / self.cp[0]
+    self.Ts      = self.thetap[0] / self.cp[0]
   
   def vert_integrate(self, u):
     """
     Integrate <u> from the surface to the bed.
     """
+    s    = '::: vertically integrating function :::'
+    print_text(s, self.D1Model_color)
+
     ff  = self.ff
     Q   = self.Q
     phi = TestFunction(Q)
@@ -431,13 +427,15 @@ class D1Model(Model):
     L      = u * phi * dx
     v      = Function(Q)
     solve(a == L, v, bcs)
+    print_min_max(v, 'vertically integrated function')
+    #print_min_max(v, 'vertically integrated %s' % u.name())
     return v
 
   def update_height_history(self):
     """
     track the current height of the firn :
     """
-    self.ht.append(self.z[-1])
+    self.ht.append(self.z[0])
 
     # calculate the new height of original surface by interpolating the 
     # vertical speed from w and keeping the ratio intact :
@@ -471,20 +469,20 @@ class D1Model(Model):
     self.w     = genfromtxt("data/fmic/initial/initial" + ex + "/w.txt")
     self.z     = genfromtxt("data/fmic/initial/initial" + ex + "/z.txt")
     self.a     = genfromtxt("data/fmic/initial/initial" + ex + "/a.txt")
-    self.H     = genfromtxt("data/fmic/initial/initial" + ex + "/H.txt")
+    self.theta     = genfromtxt("data/fmic/initial/initial" + ex + "/theta.txt")
     self.lin   = genfromtxt("data/fmic/initial/initial" + ex + "/l.txt")
     
     self.S_1    = self.z[0]                # previous time-step surface  
     self.zo     = self.z[0]                # z-coordinate of initial surface
     self.ht     = [self.z[0]]              # list of surface heights
     self.origHt = [self.z[0]]              # list of initial surface heights
-    self.Ts     = self.H[0] / self.c[0]    # temperature of surface
+    self.Ts     = self.theta[0] / self.c[0]    # temperature of surface
   
     self.assign_variable(self.rho_i, self.rho)
-    self.assign_variable(self.H_i,   self.H)
+    self.assign_variable(self.theta_i,   self.theta)
     self.assign_variable(self.w_i,   self.w)
     self.assign_variable(self.aF,    self.a)
-    self.assign_variable(self.a_1,   self.a)
+    self.assign_variable(self.a0,   self.a)
   
   def transient_solve(self, momentum, energy, t_start, t_mid, t_end, time_step,
                       dt_list=None, annotate=False, callback=None):
@@ -557,12 +555,12 @@ class D1Model(Model):
       
       # update model parameters :
       if t != times[-1]:
-         momentum.U_1.assign(momentum.U)
-         self.H_1.assign(self.H)
-         self.omega_1.assign(self.omega)
-         self.w_1.assign(self.w)
-         self.a_1.assign(self.a)
-         self.m_1.assign(self.m)
+         momentum.U0.assign(momentum.U)
+         self.theta0.assign(self.theta)
+         self.W0.assign(self.W)
+         self.w0.assign(self.w)
+         self.age0.assign(self.age)
+         self.m0.assign(self.m)
       
       if callback != None:
         s    = '::: calling callback function :::'

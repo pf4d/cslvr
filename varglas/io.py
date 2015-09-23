@@ -481,7 +481,7 @@ def print_min_max(u, title, color='yellow'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  if isinstance(u, GenericVector):
+  if isinstance(u, GenericVector) or isinstance(u, ndarray):
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
@@ -490,14 +490,6 @@ def print_min_max(u, title, color='yellow'):
        or isinstance(u, dolfin.functions.function.Function):
     uMin = MPI.min(mpi_comm_world(), u.vector().min())
     uMax = MPI.max(mpi_comm_world(), u.vector().max())
-    s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
-    print_text(s, color)
-  elif isinstance(u, ndarray):
-    er = "warning, input to print_min_max() is a NumPy array, local min " + \
-         " / max of process 0 only"
-    print_text(er, 'red', 1)
-    uMin = u.min()
-    uMax = u.max()
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
     print_text(s, color)
   elif isinstance(u, int) or isinstance(u, float):

@@ -33,10 +33,9 @@ class MomentumFirn(Momentum):
     kcHh    = model.kcHh
     kcLw    = model.kcLw
    
-    H       = model.H                         # enthalpy
     T       = model.T                         # temperature
     w       = model.w                         # velocity
-    w_1     = model.w_1                       # previous step's velocity
+    w0      = model.w0                        # previous step's velocity
     m       = model.m                         # mesh velocity
     bdot    = model.bdot                      # average annual accumulation
     rhoCoef = model.rhoCoef                   # density ceofficient
@@ -55,50 +54,50 @@ class MomentumFirn(Momentum):
   
     dQ      = TrialFunction(Q3)
     U       = Function(Q3)
-    U_1     = Function(Q3)
+    U0      = Function(Q3)
     Phi     = TestFunction(Q3)
     
     self.assrho   = FunctionAssigner(model.Q, model.Q3.sub(0))
     self.asssig   = FunctionAssigner(model.Q, model.Q3.sub(1))
     self.assrss   = FunctionAssigner(model.Q, model.Q3.sub(2))
 
-    rho,   sigma,   r    = U
-    rho_1, sigma_1, r_1  = U_1
-    phi,   psi,     xi   = Phi
+    rho,   sigma,   r   = U
+    rho0,  sigma0,  r0  = U0
+    phi,   psi,     xi  = Phi
 
     # initialize :
     U_i = project(as_vector([model.rho, model.sigma, model.r]), Q3)
-    model.assign_variable(U,   U_i)
-    model.assign_variable(U_1, U_i)
+    model.assign_variable(U,  U_i)
+    model.assign_variable(U0, U_i)
 
     # rho residual :
     theta     = 0.878
-    rho_mid   = theta*rho + (1 - theta)*rho_1
+    rho_mid   = theta*rho + (1 - theta)*rho0
     
     drhodt    = rhoCoef * exp( -Ec/(R*T) ) * (rhoi - rho_mid) * sigma / r
-    d_rho     = + (rho - rho_1)/dt * phi * dx \
+    d_rho     = + (rho - rho0)/dt * phi * dx \
                 - drhodt * phi * dx \
                 + w * rho_mid.dx(0) * phi * dx 
     
     # sigma residual : 
     theta     = 0.878
-    sig_mid   = theta*sigma + (1 - theta)*sigma_1
+    sig_mid   = theta*sigma + (1 - theta)*sigma0
     dsigdt    = bdot * g
-    d_sigma   = + (sigma - sigma_1)/dt * psi * dx \
+    d_sigma   = + (sigma - sigma0)/dt * psi * dx \
                 - dsigdt * psi * dx \
                 + w * sig_mid.dx(0) * psi * dx
 
     # r residual :
     theta   = 0.878
-    r_mid   = theta*r + (1 - theta)*r_1
+    r_mid   = theta*r + (1 - theta)*r0
     drdt    = kg * exp( -Eg/(R*T) )
-    d_r     = + (r - r_1)/dt * xi * dx \
+    d_r     = + (r - r0)/dt * xi * dx \
               - drdt * xi * dx \
               + w * r_mid.dx(0) * xi * dx
 
     # velocity residual :
     theta   = 0.878
-    w_mid   = theta*dw + (1 - theta)*w_1
+    w_mid   = theta*dw + (1 - theta)*w0
     
     w_delta = + rho * w_mid.dx(0) * eta * dx \
               + drhodt * eta * dx
@@ -118,11 +117,8 @@ class MomentumFirn(Momentum):
     self.delta   = d_rho + d_sigma + d_r
     self.w_delta = w_delta
     self.J       = derivative(self.delta, U, dQ)
-    self.rho     = rho
-    self.sigma   = sigma
-    self.r       = r
     self.U       = U
-    self.U_1     = U_1
+    self.U0      = U0
     self.drhodt  = drhodt
   
   def get_residual(self):

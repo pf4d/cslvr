@@ -46,8 +46,8 @@ class FirnPlot(object):
     Tmax     = config['Tmax'] 
     ageMin   = config['ageMin'] 
     ageMax   = config['ageMax'] 
-    omegaMin = config['omegaMin'] 
-    omegaMax = config['omegaMax'] 
+    WMin     = config['WMin'] 
+    WMax     = config['WMax'] 
 
     # plotting windows :
     Tb       = config['enthalpy']
@@ -60,11 +60,11 @@ class FirnPlot(object):
 
     # x-values :
     T      = model.Tp
-    omega  = model.omegap
+    W  = model.Wp
     rho    = model.rhop
     w      = model.wp * model.spy(0) * 1e2 # cm/a
     u      = model.up * model.spy(0) * 1e2 # cm/a
-    a      = model.ap /model.spy(0)
+    a      = model.agep /model.spy(0)
     Smi    = model.Smip
     r      = sqrt(model.rp) * 1000
     Ts     = model.Ts - 273.15
@@ -103,7 +103,7 @@ class FirnPlot(object):
 
       # temperature profile :
       self.phT,     = self.Tax.plot(T - 273.15, z, '0.3', lw=1.5,
-                                    drawstyle='steps-post')
+                                    drawstyle='steps-pre')
       
       # firn surface :
       self.phTs,    = self.Tax.plot([Tmin, Tmax], [zs, zs], 'k-', lw=3)
@@ -119,22 +119,22 @@ class FirnPlot(object):
       
       # water content axis :
       self.Oax   = self.Tax.twiny()
-      self.Oax.axis([omegaMin, omegaMax, zMin, zMax])
-      self.Oax.set_xlabel(r'$\omega\ [\%]$', color=pur)
+      self.Oax.axis([WMin, WMax, zMin, zMax])
+      self.Oax.set_xlabel(r'$W\ [\%]$', color=pur)
       self.Oax.grid()
       for tl in self.Oax.get_xticklabels():
         tl.set_color(pur)
 
       # water content :
-      self.phO,     = self.Oax.plot(omega, z, pur, lw=1.5,
-                                    drawstyle='steps-post')
+      self.phO,     = self.Oax.plot(W, z, pur, lw=1.5,
+                                    drawstyle='steps-pre')
 
       # water content surface boundary condition :
-      self.phO_dot, = self.Oax.plot(omega[0], zs, color=pur, marker='o')
+      self.phO_dot, = self.Oax.plot(W[0], zs, color=pur, marker='o')
 
       # irreducible water content :
       self.phSmi,   = self.Oax.plot(Smi,   z, 'r--',   lw=1.5,
-                                    drawstyle='steps-post')
+                                    drawstyle='steps-pre')
 
       # irreducible water content surface boundary condition :
       self.phSmi_dot, = self.Oax.plot(Smi[0], zs, 'ro')
@@ -156,7 +156,7 @@ class FirnPlot(object):
 
       # density profile :
       self.phrho,   = self.rhoax.plot(rho, z, '0.3', lw=1.5,
-                                      drawstyle='steps-post')
+                                      drawstyle='steps-pre')
 
       # surface height :
       self.phrhoS,  = self.rhoax.plot([rhoMin, rhoMax], [zs, zs], 'k-', lw=3)
@@ -178,7 +178,7 @@ class FirnPlot(object):
       
       # grain-size profile :
       self.phr,     = self.rax.plot(r, z, pur, lw=1.5,
-                                    drawstyle='steps-post')
+                                    drawstyle='steps-pre')
       # grain-size surface boundary condition :
       self.phr_dot, = self.rax.plot(r[0], zs, color=pur, marker='o')
 
@@ -197,7 +197,7 @@ class FirnPlot(object):
 
       # compaction velocity profile :
       self.phw,     = self.wax.plot(w, z, '0.3', lw=1.5,
-                                    drawstyle='steps-post')
+                                    drawstyle='steps-pre')
       
       # compaction velocity surface boundary condition :
       self.wS_dot,  = self.wax.plot(w[0], zs, 'ko')
@@ -219,7 +219,7 @@ class FirnPlot(object):
       
       # water velocity profile :
       self.phu,     = self.uax.plot(u, z, pur, lw=1.5,
-                                    drawstyle='steps-post')
+                                    drawstyle='steps-pre')
 
       # water velocity surface boundary condition :
       self.uS_dot,  = self.uax.plot(u[0], zs, color=pur, marker='o')
@@ -232,7 +232,7 @@ class FirnPlot(object):
       #self.aax.xaxis.set_major_formatter(FixedOrderFormatter(3))
       self.aax.grid()
       self.pha,     = self.aax.plot(a, z, '0.3', lw=1.5,
-                                    drawstyle='steps-post')
+                                    drawstyle='steps-pre')
       self.phaS,    = self.aax.plot([ageMin, ageMax], [zs, zs], 'k-', lw=3)
       self.aax.set_title('Age')
       self.aax.set_xlabel(r'$a\ [\mathrm{a}]$')
@@ -254,12 +254,12 @@ class FirnPlot(object):
     config = self.config
     index  = model.index 
     T      = model.Tp
-    omega  = model.omegap
+    W  = model.Wp
     T_w    = model.T_w(0)
     rho    = model.rhop
     w      = model.wp * model.spy(0) * 1e2
     u      = model.up * model.spy(0) * 1e2
-    a      = model.ap / model.spy(0)
+    a      = model.agep / model.spy(0)
     Smi    = model.Smip
     r      = sqrt(model.rp) * 1000
     z      = model.z
@@ -282,9 +282,9 @@ class FirnPlot(object):
       self.phTsp.set_ydata(z)
       self.phTs_dot.set_xdata(Ts)
       self.phTs_dot.set_ydata(zs)
-      self.phO.set_xdata(omega)
+      self.phO.set_xdata(W)
       self.phO.set_ydata(z)
-      self.phO_dot.set_xdata(omega[0])
+      self.phO_dot.set_xdata(W[0])
       self.phO_dot.set_ydata(zs)
       self.phSmi.set_xdata(Smi)
       self.phSmi.set_ydata(z)

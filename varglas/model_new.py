@@ -38,12 +38,6 @@ class Model(object):
     ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(s*m^2)
     
     # Constants :
-    self.rhom    = Constant(550.0)
-    self.rhom.rename('rhom', 'density at 15 m')
-
-    self.rhoc    = Constant(815.0)
-    self.rhoc.rename('rhoc', 'firn density critical value')
-
     self.kcHh    = Constant(3.7e-9)
     self.kcHh.rename('kcHh', 'creep coefficient high')
 
@@ -59,8 +53,8 @@ class Model(object):
     self.Eg      = Constant(42.4e3)
     self.Eg.rename('Eg', 'act. energy for grain growth')
 
-    self.Hsp     = Constant(2009.0 * 273.15)
-    self.Hsp.rename('Hsp', 'Enthalpy of ice at Tw')
+    self.thetasp = Constant(2009.0 * 273.15)
+    self.thetasp.rename('thetasp', 'Internal energy of ice at Tw')
     
     self.etaw    = Constant(1.787e-3)
     self.etaw.rename('etaw', 'Dynamic viscosity of water at Tw')
@@ -80,13 +74,19 @@ class Model(object):
     self.A0      = Constant(1e-16)
     self.A0.rename('A0', 'flow rate factor')
 
-    self.rhoi    = Constant(917)
+    self.rhoi    = Constant(917.0)
     self.rhoi.rename('rhoi', 'ice density')
 
-    self.rhow    = Constant(1000)
+    self.rhow    = Constant(1000.0)
     self.rhow.rename('rhow', 'water density')
+    
+    self.rhom    = Constant(550.0)
+    self.rhom.rename('rhom', 'firn pore close-off density')
 
-    self.g       = Constant(9.81)
+    self.rhoc    = Constant(815.0)
+    self.rhoc.rename('rhoc', 'firn density critical value')
+
+    self.g       = Constant(9.80665)
     self.g.rename('g', 'gravitational acceleration')
 
     self.a0      = Constant(5.45e10)
@@ -95,7 +95,7 @@ class Model(object):
     self.Q0      = Constant(13.9e4)
     self.Q0.rename('Q0', 'ice activation energy')
 
-    self.R       = Constant(8.314)
+    self.R       = Constant(8.3144621)
     self.R.rename('R', 'universal gas constant')
 
     self.ki      = Constant(2.1)
@@ -108,9 +108,9 @@ class Model(object):
     self.ci.rename('ci', 'heat capacity of ice')
     
     self.cw      = Constant(4217.6)
-    self.cw.rename('cw', 'Heat capacity of water at 273K')
+    self.cw.rename('cw', 'Heat capacity of water at Tw')
 
-    self.L       = Constant(3.35e5)
+    self.L       = Constant(3.34e5)
     self.L.rename('L', 'latent heat of ice')
 
     self.ghf     = Constant(ghf)

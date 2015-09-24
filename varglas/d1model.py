@@ -277,7 +277,6 @@ class D1Model(Model):
     self.index = np.argsort(self.z)[::-1]
     self.z     = self.z[self.index]
     self.l     = np.diff(self.z)
-    self.x     = SpatialCoordinate(self.mesh)[0]
    
     # surface Dirichlet boundary :
     def surface(x, on_boundary):
@@ -328,7 +327,7 @@ class D1Model(Model):
     self.drhodtp = self.drhodt.vector().array()
     self.agep    = self.age.vector().array()
     self.wp      = self.w.vector().array()
-    self.kp      = 2.1*(self.rhop / self.rhoi(0))**2
+    self.kp      = self.ki(0) * (self.rhop / self.rhoi(0))**2
     self.cp      = self.ci(0) * np.ones(self.dof)
     self.rp      = self.r.vector().array()
     self.agep    = np.zeros(self.dof)
@@ -388,11 +387,10 @@ class D1Model(Model):
     #  self.rho_surface.rhon = self.rhos
     self.rho_surface.t = self.t
 
-  def update_vars(self, t):
+  def update_vars(self):
     """
     Project the variables onto the space V and update firn object.
     """
-    self.t       = t
     self.thetap  = self.theta.vector().array()
     self.rhop    = self.rho.vector().array()
     self.wp      = self.w.vector().array()
@@ -469,7 +467,7 @@ class D1Model(Model):
     self.w     = genfromtxt("data/fmic/initial/initial" + ex + "/w.txt")
     self.z     = genfromtxt("data/fmic/initial/initial" + ex + "/z.txt")
     self.a     = genfromtxt("data/fmic/initial/initial" + ex + "/a.txt")
-    self.theta     = genfromtxt("data/fmic/initial/initial" + ex + "/theta.txt")
+    self.theta = genfromtxt("data/fmic/initial/initial" + ex + "/theta.txt")
     self.lin   = genfromtxt("data/fmic/initial/initial" + ex + "/l.txt")
     
     self.S_1    = self.z[0]                # previous time-step surface  
@@ -478,11 +476,11 @@ class D1Model(Model):
     self.origHt = [self.z[0]]              # list of initial surface heights
     self.Ts     = self.theta[0] / self.c[0]    # temperature of surface
   
-    self.assign_variable(self.rho_i, self.rho)
-    self.assign_variable(self.theta_i,   self.theta)
-    self.assign_variable(self.w_i,   self.w)
-    self.assign_variable(self.aF,    self.a)
-    self.assign_variable(self.a0,   self.a)
+    self.assign_variable(self.rho_i,   self.rho)
+    self.assign_variable(self.theta_i, self.theta)
+    self.assign_variable(self.w_i,     self.w)
+    self.assign_variable(self.aF,      self.a)
+    self.assign_variable(self.a0,      self.a)
   
   def transient_solve(self, momentum, energy, t_start, t_mid, t_end, time_step,
                       dt_list=None, annotate=False, callback=None):
@@ -534,27 +532,18 @@ class D1Model(Model):
       # update timestep :
       self.init_time_step(dt)
 
-      # solve momentum :
-      momentum.solve(annotate=annotate)
-
       # solve energy :
       energy.solve(annotate=annotate)
+
+      # solve momentum :
+      momentum.solve(annotate=annotate)
 
       # solve mass :
       #mass.solve(annotate=annotate)
       
-      # update firn object :
-      self.update_vars(t)
-      self.update_height_history()
-      #if config['free_surface']['on']:
-      #  if dt_list != None:
-      #    if t > tm+dt:
-      #      self.update_height()
-      #  else:
-      #    self.update_height()
-      
       # update model parameters :
       if t != times[-1]:
+         self.t = t
          momentum.U0.assign(momentum.U)
          self.theta0.assign(self.theta)
          self.W0.assign(self.W)

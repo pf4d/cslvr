@@ -12,14 +12,6 @@ n       = 25
 #h     = 1000.0
 #g     = 0.5
 #H     = 1000.0
-#hs = [1000, 2000, 4000, 8000, 16000, 32000]
-#Hs = [250,  500,  750,  1000, 2000,  3000]
-#Gs = [0.1,  0.25, 0.5,  1,    2,     4]
-#
-#for h in hs:
-#  for H in Hs:
-#    for g in Gs:
-#      pass
 
 def assimilate(h,H,g):
   """
@@ -216,6 +208,19 @@ def assimilate(h,H,g):
     savetxt(d + 'as.txt',   array(alphas))
     savetxt(d + 'MSEs.txt', array(MSEs))
     savetxt(d + 'REs.txt',  array(REs))
+
+
+#===============================================================================
+# perform assimilation over the following parameter space :
+
+hs = [1000, 2000, 4000, 8000, 16000, 32000]
+Hs = [250,  500,  750,  1000, 2000,  3000 ]
+Gs = [0.1,  0.25, 0.5,  1,    2,     4    ]
+
+for h in hs:
+  for H in Hs:
+    for g in Gs:
+      assimilate(h, H, g)
 
 
 

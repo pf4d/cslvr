@@ -254,11 +254,11 @@ class FirnPlot(object):
     config = self.config
     index  = model.index 
     T      = model.Tp
-    W  = model.Wp
+    W      = model.Wp
     T_w    = model.T_w(0)
     rho    = model.rhop
     w      = model.wp * model.spy(0) * 1e2
-    u      = model.up * model.spy(0) * 1e2
+    u      = model.up
     a      = model.agep / model.spy(0)
     Smi    = model.Smip
     r      = sqrt(model.rp) * 1000

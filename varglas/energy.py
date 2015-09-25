@@ -695,18 +695,19 @@ class EnergyFirn(Energy):
     etaw    = model.etaw
     rhow    = model.rhow
     #w       = w - m
-    z       = model.x
+    z       = model.x[0]
     g       = model.g
     r       = model.r
     S       = model.S
-    #W   = model.W
+    h       = model.h
+    #W       = model.W
     
     psi     = TestFunction(Q)
     dtheta  = TrialFunction(Q)
     
     # thermal parameters
     ki  = model.ki*(rho / rhoi)**2
-    
+
     T_v = T.vector().array()
     model.assign_variable(theta,  ci(0)*T_v)
     model.assign_variable(theta0, ci(0)*T_v)
@@ -721,9 +722,15 @@ class EnergyFirn(Energy):
     Se    = (W - Smi) / (1 - Smi)                         # effective sat.
     K     = k * rhow * g / etaw
     krw   = Se**3.0 
-    ql    = K * krw * (p / (rhow * g) + z).dx(0)          # water flux
-    u     = - k / etaw * p.dx(0)                          # darcy velocity
+    #ql    = K * krw * (p / (rhow * g) + z).dx(0)          # water flux
+    ql    = K * krw * (p / (rhow * g)).dx(0)          # water flux
+    #u     = - k / etaw * p.dx(0)                          # darcy velocity
     u     = - ql/phi                                      # darcy velocity
+      
+    # skewed test function in areas with high velocity :
+    PE     = u*h/(2*ki/(rho*ci))
+    tau    = 1/tanh(PE) - 1/PE
+    psihat = psi + h*tau/2 * psi.dx(0)
 
     # enthalpy residual :
     eta       = 1.0
@@ -731,10 +738,10 @@ class EnergyFirn(Energy):
     delta     = - ki/(rho*ci) * inner(theta_mid.dx(0), psi.dx(0)) * dx \
                 + w * theta_mid.dx(0) * psi * dx \
                 - (theta - theta0)/dt * psi * dx \
-                #+ (ql * theta_mid).dx(0) * psi * dx \
+                + (ql * theta_mid).dx(0) * psi * dx \
     
     # equation to be minimzed :
-    self.J    = derivative(delta, theta, dtheta)   # jacobian
+    self.J     = derivative(delta, theta, dtheta)   # jacobian
 
     self.delta = delta
     self.u     = u
@@ -773,6 +780,7 @@ class EnergyFirn(Energy):
           solver_parameters=self.solve_params['solver'],
           annotate=annotate)
 
+    model.assign_variable(model.W0, model.W)
     model.assign_variable(model.W,  project(self.W))
     model.assign_variable(model.ql, project(self.ql))
     
@@ -782,13 +790,7 @@ class EnergyFirn(Energy):
     thetasp = model.thetasp(0)
     g       = model.g(0)
     ci      = model.ci(0)
-
-    # calculate W :
-    Wp   = model.W.vector().array()
-    Wp0  = model.W0.vector().array()
-    dW   = Wp - Wp0                 # water content change
-    model.assign_variable(model.W0, model.W)
-    model.assign_variable(model.dW, dW)
+    L       = model.L(0)
 
     # update coefficients used by enthalpy :
     thetap     = model.theta.vector().array()
@@ -799,6 +801,22 @@ class EnergyFirn(Energy):
     Tp             = thetap / ci
     Tp[thetahigh]  = T_w
     model.assign_variable(model.T, Tp)
+
+    # calculate dW :
+    Wp   = model.W.vector().array()
+    Wp0  = model.W0.vector().array()
+    dW   = Wp - Wp0                 # water content change
+    model.assign_variable(model.dW, dW)
+    
+    ## calculate W :
+    #model.assign_variable(model.W0, model.W)
+    #Wp             = model.W.vector().array()
+    #Wp[thetahigh]  = (thetap[thetahigh] - ci*T_w) / L
+    #Wp[thetalow]   = 0.0
+    #Wp0            = model.W0.vector().array()
+    #dW             = Wp - Wp0                 # water content change
+    #model.assign_variable(model.W,  Wp)
+    #model.assign_variable(model.dW, dW)
 
     print_min_max(model.T,     'T')
     print_min_max(model.theta, 'theta')
@@ -811,8 +829,10 @@ class EnergyFirn(Energy):
     model.assign_variable(model.p,   p)
     model.assign_variable(model.u,   project(self.u))
     model.assign_variable(model.Smi, project(Smi))
-    print_min_max(model.pp, 'p')
-    print_min_max(model.up, 'u')
+    print_min_max(model.p, 'p')
+    print_min_max(model.u, 'u')
+
+
     print_min_max((1-model.rhop/rhoi)*100 - model.Wp*100, 'phi - W')
 
 

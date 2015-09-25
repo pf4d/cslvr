@@ -14,11 +14,10 @@ mesh  = IntervalMesh(100, zb, zs)      # interval from bed to surface
 model = D1Model(out_dir = 'results')
 model.set_mesh(mesh)
 
-#model.refine_mesh(divs=3, i=1/3., k=1/20.)
-model.refine_mesh(divs=2, i=1/3.,  k=1/4.)
-#model.refine_mesh(divs=2, i=1/3.,  k=1/4.)
-#model.refine_mesh(divs=2, i=1/3.,  k=1/4.)
-#model.refine_mesh(divs=2, i=1/3.,  k=1/4.)
+model.refine_mesh(divs=2, i=1/8.0,  k=1/5.)
+model.refine_mesh(divs=2, i=1/16.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/32.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/32.0, k=1/5.)
 
 model.generate_function_spaces()
 model.calculate_boundaries()
@@ -32,7 +31,7 @@ adot  = 0.1                    # accumulation rate .............. m/a
 Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
 
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
-dt2   = 0.5/365.0*model.spy(0) # time-step ...................... s
+dt2   = 0.1/365.0*model.spy(0) # time-step ...................... s
 t0    = 0.0                    # begin time ..................... s
 tf    = sys.argv[1]            # end-time ....................... string
 tf    = float(tf)*model.spy(0) # end-time ....................... s
@@ -43,7 +42,7 @@ tm    = 500.0 * model.spy(0)
 # enthalpy BC :
 #code  = 'cp*(Tavg + 5*(sin(2*omega*t) + 5*sin(4*omega*t)))'
 #H_exp = Expression(code, cp=cpi, Tavg=Tavg, omega=pi/spy, t=t0)
-code      = 'c*(Tavg + 5*(sin(2*omega*t) + 5*sin(4*omega*t)))'
+code      = 'c*(Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))'
 theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
                        t=t0, c=model.ci(0))
 
@@ -75,12 +74,12 @@ model.init_time_step(dt1)
 #model.set_ini_conv(ex)
 
 plot_cfg = {  'on'       : bp,
-              'zMin'     : -100,
-              'zMax'     : 20.0,
+              'zMin'     : -6,
+              'zMax'     : 0.8,
               'wMin'     : -30,
               'wMax'     : 5,
-              'uMin'     : -1500,
-              'uMax'     : 300,
+              'uMin'     : -1e-6,
+              'uMax'     : 1e-6,
               'rhoMin'   : 0.0,
               'rhoMax'   : 1000,
               'rMin'     : 0.0,
@@ -89,8 +88,8 @@ plot_cfg = {  'on'       : bp,
               'Tmax'     : 5.0,
               'ageMin'   : 0.0,
               'ageMax'   : 100,
-              'WMin'     : -0.01, 
-              'WMax'     : 0.10,
+              'WMin'     : -0.015, 
+              'WMax'     : 0.15,
               'enthalpy' : True,
               'density'  : True,
               'velocity' : True,
@@ -101,16 +100,19 @@ nrg = EnergyFirn(model)
 plt = FirnPlot(model, plot_cfg)
 
 def cb():
+  model.update_vars()
+  model.update_height_history()
   theta_exp.t = model.t
   theta_exp.c = model.cp[0]
   rho_exp.t   = model.t
   w_exp.t     = model.t
   w_exp.rhos  = model.rhop[0]
-  bdotNew     = (w_exp.adot * model.rhoi(0)) / model.spy(0)
-  model.assign_variable(model.bdot, bdotNew)
+  #bdotNew     = (w_exp.adot * model.rhoi(0)) / model.spy(0)
+  #model.assign_variable(model.bdot, bdotNew)
   plt.update()
 
 dt_list = [dt1,dt2]
+#dt_list = None 
 
 model.transient_solve(mom, nrg, t0, tm, tf, dt1, dt_list=dt_list, callback=cb)
   

@@ -140,9 +140,9 @@ def assimilate(h,H,g):
       print_min_max(beta, 'beta')
     
     def deriv_cb(I, dI, beta):
-      print_min_max(I,     'I')
+      #print_min_max(I,     'I')
       print_min_max(dI,    'dI/dbeta')
-      print_min_max(beta,  'beta')
+      #print_min_max(beta,  'beta')
       #beta_viz.assign(beta)
       #controls << beta_viz
     

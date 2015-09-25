@@ -8,7 +8,6 @@ import numpy              as np
 
 #set_log_active(False)
 
-n       = 25
 #h     = 1000.0
 #g     = 0.5
 #H     = 1000.0
@@ -19,6 +18,7 @@ def assimilate(h,H,g):
   and surface slope <g>.
   """
   out_dir = 'dump/stokes/full/h_%i/H_%i/g_%.2f/' % (h,H,g)
+  n       = 25
   L       = n*h
   alpha   = g * pi / 180
   

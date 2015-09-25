@@ -13,7 +13,7 @@ i       = 0
 dir_b   = 'dump/high_da/0'     # directory to save
 
 # set the output directory :
-out_dir = dir_b + str(i) + '/'
+out_dir = dir_b + str(i)
 in_dir  = 'dump/vars_high/'
 
 mesh   = Mesh(in_dir + 'mesh.xdmf')
@@ -45,7 +45,7 @@ f.read(ff_acc,   'ff_acc')
 f.read(u_ob,     'u')
 f.read(v_ob,     'v')
 
-model = D3Model(out_dir = out_dir)
+model = D3Model(out_dir = out_dir + '/thermo_solve/pvd/')
 model.set_mesh(mesh)
 model.set_subdomains(ff, cf, ff_acc)
 model.generate_function_spaces(use_periodic = False)
@@ -61,10 +61,10 @@ model.init_E(1.0)
 
 # use T0 and beta0 from the previous run :
 if i > 0:
-  model.init_T(dir_b + str(i-1) + '/T.xml')             # temp
-  model.init_W(dir_b + str(i-1) + '/W.xml')             # water
-  model.init_beta(dir_b + str(i-1) + '/beta.xml')       # friction
-  model.init_E_shf(dir_b + str(i-1) + '/E_shf.xml')      # enhancement
+  model.init_T(dir_b + str(i-1) + '/inverted/xml/T.xml')          # temp
+  model.init_W(dir_b + str(i-1) + '/inverted/xml/W.xml')          # water
+  model.init_beta(dir_b + str(i-1) + '/inverted/xml/beta.xml')    # friction
+  model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
 else:
   model.init_T(model.T_w(0) - 30.0)
   model.init_beta_SIA()
@@ -96,11 +96,21 @@ def cb_ftn():
   #model.save_pvd(model.p,     'p')
   model.save_pvd(model.theta, 'theta')
   model.save_pvd(model.T,     'T')
-  #model.save_pvd(model.W,     'W')
+  model.save_pvd(model.W,     'W')
   #model.save_pvd(model.Mb,    'Mb')
   #model.save_pvd(model.rho_b, 'rho_b')
 
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
+
+model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
+model.save_xml(model.T,     'T')
+model.save_xml(model.W,     'W')
+model.save_xml(u,           'u')
+model.save_xml(v,           'v')
+model.save_xml(w,           'w')
+model.save_xml(model.beta,  'beta')
+model.save_xml(model.Mb,    'Mb')
+model.save_xml(model.E_shf, 'E_shf')
 
 # invert for basal friction over grounded ice :
 nparams['newton_solver']['relaxation_parameter'] = 1.0
@@ -111,12 +121,12 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
                                     linear=True)
 mom.solve(annotate=True)
 
-model.set_out_dir(out_dir = out_dir + 'inverted/')
+model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
   
-J = mom.form_obj_ftn('log_lin_hybrid', integral=model.dSrf_s,
+J = mom.form_obj_ftn(integral=model.dSrf_s, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
-R = mom.form_reg_ftn(model.beta, 'Tikhonov', integral=model.dGnd,
-                     alpha=1.0)
+R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
+                     alpha=alpha)
 I = J + R
 
 controls = File(model.out_dir + "control_viz/beta_control.pvd")
@@ -145,7 +155,7 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
 
-b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 4000),
+b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 1e6),
                  options={"disp"    : True,
                           "maxiter" : 1000,
                           "gtol"    : 1e-5,
@@ -161,7 +171,7 @@ b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 4000),
 #b_opt = solver.solve()
 print_min_max(b_opt, 'b_opt')
 
-model.set_out_dir(out_dir = out_dir + 'xml/')
+model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
 
 u,v,w = model.U3.split(True)
 

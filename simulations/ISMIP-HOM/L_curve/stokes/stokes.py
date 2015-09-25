@@ -97,6 +97,8 @@ def assimilate(h,H,g):
   
   # save the true beta for MSE calculation :
   beta_true = model.beta.copy()
+  
+  m_params['solver']['newton_solver']['maximum_iterations'] = 3
     
   mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
   

@@ -4,7 +4,7 @@ from fenics      import *
 from numpy       import loadtxt, array
 import os
 
-out_dir = 'dump/stokes/fast_bfgs/'
+out_dir = 'dump/stokes/fast_bfgs_honed/'
 
 #hs = [1000, 2000, 4000, 8000, 16000, 32000]
 #Hs = [250,  500,  750,  1000, 2000,  3000]

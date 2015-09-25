@@ -114,44 +114,52 @@ mom.solve(annotate=True)
 model.set_out_dir(out_dir = out_dir + 'inverted/')
   
 J = mom.form_obj_ftn('log_lin_hybrid', integral=model.dSrf_s,
-                     g1=1, g2=1)
+                     g1=0.01, g2=1000)
 R = mom.form_reg_ftn(model.beta, 'Tikhonov', integral=model.dGnd,
-                     alpha=1e4)
-I = J# + R
+                     alpha=1.0)
+I = J + R
 
-controls = File(out_dir + "beta_control.pvd")
+controls = File(model.out_dir + "control_viz/beta_control.pvd")
 beta_viz = Function(model.Q, name="beta_control")
   
-def eval_cb(j, m):
+def eval_cb(I, beta):
+  #       commented out because the model variables are not updated by 
+  #       dolfin-adjoint (yet) :
   #mom.print_eval_ftns()
   #print_min_max(mom.U, 'U')
-  print_min_max(j, 'I')
+  print_min_max(I,    'I')
+  print_min_max(beta, 'beta')
 
-def deriv_cb(j, dj, m):
-  print_min_max(dj, 'dJdb')
-  print_min_max(m,  'beta')
-  beta_viz.assign(m)
+def deriv_cb(I, dI, beta):
+  print_min_max(I,     'I')
+  print_min_max(dI,    'dI/dbeta')
+  print_min_max(beta,  'beta')
+  beta_viz.assign(beta)
   controls << beta_viz
 
-def hessian_cb(j, ddj, m):
-  print_min_max(ddj, 'd/db dJ/db')
+def hessian_cb(I, ddI, beta):
+  print_min_max(ddI, 'd/db dI/db')
 
 m = FunctionControl('beta')
-F = ReducedFunctional(Functional(I), m, eval_cb=eval_cb,
-                      derivative_cb = deriv_cb,
+F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+                      derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
-  
-problem = MinimizationProblem(F, bounds=(0, 4000))
-adj_par = {"acceptable_tol"     : 1.0e-200,
-           "maximum_iterations" : 200,
-           "linear_solver"      : "ma97"}
 
-solver = IPOPTSolver(problem, parameters = adj_par)
-b_opt  = solver.solve()
+b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 4000),
+                 options={"disp"    : True,
+                          "maxiter" : 1000,
+                          "gtol"    : 1e-5,
+                          "factr"   : 1e7})
 
-#m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(10, 100),
-#                 options={"disp"    : True,
-#                          "maxiter" : 100})
+#problem = MinimizationProblem(F, bounds=(0, 4000))
+#parameters = {"tol"                : 1e8,
+#              "acceptable_tol"     : 1000.0,
+#              "maximum_iterations" : 1000,
+#              "linear_solver"      : "ma57"}
+#
+#solver = IPOPTSolver(problem, parameters=parameters)
+#b_opt = solver.solve()
+print_min_max(b_opt, 'b_opt')
 
 model.set_out_dir(out_dir = out_dir + 'xml/')
 

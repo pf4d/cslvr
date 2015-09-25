@@ -268,19 +268,19 @@ class Enthalpy(Energy):
 
     model = self.model
 
-    dx  = model.dx
-    x   = model.x
-    S   = model.S
-    g   = model.gamma
-    T_w = model.T_w
+    dx    = model.dx
+    x     = model.x
+    S     = model.S
+    gamma = model.gamma
+    T_w   = model.T_w
 
     u   = TrialFunction(model.Q)
     phi = TestFunction(model.Q)
 
-    l = assemble((T_w - g * (S - x[2])) * phi * dx)
+    l = assemble((T_w - gamma * (S - x[2])) * phi * dx)
     a = assemble(u * phi * dx)
 
-    solve(a, model.T_melt.vector(), annotate=annotate)
+    solve(a, model.T_melt.vector(), l, annotate=annotate)
     print_min_max(model.T_melt, 'T_melt')
 
   def get_solve_params(self):

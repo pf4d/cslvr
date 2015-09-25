@@ -4,6 +4,7 @@ from varglas.energy   import Enthalpy
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *
+import numpy              as np
 
 #set_log_active(False)
 
@@ -101,6 +102,9 @@ def assimilate(h,H,g):
   model.save_xml(interpolate(model.w, model.Q),  'w_true')
   model.save_xml(model.U_ob,                     'U_ob')
   model.save_xml(model.beta,                     'beta_true')
+  
+  # save the true beta for MSE calculation :
+  beta_true = model.beta.copy()
     
   mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
   
@@ -114,6 +118,8 @@ def assimilate(h,H,g):
   alphas = [1e-2, 5e-2, 1e-1, 5e-1, 1e0,  5e0,  1e1]
   Js     = []
   Rs     = []
+  MSEs   = []
+  REs    = []
   
   for alpha in alphas:
   
@@ -173,9 +179,18 @@ def assimilate(h,H,g):
     model.assign_variable(model.beta, b_opt)
     mom.solve(annotate=False)
     mom.print_eval_ftns()
+
+    beta_true_v = beta_true.vector()
+    beta_opt_v  = b_opt.vector()
+    
+    mse = norm(beta_opt_v - beta_true_v)**2 / len(beta_true_v)
+    re  = norm(beta_opt_v - beta_true_v) / norm(beta_true_v)
       
     Rs.append(assemble(mom.Rp))
     Js.append(assemble(mom.J))
+    MSEs.append(mse)
+    REs.append(re)
+    
     
     #model.save_pvd(model.beta, 'beta_opt')
     #model.save_pvd(model.U3,   'U_opt')
@@ -196,9 +211,11 @@ def assimilate(h,H,g):
     d = out_dir + 'plot/'
     if not os.path.exists(d):
       os.makedirs(d)
-    savetxt(d + 'Rs.txt', array(Rs))
-    savetxt(d + 'Js.txt', array(Js))
-    savetxt(d + 'as.txt', array(alphas))
+    savetxt(d + 'Rs.txt',   array(Rs))
+    savetxt(d + 'Js.txt',   array(Js))
+    savetxt(d + 'as.txt',   array(alphas))
+    savetxt(d + 'MSEs.txt', array(MSEs))
+    savetxt(d + 'REs.txt',  array(REs))
 
 
 

@@ -6,12 +6,6 @@ from fenics           import *
 from dolfin_adjoint   import *
 import numpy              as np
 
-#set_log_active(False)
-
-#h     = 1000.0
-#g     = 0.5
-#H     = 1000.0
-
 def assimilate(h,H,g):
   """
   Run the full assimilation process for a cell size <h>, ice thickness <H>,
@@ -109,11 +103,13 @@ def assimilate(h,H,g):
   #          1e1,  1e2,  1e3,  1e4,  1e5,  1e6]
   #alphas = [1e-2, 5e-2, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1, 
   #          5e-1, 1e0,  5e0,  1e1,  5e1,  1e2]
-  alphas = [1e-2, 5e-2, 1e-1, 5e-1, 1e0,  5e0,  1e1]
+  #alphas = [1e-2, 5e-2, 1e-1, 5e-1, 1e0,  5e0,  1e1]
+  alphas = [1e0]
   Js     = []
   Rs     = []
   MSEs   = []
   REs    = []
+  nits   = []
   
   for alpha in alphas:
   
@@ -154,11 +150,11 @@ def assimilate(h,H,g):
                           derivative_cb_post = deriv_cb,
                           hessian_cb = hessian_cb)
     
-    b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 4000),
-                     options={"disp"    : True,
-                              "maxiter" : 1000,
-                              "gtol"    : 1e-5,
-                              "factr"   : 1e7})
+    b_opt,res = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 4000),
+                         options={"disp"    : True,
+                                  "maxiter" : 1000,
+                                  "gtol"    : 1e-5,
+                                  "factr"   : 1e7})
       
     #problem = MinimizationProblem(F, bounds=(0, 4000))
     #parameters = {"tol"                : 1e8,
@@ -184,7 +180,7 @@ def assimilate(h,H,g):
     Js.append(assemble(mom.J))
     MSEs.append(mse)
     REs.append(re)
-    
+    nits.append(res['nit'])
     
     #model.save_pvd(model.beta, 'beta_opt')
     #model.save_pvd(model.U3,   'U_opt')
@@ -210,6 +206,9 @@ def assimilate(h,H,g):
     savetxt(d + 'as.txt',   array(alphas))
     savetxt(d + 'MSEs.txt', array(MSEs))
     savetxt(d + 'REs.txt',  array(REs))
+    savetxt(d + 'nits.txt', array(nits))
+
+  return res
 
 
 #===============================================================================

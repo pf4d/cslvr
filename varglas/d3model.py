@@ -147,7 +147,10 @@ class D3Model(Model):
     """
     s = "::: calculating boundaries :::"
     print_text(s, self.D3Model_color)
-    
+   
+    self.init_adot(adot)
+    self.init_mask(mask)
+     
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh, 0)
     self.ff_acc  = FacetFunction('size_t', self.mesh, 0)
@@ -205,11 +208,11 @@ class D3Model(Model):
         #self.ff[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff[f] = 4
-        else:
-          self.ff[f] = 7
-        #self.ff[f] = 4
+        #if mask_xy > 0:
+        #  self.ff[f] = 4
+        #else:
+        #  self.ff[f] = 7
+        self.ff[f] = 4
     
     s = "    - done - "
     print_text(s, self.D3Model_color)
@@ -328,6 +331,9 @@ class D3Model(Model):
     """
     s = "::: deforming mesh to geometry :::"
     print_text(s, self.D3Model_color)
+
+    self.init_S(S)
+    self.init_B(B)
     
     # transform z :
     # thickness = surface - base, z = thickness + base

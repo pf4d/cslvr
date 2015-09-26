@@ -481,7 +481,14 @@ def print_min_max(u, title, color='yellow'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  if isinstance(u, GenericVector) or isinstance(u, ndarray):
+  if isinstance(u, GenericVector):
+    uMin = MPI.min(mpi_comm_world(), u.min())
+    uMax = MPI.max(mpi_comm_world(), u.max())
+    s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
+    print_text(s, color)
+  elif isinstance(u, ndarray):
+    if u.dtype != float64:
+      u = u.astype(float64)
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)

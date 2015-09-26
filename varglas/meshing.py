@@ -41,6 +41,8 @@ class MeshGenerator(object):
     self.fn         = fn
     self.direc      = direc
     self.x, self.y  = meshgrid(dd.x, dd.y)
+    if not os.path.exists(direc):
+      os.makedirs(direc)
     self.f          = open(direc + fn + '.geo', 'w')
     self.fieldList  = []  # list of field indexes created.
 

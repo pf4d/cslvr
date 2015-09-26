@@ -103,14 +103,14 @@ def cb_ftn():
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
 model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
-model.save_xml(model.T,     'T')
-model.save_xml(model.W,     'W')
-model.save_xml(u,           'u')
-model.save_xml(v,           'v')
-model.save_xml(w,           'w')
-model.save_xml(model.beta,  'beta')
-model.save_xml(model.Mb,    'Mb')
-model.save_xml(model.E_shf, 'E_shf')
+model.save_xml(model.T,                       'T')
+model.save_xml(model.W,                       'W')
+model.save_xml(interpolate(model.u, model.Q), 'u')
+model.save_xml(interpolate(model.v, model.Q), 'v')
+model.save_xml(interpolate(model.w, model.Q), 'w')
+model.save_xml(model.beta,                    'beta')
+model.save_xml(model.Mb,                      'Mb')
+model.save_xml(model.E_shf,                   'E_shf')
 
 # invert for basal friction over grounded ice :
 nparams['newton_solver']['relaxation_parameter'] = 1.0
@@ -175,14 +175,14 @@ model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
 
 u,v,w = model.U3.split(True)
 
-model.save_xml(model.T,     'T')
-model.save_xml(model.W,     'W')
-model.save_xml(u,           'u')
-model.save_xml(v,           'v')
-model.save_xml(w,           'w')
-model.save_xml(model.beta,  'beta')
-model.save_xml(model.Mb,    'Mb')
-model.save_xml(model.E_shf, 'E_shf')
+model.save_xml(model.T,                       'T')
+model.save_xml(model.W,                       'W')
+model.save_xml(interpolate(model.u, model.Q), 'u')
+model.save_xml(interpolate(model.v, model.Q), 'v')
+model.save_xml(interpolate(model.w, model.Q), 'w')
+model.save_xml(model.beta,                    'beta')
+model.save_xml(model.Mb,                      'Mb')
+model.save_xml(model.E_shf,                   'E_shf')
 
     
 ## invert for basal friction over grounded ice :

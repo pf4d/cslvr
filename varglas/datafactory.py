@@ -1,12 +1,13 @@
 import inspect
 import os
 import sys
-from numpy             import array, sqrt, shape, arange, meshgrid, loadtxt
-from scipy.io          import loadmat, netcdf_file
-from scipy.interpolate import griddata
-from osgeo             import gdal
-from pyproj            import Proj, transform
-from varglas.io        import print_text
+from varglas.ext_scripts.tifffile import TiffFile
+from numpy                import array, sqrt, shape, arange, meshgrid, loadtxt
+from scipy.io             import loadmat, netcdf_file
+from scipy.interpolate    import griddata
+from osgeo                import gdal
+from pyproj               import Proj, transform
+from varglas.io           import print_text
 
 class DataFactory(object):
 
@@ -31,6 +32,9 @@ class DataFactory(object):
   
   @staticmethod
   def get_ant_measures(res = 900):
+    
+    s    = "::: getting measures data from DataFactory :::"
+    print_text(s, DataFactory.color)
 
     global home
  
@@ -98,8 +102,6 @@ class DataFactory(object):
   def get_gre_measures():
     
     global home
-    
-    from tifffile.tifffile import TiffFile
     
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
     files    = ['sp', 'vx', 'vy', 'ex', 'ey']
@@ -522,8 +524,6 @@ class DataFactory(object):
 
     global home
     direc    = home + '/antarctica/bedmap2/bedmap2_tiff/' 
-
-    from tifffile.tifffile import TiffFile
    
     B           = TiffFile(direc + 'bedmap2_bed.tif')
     S           = TiffFile(direc + 'bedmap2_surface.tif') 

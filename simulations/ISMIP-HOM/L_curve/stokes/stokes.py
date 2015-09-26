@@ -90,7 +90,7 @@ def assimilate(h,H,g):
   model.save_xml(model.beta,                     'beta_true')
   
   # save the true beta for MSE calculation :
-  beta_true = model.beta.copy()
+  beta_true = model.beta.copy(True)
   
   m_params['solver']['newton_solver']['maximum_iterations'] = 3
     
@@ -103,8 +103,7 @@ def assimilate(h,H,g):
   #          1e1,  1e2,  1e3,  1e4,  1e5,  1e6]
   #alphas = [1e-2, 5e-2, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1, 
   #          5e-1, 1e0,  5e0,  1e1,  5e1,  1e2]
-  #alphas = [1e-2, 5e-2, 1e-1, 5e-1, 1e0,  5e0,  1e1]
-  alphas = [1e0]
+  alphas = [1e-2, 5e-2, 1e-1, 5e-1, 1e0,  5e0,  1e1]
   Js     = []
   Rs     = []
   MSEs   = []
@@ -172,9 +171,12 @@ def assimilate(h,H,g):
 
     beta_true_v = beta_true.vector()
     beta_opt_v  = b_opt.vector()
-    
+
     mse = norm(beta_opt_v - beta_true_v)**2 / len(beta_true_v)
     re  = norm(beta_opt_v - beta_true_v) / norm(beta_true_v)
+
+    print_min_max(mse, 'MSE')
+    print_min_max(re,  'RE')
       
     Rs.append(assemble(mom.Rp))
     Js.append(assemble(mom.J))
@@ -207,8 +209,6 @@ def assimilate(h,H,g):
     savetxt(d + 'MSEs.txt', array(MSEs))
     savetxt(d + 'REs.txt',  array(REs))
     savetxt(d + 'nits.txt', array(nits))
-
-  return res
 
 
 #===============================================================================

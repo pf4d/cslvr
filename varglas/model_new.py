@@ -19,7 +19,8 @@ class Model(object):
   GAMMA_D     = 6   # basin divides
   GAMMA_T     = 7   # terminus
 
-  def __init__(self, out_dir='./results/'):
+  def __init__(self, mesh, out_dir='./results/', save_state=False, 
+               use_periodic=False, **gfs_kwargs):
     """
     Create and instance of the model.
     """
@@ -28,12 +29,28 @@ class Model(object):
     parameters['form_compiler']['cpp_optimize']       = True
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
-    self.out_dir = out_dir
-    self.MPI_rank = MPI.rank(mpi_comm_world())
+
+    self.out_dir     = out_dir
+    self.save_state  = save_state
+    self.MPI_rank    = MPI.rank(mpi_comm_world())
     self.model_color = '148'
+    self.use_periodic_boundaries = use_periodic
     
-    self.use_periodic_boundaries = False
-    
+    self.generate_constants()
+    self.set_mesh(mesh)
+    self.generate_function_spaces(use_periodic, **gfs_kwargs)
+    self.initialize_variables()
+
+    if save_state:
+      self.state = HDF5File(mesh.mpi_comm(), out_dir + 'state.h5', 'w')
+
+  def generate_constants(self):
+    """
+    Initializes important constants.
+    """
+    s = "::: generating constants :::"
+    print_text(s, self.model_color)
+
     spy = 31556926.0
     ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(s*m^2)
     
@@ -137,7 +154,11 @@ class Model(object):
     
     :param mesh : Dolfin mesh to be written
     """
-    raiseNotDefined()
+    s = "::: setting mesh :::"
+    print_text(s, self.model_color)
+
+    self.mesh  = mesh
+    self.dim   = self.mesh.ufl_cell().topological_dimension()
 
   def calculate_boundaries(self, mask=None, adot=None):
     """
@@ -173,19 +194,6 @@ class Model(object):
     s = "    - fundamental function spaces created - "
     print_text(s, self.model_color)
   
-  def set_subdomains(self, ff, cf, ff_acc):
-    """
-    Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
-    to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
-    """
-    s = "::: setting subdomains :::"
-    print_text(s, self.model_color)
-    self.ff     = ff
-    self.cf     = cf
-    self.ff_acc = ff_acc
-    self.ds     = Measure('ds')[self.ff]
-    self.dx     = Measure('dx')[self.cf]
-    
   def init_S(self, S):
     """
     Set the Function for the surface <S>. 
@@ -1130,6 +1138,9 @@ class Model(object):
     elif isinstance(var, str):
       File(var) >> u
 
+    elif isinstance(var, HDF5File):
+      var.read(u, u.name())
+
     else:
       s =  "*************************************************************\n" + \
            "assign_variable() function requires a Function, array, float,\n" + \
@@ -1138,6 +1149,14 @@ class Model(object):
            "*************************************************************"
       print_text(s % type(var) , 'red', 1)
       u = var
+
+    if self.save_state:
+      if    isinstance(u, GenericVector) or isinstance(u, Function) \
+         or isinstance(u, dolfin.functions.function.Function):
+        s = "::: writing '%s' variable to '%sstate.h5' :::"
+        print_text(s % (u.name(), self.out_dir), self.model_color)
+        self.state.write(u, u.name())
+        print_text("    - done -", self.model_color)
 
   def save_pvd(self, var, name, f_file=None):
     """

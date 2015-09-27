@@ -9,12 +9,13 @@ class D2Model(Model):
   """ 
   """
 
-  def __init__(self, out_dir='./results/'):
+  def __init__(self, mesh, out_dir='./results/', save_state=False, 
+               use_periodic=False, **gfs_kwargs):
     """
     Create and instance of a 2D model.
     """
-    Model.__init__(self, out_dir)
     self.D2Model_color = '150'
+    Model.__init__(self, mesh, out_dir, save_state, use_periodic, **gfs_kwargs)
 
   def generate_pbc(self):
     """
@@ -68,11 +69,11 @@ class D2Model(Model):
     
     :param mesh : Dolfin mesh to be written
     """
+    super(D2Model, self).set_mesh(mesh)
+    
     s = "::: setting 2D mesh :::"
     print_text(s, self.D2Model_color)
-    self.mesh       = mesh
-    self.flat_mesh  = Mesh(mesh)
-    self.dim        = self.mesh.ufl_cell().topological_dimension()
+    
     if self.dim != 2:
       s = ">>> 2D MODEL REQUIRES A 2D MESH, EXITING <<<"
       print_text(s, 'red', 1)
@@ -85,15 +86,16 @@ class D2Model(Model):
         % (self.dim, self.num_cells, self.num_facets, self.dof)
     print_text(s, self.D2Model_color)
 
-  def generate_function_spaces(self, poly_deg=2, N_T=8, use_periodic=False):
+  def generate_function_spaces(self, use_periodic=False, **kwargs):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
     super(D2Model, self).generate_function_spaces(use_periodic)
-
-    self.poly_deg = poly_deg
-    self.N_T      = N_T
+   
+    # default values if not provided : 
+    self.poly_deg = kwargs.get('poly_deg', 2)
+    self.N_T      = kwargs.get('N_T',      8)
 
     s = "::: generating 2D function spaces :::"
     print_text(s, self.D2Model_color)
@@ -103,7 +105,6 @@ class D2Model(Model):
     
     s = "    - 2D function spaces created - "
     print_text(s, self.D2Model_color)
-    self.initialize_variables()
   
   def init_T_T0_(self, T):
     """

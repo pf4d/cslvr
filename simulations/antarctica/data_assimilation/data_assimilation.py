@@ -16,47 +16,27 @@ dir_b   = 'dump/high_da/0'     # directory to save
 out_dir = dir_b + str(i)
 in_dir  = 'dump/vars_high/'
 
-mesh   = Mesh(in_dir + 'mesh.xdmf')
-Q      = FunctionSpace(mesh, 'CG', 1)
+f = HDF5File(mpi_comm_world(), in_dir + 'state.h5', 'r')
+
+mesh   = Mesh()
 ff     = MeshFunction('size_t', mesh)
 cf     = MeshFunction('size_t', mesh)
 ff_acc = MeshFunction('size_t', mesh)
+f.read(mesh,    'mesh', False)
+f.read(ff,      'ff')
+f.read(cf,      'cf')
+f.read(ff_acc,  'ff_acc')
 
-S        = Function(Q)
-B        = Function(Q)
-T_s      = Function(Q)
-adot     = Function(Q)
-mask     = Function(Q)
-q_geo    = Function(Q)
-u_ob     = Function(Q)
-v_ob     = Function(Q)
-
-f = HDF5File(mesh.mpi_comm(), in_dir + 'vars.h5', 'r')
-
-f.read(S,        'S')
-f.read(B,        'B')
-f.read(T_s,      'T_s')
-f.read(q_geo,    'q_geo')
-f.read(adot,     'adot')
-f.read(mask,     'mask')
-f.read(ff,       'ff')
-f.read(cf,       'cf')
-f.read(ff_acc,   'ff_acc')
-f.read(u_ob,     'u')
-f.read(v_ob,     'v')
-
-model = D3Model(out_dir = out_dir + '/thermo_solve/pvd/')
-model.set_mesh(mesh)
+model = D3Model(mesh, out_dir + '/thermo_solve/pvd/')
 model.set_subdomains(ff, cf, ff_acc)
-model.generate_function_spaces(use_periodic = False)
 
-model.init_S(S)
-model.init_B(B)
-model.init_mask(mask)
+model.init_S(f)
+model.init_B(f)
+model.init_mask(f)
 model.init_q_geo(model.ghf)
-model.init_T_surface(T_s)
-model.init_adot(adot)
-model.init_U_ob(u_ob, v_ob)
+model.init_T_surface(f)
+model.init_adot(f)
+model.init_U_ob(f, f)
 model.init_E(1.0)
 
 # use T0 and beta0 from the previous run :
@@ -133,8 +113,6 @@ controls = File(model.out_dir + "control_viz/beta_control.pvd")
 beta_viz = Function(model.Q, name="beta_control")
   
 def eval_cb(I, beta):
-  #       commented out because the model variables are not updated by 
-  #       dolfin-adjoint (yet) :
   #mom.print_eval_ftns()
   #print_min_max(mom.U, 'U')
   print_min_max(I,    'I')

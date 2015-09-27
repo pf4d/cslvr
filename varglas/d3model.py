@@ -9,12 +9,13 @@ class D3Model(Model):
   """ 
   """
 
-  def __init__(self, out_dir='./results/'):
+  def __init__(self, mesh, out_dir='./results/', save_state=False, 
+               use_periodic=False):
     """
     Create and instance of a 3D model.
     """
-    Model.__init__(self, out_dir)
     self.D3Model_color = '150'
+    Model.__init__(self, mesh, out_dir, save_state, use_periodic)
 
   def generate_pbc(self):
     """
@@ -72,11 +73,12 @@ class D3Model(Model):
     
     :param mesh : Dolfin mesh to be written
     """
+    super(D3Model, self).set_mesh(mesh)
+    
     s = "::: setting 3D mesh :::"
     print_text(s, self.D3Model_color)
-    self.mesh       = mesh
+    
     self.flat_mesh  = Mesh(mesh)
-    self.dim        = self.mesh.ufl_cell().topological_dimension()
     self.mesh.init(1,2)
     if self.dim != 3:
       s = ">>> 3D MODEL REQUIRES A 3D MESH, EXITING <<<"
@@ -107,37 +109,45 @@ class D3Model(Model):
     #M3          = MixedFunctionSpace([self.MQ]*3)
     #self.MV     = MixedFunctionSpace([M3,self.Q])
     
-    # Taylor-Hood elements :
-    V           = VectorFunctionSpace(self.mesh, "CG", 2,
-                                      constrained_domain=self.pBC)
-    self.MV     = V * self.Q
-    
-    s = "    - 3D function spaces created - "
-    print_text(s, self.D3Model_color)
-    self.initialize_variables()
-
-  def generate_stokes_function_spaces(self):
-    """
-    Generates the appropriate finite-element function spaces from parameters
-    specified in the config file for the model.
-    """
-    s = "::: generating Stokes function spaces :::"
-    # FIXME: this will have to be done every time a MomentumStokes object is 
-    #        initialized, not good.
-    print_text(s, self.D3Model_color)
-        
-    #self.Q4     = MixedFunctionSpace([self.Q]*4)
-    ## mini elements :
-    #self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-    #                            constrained_domain=self.pBC)
-    #self.MQ     = self.Q + self.Bub
-    #M3          = MixedFunctionSpace([self.MQ]*3)
-    #self.MV     = MixedFunctionSpace([M3,self.Q])
     ## Taylor-Hood elements :
     #V           = VectorFunctionSpace(self.mesh, "CG", 2,
     #                                  constrained_domain=self.pBC)
     #self.MV     = V * self.Q
     
+    s = "    - 3D function spaces created - "
+    print_text(s, self.D3Model_color)
+
+  def generate_stokes_function_spaces(self, kind='mini'):
+    """
+    Generates the appropriate finite-element function spaces from parameters
+    specified in the config file for the model.
+
+    If <kind> == 'mini', use enriched mini elements.
+    If <kind> == 'th',   use Taylor-Hood elements.
+    """
+    s = "::: generating Stokes function spaces :::"
+    print_text(s, self.D3Model_color)
+        
+    # mini elements :
+    if kind == 'mini':
+      self.Bub    = FunctionSpace(self.mesh, "B", 4, 
+                                  constrained_domain=self.pBC)
+      self.MQ     = self.Q + self.Bub
+      M3          = MixedFunctionSpace([self.MQ]*3)
+      self.MV     = MixedFunctionSpace([M3,self.Q])
+
+    # Taylor-Hood elements :
+    elif kind == 'th':
+      V           = VectorFunctionSpace(self.mesh, "CG", 2,
+                                        constrained_domain=self.pBC)
+      self.MV     = V * self.Q
+    
+    else:
+      s = ">>> METHOD generate_stokes_function_spaces <kind> FIELD <<<\n" + \
+          ">>> MAY BE 'mini' OR 'th', NOT '%s'. <<<" % kind
+      print_text(s, 'red', 1)
+      sys.exit(1)
+
     s = "    - Stokes function spaces created - "
     print_text(s, self.D3Model_color)
     
@@ -181,7 +191,7 @@ class D3Model(Model):
     # facet for accumulation :
     #
     #   1 = high slope, upward facing ................ positive adot
-    s = "    - iterating through %i facets of mesh - " % self.num_facets
+    s = "    - iterating through %i facets - " % self.num_facets
     print_text(s, self.D3Model_color)
     for f in facets(self.mesh):
       n       = f.normal()
@@ -246,6 +256,11 @@ class D3Model(Model):
     self.dSrf_s  = self.ds(6)              # surface
     self.dSrf_g  = self.ds(2)              # surface
     self.dSrf    = self.ds(6) + self.ds(2) # entire surface
+
+    if self.save_state:
+      self.state.write(self.ff,     'ff')
+      self.state.write(self.ff_acc, 'ff_acc')
+      self.state.write(self.cf,     'cf')
     
   def calculate_flat_mesh_boundaries(self, mask=None, adot=None):
     """
@@ -308,10 +323,14 @@ class D3Model(Model):
     Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
     to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
     """
-    super(D3Model, self).set_subdomains(ff, cf, ff_acc)
-
     s = "::: setting 3D subdomains :::"
     print_text(s, self.D3Model_color)
+    
+    self.ff     = ff
+    self.cf     = cf
+    self.ff_acc = ff_acc
+    self.ds     = Measure('ds')[self.ff]
+    self.dx     = Measure('dx')[self.cf]
     
     self.dx_s    = self.dx(1)              # internal shelves
     self.dx_g    = self.dx(0)              # internal grounded

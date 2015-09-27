@@ -53,10 +53,9 @@ class DataFactory(object):
     vx   = array(data.variables['vx'][:])
     vy   = array(data.variables['vy'][:])
     err  = array(data.variables['err'][:])
-    vmag = sqrt(vx**2 + vy**2)
     
-    names = ['vx', 'vy', 'v_err', 'U_ob']
-    ftns  = [vx, vy, err, vmag]
+    names = ['vx', 'vy', 'v_err']
+    ftns  = [vx, vy, err]
      
     # extents of domain :
     nx,ny =  shape(vx)

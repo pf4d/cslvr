@@ -12,12 +12,13 @@ class D1Model(Model):
   """
   Data structure to hold firn model state data.
   """
-  def __init__(self, out_dir='./results/'):
+  def __init__(self, mesh, out_dir='./results/', save_state=False, 
+               use_periodic=False):
     """
     Create and instance of a 1D model.
     """
-    Model.__init__(self, out_dir)
     self.D1Model_color = '150'
+    Model.__init__(self, mesh, out_dir, save_state, use_periodic)
 
   def set_mesh(self, mesh):
     """
@@ -25,10 +26,10 @@ class D1Model(Model):
     
     :param mesh : Dolfin mesh to be written
     """
+    super(D1Model, self).set_mesh(mesh)
+
     s = "::: setting 1D mesh :::"
     print_text(s, self.D1Model_color)
-    self.mesh = mesh
-    self.dim  = self.mesh.ufl_cell().topological_dimension()
   
     self.mesh.init(0,1)
     if self.dim != 1:
@@ -86,7 +87,6 @@ class D1Model(Model):
     specified in the config file for the model.
     """
     super(D1Model, self).generate_function_spaces(use_periodic)
-    self.initialize_variables()
     
   def init_S_bc(self, S_bc):
     """

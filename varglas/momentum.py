@@ -131,8 +131,8 @@ class Momentum(Physics):
     dR = integral
     
     # form regularization term 'R' :
-    if kind != 'TV' and kind != 'Tikhonov':
-      s    =   ">>> VALID REGULARIZATIONS ARE 'TV' AND 'Tikhonov' <<<"
+    if kind != 'TV' and kind != 'Tikhonov' and kind != 'square':
+      s    =   ">>> VALID REGULARIZATIONS ARE 'TV', 'Tikhonov', or 'square' <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
     elif kind == 'TV':
@@ -141,6 +141,9 @@ class Momentum(Physics):
     elif kind == 'Tikhonov':
       R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
       Rp = 0.5 * inner(grad(c), grad(c)) * dR
+    elif kind == 'square':
+      R  = alpha * 0.5 * c**2 * dR
+      Rp = 0.5 * c**2 * dR
     s   = "::: forming %s regularization with parameter alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
     self.R  = R

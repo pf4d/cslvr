@@ -106,7 +106,7 @@ model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
 J = mom.form_obj_ftn(integral=model.dSrf_s, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
-                     alpha=alpha)
+                     alpha=1.0)
 I = J + R
 
 controls = File(model.out_dir + "control_viz/beta_control.pvd")
@@ -119,9 +119,9 @@ def eval_cb(I, beta):
   print_min_max(beta, 'beta')
 
 def deriv_cb(I, dI, beta):
-  print_min_max(I,     'I')
+  #print_min_max(I,     'I')
   print_min_max(dI,    'dI/dbeta')
-  print_min_max(beta,  'beta')
+  #print_min_max(beta,  'beta')
   beta_viz.assign(beta)
   controls << beta_viz
 
@@ -133,7 +133,7 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
 
-b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 1e6),
+b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e6),
                  options={"disp"    : True,
                           "maxiter" : 1000,
                           "gtol"    : 1e-5,

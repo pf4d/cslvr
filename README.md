@@ -32,6 +32,9 @@ sudo apt-get install blt dolfin-bin dolfin-doc dvipng fonts-lyx  libblacs-mpi-de
 sudo apt-get dist-upgrade;
 ```
 
+
+After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html).
+
 also ```Gmsh_dynamic``` and ```GmshPy``` from
 
 http://geuz.org/gmsh/
@@ -76,8 +79,6 @@ Install the program by editing your .bashrc file with
 export PYTHONPATH="<PATH TO VARGLAS>:$PYTHONPATH"
 ```
 
-After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html).
-
 Somewhat dated documentation and install directions may be found at
 
 http://qssi.cs.umt.edu/wiki/index.php/Main_Page
@@ -87,6 +88,12 @@ Even older documentation is located here:
 http://cas.umt.edu/feismd/
 
 Please note that this is old and some descriptions may have changed for this fork of VarGlaS (previously called UM-FEISM).
+
+Test your installation py entering in an ``ipython`` terminal
+
+```python
+from varglas import *
+```
 
 Data download :
 ---------------

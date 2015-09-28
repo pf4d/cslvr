@@ -42,6 +42,7 @@ And basemap:
 
 http://matplotlib.org/basemap/users/installing.html
 
+for a generic install to ``/usr/local/``, use
 ```bash
 wget http://sourceforge.net/projects/matplotlib/files/matplotlib-toolkits/basemap-1.0.7/basemap-1.0.7.tar.gz;
 tar -xzvf basemap-1.0.7.tar.gz;
@@ -54,7 +55,7 @@ cd ..;
 sudo python setup.py install;
 ```
 
-To install the program by editing your .bashrc file with
+Install the program by editing your .bashrc file with
 ```bash
 export PYTHONPATH="<PATH TO VARGLAS>:$PYTHONPATH"
 ```

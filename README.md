@@ -13,8 +13,8 @@ and Dolfin-Adjoint:
 
 http://dolfin-adjoint-doc.readthedocs.org/en/latest/
 
-installation:
--------------
+installation (verified with ubuntu 15.04) :
+-------------------------------------------
 
 Latest Python packages and misc. dependencies:
 

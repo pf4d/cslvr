@@ -55,3 +55,10 @@ http://cas.umt.edu/feismd/
 
 Please note that this is old and some descriptions may have changed for this fork of VarGlaS (previously called UM-FEISM).
 
+Data download :
+---------------
+
+You may like to download some data and pre-made meshes.  To do this, go into the ``scripts/`` directory and run the ``download_*.py`` files there, dependending on your needs.
+
+The data may be accessed via the ``DataFactory`` class, and the meshes via the ``MeshFactory`` class.
+

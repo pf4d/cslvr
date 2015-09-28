@@ -38,6 +38,22 @@ http://geuz.org/gmsh/
 
 **NOTE:** GMSH is required to be installed in order to use the mesh generation facilities located in ```meshing.py```.  Instructions on installing Gmsh_dynamic can be found on the [Qssi wiki ](http://qssi.cs.umt.edu/wiki/index.php/Setup).
 
+For a generic install (of gmsh-dynamic 2.10.1) to ``/usr/local``, use
+
+```bash
+wget http://geuz.org/gmsh/bin/Linux/gmsh-svn-Linux64-dynamic.tgz;
+tar -xzvf gmsh-svn-Linux64-dynamic.tgz;
+cd gmsh-2.10.1-dynamic-svn-Linux;
+sudo cp -r bin/ /usr/local/;
+sudo cp -r include/ /usr/local/;
+sudo cp -r lib/ /usr/local/;
+sudo cp -r share/ /usr/local/;
+cd gmshpy;
+sudo python setup.py install;
+sudo ldconfig;
+
+```
+
 And basemap:
 
 http://matplotlib.org/basemap/users/installing.html

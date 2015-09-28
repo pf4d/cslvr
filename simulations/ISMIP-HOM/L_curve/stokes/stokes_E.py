@@ -39,7 +39,7 @@ def assimilate(h,H,g):
   nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
                                 'relative_tolerance'       : 1e-8,
                                 'relaxation_parameter'     : 1.0,
-                                'maximum_iterations'       : 25,
+                                'maximum_iterations'       : 28,
                                 'error_on_nonconvergence'  : False}}
   m_params  = {'solver'      : nparams}
   
@@ -85,9 +85,9 @@ def assimilate(h,H,g):
   print_min_max(E_true, 'E_true')
   
   #model.init_beta(30**2)
-  model.init_beta(1.0)
-  #model.init_beta_SIA()
-  #model.save_pvd(model.beta, 'beta_SIA')
+  #model.init_beta(1.0)
+  model.init_beta_SIA()
+  model.save_pvd(model.beta, 'beta_SIA')
   
   model.save_pvd(model.U3,   'U_true')
   model.save_pvd(model.U_ob, 'U_ob')
@@ -100,14 +100,20 @@ def assimilate(h,H,g):
   model.save_xml(interpolate(model.w, model.Q),  'w_true')
   model.save_xml(model.U_ob,                     'U_ob')
   model.save_xml(E_true,                         'E_true')
-  #model.save_xml(model.beta,                     'beta_SIA')
+  model.save_xml(model.beta,                     'beta_SIA')
   
-  m_params['solver']['newton_solver']['maximum_iterations'] = 3
-   
+  # resolve momentum with uniform beta :
+  #m_params['solver']['newton_solver']['relaxation_parameter'] = 0.7
+  #model.assign_variable(mom.get_U(), DOLFIN_EPS)
+  #mom.solve(annotate=False)
+  
+  # linearize the momentum equations : 
+  m_params['solver']['newton_solver']['maximum_iterations']   = 3
+  m_params['solver']['newton_solver']['relaxation_parameter'] = 1.0
   mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
   
-  alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 
-            1e1,  1e2,  1e3,  1e4,  1e5,  1e6]
+  #alphas = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 
+  #          1e1,  1e2,  1e3,  1e4,  1e5,  1e6]
   #alphas = [1e-2, 5e-2, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1, 
   #          5e-1, 1e0,  5e0,  1e1,  5e1,  1e2]
   #alphas = [1e-2, 5e-2, 1e-1, 5e-1, 1e0,  5e0,  1e1]
@@ -160,7 +166,7 @@ def assimilate(h,H,g):
                                   "maxiter" : 1000,
                                   "gtol"    : 1e-5})
       
-    #problem = MinimizationProblem(F, bounds=(1e-6, 5))
+    #problem = MinimizationProblem(F, bounds=(1e-8, 1e0))
     #parameters = {"tol"                : 1e8,
     #              "acceptable_tol"     : 1000.0,
     #              "maximum_iterations" : 1000,
@@ -171,6 +177,7 @@ def assimilate(h,H,g):
     print_min_max(E_opt, 'E_opt')
     
     model.init_E_gnd(E_opt)
+    model.assign_variable(mom.get_U(), DOLFIN_EPS)
     mom.solve(annotate=False)
     mom.print_eval_ftns()
 

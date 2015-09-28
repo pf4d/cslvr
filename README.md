@@ -50,7 +50,7 @@ cd basemap-1.0.7/geos-3.3.3/;
 export GEOS_DIR=/usr/local/;
 ./configure --prefix=$GEOS_DIR;
 make;
-make install;
+sudo make install;
 cd ..;
 sudo python setup.py install;
 ```

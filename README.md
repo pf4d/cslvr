@@ -42,6 +42,18 @@ And basemap:
 
 http://matplotlib.org/basemap/users/installing.html
 
+```bash
+wget http://sourceforge.net/projects/matplotlib/files/matplotlib-toolkits/basemap-1.0.7/basemap-1.0.7.tar.gz;
+tar -xzvf basemap-1.0.7.tar.gz;
+cd basemap-1.0.7/geos-3.3.3/;
+export GEOS_DIR=/usr/local/;
+./configure --prefix=$GEOS_DIR;
+make;
+make install;
+cd ..;
+sudo python setup.py install;
+```
+
 To install the program by editing your .bashrc file with
 ```bash
 export PYTHONPATH="<PATH TO VARGLAS>:$PYTHONPATH"

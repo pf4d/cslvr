@@ -38,6 +38,10 @@ http://geuz.org/gmsh/
 
 **NOTE:** GMSH is required to be installed in order to use the mesh generation facilities located in ```meshing.py```.  Instructions on installing Gmsh_dynamic can be found on the [Qssi wiki ](http://qssi.cs.umt.edu/wiki/index.php/Setup).
 
+And basemap:
+
+http://matplotlib.org/basemap/users/installing.html
+
 To install the program by editing your .bashrc file with
 ```bash
 export PYTHONPATH="<PATH TO VARGLAS>:$PYTHONPATH"

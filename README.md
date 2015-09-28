@@ -20,7 +20,7 @@ Latest Python packages and misc. dependencies:
 
 ```bash
 sudo apt-get install python-pip python-vtk python-dev build-essential libatlas-base-dev gfortran libfreetype6-dev;
-  sudo pip install numpy shapely matplotlib scipy colored termcolor ipython sympy netcdf ply mpi4py pyproj --upgrade;
+sudo pip install numpy shapely matplotlib scipy colored termcolor ipython sympy netcdf ply mpi4py pyproj --upgrade;
 ```
 
 FEniCS 1.6 :

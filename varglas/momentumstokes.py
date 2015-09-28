@@ -99,8 +99,8 @@ class MomentumStokes(Momentum):
     if isothermal:
       s   = "    - using isothermal rate-factor -"
       print_text(s, self.color())
-      b_shf = model.b_shf
-      b_gnd = model.b_gnd
+      b_shf = model.E_shf * model.b_shf
+      b_gnd = model.E_gnd * model.b_gnd
 
     else:
       s   = "    - using temperature-dependent rate-factor -"
@@ -372,8 +372,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     if isothermal:
       s   = "    - using isothermal rate-factor -"
       print_text(s, self.color())
-      b_shf = model.b_shf
-      b_gnd = model.b_gnd
+      b_shf = model.E_shf * model.b_shf
+      b_gnd = model.E_gnd * model.b_gnd
 
     else:
       s   = "    - using temperature-dependent rate-factor -"
@@ -402,6 +402,8 @@ class MomentumDukowiczStokesReduced(Momentum):
       s   = "    - using nonlinear form of momentum -"
       print_text(s, self.color())
       epsdot  = self.effective_strain_rate(as_vector([u,v,w]))
+      eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
       Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
       
@@ -444,7 +446,8 @@ class MomentumDukowiczStokesReduced(Momentum):
       self.mom_bcs.append(DirichletBC(Q2.sub(0), model.u_lat, model.ff, 4))
       self.mom_bcs.append(DirichletBC(Q2.sub(1), model.v_lat, model.ff, 4))
     
-    # keep the residual for adjoint solves :
+    self.eta_shf = eta_shf
+    self.eta_gnd = eta_gnd
     self.A       = A
     self.U       = U 
     self.w       = w
@@ -473,7 +476,7 @@ class MomentumDukowiczStokesReduced(Momentum):
   
   def strain_rate_tensor(self, U):
     """
-    return the strain-rate tensor of <U>.
+    return the strain-rate tensor of self.U.
     """
     u,v,w  = U
     epi    = 0.5 * (grad(U) + grad(U).T)
@@ -482,6 +485,47 @@ class MomentumDukowiczStokesReduced(Momentum):
                         [epi[1,0],  epi[1,1],  epi[1,2]],
                         [epi[2,0],  epi[2,1],  epi22]])
     return epsdot
+
+  def stress_tensor(self, U, p, eta):
+    """
+    return the BP Cauchy stress tensor.
+    """
+    s   = "::: forming the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    I     = Identity(3)
+    tau   = self.deviatoric_stress_tensor(U, eta)
+
+    sigma = tau - p*I
+    return sigma
+    
+  def deviatoric_stress_tensor(self, U, eta):
+    """
+    return the Cauchy stress tensor.
+    """
+    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
+    print_text(s, self.color)
+
+    epi = self.strain_rate_tensor(U)
+    tau = 2 * eta * epi
+    return tau
+  
+  def effective_stress(self, U, eta):
+    """
+    return the effective stress squared.
+    """
+    tau    = self.deviatoric_stress_tensor(U, eta)
+    tu_xx  = tau[0,0]
+    tu_yy  = tau[1,1]
+    tu_zz  = tau[2,2]
+    tu_xy  = tau[0,1]
+    tu_xz  = tau[0,2]
+    tu_yz  = tau[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
+                    + tu_xy**2 + tu_xz**2 + tu_yz**2
+    return taudot
 
   def effective_strain_rate(self, U):
     """
@@ -498,25 +542,13 @@ class MomentumDukowiczStokesReduced(Momentum):
     # Second invariant of the strain rate tensor squared
     epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
                     + ep_xy**2 + ep_xz**2 + ep_yz**2
+
+    # alternative form :
     #u,v,w = U
     #epsdot = 0.5 * (+ (u.dx(0))**2 + (v.dx(1))**2 + (u.dx(0) + v.dx(1))**2 \
     #                + 0.5*(u.dx(1) + v.dx(0))**2 \
     #                + 0.5*((u.dx(2) + w.dx(0))**2 + (v.dx(2) + w.dx(1))**2))
     return epsdot
-
-  def stress_tensor(self):
-    """
-    return the BP Cauchy stress tensor.
-    """
-    # FIXME: needs eta
-    s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color())
-    U     = as_vector([self.U[0], self.U[1], self.U[2]])
-    epi   = self.strain_rate_tensor(U)
-    I     = Identity(3)
-
-    sigma = 2*self.eta*epi - self.U[3]*I
-    return sigma
 
   def default_solve_params(self):
     """ 
@@ -649,8 +681,8 @@ class MomentumDukowiczStokes(Momentum):
     if isothermal:
       s   = "    - using isothermal rate-factor -"
       print_text(s, self.color())
-      b_shf = model.b_shf
-      b_gnd = model.b_gnd
+      b_shf = model.E_shf * model.b_shf
+      b_gnd = model.E_gnd * model.b_gnd
 
     else:
       s   = "    - using temperature-dependent rate-factor -"
@@ -679,6 +711,8 @@ class MomentumDukowiczStokes(Momentum):
       s   = "    - using nonlinear form of momentum -"
       print_text(s, self.color())
       epsdot  = self.effective_strain_rate(as_vector([u,v,w]))
+      eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
       Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
    
@@ -736,7 +770,8 @@ class MomentumDukowiczStokes(Momentum):
       self.mom_bcs.append(DirichletBC(Q4.sub(1), model.v_lat, model.ff, 4))
       self.mom_bcs.append(DirichletBC(Q4.sub(2), model.w_lat, model.ff, 4))
     
-    # keep the residual for adjoint solves :
+    self.eta_shf = eta_shf
+    self.eta_gnd = eta_gnd
     self.A       = A
     self.U       = U 
     self.dU      = dU
@@ -764,9 +799,51 @@ class MomentumDukowiczStokes(Momentum):
   
   def strain_rate_tensor(self, U):
     """
-    return the strain-rate tensor of <U>.
+    return the strain-rate tensor of self.U.
     """
-    return 0.5 * (grad(U) + grad(U).T)
+    epsdot = 0.5 * (grad(U) + grad(U).T)
+    return epsdot
+
+  def stress_tensor(self, U, p, eta):
+    """
+    return the BP Cauchy stress tensor.
+    """
+    s   = "::: forming the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    I     = Identity(3)
+    tau   = self.deviatoric_stress_tensor(U, eta)
+
+    sigma = tau - p*I
+    return sigma
+    
+  def deviatoric_stress_tensor(self, U, eta):
+    """
+    return the Cauchy stress tensor.
+    """
+    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    epi = self.strain_rate_tensor(U)
+    tau = 2 * eta * epi
+    return tau
+  
+  def effective_stress(self, U, eta):
+    """
+    return the effective stress squared.
+    """
+    tau    = self.deviatoric_stress_tensor(U, eta)
+    tu_xx  = tau[0,0]
+    tu_yy  = tau[1,1]
+    tu_zz  = tau[2,2]
+    tu_xy  = tau[0,1]
+    tu_xz  = tau[0,2]
+    tu_yz  = tau[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
+                    + tu_xy**2 + tu_xz**2 + tu_yz**2
+    return taudot
 
   def effective_strain_rate(self, U):
     """
@@ -784,20 +861,6 @@ class MomentumDukowiczStokes(Momentum):
     epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
                     + ep_xy**2 + ep_xz**2 + ep_yz**2
     return epsdot
-
-  def stress_tensor(self):
-    """
-    return the BP Cauchy stress tensor.
-    """
-    # FIXME: needs eta
-    s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color())
-    U     = as_vector([self.U[0], self.U[1], self.U[2]])
-    epi   = self.strain_rate_tensor(U)
-    I     = Identity(3)
-
-    sigma = 2*self.eta*epi - self.U[3]*I
-    return sigma
 
   def default_solve_params(self):
     """ 

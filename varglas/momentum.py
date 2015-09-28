@@ -71,7 +71,49 @@ class Momentum(Physics):
     Perform the Newton solve of the momentum equations 
     """
     raiseNotDefined()
-  
+
+  def unify_eta(self):
+    """
+    Unifies viscosity defined over grounded and shelves to model.eta.
+    """
+    s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
+    print_text(s, self.color())
+    
+    model = self.model
+    
+    num_shf = MPI.sum(mpi_comm_world(), len(model.shf_dofs))
+    num_gnd = MPI.sum(mpi_comm_world(), len(model.gnd_dofs))
+
+    print_min_max(num_shf, 'number of floating vertices')
+    print_min_max(num_gnd, 'number of grounded vertices')
+
+    if num_gnd == 0 and num_shf == 0:
+      s = "    - floating and grounded regions have not been marked -"
+      print_text(s, self.color())
+
+    elif num_gnd == 0:
+      s = "    - all floating ice, assigning eta_shf to eta  -"
+      print_text(s, self.color())
+      model.init_eta(project(self.eta_shf, model.Q))
+
+    elif num_shf == 0:
+      s = "    - all grounded ice, assigning eta_gnd to eta -"
+      print_text(s, self.color())
+      model.init_eta(project(self.eta_gnd, model.Q))
+
+    else: 
+      s = "    - grounded and floating ice present, unifying eta -"
+      print_text(s, self.color())
+      eta_shf = project(self.eta_shf, model.Q)
+      eta_gnd = project(self.eta_gnd, model.Q)
+     
+      # remove areas where viscosities overlap : 
+      eta_shf.vector()[model.gnd_dofs] = 0.0
+      eta_gnd.vector()[model.shf_dofs] = 0.0
+      
+      # unify eta to self.eta :
+      model.init_eta(eta_shf.vector() + eta_gnd.vector())
+    
   def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
     """
     Forms and returns an objective functional for use with adjoint.

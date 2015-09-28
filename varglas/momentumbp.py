@@ -87,8 +87,8 @@ class MomentumBP(Momentum):
     if isothermal:
       s   = "    - using isothermal rate-factor -"
       print_text(s, self.color())
-      b_shf = model.b_shf
-      b_gnd = model.b_gnd
+      b_shf = model.E_shf * model.b_shf
+      b_gnd = model.E_gnd * model.b_gnd
 
     else:
       s   = "    - using temperature-dependent rate-factor -"

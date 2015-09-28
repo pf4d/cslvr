@@ -157,9 +157,6 @@ class D3Model(Model):
     """
     s = "::: calculating boundaries :::"
     print_text(s, self.D3Model_color)
-   
-    self.init_adot(adot)
-    self.init_mask(mask)
      
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh, 0)
@@ -176,6 +173,9 @@ class D3Model(Model):
     # default to all positive accumulation :
     if adot == None:
       adot = Expression('1.0', element=self.Q.ufl_element())
+   
+    self.init_adot(adot)
+    self.init_mask(mask)
     
     tol = 1e-6
     
@@ -536,12 +536,22 @@ class D3Model(Model):
 
     sigma = 2*self.eta*epi - self.p*I
     return sigma
+    
+  def deviatoric_stress_tensor(self):
+    """
+    return the Cauchy stress tensor.
+    """
+    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
+    print_text(s, self.color)
+    epi = self.strain_rate_tensor()
+    tau = 2*self.eta*epi
+    return tau
   
   def effective_stress(self):
     """
     return the effective stress squared.
     """
-    tau    = self.stress_tensor(self.U3)
+    tau    = self.deviatoric_stress_tensor()
     tu_xx  = tau[0,0]
     tu_yy  = tau[1,1]
     tu_zz  = tau[2,2]

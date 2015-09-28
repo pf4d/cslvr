@@ -291,6 +291,8 @@ class Model(object):
     """
     s = "::: initializing enhancement factor over grounded and shelves :::"
     print_text(s, self.model_color)
+    self.assign_variable(self.E, E)
+    print_min_max(self.E, 'E')
     self.init_E_shf(E)
     self.init_E_gnd(E)
   
@@ -456,7 +458,7 @@ class Model(object):
     s = "::: initializing beta from SIA :::"
     print_text(s, self.model_color)
     r        = self.r
-    Q        = self.Q_non_periodic
+    Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
     gradS    = grad(self.S)
@@ -901,25 +903,6 @@ class Model(object):
     b_f = Function(Q)
     solve(lhs(R) == rhs(R), b_f)
     self.assign_variable(b, b_f)
-
-  def unify_eta(self):
-    """
-    Unifies viscosity defined over grounded and shelves to model.eta.
-    """
-    s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
-    print_text(s, self.model_color)
-    
-    eta_shf = project(self.eta_shf, self.Q)
-    eta_gnd = project(self.eta_gnd, self.Q)
-   
-    # remove areas where viscosities overlap : 
-    eta_shf.vector()[self.gnd_dofs] = 0.0
-    eta_gnd.vector()[self.shf_dofs] = 0.0
-
-    # unify eta to self.eta :
-    eta = project(eta_shf + eta_gnd, self.Q)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
  
   def calc_eta(self):
     """
@@ -1130,10 +1113,14 @@ class Model(object):
       u.vector().set_local(var)
       u.vector().apply('insert')
     
-    elif isinstance(var, Expression) or isinstance(var, Constant)  \
-         or isinstance(var, GenericVector) or isinstance(var, Function) \
-         or isinstance(var, dolfin.functions.function.Function):
+    elif isinstance(var, Expression) \
+      or isinstance(var, Constant)  \
+      or isinstance(var, Function) \
+      or isinstance(var, dolfin.functions.function.Function):
       u.interpolate(var, annotate=False)
+
+    elif isinstance(var, GenericVector):
+      self.assign_variable(u, var.array())
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1226,6 +1213,7 @@ class Model(object):
     self.assz          = FunctionAssigner(self.Q3.sub(2), self.Q)
 
     # momentum model :
+    self.eta           = Function(self.Q, name='eta')
     self.p             = Function(self.Q, name='p')
     self.beta          = Function(self.Q, name='beta')
     self.E             = Function(self.Q, name='E')

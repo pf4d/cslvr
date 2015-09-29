@@ -151,7 +151,7 @@ class D3Model(Model):
     s = "    - Stokes function spaces created - "
     print_text(s, self.D3Model_color)
     
-  def calculate_boundaries(self, mask=None, adot=None):
+  def calculate_boundaries(self, mask=None, adot=None, mark_divide=False):
     """
     Determines the boundaries of the current model mesh
     """
@@ -208,21 +208,21 @@ class D3Model(Model):
           self.ff[f] = 6
         else:
           self.ff[f] = 2
-        #self.ff[f] = 2
     
       elif n.z() <= -tol and f.exterior():
         if mask_xy > 0:
           self.ff[f] = 5
         else:
           self.ff[f] = 3
-        #self.ff[f] = 3
-    
+      
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff[f] = 4
-        #else:
-        #  self.ff[f] = 7
-        self.ff[f] = 4
+        if mark_divide:
+          if mask_xy > 0:
+            self.ff[f] = 4
+          else:
+            self.ff[f] = 7
+        else:
+          self.ff[f] = 4
     
     s = "    - done - "
     print_text(s, self.D3Model_color)
@@ -262,7 +262,8 @@ class D3Model(Model):
       self.state.write(self.ff_acc, 'ff_acc')
       self.state.write(self.cf,     'cf')
     
-  def calculate_flat_mesh_boundaries(self, mask=None, adot=None):
+  def calculate_flat_mesh_boundaries(self, mask=None, adot=None,
+                                     mark_divide=False):
     """
     Determines the boundaries of the current model mesh
     """
@@ -307,11 +308,13 @@ class D3Model(Model):
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 4
+        if mark_divide:
+          if mask_xy > 0:
+            self.ff_flat[f] = 4
+          else:
+            self.ff_flat[f] = 7
         else:
-          self.ff_flat[f] = 7
-        #self.ff_flat[f] = 4
+          self.ff_flat[f] = 4
     
     s = "    - done - "
     print_text(s, self.D3Model_color)

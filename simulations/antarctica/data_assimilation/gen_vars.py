@@ -23,7 +23,7 @@ u_ob  = dm.get_expression("vx",     near=False)
 v_ob  = dm.get_expression("vy",     near=False)
 
 model = D3Model(mesh=mesh, out_dir=out_dir, save_state=True)
-model.calculate_boundaries(mask=M, adot=adot)
+model.calculate_boundaries(mask=M, adot=adot, mark_divide=True)
 model.deform_mesh_to_geometry(S, B)
 
 model.init_T_surface(T_s)
@@ -31,24 +31,6 @@ model.init_q_geo(q_geo)
 model.init_U_ob(u_ob, v_ob)
 
 model.state.write(model.mesh,   'mesh')
-
-#XDMFFile(mesh.mpi_comm(),    out_dir + 'mesh.xdmf')    << model.mesh
-#
-
-## save the state of the model :
-#f = HDF5File(mesh.mpi_comm(), out_dir + 'vars.h5', 'w')
-#f.write(model.ff,     'ff')
-#f.write(model.cf,     'cf')
-#f.write(model.ff_acc, 'ff_acc')
-#f.write(model.S,      'S')
-#f.write(model.B,      'B')
-#f.write(model.adot,   'adot')
-#f.write(model.mask,   'mask')
-#f.write(T_s,          'T_s')
-#f.write(q_geo,        'q_geo')
-#f.write(u,            'u_ob')
-#f.write(v,            'v_ob')
-#f.write(U_ob,         'U_ob')
 
 
 

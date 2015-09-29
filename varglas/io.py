@@ -297,7 +297,7 @@ class DataInput(object):
     d[d == old_val]  = new_val
     self.data[fn]    = d
 
-  def get_interpolation(self, fn, near=False, bool_data=False, kx=1, ky=1):
+  def get_interpolation(self, fn, near=False, bool_data=False, order=1):
     """
     Return a projection of data with field name <fn> on the functionspace.
     If multiple instances of the DataInput class are present, both initialized
@@ -305,6 +305,7 @@ class DataInput(object):
     used by the same mathematical problem.
 
     If <bool_data> is True, convert all values > 0 to 1.
+    <order> sets the order of the interpolation, default linear (1).
     """
     if near:
       t = 'nearest-neighbor'
@@ -313,16 +314,16 @@ class DataInput(object):
     s    = "::: getting %s %s interpolation from %s :::" % (fn, t, self.name)
     print_text(s, self.color)
 
-    interp = self.get_expression(fn, kx=kx, ky=ky,
+    interp = self.get_expression(fn, kx=order, ky=order,
                                  bool_data=bool_data, near=near)
 
     return interpolate(interp, self.func_space)
 
-  def get_expression(self, fn, kx=1, ky=1, bool_data=False, near=False):
+  def get_expression(self, fn, order=1, bool_data=False, near=False):
     """
     Creates a spline-interpolation expression for data <fn>.  Optional
-    arguments <kx> and <ky> determine order of approximation in x and y
-    directions (default cubic).  If <bool_data> is True, convert to boolean,
+    argument <order> determine order of approximation in x and y
+    directions (default linear).  If <bool_data> is True, convert to boolean,
     if <near> is True, use nearest-neighbor interpolation.
     """
     if near:
@@ -340,7 +341,7 @@ class DataInput(object):
       old_proj = self.proj
 
     if not near :
-      spline = RectBivariateSpline(self.x, self.y, data.T, kx=kx, ky=ky)
+      spline = RectBivariateSpline(self.x, self.y, data.T, kx=order, ky=order)
 
     xs       = self.x
     ys       = self.y

@@ -33,7 +33,7 @@ class DataFactory(object):
   @staticmethod
   def get_ant_measures(res = 900):
     
-    s    = "::: getting measures data from DataFactory :::"
+    s    = "::: getting Antarctica measures data from DataFactory :::"
     print_text(s, DataFactory.color)
 
     global home
@@ -100,10 +100,13 @@ class DataFactory(object):
   @staticmethod
   def get_gre_measures():
     
+    s    = "::: getting Greenland measures data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
     global home
     
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
-    files    = ['sp', 'vx', 'vy', 'ex', 'ey']
+    files    = ['vx', 'vy', 'ex', 'ey']
     vara     = dict()
      
     # extents of domain :

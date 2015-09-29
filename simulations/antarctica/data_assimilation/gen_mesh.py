@@ -16,6 +16,10 @@ bedmap2 = DataFactory.get_bedmap2()
 dbm = DataInput(measure, gen_space=False)
 db2 = DataInput(bedmap2, gen_space=False)
 
+# get surface velocity magnitude :
+U_ob = sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16)
+dbm.data['U_ob'] = U_ob
+
 dbm.set_data_min('U_ob', boundary=0.0, val=0.0)
 db2.set_data_val("H",    32767,        0.0)
 db2.set_data_val('S',    32767,        0.0)

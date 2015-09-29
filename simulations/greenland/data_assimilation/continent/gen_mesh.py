@@ -39,7 +39,7 @@ print_min_max(drg.data['ref'], 'ref')
 # generate the contour :
 m = MeshGenerator(dbm, 'mesh', out_dir)
 
-m.create_contour('U_ob', zero_cntr=1e-7, skip_pts=1)
+m.create_contour('H', zero_cntr=1e-7, skip_pts=1)
 m.eliminate_intersections(dist=100)
 m.eliminate_intersections(dist=100)
 m.plot_contour()

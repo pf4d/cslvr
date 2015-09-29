@@ -154,7 +154,7 @@ class DataFactory(object):
   @staticmethod
   def get_rignot():
     
-    s    = "::: getting Rignot data from DataFactory :::"
+    s    = "::: getting Greenland Rignot data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home

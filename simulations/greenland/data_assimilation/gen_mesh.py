@@ -9,27 +9,24 @@ from scipy.interpolate import interp2d
 out_dir = 'dump/meshes/'
 
 # get the data :
-bamber  = DataFactory.get_bamber()
-measure = DataFactory.get_gre_measures()
+#bamber  = DataFactory.get_bamber()
+rignot  = DataFactory.get_rignot()
 
 # process the data :
-dbm  = DataInput(bamber,  gen_space=False)
-dms  = DataInput(measure, gen_space=False)
+#dbm  = DataInput(bamber,  gen_space=False)
+drg  = DataInput(rignot,  gen_space=False)
 
-dms.set_data_val('vx', -2e9, 0.0)
-dms.set_data_val('vy', -2e9, 0.0)
+#drg.change_projection(dbm)
 
 # get surface velocity magnitude :
-U_ob = sqrt(dms.data['vx']**2 + dms.data['vy']**2 + 1e-16)
-dms.data['U_ob'] = U_ob
-
-#dms.set_data_min('U_ob', boundary=0.0, val=0.0)
+U_ob = sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)
+drg.data['U_ob'] = U_ob
 
 #===============================================================================
 # form field from which to refine :
-dms.data['ref'] = (0.05 + 1/(1 + dms.data['U_ob'])) * 50000
+drg.data['ref'] = (0.05 + 1/(1 + drg.data['U_ob'])) * 50000
 
-print_min_max(dms.data['ref'], 'ref')
+print_min_max(drg.data['ref'], 'ref')
 
 ## plot to check :
 #imshow(dms.data['ref'][::-1,:])
@@ -40,11 +37,11 @@ print_min_max(dms.data['ref'], 'ref')
 
 #===============================================================================
 # generate the contour :
-m = MeshGenerator(dms, 'mesh_ob', out_dir)
+m = MeshGenerator(drg, 'mesh_ob', out_dir)
 
 m.create_contour('U_ob', zero_cntr=1e-7, skip_pts=1)
 m.eliminate_intersections(dist=200)
-#m.plot_contour()
+m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)
 m.extrude(h=100000, n_layers=10)
 m.close_file()
@@ -52,16 +49,16 @@ m.close_file()
 
 #===============================================================================
 # refine :
-ref_bs = MeshRefiner(dms, 'ref', gmsh_file_name= out_dir + 'mesh_ob')
+ref = MeshRefiner(drg, 'ref', gmsh_file_name= out_dir + 'mesh_ob')
 
-a,aid = ref_bs.add_static_attractor()
-ref_bs.set_background_field(aid)
+a,aid = ref.add_static_attractor()
+ref.set_background_field(aid)
 
 
 #===============================================================================
 # finish stuff up :
-ref_bs.finish(gui=False, out_file_name=out_dir + 'gre_mesh_ant_spacing_ob')
-ref_bs.convert_msh_to_xml()
+ref.finish(gui=False, out_file_name=out_dir + 'gre_mesh_ant_spacing_ob')
+ref.convert_msh_to_xml()
 
 
 

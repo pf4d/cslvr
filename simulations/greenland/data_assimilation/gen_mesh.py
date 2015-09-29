@@ -9,14 +9,14 @@ from scipy.interpolate import interp2d
 out_dir = 'dump/meshes/'
 
 # get the data :
-#bamber  = DataFactory.get_bamber()
+bamber  = DataFactory.get_bamber()
 rignot  = DataFactory.get_rignot()
 
 # process the data :
 #dbm  = DataInput(bamber,  gen_space=False)
 drg  = DataInput(rignot,  gen_space=False)
 
-#drg.change_projection(dbm)
+drg.change_projection(bamber['pyproj_Proj'])
 
 # get surface velocity magnitude :
 U_ob = sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)

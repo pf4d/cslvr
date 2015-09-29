@@ -1,5 +1,5 @@
-from varglas  import MeshGenerator, MeshRefiner, DataFactory, DataInput, \
-                     print_min_max
+from varglas           import MeshGenerator, MeshRefiner, DataFactory, \
+                              DataInput, print_min_max
 from pylab             import *
 from scipy.interpolate import interp2d
 
@@ -16,7 +16,7 @@ rignot  = DataFactory.get_rignot()
 #dbm  = DataInput(bamber,  gen_space=False)
 drg  = DataInput(rignot,  gen_space=False)
 
-drg.change_projection(bamber['pyproj_Proj'])
+drg.change_projection(bamber)
 
 # get surface velocity magnitude :
 U_ob = sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)

@@ -126,12 +126,19 @@ class DataInput(object):
     projection.  The works only if the object was created with the parameter
     create_proj = True.
     """
+    if type(di) == type(self):
+      proj = di.proj
+      name = di.name
+    elif type(di) == dict:
+      name = di['dataset']
+      proj = di['pyproj_Proj']
+
     s    = "::: changing '%s' DataInput object projection to that of '%s' :::" \
-           % (self.name, di.name)
+           % (self.name, name)
     print_text(s, self.color)
 
     self.chg_proj = True
-    self.new_p    = di.proj
+    self.new_p    = proj
 
   def get_xy(self,lon,lat):
     """

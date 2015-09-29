@@ -13,7 +13,7 @@ bamber  = DataFactory.get_bamber()
 rignot  = DataFactory.get_rignot()
 
 # process the data :
-#dbm  = DataInput(bamber,  gen_space=False)
+dbm  = DataInput(bamber,  gen_space=False)
 drg  = DataInput(rignot,  gen_space=False)
 
 drg.change_projection(bamber)

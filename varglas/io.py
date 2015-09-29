@@ -41,6 +41,8 @@ class DataInput(object):
     self.chg_proj   = False     # change to other projection flag
     self.color      = 'light_green'
 
+    mf_obj = mf_obj.copy()
+
     self.name       = mf_obj.pop('dataset')
     self.cont       = mf_obj.pop('continent')
     self.proj       = mf_obj.pop('pyproj_Proj')

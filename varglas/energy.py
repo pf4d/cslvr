@@ -277,8 +277,8 @@ class Enthalpy(Energy):
     u   = TrialFunction(model.Q)
     phi = TestFunction(model.Q)
 
-    l = assemble((T_w - gamma * (S - x[2])) * phi * dx)
-    a = assemble(u * phi * dx)
+    l = assemble((T_w - gamma * (S - x[2])) * phi * dx, annotate=annotate)
+    a = assemble(u * phi * dx, annotate=annotate)
 
     solve(a, model.T_melt.vector(), l, annotate=annotate)
     print_min_max(model.T_melt, 'T_melt')
@@ -311,8 +311,8 @@ class Enthalpy(Energy):
     # solve the linear equation for energy :
     s    = "::: solving energy :::"
     print_text(s, self.color())
-    aw        = assemble(self.theta_a)
-    Lw        = assemble(self.theta_L)
+    aw        = assemble(self.theta_a, annotate=annotate)
+    Lw        = assemble(self.theta_L, annotate=annotate)
     for bc in self.theta_bc:
       bc.apply(aw, Lw)
     theta_solver = LUSolver(self.solve_params['solver'])
@@ -781,8 +781,8 @@ class EnergyFirn(Energy):
           annotate=annotate)
 
     model.assign_variable(model.W0, model.W)
-    model.assign_variable(model.W,  project(self.W))
-    model.assign_variable(model.ql, project(self.ql))
+    model.assign_variable(model.W,  project(self.W, annotate=False))
+    model.assign_variable(model.ql, project(self.ql, annotate=False))
     
     T_w     = model.T_w(0)
     rhow    = model.rhow(0)
@@ -827,13 +827,13 @@ class EnergyFirn(Energy):
     phi   = 1 - model.rho/rhoi                         # porosity
     Smi   = 0.0057 / (1 - phi) + 0.017                 # irr. water content
     model.assign_variable(model.p,   p)
-    model.assign_variable(model.u,   project(self.u))
-    model.assign_variable(model.Smi, project(Smi))
+    model.assign_variable(model.u,   project(self.u, annotate=False))
+    model.assign_variable(model.Smi, project(Smi, annotate=False))
     print_min_max(model.p, 'p')
     print_min_max(model.u, 'u')
 
 
-    print_min_max((1-model.rhop/rhoi)*100 - model.Wp*100, 'phi - W')
+    print_min_max((1-model.rhop/rhoi)*100 - moden.Wp*100, 'phi - W')
 
 
  

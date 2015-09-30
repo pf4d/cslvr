@@ -279,10 +279,13 @@ class MomentumStokes(Momentum):
     U, p = self.G.split()
     u, v, w = split(U)
 
-    self.assx.assign(model.u, project(u, model.Q, annotate=False))
-    self.assy.assign(model.v, project(v, model.Q, annotate=False))
-    self.assz.assign(model.w, project(w, model.Q, annotate=False))
-    self.assp.assign(model.p, p)
+    self.assx.assign(model.u, project(u, model.Q, annotate=False),
+                     annotate=False)
+    self.assy.assign(model.v, project(v, model.Q, annotate=False),
+                     annotate=False)
+    self.assz.assign(model.w, project(w, model.Q, annotate=False),
+                     annotate=False)
+    self.assp.assign(model.p, p, annotate=False)
 
     print_min_max(model.U3, 'U')
     print_min_max(model.p,  'p')
@@ -583,15 +586,15 @@ class MomentumDukowiczStokesReduced(Momentum):
           annotate = annotate, solver_parameters = params['solver'])
     u, v = self.U.split()
     
-    self.assx.assign(model.u, u)
-    self.assy.assign(model.v, v)
+    self.assx.assign(model.u, u, annotate=False)
+    self.assy.assign(model.v, v, annotate=False)
 
     # solve for the vertical velocity :
     s    = "::: solving Dukowicz reduced vertical velocity :::"
     print_text(s, self.color())
-    w = project(self.w, model.Q)
+    w = project(self.w, model.Q, annotate=annotate)
 
-    self.assz.assign(model.w, w)
+    self.assz.assign(model.w, w, annotate=False)
     
     U3 = model.U3.split(True)
 
@@ -894,10 +897,10 @@ class MomentumDukowiczStokes(Momentum):
           annotate = annotate, solver_parameters = params['solver'])
     u, v, w, p = self.U.split()
     
-    self.assx.assign(model.u, u)
-    self.assy.assign(model.v, v)
-    self.assz.assign(model.w, w)
-    self.assp.assign(model.p, p)
+    self.assx.assign(model.u, u, annotate=False)
+    self.assy.assign(model.v, v, annotate=False)
+    self.assz.assign(model.w, w, annotate=False)
+    self.assp.assign(model.p, p, annotate=False)
     
     U3 = model.U3.split(True)
 

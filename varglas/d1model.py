@@ -424,7 +424,7 @@ class D1Model(Model):
     a      = v.dx(0) * phi * dx
     L      = u * phi * dx
     v      = Function(Q)
-    solve(a == L, v, bcs)
+    solve(a == L, v, bcs, annotate=False)
     print_min_max(v, 'vertically integrated function')
     #print_min_max(v, 'vertically integrated %s' % u.name())
     return v
@@ -544,12 +544,12 @@ class D1Model(Model):
       # update model parameters :
       if t != times[-1]:
          self.t = t
-         momentum.U0.assign(momentum.U)
-         self.theta0.assign(self.theta)
-         self.W0.assign(self.W)
-         self.w0.assign(self.w)
-         self.age0.assign(self.age)
-         self.m0.assign(self.m)
+         momentum.U0.assign(momentum.U, annotate=annotate)
+         self.theta0.assign(self.theta, annotate=annotate)
+         self.W0.assign(self.W, annotate=annotate)
+         self.w0.assign(self.w, annotate=annotate)
+         self.age0.assign(self.age, annotate=annotate)
+         self.m0.assign(self.m, annotate=annotate)
       
       if callback != None:
         s    = '::: calling callback function :::'

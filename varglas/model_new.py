@@ -367,9 +367,9 @@ class Model(object):
     self.assign_variable(u_t, u)
     self.assign_variable(v_t, v)
     self.assign_variable(w_t, w)
-    self.assx.assign(self.u, u_t)
-    self.assy.assign(self.v, v_t)
-    self.assz.assign(self.w, w_t)
+    self.assx.assign(self.u, u_t, annotate=False)
+    self.assy.assign(self.v, v_t, annotate=False)
+    self.assz.assign(self.w, w_t, annotate=False)
     u_v      = u_t.vector().array()
     v_v      = v_t.vector().array()
     w_v      = w_t.vector().array()
@@ -471,7 +471,7 @@ class Model(object):
     U_v[U_v < eps] = eps
     self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project((rhoi*g*H*S_mag) / (H**r * U_s), Q)
+    beta_0   = project((rhoi*g*H*S_mag) / (H**r * U_s), Q, annotate=False)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
@@ -520,7 +520,7 @@ class Model(object):
     Ne       = H + rhow/rhoi * D
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta     = U_s**(1/p) / ( rhoi * g * H * S_mag * Ne**(q/p) )
-    beta_0   = project(beta, Q)
+    beta_0   = project(beta, Q, annotate=False)
     
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
@@ -820,7 +820,7 @@ class Model(object):
     self.beta_f = sqrt(exp(self.beta_f))
     
     if config['mode'] == 'steady':
-      beta0                   = project(self.beta_f, Q)
+      beta0                   = project(self.beta_f, Q, annotate=False)
       beta0_v                 = beta0.vector().array()
       beta0_v[beta0_v < 1e-2] = 1e-2
       self.assign_variable(beta0, beta0_v)
@@ -901,7 +901,7 @@ class Model(object):
          #+ rhoi * g * gradS[1] * phi * dx \
    
     b_f = Function(Q)
-    solve(lhs(R) == rhs(R), b_f)
+    solve(lhs(R) == rhs(R), b_f, annotate=False)
     self.assign_variable(b, b_f)
  
   def calc_eta(self):
@@ -953,7 +953,7 @@ class Model(object):
     # calculate viscosity :
     b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta     = project(eta, Q)
+    eta     = project(eta, Q, annotate=False)
     self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
 
@@ -1105,7 +1105,7 @@ class Model(object):
          or isinstance(u, dolfin.functions.function.Function):
         u.vector()[:] = var
       elif  isinstance(u, Constant):
-        u.assign(var)
+        u.assign(var, annotate=False)
     
     elif isinstance(var, np.ndarray):
       if var.dtype != np.float64:
@@ -1305,7 +1305,7 @@ class Model(object):
       momentum.solve(annotate=False)
 
       # solve energy (temperature, water content) :
-      energy.solve()
+      energy.solve(annotate=False)
 
       # calculate L_infinity norm, increment counter :
       counter       += 1

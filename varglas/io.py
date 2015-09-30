@@ -326,7 +326,7 @@ class DataInput(object):
     interp = self.get_expression(fn, kx=order, ky=order,
                                  bool_data=bool_data, near=near)
 
-    return interpolate(interp, self.func_space)
+    return interpolate(interp, self.func_space, annotate=False)
 
   def get_expression(self, fn, order=1, bool_data=False, near=False):
     """

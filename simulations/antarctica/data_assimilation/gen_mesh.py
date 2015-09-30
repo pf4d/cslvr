@@ -43,7 +43,7 @@ nan = mask >  10
 
 #===============================================================================
 # form field from which to refine :
-dbm.data['ref'] = (0.05 + 1/(1 + dbm.data['U_ob'])) * 50000
+dbm.rescale_field('U_ob', 'ref', umin=2500.0, umax=50000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
 #dbm.data['ref'][slp] = 2000.0
@@ -63,7 +63,7 @@ print_min_max(dbm.data['ref'], 'ref')
 # generate the contour :
 m = MeshGenerator(db2, 'mesh', out_dir)
 
-m.create_contour('mask', zero_cntr=1, skip_pts=5)
+m.create_contour('mask', zero_cntr=1, skip_pts=4)
 m.eliminate_intersections(dist=200)
 #m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)

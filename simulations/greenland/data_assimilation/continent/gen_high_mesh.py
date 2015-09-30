@@ -16,7 +16,7 @@ rignot  = DataFactory.get_rignot()
 dbm  = DataInput(bamber,  gen_space=False)
 drg  = DataInput(rignot,  gen_space=False)
 
-drg.change_projection(bamber)
+#dbm.change_projection(rignot)
 
 # get surface velocity magnitude :
 U_ob = sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)
@@ -24,7 +24,7 @@ drg.data['U_ob'] = U_ob
 
 #===============================================================================
 # form field from which to refine :
-drg.data['ref'] = (0.05 + 1/(1 + drg.data['U_ob'])) * 50000
+drg.rescale_field('U_ob', 'ref', umin=1000.0, umax=25000.0, inverse=True)
 
 print_min_max(drg.data['ref'], 'ref')
 
@@ -37,12 +37,11 @@ print_min_max(drg.data['ref'], 'ref')
 
 #===============================================================================
 # generate the contour :
-m = MeshGenerator(dbm, 'mesh', out_dir)
-
-m.create_contour('H', zero_cntr=1e-7, skip_pts=1)
-m.eliminate_intersections(dist=100)
-m.eliminate_intersections(dist=100)
-m.plot_contour()
+m = MeshGenerator(dbm, 'mesh_high', out_dir)
+m.create_contour('H', zero_cntr=1e-7, skip_pts=0)
+m.eliminate_intersections(dist=2000)
+m.transform_contour(drg)
+#m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)
 m.extrude(h=100000, n_layers=10)
 m.close_file()
@@ -50,7 +49,7 @@ m.close_file()
 
 #===============================================================================
 # refine :
-ref = MeshRefiner(drg, 'ref', gmsh_file_name= out_dir + 'mesh_ob')
+ref = MeshRefiner(drg, 'ref', gmsh_file_name= out_dir + 'mesh_high')
 
 a,aid = ref.add_static_attractor()
 ref.set_background_field(aid)
@@ -58,7 +57,7 @@ ref.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
-ref.finish(gui=False, out_file_name=out_dir + 'gre_mesh_ant_spacing_ob')
+ref.finish(gui=False, out_file_name=out_dir + 'gre_mesh_high')
 ref.convert_msh_to_xml()
 
 

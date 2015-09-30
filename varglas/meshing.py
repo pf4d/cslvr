@@ -52,8 +52,12 @@ class MeshGenerator(object):
     initialization.  <zero_cntr> is the value of <var> to contour, <skip_pts>
     is the number of points to skip in the contour, needed to prevent overlap.
     """
-    s    = "::: creating contour from %s's \"%s\" field :::"
-    print_text(s % (self.dd.name, var) , self.color)
+    s    = "::: creating contour from %s's \"%s\" field with skipping %i " + \
+           "point(s) :::"
+    print_text(s % (self.dd.name, var, skip_pts) , self.color)
+
+    skip_pts = skip_pts + 1
+
     # create contour :
     field  = self.dd.data[var]
     fig = figure()

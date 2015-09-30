@@ -160,6 +160,35 @@ class DataInput(object):
     xn, yn = transform(di.proj, self.proj, di.x, di.y)
     return (xn, yn)
 
+  def rescale_field(self, fo, fn, umin, umax, inverse=False):
+    """
+    Rescale the data field with key <fo> with lower and upper bound <umin>,
+    <umax>, creating a new data field with key <fn>.
+
+    If <inverse> == True, scale the data to the inverse of the data <fo>,
+    i.e., the smallest values become <umax>, and the largest become <umin>.
+
+    This is useful, for example, when refining a mesh in areas where a 
+    velocity field is high.
+    """
+    if inverse:
+      inv_txt = 'inversely'
+    elif not inverse:
+      inv_txt = ''
+    s = "::: rescaling data field '%s' %s with lower and upper " + \
+        "bound (%g, %g) to field '%s' :::" 
+    print_text(s % (fo, inv_txt, umin, umax, fn), self.color)
+
+    U = self.data[fo]
+    if not inverse:
+      amin = ( umin/(1.0 + U.max()) - umax/(1.0 + U.min()) ) / (umax - umin)
+      amax = umin / ( amin + 1.0/(1.0 + U.min()) )
+    elif inverse:
+      amin = ( umin/(1.0 + U.min()) - umax/(1.0 + U.max()) ) / (umax - umin)
+      amax = umin / ( amin + 1.0/(1.0 + U.max()) )
+    
+    self.data[fn] = (amin + 1.0/(1.0 + U)) * amax
+
   def integrate_field(self, fn_spec, specific, fn_main, r=20, val=0.0):
     """
     Assimilate a field with filename <fn_spec>  from DataInput object

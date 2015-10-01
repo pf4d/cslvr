@@ -4,7 +4,7 @@ from pylab             import *
 from scipy.interpolate import RectBivariateSpline
 
 
-kappa = 5.0  # ice thickness to refine
+kappa = 2.0  # ice thickness to refine
 
 #===============================================================================
 # data preparation :
@@ -13,7 +13,7 @@ mesh_name = 'jakobshavn_3D_%iH_mesh_block' % int(kappa)
 
 # get the data :
 bamber   = DataFactory.get_bamber()
-#rignot   = DataFactory.get_rignot()
+rignot   = DataFactory.get_rignot()
 #searise  = DataFactory.get_searise()
 
 # process the data :
@@ -23,20 +23,6 @@ dbm      = DataInput(bamber,  gen_space=False)
 
 #drg.change_projection(dbm)
 #dbm.change_projection(drg)
-
-## calculate surface gradient :
-#U_ob   = sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)
-#
-#U_ob[U_ob < 1e-15]  = 1e-15
-#U_ob[U_ob > 1000.0] = 1000.0
-#
-#drg.data['U_ob'] = U_ob
-
-## plot to check :
-#imshow(dbm.data['U_ob'][::-1,:])
-#colorbar()
-#tight_layout()
-#show()
 
 
 #===============================================================================
@@ -61,22 +47,11 @@ for i in y_valid:
     dbm.data['ref'][i,j] = 1000.0
 
 
-#drg.data['ref'] = (0.05 + 1/(1 + drg.data['U_ob'])) * 20000
-#print_min_max(drg.data['ref'], 'ref')
-
-## plot to check :
-#from matplotlib.colors import LogNorm
-#imshow(drg.data['ref'][::-1,:], norm=LogNorm())
-#colorbar()
-#tight_layout()
-#show()
-
-
 #===============================================================================
 # generate the contour :
 m = MeshGenerator(dbm, mesh_name, out_dir)
 
-m.create_contour('H', zero_cntr=1, skip_pts=1)
+m.create_contour('H', zero_cntr=1, skip_pts=0)
 
 #gb = GetBasin(dbm, basin='7.1', edge_resolution=500)
 #gb.extend_edge(1200)
@@ -95,7 +70,7 @@ new_cont = array([[x1, y1],
 
 m.intersection(new_cont)
 m.eliminate_intersections(dist=200)
-#m.transform_contour(drg)
+#m.transform_contour(rignot)
 #m.check_dist()
 #import sys
 #sys.exit(0)

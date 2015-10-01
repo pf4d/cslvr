@@ -88,10 +88,16 @@ class MeshGenerator(object):
     Transforms the coordinates of the contour to DataInput object <di>'s
     projection coordinates.
     """
+    if type(di) == type(self.dd):
+      proj = di.proj
+      name = di.name
+    elif type(di) == dict:
+      name = di['dataset']
+      proj = di['pyproj_Proj']
     s = "::: transforming contour coordinates from %s to %s :::"
-    print_text(s % (di.name, self.dd.name), self.color)
+    print_text(s % (name, self.dd.name), self.color)
     x,y    = self.longest_cont.T
-    xn, yn = transform(self.dd.proj, di.proj, x, y)
+    xn, yn = transform(self.dd.proj, proj, x, y)
     self.longest_cont = array([xn, yn]).T
 
   def set_contour(self,cont_array):

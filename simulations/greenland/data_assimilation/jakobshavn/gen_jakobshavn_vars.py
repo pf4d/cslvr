@@ -11,12 +11,17 @@ bamber   = DataFactory.get_bamber(thklim = thklim)
 rignot   = DataFactory.get_rignot()
 
 # define the mesh :
-mesh = Mesh('dump/meshes/jakobshavn_3D_5H_mesh_block.xml.gz')
+mesh = Mesh('dump/meshes/jakobshavn_3D_2H_mesh_block.xml.gz')
 
 # create data objects to use with varglas :
 dsr     = DataInput(searise,  mesh=mesh)
 dbm     = DataInput(bamber,   mesh=mesh)
 drg     = DataInput(rignot,   mesh=mesh)
+
+# change the projection of all data to be the same as the mesh :
+#dbm.change_projection(drg)
+#dsr.change_projection(drg)
+drg.change_projection(dbm)
 
 m = dbm.data['mask']
 
@@ -34,9 +39,6 @@ ref[ref < 100]  = 1
 ref[ref == 100] = 0
 
 dbm.data['ref'] = ref
-
-# change the projection of all data to Rignot projection :
-drg.change_projection(dbm)
 
 # get the expressions used by varglas :
 S     = dbm.get_expression('S',     near=False)

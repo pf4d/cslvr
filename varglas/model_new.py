@@ -437,6 +437,14 @@ class Model(object):
     self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
     self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
   
+  def init_lat_mask(self, lat_mask):
+    """
+    """
+    s = "::: initializing lateral boundary mask :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.lat_mask, lat_mask)
+    print_min_max(self.lat_mask, 'lat_mask')
+  
   def init_time_step(self, dt):
     """
     """
@@ -1187,6 +1195,9 @@ class Model(object):
 
     # shelf mask (1 if shelf) :
     self.mask          = Function(self.Q, name='mask')
+
+    # lateral boundary mask (1 if on lateral boundary) :
+    self.lat_mask      = Function(self.Q, name='lat_mask')
 
     # topography :
     self.S             = Function(self.Q_non_periodic, name='S')

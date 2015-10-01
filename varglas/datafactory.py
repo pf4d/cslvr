@@ -2,12 +2,13 @@ import inspect
 import os
 import sys
 from varglas.ext_scripts.tifffile import TiffFile
-from numpy                import array, sqrt, shape, arange, meshgrid, loadtxt
-from scipy.io             import loadmat, netcdf_file
-from scipy.interpolate    import griddata
-from osgeo                import gdal
-from pyproj               import Proj, transform
-from varglas.io           import print_text
+from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
+                               gradient
+from scipy.io           import loadmat, netcdf_file
+from scipy.interpolate  import griddata
+from osgeo              import gdal
+from pyproj             import Proj, transform
+from varglas.io         import print_text
 
 class DataFactory(object):
 
@@ -633,8 +634,24 @@ class DataFactory(object):
     H    = array(data.variables['IceThickness'][:])
     Herr = array(data.variables['BedrockError'][:])
     mask = array(data.variables['LandMask'][:])
+
+    # format the mask for varglas :
+    mask[mask <  4] = 0.0
+    
+    # generate mask for lateral boundaries :
+    Hc = H.copy()
+    
+    Hc[mask > 0] = 1
+    Hc[Hc   > 0] = 1
+    
+    # calculate mask gradient, to properly mark lateral boundaries :
+    gradH = gradient(Hc)
+    L     = sqrt(gradH[0]**2 + gradH[1]**2 + 1e-16)
+    L[L > 0.01] = 1.0
+    L[L < 1.0]  = 0.0
    
-    H[H == -9999.0] = 0.0 # remove the junk data. 
+    # remove the junk data and impose thickness limit :
+    H[H == -9999.0] = 0.0
     S[H < thklim] = B[H < thklim] + thklim
     H[H < thklim] = thklim
     B             = S - H
@@ -669,8 +686,8 @@ class DataFactory(object):
     vara['nx']                = len(x)
     vara['ny']                = len(y)
      
-    names = ['B', 'S', 'H', 'Herr', 'mask']
-    ftns  = [ B,   S,   H,   Herr,   mask]
+    names = ['B', 'S', 'H', 'L', 'Herr', 'mask']
+    ftns  = [ B,   S,   H,   L,   Herr,   mask]
     
     # save the data in matlab format :
     vara['dataset']   = 'Bamber'

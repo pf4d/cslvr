@@ -151,12 +151,20 @@ class D3Model(Model):
     s = "    - Stokes function spaces created - "
     print_text(s, self.D3Model_color)
     
-  def calculate_boundaries(self, mask=None, adot=None, mark_divide=False):
+  def calculate_boundaries(self, mask=None, lat_mask=None, adot=None,
+                           mark_divide=False):
     """
     Determines the boundaries of the current model mesh
     """
     s = "::: calculating boundaries :::"
     print_text(s, self.D3Model_color)
+
+    if lat_mask == None and mark_divide:
+      s = ">>> IF PARAMETER <mark_divide> OF calculate_boundaries() IS " + \
+          "TRUE, PARAMETER <lat_mask> MUST BE AN EXPRESSION FOR THE LATERAL" + \
+          " BOUNDARIES <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
      
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh, 0)
@@ -173,9 +181,14 @@ class D3Model(Model):
     # default to all positive accumulation :
     if adot == None:
       adot = Expression('1.0', element=self.Q.ufl_element())
-   
+
     self.init_adot(adot)
     self.init_mask(mask)
+
+    if mark_divide:
+      s = "    - marking the interior facets for incomplete meshes -"
+      print_text(s, self.D3Model_color)
+      self.init_lat_mask(lat_mask)
     
     tol = 1e-6
     
@@ -200,6 +213,8 @@ class D3Model(Model):
       z_m     = f.midpoint().z()
       mask_xy = mask(x_m, y_m, z_m)
       adot_xy = adot(x_m, y_m, z_m)
+      if mark_divide:
+        lat_mask_xy = lat_mask(x_m, y_m, z_m)
       
       if   n.z() >=  tol and f.exterior():
         if adot_xy > 0:
@@ -216,11 +231,13 @@ class D3Model(Model):
           self.ff[f] = 3
       
       elif n.z() >  -tol and n.z() < tol and f.exterior():
+        # if we want to use a basin, we need to mark the interior facets :
         if mark_divide:
-          if mask_xy > 0:
+          if lat_mask_xy > 0:
             self.ff[f] = 4
           else:
             self.ff[f] = 7
+        # otherwise just mark it all the same :
         else:
           self.ff[f] = 4
     

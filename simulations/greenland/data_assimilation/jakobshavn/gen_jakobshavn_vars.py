@@ -51,7 +51,7 @@ u_ob  = drg.get_expression('vx',    near=False)
 v_ob  = drg.get_expression('vy',    near=False)
 
 model = D3Model(mesh=mesh, out_dir=out_dir, save_state=True)
-model.calculate_boundaries(mask=M, adot=adot)
+model.calculate_boundaries(mask=M, adot=adot, mark_divide=True)
 model.deform_mesh_to_geometry(S, B)
 
 model.init_T_surface(T_s)

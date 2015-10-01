@@ -24,7 +24,7 @@ drg.data['U_ob'] = U_ob
 
 #===============================================================================
 # form field from which to refine :
-drg.rescale_field('U_ob', 'ref', umin=1000.0, umax=25000.0, inverse=True)
+drg.rescale_field('U_ob', 'ref', umin=1000.0, umax=40000.0, inverse=True)
 
 print_min_max(drg.data['ref'], 'ref')
 

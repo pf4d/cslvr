@@ -1,158 +1,166 @@
+from varglas          import *
+from varglas.energy   import Enthalpy 
+from scipy            import random
+from fenics           import *
+from dolfin_adjoint   import *
 import sys
-import varglas.solvers            as solvers
-import varglas.physical_constants as pc
-import varglas.model              as model
-from varglas.mesh.mesh_factory    import MeshFactory
-from varglas.data.data_factory    import DataFactory
-from varglas.helper               import default_nonlin_solver_params, \
-                                         default_config
-from varglas.utilities            import DataInput, DataOutput
-from fenics                       import *
+
+#set_log_active(False)
+#set_log_level(PROGRESS)
 
 # get the input args :
-i = int(sys.argv[2])           # assimilation number
-dir_b = sys.argv[1] + '/0'     # directory to save
+i       = 0
+dir_b   = 'dump/high_da/0'     # directory to save
 
 # set the output directory :
-out_dir = dir_b + str(i) + '/'
+out_dir = dir_b + str(i)
+in_dir  = 'dump/vars_high/'
 
-set_log_active(True)
+f = HDF5File(mpi_comm_world(), in_dir + 'state.h5', 'r')
 
-thklim = 200.0
+mesh   = Mesh()
+ff     = MeshFunction('size_t', mesh)
+cf     = MeshFunction('size_t', mesh)
+ff_acc = MeshFunction('size_t', mesh)
+f.read(mesh,    'mesh', False)
+f.read(ff,      'ff')
+f.read(cf,      'cf')
+f.read(ff_acc,  'ff_acc')
 
-# collect the raw data :
-searise  = DataFactory.get_searise(thklim = thklim)
-bamber   = DataFactory.get_bamber(thklim = thklim)
-fm_qgeo  = DataFactory.get_gre_qgeo_fox_maule()
-rignot   = DataFactory.get_rignot_updated()
+model = D3Model(mesh, out_dir + '/thermo_solve/pvd/')
+model.set_subdomains(ff, cf, ff_acc)
 
-# define the mesh :
-mesh = MeshFactory.get_greenland_detailed()
-
-# create data objects to use with varglas :
-dsr     = DataInput(searise,  mesh=mesh)
-dbm     = DataInput(bamber,   mesh=mesh)
-dfm     = DataInput(fm_qgeo,  mesh=mesh)
-drg     = DataInput(rignot,   mesh=mesh)
-
-# change the projection of the measures data to fit with other data :
-drg.change_projection(dsr)
-
-# get the expressions used by varglas :
-H     = dbm.get_nearest_expression('H')
-S     = dbm.get_nearest_expression('S')
-B     = dbm.get_nearest_expression('B')
-T_s   = dsr.get_nearest_expression('T')
-q_geo = dfm.get_nearest_expression('q_geo')
-adot  = dsr.get_nearest_expression('adot')
-U_ob  = drg.get_nearest_expression('U_ob')
-u     = drg.get_nearest_expression("vx")
-v     = drg.get_nearest_expression("vy")
-
-# inspect the data values :
-#do    = DataOutput('results_pre/')
-#do.write_one_file('vmag',           drg.get_projection('U_ob'))
-#do.write_one_file('h',              dbm.get_projection('H'))
-#do.write_one_file('Ubmag_measures', dbv.get_projection('Ubmag_measures'))
-#do.write_one_file('sr_qgeo',        dsr.get_projection('q_geo'))
-#exit(0)
-
-model = model.Model()
-model.set_mesh(mesh)
-model.set_geometry(S, B, deform=True)
-model.set_parameters(pc.IceParameters())
-model.calculate_boundaries(adot=adot)
-model.initialize_variables()
-
-# specifify non-linear solver parameters :
-nonlin_solver_params = default_nonlin_solver_params()
-nonlin_solver_params['newton_solver']['relaxation_parameter']    = 0.7
-nonlin_solver_params['newton_solver']['relative_tolerance']      = 1e-3
-nonlin_solver_params['newton_solver']['maximum_iterations']      = 16
-nonlin_solver_params['newton_solver']['error_on_nonconvergence'] = False
-nonlin_solver_params['newton_solver']['linear_solver']           = 'mumps'
-nonlin_solver_params['newton_solver']['preconditioner']          = 'default'
-parameters['form_compiler']['quadrature_degree']                 = 2
-
-
-config = default_config()
-config['output_path']                     = out_dir
-config['coupled']['on']                   = True
-config['coupled']['max_iter']             = 20
-config['velocity']['newton_params']       = nonlin_solver_params
-config['velocity']['viscosity_mode']      = 'full'
-config['velocity']['use_T0']              = True
-config['velocity']['use_beta0']           = False
-config['velocity']['T0']                  = 268.0
-config['velocity']['init_beta_from_U_ob'] = True
-config['velocity']['U_ob']                = U_ob
-config['velocity']['boundaries']          = None#'user_defined',
-config['velocity']['u_lat_boundary']      = u
-config['velocity']['v_lat_boundary']      = v
-config['enthalpy']['on']                  = True
-config['enthalpy']['T_surface']           = T_s
-config['enthalpy']['q_geo']               = q_geo
-config['age']['on']                       = False
-config['age']['use_smb_for_ela']          = True
-config['adjoint']['max_fun']              = 20
-
+model.init_S(f)
+model.init_B(f)
+model.init_mask(f)
+model.init_q_geo(model.ghf)
+model.init_T_surface(f)
+model.init_adot(f)
+model.init_U_ob(f, f)
+model.init_E(1.0)
 
 # use T0 and beta0 from the previous run :
 if i > 0:
-  #if i == 4:
-  #  config['velocity']['approximation']     = 'stokes'
-  config['velocity']['init_beta_from_U_ob'] = False
-  config['velocity']['use_beta0']           = True
-  config['velocity']['use_T0']              = True
-  config['velocity']['beta0']               = dir_b + str(i-1) + '/beta.xml'
-  config['velocity']['T0']                  = dir_b + str(i-1) + '/T.xml'
+  model.init_T(dir_b + str(i-1) + '/inverted/xml/T.xml')          # temp
+  model.init_W(dir_b + str(i-1) + '/inverted/xml/W.xml')          # water
+  model.init_beta(dir_b + str(i-1) + '/inverted/xml/beta.xml')    # friction
+  model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
+else:
+  model.init_T(model.T_w(0) - 30.0)
+  model.init_beta_SIA()
 
-F = solvers.SteadySolver(model, config)
-File(out_dir + 'beta0.pvd') << model.beta
-F.solve()
+nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+                              'preconditioner'           : 'hypre_amg',
+                              'relative_tolerance'       : 1e-9,
+                              'relaxation_parameter'     : 0.7,
+                              'maximum_iterations'       : 30,
+                              'error_on_nonconvergence'  : False}}
+m_params  = {'solver'               : nparams,
+             'solve_vert_velocity'  : True,
+             'solve_pressure'       : True,
+             'vert_solve_method'    : 'mumps'}
 
-params = config['velocity']['newton_params']['newton_solver']
-params['maximum_iterations']              = 25
-params['relaxation_parameter']            = 1.0
-config['velocity']['init_beta_from_U_ob'] = False
-config['enthalpy']['on']                  = False
-config['coupled']['on']                   = False
-config['velocity']['use_T0']              = False
-config['velocity']['use_beta0']           = False
-config['velocity']['viscosity_mode']      = 'linear'
-config['velocity']['eta']                 = model.eta
-config['adjoint']['surface_integral']     = 'grounded'
-config['adjoint']['alpha']                = 0
-config['adjoint']['bounds']               = (0, 8000)
-config['adjoint']['control_variable']     = model.beta
+e_params  = {'solver'               : 'mumps',
+             'use_surface_climate'  : False}
 
-A = solvers.AdjointSolver(model,config)
-A.set_target_velocity(u=u, v=v)
-A.solve()
+mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False)
+nrg = Enthalpy(model, e_params)
 
-File(out_dir + 'T.xml')     << model.T
-File(out_dir + 'S.xml')     << model.S
-File(out_dir + 'B.xml')     << model.B
-File(out_dir + 'u.xml')     << project(model.u, model.Q) 
-File(out_dir + 'v.xml')     << project(model.v, model.Q) 
-File(out_dir + 'w.xml')     << model.w 
-File(out_dir + 'beta.xml')  << model.beta
-File(out_dir + 'eta.xml')   << project(model.eta, model.Q)
+model.save_pvd(model.beta, 'beta0')
+model.save_pvd(model.U_ob, 'U_ob')
 
-#XDMFFile(mesh.mpi_comm(), out_dir + 'mesh.xdmf')   << model.mesh
+def cb_ftn():
+  #nrg.solve_basal_melt_rate()
+  #nrg.calc_bulk_density()
+  model.save_pvd(model.U3,    'U3')
+  #model.save_pvd(model.p,     'p')
+  model.save_pvd(model.theta, 'theta')
+  model.save_pvd(model.T,     'T')
+  model.save_pvd(model.W,     'W')
+  #model.save_pvd(model.Mb,    'Mb')
+  #model.save_pvd(model.rho_b, 'rho_b')
+
+model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
+
+model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
+model.save_xml(model.T,                       'T')
+model.save_xml(model.W,                       'W')
+model.save_xml(interpolate(model.u, model.Q), 'u')
+model.save_xml(interpolate(model.v, model.Q), 'v')
+model.save_xml(interpolate(model.w, model.Q), 'w')
+model.save_xml(model.beta,                    'beta')
+model.save_xml(model.Mb,                      'Mb')
+model.save_xml(model.E_shf,                   'E_shf')
+
+# invert for basal friction over grounded ice :
+nparams['newton_solver']['relaxation_parameter'] = 1.0
+nparams['newton_solver']['relative_tolerance']   = 1e-8
+nparams['newton_solver']['maximum_iterations']   = 3
+
+mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False, 
+                                    linear=True)
+mom.solve(annotate=True)
+
+model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
+  
+J = mom.form_obj_ftn(integral=model.dSrf_s, kind='log_lin_hybrid', 
+                     g1=0.01, g2=1000)
+R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
+                     alpha=1.0)
+I = J + R
+
+controls = File(model.out_dir + "control_viz/beta_control.pvd")
+beta_viz = Function(model.Q, name="beta_control")
+  
+def eval_cb(I, beta):
+  #mom.print_eval_ftns()
+  #print_min_max(mom.U, 'U')
+  print_min_max(I,    'I')
+  print_min_max(beta, 'beta')
+
+def deriv_cb(I, dI, beta):
+  #print_min_max(I,     'I')
+  print_min_max(dI,    'dI/dbeta')
+  #print_min_max(beta,  'beta')
+  beta_viz.assign(beta)
+  controls << beta_viz
+
+def hessian_cb(I, ddI, beta):
+  print_min_max(ddI, 'd/db dI/db')
+
+m = FunctionControl('beta')
+F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+                      derivative_cb_post = deriv_cb,
+                      hessian_cb = hessian_cb)
+
+b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e6),
+                 options={"disp"    : True,
+                          "maxiter" : 1000,
+                          "gtol"    : 1e-5,
+                          "factr"   : 1e7})
+
+#problem = MinimizationProblem(F, bounds=(0, 4000))
+#parameters = {"tol"                : 1e8,
+#              "acceptable_tol"     : 1000.0,
+#              "maximum_iterations" : 1000,
+#              "linear_solver"      : "ma57"}
 #
-## save the state of the model :
-#if i !=0: rw = 'a'
-#else:     rw = 'w'
-#f = HDF5File(mesh.mpi_comm(), out_dir + 'floating_shelves_0'+str(i)+'.h5', rw)
-#f.write(model.mesh,  'mesh')
-#f.write(model.beta,  'beta')
-#f.write(model.Mb,    'Mb')
-#f.write(model.T,     'T')
-#f.write(model.S,     'S')
-#f.write(model.B,     'B')
-#f.write(model.U,     'U')
-#f.write(model.eta,   'eta')
-    
+#solver = IPOPTSolver(problem, parameters=parameters)
+#b_opt = solver.solve()
+print_min_max(b_opt, 'b_opt')
 
+model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
+
+u,v,w = model.U3.split(True)
+
+model.save_xml(model.T,                       'T')
+model.save_xml(model.W,                       'W')
+model.save_xml(interpolate(model.u, model.Q), 'u')
+model.save_xml(interpolate(model.v, model.Q), 'v')
+model.save_xml(interpolate(model.w, model.Q), 'w')
+model.save_xml(model.beta,                    'beta')
+model.save_xml(model.Mb,                      'Mb')
+model.save_xml(model.E_shf,                   'E_shf')
+
+    
 

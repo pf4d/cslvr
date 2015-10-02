@@ -89,8 +89,6 @@ class Enthalpy(Energy):
     theta         = model.theta
     theta0        = model.theta0
     n             = model.n
-    b_gnd         = model.b_gnd
-    b_shf         = model.b_shf
     eps_reg       = model.eps_reg
     T             = model.T
     T_melt        = model.T_melt
@@ -137,6 +135,8 @@ class Enthalpy(Energy):
     dx            = model.dx
     dx_s          = model.dx_s
     dx_g          = model.dx_g
+    E_shf         = model.E_shf
+    E_gnd         = model.E_gnd
     
     # define test and trial functions : 
     psi    = TestFunction(Q)
@@ -156,6 +156,15 @@ class Enthalpy(Energy):
     model.assign_variable(theta_float,   T_m_v * ci(0))
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
+
+    # thermal conductivity (Greve and Blatter 2009) :
+    ki    =  9.828 * exp(-0.0057*T)
+    
+    # bulk properties :
+    k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
+    c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
+    rho   =  (1 - W)*rhoi + W*rhow   # bulk density
+    kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # For the following heat sources, note that they differ from the 
     # oft-published expressions, in that they are both multiplied by constants.
@@ -180,6 +189,10 @@ class Enthalpy(Energy):
     #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
 
     epsdot  = model.effective_strain_rate()
+    a_T     = conditional( lt(dtheta, c*263.15), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(dtheta, c*263.15), 6e4,          13.9e4)
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     #Q_s_gnd = (2*n)/(n+1) * eta_shf * epsdot
@@ -187,34 +200,33 @@ class Enthalpy(Energy):
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
 
-    # thermal conductivity (Greve and Blatter 2009) :
-    ki    =  9.828 * exp(-0.0057*T)
-    
-    # bulk properties :
-    k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
-    c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
-    rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    kappa =  k / (rho*c)             # bulk thermal diffusivity
-
     # configure the module to run in steady state :
     if not transient:
+      s = "    - using steady-state formulation -"
+      print_text(s, self.color())
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
-      psihat = psi + T_c*h*tau/(2*Unorm) * dot(U, grad(psi))
+      psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
       # residual of model :
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
                 + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
       
-      theta_L = + (q_geo + q_friction) * psihat * dGnd \
-                + Q_s_gnd * psihat * dx_g \
-                + Q_s_shf * psihat * dx_s
+      theta_L = + (q_geo + q_friction) * psi * dGnd \
+                + Q_s_gnd * psi * dx_g \
+                + Q_s_shf * psi * dx_s
+      #theta_a = + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
+      #
+      #theta_L = + Q_s_gnd * psi * dx_g \
+      #          + Q_s_shf * psi * dx_s
       
     # configure the module to run in transient mode :
     else:
+      s = "    - using transient formulation -"
+      print_text(s, self.color())
       dt      = model.time_step
 
       # Skewed test function.  Note that vertical velocity has 
@@ -251,6 +263,8 @@ class Enthalpy(Energy):
     
     # apply lateral boundaries if desired : 
     if use_lat_bc:
+      s = "    - using lateral boundary conditions -"
+      print_text(s, self.color())
       self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 4) )
 
     self.c          = c

@@ -33,7 +33,7 @@ model.set_subdomains(ff, cf, ff_acc)
 model.init_S(f)
 model.init_B(f)
 model.init_mask(f)
-model.init_q_geo(model.ghf)
+model.init_q_geo(0.0)#model.ghf)
 model.init_T_surface(f)
 model.init_adot(f)
 model.init_U_ob(f, f)
@@ -47,7 +47,8 @@ if i > 0:
   model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
 else:
   model.init_T(model.T_w(0) - 30.0)
-  model.init_beta_SIA()
+  model.init_beta(2e+5)
+  #model.init_beta_SIA()
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',

@@ -1193,7 +1193,7 @@ class Model(object):
     self.time_step = Constant(100.0)
     self.time_step.rename('time_step', 'time step')
 
-    # shelf mask (1 if shelf) :
+    # shelf mask (2 if shelf) :
     self.mask          = Function(self.Q, name='mask')
 
     # lateral boundary mask (1 if on lateral boundary) :

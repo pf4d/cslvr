@@ -219,13 +219,13 @@ class D3Model(Model):
       if   n.z() >=  tol and f.exterior():
         if adot_xy > 0:
           self.ff_acc[f] = 1
-        if mask_xy > 0:
+        if mask_xy > 1:
           self.ff[f] = 6
         else:
           self.ff[f] = 2
     
       elif n.z() <= -tol and f.exterior():
-        if mask_xy > 0:
+        if mask_xy > 1:
           self.ff[f] = 5
         else:
           self.ff[f] = 3
@@ -313,20 +313,20 @@ class D3Model(Model):
       mask_xy = mask(x_m, y_m, z_m)
     
       if   n.z() >=  tol and f.exterior():
-        if mask_xy > 0:
+        if mask_xy > 1:
           self.ff_flat[f] = 6
         else:
           self.ff_flat[f] = 2
     
       elif n.z() <= -tol and f.exterior():
-        if mask_xy > 0:
+        if mask_xy > 1:
           self.ff_flat[f] = 5
         else:
           self.ff_flat[f] = 3
     
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         if mark_divide:
-          if mask_xy > 0:
+          if mask_xy > 1:
             self.ff_flat[f] = 4
           else:
             self.ff_flat[f] = 7

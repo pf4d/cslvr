@@ -636,7 +636,10 @@ class DataFactory(object):
     mask = array(data.variables['LandMask'][:])
 
     # format the mask for varglas :
-    mask[mask <  4] = 0.0
+    mask[mask == 1] = 0
+    mask[mask == 2] = 1
+    mask[mask == 3] = 0
+    mask[mask == 4] = 2
     
     # generate mask for lateral boundaries :
     Hc = H.copy()

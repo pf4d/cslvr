@@ -24,7 +24,7 @@ drg.data['U_ob'] = U_ob
 
 #===============================================================================
 # form field from which to refine :
-drg.data['ref'] = (0.05 + 1/(1 + drg.data['U_ob'])) * 50000
+drg.rescale_field('U_ob', 'ref', umin=2500.0, umax=50000.0, inverse=True)
 
 print_min_max(drg.data['ref'], 'ref')
 
@@ -37,8 +37,8 @@ print_min_max(drg.data['ref'], 'ref')
 
 #===============================================================================
 # generate the contour :
-m = MeshGenerator(dbm, 'mesh', out_dir)
-m.create_contour('H', zero_cntr=1e-7, skip_pts=1)
+m = MeshGenerator(dbm, 'mesh_ant_spacing', out_dir)
+m.create_contour('mask', zero_cntr=1, skip_pts=0)
 m.eliminate_intersections(dist=2000)
 m.transform_contour(drg)
 #m.plot_contour()
@@ -49,7 +49,7 @@ m.close_file()
 
 #===============================================================================
 # refine :
-ref = MeshRefiner(drg, 'ref', gmsh_file_name= out_dir + 'mesh')
+ref = MeshRefiner(drg, 'ref', gmsh_file_name= out_dir + 'mesh_ant_spacing')
 
 a,aid = ref.add_static_attractor()
 ref.set_background_field(aid)

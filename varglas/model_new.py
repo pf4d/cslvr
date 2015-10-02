@@ -965,30 +965,6 @@ class Model(object):
     self.assign_variable(self.eta, eta)
     print_min_max(self.eta, 'eta')
 
-  def strain_rate_tensor(self):
-    """
-    return the strain-rate tensor of <U>.
-    """
-    raiseNotDefined()
-
-  def effective_strain_rate(self, U):
-    """
-    return the effective strain rate squared.
-    """
-    raiseNotDefined()
-    
-  def stress_tensor(self):
-    """
-    return the Cauchy stress tensor.
-    """
-    raiseNotDefined()
-  
-  def effective_stress(self, U):
-    """
-    return the effective stress squared.
-    """
-    raiseNotDefined()
-  
   def calc_vert_average(self, u):
     """
     Calculates the vertical average of a given function space and function.  

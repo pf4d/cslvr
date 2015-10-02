@@ -367,7 +367,7 @@ class DataInput(object):
     if near:
       t = 'nearest-neighbor'
     else:
-      t = 'spline'
+      t = '%i-order spline' % order
     s = "::: getting %s %s expression from %s :::" % (fn, t, self.name)
     print_text(s, self.color)
 

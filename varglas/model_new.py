@@ -434,8 +434,8 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.mask, mask)
     print_min_max(self.mask, 'mask')
-    self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
-    self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
+    self.shf_dofs = np.where(self.mask.vector().array() == 2.0)[0]
+    self.gnd_dofs = np.where(self.mask.vector().array() == 1.0)[0]
   
   def init_lat_mask(self, lat_mask):
     """

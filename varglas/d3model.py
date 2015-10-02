@@ -176,7 +176,7 @@ class D3Model(Model):
     
     # default to all grounded ice :
     if mask == None:
-      mask = Expression('0.0', element=self.Q.ufl_element())
+      mask = Expression('1.0', element=self.Q.ufl_element())
     
     # default to all positive accumulation :
     if adot == None:
@@ -295,7 +295,7 @@ class D3Model(Model):
     
     # default to all grounded ice :
     if mask == None:
-      mask = Expression('0.0', element=self.Q.ufl_element())
+      mask = Expression('1.0', element=self.Q.ufl_element())
     
     # default to all positive accumulation :
     if adot == None:

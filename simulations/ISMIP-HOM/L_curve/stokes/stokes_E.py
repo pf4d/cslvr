@@ -33,6 +33,7 @@ def assimilate(h,H,g):
   model.deform_mesh_to_geometry(surface, bed)
   
   model.init_beta(beta)
+  model.init_mask(1.0)  # all grounded
   model.init_b(model.A0(0)**(-1/model.n(0)))
   model.init_E(1.0)
   

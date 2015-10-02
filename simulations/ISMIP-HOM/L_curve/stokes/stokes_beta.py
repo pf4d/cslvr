@@ -36,9 +36,10 @@ def assimilate(h,H,g):
   
   model.init_S(surface)
   model.init_B(bed)
-  model.init_mask(0.0)  # all grounded
+  model.init_mask(1.0)  # all grounded
   model.init_beta(beta)
   model.init_b(model.A0(0)**(-1/model.n(0)))
+  model.init_E(1.0)
   
   nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
                                 'relative_tolerance'       : 1e-8,

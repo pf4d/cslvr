@@ -547,6 +547,23 @@ class DataFactory(object):
     coverage    = coverage.asarray() 
     gl04c_WGS84 = gl04c_WGS84.asarray()
     
+    # format the mask for varglas :
+    mask[mask == 1]   = 2
+    mask[mask == 0]   = 1
+    mask[mask == 127] = 0
+    
+    # generate mask for lateral boundaries :
+    Hc = H.copy()
+    
+    Hc[Hc > 0] = 1
+    
+    # calculate mask gradient, to properly mark lateral boundaries :
+    gradH = gradient(Hc)
+    L     = sqrt(gradH[0]**2 + gradH[1]**2 + 1e-16)
+    L[L > 0.01] = 1.0
+    L[L < 1.0]  = 0.0
+   
+    # remove the junk data and impose thickness limit :
     B = S - H
     H[H == 32767]  = thklim
     H[H <= thklim] = thklim
@@ -587,9 +604,9 @@ class DataFactory(object):
     vara['nx']                = nx
     vara['ny']                = ny
     
-    names = ['B', 'S', 'H', 'mask', 'rock_mask', 'b_uncert', 
+    names = ['B', 'S', 'H', 'mask', 'lat_mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
-    ftns  = [B, S, H, mask, rock_mask, b_uncert, coverage, gl04c_WGS84]
+    ftns  = [B, S, H, mask, L, rock_mask, b_uncert, coverage, gl04c_WGS84]
    
     # retrieve data :
     vara['dataset']   = 'bedmap 2'
@@ -689,8 +706,8 @@ class DataFactory(object):
     vara['nx']                = len(x)
     vara['ny']                = len(y)
      
-    names = ['B', 'S', 'H', 'L', 'Herr', 'mask']
-    ftns  = [ B,   S,   H,   L,   Herr,   mask]
+    names = ['B', 'S', 'H', 'lat_mask', 'Herr', 'mask']
+    ftns  = [ B,   S,   H,   L,          Herr,   mask]
     
     # save the data in matlab format :
     vara['dataset']   = 'Bamber'

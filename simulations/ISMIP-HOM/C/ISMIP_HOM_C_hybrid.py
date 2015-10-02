@@ -22,9 +22,10 @@ beta    = Expression('1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
 
 model.init_S(surface)
 model.init_B(bed)
-model.init_mask(0.0)  # all grounded
+model.init_mask(1.0)  # all grounded
 model.init_beta(beta)
 model.init_b(model.A0(0)**(-1/model.n(0)))
+model.init_E(1.0)
 
 mom = MomentumHybrid(model, isothermal=True)
 mom.solve()

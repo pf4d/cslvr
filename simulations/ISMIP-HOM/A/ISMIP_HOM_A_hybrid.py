@@ -20,9 +20,10 @@ bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
 
 model.init_S(surface)
 model.init_B(bed)
-model.init_mask(0.0)  # all grounded
+model.init_mask(1.0)  # all grounded
 model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
+model.init_E(1.0)
 
 mom = MomentumHybrid(model, isothermal=True)
 mom.solve()

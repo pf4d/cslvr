@@ -152,6 +152,7 @@ class Enthalpy(Energy):
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
+    model.assign_variable(T,             T_s_v)
     model.assign_variable(theta_surface, T_s_v * ci(0))
     model.assign_variable(theta_float,   T_m_v * ci(0))
     print_min_max(theta_surface, 'theta_GAMMA_S')
@@ -189,8 +190,8 @@ class Enthalpy(Energy):
     #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
 
     epsdot  = model.effective_strain_rate()
-    a_T     = conditional( lt(dtheta, c*263.15), 1.1384496e-5, 5.45e10)
-    Q_T     = conditional( lt(dtheta, c*263.15), 6e4,          13.9e4)
+    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
     b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))

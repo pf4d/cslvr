@@ -152,7 +152,6 @@ class Enthalpy(Energy):
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
-    model.assign_variable(T,             T_s_v)
     model.assign_variable(theta_surface, T_s_v * ci(0))
     model.assign_variable(theta_float,   T_m_v * ci(0))
     print_min_max(theta_surface, 'theta_GAMMA_S')

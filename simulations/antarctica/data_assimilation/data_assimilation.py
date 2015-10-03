@@ -46,8 +46,8 @@ if i > 0:
   model.init_beta(dir_b + str(i-1) + '/inverted/xml/beta.xml')    # friction
   model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
 else:
-  model.init_T(model.T_w(0) - 30.0)
-  model.init_beta(30**2)
+  model.init_T(model.T_surface)
+  model.init_beta(1e4)
   #model.init_beta_SIA()
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',

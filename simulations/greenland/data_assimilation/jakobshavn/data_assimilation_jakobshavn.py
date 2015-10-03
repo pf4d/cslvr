@@ -10,7 +10,7 @@ import sys
 
 # get the input args :
 i       = 0
-dir_b   = 'dump/jakobshavn/0'     # directory to save
+dir_b   = 'dump/jakob_da_bfgs_uni0_SR/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i)
@@ -104,7 +104,7 @@ mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
   
-J = mom.form_obj_ftn(integral=model.dSrf_s, kind='log_lin_hybrid', 
+J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
                      alpha=1.0)
@@ -124,7 +124,7 @@ def deriv_cb(I, dI, beta):
   print_min_max(dI,    'dI/dbeta')
   #print_min_max(beta,  'beta')
   beta_viz.assign(beta)
-  controls << beta_viz
+  model.save_pvd(beta_viz, 'beta_control', f_name=controls) 
 
 def hessian_cb(I, ddI, beta):
   print_min_max(ddI, 'd/db dI/db')
@@ -137,8 +137,7 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
 b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e6),
                  options={"disp"    : True,
                           "maxiter" : 1000,
-                          "gtol"    : 1e-5,
-                          "factr"   : 1e7})
+                          "gtol"    : 1e-5})
 
 #problem = MinimizationProblem(F, bounds=(0, 4000))
 #parameters = {"tol"                : 1e8,

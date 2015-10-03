@@ -104,7 +104,7 @@ mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
   
-J = mom.form_obj_ftn(integral=model.dSrf_s, kind='log_lin_hybrid', 
+J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_lin_hybrid', 
                      g1=0.01, g2=1000)
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
                      alpha=1.0)
@@ -124,7 +124,7 @@ def deriv_cb(I, dI, beta):
   print_min_max(dI,    'dI/dbeta')
   #print_min_max(beta,  'beta')
   beta_viz.assign(beta)
-  controls << beta_viz
+  model.save_pvd(beta_viz, 'beta_control', f_name=controls) 
 
 def hessian_cb(I, ddI, beta):
   print_min_max(ddI, 'd/db dI/db')

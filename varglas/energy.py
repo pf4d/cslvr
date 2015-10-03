@@ -215,9 +215,9 @@ class Enthalpy(Energy):
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
                 + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
       
-      theta_L = + (q_geo + q_friction) * psi * dGnd \
-                + Q_s_gnd * psi * dx_g \
-                + Q_s_shf * psi * dx_s
+      theta_L = + (q_geo + q_friction) * psihat * dGnd \
+                + Q_s_gnd * psihat * dx_g \
+                + Q_s_shf * psihat * dx_s
       #theta_a = + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
       #
       #theta_L = + Q_s_gnd * psi * dx_g \

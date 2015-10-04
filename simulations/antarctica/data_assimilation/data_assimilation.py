@@ -134,13 +134,13 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
 
-#b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e6),
+#b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),
 #                 options={"disp"    : True,
 #                          "maxiter" : 1000,
 #                          "gtol"    : 1e-5,
 #                          "factr"   : 1e7})
 
-problem = MinimizationProblem(F, bounds=(0, 4000))
+problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
 parameters = {"tol"                : 1e8,
               "acceptable_tol"     : 1000.0,
               "maximum_iterations" : 1000,
@@ -151,6 +151,10 @@ b_opt = solver.solve()
 print_min_max(b_opt, 'b_opt')
 
 model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
+
+model.init_beta(b_opt)
+
+mom.solve(annotate=False)
 
 u,v,w = model.U3.split(True)
 

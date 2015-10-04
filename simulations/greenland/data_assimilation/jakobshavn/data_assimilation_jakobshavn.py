@@ -10,7 +10,7 @@ import sys
 
 # get the input args :
 i       = 0
-dir_b   = 'dump/jakob_da_bfgs_uni0_SR/0'     # directory to save
+dir_b   = 'dump/jakob_da_ipopt_uni0_SR/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i)
@@ -134,20 +134,24 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)
 
-b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e6),
-                 options={"disp"    : True,
-                          "maxiter" : 1000,
-                          "gtol"    : 1e-5})
+#b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),
+#                 options={"disp"    : True,
+#                          "maxiter" : 1000,
+#                          "gtol"    : 1e-5})
 
-#problem = MinimizationProblem(F, bounds=(0, 4000))
-#parameters = {"tol"                : 1e8,
-#              "acceptable_tol"     : 1000.0,
-#              "maximum_iterations" : 1000,
-#              "linear_solver"      : "ma57"}
-#
-#solver = IPOPTSolver(problem, parameters=parameters)
-#b_opt = solver.solve()
+problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
+parameters = {"tol"                : 1e8,
+              "acceptable_tol"     : 1000.0,
+              "maximum_iterations" : 1000,
+              "linear_solver"      : "ma57"}
+
+solver = IPOPTSolver(problem, parameters=parameters)
+b_opt  = solver.solve()
 print_min_max(b_opt, 'b_opt')
+
+model.init_beta(b_opt)
+
+mom.solve(annotate=False)
 
 model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
 

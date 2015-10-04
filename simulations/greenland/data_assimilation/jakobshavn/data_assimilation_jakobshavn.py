@@ -124,7 +124,7 @@ def deriv_cb(I, dI, beta):
   print_min_max(dI,    'dI/dbeta')
   #print_min_max(beta,  'beta')
   beta_viz.assign(beta)
-  model.save_pvd(beta_viz, 'beta_control', f_name=controls) 
+  model.save_pvd(beta_viz, 'beta_control', f_file=controls) 
 
 def hessian_cb(I, ddI, beta):
   print_min_max(ddI, 'd/db dI/db')

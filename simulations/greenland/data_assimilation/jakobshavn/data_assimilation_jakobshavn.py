@@ -10,7 +10,7 @@ import sys
 
 # get the input args :
 i       = 0
-dir_b   = 'dump/jakob_da_ipopt_uni0_SR/0'     # directory to save
+dir_b   = 'dump/jakob_da_ipopt_uni0_BP/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i)
@@ -38,6 +38,8 @@ model.init_T_surface(f)
 model.init_adot(f)
 model.init_U_ob(f, f)
 model.init_E(1.0)
+model.init_u_lat(0.0)
+model.init_v_lat(0.0)
 
 # use T0 and beta0 from the previous run :
 if i > 0:
@@ -47,7 +49,7 @@ if i > 0:
   model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
 else:
   model.init_T(model.T_surface)
-  model.init_beta(1e+5)
+  model.init_beta(1e4)
   #model.init_beta_SIA()
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
@@ -64,7 +66,9 @@ m_params  = {'solver'               : nparams,
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
-mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(model, m_params,
+#                                    use_lat_bcs=True, isothermal=False)
+mom = MomentumBP(model, m_params, isothermal=False)
 nrg = Enthalpy(model, e_params)
 
 model.save_pvd(model.beta, 'beta0')
@@ -98,8 +102,9 @@ nparams['newton_solver']['relaxation_parameter'] = 1.0
 nparams['newton_solver']['relative_tolerance']   = 1e-8
 nparams['newton_solver']['maximum_iterations']   = 3
 
-mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False, 
-                                    linear=True)
+#mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False, 
+#                                    use_lat_bcs=True, linear=True)
+mom = MomentumBP(model, m_params, isothermal=False, linear=True)
 mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
@@ -143,7 +148,7 @@ problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
 parameters = {"tol"                : 1e8,
               "acceptable_tol"     : 1000.0,
               "maximum_iterations" : 1000,
-              "linear_solver"      : "ma57"}
+              "linear_solver"      : "ma97"}
 
 solver = IPOPTSolver(problem, parameters=parameters)
 b_opt  = solver.solve()

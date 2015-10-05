@@ -445,9 +445,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     if use_lat_bcs:
       s = "    - using lateral boundary conditions -"
       print_text(s, self.color())
-
-      self.mom_bcs.append(DirichletBC(Q2.sub(0), model.u_lat, model.ff, 4))
-      self.mom_bcs.append(DirichletBC(Q2.sub(1), model.v_lat, model.ff, 4))
+      self.mom_bcs.append(DirichletBC(model.Q2.sub(0),model.u_lat,model.ff,4))
+      self.mom_bcs.append(DirichletBC(model.Q2.sub(1),model.v_lat,model.ff,4))
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd

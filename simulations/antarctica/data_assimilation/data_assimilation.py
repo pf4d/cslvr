@@ -47,7 +47,7 @@ if i > 0:
   model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
 else:
   model.init_T(model.T_surface)
-  model.init_beta(1e5)
+  model.init_beta(1e4)
   #model.init_beta_SIA()
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
@@ -144,7 +144,7 @@ problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
 parameters = {"tol"                : 1e8,
               "acceptable_tol"     : 1000.0,
               "maximum_iterations" : 1000,
-              "linear_solver"      : "ma57"}
+              "linear_solver"      : "ma97"}
 
 solver = IPOPTSolver(problem, parameters=parameters)
 b_opt = solver.solve()

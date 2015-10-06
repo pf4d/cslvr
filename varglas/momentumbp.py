@@ -59,7 +59,6 @@ class MomentumBP(Momentum):
     R          = model.R
     g          = model.g
     beta       = model.beta
-    w          = model.w
     N          = model.N
     D          = model.D
     

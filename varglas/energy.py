@@ -69,6 +69,8 @@ class Enthalpy(Energy):
     """ 
     Set up energy equation residual. 
     """
+    self.transient = transient
+
     s    = "::: INITIALIZING ENTHALPY PHYSICS :::"
     print_text(s, self.color())
 
@@ -86,8 +88,6 @@ class Enthalpy(Energy):
     mesh          = model.mesh
     V             = model.Q3
     Q             = model.Q
-    theta         = model.theta
-    theta0        = model.theta0
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
@@ -141,6 +141,8 @@ class Enthalpy(Energy):
     # define test and trial functions : 
     psi    = TestFunction(Q)
     dtheta = TrialFunction(Q)
+    theta  = Function(Q)
+    theta0 = Function(Q)
 
     # pressure melting point, do not annotate for initial guess :
     self.calc_T_melt(annotate=False)
@@ -270,6 +272,8 @@ class Enthalpy(Energy):
     # always mark the divide (if present) essential :
     self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 7) )
 
+    self.theta      = theta
+    self.theta0     = theta0
     self.c          = c
     self.k          = k
     self.rho        = rho
@@ -293,11 +297,13 @@ class Enthalpy(Energy):
 
     u   = TrialFunction(model.Q)
     phi = TestFunction(model.Q)
+    Tm  = Function(model.Q)
 
     l = assemble((T_w - gamma * (S - x[2])) * phi * dx, annotate=annotate)
     a = assemble(u * phi * dx, annotate=annotate)
 
-    solve(a, model.T_melt.vector(), l, annotate=annotate)
+    solve(a, Tm.vector(), l, annotate=annotate)
+    model.assign_variable(model.T_melt, Tm)
     print_min_max(model.T_melt, 'T_melt')
 
   def get_solve_params(self):
@@ -315,12 +321,12 @@ class Enthalpy(Energy):
     mesh       = model.mesh
     Q          = model.Q
     T_melt     = model.T_melt
-    theta      = model.theta
     T          = model.T
     W          = model.W
     W0         = model.W0
     L          = model.L
     ci         = model.ci
+    theta      = self.theta
 
     if self.solve_params['use_surface_climate']:
       self.solve_surface_climate()
@@ -336,7 +342,11 @@ class Enthalpy(Energy):
     theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
     #solve(self.theta_a == self.theta_L, theta, self.theta_bc,
     #      solver_parameters = {"linear_solver" : sm}, annotate=False)
-    print_min_max(theta, 'theta')
+    model.assign_variable(model.theta, theta)
+    print_min_max(model.theta, 'theta')
+
+    if self.transient:
+      self.theta0.assign(self.theta)
 
     # temperature solved diagnostically : 
     s = "::: calculating temperature :::"
@@ -481,9 +491,12 @@ class EnergyHybrid(Energy):
     # ENERGY BALANCE 
     Psi = TestFunction(Z)
     dT  = TrialFunction(Z)
+    
+    self.T_   = Function(model.Z, name='T_')
+    self.T0_  = Function(model.Z, name='T0_')
 
-    T  = VerticalFDBasis(T_,  deltax, coef, sigmas)
-    T0 = VerticalFDBasis(T0_, deltax, coef, sigmas)
+    T  = VerticalFDBasis(self.T_,  deltax, coef, sigmas)
+    T0 = VerticalFDBasis(self.T0_, deltax, coef, sigmas)
 
     # METRICS FOR COORDINATE TRANSFORM
     def dsdx(s):
@@ -603,11 +616,15 @@ class EnergyHybrid(Energy):
     model  = self.model
 
     # SOLVE TEMPERATURE
-    solve(lhs(self.R_T) == rhs(self.R_T), model.T_,
+    solve(lhs(self.R_T) == rhs(self.R_T), self.T_,
           solver_parameters=self.solve_params['solver'],
           form_compiler_parameters=self.solve_params['ffc_params'],
           annotate=annotate)
+    model.assign_variable(model.T_, self.T_)
     print_min_max(model.T_, 'T_')
+
+    if self.transient:
+      model.T0_.assign(self.T_)
 
     #  correct for pressure melting point :
     T_v                 = model.T_.vector().array()

@@ -390,6 +390,9 @@ class D3Model(Model):
       x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
     print_text(s, self.D3Model_color)
+    
+    if self.save_state:
+      self.state.write(self.mesh, 'mesh')
 
   def get_surface_mesh(self):
     """

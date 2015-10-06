@@ -37,7 +37,5 @@ model.init_T_surface(T_s)
 model.init_q_geo(q_geo)
 model.init_U_ob(u_ob, v_ob)
 
-model.state.write(model.mesh,   'mesh')
-
 
 

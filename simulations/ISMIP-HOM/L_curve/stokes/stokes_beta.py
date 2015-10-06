@@ -20,9 +20,7 @@ def assimilate(h,H,g):
   p2      = Point(L,   L,   1)
   mesh    = BoxMesh(p1, p2, n, n, 10)
   
-  model   = D3Model(out_dir = out_dir + 'initial/')
-  model.set_mesh(mesh)
-  model.generate_function_spaces(use_periodic = True)
+  model   = D3Model(mesh, out_dir + 'initial/', use_periodic = True)
   
   surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                        element=model.Q.ufl_element())
@@ -34,9 +32,6 @@ def assimilate(h,H,g):
   model.calculate_boundaries()
   model.deform_mesh_to_geometry(surface, bed)
   
-  model.init_S(surface)
-  model.init_B(bed)
-  model.init_mask(1.0)  # all grounded
   model.init_beta(beta)
   model.init_b(model.A0(0)**(-1/model.n(0)))
   model.init_E(1.0)
@@ -215,9 +210,11 @@ def assimilate(h,H,g):
 #===============================================================================
 # perform assimilation over the following parameter space :
 
-hs = [1000, 2000, 4000, 8000, 16000, 32000]
-Hs = [250,  500,  750,  1000, 2000,  3000 ]
-Gs = [0.1,  0.25, 0.5,  1,    2,     4    ]
+#hs = [1000, 2000, 4000, 8000, 16000, 32000]
+hs = [1000]
+#Hs = [250,  500,  750,  1000, 2000,  3000 ]
+Hs = [2000]
+Gs = [2,     4    ]
 
 for h in hs:
   for H in Hs:

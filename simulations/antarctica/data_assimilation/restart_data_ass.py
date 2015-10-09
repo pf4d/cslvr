@@ -14,9 +14,10 @@ dir_b   = 'dump/high_da_ipopt_SIA0_SR/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i)
-in_dir  = 'dump/vars_high/'
+var_dir = 'dump/vars_high/'
+in_dir  = 'dump/high_da_ipopt_SIA0_SR/00/thermo_solve/xml/'
 
-f = HDF5File(mpi_comm_world(), in_dir + 'state.h5', 'r')
+f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
 mesh   = Mesh()
 ff     = MeshFunction('size_t', mesh)
@@ -40,15 +41,12 @@ model.init_U_ob(f, f)
 model.init_E(1.0)
 
 # use T0 and beta0 from the previous run :
-if i > 0:
-  model.init_T(dir_b + str(i-1) + '/inverted/xml/T.xml')          # temp
-  model.init_W(dir_b + str(i-1) + '/inverted/xml/W.xml')          # water
-  model.init_beta(dir_b + str(i-1) + '/inverted/xml/beta.xml')    # friction
-  model.init_E_shf(dir_b + str(i-1) + '/inverted/xml/E_shf.xml')  # enhancement
-else:
-  model.init_T(model.T_surface)
-  #model.init_beta(1e4)
-  model.init_beta_SIA()
+model.init_T(in_dir + 'T.xml')          # temp
+model.init_W(in_dir + 'W.xml')          # water
+model.init_beta_SIA()
+model.init_U(in_dir + 'u.xml',
+             in_dir + 'v.xml',
+             in_dir + 'w.xml')
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
@@ -65,38 +63,12 @@ e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
 mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False)
-nrg = Enthalpy(model, e_params)
-
-model.save_pvd(model.beta, 'beta0')
-model.save_pvd(model.U_ob, 'U_ob')
-
-def cb_ftn():
-  #nrg.solve_basal_melt_rate()
-  #nrg.calc_bulk_density()
-  model.save_pvd(model.U3,    'U3')
-  #model.save_pvd(model.p,     'p')
-  model.save_pvd(model.theta, 'theta')
-  model.save_pvd(model.T,     'T')
-  model.save_pvd(model.W,     'W')
-  #model.save_pvd(model.Mb,    'Mb')
-  #model.save_pvd(model.rho_b, 'rho_b')
-
-model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
-
-model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
-model.save_xml(model.T,                       'T')
-model.save_xml(model.W,                       'W')
-model.save_xml(interpolate(model.u, model.Q), 'u')
-model.save_xml(interpolate(model.v, model.Q), 'v')
-model.save_xml(interpolate(model.w, model.Q), 'w')
-model.save_xml(model.beta,                    'beta')
-model.save_xml(model.Mb,                      'Mb')
-model.save_xml(model.E_shf,                   'E_shf')
 
 # invert for basal friction over grounded ice :
 nparams['newton_solver']['relaxation_parameter'] = 1.0
 nparams['newton_solver']['relative_tolerance']   = 1e-8
 nparams['newton_solver']['maximum_iterations']   = 3
+m_params['solve_vert_velocity']                  = False
 
 mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False, 
                                     linear=True)
@@ -144,7 +116,8 @@ problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
 parameters = {"tol"                : 1e8,
               "acceptable_tol"     : 1000.0,
               "maximum_iterations" : 1000,
-              "linear_solver"      : "ma97"}
+              "ma97_order"         : "metis",
+              "linear_solver"      : "ma57"}
 
 solver = IPOPTSolver(problem, parameters=parameters)
 b_opt = solver.solve()

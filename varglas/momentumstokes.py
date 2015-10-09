@@ -565,9 +565,21 @@ class MomentumDukowiczStokesReduced(Momentum):
     m_params  = {'solver'      : nparams}
     return m_params
 
+  def solve_vert_velocity(self, annotate=annotate):
+    """ 
+    Solve for vertical velocity w.
+    """
+    model  = self.model
+    
+    s    = "::: solving Dukowicz reduced vertical velocity :::"
+    print_text(s, self.color())
+    w = project(self.w, model.Q, annotate=annotate)
+
+    self.assz.assign(model.w, w, annotate=False)
+
   def solve(self, annotate=True):
     """ 
-    Perform the Newton solve of the full-Stokes equations 
+    Perform the Newton solve of the reduced full-Stokes equations 
     """
     model  = self.model
     params = self.solve_params
@@ -589,11 +601,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     self.assy.assign(model.v, v, annotate=False)
 
     # solve for the vertical velocity :
-    s    = "::: solving Dukowicz reduced vertical velocity :::"
-    print_text(s, self.color())
-    w = project(self.w, model.Q, annotate=annotate)
-
-    self.assz.assign(model.w, w, annotate=False)
+    if params['solve_vert_velocity']:
+      self.solve_vert_velocity(annotate)
     
     U3 = model.U3.split(True)
 

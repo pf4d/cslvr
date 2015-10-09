@@ -220,10 +220,6 @@ class Enthalpy(Energy):
       theta_L = + (q_geo + q_friction) * psi * dGnd \
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_s
-      #theta_a = + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
-      #
-      #theta_L = + Q_s_gnd * psi * dx_g \
-      #          + Q_s_shf * psi * dx_s
       
     # configure the module to run in transient mode :
     else:

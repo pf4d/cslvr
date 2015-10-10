@@ -158,8 +158,10 @@ model.init_beta(b_opt)
 
 mom.solve(annotate=False)
 
-model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
+model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
+model.save_pvd(model.U3, 'U_opt')
 
+model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
 u,v,w = model.U3.split(True)
 
 model.save_xml(model.T,                       'T')

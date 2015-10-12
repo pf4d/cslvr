@@ -126,6 +126,7 @@ print_min_max(b_opt, 'b_opt')
 model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
 
 model.init_beta(b_opt)
+m_params['solve_vert_velocity'] = True
 
 mom.solve(annotate=False)
 

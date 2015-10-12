@@ -139,11 +139,15 @@ class Momentum(Physics):
       J   = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
       s   = "::: getting kinematic objective function :::"
 
-    elif kind == 'linear':
+    elif kind == 'L2':
       J   = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
-      s   = "::: getting linear objective function :::"
+      s   = "::: getting L2 objective function :::"
+
+    elif kind == 'log_L2':
+      J   = 0.5 * ln((U[0] - u_ob)**2 + (U[1] - v_ob)**2 + DOLFIN_EPS) * dGamma
+      s   = "::: getting log(L2) objective function :::"
     
-    elif kind == 'log_lin_hybrid':
+    elif kind == 'log_L2_hybrid':
       J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
       J2  = g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
@@ -151,12 +155,12 @@ class Momentum(Physics):
       self.J2  = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
       J   = J1 + J2
-      s   = "::: getting log/linear hybrid objective with gamma_1 = " \
+      s   = "::: getting log/L2 hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
 
     else:
-      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'linear', " + \
-          "'log', 'kinematic', OR 'log_lin_hybrid', NOT '%s' <<<" % kind
+      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'L2', " + \
+          "'log', 'kinematic', OR 'log_L2_hybrid', NOT '%s' <<<" % kind
       print_text(s, 'red', 1)
       sys.exit(1)
     print_text(s, self.color())

@@ -62,7 +62,7 @@ model.init_beta(30.0**2)
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')
   
-J = mom.form_obj_ftn(integral=dx, kind='log_lin_hybrid', 
+J = mom.form_obj_ftn(integral=dx, kind='log_L2_hybrid', 
                      g1=0.01, g2=1000)
 R = mom.form_reg_ftn(model.beta, integral=dx, kind='Tikhonov', 
                      alpha=10000.0)

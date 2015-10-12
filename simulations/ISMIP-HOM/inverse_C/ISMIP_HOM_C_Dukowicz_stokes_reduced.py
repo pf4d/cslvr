@@ -85,7 +85,7 @@ mom.solve(annotate=True)
 
 model.set_out_dir(out_dir = out_dir + 'inverted/')
   
-J = mom.form_obj_ftn(integral=model.dSrf, kind='log_lin_hybrid', 
+J = mom.form_obj_ftn(integral=model.dSrf, kind='log_L2_hybrid', 
                      g1=0.01, g2=1000)
 R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
                      alpha=1.0)

@@ -75,10 +75,13 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 #mom = MomentumBP(model, m_params, isothermal=False, linear=True)
 mom.solve(annotate=True)
 
-model.set_out_dir(out_dir = out_dir + '/inverted_g2_10000/pvd/')
+out_dir = out_dir + '/inverted_loglinear/'
+
+model.set_out_dir(out_dir = out_dir + 'pvd/')
   
-J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_lin_hybrid', 
-                     g1=0.01, g2=10000)
+#J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_lin_hybrid', 
+#                     g1=0.01, g2=10000)
+J = mom.form_obj_ftn(integral=model.dSrf_g, kind='loglinear')
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
                      alpha=1.0)
 I = J + R
@@ -127,11 +130,9 @@ model.init_beta(b_opt)
 
 mom.solve(annotate=False)
 
-model.set_out_dir(out_dir = out_dir + '/inverted_g2_10000/pvd/')
-
 model.save_pvd(model.U3, 'U_opt')
 
-model.set_out_dir(out_dir = out_dir + '/inverted_g2_10000/xml/')
+model.set_out_dir(out_dir = out_dir + 'xml/')
 
 u,v,w = model.U3.split(True)
 

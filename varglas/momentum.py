@@ -144,7 +144,8 @@ class Momentum(Physics):
       s   = "::: getting L2 objective function :::"
 
     elif kind == 'log_L2':
-      J   = 0.5 * ln((U[0] - u_ob)**2 + (U[1] - v_ob)**2 + DOLFIN_EPS) * dGamma
+      J   = 0.5 * ln(sqrt(+ (U[0] - u_ob)**2 \
+                          + (U[1] - v_ob)**2 + DOLFIN_EPS) + 0.01) * dGamma
       s   = "::: getting log(L2) objective function :::"
     
     elif kind == 'log_L2_hybrid':

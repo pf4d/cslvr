@@ -75,13 +75,12 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 #mom = MomentumBP(model, m_params, isothermal=False, linear=True)
 mom.solve(annotate=True)
 
-out_dir = out_dir + '/inverted_loglinear/'
+out_dir = out_dir + '/inverted_g2_5000/'
 
 model.set_out_dir(out_dir = out_dir + 'pvd/')
   
-#J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_lin_hybrid', 
-#                     g1=0.01, g2=10000)
-J = mom.form_obj_ftn(integral=model.dSrf_g, kind='loglinear')
+J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
+                     g1=0.01, g2=5000)
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
                      alpha=1.0)
 I = J + R

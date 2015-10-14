@@ -20,10 +20,15 @@ class Model(object):
   GAMMA_T     = 7   # terminus
 
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               use_periodic=False, **gfs_kwargs):
+               state=None, use_periodic=False, **gfs_kwargs):
     """
     Create and instance of the model.
     """
+    self.model_color = '148'
+    
+    s = "::: INITIALIZING BASE MODEL :::"
+    print_text(s, self.model_color)
+    
     parameters['form_compiler']['quadrature_degree']  = 2
     parameters["std_out_all_processes"]               = False
     parameters['form_compiler']['cpp_optimize']       = True
@@ -33,7 +38,6 @@ class Model(object):
     self.out_dir     = out_dir
     self.save_state  = save_state
     self.MPI_rank    = MPI.rank(mpi_comm_world())
-    self.model_color = '148'
     self.use_periodic_boundaries = use_periodic
     
     self.generate_constants()
@@ -41,8 +45,11 @@ class Model(object):
     self.generate_function_spaces(use_periodic, **gfs_kwargs)
     self.initialize_variables()
 
-    if save_state:
-      self.state = HDF5File(mesh.mpi_comm(), out_dir + 'state.h5', 'w')
+    # create a new state called "state.h5" :
+    if save_state and state == None:
+      self.state = HDF5File(self.mesh.mpi_comm(), out_dir + 'state.h5', 'w')
+    elif save_state and isinstance(state, dolfin.cpp.io.HDF5File):
+      self.state = state
 
   def generate_constants(self):
     """
@@ -142,22 +149,33 @@ class Model(object):
     self.T_w     = Constant(273.15)
     self.T_w.rename('T_w', 'Triple point of water')
 
+  def init_state(self, fn):
+    """
+    set the self.state .h5 file for saving variables to <f>.h5 in self.out_dir.
+    """
+    self.state = HDF5File(mpi_comm_world(), self.out_dir + fn + '.h5', 'w')
+
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
     """
     raiseNotDefined()
     
-  def set_mesh(self, mesh):
+  def set_mesh(self, f):
     """
-    Sets the mesh.
-    
-    :param mesh : Dolfin mesh to be written
+    Sets the mesh to <f>, either a dolfin.Mesh or .h5 with a mesh file 
+    saved with name 'mesh'.
     """
     s = "::: setting mesh :::"
     print_text(s, self.model_color)
 
-    self.mesh  = mesh
+    if isinstance(f, dolfin.cpp.io.HDF5File):
+      self.mesh = Mesh()
+      f.read(self.mesh, 'mesh', False)
+
+    elif isinstance(f, dolfin.cpp.mesh.Mesh):
+      self.mesh = f
+
     self.dim   = self.mesh.ufl_cell().topological_dimension()
 
   def calculate_boundaries(self, mask=None, adot=None):
@@ -1078,6 +1096,12 @@ class Model(object):
 
     # return a UFL vector :
     return as_vector(U_f)
+
+  def assign_bed_variable(self, u_2D, u_3D):
+    """
+    """
+    lg      = LagrangeInterpolator()
+    lg.interpolate(u_2D, u_3D)
 
   def assign_variable(self, u, var):
     """

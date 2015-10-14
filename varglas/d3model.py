@@ -10,12 +10,16 @@ class D3Model(Model):
   """
 
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               use_periodic=False):
+               state=None, use_periodic=False):
     """
     Create and instance of a 3D model.
     """
-    self.D3Model_color = '150'
-    Model.__init__(self, mesh, out_dir, save_state, use_periodic)
+    self.D3Model_color = '130'
+    
+    s = "::: INITIALIZING 3D MODEL :::"
+    print_text(s, self.D3Model_color)
+    
+    Model.__init__(self, mesh, out_dir, save_state, state, use_periodic)
 
   def generate_pbc(self):
     """
@@ -78,7 +82,6 @@ class D3Model(Model):
     s = "::: setting 3D mesh :::"
     print_text(s, self.D3Model_color)
     
-    self.flat_mesh  = Mesh(mesh)
     self.mesh.init(1,2)
     if self.dim != 3:
       s = ">>> 3D MODEL REQUIRES A 3D MESH, EXITING <<<"
@@ -91,6 +94,22 @@ class D3Model(Model):
     s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
         % (self.dim, self.num_cells, self.num_facets, self.dof)
     print_text(s, self.D3Model_color)
+  
+  def set_flat_mesh(self, flat_mesh):
+    """
+    Sets the flat_mesh for 3D free-surface.
+    
+    :param flat_mesh : Dolfin mesh to be written
+    """
+    s = "::: setting 3D mesh :::"
+    print_text(s, self.D3Model_color)
+
+    self.flat_mesh = flat_mesh
+    self.flat_dim  = self.flat_mesh.ufl_cell().topological_dimension()
+    if self.flat_dim != 3:
+      s = ">>> 3D MODEL REQUIRES A 3D FLAT_MESH, EXITING <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
 
   def generate_function_spaces(self, use_periodic=False):
     """
@@ -275,8 +294,16 @@ class D3Model(Model):
     self.dSrf    = self.ds(6) + self.ds(2) # entire surface
 
     if self.save_state:
+      s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
       self.state.write(self.ff,     'ff')
+
+      s = "::: writing 'ff_acc' FacetFunction to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
       self.state.write(self.ff_acc, 'ff_acc')
+
+      s = "::: writing 'cf' CellFunction to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
       self.state.write(self.cf,     'cf')
     
   def calculate_flat_mesh_boundaries(self, mask=None, adot=None,
@@ -338,17 +365,47 @@ class D3Model(Model):
     
     self.ds_flat = Measure('ds')[self.ff_flat]
   
-  def set_subdomains(self, ff, cf, ff_acc):
+  def set_subdomains_3(self, ff, cf, ff_acc):
     """
     Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
     to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
     """
     s = "::: setting 3D subdomains :::"
     print_text(s, self.D3Model_color)
-    
+
     self.ff     = ff
     self.cf     = cf
     self.ff_acc = ff_acc
+    self.ds     = Measure('ds')[self.ff]
+    self.dx     = Measure('dx')[self.cf]
+    
+    self.dx_s    = self.dx(1)              # internal shelves
+    self.dx_g    = self.dx(0)              # internal grounded
+    self.dx      = self.dx(1) + self.dx(0) # entire internal
+    self.dGnd    = self.ds(3)              # grounded bed
+    self.dFlt    = self.ds(5)              # floating bed
+    self.dSde    = self.ds(4)              # sides
+    self.dBed    = self.dGnd + self.dFlt   # bed
+    self.dSrf_s  = self.ds(6)              # surface
+    self.dSrf_g  = self.ds(2)              # surface
+    self.dSrf    = self.ds(6) + self.ds(2) # entire surface
+  
+  def set_subdomains(self, f):
+    """
+    Set the facet subdomains FacetFunction self.ff, cell subdomains
+    CellFunction self.cf, and accumulation FacetFunction self.ff_acc from
+    MeshFunctions saved in an .h5 file <f>.
+    """
+    s = "::: setting 3D subdomains :::"
+    print_text(s, self.D3Model_color)
+
+    self.ff     = MeshFunction('size_t', self.mesh)
+    self.cf     = MeshFunction('size_t', self.mesh)
+    self.ff_acc = MeshFunction('size_t', self.mesh)
+    f.read(self.ff,     'ff')
+    f.read(self.cf,     'cf')
+    f.read(self.ff_acc, 'ff_acc')
+    
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
     
@@ -392,6 +449,8 @@ class D3Model(Model):
     print_text(s, self.D3Model_color)
     
     if self.save_state:
+      s = "::: writing 'mesh' to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
       self.state.write(self.mesh, 'mesh')
 
   def get_surface_mesh(self):
@@ -408,6 +467,10 @@ class D3Model(Model):
       if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
+    if self.save_state:
+      s = "::: writing 'srfmesh' mesh to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
+      self.state.write(submesh, 'srfmesh')
     return submesh
 
   def get_bed_mesh(self):
@@ -424,6 +487,10 @@ class D3Model(Model):
       if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
+    if self.save_state:
+      s = "::: writing 'bedmesh' mesh to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
+      self.state.write(submesh, 'bedmesh')
     return submesh
       
   def calc_thickness(self):

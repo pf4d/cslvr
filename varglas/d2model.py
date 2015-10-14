@@ -10,12 +10,17 @@ class D2Model(Model):
   """
 
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               use_periodic=False, **gfs_kwargs):
+               state=None, use_periodic=False, **gfs_kwargs):
     """
     Create and instance of a 2D model.
     """
     self.D2Model_color = '150'
-    Model.__init__(self, mesh, out_dir, save_state, use_periodic, **gfs_kwargs)
+    
+    s = "::: INITIALIZING 2D MODEL :::"
+    print_text(s, self.D2Model_color)
+    
+    Model.__init__(self, mesh, out_dir, save_state, state, 
+                   use_periodic, **gfs_kwargs)
 
   def generate_pbc(self):
     """
@@ -100,8 +105,8 @@ class D2Model(Model):
     s = "::: generating 2D function spaces :::"
     print_text(s, self.D2Model_color)
     
-    self.HV     = MixedFunctionSpace([self.Q]*2*poly_deg) # VELOCITY
-    self.Z      = MixedFunctionSpace([self.Q]*N_T)        # TEMPERATURE
+    self.HV     = MixedFunctionSpace([self.Q]*2*self.poly_deg) # VELOCITY
+    self.Z      = MixedFunctionSpace([self.Q]*self.N_T)        # TEMPERATURE
     
     s = "    - 2D function spaces created - "
     print_text(s, self.D2Model_color)

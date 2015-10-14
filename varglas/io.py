@@ -516,7 +516,7 @@ class DataOutput(object):
                       'projection'        : di.proj.srs})
 
 
-def print_min_max(u, title, color='yellow'):
+def print_min_max(u, title, color='97'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """

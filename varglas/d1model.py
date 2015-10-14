@@ -18,6 +18,10 @@ class D1Model(Model):
     Create and instance of a 1D model.
     """
     self.D1Model_color = '150'
+    
+    s = "::: INITIALIZING 1D MODEL :::"
+    print_text(s, self.D1Model_color)
+    
     Model.__init__(self, mesh, out_dir, save_state, use_periodic)
 
   def set_mesh(self, mesh):

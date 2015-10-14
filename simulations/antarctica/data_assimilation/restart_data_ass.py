@@ -74,10 +74,12 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
                                     linear=True)
 mom.solve(annotate=True)
 
-model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
+out_dir = out_dir + '/inverted_g2_10000/'
+
+model.set_out_dir(out_dir = out_dir + 'pvd/')
   
 J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
-                     g1=0.01, g2=1000)
+                     g1=0.01, g2=10000)
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
                      alpha=1.0)
 I = J + R
@@ -123,12 +125,14 @@ solver = IPOPTSolver(problem, parameters=parameters)
 b_opt = solver.solve()
 print_min_max(b_opt, 'b_opt')
 
-model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
-
 model.init_beta(b_opt)
-m_params['solve_vert_velocity'] = True
 
+m_params['solve_vert_velocity'] = True
 mom.solve(annotate=False)
+
+model.save_pvd(model.U3, 'U_opt')
+
+model.set_out_dir(out_dir = out_dir + 'xml/')
 
 u,v,w = model.U3.split(True)
 

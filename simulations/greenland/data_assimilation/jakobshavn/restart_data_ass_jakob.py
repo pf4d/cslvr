@@ -87,7 +87,7 @@ I = J + R
 
 controls = File(model.out_dir + "control_viz/beta_control.pvd")
 beta_viz = Function(model.Q, name="beta_control")
-  
+
 def eval_cb(I, beta):
   #mom.print_eval_ftns()
   #print_min_max(mom.U, 'U')
@@ -127,6 +127,7 @@ print_min_max(b_opt, 'b_opt')
 
 model.init_beta(b_opt)
 
+m_params['solve_vert_velocity']  = True
 mom.solve(annotate=False)
 
 model.save_pvd(model.U3, 'U_opt')

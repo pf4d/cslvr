@@ -19,17 +19,8 @@ in_dir  = 'dump/high_da_ipopt_SIA0_SR/00/thermo_solve/xml/'
 
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
-mesh   = Mesh()
-ff     = MeshFunction('size_t', mesh)
-cf     = MeshFunction('size_t', mesh)
-ff_acc = MeshFunction('size_t', mesh)
-f.read(mesh,    'mesh', False)
-f.read(ff,      'ff')
-f.read(cf,      'cf')
-f.read(ff_acc,  'ff_acc')
-
-model = D3Model(mesh, out_dir + '/thermo_solve/pvd/')
-model.set_subdomains(ff, cf, ff_acc)
+model = D3Model(f, out_dir + '/thermo_solve/pvd/')
+model.set_subdomains(f)
 
 model.init_S(f)
 model.init_B(f)

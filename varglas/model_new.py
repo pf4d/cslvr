@@ -562,13 +562,12 @@ class Model(object):
     #self.betaSIA = Function(Q)
     #self.assign_variable(self.betaSIA, beta_0_v)
     
-  def init_beta_stats(self, mdl='U', use_temp=False):
+  def init_beta_stats(self, mdl='Ubar', use_temp=False, mode='steady'):
     """
     """
     s    = "::: initializing beta from stats :::"
     print_text(s, self.model_color)
     
-    config = self.config
     q_geo  = self.q_geo
     T_s    = self.T_surface
     adot   = self.adot
@@ -582,13 +581,6 @@ class Model(object):
     rho    = self.rhoi
     g      = self.g
     H      = S - B
-
-    if mdl == 'Ubar' or mdl == 'U_Ubar':
-      #config['balance_velocity']['on']    = True
-      config['balance_velocity']['kappa'] = 5.0
-   
-    elif mdl == 'stress':
-      config['stokes_balance']['on']      = True
 
     Ubar_v = Ubar.vector().array()
     Ubar_v[Ubar_v < 1e-10] = 1e-10
@@ -843,18 +835,18 @@ class Model(object):
     for xx,bb in zip(X_i, bhat[1:]):
       self.beta_f += Constant(bb)*xx
       #self.beta_f *= exp(Constant(bb)*xx)
-    self.beta_f = sqrt(exp(self.beta_f))
+    self.beta_f = exp(self.beta_f)**2
     
-    if config['mode'] == 'steady':
+    if mode == 'steady':
       beta0                   = project(self.beta_f, Q, annotate=False)
       beta0_v                 = beta0.vector().array()
       beta0_v[beta0_v < 1e-2] = 1e-2
       self.assign_variable(beta0, beta0_v)
     
       self.assign_variable(self.beta, 1e-2)
-      bc_beta = DirichletBC(self.Q, beta0, self.ff, GAMMA_B_GND)
+      bc_beta = DirichletBC(self.Q, beta0, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
-    elif config['mode'] == 'transient':
+    elif mode == 'transient':
       self.assign_variable(self.beta, 200.0)
     
     print_min_max(self.beta, 'beta0')
@@ -1097,7 +1089,7 @@ class Model(object):
     # return a UFL vector :
     return as_vector(U_f)
 
-  def assign_bed_variable(self, u_2D, u_3D):
+  def assign_boundary_variable(self, u_2D, u_3D):
     """
     """
     lg      = LagrangeInterpolator()

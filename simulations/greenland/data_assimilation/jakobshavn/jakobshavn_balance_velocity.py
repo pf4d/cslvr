@@ -18,9 +18,9 @@ d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_adot(fdata)
 
-d2model.assign_bed_variable(d2model.S,    d3model.S)
-d2model.assign_bed_variable(d2model.B,    d3model.B)
-d2model.assign_bed_variable(d2model.adot, d3model.adot)
+d2model.assign_boundary_variable(d2model.S,    d3model.S)
+d2model.assign_boundary_variable(d2model.B,    d3model.B)
+d2model.assign_boundary_variable(d2model.adot, d3model.adot)
 
 #plotIce(dsr, 'adot', name='', direc='.', title=r'$\dot{a}$', cmap='gist_yarg',
 #        scale='lin', numLvls=12, tp=False, tpAlpha=0.5)

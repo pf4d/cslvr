@@ -87,7 +87,7 @@ Even older documentation is located here:
 
 http://cas.umt.edu/feismd/
 
-Please note that this is old and some descriptions may have changed for this fork of VarGlaS (previously called UM-FEISM).
+Please note that this is old and some descriptions may have changed for my fork of VarGlaS (previously called UM-FEISM).
 
 Test your installation py entering in an ``ipython`` terminal
 

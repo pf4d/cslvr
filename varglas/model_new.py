@@ -379,9 +379,9 @@ class Model(object):
     """
     s = "::: initializing velocity :::"
     print_text(s, self.model_color)
-    u_t = Function(self.Q)
-    v_t = Function(self.Q)
-    w_t = Function(self.Q)
+    u_t = Function(self.Q, name='u_t')
+    v_t = Function(self.Q, name='v_t')
+    w_t = Function(self.Q, name='w_t')
     self.assign_variable(u_t, u)
     self.assign_variable(v_t, v)
     self.assign_variable(w_t, w)
@@ -1089,11 +1089,11 @@ class Model(object):
     # return a UFL vector :
     return as_vector(U_f)
 
-  def assign_boundary_variable(self, u_2D, u_3D):
+  def assign_submesh_variable(self, u_to, u_from):
     """
     """
-    lg      = LagrangeInterpolator()
-    lg.interpolate(u_2D, u_3D)
+    lg = LagrangeInterpolator()
+    lg.interpolate(u_to, u_from)
 
   def assign_variable(self, u, var):
     """

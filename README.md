@@ -33,7 +33,7 @@ sudo apt-get dist-upgrade;
 ```
 
 
-After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html).
+After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html), but utilizing my varglas-modified fork located [here](https://github.com/pf4d/dolfin-adjoint).
 
 also ```Gmsh_dynamic``` and ```GmshPy``` from
 

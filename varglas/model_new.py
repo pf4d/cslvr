@@ -1173,7 +1173,7 @@ class Model(object):
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
-    s = "::: initializing variables :::"
+    s = "::: initializing basic variables :::"
     print_text(s, self.model_color)
 
     # Coordinates of various types 
@@ -1383,6 +1383,9 @@ class Model(object):
 
       # start the timer :
       tic = time()
+
+      # solve energy :
+      energy.solve(annotate=annotate)
       
       # solve velocity :
       momentum.solve(annotate=annotate)
@@ -1392,9 +1395,6 @@ class Model(object):
 
       # update pressure-melting point :
       energy.calc_T_melt(annotate=annotate)
-
-      # solve energy :
-      energy.solve(annotate=annotate)
 
       if callback != None:
         s    = '::: calling callback function :::'

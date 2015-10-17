@@ -48,6 +48,7 @@ class MomentumFirn(Momentum):
     rhoi    = model.rhoi                      # density of ice
     rhom    = model.rhom                      # critical density
     rho     = model.rho                       # density
+    #dx      = model.dx
 
     eta     = TestFunction(Q)
     dw      = TrialFunction(Q)
@@ -57,16 +58,16 @@ class MomentumFirn(Momentum):
     U0      = Function(Q3)
     Phi     = TestFunction(Q3)
     
-    self.assrho   = FunctionAssigner(model.Q, model.Q3.sub(0))
-    self.asssig   = FunctionAssigner(model.Q, model.Q3.sub(1))
-    self.assrss   = FunctionAssigner(model.Q, model.Q3.sub(2))
+    self.assrho   = FunctionAssigner(Q, Q3.sub(0))
+    self.asssig   = FunctionAssigner(Q, Q3.sub(1))
+    self.assrss   = FunctionAssigner(Q, Q3.sub(2))
 
     rho,   sigma,   r   = U
     rho0,  sigma0,  r0  = U0
     phi,   psi,     xi  = Phi
 
     # initialize :
-    #U_i = project(as_vector([model.rho, model.sigma, model.r]), Q3)
+    #U_i = project(as_vector([model.rho, model.sigma, model.r]))
     U_i = Expression(("rho", "sigma", "r"),
                      rho=model.rho, sigma=model.sigma, r=model.r)
 

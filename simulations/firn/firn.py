@@ -13,12 +13,12 @@ mesh  = IntervalMesh(100, zb, zs)      # interval from bed to surface
 
 model = D1Model(mesh, out_dir = 'results')
 
-model.refine_mesh(divs=2, i=1/8.0,  k=1/5.)
-model.refine_mesh(divs=2, i=1/16.0, k=1/5.)
-model.refine_mesh(divs=2, i=1/32.0, k=1/5.)
-model.refine_mesh(divs=2, i=1/32.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
 
-model.generate_function_spaces()
 model.calculate_boundaries()
 
 #===============================================================================
@@ -73,11 +73,11 @@ model.init_time_step(dt1)
 #model.set_ini_conv(ex)
 
 plot_cfg = {  'on'       : bp,
-              'zMin'     : -6,
-              'zMax'     : 0.8,
-              'wMin'     : -30,
-              'wMax'     : 5,
-              'uMin'     : -1e-6,
+              'zMin'     : -60,
+              'zMax'     : 6,
+              'wMin'     : -50,
+              'wMax'     : 50,
+              'uMin'     : -1e-4,
               'uMax'     : 1e-6,
               'rhoMin'   : 0.0,
               'rhoMax'   : 1000,
@@ -87,8 +87,8 @@ plot_cfg = {  'on'       : bp,
               'Tmax'     : 5.0,
               'ageMin'   : 0.0,
               'ageMax'   : 100,
-              'WMin'     : -0.015, 
-              'WMax'     : 0.15,
+              'WMin'     : -5, 
+              'WMax'     : 35,
               'enthalpy' : True,
               'density'  : True,
               'velocity' : True,

@@ -60,12 +60,12 @@ class FirnPlot(object):
 
     # x-values :
     T      = model.Tp
-    W  = model.Wp
+    W      = model.Wp * 100
     rho    = model.rhop
     w      = model.wp * model.spy(0) * 1e2 # cm/a
     u      = model.up * model.spy(0) * 1e2 # cm/a
     a      = model.agep /model.spy(0)
-    Smi    = model.Smip
+    Smi    = model.Smip * 100
     r      = sqrt(model.rp) * 1000
     Ts     = model.Ts - 273.15
     rhos   = rho[0]
@@ -211,6 +211,8 @@ class FirnPlot(object):
       # water velocity axis :
       self.uax   = self.wax.twiny()
       self.uax.axis([uMin, uMax, zMin, zMax])
+      #self.uax.xaxis.set_major_formatter(FixedOrderFormatter(2))
+      #self.uax.ticklabel_format(style='sci',scilimits=(uMin,uMax), axis='x')
       text = r'$u\ \left[\frac{\mathrm{cm}}{\mathrm{a}}\right]$'
       self.uax.set_xlabel(text, color = pur)
       self.uax.grid()
@@ -254,13 +256,13 @@ class FirnPlot(object):
     config = self.config
     index  = model.index 
     T      = model.Tp
-    W      = model.Wp
+    W      = model.Wp * 100
     T_w    = model.T_w(0)
     rho    = model.rhop
     w      = model.wp * model.spy(0) * 1e2
     u      = model.up
     a      = model.agep / model.spy(0)
-    Smi    = model.Smip
+    Smi    = model.Smip * 100
     r      = sqrt(model.rp) * 1000
     z      = model.z
     zo     = model.zo

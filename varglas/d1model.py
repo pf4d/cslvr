@@ -13,7 +13,7 @@ class D1Model(Model):
   Data structure to hold firn model state data.
   """
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               use_periodic=False):
+               state=None, use_periodic=False):
     """
     Create and instance of a 1D model.
     """
@@ -22,7 +22,7 @@ class D1Model(Model):
     s = "::: INITIALIZING 1D MODEL :::"
     print_text(s, self.D1Model_color)
     
-    Model.__init__(self, mesh, out_dir, save_state, use_periodic)
+    Model.__init__(self, mesh, out_dir, save_state, state, use_periodic)
 
   def set_mesh(self, mesh):
     """
@@ -84,6 +84,11 @@ class D1Model(Model):
       mesh = refine(mesh, cell_markers)
       self.set_mesh(mesh)
       return self.refine_mesh(divs, k/i, k, m=m+1)
+    else:
+      s = "::: refinement finished, redefining function spaces :::"
+      print_text(s, self.D1Model_color)
+      self.generate_function_spaces(self.use_periodic_boundaries)
+      self.initialize_variables()
 
   def generate_function_spaces(self, use_periodic=False):
     """
@@ -268,7 +273,8 @@ class D1Model(Model):
     B = Base()
     S.mark(self.ff, 0)
     B.mark(self.ff, 1)
-    self.ds = ds[self.ff]
+    self.ds = Measure('ds')[self.ff]
+    self.dx = Measure('dx')(self.mesh)
 
   def initialize_variables(self):
     """
@@ -276,6 +282,9 @@ class D1Model(Model):
     by the individually created model.
     """
     super(D1Model, self).initialize_variables()
+    
+    s = "::: initializing 1D model variables :::"
+    print_text(s, self.model_color)
 
     self.z     = self.mesh.coordinates()[:,0]
     self.index = np.argsort(self.z)[::-1]
@@ -536,11 +545,11 @@ class D1Model(Model):
       # update timestep :
       self.init_time_step(dt)
 
-      # solve energy :
-      energy.solve(annotate=annotate)
-
       # solve momentum :
       momentum.solve(annotate=annotate)
+
+      # solve energy :
+      energy.solve(annotate=annotate)
 
       # solve mass :
       #mass.solve(annotate=annotate)

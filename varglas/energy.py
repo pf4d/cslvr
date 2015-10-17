@@ -711,6 +711,8 @@ class EnergyFirn(Energy):
     theta0  = model.theta0                    # previous enthalpy
     T       = model.T                         # temperature
     rho     = model.rho                       # density
+    sigma   = model.sigma                     # overburden stress
+    r       = model.r                         # grain size
     w       = model.w                         # velocity
     m       = model.m                         # mesh velocity
     dt      = model.time_step                 # timestep
@@ -727,12 +729,12 @@ class EnergyFirn(Energy):
     #w       = w - m
     z       = model.x[0]
     g       = model.g
-    r       = model.r
     S       = model.S
     h       = model.h
     #W       = model.W
+    dx      = model.dx
     
-    psi     = TestFunction(Q)
+    xi      = TestFunction(Q)
     dtheta  = TrialFunction(Q)
     
     # thermal parameters
@@ -745,30 +747,30 @@ class EnergyFirn(Energy):
     self.thetaBc = DirichletBC(Q, model.theta_surface,  model.surface)
    
     # Darcy flux :
-    W     = conditional(lt(theta, thetasp), 0.0, (theta - ci*T_w) / L)
-    k     = 0.077 * r * exp(-7.8*rho/rhow)                # intrinsic perm.
-    phi   = 1 - rho/rhoi                                  # porosity
-    Smi   = 0.0057 / (1 - phi) + 0.017                    # irr. water content
-    Se    = (W - Smi) / (1 - Smi)                         # effective sat.
-    K     = k * rhow * g / etaw
-    krw   = Se**3.0 
-    #ql    = K * krw * (p / (rhow * g) + z).dx(0)          # water flux
-    ql    = K * krw * (p / (rhow * g)).dx(0)          # water flux
-    #u     = - k / etaw * p.dx(0)                          # darcy velocity
-    u     = - ql/phi                                      # darcy velocity
+    Wm    = conditional(lt(theta, thetasp), 0.0, (theta - ci*T_w) / L)
+    k     = 0.077 * r * exp(-7.8*rho/rhow)     # intrinsic permeability
+    phi   = 1 - rho/rhoi                       # porosity
+    Wmi   = 0.0057 / (1 - phi) + 0.017         # irriducible water content
+    Se    = (Wm - Wmi) / (1 - Wmi)             # effective saturation
+    K     = k * rhow * g / etaw                # unsaturated hydraulic cond.
+    krw   = Se**3.0                            # relative permeability
+    psi   = p / (rhow * g) + 1.0               # total water potential head
+    ql    = - K * krw * psi.dx(0)              # water flux
+    u     = ql / phi                           # darcy velocity
       
     # skewed test function in areas with high velocity :
     PE     = u*h/(2*ki/(rho*ci))
     tau    = 1/tanh(PE) - 1/PE
-    psihat = psi + h*tau/2 * psi.dx(0)
-
+    xihat  = xi + h*tau/2 * xi.dx(0)
+      
     # enthalpy residual :
     eta       = 1.0
     theta_mid = eta*theta + (1 - eta)*theta0
-    delta     = - ki/(rho*ci) * inner(theta_mid.dx(0), psi.dx(0)) * dx \
-                + w * theta_mid.dx(0) * psi * dx \
-                - (theta - theta0)/dt * psi * dx \
-                + (ql * theta_mid).dx(0) * psi * dx \
+    delta     = + ki/(rho*ci) * inner(theta_mid.dx(0), xi.dx(0)) * dx \
+                + (theta - theta0)/dt * xi * dx \
+                + w * theta_mid.dx(0) * xi * dx \
+                + u * theta_mid.dx(0) * xi * dx \
+                - sigma * w.dx(0) / rho * xi * dx
     
     # equation to be minimzed :
     self.J     = derivative(delta, theta, dtheta)   # jacobian
@@ -776,8 +778,8 @@ class EnergyFirn(Energy):
     self.delta = delta
     self.u     = u
     self.ql    = ql
-    self.W     = W
-    self.Smi   = Smi
+    self.Wm    = Wm
+    self.Wmi   = Wmi
 
   def get_solve_params(self):
     """
@@ -811,7 +813,7 @@ class EnergyFirn(Energy):
           annotate=annotate)
 
     model.assign_variable(model.W0, model.W)
-    model.assign_variable(model.W,  project(self.W, annotate=False))
+    model.assign_variable(model.W,  project(self.Wm, annotate=False))
     model.assign_variable(model.ql, project(self.ql, annotate=False))
     
     T_w     = model.T_w(0)
@@ -855,15 +857,15 @@ class EnergyFirn(Energy):
 
     p     = model.vert_integrate(rhow * g * model.W)
     phi   = 1 - model.rho/rhoi                         # porosity
-    Smi   = 0.0057 / (1 - phi) + 0.017                 # irr. water content
+    Wmi   = 0.0057 / (1 - phi) + 0.017                 # irr. water content
     model.assign_variable(model.p,   p)
     model.assign_variable(model.u,   project(self.u, annotate=False))
-    model.assign_variable(model.Smi, project(Smi, annotate=False))
+    model.assign_variable(model.Smi, project(Wmi, annotate=False))
     print_min_max(model.p, 'p')
     print_min_max(model.u, 'u')
 
 
-    print_min_max((1-model.rhop/rhoi)*100 - moden.Wp*100, 'phi - W')
+    print_min_max((1-model.rhop/rhoi)*100 - model.Wp*100, 'phi - W')
 
 
  

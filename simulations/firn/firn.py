@@ -11,8 +11,7 @@ zb    = -100.0                 # depth .......................... m
 
 mesh  = IntervalMesh(100, zb, zs)      # interval from bed to surface
 
-model = D1Model(out_dir = 'results')
-model.set_mesh(mesh)
+model = D1Model(mesh, out_dir = 'results')
 
 model.refine_mesh(divs=2, i=1/8.0,  k=1/5.)
 model.refine_mesh(divs=2, i=1/16.0, k=1/5.)

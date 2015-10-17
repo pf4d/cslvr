@@ -66,7 +66,10 @@ class MomentumFirn(Momentum):
     phi,   psi,     xi  = Phi
 
     # initialize :
-    U_i = project(as_vector([model.rho, model.sigma, model.r]), Q3)
+    #U_i = project(as_vector([model.rho, model.sigma, model.r]), Q3)
+    U_i = Expression(("rho", "sigma", "r"),
+                     rho=model.rho, sigma=model.sigma, r=model.r)
+
     model.assign_variable(U,  U_i)
     model.assign_variable(U0, U_i)
 

@@ -1105,7 +1105,7 @@ class Model(object):
          or isinstance(u, dolfin.functions.function.Function):
         u.vector()[:] = var
       elif  isinstance(u, Constant):
-        u.assign(var, annotate=False)
+        u.assign(var)
     
     elif isinstance(var, np.ndarray):
       if var.dtype != np.float64:

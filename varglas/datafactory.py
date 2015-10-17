@@ -99,6 +99,79 @@ class DataFactory(object):
   
   
   @staticmethod
+  def get_habermann_1985():
+    
+    s    = "::: getting Greenland Habermann 1985 data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
+    global home
+    
+    direc = home + '/greenland/rignot/velocity_greenland_v4Aug2014.nc'
+    data  = netcdf_file(direc, mode = 'r')
+    vara  = dict()
+    
+    needed_vars = {'vx'  : 'vx',
+                   'vy'  : 'vy',
+                   'err' : 'v_err'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Rignot : %-*s key : %s '%(30,v, txt), '230')
+    
+    # retrieve data :
+    vx   = array(data.variables['vx'][:])
+    vy   = array(data.variables['vy'][:])
+    err  = array(data.variables['err'][:])
+     
+    # extents of domain :
+    ny,nx =  shape(vx)
+    dx    =  150
+    west  = -638000.0
+    east  =  west + nx*dx
+    north = -657600.0
+    south =  north - ny*dx
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '70'
+    lon_0  = '-45'
+    
+    # create projection :
+    txt  =   " +proj="   + proj \
+           + " +lat_0="  + lat_0 \
+           + " +lat_ts=" + lat_ts \
+           + " +lon_0="  + lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    p    = Proj(txt)
+    
+    # save the data in matlab format :
+    vara['pyproj_Proj']       = p
+    vara['map_western_edge']  = west 
+    vara['map_eastern_edge']  = east 
+    vara['map_southern_edge'] = south 
+    vara['map_northern_edge'] = north
+    vara['nx']                = nx
+    vara['ny']                = ny
+    
+    names = ['vx', 'vy', 'v_err']
+    ftns  = [ vx,   vy,   err   ]
+    
+    # save the data in matlab format :
+    vara['dataset']   = 'Rignot'
+    vara['continent'] = 'greenland'
+    for n, f in zip(names, ftns):
+      vara[n] = f[::-1, :]
+    return vara
+  
+  
+  @staticmethod
   def get_gre_measures():
     
     s    = "::: getting Greenland measures data from DataFactory :::"

@@ -12,7 +12,7 @@ dir_b   = 'dump/jakob_da_ipopt_SIA0_SR/0'
 
 # set the output directory :
 in_dir  = dir_b + str(i) + '/thermo_solve/xml/'  # previous thermo_solve.py run
-out_dir = dir_b + str(i+1) + '/inverted/'        # new output directory
+out_dir = dir_b + str(i) + '/inverted/'          # new output directory
 var_dir = 'dump/vars_jakobshavn/'                # gen_vars.py ouput state.h5
 
 # get the data created with gen_vars.py :

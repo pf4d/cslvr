@@ -9,13 +9,14 @@ import sys
 #set_log_level(PROGRESS)
 
 # get the input args :
-i       = 1
+i       = 2
 dir_b   = 'dump/jakob_da_ipopt_SIA0_SR/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i)
 var_dir = 'dump/vars_jakobshavn/'
-in_dir  = dir_b + str(i-1) + '/inverted_g2_10000/xml/'
+ts_dir  = dir_b + str(i-1) + '/thermo_solve/xml/'
+in_dir  = dir_b + str(i-1) + '/inverted/xml/'
 
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
@@ -35,10 +36,9 @@ model.init_v_lat(0.0)
 
 # use T0 and beta0 from the previous run :
 if i > 0:
-  model.init_T(in_dir + 'T.xml')          # temp
-  model.init_W(in_dir + 'W.xml')          # water
+  model.init_T(ts_dir + 'T.xml')          # temp
+  model.init_W(ts_dir + 'W.xml')          # water
   model.init_beta(in_dir + 'beta.xml')    # friction
-  model.init_E_shf(in_dir + 'E_shf.xml')  # enhancement
 else:
   model.init_T(model.T_surface)
   #model.init_beta(1e4)

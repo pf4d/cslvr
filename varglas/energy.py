@@ -94,8 +94,6 @@ class Enthalpy(Energy):
     T_melt        = model.T_melt
     Mb            = model.Mb
     L             = model.L
-    ci            = model.ci
-    cw            = model.cw
     T_w           = model.T_w
     gamma         = model.gamma
     S             = model.S
@@ -109,12 +107,14 @@ class Enthalpy(Energy):
     v             = model.v
     w             = model.w
     eps_reg       = model.eps_reg
-    rhoi          = model.rhoi
-    rhow          = model.rhow
     g             = model.g
     beta          = model.beta
+    rhoi          = model.rhoi
+    rhow          = model.rhow
     ki            = model.ki
     kw            = model.kw
+    ci            = model.ci
+    cw            = model.cw
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
     theta_float   = model.theta_float
@@ -149,18 +149,20 @@ class Enthalpy(Energy):
 
     T_s_v = T_surface.vector().array()
     T_m_v = T_melt.vector().array()
+    ci_v  = 152.5 + 7.122*T_s_v
    
     # Surface boundary condition :
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
-    model.assign_variable(theta_surface, T_s_v * ci(0))
-    model.assign_variable(theta_float,   T_m_v * ci(0))
+    model.assign_variable(theta_surface, T_s_v * ci_v)
+    model.assign_variable(theta_float,   T_m_v * ci_v)
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
 
-    # thermal conductivity (Greve and Blatter 2009) :
-    ki    =  9.828 * exp(-0.0057*T)
+    # thermal conductivity and heat capacity (Greve and Blatter 2009) :
+    ki    = 9.828 * exp(-0.0057*T)
+    ci    = 152.5 + 7.122*T
     
     # bulk properties :
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
@@ -168,28 +170,10 @@ class Enthalpy(Energy):
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
-    # For the following heat sources, note that they differ from the 
-    # oft-published expressions, in that they are both multiplied by constants.
-    # I think that this is the correct form, as they must be this way in order 
-    # to conserve energy.  This also implies that heretofore, models have been 
-    # overestimating frictional heat, and underestimating strain heat.
-
     # frictional heating :
     q_friction = beta * inner(U,U)
 
     # Strain heating = stress*strain
-    #epi     = 0.5 * (grad(U) + grad(U).T)
-    #ep_xx   = epi[0,0]
-    #ep_yy   = epi[1,1]
-    #ep_zz   = epi[2,2]
-    #ep_xy   = epi[0,1]
-    #ep_xz   = epi[0,2]
-    #ep_yz   = epi[1,2]
-    #epsdot  = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-    #                 + ep_xy**2 + ep_xz**2 + ep_yz**2
-    #Q_s_gnd = 2 * eta_gnd * tr(dot(epi,epi))
-    #Q_s_shf = 2 * eta_shf * tr(dot(epi,epi))
-
     epsdot  = model.effective_strain_rate()
     a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
     Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
@@ -197,8 +181,6 @@ class Enthalpy(Energy):
     b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
-    #Q_s_gnd = (2*n)/(n+1) * eta_shf * epsdot
-    #Q_s_shf = (2*n)/(n+1) * eta_gnd * epsdot
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
 
@@ -707,6 +689,7 @@ class EnergyFirn(Energy):
     mesh    = model.mesh
     Q       = model.Q
 
+    spy     = model.spy
     theta   = model.theta                     # enthalpy
     theta0  = model.theta0                    # previous enthalpy
     T       = model.T                         # temperature
@@ -717,8 +700,10 @@ class EnergyFirn(Energy):
     m       = model.m                         # mesh velocity
     dt      = model.time_step                 # timestep
     rhoi    = model.rhoi                      # density of ice
-    spy     = model.spy
-    ci      = model.ci
+    rhow    = model.rhow                      # density of water 
+    ci      = model.ci                        # heat capacity of ice
+    cw      = model.cw                        # heat capacity of water
+    kw      = model.kw                        # thermal conductivity of water
     T       = model.T
     T_w     = model.T_w
     L       = model.L
@@ -737,17 +722,30 @@ class EnergyFirn(Energy):
     xi      = TestFunction(Q)
     dtheta  = TrialFunction(Q)
     
-    # thermal parameters
+    # thermal conductivity parameter :
     ki  = model.ki*(rho / rhoi)**2
-
-    T_v = T.vector().array()
-    model.assign_variable(theta,  ci(0)*T_v)
-    model.assign_variable(theta0, ci(0)*T_v)
+    ci  = 152.5 + 7.122*T
     
+    # water content :
+    Wm    = conditional(lt(theta, ci*T_w), 0.0, (theta - ci*T_w) / L)
+
+    # bulk properties :
+    kb  = kw * Wm + (1-Wm)*ki
+    cb  = cw * Wm + (1-Wm)*ci
+
+    # initialize energy :
+    T_v = T.vector().array()
+    c_v = 152.5 + 7.122*T_v
+    model.assign_variable(theta,  c_v*T_v)
+    model.assign_variable(theta0, c_v*T_v)
+    
+    # initialize heat capacity : 
+    model.assign_variable(model.cif, project(ci, annotate=False))
+   
+    # boundary condition on the surface : 
     self.thetaBc = DirichletBC(Q, model.theta_surface,  model.surface)
    
     # Darcy flux :
-    Wm    = conditional(lt(theta, thetasp), 0.0, (theta - ci*T_w) / L)
     k     = 0.077 * r * exp(-7.8*rho/rhow)     # intrinsic permeability
     phi   = 1 - rho/rhoi                       # porosity
     Wmi   = 0.0057 / (1 - phi) + 0.017         # irriducible water content
@@ -766,7 +764,7 @@ class EnergyFirn(Energy):
     # enthalpy residual :
     eta       = 1.0
     theta_mid = eta*theta + (1 - eta)*theta0
-    delta     = + ki/(rho*ci) * inner(theta_mid.dx(0), xi.dx(0)) * dx \
+    delta     = + kb/(rho*cb) * inner(theta_mid.dx(0), xi.dx(0)) * dx \
                 + (theta - theta0)/dt * xi * dx \
                 + w * theta_mid.dx(0) * xi * dx \
                 + u * theta_mid.dx(0) * xi * dx \
@@ -774,7 +772,8 @@ class EnergyFirn(Energy):
     
     # equation to be minimzed :
     self.J     = derivative(delta, theta, dtheta)   # jacobian
-
+    
+    self.ci    = ci
     self.delta = delta
     self.u     = u
     self.ql    = ql
@@ -812,16 +811,17 @@ class EnergyFirn(Energy):
           solver_parameters=self.solve_params['solver'],
           annotate=annotate)
 
-    model.assign_variable(model.W0, model.W)
-    model.assign_variable(model.W,  project(self.Wm, annotate=False))
-    model.assign_variable(model.ql, project(self.ql, annotate=False))
+    model.assign_variable(model.W0,  model.W)
+    model.assign_variable(model.W,   project(self.Wm, annotate=False))
+    model.assign_variable(model.ql,  project(self.ql, annotate=False))
+    model.assign_variable(model.cif, project(self.ci, annotate=False))
     
     T_w     = model.T_w(0)
     rhow    = model.rhow(0)
     rhoi    = model.rhoi(0)
-    thetasp = model.thetasp(0)
     g       = model.g(0)
-    ci      = model.ci(0)
+    ci      = model.cif.vector().array()
+    thetasp = ci * T_w
     L       = model.L(0)
 
     # update coefficients used by enthalpy :
@@ -863,9 +863,6 @@ class EnergyFirn(Energy):
     model.assign_variable(model.Smi, project(Wmi, annotate=False))
     print_min_max(model.p, 'p')
     print_min_max(model.u, 'u')
-
-
-    print_min_max((1-model.rhop/rhoi)*100 - model.Wp*100, 'phi - W')
 
 
  

@@ -57,19 +57,33 @@ class FirnPlot(object):
              
     blist    = [Tb, rhob, wb, ageb]
     totb     = 100 + 10 * sum(blist)
+    
+    # convert to arrays :
+    thetap  = model.theta.vector().array()
+    rhop    = model.rho.vector().array()
+    wp      = model.w.vector().array()
+    agep    = model.age.vector().array()
+    Tp      = model.T.vector().array()
+    Wp      = model.W.vector().array()
+    rp      = model.r.vector().array()
+    pp      = model.p.vector().array()
+    up      = model.u.vector().array()
+    Smip    = model.Smi.vector().array()
+    cp      = model.cif.vector().array()
+    Ts      = thetap[0] / cp[0]
 
     # x-values :
-    T      = model.Tp
-    W      = model.Wp * 100
-    rho    = model.rhop
-    w      = model.wp * model.spy(0) * 1e2 # cm/a
-    u      = model.up * model.spy(0) * 1e2 # cm/a
-    a      = model.agep /model.spy(0)
-    Smi    = model.Smip * 100
-    r      = sqrt(model.rp) * 1000
-    Ts     = model.Ts - 273.15
+    T      = Tp
+    W      = Wp * 100
+    rho    = rhop
+    w      = wp * model.spy(0)  # m/a
+    u      = up * 1e2           # cm/s
+    a      = agep /model.spy(0)
+    Smi    = Smip * 100
+    r      = sqrt(rp) * 1000
+    Ts     = Ts - 273.15
     rhos   = rho[0]
-    adot   = model.w_surface.adot
+    adot   = model.adot.vector().array()[0]
 
     # y-value :
     z      = model.z
@@ -188,7 +202,7 @@ class FirnPlot(object):
       # firn compaction velocity axis :
       self.wax   = self.fig.add_subplot(totb + i)
       self.wax.axis([wMin, wMax, zMin, zMax])
-      self.wax.set_xlabel(r'$w\ \left[\frac{\mathrm{cm}}{\mathrm{a}}\right]$')
+      self.wax.set_xlabel(r'$w\ \left[\frac{\mathrm{m}}{\mathrm{a}}\right]$')
       self.wax.grid()
 
       # surface accumulation text :
@@ -213,7 +227,7 @@ class FirnPlot(object):
       self.uax.axis([uMin, uMax, zMin, zMax])
       #self.uax.xaxis.set_major_formatter(FixedOrderFormatter(2))
       #self.uax.ticklabel_format(style='sci',scilimits=(uMin,uMax), axis='x')
-      text = r'$u\ \left[\frac{\mathrm{cm}}{\mathrm{a}}\right]$'
+      text = r'$u\ \left[\frac{\mathrm{cm}}{\mathrm{s}}\right]$'
       self.uax.set_xlabel(text, color = pur)
       self.uax.grid()
       for tl in self.uax.get_xticklabels():
@@ -255,23 +269,40 @@ class FirnPlot(object):
     model  = self.model
     config = self.config
     index  = model.index 
-    T      = model.Tp
-    W      = model.Wp * 100
+    
+    # convert to arrays :
+    thetap = model.theta.vector().array()
+    rhop   = model.rho.vector().array()
+    wp     = model.w.vector().array()
+    agep   = model.age.vector().array()
+    Tp     = model.T.vector().array()
+    Wp     = model.W.vector().array()
+    rp     = model.r.vector().array()
+    pp     = model.p.vector().array()
+    up     = model.u.vector().array()
+    Smip   = model.Smi.vector().array()
+    cp     = model.cif.vector().array()
+    Ts     = thetap[0] / cp[0]
     T_w    = model.T_w(0)
-    rho    = model.rhop
-    w      = model.wp * model.spy(0) * 1e2
-    u      = model.up
-    a      = model.agep / model.spy(0)
-    Smi    = model.Smip * 100
-    r      = sqrt(model.rp) * 1000
+
+    # x-values :
+    T      = Tp
+    W      = Wp * 100
+    rho    = rhop
+    w      = wp * model.spy(0)  # m/a
+    u      = up * 1e2           # cm/s
+    a      = agep /model.spy(0)
+    Smi    = Smip * 100
+    r      = sqrt(rp) * 1000
+    Ts     = Ts - T_w
+    adot   = model.adot.vector().array()[0]
+    t      = model.t / model.spy(0)
+    phi    = 1 - rho/917.0
+    Smi    = 0.0057 / (1 - phi) + 0.017
+    
     z      = model.z
     zo     = model.zo
     zs     = model.z[0]
-    Ts     = model.Ts - T_w
-    t      = model.t / model.spy(0)
-    
-    phi   = 1 - rho/917.0
-    Smi   = 0.0057 / (1 - phi) + 0.017
 
     self.fig.canvas.set_window_title('Time = %.2f yr' % t)
    
@@ -294,7 +325,7 @@ class FirnPlot(object):
       self.phSmi_dot.set_ydata(zs)
       
     if config['density']: 
-      text = r'$\rho_S$: %.1E $\frac{\mathrm{kg}}{\mathrm{m}^3}$' % rho[-1]
+      text = r'$\rho_S$: %.1E $\frac{\mathrm{kg}}{\mathrm{m}^3}$' % rho[0]
       self.rhoSurf.set_text(text)
       self.phrho.set_xdata(rho)
       self.phrho.set_ydata(z)
@@ -308,7 +339,7 @@ class FirnPlot(object):
       
     if config['velocity']: 
       text = r'$\dot{a}$: %.1E i.e.$\frac{\mathrm{m}}{\mathrm{a}}$'
-      self.wSurf.set_text(text % model.adot )
+      self.wSurf.set_text(text % adot)
       self.phw.set_xdata(w)
       self.phw.set_ydata(z)
       self.phu.set_xdata(u)

@@ -27,7 +27,7 @@ rhos  = 360.                   # initial density at surface ..... kg/m^3
 rhoin = 717.                   # initial density at surface ..... kg/m^3
 rin   = 0.0005**2              # initial grain radius ........... m^2
 adot  = 0.1                    # accumulation rate .............. m/a
-Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
+Tavg  = 273.15 - 10.0          # average temperature ............ degrees K
 
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
 dt2   = 0.1/365.0*model.spy(0) # time-step ...................... s
@@ -39,11 +39,25 @@ tm    = 500.0 * model.spy(0)
 
 #===============================================================================
 # enthalpy BC :
-#code  = 'cp*(Tavg + 5*(sin(2*omega*t) + 5*sin(4*omega*t)))'
-#H_exp = Expression(code, cp=cpi, Tavg=Tavg, omega=pi/spy, t=t0)
-code      = 'c*(Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))'
-theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
-                       t=t0, c=model.ci(0))
+class ThetaSurface(Expression):
+  def __init__(self, Tavg, t):
+    self.Tavg = Tavg
+    self.t    = t
+  def eval(self, values, x):
+    Tavg      = self.Tavg
+    omega     = pi / model.spy(0)
+    t         = self.t
+    T_m       = min(273.15, self.Tavg)
+    c_s       = 152.5 + 7.122*T_m
+    theta_s   = c_s * (Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))
+    values[0] = theta_s
+theta_exp = ThetaSurface(Tavg, t0)
+
+T_i = theta_exp(zs) / (152.5 + 7.122*Tavg)
+
+#code      = 'c*(Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))'
+#theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
+#                       t=t0, c=model.ci(0))
 
 # surface density :
 rho_exp = Expression('rhon', rhon=rhos)
@@ -63,7 +77,7 @@ model.init_w_surface(w_exp)
 model.init_r_surface(r_exp)
 model.init_sigma_surface(0.0)
 
-model.init_T(Tavg)
+model.init_T(T_i)
 model.init_rho(rhoin)
 model.init_r(rin)
 model.init_adot(adot)
@@ -73,12 +87,12 @@ model.init_time_step(dt1)
 #model.set_ini_conv(ex)
 
 plot_cfg = {  'on'       : bp,
-              'zMin'     : -60,
-              'zMax'     : 6,
-              'wMin'     : -50,
-              'wMax'     : 50,
-              'uMin'     : -1e-4,
-              'uMax'     : 1e-6,
+              'zMin'     : -20,
+              'zMax'     : 2,
+              'wMin'     : -0.5,
+              'wMax'     : 0.5,
+              'uMin'     : -4e-3,
+              'uMax'     : 4e-4,
               'rhoMin'   : 0.0,
               'rhoMax'   : 1000,
               'rMin'     : 0.0,
@@ -99,13 +113,10 @@ nrg = EnergyFirn(model)
 plt = FirnPlot(model, plot_cfg)
 
 def cb():
-  model.update_vars()
   model.update_height_history()
   theta_exp.t = model.t
-  theta_exp.c = model.cp[0]
   rho_exp.t   = model.t
   w_exp.t     = model.t
-  w_exp.rhos  = model.rhop[0]
   #bdotNew     = (w_exp.adot * model.rhoi(0)) / model.spy(0)
   #model.assign_variable(model.bdot, bdotNew)
   plt.update()

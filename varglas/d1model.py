@@ -163,7 +163,7 @@ class D1Model(Model):
     """
     s = "::: initializing accumulation :::"
     print_text(s, self.D1Model_color)
-    self.adot = adot
+    self.assign_variable(self.adot, adot)
     self.assign_variable(self.bdot, self.rhoi(0) * adot / self.spy(0))
     print_min_max(self.adot, 'adot')
     print_min_max(self.bdot, 'bdot')
@@ -326,6 +326,8 @@ class D1Model(Model):
     self.u       = Function(self.Q, name='u')
     self.ql      = Function(self.Q, name='ql')
     self.Smi     = Function(self.Q, name='Smi')
+    self.cif     = Function(self.Q, name='cif')
+    self.adot    = Function(self.Q, name='adot')
 
     self.assign_variable(self.rhoCoef, self.kcHh)
     
@@ -333,49 +335,11 @@ class D1Model(Model):
     self.lnew    = self.l.copy()             # previous height vector
     self.t       = 0.0                       # initialize time
     
-    self.thetap  = self.theta.vector().array()
-    self.Tp      = self.T.vector().array()
-    self.Wp      = self.W.vector().array()
-    self.rhop    = self.rho.vector().array()
-    self.drhodtp = self.drhodt.vector().array()
-    self.agep    = self.age.vector().array()
-    self.wp      = self.w.vector().array()
-    self.kp      = self.ki(0) * (self.rhop / self.rhoi(0))**2
-    self.cp      = self.ci(0) * np.ones(self.dof)
-    self.rp      = self.r.vector().array()
-    self.agep    = np.zeros(self.dof)
-    self.pp      = np.zeros(self.dof)
-    self.up      = np.zeros(self.dof)
-    self.Smip    = np.zeros(self.dof)
-    
     self.S_1     = self.S_bc                 # previous time-step surface  
     self.zo      = self.S_bc                 # z-coordinate of initial surface
     self.ht      = [self.S_bc]               # list of surface heights
     self.origHt  = [self.zo]                 # list of initial surface heights
-    self.Ts      = self.thetap[0] / self.cp[0]   # temperature of surface
 
-  def update_thetabc(self): 
-    """
-    Adjust the enthalpy at the surface.
-    """
-    self.theta_surface.t = self.t
-    self.theta_surface.c = self.cp[0]
-  
-  def update_Tbc(self): 
-    """
-    Adjust the enthalpy at the surface.
-    """
-    self.T_surface.t = self.t
- 
-  def update_WBc(self): 
-    """
-    Adjust the water-content at the surface.
-    """
-    self.W_surface.thetas   = self.thetap[0]
-    self.W_surface.cps  = self.cp[0]
-    self.W_surface.rs   = self.rp[0]
-    self.W_surface.rhos = self.rhop[0]
-      
   def update_wBc(self):
     """
     Adjust the velocity at the surface.
@@ -400,22 +364,6 @@ class D1Model(Model):
     #  self.rho_surface.rhon = self.rhos
     self.rho_surface.t = self.t
 
-  def update_vars(self):
-    """
-    Project the variables onto the space V and update firn object.
-    """
-    self.thetap  = self.theta.vector().array()
-    self.rhop    = self.rho.vector().array()
-    self.wp      = self.w.vector().array()
-    self.agep    = self.age.vector().array()
-    self.Tp      = self.T.vector().array()
-    self.Wp      = self.W.vector().array()
-    self.rp      = self.r.vector().array()
-    self.pp      = self.p.vector().array()
-    self.up      = self.u.vector().array()
-    self.Smip    = self.Smi.vector().array()
-    self.Ts      = self.thetap[0] / self.cp[0]
-  
   def vert_integrate(self, u):
     """
     Integrate <u> from the surface to the bed.
@@ -450,9 +398,8 @@ class D1Model(Model):
 
     # calculate the new height of original surface by interpolating the 
     # vertical speed from w and keeping the ratio intact :
-    interp  = interp1d(self.z, self.wp,
-                       bounds_error=False,
-                       fill_value=self.wp[0])
+    wp      = self.w.vector().array()
+    interp  = interp1d(self.z, wp, bounds_error=False, fill_value=wp[0])
     wzo     = interp(self.zo)
     dt      = self.time_step(0)
     zs      = self.z[0]

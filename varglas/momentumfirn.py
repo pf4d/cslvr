@@ -192,7 +192,7 @@ class MomentumFirn(Momentum):
     # if rho >  550, kc = kcHigh
     # if rho <= 550, kc = kcLow
     # with parameterizations given by ligtenberg et all 2011
-    A                   = model.rhoi(0)/model.rhow(0) * 1e3 * model.adot
+    A                   = model.rhoi(0)/model.rhow(0) * 1e3 * model.adot(0)
     rhoCoefNew          = np.ones(model.dof)
     rhoHigh             = np.where(rhop >  550)[0]
     rhoLow              = np.where(rhop <= 550)[0]

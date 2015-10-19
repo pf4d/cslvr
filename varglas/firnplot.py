@@ -74,13 +74,13 @@ class FirnPlot(object):
 
     # x-values :
     T      = Tp
-    W      = Wp * 100
+    W      = Wp
     rho    = rhop
     w      = wp * model.spy(0)  # m/a
     u      = up * 1e2           # cm/s
     a      = agep /model.spy(0)
-    Smi    = Smip * 100
-    r      = sqrt(rp) * 1000
+    Smi    = Smip
+    r      = rp * 1000
     Ts     = Ts - 273.15
     rhos   = rho[0]
     adot   = model.adot.vector().array()[0]
@@ -134,7 +134,7 @@ class FirnPlot(object):
       # water content axis :
       self.Oax   = self.Tax.twiny()
       self.Oax.axis([WMin, WMax, zMin, zMax])
-      self.Oax.set_xlabel(r'$W\ [\%]$', color=pur)
+      self.Oax.set_xlabel(r'$W\ [\mathrm{m}^{3} \mathrm{m}^{-3}]$', color=pur)
       self.Oax.grid()
       for tl in self.Oax.get_xticklabels():
         tl.set_color(pur)
@@ -287,13 +287,13 @@ class FirnPlot(object):
 
     # x-values :
     T      = Tp
-    W      = Wp * 100
+    W      = Wp
     rho    = rhop
     w      = wp * model.spy(0)  # m/a
     u      = up * 1e2           # cm/s
     a      = agep /model.spy(0)
-    Smi    = Smip * 100
-    r      = sqrt(rp) * 1000
+    Smi    = Smip
+    r      = rp * 1000
     Ts     = Ts - T_w
     adot   = model.adot.vector().array()[0]
     t      = model.t / model.spy(0)

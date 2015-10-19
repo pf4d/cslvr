@@ -25,9 +25,9 @@ model.calculate_boundaries()
 # model variables :
 rhos  = 360.                   # initial density at surface ..... kg/m^3
 rhoin = 717.                   # initial density at surface ..... kg/m^3
-rin   = 0.0005**2              # initial grain radius ........... m^2
+rin   = 0.0005                 # initial grain radius ........... m^2
 adot  = 0.1                    # accumulation rate .............. m/a
-Tavg  = 273.15 - 10.0          # average temperature ............ degrees K
+Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
 
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
 dt2   = 0.1/365.0*model.spy(0) # time-step ...................... s
@@ -68,7 +68,7 @@ code    = '- rhoi/rhos * adot / spy'
 w_exp   = Expression(code, rhoi=model.rhoi(0), adot=adot, 
                      spy=model.spy(0), rhos=rhos)
 
-# grain radius of surface [cm^2] :
+# grain radius of surface [m^2] :
 r_exp   = Expression('r_s', r_s=rin)
 
 model.init_theta_surface(theta_exp)
@@ -101,8 +101,8 @@ plot_cfg = {  'on'       : bp,
               'Tmax'     : 5.0,
               'ageMin'   : 0.0,
               'ageMax'   : 100,
-              'WMin'     : -5, 
-              'WMax'     : 35,
+              'WMin'     : -0.05, 
+              'WMax'     : 0.25,
               'enthalpy' : True,
               'density'  : True,
               'velocity' : True,

@@ -693,7 +693,7 @@ class EnergyFirn(Energy):
     theta   = model.theta                     # enthalpy
     theta0  = model.theta0                    # previous enthalpy
     T       = model.T                         # temperature
-    rho     = model.rho                       # density
+    rhof    = model.rho                       # density of firn
     sigma   = model.sigma                     # overburden stress
     r       = model.r                         # grain size
     w       = model.w                         # velocity
@@ -723,15 +723,17 @@ class EnergyFirn(Energy):
     dtheta  = TrialFunction(Q)
     
     # thermal conductivity parameter :
-    ki  = model.ki*(rho / rhoi)**2
+    #ki  = model.ki*(rho / rhoi)**2
+    ki  = 9.828 * exp(-0.0057*T)
     ci  = 152.5 + 7.122*T
     
     # water content :
     Wm    = conditional(lt(theta, ci*T_w), 0.0, (theta - ci*T_w) / L)
 
     # bulk properties :
-    kb  = kw * Wm + (1-Wm)*ki
-    cb  = cw * Wm + (1-Wm)*ci
+    kb   = kw * Wm   + (1-Wm)*ki
+    cb   = cw * Wm   + (1-Wm)*ci
+    rhob = rhow * Wm + (1-Wm)*rhof
 
     # initialize energy :
     T_v = T.vector().array()
@@ -746,29 +748,30 @@ class EnergyFirn(Energy):
     self.thetaBc = DirichletBC(Q, model.theta_surface,  model.surface)
    
     # Darcy flux :
-    k     = 0.077 * r * exp(-7.8*rho/rhow)     # intrinsic permeability
-    phi   = 1 - rho/rhoi                       # porosity
+    k     = 0.077 * r**2 * exp(-7.8*rhob/rhow) # intrinsic permeability
+    phi   = 1 - rhob/rhoi                      # porosity
     Wmi   = 0.0057 / (1 - phi) + 0.017         # irriducible water content
     Se    = (Wm - Wmi) / (1 - Wmi)             # effective saturation
     K     = k * rhow * g / etaw                # unsaturated hydraulic cond.
     krw   = Se**3.0                            # relative permeability
-    psi   = p / (rhow * g) + 1.0               # total water potential head
-    ql    = - K * krw * psi.dx(0)              # water flux
-    u     = ql / phi                           # darcy velocity
+    psi_m = p / (rhow * g)                     # matric potential head
+    psi_g = z                                  # gravitational potential head
+    psi   = psi_m + psi_g                      # total water potential head
+    u     = - K * krw * psi.dx(0)              # darcy water velocity
       
     # skewed test function in areas with high velocity :
-    PE     = u*h/(2*ki/(rho*ci))
+    PE     = u*h/(2*kb/(rhob*cb))
     tau    = 1/tanh(PE) - 1/PE
     xihat  = xi + h*tau/2 * xi.dx(0)
       
     # enthalpy residual :
     eta       = 1.0
     theta_mid = eta*theta + (1 - eta)*theta0
-    delta     = + kb/(rho*cb) * inner(theta_mid.dx(0), xi.dx(0)) * dx \
+    delta     = + kb/(rhob*cb) * inner(theta_mid.dx(0), xi.dx(0)) * dx \
                 + (theta - theta0)/dt * xi * dx \
                 + w * theta_mid.dx(0) * xi * dx \
                 + u * theta_mid.dx(0) * xi * dx \
-                - sigma * w.dx(0) / rho * xi * dx
+                - sigma * w.dx(0) / rhob * xi * dx
     
     # equation to be minimzed :
     self.J     = derivative(delta, theta, dtheta)   # jacobian
@@ -776,7 +779,6 @@ class EnergyFirn(Energy):
     self.ci    = ci
     self.delta = delta
     self.u     = u
-    self.ql    = ql
     self.Wm    = Wm
     self.Wmi   = Wmi
 
@@ -813,7 +815,6 @@ class EnergyFirn(Energy):
 
     model.assign_variable(model.W0,  model.W)
     model.assign_variable(model.W,   project(self.Wm, annotate=False))
-    model.assign_variable(model.ql,  project(self.ql, annotate=False))
     model.assign_variable(model.cif, project(self.ci, annotate=False))
     
     T_w     = model.T_w(0)
@@ -853,7 +854,6 @@ class EnergyFirn(Energy):
     print_min_max(model.T,     'T')
     print_min_max(model.theta, 'theta')
     print_min_max(model.W,     'W')
-    print_min_max(model.ql,    'ql')
 
     p     = model.vert_integrate(rhow * g * model.W)
     phi   = 1 - model.rho/rhoi                         # porosity

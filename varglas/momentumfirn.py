@@ -48,7 +48,11 @@ class MomentumFirn(Momentum):
     rhoi    = model.rhoi                      # density of ice
     rhom    = model.rhom                      # critical density
     rho     = model.rho                       # density
+    W       = model.W                         # water content
     #dx      = model.dx
+
+    dr0     = 1.28e-8  * 3/(4*pi) / 1000**3 
+    dr1     = 4.22e-10 * 3/(4*pi) / 1000**3 
 
     eta     = TestFunction(Q)
     dw      = TrialFunction(Q)
@@ -67,10 +71,8 @@ class MomentumFirn(Momentum):
     phi,   psi,     xi  = Phi
 
     # initialize :
-    #U_i = project(as_vector([model.rho, model.sigma, model.r]))
     U_i = Expression(("rho", "sigma", "r"),
                      rho=model.rho, sigma=model.sigma, r=model.r)
-
     model.assign_variable(U,  U_i)
     model.assign_variable(U0, U_i)
 
@@ -78,7 +80,7 @@ class MomentumFirn(Momentum):
     theta     = 0.878
     rho_mid   = theta*rho + (1 - theta)*rho0
     
-    drhodt    = rhoCoef * exp( -Ec/(R*T) ) * (rhoi - rho_mid) * sigma / r
+    drhodt    = rhoCoef * (rhoi - rho_mid) * exp( -Ec/(R*T) ) * sigma / r**2
     d_rho     = + (rho - rho0)/dt * phi * dx \
                 - drhodt * phi * dx \
                 + w * rho_mid.dx(0) * phi * dx 
@@ -94,7 +96,7 @@ class MomentumFirn(Momentum):
     # r residual :
     theta   = 0.878
     r_mid   = theta*r + (1 - theta)*r0
-    drdt    = kg * exp( -Eg/(R*T) )
+    drdt    = (kg * exp(-Eg/(R*T)) + dr0 + dr1*(100*W)**3) / (2*r + 3*r**2)
     d_r     = + (r - r0)/dt * xi * dx \
               - drdt * xi * dx \
               + w * r_mid.dx(0) * xi * dx
@@ -102,7 +104,6 @@ class MomentumFirn(Momentum):
     # velocity residual :
     theta   = 0.878
     w_mid   = theta*dw + (1 - theta)*w0
-    
     w_delta = + rho * w_mid.dx(0) * eta * dx \
               + drhodt * eta * dx
     
@@ -202,7 +203,7 @@ class MomentumFirn(Momentum):
     
     print_min_max(model.rho,   'rho')
     print_min_max(model.sigma, 'sigma')
-    print_min_max(model.r,     'r^2')
+    print_min_max(model.r,     'r')
     
     s    = "::: solving firn densification rate :::"
     print_text(s, self.color())

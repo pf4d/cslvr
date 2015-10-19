@@ -147,22 +147,23 @@ class Enthalpy(Energy):
     # pressure melting point, do not annotate for initial guess :
     self.calc_T_melt(annotate=False)
 
-    T_s_v = T_surface.vector().array()
-    T_m_v = T_melt.vector().array()
-    ci_v  = 152.5 + 7.122*T_s_v
+    T_s_v  = T_surface.vector().array()
+    T_m_v  = T_melt.vector().array()
+    ci_s   = 146.3 + 7.253*T_s_v
+    ci_f   = 146.3 + 7.253*T_m_v
    
     # Surface boundary condition :
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
-    model.assign_variable(theta_surface, T_s_v * ci_v)
-    model.assign_variable(theta_float,   T_m_v * ci_v)
+    model.assign_variable(theta_surface, T_s_v * ci_s)
+    model.assign_variable(theta_float,   T_m_v * ci_f)
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
-    ci    = 152.5 + 7.122*T
+    ci    = 146.3 + 7.253*T
     
     # bulk properties :
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity

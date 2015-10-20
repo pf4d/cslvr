@@ -1234,7 +1234,8 @@ class Model(object):
     self.q_geo         = Function(self.Q, name='q_geo')
     self.W             = Function(self.Q, name='W')
     self.Mb            = Function(self.Q, name='Mb')
-    self.T_melt        = Function(self.Q, name='T_melt') # pressure-melting
+    self.T_melt        = Function(self.Q, name='T_melt')     # pressure-melting
+    self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
     
     # adjoint model :

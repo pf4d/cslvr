@@ -92,6 +92,7 @@ class Enthalpy(Energy):
     eps_reg       = model.eps_reg
     T             = model.T
     T_melt        = model.T_melt
+    theta_melt    = model.theta_melt
     Mb            = model.Mb
     L             = model.L
     T_w           = model.T_w
@@ -151,13 +152,16 @@ class Enthalpy(Energy):
     T_m_v  = T_melt.vector().array()
     ci_s   = 146.3 + 7.253*T_s_v
     ci_f   = 146.3 + 7.253*T_m_v
+
+    theta_m_v = theta_melt.vector().array()
    
     # Surface boundary condition :
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
     model.assign_variable(theta_surface, T_s_v * ci_s)
-    model.assign_variable(theta_float,   T_m_v * ci_f)
+    #model.assign_variable(theta_float,   T_m_v * ci_f)
+    model.assign_variable(theta_float,   theta_m_v)
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
 
@@ -185,6 +189,9 @@ class Enthalpy(Energy):
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
 
+    # basal heat-flux natural boundary condition :
+    g_b = conditional( lt(T, T_melt), q_geo + q_friction, 0.0)
+
     # configure the module to run in steady state :
     if not transient:
       s = "    - using steady-state formulation -"
@@ -195,12 +202,32 @@ class Enthalpy(Energy):
       tau    = 1/tanh(PE) - 1/PE
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
+      
+      # cannonical form, save as below :
+      #psihat = h*tau/(2*Unorm) * dot(U, grad(psi))
+      #
+      ## residual :
+      #delta  = + rho * dot(U, grad(dtheta)) * psihat * dx \
+      #         - div(rho * spy * kappa * grad(dtheta)) * psihat * dx \
+      #         - Q_s_gnd * psihat * dx_g \
+      #         - Q_s_shf * psihat * dx_s \
+      #
+      ## galerkin formulation :
+      #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
+      #         + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
+      #         - (q_geo + q_friction) * psi * dGnd \
+      #         - Q_s_gnd * psi * dx_g \
+      #         - Q_s_shf * psi * dx_s \
+      #         + delta
 
-      # residual of model :
+      #theta_a = lhs(F)
+      #theta_L = rhs(F)
+
+      # galerkin formulation :
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
                 + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
       
-      theta_L = + (q_geo + q_friction) * psi * dGnd \
+      theta_L = + g_b * psi * dGnd \
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_s
       
@@ -215,7 +242,6 @@ class Enthalpy(Energy):
       Unorm  = sqrt(dot(U, U) + 1.0)
       PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
-      #T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
       nu = 0.5
@@ -228,8 +254,8 @@ class Enthalpy(Energy):
                 + rho * spy * kappa * dot(grad(psi), grad(thetamid)) * dx \
       
       theta_L = + (q_geo + q_friction) * psi * dGnd \
-                + Q_s_gnd * psihat * dx_g \
-                + Q_s_shf * psihat * dx_s
+                + Q_s_gnd * psi * dx_g \
+                + Q_s_shf * psi * dx_s
 
     self.theta_a = theta_a
     self.theta_L = theta_L
@@ -284,6 +310,24 @@ class Enthalpy(Energy):
     solve(a, Tm.vector(), l, annotate=annotate)
     model.assign_variable(model.T_melt, Tm)
     print_min_max(model.T_melt, 'T_melt')
+    self.calc_theta_melt(annotate=annotate)
+
+  def calc_theta_melt(self, annotate=True):
+    """
+    Calculates pressure-melting energy in model.theta_melt.
+    """
+    s    = "::: calculating pressure-melting energy :::"
+    print_text(s, self.color())
+
+    model = self.model
+
+    dx    = model.dx
+    T_m   = model.T_melt.vector().array()
+
+    theta_m = 146.3*T_m + 7.253 / 2 * T_m**2
+    
+    model.assign_variable(model.theta_melt, theta_m)
+    print_min_max(model.theta_melt, 'theta_melt')
 
   def get_solve_params(self):
     """
@@ -300,11 +344,12 @@ class Enthalpy(Energy):
     mesh       = model.mesh
     Q          = model.Q
     T_melt     = model.T_melt
+    theta_melt = model.theta_melt
     T          = model.T
     W          = model.W
     W0         = model.W0
     L          = model.L
-    ci         = model.ci
+    c          = self.c
     theta      = self.theta
 
     if self.solve_params['use_surface_climate']:
@@ -327,29 +372,30 @@ class Enthalpy(Energy):
     if self.transient:
       self.theta0.assign(self.theta)
 
-    # temperature solved diagnostically : 
+    # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"
     print_text(s, self.color())
-    T_n  = project(theta/ci, Q, annotate=False)
+    theta_v  = theta.vector().array()
+    T_n_v    = (-146.3 + np.sqrt(146.3**2 + 4*7.253*theta_v)) / (2*7.253)
+    T_v      = T_n_v.copy()
     
     # update temperature for wet/dry areas :
-    T_n_v        = T_n.vector().array()
     T_melt_v     = T_melt.vector().array()
-    warm         = T_n_v >= T_melt_v
-    cold         = T_n_v <  T_melt_v
-    T_n_v[warm]  = T_melt_v[warm]
-    model.assign_variable(T, T_n_v)
+    warm         = T_v >= T_melt_v
+    cold         = T_v <  T_melt_v
+    T_v[warm]    = T_melt_v[warm]
+    model.assign_variable(T, T_v)
     print_min_max(T,  'T')
     
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, self.color())
-    W_n  = project((theta - ci*T_melt)/L, Q, annotate=False)
+    c_v  = 146.3 + 7.253*T_v
+    W_v  = (theta_v - T_n_v*c_v)/L(0)
     
     # update water content :
-    W_v             = W_n.vector().array()
-    W_v[cold]       = 0.0
-    W_v[W_v < 0.0]  = 0.0
+    W_v[cold]       = 0.0   # no water where frozen 
+    W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
     W_v[W_v > 0.01] = 0.01  # for rheology; instant water run-off
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
@@ -367,6 +413,8 @@ class Enthalpy(Energy):
     B          = model.B
     rhoi       = model.rhoi
     theta      = model.theta
+    T          = model.T
+    T_melt     = model.T_melt
     L          = model.L
     q_geo      = model.q_geo
     rho        = self.rho
@@ -375,11 +423,12 @@ class Enthalpy(Energy):
 
     gradB = as_vector([B.dx(0), B.dx(1), -1])
     dHdn  = rho * kappa * dot(grad(theta), gradB)
-    nMb   = project((q_geo + q_friction - dHdn) / (L*rhoi), model.Q,
+    nMb   = project((q_geo + q_friction - dHdn) / (L*rho), model.Q,
                     annotate=False)
-    nMb_v = nMb.vector().array()
-    #nMb_v[nMb_v < 0.0]  = 0.0
-    #nMb_v[nMb_v > 10.0] = 10.0
+    nMb_v    = nMb.vector().array()
+    T_melt_v = T_melt.vector().array()
+    T_v      = T.vector().array()
+    nMb_v[T_v < T_melt_v]  = 0.0
     model.assign_variable(model.Mb, nMb_v)
     print_min_max(model.Mb, 'Mb')
 

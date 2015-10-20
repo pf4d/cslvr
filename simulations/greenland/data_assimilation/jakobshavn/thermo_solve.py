@@ -9,7 +9,7 @@ import sys
 #set_log_level(PROGRESS)
 
 # get the input args :
-i       = 2
+i       = 0
 dir_b   = 'dump/jakob_da_ipopt_SIA0_SR/0'     # directory to save
 
 # set the output directory :
@@ -33,6 +33,9 @@ model.init_U_ob(f, f)
 model.init_E(1.0)
 model.init_u_lat(0.0)
 model.init_v_lat(0.0)
+
+Mb_ini = (-model.q_geo - model.beta * model.U_ob**2) / (model.L * model.rhoi)
+model.init_Mb(project(Mb_ini, model.Q))
 
 # use T0 and beta0 from the previous run :
 if i > 0:
@@ -66,15 +69,19 @@ model.save_pvd(model.beta, 'beta0')
 model.save_pvd(model.U_ob, 'U_ob')
 
 def cb_ftn():
-  #nrg.solve_basal_melt_rate()
+  nrg.solve_basal_melt_rate()
   #nrg.calc_bulk_density()
   model.save_pvd(model.U3,    'U3')
   #model.save_pvd(model.p,     'p')
   model.save_pvd(model.theta, 'theta')
   model.save_pvd(model.T,     'T')
   model.save_pvd(model.W,     'W')
-  #model.save_pvd(model.Mb,    'Mb')
+  model.save_pvd(model.Mb,    'Mb')
   #model.save_pvd(model.rho_b, 'rho_b')
+    
+  gradB = as_vector([model.B.dx(0), model.B.dx(1), -1])
+  dTdn  = project(dot(grad(model.T), gradB))
+  model.save_pvd(dTdn, 'dTdn')
 
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
@@ -86,7 +93,6 @@ model.save_xml(interpolate(model.v, model.Q), 'v')
 model.save_xml(interpolate(model.w, model.Q), 'w')
 model.save_xml(model.beta,                    'beta')
 model.save_xml(model.Mb,                      'Mb')
-model.save_xml(model.E_shf,                   'E_shf')
 
 
 

@@ -291,7 +291,7 @@ class FirnPlot(object):
     rho    = rhop
     w      = wp * model.spy(0)  # m/a
     u      = up * 1e2           # cm/s
-    a      = agep /model.spy(0)
+    a      = agep / model.spy(0)
     Smi    = Smip
     r      = rp * 1000
     Ts     = Ts - T_w

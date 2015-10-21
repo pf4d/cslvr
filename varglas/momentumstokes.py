@@ -75,7 +75,6 @@ class MomentumStokes(Momentum):
     p0         = 101325
     T0         = 288.15
     M          = 0.0289644
-    ci         = model.ci
     
     #===========================================================================
     # define variational problem :
@@ -112,8 +111,9 @@ class MomentumStokes(Momentum):
       E_gnd   = model.E_gnd
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     
     eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
     eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
@@ -357,7 +357,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     p0         = 101325
     T0         = 288.15
     M          = 0.0289644
-    ci         = model.ci
     
     #===========================================================================
     # define variational problem :
@@ -388,8 +387,9 @@ class MomentumDukowiczStokesReduced(Momentum):
       E_gnd   = model.E_gnd
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:
@@ -562,7 +562,8 @@ class MomentumDukowiczStokesReduced(Momentum):
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 25,
                                   'error_on_nonconvergence'  : False}}
-    m_params  = {'solver'      : nparams}
+    m_params  = {'solver'         : nparams,
+                 'solve_pressure' : True}
     return m_params
 
   def solve_vert_velocity(self, annotate=annotate):
@@ -603,6 +604,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     # solve for the vertical velocity :
     if params['solve_vert_velocity']:
       self.solve_vert_velocity(annotate)
+    if params['solve_pressure']:
+      self.solve_pressure(annotate)
     
     U3 = model.U3.split(True)
 
@@ -678,7 +681,6 @@ class MomentumDukowiczStokes(Momentum):
     p0         = 101325
     T0         = 288.15
     M          = 0.0289644
-    ci         = model.ci
     
     #===========================================================================
     # define variational problem :
@@ -705,8 +707,9 @@ class MomentumDukowiczStokes(Momentum):
       E_gnd   = model.E_gnd
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:

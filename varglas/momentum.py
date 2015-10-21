@@ -63,8 +63,15 @@ class Momentum(Physics):
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 25,
                                   'error_on_nonconvergence'  : False}}
-    m_params  = {'solver' : nparams}
+    m_params  = {'solver'         : nparams,
+                 'solve_pressure' : True}
     return m_params
+  
+  def solve_pressure(self, annotate=True):
+    """
+    Solve for the hydrostatic pressure 'p'.
+    """
+    self.model.solve_hydrostatic_pressure(annotate)
   
   def solve(self, annotate=True, params=None):
     """ 

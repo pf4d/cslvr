@@ -129,6 +129,7 @@ class Model(object):
     self.kw.rename('kw', 'thermal conductivity of water')
 
     self.ci      = Constant(2009.0)
+    self.ci      = Constant(1916.0)
     self.ci.rename('ci', 'heat capacity of ice')
     
     self.cw      = Constant(4217.6)
@@ -140,7 +141,7 @@ class Model(object):
     self.ghf     = Constant(ghf)
     self.ghf.rename('ghf', 'geothermal heat flux')
 
-    self.gamma   = Constant(8.71e-4)
+    self.gamma   = Constant(9.8e-8)
     self.gamma.rename('gamma', 'pressure melting point depth dependence')
 
     self.nu      = Constant(3.5e3)
@@ -1095,7 +1096,7 @@ class Model(object):
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
 
-  def assign_variable(self, u, var):
+  def assign_variable(self, u, var, annotate=False):
     """
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
@@ -1105,7 +1106,7 @@ class Model(object):
          or isinstance(u, dolfin.functions.function.Function):
         u.vector()[:] = var
       elif  isinstance(u, Constant):
-        u.assign(var)
+        u.assign(var, annotate=annotate)
     
     elif isinstance(var, np.ndarray):
       if var.dtype != np.float64:
@@ -1117,10 +1118,10 @@ class Model(object):
       or isinstance(var, Constant)  \
       or isinstance(var, Function) \
       or isinstance(var, dolfin.functions.function.Function):
-      u.interpolate(var, annotate=False)
+      u.interpolate(var, annotate=annotate)
 
     elif isinstance(var, GenericVector):
-      self.assign_variable(u, var.array())
+      self.assign_variable(u, var.array(), annotate=annotate)
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1167,6 +1168,21 @@ class Model(object):
     s       = "::: saving %s%s.xml file :::" % (self.out_dir, name)
     print_text(s, self.model_color)
     File(self.out_dir + '/' +  name + '.xml') << var
+  
+  def solve_hydrostatic_pressure(self, annotate=True):
+    """
+    Solve for the hydrostatic pressure 'p'.
+    """
+    # solve for vertical velocity :
+    s  = "::: solving hydrostatic pressure :::"
+    print_text(s, self.model_color)
+    rhoi   = self.rhoi
+    g      = self.g
+    S      = self.S
+    z      = self.x[2]
+    p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
+    self.assign_variable(self.p, p)
+    print_min_max(self.p, 'p')
   
   def initialize_variables(self):
     """

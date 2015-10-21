@@ -99,8 +99,9 @@ class MomentumBP(Momentum):
       E_gnd   = model.E_gnd
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     
     eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
     eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))

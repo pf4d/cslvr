@@ -20,7 +20,7 @@ in_dir  = dir_b + str(i-1) + '/inverted/xml/'
 
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
-model = D3Model(f, out_dir + '/thermo_solve/pvd/')
+model = D3Model(f, out_dir + '/thermo_solve_flux_constant_c_Ts/pvd/')
 model.set_subdomains(f)
 
 model.init_S(f)
@@ -33,9 +33,6 @@ model.init_U_ob(f, f)
 model.init_E(1.0)
 model.init_u_lat(0.0)
 model.init_v_lat(0.0)
-
-Mb_ini = (-model.q_geo - model.beta * model.U_ob**2) / (model.L * model.rhoi)
-model.init_Mb(project(Mb_ini, model.Q))
 
 # use T0 and beta0 from the previous run :
 if i > 0:
@@ -55,7 +52,7 @@ nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'error_on_nonconvergence'  : False}}
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : True,
-             'solve_pressure'       : True,
+             'solve_pressure'       : False,
              'vert_solve_method'    : 'mumps'}
 
 e_params  = {'solver'               : 'mumps',
@@ -85,7 +82,7 @@ def cb_ftn():
 
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
-model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
+model.set_out_dir(out_dir = out_dir + '/thermo_solve_flux_constant_c_Ts/xml/')
 model.save_xml(model.T,                       'T')
 model.save_xml(model.W,                       'W')
 model.save_xml(interpolate(model.u, model.Q), 'u')

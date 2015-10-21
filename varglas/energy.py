@@ -92,7 +92,6 @@ class Enthalpy(Energy):
     eps_reg       = model.eps_reg
     T             = model.T
     T_melt        = model.T_melt
-    theta_melt    = model.theta_melt
     Mb            = model.Mb
     L             = model.L
     T_w           = model.T_w
@@ -112,9 +111,9 @@ class Enthalpy(Energy):
     beta          = model.beta
     rhoi          = model.rhoi
     rhow          = model.rhow
-    ki            = model.ki
+    #ki            = model.ki
     kw            = model.kw
-    ci            = model.ci
+    #ci            = model.ci
     cw            = model.cw
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
@@ -145,29 +144,30 @@ class Enthalpy(Energy):
     theta  = Function(Q)
     theta0 = Function(Q)
 
-    # pressure melting point, do not annotate for initial guess :
+    # pressure melting point, never annotate for initial guess :
+    model.solve_hydrostatic_pressure(annotate=False)
     self.calc_T_melt(annotate=False)
 
     T_s_v  = T_surface.vector().array()
     T_m_v  = T_melt.vector().array()
     ci_s   = 146.3 + 7.253*T_s_v
     ci_f   = 146.3 + 7.253*T_m_v
-
-    theta_m_v = theta_melt.vector().array()
+    ci_s   = model.ci(0)
+    ci_f   = model.ci(0)
    
     # Surface boundary condition :
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
     model.assign_variable(theta_surface, T_s_v * ci_s)
-    #model.assign_variable(theta_float,   T_m_v * ci_f)
-    model.assign_variable(theta_float,   theta_m_v)
+    model.assign_variable(theta_float,   T_m_v * ci_f)
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
     ci    = 146.3 + 7.253*T
+    ci    = model.ci
     
     # bulk properties :
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
@@ -182,15 +182,17 @@ class Enthalpy(Energy):
     epsdot  = model.effective_strain_rate()
     a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
     Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    W_T     = conditional( lt(W, 0.01),   W,            0.01)
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
 
     # basal heat-flux natural boundary condition :
-    g_b = conditional( lt(T, T_melt), q_geo + q_friction, 0.0)
+    g_b = conditional( gt(W, 1e-10), 0.0, q_geo + q_friction )
+    g_b = q_geo + q_friction
 
     # configure the module to run in steady state :
     if not transient:
@@ -203,7 +205,7 @@ class Enthalpy(Energy):
       T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       
-      # cannonical form, save as below :
+      # cannonical form, same as below :
       #psihat = h*tau/(2*Unorm) * dot(U, grad(psi))
       #
       ## residual :
@@ -295,39 +297,20 @@ class Enthalpy(Energy):
     model = self.model
 
     dx    = model.dx
-    x     = model.x
-    S     = model.S
     gamma = model.gamma
     T_w   = model.T_w
+    p     = model.p
 
     u   = TrialFunction(model.Q)
     phi = TestFunction(model.Q)
     Tm  = Function(model.Q)
 
-    l = assemble((T_w - gamma * (S - x[2])) * phi * dx, annotate=annotate)
+    l = assemble((T_w - gamma * p) * phi * dx, annotate=annotate)
     a = assemble(u * phi * dx, annotate=annotate)
 
     solve(a, Tm.vector(), l, annotate=annotate)
     model.assign_variable(model.T_melt, Tm)
     print_min_max(model.T_melt, 'T_melt')
-    self.calc_theta_melt(annotate=annotate)
-
-  def calc_theta_melt(self, annotate=True):
-    """
-    Calculates pressure-melting energy in model.theta_melt.
-    """
-    s    = "::: calculating pressure-melting energy :::"
-    print_text(s, self.color())
-
-    model = self.model
-
-    dx    = model.dx
-    T_m   = model.T_melt.vector().array()
-
-    theta_m = 146.3*T_m + 7.253 / 2 * T_m**2
-    
-    model.assign_variable(model.theta_melt, theta_m)
-    print_min_max(model.theta_melt, 'theta_melt')
 
   def get_solve_params(self):
     """
@@ -344,7 +327,6 @@ class Enthalpy(Energy):
     mesh       = model.mesh
     Q          = model.Q
     T_melt     = model.T_melt
-    theta_melt = model.theta_melt
     T          = model.T
     W          = model.W
     W0         = model.W0
@@ -375,8 +357,10 @@ class Enthalpy(Energy):
     # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"
     print_text(s, self.color())
+    print_min_max(model.ci, 'ci')
     theta_v  = theta.vector().array()
-    T_n_v    = (-146.3 + np.sqrt(146.3**2 + 4*7.253*theta_v)) / (2*7.253)
+    #T_n_v    = (-146.3 + np.sqrt(146.3**2 + 4*7.253*theta_v)) / (2*7.253)
+    T_n_v    = theta_v / model.ci(0)
     T_v      = T_n_v.copy()
     
     # update temperature for wet/dry areas :
@@ -391,12 +375,12 @@ class Enthalpy(Energy):
     s = "::: calculating water content :::"
     print_text(s, self.color())
     c_v  = 146.3 + 7.253*T_v
+    c_v  = model.ci(0)
     W_v  = (theta_v - T_n_v*c_v)/L(0)
     
     # update water content :
     W_v[cold]       = 0.0   # no water where frozen 
     W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-    W_v[W_v > 0.01] = 0.01  # for rheology; instant water run-off
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
     print_min_max(W,  'W')
@@ -428,7 +412,8 @@ class Enthalpy(Energy):
     nMb_v    = nMb.vector().array()
     T_melt_v = T_melt.vector().array()
     T_v      = T.vector().array()
-    nMb_v[T_v < T_melt_v]  = 0.0
+    nMb_v[T_v < T_melt_v]  = 0.0    # if frozen, no melt
+    nMb_v[nMb_v < 0.0]     = 0.0    # no freeze-on
     model.assign_variable(model.Mb, nMb_v)
     print_min_max(model.Mb, 'Mb')
 
@@ -607,7 +592,7 @@ class EnergyHybrid(Energy):
     self.R_T = replace(R_T, {T_:dT})
 
     # pressure melting point calculation, do not annotate for initial calc :
-    self.Tm  = as_vector([T_w - gamma*sigma*H for sigma in sigmas])
+    self.Tm  = as_vector([T_w - sigma*gamma*rho*g*H for sigma in sigmas])
     self.calc_T_melt(annotate=False)
 
   def get_solve_params(self):

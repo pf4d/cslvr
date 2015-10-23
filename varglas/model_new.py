@@ -134,7 +134,7 @@ class Model(object):
     self.cw      = Constant(4217.6)
     self.cw.rename('cw', 'Heat capacity of water at Tw')
 
-    self.L       = Constant(3.34e5)
+    self.L       = Constant(3.3355e5)
     self.L.rename('L', 'latent heat of ice')
 
     self.ghf     = Constant(ghf)

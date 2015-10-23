@@ -374,8 +374,7 @@ class Enthalpy(Energy):
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, self.color())
-    L    = (146.3 + 7.253/2.0*T_melt_v) * T_melt_v
-    W_v  = (theta_v - theta_melt_v) / L
+    W_v  = (theta_v - theta_melt_v) / L(0)
     
     # update water content :
     #W_v[cold]       = 0.0   # no water where frozen 

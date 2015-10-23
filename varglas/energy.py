@@ -374,10 +374,11 @@ class Enthalpy(Energy):
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, self.color())
-    W_v  = (theta_v - theta_melt_v)/L(0)
+    L    = (146.3 + 7.253/2.0*T_melt_v) * T_melt_v
+    W_v  = (theta_v - theta_melt_v) / L
     
     # update water content :
-    W_v[cold]       = 0.0   # no water where frozen 
+    #W_v[cold]       = 0.0   # no water where frozen 
     W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
     model.assign_variable(W0, W)
     model.assign_variable(W,  W_v)
@@ -405,7 +406,7 @@ class Enthalpy(Energy):
 
     gradB = as_vector([B.dx(0), B.dx(1), -1])
     dTdn  = k * dot(grad(T), gradB)
-    nMb   = project((q_geo + q_friction - dHdn) / (L*rho), model.Q,
+    nMb   = project((q_geo + q_friction - dTdn) / (L*rho), model.Q,
                     annotate=False)
     nMb_v    = nMb.vector().array()
     T_melt_v = T_melt.vector().array()

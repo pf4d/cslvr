@@ -111,9 +111,7 @@ class Enthalpy(Energy):
     beta          = model.beta
     rhoi          = model.rhoi
     rhow          = model.rhow
-    #ki            = model.ki
     kw            = model.kw
-    #ci            = model.ci
     cw            = model.cw
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
@@ -148,26 +146,23 @@ class Enthalpy(Energy):
     model.solve_hydrostatic_pressure(annotate=False)
     self.calc_T_melt(annotate=False)
 
-    T_s_v  = T_surface.vector().array()
-    T_m_v  = T_melt.vector().array()
-    ci_s   = 146.3 + 7.253*T_s_v
-    ci_f   = 146.3 + 7.253*T_m_v
-    ci_s   = model.ci(0)
-    ci_f   = model.ci(0)
+    T_s_v   = T_surface.vector().array()
+    T_m_v   = T_melt.vector().array()
+    theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
+    theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
    
     # Surface boundary condition :
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
-    model.assign_variable(theta_surface, T_s_v * ci_s)
-    model.assign_variable(theta_float,   T_m_v * ci_f)
+    model.assign_variable(theta_surface, theta_s)
+    model.assign_variable(theta_float,   theta_f)
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
     ci    = 146.3 + 7.253*T
-    ci    = model.ci
     
     # bulk properties :
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
@@ -227,7 +222,8 @@ class Enthalpy(Energy):
 
       # galerkin formulation :
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
-                + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
+                - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
+                + spy * k / c * dot(grad(psi), grad(dtheta)) * dx \
       
       theta_L = + g_b * psi * dGnd \
                 + Q_s_gnd * psi * dx_g \
@@ -312,6 +308,11 @@ class Enthalpy(Energy):
     model.assign_variable(model.T_melt, Tm)
     print_min_max(model.T_melt, 'T_melt')
 
+    Tm_v    = Tm.vector().array()
+    theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
+    model.assign_variable(model.theta_melt, theta_m)
+    print_min_max(model.theta_melt, 'theta_melt')
+
   def get_solve_params(self):
     """
     Returns the solve parameters.
@@ -357,16 +358,15 @@ class Enthalpy(Energy):
     # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"
     print_text(s, self.color())
-    print_min_max(model.ci, 'ci')
     theta_v  = theta.vector().array()
-    #T_n_v    = (-146.3 + np.sqrt(146.3**2 + 4*7.253*theta_v)) / (2*7.253)
-    T_n_v    = theta_v / model.ci(0)
+    T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
     
     # update temperature for wet/dry areas :
     T_melt_v     = T_melt.vector().array()
-    warm         = T_v >= T_melt_v
-    cold         = T_v <  T_melt_v
+    theta_melt_v = model.theta_melt.vector().array()
+    warm         = theta_v >= theta_melt_v
+    cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
     model.assign_variable(T, T_v)
     print_min_max(T,  'T')
@@ -374,9 +374,7 @@ class Enthalpy(Energy):
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, self.color())
-    c_v  = 146.3 + 7.253*T_v
-    c_v  = model.ci(0)
-    W_v  = (theta_v - T_n_v*c_v)/L(0)
+    W_v  = (theta_v - theta_melt_v)/L(0)
     
     # update water content :
     W_v[cold]       = 0.0   # no water where frozen 
@@ -402,18 +400,18 @@ class Enthalpy(Energy):
     L          = model.L
     q_geo      = model.q_geo
     rho        = self.rho
-    kappa      = self.kappa
+    k          = self.k
     q_friction = self.q_friction
 
     gradB = as_vector([B.dx(0), B.dx(1), -1])
-    dHdn  = rho * kappa * dot(grad(theta), gradB)
+    dTdn  = k * dot(grad(T), gradB)
     nMb   = project((q_geo + q_friction - dHdn) / (L*rho), model.Q,
                     annotate=False)
     nMb_v    = nMb.vector().array()
     T_melt_v = T_melt.vector().array()
     T_v      = T.vector().array()
     nMb_v[T_v < T_melt_v]  = 0.0    # if frozen, no melt
-    nMb_v[nMb_v < 0.0]     = 0.0    # no freeze-on
+    #nMb_v[nMb_v < 0.0]     = 0.0    # no freeze-on
     model.assign_variable(model.Mb, nMb_v)
     print_min_max(model.Mb, 'Mb')
 

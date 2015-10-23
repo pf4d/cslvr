@@ -129,7 +129,6 @@ class Model(object):
     self.kw.rename('kw', 'thermal conductivity of water')
 
     self.ci      = Constant(2009.0)
-    self.ci      = Constant(1916.0)
     self.ci.rename('ci', 'heat capacity of ice')
     
     self.cw      = Constant(4217.6)

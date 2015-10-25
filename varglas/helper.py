@@ -914,7 +914,7 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
  
   plt.tight_layout()
-  plt.savefig(direc + name + '.png', dpi=200)
+  plt.savefig(direc + name + '.pdf')
   if show:
     plt.show()
   plt.close(fig)
@@ -948,7 +948,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   
   OUTPUT :
  
-    A sigle 250 dpi .png in the source directory.
+    A sigle <direcc><name>.pdf in the source directory.
   
   """
   #=============================================================================
@@ -1117,7 +1117,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   #tit.set_fontsize(40)
   
   plt.tight_layout(rect=[.03,.03,0.97,0.97])
-  plt.savefig(direc + name + '.png', dpi=300)
+  plt.savefig(direc + name + '.pdf')
   if show:
     plt.show()
   plt.close(fig)

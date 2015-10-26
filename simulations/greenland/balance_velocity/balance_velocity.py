@@ -8,7 +8,8 @@ bamber  = DataFactory.get_bamber(thklim)
 rignot  = DataFactory.get_rignot()
 
 # load a mesh :
-mesh  = MeshFactory.get_greenland_2D_1H()
+#mesh  = MeshFactory.get_greenland_2D_1H()
+mesh  = Mesh('dump/meshes/greenland_2D_1H_mesh.xml.gz')
 
 # create data objects to use with varglas :
 dsr   = DataInput(searise, mesh=mesh)
@@ -21,13 +22,11 @@ drg.change_projection(dbm)
 #plotIce(dsr, 'adot', name='', direc='.', title=r'$\dot{a}$', cmap='gist_yarg',
 #        scale='lin', numLvls=12, tp=False, tpAlpha=0.5)
 
-B     = dbm.get_expression("B",     near=True)
-S     = dbm.get_expression("S",     near=True)
-adot  = dsr.get_expression("adot",  near=True)
+B     = dbm.get_expression("B",     near=False)
+S     = dbm.get_expression("S",     near=False)
+adot  = dsr.get_expression("adot",  near=False)
 
-model = D2Model(out_dir = 'results/')
-model.set_mesh(mesh)
-model.generate_function_spaces()
+model = D2Model(mesh, out_dir = 'dump/balance_velocity/')
 
 model.init_S(S)
 model.init_B(B)

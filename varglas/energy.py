@@ -195,9 +195,9 @@ class Enthalpy(Energy):
       print_text(s, self.color())
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*kappa)
+      PE     = Unorm*h/(2*spy*k/c)
       tau    = 1/tanh(PE) - 1/PE
-      T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
+      #T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       
       # cannonical form, same as below :
@@ -223,7 +223,7 @@ class Enthalpy(Energy):
       # galerkin formulation :
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
                 - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
-                + spy * k / c * dot(grad(psi), grad(dtheta)) * dx \
+                + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
       
       theta_L = + g_b * psi * dGnd \
                 + Q_s_gnd * psi * dx_g \
@@ -249,7 +249,7 @@ class Enthalpy(Energy):
       # implicit system (linearized) for energy at time theta_{n+1}
       theta_a = + rho * (dtheta - theta0) / dt * psi * dx \
                 + rho * dot(U, grad(thetamid)) * psihat * dx \
-                + rho * spy * kappa * dot(grad(psi), grad(thetamid)) * dx \
+                + rho * spy * k/c * dot(grad(psi), grad(thetamid)) * dx \
       
       theta_L = + (q_geo + q_friction) * psi * dGnd \
                 + Q_s_gnd * psi * dx_g \
@@ -280,7 +280,6 @@ class Enthalpy(Energy):
     self.c          = c
     self.k          = k
     self.rho        = rho
-    self.kappa      = kappa
     self.q_friction = q_friction
     
   def calc_T_melt(self, annotate=True):
@@ -401,10 +400,11 @@ class Enthalpy(Energy):
     q_geo      = model.q_geo
     rho        = self.rho
     k          = self.k
+    c          = self.c
     q_friction = self.q_friction
 
     gradB = as_vector([B.dx(0), B.dx(1), -1])
-    dTdn  = k * dot(grad(T), gradB)
+    dTdn  = k/c * dot(grad(theta), gradB)
     nMb   = project((q_geo + q_friction - dTdn) / (L*rho), model.Q,
                     annotate=False)
     nMb_v    = nMb.vector().array()

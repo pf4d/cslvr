@@ -230,13 +230,21 @@ class Model(object):
     self.assign_variable(self.B, B)
     print_min_max(self.B, 'B')
   
-  def init_P(self, p):
+  def init_p(self, p):
     """
     """
     s = "::: initializing pressure :::"
     print_text(s, self.model_color)
     self.assign_variable(self.p, p)
     print_min_max(self.p, 'p')
+  
+  def init_theta(self, theta):
+    """
+    """
+    s = "::: initializing internal energy :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.theta, theta)
+    print_min_max(self.theta, 'theta')
   
   def init_T(self, T):
     """

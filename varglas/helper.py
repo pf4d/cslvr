@@ -914,6 +914,9 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
  
   plt.tight_layout()
+  d     = os.path.dirname(direc)
+  if not os.path.exists(d):
+    os.makedirs(d)
   plt.savefig(direc + name + '.pdf')
   if show:
     plt.show()
@@ -1117,6 +1120,9 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   #tit.set_fontsize(40)
   
   plt.tight_layout(rect=[.03,.03,0.97,0.97])
+  d     = os.path.dirname(direc)
+  if not os.path.exists(d):
+    os.makedirs(d)
   plt.savefig(direc + name + '.pdf')
   if show:
     plt.show()

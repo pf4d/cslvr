@@ -51,7 +51,7 @@ for i in y_valid:
 # generate the contour :
 m = MeshGenerator(dbm, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=1, skip_pts=0)
+m.create_contour('mask', zero_cntr=0.99, skip_pts=0)
 
 #gb = GetBasin(dbm, basin='7.1', edge_resolution=500)
 #gb.extend_edge(1200)

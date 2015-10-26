@@ -195,7 +195,7 @@ class Enthalpy(Energy):
       print_text(s, self.color())
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*spy*k/c)
+      PE     = Unorm*h/(2*spy*k/(rho*c))
       tau    = 1/tanh(PE) - 1/PE
       #T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))

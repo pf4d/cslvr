@@ -10,7 +10,7 @@ import sys
 
 # get the input args :
 i       = 0
-dir_b   = 'dump/high_da_ipopt_SIA0_SR/0'     # directory to save
+dir_b   = 'dump/high_da_ipopt_SIA0_SR_updated_energy/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i) + '/thermo_solve/'

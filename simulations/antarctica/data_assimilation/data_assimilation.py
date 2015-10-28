@@ -8,11 +8,11 @@ from dolfin_adjoint   import *
 
 # set the base directory to save :
 i       = 0                                      # manually iterate
-dir_b   = 'dump/high_da_ipopt_SIA0_SR/0'
+dir_b   = 'dump/high_da_ipopt_SIA0_SR_updated_energy/0'
 
 # set the output directory :
 in_dir  = dir_b + str(i) + '/thermo_solve/xml/'  # previous thermo_solve.py run
-out_dir = dir_b + str(i+1) + '/inverted/'        # new output directory
+out_dir = dir_b + str(i) + '/inverted/'          # new output directory
 var_dir = 'dump/vars_high/'                      # gen_vars.py ouput state.h5
 
 # get the data created with gen_vars.py :
@@ -38,6 +38,9 @@ model.init_v_lat(0.0)
 model.init_T(in_dir + 'T.xml')          # temp
 model.init_W(in_dir + 'W.xml')          # water
 model.init_beta(in_dir + 'beta.xml')    # friction
+model.init_U(in_dir + 'u.xml',
+             in_dir + 'v.xml',
+             in_dir + 'w.xml')
 
 # Newton solver parameters for momentum :
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
@@ -50,7 +53,7 @@ nparams = {'newton_solver' : {'linear_solver'            : 'cg',
 # momentum basic parameters :
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : False,
-             'solve_pressure'       : True,
+             'solve_pressure'       : False,
              'vert_solve_method'    : 'mumps'}
 
 # create a Momentum instance with linearized viscosity for incompelete-adjoint :
@@ -61,6 +64,8 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 
 # solve the momentum, with annotation for dolfin-adjoint :
 mom.solve(annotate=True)
+
+model.save_pvd(model.U3, 'U_ini')
 
 # form the cost functional :
 J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
@@ -112,8 +117,8 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
 
 # or optimize with IPOpt (preferred) :
 problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
-parameters = {"tol"                : 1e8,
-              "acceptable_tol"     : 1000.0,
+parameters = {"tol"                : 1e-8,
+              "acceptable_tol"     : 1e-6,
               "maximum_iterations" : 1000,
               "ma97_order"         : "metis",
               "linear_solver"      : "ma97"}

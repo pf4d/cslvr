@@ -150,10 +150,12 @@ class Momentum(Physics):
       J   = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
       s   = "::: getting L2 objective function :::"
 
-    elif kind == 'log_L2':
-      J   = 0.5 * ln(sqrt(+ (U[0] - u_ob)**2 \
-                          + (U[1] - v_ob)**2 + DOLFIN_EPS) + 0.01) * dGamma
-      s   = "::: getting log(L2) objective function :::"
+    elif kind == 'ratio':
+      U_n   = sqrt(U[0]**2 + U[1]**2 + 1e-1)
+      Uob_n = sqrt(u_ob**2 + v_ob**2 + 1e-1)
+      J     = 0.5 * ( + (U[0] + 1e-1)/(u_ob + 1e-1)
+                      + (U[1] + 1e-1)/(v_ob + 1e-1) ) * Uob_n / U_n * dGamma
+      s     = "::: getting ratio objective function :::"
     
     elif kind == 'log_L2_hybrid':
       J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma

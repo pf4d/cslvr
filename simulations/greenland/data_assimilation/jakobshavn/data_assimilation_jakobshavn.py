@@ -7,12 +7,12 @@ from dolfin_adjoint   import *
 #set_log_level(PROGRESS)
 
 # set the base directory to save :
-i       = 1                                      # manually iterate
+i       = 0                                      # manually iterate
 dir_b   = 'dump/jakob_da_ipopt_SIA0_SR/0'
 
 # set the output directory :
 in_dir  = dir_b + str(i) + '/thermo_solve/xml/'  # previous thermo_solve.py run
-out_dir = dir_b + str(i) + '/inverted/'          # new output directory
+out_dir = dir_b + str(i) + '/inverted_ratio/'          # new output directory
 var_dir = 'dump/vars_jakobshavn/'                # gen_vars.py ouput state.h5
 
 # get the data created with gen_vars.py :
@@ -50,7 +50,7 @@ nparams = {'newton_solver' : {'linear_solver'            : 'cg',
 # momentum basic parameters :
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : False,
-             'solve_pressure'       : True,
+             'solve_pressure'       : False,
              'vert_solve_method'    : 'mumps'}
 
 # create a Momentum instance with linearized viscosity for incompelete-adjoint :
@@ -63,12 +63,13 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 mom.solve(annotate=True)
 
 # form the cost functional :
-J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
-                     g1=0.01, g2=10000)
+#J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
+#                     g1=0.01, g2=10000)
+J = mom.form_obj_ftn(integral=model.dSrf_g, kind='ratio') 
 
 # form the regularization functional :
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
-                     alpha=1.0)
+                     alpha=1e-10)
 
 # define the objective functional to minimize :
 I = J + R

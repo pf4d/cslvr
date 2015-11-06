@@ -12,7 +12,7 @@ dir_b   = 'dump/jakob_da_ipopt_SIA0_SR/0'
 
 # set the output directory :
 in_dir  = dir_b + str(i) + '/thermo_solve/xml/'  # previous thermo_solve.py run
-out_dir = dir_b + str(i) + '/inverted/'          # new output directory
+out_dir = dir_b + str(i) + '/inverted_logL2_UNI0/' # new output directory
 var_dir = 'dump/vars_jakobshavn/'                # gen_vars.py ouput state.h5
 
 # get the data created with gen_vars.py :
@@ -37,7 +37,8 @@ model.init_v_lat(0.0)
 # use T0 and beta0 from the previous thermo_solve :
 model.init_T(in_dir + 'T.xml')          # temp
 model.init_W(in_dir + 'W.xml')          # water
-model.init_beta(in_dir + 'beta.xml')    # friction
+#model.init_beta(in_dir + 'beta.xml')    # friction
+model.init_beta(3000)
 model.init_U(in_dir + 'u.xml',
              in_dir + 'v.xml',
              in_dir + 'w.xml')
@@ -74,7 +75,7 @@ J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid',
 
 # form the regularization functional :
 R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
-                     alpha=1.0)
+                     alpha=100.0)
 
 # define the objective functional to minimize :
 I = J + R

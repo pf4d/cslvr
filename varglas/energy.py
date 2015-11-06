@@ -135,6 +135,7 @@ class Enthalpy(Energy):
     dx_g          = model.dx_g
     E_shf         = model.E_shf
     E_gnd         = model.E_gnd
+    N             = model.N
     
     # define test and trial functions : 
     psi    = TestFunction(Q)
@@ -171,7 +172,7 @@ class Enthalpy(Energy):
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :
-    q_friction = beta * inner(U,U)
+    q_fric = beta * inner(U,U)
 
     # Strain heating = stress*strain
     epsdot  = model.effective_strain_rate()
@@ -186,8 +187,8 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
 
     # basal heat-flux natural boundary condition :
-    g_b = conditional( gt(W, 1e-10), 0.0, q_geo + q_friction )
-    g_b = q_geo + q_friction
+    #g_b = conditional( gt(W, 1e-10), 0.0, q_geo + q_fric )
+    g_b = q_geo + q_fric
 
     # configure the module to run in steady state :
     if not transient:
@@ -197,7 +198,6 @@ class Enthalpy(Energy):
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*spy*k/(rho*c))
       tau    = 1/tanh(PE) - 1/PE
-      #T_c    = conditional( lt(Unorm, 4), 0.0, 1.0 )
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       
       # cannonical form, same as below :
@@ -212,7 +212,7 @@ class Enthalpy(Energy):
       ## galerkin formulation :
       #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
       #         + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
-      #         - (q_geo + q_friction) * psi * dGnd \
+      #         - (q_geo + q_fric) * psi * dGnd \
       #         - Q_s_gnd * psi * dx_g \
       #         - Q_s_shf * psi * dx_s \
       #         + delta
@@ -226,6 +226,7 @@ class Enthalpy(Energy):
                 + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
       
       theta_L = + g_b * psi * dGnd \
+                + rho * theta_surface * dot(U, N) * psihat * ds(7) \
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_s
       
@@ -237,8 +238,8 @@ class Enthalpy(Energy):
 
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.
-      Unorm  = sqrt(dot(U, U) + 1.0)
-      PE     = Unorm*h/(2*kappa)
+      Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+      PE     = Unorm*h/(2*spy*k/(rho*c))
       tau    = 1/tanh(PE) - 1/PE
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
@@ -249,9 +250,9 @@ class Enthalpy(Energy):
       # implicit system (linearized) for energy at time theta_{n+1}
       theta_a = + rho * (dtheta - theta0) / dt * psi * dx \
                 + rho * dot(U, grad(thetamid)) * psihat * dx \
-                + rho * spy * k/c * dot(grad(psi), grad(thetamid)) * dx \
+                + spy * k/c * dot(grad(psi), grad(thetamid)) * dx \
       
-      theta_L = + (q_geo + q_friction) * psi * dGnd \
+      theta_L = + q_b * psi * dGnd \
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_s
 
@@ -274,13 +275,41 @@ class Enthalpy(Energy):
     
     # always mark the divide (if present) essential :
     self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 7) )
+    #code = 'theta_s + (x[2] - S)*(146.3 + 7.253*T)/(9.828 * exp(-0.0057*T))' +\
+    #                 '*(q_geo + beta*(u*u + v*v + w*w))'
+    #theta_lat = Expression(code, theta_s=theta_surface, S=S, T=T,
+    #                       q_geo=q_geo)#, beta=beta, u=u, v=v, w=w)
+    #===========================================================================
+    #code = \
+    #'''
+    #theta_s
+    #+ exp(log((146.3 + 7.253*Tv)/(9.828 * exp(-0.0057*Tv))
+    #      * (q_geo + beta*(u*u + v*v + w*w))) + B)
+    #  * (   exp(rho*w*(146.3 + 7.253*Tv)/(9.828 * exp(-0.0057*Tv)) * x[2] )
+    #      - exp(rho*w*(146.3 + 7.253*Tv)/(9.828 * exp(-0.0057*Tv)) * S)   )
+    #'''
+    #theta_lat = Expression(code,
+    #                       theta_s=theta_surface, S=S, B=B, Tv=T, rho=rhoi,
+    #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
+    #===========================================================================
+    #code = \
+    #'''
+    #theta_s
+    #+ exp(log(c/k * (q_geo + beta*(u*u + v*v + w*w))) + B)
+    #  * ( exp(rho*w*c/k * x[2]) - exp(rho*w*c/k * S) )
+    #'''
+    #theta_lat = Expression(code,
+    #                       theta_s=theta_surface, S=S, B=B, 
+    #                       k=model.ki, c=model.ci, rho=rhoi,
+    #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
+    #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff, 7) )
 
-    self.theta      = theta
-    self.theta0     = theta0
-    self.c          = c
-    self.k          = k
-    self.rho        = rho
-    self.q_friction = q_friction
+    self.theta   = theta
+    self.theta0  = theta0
+    self.c       = c
+    self.k       = k
+    self.rho     = rho
+    self.q_fric  = q_fric
     
   def calc_T_melt(self, annotate=True):
     """
@@ -378,7 +407,7 @@ class Enthalpy(Energy):
     # update water content :
     #W_v[cold]       = 0.0   # no water where frozen 
     W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-    model.assign_variable(W0, W)
+    model.assign_variable(W0, W, save=False)
     model.assign_variable(W,  W_v)
     print_min_max(W,  'W')
    
@@ -390,22 +419,22 @@ class Enthalpy(Energy):
     s = "::: solving for basal melt-rate :::"
     print_text(s, self.color())
     
-    model      = self.model
-    B          = model.B
-    rhoi       = model.rhoi
-    theta      = model.theta
-    T          = model.T
-    T_melt     = model.T_melt
-    L          = model.L
-    q_geo      = model.q_geo
-    rho        = self.rho
-    k          = self.k
-    c          = self.c
-    q_friction = self.q_friction
+    model    = self.model
+    B        = model.B
+    rhoi     = model.rhoi
+    theta    = model.theta
+    T        = model.T
+    T_melt   = model.T_melt
+    L        = model.L
+    q_geo    = model.q_geo
+    rho      = self.rho
+    k        = self.k
+    c        = self.c
+    q_fric   = self.q_fric
 
     gradB = as_vector([B.dx(0), B.dx(1), -1])
     dTdn  = k/c * dot(grad(theta), gradB)
-    nMb   = project((q_geo + q_friction - dTdn) / (L*rho), model.Q,
+    nMb   = project((q_geo + q_fric - dTdn) / (L*rho), model.Q,
                     annotate=False)
     nMb_v    = nMb.vector().array()
     T_melt_v = T_melt.vector().array()
@@ -692,7 +721,7 @@ class EnergyHybrid(Energy):
     gradB = as_vector([B.dx(0), B.dx(1), -1])
     gradT = as_vector([T.dx(0), T.dx(1), 0.0])
     dHdn  = k * dot(gradT, gradB)
-    nMb   = project((q_geo + q_friction - dHdn) / (L*rhoi), model.Q,
+    nMb   = project((q_geo + q_fric - dHdn) / (L*rhoi), model.Q,
                     annotate=False)
     nMb_v = nMb.vector().array()
     #nMb_v[nMb_v < 0.0]  = 0.0

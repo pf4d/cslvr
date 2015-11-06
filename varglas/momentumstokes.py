@@ -597,7 +597,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
           annotate = annotate, solver_parameters = params['solver'])
     u, v = self.U.split()
-    
+  
     self.assx.assign(model.u, u, annotate=False)
     self.assy.assign(model.v, v, annotate=False)
 

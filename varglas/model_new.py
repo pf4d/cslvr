@@ -503,7 +503,7 @@ class Model(object):
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v)
+    self.assign_variable(U_s, U_v, save=False)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project((rhoi*g*H*S_mag) / (H**r * U_s), Q, annotate=False)
     beta_0_v = beta_0.vector().array()
@@ -513,7 +513,7 @@ class Model(object):
     print_min_max(self.betaSIA, 'betaSIA')
     
     if self.dim == 3:
-      self.assign_variable(self.beta, DOLFIN_EPS)
+      self.assign_variable(self.beta, DOLFIN_EPS, save=False)
       bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
     elif self.dim == 2:
@@ -1103,7 +1103,7 @@ class Model(object):
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
 
-  def assign_variable(self, u, var, annotate=False):
+  def assign_variable(self, u, var, annotate=False, save=True):
     """
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
@@ -1145,13 +1145,13 @@ class Model(object):
       print_text(s % type(var) , 'red', 1)
       u = var
 
-    if self.save_state:
-      if    isinstance(u, GenericVector) or isinstance(u, Function) \
-         or isinstance(u, dolfin.functions.function.Function):
-        s = "::: writing '%s' variable to '%sstate.h5' :::"
-        print_text(s % (u.name(), self.out_dir), self.model_color)
-        self.state.write(u, u.name())
-        print_text("    - done -", self.model_color)
+    #if self.save_state and save:
+    #  if    isinstance(u, GenericVector) or isinstance(u, Function) \
+    #     or isinstance(u, dolfin.functions.function.Function):
+    #    s = "::: writing '%s' variable to '%sstate.h5' :::"
+    #    print_text(s % (u.name(), self.out_dir), self.model_color)
+    #    self.state.write(u, u.name())
+    #    print_text("    - done -", self.model_color)
 
   def save_pvd(self, var, name, f_file=None):
     """
@@ -1326,7 +1326,7 @@ class Model(object):
     while inner_error > rtol and counter < max_iter:
      
       # need zero initial guess for Newton solve to converge : 
-      self.assign_variable(momentum.get_U(),  DOLFIN_EPS)
+      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False)
       
       # solve velocity :
       momentum.solve(annotate=False)

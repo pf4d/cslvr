@@ -6,7 +6,8 @@ from scipy.interpolate import interp2d
 
 #===============================================================================
 # data preparation :
-out_dir = 'dump/meshes/'
+out_dir   = 'dump/meshes/'
+mesh_name = 'ant_mesh_low'
 
 # get the data :
 measure = DataFactory.get_ant_measures()
@@ -38,17 +39,17 @@ mask   = interp(dbm.x, dbm.y)
 slp = gS_n >  30
 shf = mask >= 0.9
 gnd = mask <  0.9
-slw = U_ob < 1e-7
+nan = mask >  10
 
 
 #===============================================================================
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=2500.0, umax=50000.0, inverse=True)
+dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=100000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
 #dbm.data['ref'][slp] = 2000.0
-dbm.data['ref'][shf] = 10000.0
-dbm.data['ref'][slw] = 10000.0
+dbm.data['ref'][shf] = 20000.0
+dbm.data['ref'][nan] = 100000.0
 
 print_min_max(dbm.data['ref'], 'ref')
 
@@ -61,19 +62,19 @@ print_min_max(dbm.data['ref'], 'ref')
 
 #===============================================================================
 # generate the contour :
-m = MeshGenerator(db2, 'mesh', out_dir)
+m = MeshGenerator(db2, mesh_name, out_dir)
 
 m.create_contour('mask', zero_cntr=0.999, skip_pts=4)
 m.eliminate_intersections(dist=200)
 #m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)
-m.extrude(h=100000, n_layers=10)
+m.extrude(h=100000, n_layers=8)
 m.close_file()
 
 
 #===============================================================================
 # refine :
-ref_bm = MeshRefiner(dbm, 'ref', gmsh_file_name= out_dir + 'mesh')
+ref_bm = MeshRefiner(dbm, 'ref', gmsh_file_name= out_dir + mesh_name)
 
 a,aid = ref_bm.add_static_attractor()
 ref_bm.set_background_field(aid)
@@ -81,7 +82,7 @@ ref_bm.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
-ref_bm.finish(gui=False, out_file_name=out_dir + 'ant_mesh_high')
+ref_bm.finish(gui=False, out_file_name=out_dir + mesh_name)
 ref_bm.convert_msh_to_xml()
 
 

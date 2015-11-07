@@ -1145,13 +1145,13 @@ class Model(object):
       print_text(s % type(var) , 'red', 1)
       u = var
 
-    #if self.save_state and save:
-    #  if    isinstance(u, GenericVector) or isinstance(u, Function) \
-    #     or isinstance(u, dolfin.functions.function.Function):
-    #    s = "::: writing '%s' variable to '%sstate.h5' :::"
-    #    print_text(s % (u.name(), self.out_dir), self.model_color)
-    #    self.state.write(u, u.name())
-    #    print_text("    - done -", self.model_color)
+    if self.save_state and save:
+      if    isinstance(u, GenericVector) or isinstance(u, Function) \
+         or isinstance(u, dolfin.functions.function.Function):
+        s = "::: writing '%s' variable to '%sstate.h5' :::"
+        print_text(s % (u.name(), self.out_dir), self.model_color)
+        self.state.write(u, u.name())
+        print_text("    - done -", self.model_color)
 
   def save_pvd(self, var, name, f_file=None):
     """

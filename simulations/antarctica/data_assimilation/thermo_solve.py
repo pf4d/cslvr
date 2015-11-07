@@ -10,11 +10,11 @@ import sys
 
 # get the input args :
 i       = 0
-dir_b   = 'dump/high_da_ipopt_SIA0_SR_updated_energy/0'     # directory to save
+dir_b   = 'dump/low/0'     # directory to save
 
 # set the output directory :
 out_dir = dir_b + str(i) + '/thermo_solve/'
-var_dir = 'dump/vars_high/'
+var_dir = 'dump/vars_low/'
 in_dir  = dir_b + str(i-1) + '/inverted/xml/'
 
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
@@ -66,14 +66,14 @@ model.save_pvd(model.beta, 'beta0')
 model.save_pvd(model.U_ob, 'U_ob')
 
 def cb_ftn():
-  #nrg.solve_basal_melt_rate()
+  nrg.solve_basal_melt_rate()
   #nrg.calc_bulk_density()
   model.save_pvd(model.U3,    'U3')
   #model.save_pvd(model.p,     'p')
   model.save_pvd(model.theta, 'theta')
   model.save_pvd(model.T,     'T')
   model.save_pvd(model.W,     'W')
-  #model.save_pvd(model.Mb,    'Mb')
+  model.save_pvd(model.Mb,    'Mb')
   #model.save_pvd(model.rho_b, 'rho_b')
 
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
@@ -86,7 +86,6 @@ model.save_xml(interpolate(model.v, model.Q), 'v')
 model.save_xml(interpolate(model.w, model.Q), 'w')
 model.save_xml(model.beta,                    'beta')
 model.save_xml(model.Mb,                      'Mb')
-model.save_xml(model.E_shf,                   'E_shf')
 
 
 

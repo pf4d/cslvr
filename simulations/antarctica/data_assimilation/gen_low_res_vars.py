@@ -21,9 +21,10 @@ T_s   = d1.get_expression("temp",   near=False)
 q_geo = d1.get_expression("ghfsr",  near=False)
 u_ob  = dm.get_expression("vx",     near=False)
 v_ob  = dm.get_expression("vy",     near=False)
+U_msk = dm.get_expression("mask",   near=True)
 
 model = D3Model(mesh=mesh, out_dir=out_dir, save_state=True)
-model.calculate_boundaries(mask=M, adot=adot, mark_divide=False)
+model.calculate_boundaries(mask=M, adot=adot, U_mask=U_msk, mark_divide=False)
 model.deform_mesh_to_geometry(S, B)
 
 model.init_T_surface(T_s)

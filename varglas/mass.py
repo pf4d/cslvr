@@ -66,8 +66,8 @@ class FreeSurface(Mass):
     dSdt   = Function(Q_flat) # surface height change
     M      = Function(Q_flat) # mass
     ds     = self.ds_flat
-    dSurf  = ds(2)
-    dBase  = ds(3)
+    dSurf  = model.dSrf
+    dBase  = model.dBed
     
     self.static_boundary = DirichletBC(Q, 0.0, self.ff_flat, 4)
     h = CellSize(self.flat_mesh)

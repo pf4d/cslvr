@@ -54,10 +54,14 @@ class DataFactory(object):
     vx   = array(data.variables['vx'][:])
     vy   = array(data.variables['vy'][:])
     err  = array(data.variables['err'][:])
+    mask = (vx != 0.0).astype('i')
     
-    names = ['vx', 'vy', 'v_err']
-    ftns  = [vx, vy, err]
-     
+    names = ['vx', 'vy', 'v_err', 'mask']
+    ftns  = [vx, vy, err, mask]
+    
+    for n in names:
+      print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
+    
     # extents of domain :
     nx,ny =  shape(vx)
     dx    =  res
@@ -182,6 +186,9 @@ class DataFactory(object):
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
     files    = ['vx', 'vy', 'ex', 'ey']
     vara     = dict()
+    
+    for n in files:
+      print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
      
     # extents of domain :
     nx    =  3010
@@ -680,6 +687,9 @@ class DataFactory(object):
     names = ['B', 'S', 'H', 'mask', 'lat_mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
     ftns  = [B, S, H, mask, L, rock_mask, b_uncert, coverage, gl04c_WGS84]
+    
+    for n in names:
+      print_text('      Bedmap 2 : %-*s key : "%s" '%(30,n,n), '230')
    
     # retrieve data :
     vara['dataset']   = 'bedmap 2'

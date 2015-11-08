@@ -126,12 +126,12 @@ class Enthalpy(Energy):
     h             = model.h
     ds            = model.ds
     dSrf          = model.dSrf
-    dGnd          = model.dGnd
-    dFlt          = model.dFlt
-    dSde          = model.dSde
+    dBed_g        = model.dBed_g
+    dBed_f        = model.dBed_f
     dBed          = model.dBed
+    dLat_t        = model.dLat_t
     dx            = model.dx
-    dx_s          = model.dx_s
+    dx_f          = model.dx_f
     dx_g          = model.dx_g
     E_shf         = model.E_shf
     E_gnd         = model.E_gnd
@@ -207,14 +207,14 @@ class Enthalpy(Energy):
       #delta  = + rho * dot(U, grad(dtheta)) * psihat * dx \
       #         - div(rho * spy * kappa * grad(dtheta)) * psihat * dx \
       #         - Q_s_gnd * psihat * dx_g \
-      #         - Q_s_shf * psihat * dx_s \
+      #         - Q_s_shf * psihat * dx_f \
       #
       ## galerkin formulation :
       #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
       #         + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
-      #         - (q_geo + q_fric) * psi * dGnd \
+      #         - (q_geo + q_fric) * psi * dBed_g \
       #         - Q_s_gnd * psi * dx_g \
-      #         - Q_s_shf * psi * dx_s \
+      #         - Q_s_shf * psi * dx_f \
       #         + delta
 
       #theta_a = lhs(F)
@@ -225,10 +225,10 @@ class Enthalpy(Energy):
                 - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
                 + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
       
-      theta_L = + g_b * psi * dGnd \
-                + rho * theta_surface * dot(U, N) * psihat * ds(7) \
+      theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
-                + Q_s_shf * psi * dx_s
+                + Q_s_shf * psi * dx_f
+      #          + rho * theta_surface * dot(U, N) * psihat * dLat_d \
       
     # configure the module to run in transient mode :
     else:
@@ -252,29 +252,34 @@ class Enthalpy(Energy):
                 + rho * dot(U, grad(thetamid)) * psihat * dx \
                 + spy * k/c * dot(grad(psi), grad(thetamid)) * dx \
       
-      theta_L = + q_b * psi * dGnd \
+      theta_L = + q_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
-                + Q_s_shf * psi * dx_s
+                + Q_s_shf * psi * dx_f
 
     self.theta_a = theta_a
     self.theta_L = theta_L
     
     # surface boundary condition : 
     self.theta_bc = []
-    self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 2) )
-    self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 6) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface, 
+                                      model.ff, model.GAMMA_S_GND) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface,
+                                      model.ff, model.GAMMA_S_FLT) )
     
     # apply T_w conditions of portion of ice in contact with water :
-    self.theta_bc.append( DirichletBC(Q, theta_float,   model.ff, 5) )
+    self.theta_bc.append( DirichletBC(Q, theta_float, 
+                                      model.ff, model.GAMMA_B_FLT) )
     
     # apply lateral boundaries if desired : 
     if use_lat_bc:
-      s = "    - using lateral boundary conditions -"
+      s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
-      self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 4) )
+      self.theta_bc.append( DirichletBC(Q, theta_surface,
+                                        model.ff, model.GAMMA_D) )
     
     # always mark the divide (if present) essential :
-    self.theta_bc.append( DirichletBC(Q, theta_surface, model.ff, 7) )
+    #self.theta_bc.append( DirichletBC(Q, theta_surface,
+    #                                  model.ff, model.GAMMA_D) )
     #code = 'theta_s + (x[2] - S)*(146.3 + 7.253*T)/(9.828 * exp(-0.0057*T))' +\
     #                 '*(q_geo + beta*(u*u + v*v + w*w))'
     #theta_lat = Expression(code, theta_s=theta_surface, S=S, T=T,
@@ -302,7 +307,7 @@ class Enthalpy(Energy):
     #                       theta_s=theta_surface, S=S, B=B, 
     #                       k=model.ki, c=model.ci, rho=rhoi,
     #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
-    #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff, 7) )
+    #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff, model.GAMMA_D) )
 
     self.theta   = theta
     self.theta0  = theta0

@@ -8,12 +8,12 @@ from dolfin_adjoint   import *
 
 # set the base directory to save :
 i       = 0                                      # manually iterate
-dir_b   = 'dump/high_da_ipopt_SIA0_SR_updated_energy/0'
+dir_b   = 'dump/low/0'
 
 # set the output directory :
 in_dir  = dir_b + str(i) + '/thermo_solve/xml/'  # previous thermo_solve.py run
-out_dir = dir_b + str(i) + '/inverted/'          # new output directory
-var_dir = 'dump/vars_high/'                      # gen_vars.py ouput state.h5
+out_dir = dir_b + str(i) + '/inverted_new/'          # new output directory
+var_dir = 'dump/vars_low/'                      # gen_vars.py ouput state.h5
 
 # get the data created with gen_vars.py :
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
@@ -30,6 +30,7 @@ model.init_q_geo(model.ghf)
 model.init_T_surface(f)
 model.init_adot(f)
 model.init_U_ob(f, f)
+model.init_U_mask(f)
 model.init_E(1.0)
 model.init_u_lat(0.0)
 model.init_v_lat(0.0)
@@ -68,11 +69,11 @@ mom.solve(annotate=True)
 model.save_pvd(model.U3, 'U_ini')
 
 # form the cost functional :
-J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
+J = mom.form_obj_ftn(integral=model.dSrf_u, kind='log_L2_hybrid', 
                      g1=0.01, g2=10000)
 
 # form the regularization functional :
-R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
                      alpha=1.0)
 
 # define the objective functional to minimize :

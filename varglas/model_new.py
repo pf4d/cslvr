@@ -14,10 +14,12 @@ class Model(object):
     
   GAMMA_S_GND = 2   # grounded upper surface
   GAMMA_B_GND = 3   # grounded lower surface (bedrock)
-  GAMMA_S_SHF = 4   # shelf upper surface
-  GAMMA_B_SHF = 5   # shelf lower surface
-  GAMMA_D     = 6   # basin divides
-  GAMMA_T     = 7   # terminus
+  GAMMA_S_FLT = 6   # shelf upper surface
+  GAMMA_B_FLT = 5   # shelf lower surface
+  GAMMA_D     = 7   # basin divides
+  GAMMA_T     = 4   # terminus
+  GAMMA_U_GND = 8   # grounded surface with U observations
+  GAMMA_U_FLT = 9   # shelf surface with U observations
 
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
                state=None, use_periodic=False, **gfs_kwargs):
@@ -463,6 +465,16 @@ class Model(object):
     self.shf_dofs = np.where(self.mask.vector().array() == 2.0)[0]
     self.gnd_dofs = np.where(self.mask.vector().array() == 1.0)[0]
   
+  def init_U_mask(self, U_mask):
+    """
+    """
+    s = "::: initializing velocity mask :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.U_mask, U_mask)
+    print_min_max(self.U_mask, 'U_mask')
+    self.Uob_dofs         = np.where(self.U_mask.vector().array() == 1.0)[0]
+    self.Uob_missing_dofs = np.where(self.U_mask.vector().array() == 0.0)[0]
+  
   def init_lat_mask(self, lat_mask):
     """
     """
@@ -470,6 +482,22 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.lat_mask, lat_mask)
     print_min_max(self.lat_mask, 'lat_mask')
+  
+  def init_d_x(self, d_x):
+    """
+    """
+    s = "::: initializing x-component-normalized-driving-stress direction :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.d_x, d_x)
+    print_min_max(self.d_x, 'd_x')
+  
+  def init_d_y(self, d_y):
+    """
+    """
+    s = "::: initializing y-component-normalized-driving-stress direction :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.d_y, d_y)
+    print_min_max(self.d_y, 'd_y')
   
   def init_time_step(self, dt):
     """
@@ -499,7 +527,9 @@ class Model(object):
     H        = self.S - self.B
     U_s      = Function(Q)
     if U_mag == None:
-      U_v = self.U_ob.vector().array()
+      U_v                        = self.U_ob.vector().array()
+      Ubar_v                     = self.Ubar.vector().array()
+      U_v[self.Uob_missing_dofs] = Ubar_v[self.Uob_missing_dofs]
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
@@ -513,9 +543,10 @@ class Model(object):
     print_min_max(self.betaSIA, 'betaSIA')
     
     if self.dim == 3:
-      self.assign_variable(self.beta, DOLFIN_EPS, save=False)
-      bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
-      bc_beta.apply(self.beta.vector())
+      #self.assign_variable(self.beta, DOLFIN_EPS, save=False)
+      #bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
+      #bc_beta.apply(self.beta.vector())
+      self.assign_variable(self.beta, self.betaSIA)
     elif self.dim == 2:
       self.assign_variable(self.beta, self.betaSIA)
     print_min_max(self.beta, 'beta')
@@ -1010,8 +1041,8 @@ class Model(object):
     U_ob   = as_vector([self.u_ob, self.v_ob])
 
     if integral == 'shelves':
-      bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_SHF)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_SHF)
+      bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_FLT)
+      bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_FLT)
     elif integral == 'grounded':
       bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_GND)
       bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_GND)
@@ -1213,6 +1244,9 @@ class Model(object):
 
     # lateral boundary mask (1 if on lateral boundary) :
     self.lat_mask      = Function(self.Q, name='lat_mask')
+
+    # velocity mask (1 if velocity measurements present) :
+    self.U_mask        = Function(self.Q, name='U_mask')
 
     # topography :
     self.S             = Function(self.Q_non_periodic, name='S')

@@ -207,15 +207,15 @@ class BP_Balance(Physics):
     D        = model.D
     eta      = model.eta
     
+    
     dx       = model.dx
-    dx_s     = dx(1)
-    dx_g     = dx(0)
-    dx       = dx(1) + dx(0) # entire internal
-    ds       = model.ds  
-    dGnd     = ds(3)         # grounded bed
-    dFlt     = ds(5)         # floating bed
-    dSde     = ds(4)         # sides
-    dBed     = dGnd + dFlt   # bed
+    dx_f     = model.dx_f
+    dx_g     = model.dx_g
+    ds       = model.ds
+    dBed_g   = model.dBed_g
+    dBed_f   = model.dBed_f
+    dLat_t   = model.dLat_t
+    dBed     = model.dBed
     
     f_w      = rhoi*g*(S - x[2]) + rhow*g*D
     
@@ -266,8 +266,8 @@ class BP_Balance(Physics):
     F_ib = - beta**2 * s * phi * dBed
     F_jb = - beta**2 * t * psi * dBed
     
-    F_ip = f_w * N[0] * phi * dSde
-    F_jp = f_w * N[1] * psi * dSde
+    F_ip = f_w * N[0] * phi * dLat_t
+    F_jp = f_w * N[1] * psi * dLat_t
     
     F_1  = - 2 * eta * dot(epi_1, gradphi) * dx
     F_2  = - 2 * eta * dot(epi_2, gradpsi) * dx
@@ -321,14 +321,13 @@ class BP_Balance(Physics):
     eta     = model.eta
     
     dx      = model.dx
-    dx_s    = dx(1)
-    dx_g    = dx(0)
-    dx      = dx(1) + dx(0) # entire internal
-    ds      = model.ds  
-    dGnd    = ds(3)         # grounded bed
-    dFlt    = ds(5)         # floating bed
-    dSde    = ds(4)         # sides
-    dBed    = dGnd + dFlt   # bed
+    dx_f    = model.dx_f
+    dx_g    = model.dx_g
+    ds      = model.ds
+    dBed_g  = model.dBed_g
+    dBed_f  = model.dBed_f
+    dLat_t  = model.dLat_t
+    dBed    = model.dBed
     
     # solve with corrected velociites :
     model   = self.model
@@ -382,27 +381,27 @@ class BP_Balance(Physics):
     F_ib_s = - beta**2 * s * phi * dBed
     F_jb_s = - beta**2 * t * phi * dBed
     
-    F_ip_s = f_w * N[0] * phi * dSde
-    F_jp_s = f_w * N[1] * phi * dSde
+    F_ip_s = f_w * N[0] * phi * dLat_t
+    F_jp_s = f_w * N[1] * phi * dLat_t
     
-    F_pn_s = f_w * N[0] * phi * dSde
-    F_pt_s = f_w * N[1] * phi * dSde
+    F_pn_s = f_w * N[0] * phi * dLat_t
+    F_pt_s = f_w * N[1] * phi * dLat_t
      
     F_ii_s = - 2 * eta * epi_1[0] * gradphi[0] * dx# \
     #         + 2 * eta * epi_1[0] * phi * N[0] * U_n[0] * ds
-    #         + f_w * N[0] * phi * U_n[0] * dSde
+    #         + f_w * N[0] * phi * U_n[0] * dLat_t
     F_ij_s = - 2 * eta * epi_1[1] * gradphi[1] * dx# \
     #         + 2 * eta * epi_1[1] * phi * N[1] * U_n[1] * ds
-    #         + f_w * N[1] * phi * U_n[1] * dSde
+    #         + f_w * N[1] * phi * U_n[1] * dLat_t
     F_iz_s = - 2 * eta * epi_1[2] * gradphi[2] * dx + F_ib_s #\
     #        + 2 * eta * epi_1[2] * phi * N[2] * ds
      
     F_ji_s = - 2 * eta * epi_2[0] * gradphi[0] * dx# \
     #         + 2 * eta * epi_2[0] * phi * N[0] * U_t[0] * ds
-    #         + f_w * N[0] * phi * U_t[0] * dSde
+    #         + f_w * N[0] * phi * U_t[0] * dLat_t
     F_jj_s = - 2 * eta * epi_2[1] * gradphi[1] * dx# \
     #         + 2 * eta * epi_2[0] * phi * N[1] * U_t[1] * ds
-    #         + f_w * N[1] * phi * U_t[1] * dSde
+    #         + f_w * N[1] * phi * U_t[1] * dLat_t
     F_jz_s = - 2 * eta * epi_2[2] * gradphi[2] * dx + F_jb_s #\
     #         + 2 * eta * epi_2[2] * phi * N[2] * ds
     

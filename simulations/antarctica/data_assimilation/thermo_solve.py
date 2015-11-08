@@ -5,44 +5,80 @@ from fenics           import *
 from dolfin_adjoint   import *
 import sys
 
-#set_log_active(False)
-#set_log_level(PROGRESS)
 
 # get the input args :
 i       = 0
 dir_b   = 'dump/low/0'     # directory to save
 
-# set the output directory :
-out_dir = dir_b + str(i) + '/thermo_solve/'
+# set the relavent directories (complicated, right?!) :
 var_dir = 'dump/vars_low/'
 in_dir  = dir_b + str(i-1) + '/inverted/xml/'
+out_dir = dir_b + str(i) + '/thermo_solve/'
+bv_dir  = dir_b + str(i) + '/balance_velocity/'
 
-f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
+# load the meshes :
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
-model = D3Model(f, out_dir + 'pvd/')
-model.set_subdomains(f)
+# get the bed mesh :
+mesh = Mesh()
+fmeshes.read(mesh, 'bedmesh', False)
 
-model.init_S(f)
-model.init_B(f)
-model.init_mask(f)
-model.init_q_geo(model.ghf)
-model.init_T_surface(f)
-model.init_adot(f)
-model.init_U_ob(f, f)
-model.init_E(1.0)
-model.init_u_lat(0.0)
-model.init_v_lat(0.0)
+# create 3D model for stokes solves, and 2D model for balance velocity :
+d3model = D3Model(fdata, out_dir + 'pvd/')
+d2model = D2Model(mesh,  bv_dir + 'pvd/')
+
+# initialize the 3D model vars :
+d3model.set_subdomains(fdata)
+d3model.init_S(fdata)
+d3model.init_B(fdata)
+d3model.init_mask(fdata)
+d3model.init_q_geo(d3model.ghf)
+d3model.init_T_surface(fdata)
+d3model.init_adot(fdata)
+d3model.init_U_ob(fdata, fdata)
+d3model.init_U_mask(fdata)
+d3model.init_E(1.0)
+d3model.init_u_lat(0.0)
+d3model.init_v_lat(0.0)
+
+# 2D model gets balance-velocity appropriate variables initialized :
+d2model.assign_submesh_variable(d2model.S,    d3model.S)
+d2model.assign_submesh_variable(d2model.B,    d3model.B)
+d2model.assign_submesh_variable(d2model.adot, d3model.adot)
+
+# solve the balance velocity :
+bv = BalanceVelocity(d2model, kappa=5.0)
+bv.solve(annotate=False)
+
+d2model.save_pvd(d2model.Ubar, 'Ubar')
+d2model.save_xml(d2model.Ubar, 'Ubar')
+
+# assign the balance velocity to the 3D model's bed :
+d3model.assign_submesh_variable(d3model.d_x,  d2model.d_x)
+d3model.assign_submesh_variable(d3model.d_y,  d2model.d_y)
+d3model.assign_submesh_variable(d3model.Ubar, d2model.Ubar)
+
+# extrude the bed values up the column : 
+d_x_e  = d3model.vert_extrude(d3model.d_x,  d='up')
+d_y_e  = d3model.vert_extrude(d3model.d_y,  d='up')
+Ubar_e = d3model.vert_extrude(d3model.Ubar, d='up')
+
+# set the appropriate variable to be the function extruded :
+d3model.init_d_x(d_x_e)
+d3model.init_d_y(d_y_e)
+d3model.init_Ubar(Ubar_e)
 
 # use T0 and beta0 from the previous run :
 if i > 0:
-  model.init_T(in_dir + 'T.xml')          # temp
-  model.init_W(in_dir + 'W.xml')          # water
-  model.init_beta(in_dir + 'beta.xml')    # friction
-  model.init_E_shf(in_dir + 'E_shf.xml')  # enhancement
+  d3model.init_T(in_dir + 'T.xml')          # temp
+  d3model.init_W(in_dir + 'W.xml')          # water
+  d3model.init_beta(in_dir + 'beta.xml')    # friction
+  d3model.init_E_shf(in_dir + 'E_shf.xml')  # enhancement
 else:
-  model.init_T(model.T_surface)
-  #model.init_beta(1e4)
-  model.init_beta_SIA()
+  d3model.init_T(d3model.T_surface)
+  #d3model.init_beta(1e4)
+  d3model.init_beta_SIA()
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
@@ -58,34 +94,34 @@ m_params  = {'solver'               : nparams,
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
-mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False)
-#mom = MomentumBP(model, m_params, isothermal=False)
-nrg = Enthalpy(model, e_params)
+mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+#mom = MomentumBP(d3model, m_params, isothermal=False)
+nrg = Enthalpy(d3model, e_params)
 
-model.save_pvd(model.beta, 'beta0')
-model.save_pvd(model.U_ob, 'U_ob')
+d3model.save_pvd(d3model.beta, 'beta0')
+d3model.save_pvd(d3model.U_ob, 'U_ob')
 
 def cb_ftn():
   nrg.solve_basal_melt_rate()
   #nrg.calc_bulk_density()
-  model.save_pvd(model.U3,    'U3')
-  #model.save_pvd(model.p,     'p')
-  model.save_pvd(model.theta, 'theta')
-  model.save_pvd(model.T,     'T')
-  model.save_pvd(model.W,     'W')
-  model.save_pvd(model.Mb,    'Mb')
-  #model.save_pvd(model.rho_b, 'rho_b')
+  d3model.save_pvd(d3model.U3,    'U3')
+  #d3model.save_pvd(d3model.p,     'p')
+  d3model.save_pvd(d3model.theta, 'theta')
+  d3model.save_pvd(d3model.T,     'T')
+  d3model.save_pvd(d3model.W,     'W')
+  d3model.save_pvd(d3model.Mb,    'Mb')
+  #d3model.save_pvd(d3model.rho_b, 'rho_b')
 
-model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
+d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
-model.set_out_dir(out_dir = out_dir + 'xml/')
-model.save_xml(model.T,                       'T')
-model.save_xml(model.W,                       'W')
-model.save_xml(interpolate(model.u, model.Q), 'u')
-model.save_xml(interpolate(model.v, model.Q), 'v')
-model.save_xml(interpolate(model.w, model.Q), 'w')
-model.save_xml(model.beta,                    'beta')
-model.save_xml(model.Mb,                      'Mb')
+d3model.set_out_dir(out_dir = out_dir + 'xml/')
+d3model.save_xml(d3model.T,                       'T')
+d3model.save_xml(d3model.W,                       'W')
+d3model.save_xml(interpolate(d3model.u, d3model.Q), 'u')
+d3model.save_xml(interpolate(d3model.v, d3model.Q), 'v')
+d3model.save_xml(interpolate(d3model.w, d3model.Q), 'w')
+d3model.save_xml(d3model.beta,                    'beta')
+d3model.save_xml(d3model.Mb,                      'Mb')
 
 
 

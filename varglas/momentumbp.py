@@ -40,9 +40,9 @@ class MomentumBP(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx   = FunctionAssigner(model.Q3.sub(0), model.Q2.sub(0))
-    self.assy   = FunctionAssigner(model.Q3.sub(1), model.Q2.sub(1))
-    self.assz   = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q2.sub(0))
+    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q2.sub(1))
+    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
 
     mesh       = model.mesh
     eps_reg    = model.eps_reg
@@ -62,12 +62,12 @@ class MomentumBP(Momentum):
     N          = model.N
     D          = model.D
     
-    dx_s       = model.dx_s
+    dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
-    dGnd       = model.dGnd
-    dFlt       = model.dFlt
-    dSde       = model.dSde
+    dBed_g     = model.dBed_g
+    dBed_f     = model.dBed_f
+    dLat_t     = model.dLat_t
     dBed       = model.dBed
     
     gradS      = grad(S)
@@ -143,23 +143,23 @@ class MomentumBP(Momentum):
     #Coef     = 1/(beta * Ne**(q/p))
     
     # residual :
-    self.mom_F = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_s \
-                 + 2 * eta_shf * dot(epi_2, grad(psi)) * dx_s \
+    self.mom_F = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_f \
+                 + 2 * eta_shf * dot(epi_2, grad(psi)) * dx_f \
                  + 2 * eta_gnd * dot(epi_1, grad(phi)) * dx_g \
                  + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
                  + rhoi * g * gradS[0] * phi * dx \
                  + rhoi * g * gradS[1] * psi * dx \
-                 + beta * u * phi * dGnd \
-                 + beta * v * psi * dGnd \
-                 - f_w * (N[0]*phi + N[1]*psi) * dFlt
-                 #+ Constant(1e-2) * u * phi * dFlt \
-                 #+ Constant(1e-2) * v * psi * dFlt \
+                 + beta * u * phi * dBed_g \
+                 + beta * v * psi * dBed_g \
+                 - f_w * (N[0]*phi + N[1]*psi) * dBed_f
+                 #+ Constant(1e-2) * u * phi * dBed_f \
+                 #+ Constant(1e-2) * v * psi * dBed_f \
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      self.mom_F -= f_w * (N[0]*phi + N[1]*psi) * dSde
+      self.mom_F -= f_w * (N[0]*phi + N[1]*psi) * dLat_t
     
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
                + (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed
@@ -176,9 +176,11 @@ class MomentumBP(Momentum):
       s = "    - using lateral boundary conditions -"
       print_text(s, self.color())
 
-      self.mom_bcs.append(DirichletBC(V.sub(0), model.u_lat, model.ff, 7))
-      self.mom_bcs.append(DirichletBC(V.sub(1), model.v_lat, model.ff, 7))
-      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, 7)
+      self.mom_bcs.append(DirichletBC(V.sub(0),
+                          model.u_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(V.sub(1),
+                          model.v_lat, model.ff, model.GAMMA_D))
+      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_D)
     
     self.U       = U 
     self.wf      = wf

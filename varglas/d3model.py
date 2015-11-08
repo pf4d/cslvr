@@ -171,7 +171,7 @@ class D3Model(Model):
     print_text(s, self.D3Model_color)
     
   def calculate_boundaries(self, mask=None, lat_mask=None, adot=None,
-                           mark_divide=False):
+                           U_mask=None, mark_divide=False):
     """
     Determines the boundaries of the current model mesh
     """
@@ -190,8 +190,6 @@ class D3Model(Model):
     self.ff_acc  = FacetFunction('size_t', self.mesh, 0)
     self.cf      = CellFunction('size_t',  self.mesh, 0)
     dofmap       = self.Q.dofmap()
-    shf_dofs     = []
-    gnd_dofs     = []
     
     # default to all grounded ice :
     if mask == None:
@@ -200,9 +198,14 @@ class D3Model(Model):
     # default to all positive accumulation :
     if adot == None:
       adot = Expression('1.0', element=self.Q.ufl_element())
+    
+    # default to U observations everywhere :
+    if U_mask == None:
+      U_mask = Expression('1.0', element=self.Q.ufl_element())
 
     self.init_adot(adot)
     self.init_mask(mask)
+    self.init_U_mask(U_mask)
 
     if mark_divide:
       s = "    - marking the interior facets for incomplete meshes -"
@@ -226,22 +229,27 @@ class D3Model(Model):
     s = "    - iterating through %i facets - " % self.num_facets
     print_text(s, self.D3Model_color)
     for f in facets(self.mesh):
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-      adot_xy = adot(x_m, y_m, z_m)
-      if mark_divide:
-        lat_mask_xy = lat_mask(x_m, y_m, z_m)
+      n        = f.normal()
+      x_m      = f.midpoint().x()
+      y_m      = f.midpoint().y()
+      z_m      = f.midpoint().z()
+      mask_xy  = mask(x_m, y_m, z_m)
       
       if   n.z() >=  tol and f.exterior():
+        adot_xy   = adot(x_m, y_m, z_m)
+        U_mask_xy = U_mask(x_m, y_m, z_m)
         if adot_xy > 0:
           self.ff_acc[f] = 1
         if mask_xy > 1:
-          self.ff[f] = 6
+          if U_mask_xy > 0:
+            self.ff[f] = 9
+          else:
+            self.ff[f] = 6
         else:
-          self.ff[f] = 2
+          if U_mask_xy > 0:
+            self.ff[f] = 8
+          else:
+            self.ff[f] = 2
     
       elif n.z() <= -tol and f.exterior():
         if mask_xy > 1:
@@ -252,6 +260,7 @@ class D3Model(Model):
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         # if we want to use a basin, we need to mark the interior facets :
         if mark_divide:
+          lat_mask_xy = lat_mask(x_m, y_m, z_m)
           if lat_mask_xy > 0:
             self.ff[f] = 4
           else:
@@ -282,16 +291,22 @@ class D3Model(Model):
     self.ds      = Measure('ds')[self.ff]
     self.dx      = Measure('dx')[self.cf]
     
-    self.dx_s    = self.dx(1)              # internal shelves
-    self.dx_g    = self.dx(0)              # internal grounded
-    self.dx      = self.dx(1) + self.dx(0) # entire internal
-    self.dGnd    = self.ds(3)              # grounded bed
-    self.dFlt    = self.ds(5)              # floating bed
-    self.dSde    = self.ds(4)              # sides
-    self.dBed    = self.dGnd + self.dFlt   # bed
-    self.dSrf_s  = self.ds(6)              # surface
-    self.dSrf_g  = self.ds(2)              # surface
-    self.dSrf    = self.ds(6) + self.ds(2) # entire surface
+    self.dx_g    = self.dx(0)                # internal above grounded
+    self.dx_f    = self.dx(1)                # internal above floating
+    self.dx      = self.dx(1) + self.dx(0)   # internal
+    self.dBed_g  = self.ds(3)                # grounded bed
+    self.dBed_f  = self.ds(5)                # floating bed
+    self.dBed    = self.ds(3) + self.ds(5)   # bed
+    self.dSrf_gu = self.ds(8)                # grounded with U observations
+    self.dSrf_fu = self.ds(9)                # floating with U observations
+    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
+    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
+    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
+    self.dSrf    =   self.ds(6) + self.ds(2) \
+                   + self.ds(8) + self.ds(9) # surface
+    self.dLat_d  = self.ds(7)                # lateral divide
+    self.dLat_t  = self.ds(4)                # lateral terminus
+    self.dLat    = self.ds(4) + self.ds(7)   # lateral
 
     if self.save_state:
       s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
@@ -379,16 +394,18 @@ class D3Model(Model):
     self.ds     = Measure('ds')[self.ff]
     self.dx     = Measure('dx')[self.cf]
     
-    self.dx_s    = self.dx(1)              # internal shelves
-    self.dx_g    = self.dx(0)              # internal grounded
-    self.dx      = self.dx(1) + self.dx(0) # entire internal
-    self.dGnd    = self.ds(3)              # grounded bed
-    self.dFlt    = self.ds(5)              # floating bed
-    self.dSde    = self.ds(4)              # sides
-    self.dBed    = self.dGnd + self.dFlt   # bed
-    self.dSrf_s  = self.ds(6)              # surface
-    self.dSrf_g  = self.ds(2)              # surface
-    self.dSrf    = self.ds(6) + self.ds(2) # entire surface
+    self.dx_g    = self.dx(0)                # internal above grounded
+    self.dx_f    = self.dx(1)                # internal above floating
+    self.dx      = self.dx(1) + self.dx(0)   # internal
+    self.dBed_g  = self.ds(3)                # grounded bed
+    self.dBed_f  = self.ds(5)                # floating bed
+    self.dBed    = self.ds(3) + self.ds(5)   # bed
+    self.dSrf_g  = self.ds(2)                # surface of grounded ice
+    self.dSrf_f  = self.ds(6)                # surface of floating ice
+    self.dSrf    = self.ds(6) + self.ds(2)   # surface
+    self.dLat_d  = self.ds(7)                # lateral divide
+    self.dLat_t  = self.ds(4)                # lateral terminus
+    self.dLat    = self.ds(4) + self.ds(7)   # lateral
   
   def set_subdomains(self, f):
     """
@@ -406,19 +423,25 @@ class D3Model(Model):
     f.read(self.cf,     'cf')
     f.read(self.ff_acc, 'ff_acc')
     
-    self.ds     = Measure('ds')[self.ff]
-    self.dx     = Measure('dx')[self.cf]
+    self.ds      = Measure('ds')[self.ff]
+    self.dx      = Measure('dx')[self.cf]
     
-    self.dx_s    = self.dx(1)              # internal shelves
-    self.dx_g    = self.dx(0)              # internal grounded
-    self.dx      = self.dx(1) + self.dx(0) # entire internal
-    self.dGnd    = self.ds(3)              # grounded bed
-    self.dFlt    = self.ds(5)              # floating bed
-    self.dSde    = self.ds(4)              # sides
-    self.dBed    = self.dGnd + self.dFlt   # bed
-    self.dSrf_s  = self.ds(6)              # surface
-    self.dSrf_g  = self.ds(2)              # surface
-    self.dSrf    = self.ds(6) + self.ds(2) # entire surface
+    self.dx_g    = self.dx(0)                # internal above grounded
+    self.dx_f    = self.dx(1)                # internal above floating
+    self.dx      = self.dx(1) + self.dx(0)   # internal
+    self.dBed_g  = self.ds(3)                # grounded bed
+    self.dBed_f  = self.ds(5)                # floating bed
+    self.dBed    = self.ds(3) + self.ds(5)   # bed
+    self.dSrf_gu = self.ds(8)                # grounded with U observations
+    self.dSrf_fu = self.ds(9)                # floating with U observations
+    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
+    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
+    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
+    self.dSrf    =   self.ds(6) + self.ds(2) \
+                   + self.ds(8) + self.ds(9) # surface
+    self.dLat_d  = self.ds(7)                # lateral divide
+    self.dLat_t  = self.ds(4)                # lateral terminus
+    self.dLat    = self.ds(4) + self.ds(7)   # lateral
 
   def deform_mesh_to_geometry(self, S, B):
     """
@@ -551,11 +574,11 @@ class D3Model(Model):
     # extrude bed (ff = 3,5) 
     if d == 'up':
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_SHF))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_SHF))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
     name = '%s extruded %s' % (u.name(), d)
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
@@ -578,13 +601,13 @@ class D3Model(Model):
     bcs = []
     # integral is zero on bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
       a      = v.dx(2) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, 0.0, ff, 2))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, 6))  # shelves
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
       a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
     name   = '%s integrated %s' % (u.name(), d) 

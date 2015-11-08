@@ -30,57 +30,57 @@ class MomentumStokes(Momentum):
       self.solve_params = solve_params
 
     # momenturm and adjoint :
-    G      = Function(model.MV, name = 'G')
-    Lam    = Function(model.MV, name = 'Lam')
-    dU     = TrialFunction(model.MV)
-    Tst    = TestFunction(model.MV)
+    G         = Function(model.MV, name = 'G')
+    Lam       = Function(model.MV, name = 'Lam')
+    dU        = TrialFunction(model.MV)
+    Tst       = TestFunction(model.MV)
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q)
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q)
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
-    self.assp  = FunctionAssigner(model.Q,         model.MV.sub(1))
+    self.assx = FunctionAssigner(model.Q3.sub(0), model.Q)
+    self.assy = FunctionAssigner(model.Q3.sub(1), model.Q)
+    self.assz = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assp = FunctionAssigner(model.Q,         model.MV.sub(1))
 
-    mesh       = model.mesh
-    eps_reg    = model.eps_reg
-    n          = model.n
-    r          = model.r
-    S          = model.S
-    B          = model.B
-    H          = S - B
-    z          = model.x[2]
-    W          = model.W
-    R          = model.R
-    rhoi       = model.rhoi
-    rhow       = model.rhow
-    g          = model.g
-    beta       = model.beta
-    h          = model.h
-    N          = model.N
-    D          = model.D
+    mesh      = model.mesh
+    eps_reg   = model.eps_reg
+    n         = model.n
+    r         = model.r
+    S         = model.S
+    B         = model.B
+    H         = S - B
+    z         = model.x[2]
+    W         = model.W
+    R         = model.R
+    rhoi      = model.rhoi
+    rhow      = model.rhow
+    g         = model.g
+    beta      = model.beta
+    h         = model.h
+    N         = model.N
+    D         = model.D
 
-    gradS      = grad(S)
-    gradB      = grad(B)
+    gradS     = grad(S)
+    gradB     = grad(B)
     
-    dx_s       = model.dx_s
-    dx_g       = model.dx_g
-    dx         = model.dx
-    dGnd       = model.dGnd
-    dFlt       = model.dFlt
-    dSde       = model.dSde
-    dBed       = model.dBed
+    dx_f      = model.dx_f
+    dx_g      = model.dx_g
+    dx        = model.dx
+    dBed_g    = model.dBed_g
+    dBed_f    = model.dBed_f
+    dLat_t    = model.dLat_t
+    dBed      = model.dBed
      
     # new constants :
-    p0         = 101325
-    T0         = 288.15
-    M          = 0.0289644
+    p0        = 101325
+    T0        = 288.15
+    M         = 0.0289644
     
     #===========================================================================
     # define variational problem :
-    du,  dp = split(dU)
-    U,   p  = split(G)
-    Phi, xi = split(Tst)
+    du,  dp   = split(dU)
+    U,   p    = split(G)
+    Phi, xi   = split(Tst)
 
     u,   v,   w   = U
     phi, psi, chi = Phi
@@ -115,13 +115,13 @@ class MomentumStokes(Momentum):
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     
-    eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_shf   = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_gnd   = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
     
     # gravity vector :
-    gv   = as_vector([0, 0, -g])
-    f_w  = rhoi*g*(S - z) + rhow*g*D
-    I    = Identity(3)
+    gv        = as_vector([0, 0, -g])
+    f_w       = rhoi*g*(S - z) + rhow*g*D
+    I         = Identity(3)
 
     epi       = self.strain_rate_tensor(U)
     tau_shf   = 2*eta_shf*epi
@@ -131,32 +131,32 @@ class MomentumStokes(Momentum):
     tau_n     = dot(N, dot(tau_gnd, N))
     
     # conservation of momentum :
-    R1 = + inner(sigma_shf, grad(Phi)) * dx_s \
+    R1 = + inner(sigma_shf, grad(Phi)) * dx_f \
          + inner(sigma_gnd, grad(Phi)) * dx_g \
          - rhoi * dot(gv, Phi) * dx \
-         + beta * u * phi * dGnd \
-         + beta * v * psi * dGnd \
-         + beta * w * chi * dGnd \
-         - (2*eta_gnd*u.dx(0) - tau_n)*N[0] * phi * dGnd \
-         - eta_gnd*(u.dx(1) + v.dx(0))*N[1] * phi * dGnd \
-         - eta_gnd*(u.dx(2) + w.dx(0))*N[2] * phi * dGnd \
-         - eta_gnd*(u.dx(1) + v.dx(0))*N[0] * psi * dGnd \
-         - (2*eta_gnd*v.dx(1) - tau_n)*N[1] * psi * dGnd \
-         - eta_gnd*(v.dx(2) + w.dx(1))*N[2] * psi * dGnd \
-         #- f_w * dot(N, Phi) * dFlt \
-         #- dot(dot(N, dot(tau_gnd, N)) * N, Phi) * dGnd \
+         + beta * u * phi * dBed_g \
+         + beta * v * psi * dBed_g \
+         + beta * w * chi * dBed_g \
+         - (2*eta_gnd*u.dx(0) - tau_n)*N[0] * phi * dBed_g \
+         - eta_gnd*(u.dx(1) + v.dx(0))*N[1] * phi * dBed_g \
+         - eta_gnd*(u.dx(2) + w.dx(0))*N[2] * phi * dBed_g \
+         - eta_gnd*(u.dx(1) + v.dx(0))*N[0] * psi * dBed_g \
+         - (2*eta_gnd*v.dx(1) - tau_n)*N[1] * psi * dBed_g \
+         - eta_gnd*(v.dx(2) + w.dx(1))*N[2] * psi * dBed_g \
+         #- f_w * dot(N, Phi) * dBed_f \
+         #- dot(dot(N, dot(tau_gnd, N)) * N, Phi) * dBed_g \
          #- p_a * dot(N, Phi) * dSrf \
-         #+ beta * dot(U, Phi) * dGnd \
+         #+ beta * dot(U, Phi) * dBed_g \
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      R1 -= f_w * dot(N, Phi) * dSde \
+      R1 -= f_w * dot(N, Phi) * dLat_t
      
     # conservation of mass :
     R2 = + div(U)*xi*dx \
-         #+ beta*(u*B.dx(0) + v*B.dx(1))*chi*dGnd \
+         #+ beta*(u*B.dx(0) + v*B.dx(1))*chi*dBed_g \
          #+ dot(U, N)*xi*dBed
     
     # total residual :
@@ -168,15 +168,15 @@ class MomentumStokes(Momentum):
       
     # add lateral boundary conditions :  
     if use_lat_bcs:
-      s = "    - using lateral boundary conditions -"
+      s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
 
-      ff = model.ff
-      MV = model.MV
-
-      self.mom_bcs.append(DirichletBC(MV.sub(0).sub(0), model.u_lat, ff, 7))
-      self.mom_bcs.append(DirichletBC(MV.sub(0).sub(1), model.v_lat, ff, 7))
-      self.mom_bcs.append(DirichletBC(MV.sub(0).sub(2), model.w_lat, ff, 7))
+      self.mom_bcs.append(DirichletBC(model.MV.sub(0).sub(0),
+                                      model.u_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(model.MV.sub(0).sub(1),
+                                      model.v_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(model.MV.sub(0).sub(2),
+                                      model.w_lat, model.ff, model.GAMMA_D))
 
     #self.mom_bcs.append(DirichletBC(model.MV.sub(0), 
     #                                Constant((0,0,0)), model.ff, 
@@ -345,12 +345,12 @@ class MomentumDukowiczStokesReduced(Momentum):
     gradS      = grad(S)
     gradB      = grad(B)
     
-    dx_s       = model.dx_s
+    dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
-    dGnd       = model.dGnd
-    dFlt       = model.dFlt
-    dSde       = model.dSde
+    dBed_g     = model.dBed_g
+    dBed_f     = model.dBed_f
+    dLat_t     = model.dLat_t
     dBed       = model.dBed
      
     # new constants :
@@ -415,21 +415,22 @@ class MomentumDukowiczStokesReduced(Momentum):
 
     # 3) Dissipation by sliding
     wn = u*B.dx(0) + v*B.dx(1)
-    Sl_gnd = 0.5 * beta * H**r * (u**2 + v**2 + w**2)
-    Sl_shf = 0.5 * Constant(1e-2) * (u**2 + v**2 + w**2)
+    Sl_gnd = 0.5 * beta * (u**2 + v**2 + w**2)
+    Sl_shf = 0.5 * beta * (u**2 + v**2 + w**2)
+    #Sl_shf = 0.5 * Constant(1e-2) * (u**2 + v**2 + w**2)
 
     # 4) pressure boundary
     Pb     = - (rhoi*g*(S - z) + rhow*g*D) * (u*N[0] + v*N[1]) 
 
     # Variational principle
-    A      = + Vd_shf*dx_s + Vd_gnd*dx_g + Pe*dx \
-             + Sl_gnd*dGnd + (Pb + Sl_shf)*dFlt
+    A      = + Vd_shf*dx_f + Vd_gnd*dx_g + Pe*dx \
+             + Sl_gnd*dBed_g + (Pb + Sl_shf)*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      A += Pb*dSde
+      A += Pb*dLat_t
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -443,10 +444,12 @@ class MomentumDukowiczStokesReduced(Momentum):
       
     # add lateral boundary conditions :  
     if use_lat_bcs:
-      s = "    - using lateral boundary conditions -"
+      s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
-      self.mom_bcs.append(DirichletBC(model.Q2.sub(0),model.u_lat,model.ff,4))
-      self.mom_bcs.append(DirichletBC(model.Q2.sub(1),model.v_lat,model.ff,4))
+      self.mom_bcs.append(DirichletBC(model.Q2.sub(0),
+                          model.u_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(model.Q2.sub(1),
+                          model.v_lat, model.ff, model.GAMMA_D))
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
@@ -669,12 +672,12 @@ class MomentumDukowiczStokes(Momentum):
     gradS      = grad(S)
     gradB      = grad(B)
     
-    dx_s       = model.dx_s
+    dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
-    dGnd       = model.dGnd
-    dFlt       = model.dFlt
-    dSde       = model.dSde
+    dBed_g     = model.dBed_g
+    dBed_f     = model.dBed_f
+    dLat_t     = model.dLat_t
     dBed       = model.dBed
      
     # new constants :
@@ -752,18 +755,18 @@ class MomentumDukowiczStokes(Momentum):
     Lsq_shf = -tau_shf * dot( (grad(p) + f), (grad(p) + f) )
     Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
     
-    A      = + (Vd_shf + Lsq_shf)*dx_s + (Vd_gnd + Lsq_gnd)*dx_g \
-             + (Pe + Pc)*dx + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
+             + (Pe + Pc)*dx + Sl_gnd*dBed_g + Sl_shf*dBed_f + Nc*dBed
     
     ## Variational principle
-    #A      = + Vd_shf*dx_s + Vd_gnd*dx_g + (Pe + Pc)*dx \
-    #         + Sl_gnd*dGnd + Sl_shf*dFlt + Nc*dBed
+    #A      = + Vd_shf*dx_f + Vd_gnd*dx_g + (Pe + Pc)*dx \
+    #         + Sl_gnd*dBed_g + Sl_shf*dBed_f + Nc*dBed
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      A += Pb*dSde
+      A += Pb*dLat_t
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -777,12 +780,15 @@ class MomentumDukowiczStokes(Momentum):
       
     # add lateral boundary conditions :  
     if use_lat_bcs:
-      s = "    - using lateral boundary conditions -"
+      s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
 
-      self.mom_bcs.append(DirichletBC(Q4.sub(0), model.u_lat, model.ff, 4))
-      self.mom_bcs.append(DirichletBC(Q4.sub(1), model.v_lat, model.ff, 4))
-      self.mom_bcs.append(DirichletBC(Q4.sub(2), model.w_lat, model.ff, 4))
+      self.mom_bcs.append(DirichletBC(Q4.sub(0),
+                          model.u_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(Q4.sub(1),
+                          model.v_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(Q4.sub(2),
+                          model.w_lat, model.ff, model.GAMMA_D))
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd

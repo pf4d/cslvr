@@ -25,8 +25,8 @@ mesh = Mesh()
 fmeshes.read(mesh, 'bedmesh', False)
 
 # create 3D model for stokes solves, and 2D model for balance velocity :
-d3model = D3Model(fdata, out_dir + 'pvd/')
-d2model = D2Model(mesh,  bv_dir + 'pvd/')
+d3model = D3Model(fdata, out_dir)
+d2model = D2Model(mesh,  bv_dir)
 
 # initialize the 3D model vars :
 d3model.set_subdomains(fdata)
@@ -114,7 +114,6 @@ def cb_ftn():
 
 d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
-d3model.set_out_dir(out_dir = out_dir + 'xml/')
 d3model.save_xml(d3model.T,                       'T')
 d3model.save_xml(d3model.W,                       'W')
 d3model.save_xml(interpolate(d3model.u, d3model.Q), 'u')

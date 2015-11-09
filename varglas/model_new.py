@@ -1194,18 +1194,18 @@ class Model(object):
       print_text(s, self.model_color)
       f_file << var
     else:
-      s       = "::: saving %s%s.pvd file :::" % (self.out_dir, name)
+      s       = "::: saving %s/pvd/%s.pvd file :::" % (self.out_dir, name)
       print_text(s, self.model_color)
-      File(self.out_dir + name + '.pvd') << var
+      File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
   def save_xml(self, var, name):
     """
     Save a <name>.xml file of the FEniCS Function <var> to this model's log 
     directory specified by model.out_dir.
     """
-    s       = "::: saving %s%s.xml file :::" % (self.out_dir, name)
+    s       = "::: saving %s/xml/%s.xml file :::" % (self.out_dir, name)
     print_text(s, self.model_color)
-    File(self.out_dir + '/' +  name + '.xml') << var
+    File(self.out_dir + 'xml/' +  name + '.xml') << var
   
   def solve_hydrostatic_pressure(self, annotate=True):
     """

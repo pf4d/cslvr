@@ -19,7 +19,7 @@ var_dir = 'dump/vars_jakobshavn/'                # gen_vars.py ouput state.h5
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
 # initialize the model :
-model = D3Model(f, out_dir + 'pvd/')
+model = D3Model(f, out_dir)
 model.set_subdomains(f)
 
 # initialize variables :
@@ -140,7 +140,6 @@ model.save_pvd(model.U3,   'U_opt')
 model.save_pvd(model.beta, 'beta_opt')
 
 # save xml files for thermo_solve.py to update temperature :
-model.set_out_dir(out_dir = out_dir + 'xml/')
 u,v,w = model.U3.split(True)
 
 model.save_xml(interpolate(model.u, model.Q), 'u')

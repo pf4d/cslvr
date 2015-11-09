@@ -29,7 +29,7 @@ fmeshes.read(bedmesh, 'bedmesh', False)
 Qb = FunctionSpace(bedmesh, 'CG', 1)
 
 # initialize the model :
-model = D3Model(fdata, out_dir + 'pvd/')
+model = D3Model(fdata, out_dir)
 model.set_subdomains(fdata)
 
 # initialize variables :
@@ -112,9 +112,7 @@ def deriv_cb(I, dI, beta):
   #print_min_max(beta,  'beta')
   if i % 100 == 0:
     model.assign_submesh_variable(beta_viz, beta)
-    model.set_out_dir(out_dir = out_dir + 'xml/')
     model.save_xml(beta_viz, 'beta_control_%s' % str(i))
-    model.set_out_dir(out_dir = out_dir + 'pvd/')
     model.save_pvd(beta_viz, 'beta_control', f_file=beta_b) 
   i += 1
 
@@ -159,7 +157,6 @@ model.save_pvd(model.U3,   'U_opt')
 model.save_pvd(model.beta, 'beta_opt')
 
 # save xml files for thermo_solve.py to update temperature :
-model.set_out_dir(out_dir = out_dir + 'xml/')
 u,v,w = model.U3.split(True)
 
 model.save_xml(interpolate(model.u, model.Q), 'u')

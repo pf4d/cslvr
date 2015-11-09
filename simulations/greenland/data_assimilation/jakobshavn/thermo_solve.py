@@ -21,7 +21,7 @@ in_dir  = dir_b + str(i-1) + '/inverted/xml/'
 f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
 state = HDF5File(mpi_comm_world(), out_dir + '/thermo_solve/hdf5/state.h5', 'w')
-model = D3Model(f, out_dir + '/thermo_solve/pvd/', save_state=True, state=state)
+model = D3Model(f, out_dir + '/thermo_solve/', save_state=True, state=state)
 model.set_subdomains(f)
 
 model.init_S(f)
@@ -83,7 +83,6 @@ def cb_ftn():
 
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
-model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
 model.save_xml(model.T,                       'T')
 model.save_xml(model.W,                       'W')
 model.save_xml(interpolate(model.u, model.Q), 'u')

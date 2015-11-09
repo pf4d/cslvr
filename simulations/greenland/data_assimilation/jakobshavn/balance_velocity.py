@@ -2,7 +2,7 @@ from fenics  import *
 from varglas import *
 
 in_dir  = "dump/vars_jakobshavn/"
-out_dir = 'dump/jakob_da_ipopt_SIA0_SR/00/balance_velocity'
+out_dir = 'dump/jakob_da_ipopt_SIA0_SR/00/balance_velocity/'
 
 # load a mesh :
 fmeshes = HDF5File(mpi_comm_world(), in_dir + 'submeshes.h5', 'r')
@@ -11,8 +11,8 @@ fdata   = HDF5File(mpi_comm_world(), in_dir + 'state.h5', 'r')
 mesh = Mesh()
 fmeshes.read(mesh, 'bedmesh', False)
 
-d2model = D2Model(mesh,  out_dir + '/pvd/')
-d3model = D3Model(fdata, out_dir + '/pvd/')
+d2model = D2Model(mesh,  out_dir)
+d3model = D3Model(fdata, out_dir)
 
 d3model.init_S(fdata)
 d3model.init_B(fdata)

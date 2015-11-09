@@ -27,7 +27,7 @@ f.read(ff,      'ff')
 f.read(cf,      'cf')
 f.read(ff_acc,  'ff_acc')
 
-model = D3Model(mesh, out_dir + '/thermo_solve/pvd/')
+model = D3Model(mesh, out_dir + '/thermo_solve/')
 model.set_subdomains(ff, cf, ff_acc)
 
 model.init_S(f)
@@ -83,7 +83,6 @@ def cb_ftn():
 
 model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 
-model.set_out_dir(out_dir = out_dir + '/thermo_solve/xml/')
 model.save_xml(model.T,                       'T')
 model.save_xml(model.W,                       'W')
 model.save_xml(interpolate(model.u, model.Q), 'u')
@@ -102,7 +101,7 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
                                     linear=True)
 mom.solve(annotate=True)
 
-model.set_out_dir(out_dir = out_dir + '/inverted/pvd/')
+model.set_out_dir(out_dir = out_dir + '/inverted/')
   
 J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid', 
                      g1=0.01, g2=1000)
@@ -149,8 +148,6 @@ b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),
 #solver = IPOPTSolver(problem, parameters=parameters)
 #b_opt = solver.solve()
 print_min_max(b_opt[0], 'b_opt')
-
-model.set_out_dir(out_dir = out_dir + '/inverted/xml/')
 
 model.init_beta(b_opt[0])
 

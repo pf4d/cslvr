@@ -27,8 +27,8 @@ fmeshes.read(bedmesh, 'bedmesh', False)
 Qb = FunctionSpace(bedmesh, 'CG', 1)
 
 # initialize the model :
-model = D3Model(fdata, out_dir + 'pvd/')
-model.set_subdomains(fdata)
+model = D3Model(f, out_dir)
+model.set_subdomains(f)
 
 # initialize variables :
 model.init_S(fdata)
@@ -157,7 +157,6 @@ model.save_pvd(model.U3,   'U_opt')
 model.save_pvd(model.beta, 'beta_opt')
 
 # save xml files for thermo_solve.py to update temperature :
-model.set_out_dir(out_dir = out_dir + 'xml/')
 u,v,w = model.U3.split(True)
 
 model.save_xml(interpolate(model.u, model.Q), 'u')

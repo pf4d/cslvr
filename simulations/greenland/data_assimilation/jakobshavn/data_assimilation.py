@@ -74,7 +74,7 @@ J = mom.form_obj_ftn(integral=model.dSrf_g, kind='log_L2_hybrid',
 #J = mom.form_obj_ftn(integral=model.dSrf_g, kind='ratio') 
 
 # form the regularization functional :
-R = mom.form_reg_ftn(model.beta, integral=model.dGnd, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
                      alpha=100.0)
 
 # define the objective functional to minimize :

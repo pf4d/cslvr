@@ -26,10 +26,8 @@ home     = os.path.dirname(os.path.abspath(filename)) + '/../data/greenland'
 
 # measures velocity dataset :
 fldr = 'measures'
-meas = 'ftp://sidads.colorado.edu/pub/DATASETS/' + \
-       'nsidc0478_MEASURES_greenland_V01/2008/' + \
-       'greenland_vel_mosaic500_2008_2009'
-download_file(meas + '_sp.tif', home, fldr)
+meas = 'ftp://n5eil01u.ecs.nsidc.org/SAN/MEASURES/NSIDC-0478.001/' + \
+       '2008.12.01/greenland_vel_mosaic500_2008_2009'
 download_file(meas + '_vx.tif', home, fldr)
 download_file(meas + '_vy.tif', home, fldr)
 

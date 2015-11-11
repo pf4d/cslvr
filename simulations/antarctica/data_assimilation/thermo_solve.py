@@ -20,13 +20,20 @@ bv_dir  = dir_b + str(i) + '/balance_velocity/'
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
-# get the bed mesh :
-mesh = Mesh()
-fmeshes.read(mesh, 'bedmesh', False)
+# get the bed and surface meshes :
+bedmesh = Mesh()
+srfmesh = Mesh()
+fmeshes.read(bedmesh, 'bedmesh', False)
+fmeshes.read(srfmesh, 'srfmesh', False)
+
+# create boundary function spaces for saving variables :
+Qb  = FunctionSpace(bedmesh, 'CG', 1)
+Qs  = FunctionSpace(srfmesh, 'CG', 1)
+Q3s = MixedFunctionSpace([Qs]*3)
 
 # create 3D model for stokes solves, and 2D model for balance velocity :
-d3model = D3Model(fdata, out_dir)
-d2model = D2Model(mesh,  bv_dir)
+d3model = D3Model(fdata,   out_dir)
+d2model = D2Model(bedmesh, bv_dir)
 
 # initialize the 3D model vars :
 d3model.set_subdomains(fdata)
@@ -86,6 +93,11 @@ nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'relaxation_parameter'     : 0.7,
                               'maximum_iterations'       : 30,
                               'error_on_nonconvergence'  : False}}
+#nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+#                              'relative_tolerance'       : 1e-9,
+#                              'relaxation_parameter'     : 0.7,
+#                              'maximum_iterations'       : 30,
+#                              'error_on_nonconvergence'  : False}}
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : True,
              'solve_pressure'       : True,
@@ -94,23 +106,38 @@ m_params  = {'solver'               : nparams,
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-#mom = MomentumBP(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params)
 
-d3model.save_pvd(d3model.beta, 'beta0')
-d3model.save_pvd(d3model.U_ob, 'U_ob')
+# functions over appropriate surfaces for saving :
+beta = Function(Qb,  name='beta_SIA')
+U_ob = Function(Qs,  name='U_ob')
+Tb   = Function(Qb,  name='Tb')
+Us   = Function(Q3s, name='Us')
+Wb   = Function(Qb,  name='Wb')
+Mb   = Function(Qb,  name='Mb')
+rhob = Function(Qb,  name='rhob')
+
+d3model.assign_submesh_variable(beta, d3model.beta)
+d3model.assign_submesh_variable(U_ob, d3model.U_ob)
+d3model.save_pvd(beta, 'beta_SIA')
+d3model.save_pvd(Us,   'U_ob')
 
 def cb_ftn():
+  nrg.calc_bulk_density()
   nrg.solve_basal_melt_rate()
-  #nrg.calc_bulk_density()
-  d3model.save_pvd(d3model.U3,    'U3')
-  #d3model.save_pvd(d3model.p,     'p')
-  d3model.save_pvd(d3model.theta, 'theta')
-  d3model.save_pvd(d3model.T,     'T')
-  d3model.save_pvd(d3model.W,     'W')
-  d3model.save_pvd(d3model.Mb,    'Mb')
-  #d3model.save_pvd(d3model.rho_b, 'rho_b')
+  d3model.assign_submesh_variable(Tb,   d3model.T)
+  d3model.assign_submesh_variable(Us,   d3model.U3)
+  d3model.assign_submesh_variable(Wb,   d3model.W)
+  d3model.assign_submesh_variable(Mb,   d3model.Mb)
+  d3model.assign_submesh_variable(rhob, d3model.rho_b)
+  d3model.save_pvd(Tb,   'Tb') 
+  d3model.save_pvd(Us,   'Us')
+  d3model.save_pvd(Wb,   'Wb')
+  d3model.save_pvd(Mb,   'Mb')
+  d3model.save_pvd(rhob, 'rhob')
 
 d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
 

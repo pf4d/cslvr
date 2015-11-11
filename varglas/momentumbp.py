@@ -133,7 +133,8 @@ class MomentumBP(Momentum):
                         0.5* v.dx(2)            ])
    
     # boundary integral terms : 
-    f_w    = rhoi*g*(S - z) + rhow*g*D               # lateral
+    #f_w    = rhoi*g*(S - z) + rhow*g*D               # lateral
+    f_w    = rhow*g*D                                # lateral
     p_a    = p0 * (1 - g*z/(ci*T0))**(ci*M/R)        # surface pressure
     
     #Ne       = H + rhow/rhoi * D
@@ -151,18 +152,17 @@ class MomentumBP(Momentum):
                  + rhoi * g * gradS[1] * psi * dx \
                  + beta * u * phi * dBed_g \
                  + beta * v * psi * dBed_g \
-                 - f_w * (N[0]*phi + N[1]*psi) * dBed_f
-                 #+ Constant(1e-2) * u * phi * dBed_f \
-                 #+ Constant(1e-2) * v * psi * dBed_f \
+    #             + f_w * N[0] * phi * dBed_f \
+    #             + f_w * N[1] * psi * dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      self.mom_F -= f_w * (N[0]*phi + N[1]*psi) * dLat_t
+      self.mom_F += f_w * (N[0]*phi + N[1]*psi) * dLat_t
     
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
-               + (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed
+               + (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed \
   
     # Jacobian :
     self.mom_Jac = derivative(self.mom_F, U, dU)

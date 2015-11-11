@@ -710,7 +710,7 @@ class D3Model(Model):
     # Depth below sea level :
     class Depth(Expression):
       def eval(self, values, x):
-        values[0] = min(0, x[2])
+        values[0] = abs(min(0, x[2]))
     self.D = Depth(element=self.Q.ufl_element())
     
     # Enthalpy model

@@ -265,6 +265,10 @@ class Enthalpy(Energy):
                                       model.ff, model.GAMMA_S_GND) )
     self.theta_bc.append( DirichletBC(Q, theta_surface,
                                       model.ff, model.GAMMA_S_FLT) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface, 
+                                      model.ff, model.GAMMA_U_GND) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface,
+                                      model.ff, model.GAMMA_U_FLT) )
     
     # apply T_w conditions of portion of ice in contact with water :
     self.theta_bc.append( DirichletBC(Q, theta_float, 
@@ -444,8 +448,8 @@ class Enthalpy(Energy):
     nMb_v    = nMb.vector().array()
     T_melt_v = T_melt.vector().array()
     T_v      = T.vector().array()
-    nMb_v[T_v < T_melt_v]  = 0.0    # if frozen, no melt
-    #nMb_v[nMb_v < 0.0]     = 0.0    # no freeze-on
+    nMb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
+    nMb_v[model.shf_dofs] = 0.0    # does apply over floating regions
     model.assign_variable(model.Mb, nMb_v)
     print_min_max(model.Mb, 'Mb')
 

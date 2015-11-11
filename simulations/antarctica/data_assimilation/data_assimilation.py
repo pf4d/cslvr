@@ -81,10 +81,10 @@ model.save_pvd(model.U3, 'U_ini')
 # form the cost functional :
 #J = mom.form_obj_ftn(integral=model.dSrf_u, kind='log_L2_hybrid', 
 #                     g1=0.01, g2=5000)
-J = mom.form_obj_ftn(integral=model.dSrf_u, kind='ratio')
+J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
-R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
                      alpha=1e-10)
 
 # define the objective functional to minimize :

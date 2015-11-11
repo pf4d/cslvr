@@ -365,8 +365,9 @@ class MomentumDukowiczStokesReduced(Momentum):
     u,   v   = U
 
     #w = u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
-    w = - u.dx(0)*(z - B) - u*(z.dx(0) - B.dx(0)) \
-        - v.dx(1)*(z - B) - v*(z.dx(1) - B.dx(1))
+    #w = - u.dx(0)*(z - B) - u*(z.dx(0) - B.dx(0)) \
+    #    - v.dx(1)*(z - B) - v*(z.dx(1) - B.dx(1))
+    w = - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
     
     eps_reg    = model.eps_reg
     n          = model.n
@@ -414,23 +415,20 @@ class MomentumDukowiczStokesReduced(Momentum):
     Pe     = rhoi * g * (u*S.dx(0) + v*S.dx(1))
 
     # 3) Dissipation by sliding
-    wn = u*B.dx(0) + v*B.dx(1)
-    Sl_gnd = 0.5 * beta * (u**2 + v**2 + w**2)
-    Sl_shf = 0.5 * beta * (u**2 + v**2 + w**2)
-    #Sl_shf = 0.5 * Constant(1e-2) * (u**2 + v**2 + w**2)
+    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
 
     # 4) pressure boundary
-    Pb     = - (rhoi*g*(S - z) + rhow*g*D) * (u*N[0] + v*N[1]) 
+    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
 
     # Variational principle
     A      = + Vd_shf*dx_f + Vd_gnd*dx_g + Pe*dx \
-             + Sl_gnd*dBed_g + (Pb + Sl_shf)*dBed_f
+             - Sl_gnd*dBed_g - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
-      s = "    - using cliff-pressure boundary condition -"
+      s = "    - using calving-front-pressure-boundary condition -"
       print_text(s, self.color())
-      A += Pb*dLat_t
+      A -= Pb*dLat_t
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -737,8 +735,7 @@ class MomentumDukowiczStokes(Momentum):
     Pe     = rhoi * g * w
 
     # 3) Dissipation by sliding
-    Sl_gnd = 0.5 * beta * H**r * (u**2 + v**2 + w**2)
-    Sl_shf = 0.5 * Constant(1e-2) * (u**2 + v**2 + w**2)
+    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
     Pc     = -p * (u.dx(0) + v.dx(1) + w.dx(2)) 
@@ -747,7 +744,8 @@ class MomentumDukowiczStokes(Momentum):
     Nc     = p * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary
-    Pb     = - (rhoi*g*(S - z) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
+    #Pb     = - (rhoi*g*(S - z) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
+    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2]) 
 
     f       = rhoi * Constant((0.0, 0.0, g))
     tau_shf = h**2 / (12 * b_shf * rhoi**2)
@@ -756,7 +754,7 @@ class MomentumDukowiczStokes(Momentum):
     Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
     
     A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
-             + (Pe + Pc)*dx + Sl_gnd*dBed_g + Sl_shf*dBed_f + Nc*dBed
+             + (Pe + Pc)*dx - Sl_gnd*dBed_g - Pb*dBed_f + Nc*dBed
     
     ## Variational principle
     #A      = + Vd_shf*dx_f + Vd_gnd*dx_g + (Pe + Pc)*dx \
@@ -766,7 +764,7 @@ class MomentumDukowiczStokes(Momentum):
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      A += Pb*dLat_t
+      A -= Pb*dLat_t
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

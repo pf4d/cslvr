@@ -1194,7 +1194,7 @@ class Model(object):
       print_text(s, self.model_color)
       f_file << var
     else:
-      s       = "::: saving %s/pvd/%s.pvd file :::" % (self.out_dir, name)
+      s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
       print_text(s, self.model_color)
       File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
@@ -1203,7 +1203,7 @@ class Model(object):
     Save a <name>.xml file of the FEniCS Function <var> to this model's log 
     directory specified by model.out_dir.
     """
-    s       = "::: saving %s/xml/%s.xml file :::" % (self.out_dir, name)
+    s       = "::: saving %sxml/%s.xml file :::" % (self.out_dir, name)
     print_text(s, self.model_color)
     File(self.out_dir + 'xml/' +  name + '.xml') << var
   

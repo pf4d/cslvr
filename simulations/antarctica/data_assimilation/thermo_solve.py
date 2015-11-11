@@ -17,8 +17,9 @@ out_dir = dir_b + str(i) + '/thermo_solve/'
 bv_dir  = dir_b + str(i) + '/balance_velocity/'
 
 # load the meshes :
-fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',    'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',        'r')
+foutput = HDF5File(mpi_comm_world(), out_dir + 'thermo_solve.h5', 'r')
 
 # get the bed and surface meshes :
 bedmesh = Mesh()

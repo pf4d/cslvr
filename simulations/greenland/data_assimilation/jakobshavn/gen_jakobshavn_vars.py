@@ -32,9 +32,11 @@ q_geo = dsr.get_expression('q_geo',    near=False)
 T_s   = dsr.get_expression('T',        near=False)
 u_ob  = drg.get_expression('vx',       near=False)
 v_ob  = drg.get_expression('vy',       near=False)
+U_msk = drg.get_expression("mask",     near=True)
 
 model = D3Model(mesh=mesh, out_dir=out_dir, save_state=True)
-model.calculate_boundaries(mask=M, lat_mask=L, adot=adot, mark_divide=True)
+model.calculate_boundaries(mask=M, lat_mask=L, U_mask=U_msk, adot=adot,
+                           mark_divide=True)
 model.deform_mesh_to_geometry(S, B)
 
 model.init_T_surface(T_s)

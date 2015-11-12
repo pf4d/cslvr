@@ -365,8 +365,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     u,   v   = U
 
     #w = u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
-    #w = - u.dx(0)*(z - B) - u*(z.dx(0) - B.dx(0)) \
-    #    - v.dx(1)*(z - B) - v*(z.dx(1) - B.dx(1))
     w = - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
     
     eps_reg    = model.eps_reg
@@ -479,7 +477,7 @@ class MomentumDukowiczStokesReduced(Momentum):
   
   def strain_rate_tensor(self, U):
     """
-    return the strain-rate tensor of self.U.
+    return the strain-rate tensor for the velocity <U>.
     """
     u,v,w  = U
     epi    = 0.5 * (grad(U) + grad(U).T)

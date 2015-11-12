@@ -10,26 +10,30 @@ from dolfin_adjoint   import *
 i       = 0                                      # manually iterate
 dir_b   = 'dump/low/0'
 
-# set the output directory :
-in_dir  = dir_b + str(i) + '/thermo_solve/xml/'  # previous thermo_solve.py run
-out_dir = dir_b + str(i) + '/inverted_ratio/'          # new output directory
-var_dir = 'dump/vars_low/'                      # gen_vars.py ouput state.h5
+# set the relavent directories (complicated, right?!) :
+var_dir = 'dump/vars_low/'
+out_dir = dir_b + str(i) + '/inverted/'
+tmc_dir = dir_b + str(i) + '/thermo_solve/hdf5/'
 
-# get the data created with gen_vars.py :
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
-fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
+# create HDF5 files for saving and loading data :
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',     'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',         'r')
+finput  = HDF5File(mpi_comm_world(), tmc_dir + 'thermo_solve.h5',  'r')
+foutput = HDF5File(mpi_comm_world(), out_dir + 'hdf5/inverted.h5', 'w')
 
-# get the bed mesh :
+# get the bed and surface meshes :
 bedmesh = Mesh()
+srfmesh = Mesh()
 fmeshes.read(bedmesh, 'bedmesh', False)
-#srfmesh = Mesh()
-#fmeshes.read(srfmesh, 'srfmesh', False)
+fmeshes.read(srfmesh, 'srfmesh', False)
 
-# create bed function space for saving beta opt :
-Qb = FunctionSpace(bedmesh, 'CG', 1)
+# create boundary function spaces for saving variables :
+Qb  = FunctionSpace(bedmesh, 'CG', 1)
+Qs  = FunctionSpace(srfmesh, 'CG', 1)
+Q3s = MixedFunctionSpace([Qs]*3)
 
 # initialize the model :
-model = D3Model(fdata, out_dir)
+model = D3Model(fdata, out_dir, state=foutput)
 model.set_subdomains(fdata)
 
 # initialize variables :
@@ -45,13 +49,13 @@ model.init_E(1.0)
 model.init_u_lat(0.0)
 model.init_v_lat(0.0)
 
-# use T0 and beta0 from the previous thermo_solve :
-model.init_T(in_dir + 'T.xml')          # temp
-model.init_W(in_dir + 'W.xml')          # water
-model.init_beta(in_dir + 'beta.xml')    # friction
-model.init_U(in_dir + 'u.xml',
-             in_dir + 'v.xml',
-             in_dir + 'w.xml')
+# use T0 and beta0 resulting from thermo_solve.py :
+model.init_T(finput)          # temp
+model.init_W(finput)          # water
+model.init_beta(finput)       # friction
+model.init_U(finput)          # velocity
+
+model.save_xdmf(model.U3, 'U_ini')
 
 # Newton solver parameters for momentum :
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
@@ -76,8 +80,6 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 # solve the momentum, with annotation for dolfin-adjoint :
 mom.solve(annotate=True)
 
-model.save_pvd(model.U3, 'U_ini')
-
 # form the cost functional :
 #J = mom.form_obj_ftn(integral=model.dSrf_u, kind='log_L2_hybrid', 
 #                     g1=0.01, g2=5000)
@@ -91,8 +93,8 @@ R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov',
 I = J + R
 
 # create a pvd file for saving current optimized traction :
-beta_b = File(model.out_dir + "control_viz/beta_control.pvd")
-beta_viz = Function(Qb, name="beta_control")
+beta_b = Function(Qb,  name="beta_control")
+beta_f = File(model.out_dir + "control_viz/beta_control.xdmf")
 
 # create counter to save .xml and .pvd files ;
 i = 0
@@ -111,9 +113,8 @@ def deriv_cb(I, dI, beta):
   print_min_max(dI,    'dI/dbeta')
   #print_min_max(beta,  'beta')
   if i % 100 == 0:
-    model.assign_submesh_variable(beta_viz, beta)
-    model.save_xml(beta_viz, 'beta_control_%s' % str(i))
-    model.save_pvd(beta_viz, 'beta_control', f_file=beta_b) 
+    model.assign_submesh_variable(beta_b, beta)
+    model.save_xdmf(beta_b, 'beta_control', f_file=beta_f)
   i += 1
 
 # hessian of objective function callback function (not used) :
@@ -153,16 +154,12 @@ m_params['solve_vert_velocity'] = True
 mom.solve(annotate=False)
 
 # save the optimal velocity and beta fields :
-model.save_pvd(model.U3,   'U_opt')
-model.save_pvd(model.beta, 'beta_opt')
+model.save_xdmf(model.U3,   'U_opt')
+model.save_xdmf(model.beta, 'beta_opt')
 
-# save xml files for thermo_solve.py to update temperature :
-u,v,w = model.U3.split(True)
-
-model.save_xml(interpolate(model.u, model.Q), 'u')
-model.save_xml(interpolate(model.v, model.Q), 'v')
-model.save_xml(interpolate(model.w, model.Q), 'w')
-model.save_xml(model.beta,                    'beta')
+# save the state for thermo_solve.py to update temperature :
+model.save_hdf5(model.U3)
+model.save_hdf5(model.beta)
 
 
 ## invert for enhancement over shelves :

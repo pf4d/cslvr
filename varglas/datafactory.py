@@ -57,7 +57,7 @@ class DataFactory(object):
     mask = (vx != 0.0).astype('i')
     
     names = ['vx', 'vy', 'v_err', 'mask']
-    ftns  = [vx, vy, err, mask]
+    ftns  = [ vx,   vy,   err,     mask ]
     
     for n in names:
       print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
@@ -184,11 +184,18 @@ class DataFactory(object):
     global home
     
     direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
-    files    = ['vx', 'vy', 'ex', 'ey']
+    files    = ['mask', 'vx', 'vy', 'ex', 'ey']
     vara     = dict()
     
-    for n in files:
+    d    = TiffFile(direc + 'vx.tif')
+    mask = (d.asarray()[::-1, :] != -2e9).astype('i')
+   
+    ftns = [mask]
+    for n in files[1:]:
+      data    = TiffFile(direc + n + '.tif')
+      ftns.append(data)
       print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
+    print_text('      Measures : %-*s key : "%s"'%(30,files[0],files[0]), '230')
      
     # extents of domain :
     nx    =  3010
@@ -226,9 +233,8 @@ class DataFactory(object):
     # retrieve data :
     vara['dataset']   = 'measures'
     vara['continent'] = 'greenland'
-    for f in files:
-      data    = TiffFile(direc + f + '.tif')
-      vara[f] = data.asarray()[::-1, :]
+    for f,n in zip(ftns, files):
+      vara[n] = f
     return vara
  
   
@@ -261,6 +267,7 @@ class DataFactory(object):
     vx   = array(data.variables['vx'][:])
     vy   = array(data.variables['vy'][:])
     err  = array(data.variables['err'][:])
+    mask = (vx != 0.0).astype('i')
      
     # extents of domain :
     ny,nx =  shape(vx)
@@ -294,8 +301,10 @@ class DataFactory(object):
     vara['nx']                = nx
     vara['ny']                = ny
     
-    names = ['vx', 'vy', 'v_err']
-    ftns  = [ vx,   vy,   err   ]
+    names = ['vx', 'vy', 'v_err', 'mask']
+    ftns  = [ vx,   vy,   err,     mask ]
+    
+    print_text('      Rignot : %-*s key : "%s"'%(30,names[-1],names[-1]), '230')
     
     # save the data in matlab format :
     vara['dataset']   = 'Rignot'

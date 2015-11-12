@@ -65,7 +65,7 @@ class Enthalpy(Energy):
   """ 
   
   def __init__(self, model, solve_params=None, transient=False,
-               use_lat_bc=False):
+               use_lat_bc=False, epsdot_ftn=None):
     """ 
     Set up energy equation residual. 
     """
@@ -78,11 +78,18 @@ class Enthalpy(Energy):
       s = ">>> Enthalpy REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
-    
+   
+    # set solver parameters : 
     if solve_params == None:
       self.solve_params = self.default_solve_params()
     else:
       self.solve_params = solve_params
+    
+    # set the function that returns the strain-rate tensor, default is full :
+    if epsdot_ftn == None:
+      self.strain_rate_tensor = self.default_strain_rate_tensor
+    else:
+      self.strain_rate_tensor = epsdot_ftn
 
     r             = model.r
     mesh          = model.mesh
@@ -175,7 +182,7 @@ class Enthalpy(Energy):
     q_fric = beta * inner(U,U)
 
     # Strain heating = stress*strain
-    epsdot  = model.effective_strain_rate()
+    epsdot  = self.effective_strain_rate(U)
     a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
     Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
     W_T     = conditional( lt(W, 0.01),   W,            0.01)
@@ -319,6 +326,31 @@ class Enthalpy(Energy):
     self.k       = k
     self.rho     = rho
     self.q_fric  = q_fric
+  
+  def default_strain_rate_tensor(self, U):
+    """
+    return the default unsimplified-strain-rate tensor for velocity <U>.
+    """
+    u,v,w  = U
+    epi    = 0.5 * (grad(U) + grad(U).T)
+    return epi
+  
+  def effective_strain_rate(self, U):
+    """
+    return the effective strain rate squared.
+    """
+    epi    = self.strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
     
   def calc_T_melt(self, annotate=True):
     """

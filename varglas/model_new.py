@@ -49,8 +49,9 @@ class Model(object):
 
     # create a new state called "state.h5" :
     if save_state and state == None:
-      self.state = HDF5File(self.mesh.mpi_comm(), out_dir + 'state.h5', 'w')
-    elif save_state and isinstance(state, dolfin.cpp.io.HDF5File):
+      self.state = HDF5File(self.mesh.mpi_comm(),
+                            out_dir + 'state.h5', 'w')
+    else:
       self.state = state
 
   def generate_constants(self):
@@ -356,16 +357,28 @@ class Model(object):
     self.assign_variable(self.etabar, etabar)
     print_min_max(self.etabar, 'etabar')
   
-  def init_component_Ubar(self, ubar, vbar, wbar):
+  def init_ubar(self, ubar):
     """
     """
-    s = "::: initializing vertically averaged velocity :::"
+    s = "::: initializing vertically averaged x-component of velocity :::"
     print_text(s, self.model_color)
     self.assign_variable(self.ubar, ubar)
-    self.assign_variable(self.vbar, vbar)
-    self.assign_variable(self.wbar, wbar)
     print_min_max(self.ubar, 'ubar')
+  
+  def init_vbar(self, vbar):
+    """
+    """
+    s = "::: initializing vertically averaged y-component of velocity :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.vbar, vbar)
     print_min_max(self.vbar, 'vbar')
+    
+  def init_wbar(self, wbar):
+    """
+    """
+    s = "::: initializing vertically averaged z-component of velocity :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.wbar, wbar)
     print_min_max(self.wbar, 'wbar')
   
   def init_T_surface(self, T_s):
@@ -383,29 +396,66 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.q_geo, q_geo)
     print_min_max(self.q_geo, 'q_geo')
+  
+  def init_u(self, u):
+    """
+    """
+    s = "::: initializing x-component of velocity :::"
+    print_text(s, self.model_color)
+    u_t = Function(self.Q, name='u_t')
+    self.assign_variable(u_t, u, save=False)
+    self.assx.assign(self.u, u_t, annotate=False)
+    print_min_max(self.u, 'u')
+  
+  def init_v(self, v):
+    """
+    """
+    s = "::: initializing y-component of velocity :::"
+    print_text(s, self.model_color)
+    v_t = Function(self.Q, name='v_t')
+    self.assign_variable(v_t, v, save=False)
+    self.assx.assign(self.v, v_t, annotate=False)
+    print_min_max(self.v, 'v')
+  
+  def init_w(self, w):
+    """
+    """
+    s = "::: initializing z-component of velocity :::"
+    print_text(s, self.model_color)
+    w_t = Function(self.Q, name='w_t')
+    self.assign_variable(w_t, w, save=False)
+    self.assx.assign(self.w, w_t, annotate=False)
+    print_min_max(self.w, 'w')
+  
+  def init_vbar(self, vbar):
+    """
+    """
+    s = "::: initializing vertically averaged y-component of velocity :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.vbar, vbar)
+    print_min_max(self.vbar, 'vbar')
+    
+  def init_wbar(self, wbar):
+    """
+    """
+    s = "::: initializing vertically averaged z-component of velocity :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.wbar, wbar)
+    print_min_max(self.wbar, 'wbar')
 
-  def init_U(self, u, v, w):
+  def init_U(self, U):
     """
     """
     s = "::: initializing velocity :::"
     print_text(s, self.model_color)
-    u_t = Function(self.Q, name='u_t')
-    v_t = Function(self.Q, name='v_t')
-    w_t = Function(self.Q, name='w_t')
-    self.assign_variable(u_t, u)
-    self.assign_variable(v_t, v)
-    self.assign_variable(w_t, w)
-    self.assx.assign(self.u, u_t, annotate=False)
-    self.assy.assign(self.v, v_t, annotate=False)
-    self.assz.assign(self.w, w_t, annotate=False)
-    u_v      = u_t.vector().array()
-    v_v      = v_t.vector().array()
-    w_v      = w_t.vector().array()
-    U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + 1e-16)
+    self.assign_variable(self.U3, U)
+    print_min_max(self.U3, 'U3')
+    u,v,w    = self.U3.split(True)
+    u_v      = u.vector().array()
+    v_v      = v.vector().array()
+    w_v      = w.vector().array()
+    U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + DOLFIN_EPS)
     self.assign_variable(self.U_mag, U_mag_v)
-    print_min_max(u_t, 'u')
-    print_min_max(v_t, 'v')
-    print_min_max(w_t, 'w')
     print_min_max(self.U_mag, 'U_mag')
   
   def init_U_ob(self, u_ob, v_ob):
@@ -1184,10 +1234,24 @@ class Model(object):
         self.state.write(u, u.name())
         print_text("    - done -", self.model_color)
 
+  def save_hdf5(self, u, name=None):
+    """
+    Save a FEniCS Function <u> to this model's self.state h5 file to the 
+    hdf5 subdirectory of self.out_dir.  In <name>=None, this will save the flie
+    under <u>.name().
+    """
+    if name == None:
+      name = u.name()
+    s = "::: writing '%s' variable to self.state file :::" % name
+    print_text(s, self.model_color)
+    self.state.write(u, name)
+    print_text("    - done -", self.model_color)
+
   def save_pvd(self, var, name, f_file=None):
     """
     Save a <name>.pvd file of the FEniCS Function <var> to this model's log 
-    directory specified by the self.out_dir.
+    directory specified by model.out_dir.  If <f_file> is a File object, save 
+    to this instead.
     """
     if f_file != None:
       s       = "::: saving %s.pvd file :::" % name
@@ -1198,14 +1262,20 @@ class Model(object):
       print_text(s, self.model_color)
       File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
-  def save_xml(self, var, name):
+  def save_xdmf(self, var, name, f_file=None):
     """
-    Save a <name>.xml file of the FEniCS Function <var> to this model's log 
-    directory specified by model.out_dir.
+    Save a <name>.xdmf file of the FEniCS Function <var> to this model's log 
+    directory specified by model.out_dir.  If <f_file> is a File object, save 
+    to this instead.
     """
-    s       = "::: saving %sxml/%s.xml file :::" % (self.out_dir, name)
-    print_text(s, self.model_color)
-    File(self.out_dir + 'xml/' +  name + '.xml') << var
+    if f_file != None:
+      s       = "::: saving %s.xdmf file :::" % name
+      print_text(s, self.model_color)
+      f_file << var
+    else :
+      s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
+      print_text(s, self.model_color)
+      File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
   
   def solve_hydrostatic_pressure(self, annotate=True):
     """
@@ -1370,7 +1440,7 @@ class Model(object):
 
       # calculate L_infinity norm, increment counter :
       counter       += 1
-      inner_error_n  = norm(project(U_prev - self.U3, annotate=False))
+      inner_error_n  = norm(U_prev.vector() - self.U3.vector(), 'l2')
       U_prev         = self.U3.copy(True)
       if self.MPI_rank==0:
         s0    = '>>> '

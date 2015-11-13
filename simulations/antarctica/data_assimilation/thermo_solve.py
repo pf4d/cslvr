@@ -34,6 +34,9 @@ Q3s = MixedFunctionSpace([Qs]*3)
 d3model = D3Model(fdata,   out_dir, state=foutput)
 d2model = D2Model(bedmesh, out_dir, state=foutput)
 
+# setup full-stokes functionspaces with 'mini' enriched elements :
+d3model.generate_stokes_function_spaces(kind='mini')
+
 # initialize the 3D model vars :
 d3model.set_subdomains(fdata)
 d3model.init_S(fdata)
@@ -108,7 +111,10 @@ m_params  = {'solver'               : nparams,
 
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
+#Newton iteration 20: r (abs) = 3.322e+08 (tol = 1.000e-10) r (rel) = 7.273e-10 (tol = 1.000e-09)
 
+
+#mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)

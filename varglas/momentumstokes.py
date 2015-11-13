@@ -335,7 +335,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     W          = model.W
     R          = model.R
     rhoi       = model.rhoi
-    rhow       = model.rhow
+    rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
     h          = model.h
@@ -416,7 +416,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
 
     # 4) pressure boundary
-    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
+    Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1] + w*N[2])
 
     # Variational principle
     A      = + Vd_shf*dx_f + Vd_gnd*dx_g + Pe*dx \
@@ -767,7 +767,7 @@ class MomentumDukowiczStokes(Momentum):
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
    
-    # 1) Viscous dissipation
+    # 1) viscous dissipation :
     if linear:
       s   = "    - using linear form of momentum using model.U3 in epsdot -"
       print_text(s, self.color())
@@ -786,20 +786,20 @@ class MomentumDukowiczStokes(Momentum):
       Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
       Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
    
-    # 2) Potential energy
-    Pe     = - rhoi * g * w
+    # 2) potential energy :
+    Pe   = - rhoi * g * w
 
-    # 3) Dissipation by sliding
-    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
+    # 3) dissipation by sliding :
+    Sl   = - 0.5 * beta * (u**2 + v**2 + w**2)
 
-    # 4) Incompressibility constraint
-    Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2))
+    # 4) incompressibility constraint :
+    Pc   = p * (u.dx(0) + v.dx(1) + w.dx(2))
     
-    # 5) Impenetrability constraint
-    Nc     = - lam * (u*N[0] + v*N[1] + w*N[2])
+    # 5) inpenetrability constraint
+    Nc   = - lam * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary
-    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
+    Pb   = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
 
     # stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))
@@ -808,9 +808,11 @@ class MomentumDukowiczStokes(Momentum):
     Lsq_shf = -tau_shf * dot( (grad(p) - f), (grad(p) - f) )
     Lsq_gnd = -tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
     
-    # Variational principle
-    A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
-             - Pe*dx - Pc*dx - Sl_gnd*dBed_g - Nc*dBed_g - Pb*dBed_f
+    # variational principle :
+    #A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
+    #         - (Pe + Pc)*dx - (Sl + Nc)*dBed_g - Pb*dBed_f
+    A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
+             - (Pe + Pc)*dx - (Sl + Nc)*dBed_g - (Pb + Nc)*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
@@ -1009,10 +1011,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
-    self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
+    #self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
+    #self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
+    #self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
+    #self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
 
     mesh       = model.mesh
     r          = model.r
@@ -1094,21 +1096,23 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
       Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
    
-    # 2) Potential energy
+    # 2) potential energy :
     Pe     = - rhoi * g * w
 
-    # 3) Dissipation by sliding
+    # 3) dissipation by sliding :
     Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
 
-    # 4) Incompressibility constraint
+    # 4) incompressibility constraint :
     Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2)) 
     
-    # 5) Impenetrability constraint
+    # 5) inpenetrability constraint :
     Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
 
-    # 6) pressure boundary
+    # 6) pressure boundary :
+    #Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
     Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
 
+    # 7) stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))
     tau_shf = h**2 / (12 * b_shf * rhoi**2)
     tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
@@ -1116,8 +1120,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Lsq_gnd = -tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
     
     # Variational principle
-    A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
-             - (Pe + Pc)*dx - Sl_gnd*dBed_g - Nc*dBed #- Pb*dBed_f 
+    #A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
+    A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
+             - (Pe + Pc)*dx - (Sl_gnd + Nc)*dBed_g - (Pb + Nc)*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
@@ -1271,10 +1276,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
           annotate = annotate, solver_parameters = params['solver'])
     u, v, w, p = self.U.split()
     
-    self.assx.assign(model.u, u, annotate=False)
-    self.assy.assign(model.v, v, annotate=False)
-    self.assz.assign(model.w, w, annotate=False)
-    self.assp.assign(model.p, p, annotate=False)
+    #self.assx.assign(model.u, u, annotate=False)
+    #self.assy.assign(model.v, v, annotate=False)
+    #self.assz.assign(model.w, w, annotate=False)
+    #self.assp.assign(model.p, p, annotate=False)
     
     U3 = model.U3.split(True)
 

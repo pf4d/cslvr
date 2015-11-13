@@ -133,8 +133,7 @@ class MomentumBP(Momentum):
                         0.5* v.dx(2)            ])
    
     # boundary integral terms : 
-    #f_w    = rhoi*g*(S - z) + rhow*g*D               # lateral
-    f_w    = rhow*g*D                                # lateral
+    f_w    = rhoi*g*(S - z) - rhow*g*D               # lateral
     p_a    = p0 * (1 - g*z/(ci*T0))**(ci*M/R)        # surface pressure
     
     #Ne       = H + rhow/rhoi * D

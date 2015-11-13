@@ -153,7 +153,8 @@ class D3Model(Model):
                                   constrained_domain=self.pBC)
       self.MQ     = self.Q + self.Bub
       M3          = MixedFunctionSpace([self.MQ]*3)
-      self.MV     = MixedFunctionSpace([M3,self.Q])
+      self.Q4     = MixedFunctionSpace([M3, self.Q])
+      self.Q5     = MixedFunctionSpace([M3, self.Q, self.Q])
 
     # Taylor-Hood elements :
     elif kind == 'th':

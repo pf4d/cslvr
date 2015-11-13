@@ -90,17 +90,17 @@ else:
   #d3model.init_beta(1e4)
   d3model.init_beta_SIA()
 
-nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                              'preconditioner'           : 'hypre_amg',
-                              'relative_tolerance'       : 1e-9,
-                              'relaxation_parameter'     : 0.7,
-                              'maximum_iterations'       : 30,
-                              'error_on_nonconvergence'  : False}}
-#nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+#nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+#                              'preconditioner'           : 'hypre_amg',
 #                              'relative_tolerance'       : 1e-9,
 #                              'relaxation_parameter'     : 0.7,
 #                              'maximum_iterations'       : 30,
 #                              'error_on_nonconvergence'  : False}}
+nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                              'relative_tolerance'       : 1e-9,
+                              'relaxation_parameter'     : 0.7,
+                              'maximum_iterations'       : 30,
+                              'error_on_nonconvergence'  : False}}
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : True,
              'solve_pressure'       : True,
@@ -109,8 +109,8 @@ m_params  = {'solver'               : nparams,
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
-#mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
 
@@ -141,6 +141,7 @@ def cb_ftn():
   d3model.save_xdmf(Wb,   'Wb')
   d3model.save_xdmf(Mb,   'Mb')
   d3model.save_xdmf(rhob, 'rhob')
+  d3model.save_xdmf(d3model.p, 'p')
 
 d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi*1e3, max_iter=15)
 

@@ -449,6 +449,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
+    self.b_shf   = b_shf
+    self.b_gnd   = b_gnd
     self.A       = A
     self.U       = U 
     self.w       = w
@@ -564,6 +566,61 @@ class MomentumDukowiczStokesReduced(Momentum):
     m_params  = {'solver'         : nparams,
                  'solve_pressure' : True}
     return m_params
+  
+  #def solve_pressure(self, annotate=True):
+  #  """
+  #  Solve for pressure model.p.
+  #  """
+  #  s    = "::: solving Dukowicz reduced pressure :::"
+  #  print_text(s, self.color())
+  #  
+  #  model = self.model
+  #  #Q     = FunctionSpace(model.mesh, 'CG', 2)
+  #  Q     = model.Q
+  #  p     = TrialFunction(Q)
+  #  phi   = TestFunction(Q)
+  # 
+  #  U     = model.U3
+  #  #u3,v3,w3 = model.U3.split(True)
+  #  #u     = interpolate(u3, Q)
+  #  #v     = interpolate(v3, Q)
+  #  #w     = interpolate(w3, Q)
+  #  #U     = as_vector([u,v,w])
+
+  #  #b_shf   = self.b_shf
+  #  #b_gnd   = self.b_gnd
+  #  #eps_reg = model.eps_reg
+  #  #n       = model.n
+  #  #  
+  #  #epsdot  = self.effective_strain_rate(U)
+  #  #eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+  #  #eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+  #  eta_shf  = self.eta_shf
+  #  eta_gnd  = self.eta_gnd
+
+  #  epi     = self.strain_rate_tensor(U)
+  #  ep_zx   = epi[2,0]
+  #  ep_zy   = epi[2,1]
+  #  ep_zz   = epi[2,2]
+  #  rho     = model.rhoi
+  #  g       = model.g
+  #  dx      = model.dx
+  #  dx_g    = model.dx_g
+  #  dx_f    = model.dx_f
+
+  #  a     = p.dx(2) * phi * dx
+  #  L     = + rho * g * phi * dx \
+  #          - (2*eta_shf*ep_zx) * phi.dx(0) * dx_f \
+  #          - (2*eta_shf*ep_zy) * phi.dx(1) * dx_f \
+  #          - (2*eta_shf*ep_zz) * phi.dx(2) * dx_f \
+  #          - (2*eta_gnd*ep_zx) * phi.dx(0) * dx_g \
+  #          - (2*eta_gnd*ep_zy) * phi.dx(1) * dx_g \
+  #          - (2*eta_gnd*ep_zz) * phi.dx(2) * dx_g \
+  # 
+  #  p = Function(Q) 
+  #  solve(a == L, p, annotate=annotate)
+  #  print_min_max(p, 'p')
+  #  model.save_xdmf(p, 'p')
 
   def solve_vert_velocity(self, annotate=annotate):
     """ 
@@ -611,7 +668,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     print_min_max(U3[0], 'u')
     print_min_max(U3[1], 'v')
     print_min_max(U3[2], 'w')
-  
 
 
 class MomentumDukowiczStokes(Momentum):
@@ -637,17 +693,18 @@ class MomentumDukowiczStokes(Momentum):
       self.solve_params = solve_params
 
     # momenturm and adjoint :
-    U      = Function(model.Q4, name = 'G')
-    Lam    = Function(model.Q4, name = 'Lam')
-    dU     = TrialFunction(model.Q4)
-    Phi    = TestFunction(model.Q4)
+    U      = Function(model.Q5, name = 'G')
+    Lam    = Function(model.Q5, name = 'Lam')
+    dU     = TrialFunction(model.Q5)
+    Phi    = TestFunction(model.Q5)
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
-    self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
+    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q5.sub(0))
+    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q5.sub(1))
+    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q5.sub(2))
+    self.assp  = FunctionAssigner(model.Q,         model.Q5.sub(3))
+    self.assl  = FunctionAssigner(model.Q,         model.Q5.sub(4))
 
     mesh       = model.mesh
     r          = model.r
@@ -683,9 +740,9 @@ class MomentumDukowiczStokes(Momentum):
     
     #===========================================================================
     # define variational problem :
-    phi, psi, xsi, kappa = Phi
-    du,  dv,  dw,  dP    = dU
-    u,   v,   w,   p     = U
+    phi, psi, xsi, kappa, gamma = Phi
+    du,  dv,  dw,  dP,    dl    = dU
+    u,   v,   w,   p,     lam   = U
     
     eps_reg    = model.eps_reg
     n          = model.n
@@ -730,33 +787,30 @@ class MomentumDukowiczStokes(Momentum):
       Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
    
     # 2) Potential energy
-    Pe     = rhoi * g * w
+    Pe     = - rhoi * g * w
 
     # 3) Dissipation by sliding
     Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
 
     # 4) Incompressibility constraint
-    Pc     = -p * (u.dx(0) + v.dx(1) + w.dx(2)) 
+    Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2))
     
     # 5) Impenetrability constraint
-    Nc     = p * (u*N[0] + v*N[1] + w*N[2])
+    Nc     = - lam * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary
-    #Pb     = - (rhoi*g*(S - z) + rhow*g*D) * (u*N[0] + v*N[1] + w*N[2]) 
-    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2]) 
+    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
 
-    f       = rhoi * Constant((0.0, 0.0, g))
+    # stabilization :
+    f       = rhoi * Constant((0.0, 0.0, -g))
     tau_shf = h**2 / (12 * b_shf * rhoi**2)
     tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
-    Lsq_shf = -tau_shf * dot( (grad(p) + f), (grad(p) + f) )
-    Lsq_gnd = -tau_gnd * dot( (grad(p) + f), (grad(p) + f) )
+    Lsq_shf = -tau_shf * dot( (grad(p) - f), (grad(p) - f) )
+    Lsq_gnd = -tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
     
+    # Variational principle
     A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
-             + (Pe + Pc)*dx - Sl_gnd*dBed_g - Pb*dBed_f + Nc*dBed
-    
-    ## Variational principle
-    #A      = + Vd_shf*dx_f + Vd_gnd*dx_g + (Pe + Pc)*dx \
-    #         + Sl_gnd*dBed_g + Sl_shf*dBed_f + Nc*dBed
+             - Pe*dx - Pc*dx - Sl_gnd*dBed_g - Nc*dBed_g - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
@@ -901,8 +955,315 @@ class MomentumDukowiczStokes(Momentum):
     rtol   = params['solver']['newton_solver']['relative_tolerance']
     maxit  = params['solver']['newton_solver']['maximum_iterations']
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
-    s    = "::: solving Dukowicz full-Stokes equations with %i max" + \
+    s    = "::: solving Dukowicz-full-Stokes equations with %i max" + \
              " iterations and step size = %.1f :::"
+    print_text(s % (maxit, alpha), self.color())
+    
+    # compute solution :
+    solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
+          annotate = annotate, solver_parameters = params['solver'])
+    u, v, w, p, l = self.U.split()
+    
+    self.assx.assign(model.u,   u, annotate=False)
+    self.assy.assign(model.v,   v, annotate=False)
+    self.assz.assign(model.w,   w, annotate=False)
+    self.assp.assign(model.p,   p, annotate=False)
+    self.assl.assign(model.lam, l, annotate=False)
+    
+    U3 = model.U3.split(True)
+
+    print_min_max(U3[0],     'u')
+    print_min_max(U3[1],     'v')
+    print_min_max(U3[2],     'w')
+    print_min_max(model.p,   'p')
+    print_min_max(model.lam, 'lam')
+
+
+class MomentumDukowiczBrinkerhoffStokes(Momentum):
+  """  
+  """
+  def __init__(self, model, solve_params=None, isothermal=True,
+               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.
+    """
+    s = "::: INITIALIZING DUKOWICZ-BRINKERHOFF-FULL-STOKES PHYSICS :::"
+    print_text(s, self.color())
+    
+    if type(model) != D3Model:
+      s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
+
+    # momenturm and adjoint :
+    U      = Function(model.Q4, name = 'G')
+    Lam    = Function(model.Q4, name = 'Lam')
+    dU     = TrialFunction(model.Q4)
+    Phi    = TestFunction(model.Q4)
+   
+    # function assigner goes from the U function solve to U3 vector 
+    # function used to save :
+    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
+    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
+    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
+    self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
+
+    mesh       = model.mesh
+    r          = model.r
+    S          = model.S
+    B          = model.B
+    H          = S - B
+    z          = model.x[2]
+    W          = model.W
+    R          = model.R
+    rhoi       = model.rhoi
+    rhow       = model.rhow
+    g          = model.g
+    beta       = model.beta
+    h          = model.h
+    N          = model.N
+    D          = model.D
+
+    gradS      = grad(S)
+    gradB      = grad(B)
+    
+    dx_f       = model.dx_f
+    dx_g       = model.dx_g
+    dx         = model.dx
+    dBed_g     = model.dBed_g
+    dBed_f     = model.dBed_f
+    dLat_t     = model.dLat_t
+    dBed       = model.dBed
+     
+    # new constants :
+    p0         = 101325
+    T0         = 288.15
+    M          = 0.0289644
+    
+    #===========================================================================
+    # define variational problem :
+    phi, psi, xsi, kappa = Phi
+    du,  dv,  dw,  dP    = dU
+    u,   v,   w,   p     = U
+    
+    eps_reg    = model.eps_reg
+    n          = model.n
+    
+    if isothermal:
+      s   = "    - using isothermal rate-factor -"
+      print_text(s, self.color())
+      b_shf = model.E_shf * model.b_shf
+      b_gnd = model.E_gnd * model.b_gnd
+
+    else:
+      s   = "    - using temperature-dependent rate-factor -"
+      print_text(s, self.color())
+      T       = model.T
+      W       = model.W
+      R       = model.R
+      E_shf   = model.E_shf
+      E_gnd   = model.E_gnd
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+   
+    # 1) Viscous dissipation
+    if linear:
+      s   = "    - using linear form of momentum using model.U3 in epsdot -"
+      print_text(s, self.color())
+      epsdot_l  = self.effective_strain_rate(model.U3.copy(True))
+      epsdot    = self.effective_strain_rate(as_vector([u,v,w]))
+      eta_shf   = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
+      eta_gnd   = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))
+      Vd_shf    = 2 * eta_shf * epsdot
+      Vd_gnd    = 2 * eta_gnd * epsdot
+    else:
+      s   = "    - using nonlinear form of momentum -"
+      print_text(s, self.color())
+      epsdot  = self.effective_strain_rate(as_vector([u,v,w]))
+      eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
+      Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+   
+    # 2) Potential energy
+    Pe     = - rhoi * g * w
+
+    # 3) Dissipation by sliding
+    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
+
+    # 4) Incompressibility constraint
+    Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2)) 
+    
+    # 5) Impenetrability constraint
+    Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
+
+    # 6) pressure boundary
+    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
+
+    f       = rhoi * Constant((0.0, 0.0, -g))
+    tau_shf = h**2 / (12 * b_shf * rhoi**2)
+    tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
+    Lsq_shf = -tau_shf * dot( (grad(p) - f), (grad(p) - f) )
+    Lsq_gnd = -tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
+    
+    # Variational principle
+    A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
+             - (Pe + Pc)*dx - Sl_gnd*dBed_g - Nc*dBed #- Pb*dBed_f 
+    
+    if (not model.use_periodic_boundaries 
+        and not use_lat_bcs and use_pressure_bc):
+      s = "    - using cliff-pressure boundary condition -"
+      print_text(s, self.color())
+      A -= Pb*dLat_t
+
+    # Calculate the first variation (the action) of the variational 
+    # principle in the direction of the test function
+    self.mom_F = derivative(A, U, Phi)
+
+    # Calculate the first variation of the action (the Jacobian) in
+    # the direction of a small perturbation in U
+    self.mom_Jac = derivative(self.mom_F, U, dU)
+    
+    self.mom_bcs = []
+      
+    # add lateral boundary conditions :  
+    if use_lat_bcs:
+      s = "    - using divide-lateral boundary conditions -"
+      print_text(s, self.color())
+
+      self.mom_bcs.append(DirichletBC(Q4.sub(0),
+                          model.u_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(Q4.sub(1),
+                          model.v_lat, model.ff, model.GAMMA_D))
+      self.mom_bcs.append(DirichletBC(Q4.sub(2),
+                          model.w_lat, model.ff, model.GAMMA_D))
+    
+    self.eta_shf = eta_shf
+    self.eta_gnd = eta_gnd
+    self.A       = A
+    self.U       = U 
+    self.dU      = dU
+    self.Phi     = Phi
+    self.Lam     = Lam
+    self.epsdot  = epsdot
+  
+  def get_residual(self):
+    """
+    Returns the momentum residual.
+    """
+    return self.A
+
+  def get_U(self):
+    """
+    Return the velocity Function.
+    """
+    return self.U
+
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+  
+  def strain_rate_tensor(self, U):
+    """
+    return the strain-rate tensor of self.U.
+    """
+    epsdot = 0.5 * (grad(U) + grad(U).T)
+    return epsdot
+
+  def stress_tensor(self, U, p, eta):
+    """
+    return the Cauchy stress tensor.
+    """
+    s   = "::: forming the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    I     = Identity(3)
+    tau   = self.deviatoric_stress_tensor(U, eta)
+
+    sigma = tau - p*I
+    return sigma
+    
+  def deviatoric_stress_tensor(self, U, eta):
+    """
+    return the deviatoric stress tensor.
+    """
+    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    epi = self.strain_rate_tensor(U)
+    tau = 2 * eta * epi
+    return tau
+  
+  def effective_stress(self, U, eta):
+    """
+    return the effective stress squared.
+    """
+    tau    = self.deviatoric_stress_tensor(U, eta)
+    tu_xx  = tau[0,0]
+    tu_yy  = tau[1,1]
+    tu_zz  = tau[2,2]
+    tu_xy  = tau[0,1]
+    tu_xz  = tau[0,2]
+    tu_yz  = tau[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
+                    + tu_xy**2 + tu_xz**2 + tu_yz**2
+    return taudot
+
+  def effective_strain_rate(self, U):
+    """
+    return the effective strain rate squared.
+    """
+    epi    = self.strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
+
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                                  'relative_tolerance'       : 1e-8,
+                                  'relaxation_parameter'     : 1.0,
+                                  'maximum_iterations'       : 25,
+                                  'error_on_nonconvergence'  : False}}
+    m_params  = {'solver'      : nparams}
+    return m_params
+
+  def solve(self, annotate=True):
+    """ 
+    Perform the Newton solve of the full-Stokes equations 
+    """
+    model  = self.model
+    params = self.solve_params
+    
+    # solve nonlinear system :
+    rtol   = params['solver']['newton_solver']['relative_tolerance']
+    maxit  = params['solver']['newton_solver']['maximum_iterations']
+    alpha  = params['solver']['newton_solver']['relaxation_parameter']
+    s    = "::: solving Dukowicz-Brinkerhoff-full-Stokes equations" + \
+           " with %i max iterations and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
     
     # compute solution :

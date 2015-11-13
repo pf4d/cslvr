@@ -206,9 +206,12 @@ class Model(object):
       self.pBC = None
     self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
                                 constrained_domain=self.pBC)
+    self.Qp     = FunctionSpace(self.mesh,      "CG", 2, 
+                                constrained_domain=self.pBC)
     self.Q2     = MixedFunctionSpace([self.Q]*2)
     self.Q3     = MixedFunctionSpace([self.Q]*3)
     self.Q4     = MixedFunctionSpace([self.Q]*4)
+    self.Q5     = MixedFunctionSpace([self.Q]*5)
     self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
     self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
 
@@ -1355,6 +1358,7 @@ class Model(object):
     self.u_lat         = Function(self.Q, name='u_lat')
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
+    self.lam           = Function(self.Q, name='lam')
     
     # energy model :
     self.T             = Function(self.Q, name='T')

@@ -106,6 +106,9 @@ class Model(object):
 
     self.rhow    = Constant(1000.0)
     self.rhow.rename('rhow', 'water density')
+
+    self.rhosw   = Constant(1028.0)
+    self.rhosw.rename('rhosw', 'sea-water density')
     
     self.rhom    = Constant(550.0)
     self.rhom.rename('rhom', 'firn pore close-off density')
@@ -251,6 +254,14 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.theta, theta)
     print_min_max(self.theta, 'theta')
+  
+  def init_theta_app(self, theta_app):
+    """
+    """
+    s = "::: initializing internal energy approximation :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.theta_app, theta_app)
+    print_min_max(self.theta_app, 'theta')
   
   def init_T(self, T):
     """

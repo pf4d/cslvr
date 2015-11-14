@@ -53,7 +53,7 @@ class MomentumStokes(Momentum):
     W         = model.W
     R         = model.R
     rhoi      = model.rhoi
-    rhow      = model.rhow
+    rhosw     = model.rhosw
     g         = model.g
     beta      = model.beta
     h         = model.h
@@ -120,7 +120,7 @@ class MomentumStokes(Momentum):
     
     # gravity vector :
     gv        = as_vector([0, 0, -g])
-    f_w       = rhoi*g*(S - z) + rhow*g*D
+    f_w       = rhoi*g*(S - z) + rhosw*g*D
     I         = Identity(3)
 
     epi       = self.strain_rate_tensor(U)
@@ -715,7 +715,7 @@ class MomentumDukowiczStokes(Momentum):
     W          = model.W
     R          = model.R
     rhoi       = model.rhoi
-    rhow       = model.rhow
+    rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
     h          = model.h
@@ -799,7 +799,7 @@ class MomentumDukowiczStokes(Momentum):
     Nc   = - lam * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary
-    Pb   = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
+    Pb   = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
 
     # stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))
@@ -1025,7 +1025,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     W          = model.W
     R          = model.R
     rhoi       = model.rhoi
-    rhow       = model.rhow
+    rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
     h          = model.h
@@ -1109,8 +1109,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary :
-    #Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
-    Pb     = - rhow*g*D * (u*N[0] + v*N[1] + w*N[2])
+    #Pb     = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
+    Pb     = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
 
     # 7) stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))

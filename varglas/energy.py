@@ -123,6 +123,7 @@ class Enthalpy(Energy):
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
     theta_float   = model.theta_float
+    theta_app     = model.theta_app
     q_geo         = model.q_geo
     thetahat      = model.thetahat
     uhat          = model.uhat
@@ -164,6 +165,7 @@ class Enthalpy(Energy):
     print_text(s, self.color())
 
     model.assign_variable(theta_surface, theta_s)
+    model.assign_variable(theta_app,     theta_s)
     model.assign_variable(theta_float,   theta_f)
     print_min_max(theta_surface, 'theta_GAMMA_S')
     print_min_max(theta_float,   'theta_GAMMA_B_SHF')
@@ -285,7 +287,7 @@ class Enthalpy(Energy):
     if use_lat_bc:
       s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
-      self.theta_bc.append( DirichletBC(Q, theta_surface,
+      self.theta_bc.append( DirichletBC(Q, model.theta_app,
                                         model.ff, model.GAMMA_D) )
     
     # always mark the divide (if present) essential :
@@ -326,6 +328,8 @@ class Enthalpy(Energy):
     self.k       = k
     self.rho     = rho
     self.q_fric  = q_fric
+    self.Q_s_gnd = Q_s_gnd
+    self.Q_s_shf = Q_s_shf
   
   def default_strain_rate_tensor(self, U):
     """
@@ -381,6 +385,127 @@ class Enthalpy(Energy):
     theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
     model.assign_variable(model.theta_melt, theta_m)
     print_min_max(model.theta_melt, 'theta_melt')
+
+  def generate_approx_theta(self, init=False, annotate=True):
+    """
+    generate approximate energy field from the surface temperature and boundary
+    conditions to model.theta_app.
+    
+    If init=True, this will discount strain- and frictional- heating, thus 
+    creating a better initial energy solution for an initial momentum solve.
+    """
+    s    = "::: calculating approximate energy field :::"
+    print_text(s, self.color())
+
+    model   = self.model
+    
+    theta   = self.theta
+    c       = self.c
+    k       = self.k
+    rho     = self.rho
+    q_fric  = self.q_fric
+    Q_s_gnd = self.Q_s_gnd
+    Q_s_shf = self.Q_s_shf
+
+    theta_s = model.theta_surface
+    theta_f = model.theta_float
+    dx      = model.dx
+    dBed_g  = model.dBed_g
+    dx      = model.dx
+    dx_f    = model.dx_f
+    dx_g    = model.dx_g
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    spy     = model.spy
+    q_geo   = model.q_geo
+    h       = model.h
+
+    dtheta  = TrialFunction(model.Q)
+    psi     = TestFunction(model.Q)
+    theta   = Function(model.Q)
+
+    #Q_s_g   = project(Q_s_gnd, model.Q)
+    #Q_s_f   = project(Q_s_shf, model.Q)
+
+    #Q_gnd   = model.vert_integrate(Q_s_gnd, d='down')
+    #Q_shf   = model.vert_integrate(Q_s_shf, d='down')
+
+    # skewed test function in areas with high velocity :
+    U      = as_vector([u,v,w])
+    Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+    PE     = Unorm*h/(2*spy*k/(rho*c))
+    tau    = 1/tanh(PE) - 1/PE
+    psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
+   
+    # skewed test function in areas with high vertical velocity :
+    wnorm  = abs(w) + DOLFIN_EPS 
+    PE     = wnorm*h/(2*spy*k/(rho*c))
+    tau    = 1/tanh(PE) - 1/PE
+    psihat = psi + h*tau/(2*wnorm) * w * psi.dx(2)
+    
+    # galerkin formulation :
+    theta_a = + spy * k/c * dtheta.dx(2) * psi.dx(2) * dx
+    
+    theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
+              - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
+              - rho * u * theta_s.dx(0) * psi * dx \
+              - rho * v * theta_s.dx(1) * psi * dx \
+              + (q_geo + q_fric) * psi * dBed_g \
+
+    # add strain-heating and advective terms if velocities 
+    # have been initialized :
+    if not init:
+      theta_L += Q_s_gnd * psi * dx_g + Q_s_shf * psi * dx_f
+      theta_a += rho * w * dtheta.dx(2) * psihat * dx \
+    
+    # surface boundary condition : 
+    theta_bc = []
+    theta_bc.append( DirichletBC(model.Q, theta_s,
+                                 model.ff, model.GAMMA_S_GND) )
+    theta_bc.append( DirichletBC(model.Q, theta_s,
+                                 model.ff, model.GAMMA_S_FLT) )
+    theta_bc.append( DirichletBC(model.Q, theta_s,
+                                 model.ff, model.GAMMA_U_GND) )
+    theta_bc.append( DirichletBC(model.Q, theta_s,
+                                 model.ff, model.GAMMA_U_FLT) )
+    
+    # apply T_w conditions of portion of ice in contact with water :
+    theta_bc.append( DirichletBC(model.Q, theta_f,
+                                 model.ff, model.GAMMA_B_FLT) )
+   
+    # solve the system :
+    solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)
+    model.assign_variable(model.theta_app, theta)
+    print_min_max(model.theta_app, 'theta_app')
+
+    if init:
+      # temperature solved with quadradic formula, using expression for c : 
+      s = "::: calculating initial temperature :::"
+      print_text(s, self.color())
+      theta_v  = theta.vector().array()
+      T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
+      T_v      = T_n_v.copy()
+      
+      # update temperature for wet/dry areas :
+      T_melt_v     = model.T_melt.vector().array()
+      theta_melt_v = model.theta_melt.vector().array()
+      warm         = theta_v >= theta_melt_v
+      cold         = theta_v <  theta_melt_v
+      T_v[warm]    = T_melt_v[warm]
+      model.assign_variable(model.T, T_v)
+      print_min_max(model.T,  'T')
+      
+      # water content solved diagnostically :
+      s = "::: calculating initial water content :::"
+      print_text(s, self.color())
+      W_v  = (theta_v - theta_melt_v) / model.L(0)
+      
+      # update water content :
+      W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
+      model.assign_variable(model.W0, W_v, save=False)
+      model.assign_variable(model.W,  W_v)
+      print_min_max(model.W,  'W')
 
   def get_solve_params(self):
     """

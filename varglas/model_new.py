@@ -263,6 +263,22 @@ class Model(object):
     self.assign_variable(self.theta_app, theta_app)
     print_min_max(self.theta_app, 'theta')
   
+  def init_theta_surface(self, theta_surface):
+    """
+    """
+    s = "::: initializing surface energy :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.theta_surface, theta_surface)
+    print_min_max(self.theta_surface, 'theta_surface')
+  
+  def init_theta_float(self, theta_float):
+    """
+    """
+    s = "::: initializing floating bed energy :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.theta_float, theta_float)
+    print_min_max(self.theta_float, 'theta_float')
+  
   def init_T(self, T):
     """
     """

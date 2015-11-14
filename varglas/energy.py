@@ -164,11 +164,10 @@ class Enthalpy(Energy):
     s = "::: calculating energy boundary conditions :::"
     print_text(s, self.color())
 
-    model.assign_variable(theta_surface, theta_s)
-    model.assign_variable(theta_app,     theta_s)
-    model.assign_variable(theta_float,   theta_f)
-    print_min_max(theta_surface, 'theta_GAMMA_S')
-    print_min_max(theta_float,   'theta_GAMMA_B_SHF')
+    # initialize the boundary conditions :
+    model.init_theta_surface(theta_s)
+    model.init_theta_app(theta_s)
+    model.init_theta_float(theta_f)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)

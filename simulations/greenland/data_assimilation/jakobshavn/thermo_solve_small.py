@@ -119,7 +119,8 @@ e_params  = {'solver'               : 'mumps',
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
-nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
+nrg = Enthalpy(d3model, e_params, use_lat_bc=True, 
+               epsdot_ftn=mom.strain_rate_tensor)
 
 # functions over appropriate surfaces for saving :
 beta = Function(Qb,  name='beta_SIA')

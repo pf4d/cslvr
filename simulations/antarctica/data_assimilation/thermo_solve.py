@@ -115,8 +115,8 @@ e_params  = {'solver'               : 'mumps',
 
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
 
@@ -134,9 +134,16 @@ d3model.assign_submesh_variable(U_ob, d3model.U_ob)
 d3model.save_xdmf(beta, 'beta_SIA')
 d3model.save_xdmf(U_ob, 'U_ob')
 
+#nrg.generate_approx_theta(init=True, annotate=False)
+#d3model.save_xdmf(d3model.theta_app, 'theta_ini')
+#d3model.save_xdmf(d3model.T,         'T_ini')
+#d3model.save_xdmf(d3model.W,         'W_ini')
+
 def cb_ftn():
   nrg.calc_bulk_density()
   nrg.solve_basal_melt_rate()
+  nrg.generate_approx_theta(annotate=False)
+  d3model.save_xdmf(d3model.theta_app, 'theta_app')
   d3model.assign_submesh_variable(Tb,   d3model.T)
   d3model.assign_submesh_variable(Us,   d3model.U3)
   d3model.assign_submesh_variable(Wb,   d3model.W)

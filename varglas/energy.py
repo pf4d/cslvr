@@ -410,6 +410,7 @@ class Enthalpy(Energy):
     theta_f = model.theta_float
     dx      = model.dx
     dBed_g  = model.dBed_g
+    dLat_d  = model.dLat_d
     dx      = model.dx
     dx_f    = model.dx_f
     dx_g    = model.dx_g
@@ -419,6 +420,7 @@ class Enthalpy(Energy):
     spy     = model.spy
     q_geo   = model.q_geo
     h       = model.h
+    N       = model.N
 
     dtheta  = TrialFunction(model.Q)
     psi     = TestFunction(model.Q)
@@ -437,26 +439,43 @@ class Enthalpy(Energy):
     tau    = 1/tanh(PE) - 1/PE
     psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
    
+    # skewed test function in areas with high x-component velocity :
+    unorm  = abs(u) + DOLFIN_EPS 
+    PE     = unorm*h/(2*spy*k/(rho*c))
+    tau    = 1/tanh(PE) - 1/PE
+    psi_u  = psi + h*tau/(2*unorm) * u * psi.dx(2)
+    
+    # skewed test function in areas with high y-component velocity :
+    vnorm  = abs(v) + DOLFIN_EPS 
+    PE     = vnorm*h/(2*spy*k/(rho*c))
+    tau    = 1/tanh(PE) - 1/PE
+    psi_v  = psi + h*tau/(2*vnorm) * v * psi.dx(2)
+    
     # skewed test function in areas with high vertical velocity :
     wnorm  = abs(w) + DOLFIN_EPS 
     PE     = wnorm*h/(2*spy*k/(rho*c))
     tau    = 1/tanh(PE) - 1/PE
-    psihat = psi + h*tau/(2*wnorm) * w * psi.dx(2)
+    psi_w  = psi + h*tau/(2*wnorm) * w * psi.dx(2)
     
     # galerkin formulation :
-    theta_a = + spy * k/c * dtheta.dx(2) * psi.dx(2) * dx
+    theta_a = - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
+              + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
     
-    theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
-              - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-              - rho * u * theta_s.dx(0) * psi * dx \
-              - rho * v * theta_s.dx(1) * psi * dx \
-              + (q_geo + q_fric) * psi * dBed_g \
+    #theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
+    #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
+    theta_L = + q_geo * psi * dBed_g \
+              + rho * theta_s * dot(U, N) * dLat_d
+    #          - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
+    #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
+    #          + (q_geo + q_fric) * psi * dBed_g \
+    #          - rho * u * theta_s.dx(0) * psi * dx \
+    #          - rho * v * theta_s.dx(1) * psi * dx \
 
-    # add strain-heating and advective terms if velocities 
-    # have been initialized :
-    if not init:
-      theta_L += Q_s_gnd * psi * dx_g + Q_s_shf * psi * dx_f
-      theta_a += rho * w * dtheta.dx(2) * psihat * dx \
+    ## add strain-heating and advective terms if velocities 
+    ## have been initialized :
+    #if not init:
+    #  theta_L += Q_s_gnd * psi * dx_g + Q_s_shf * psi * dx_f
+    #  #theta_a += rho * w * dtheta.dx(2) * psi_w * dx \
     
     # surface boundary condition : 
     theta_bc = []

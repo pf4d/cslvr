@@ -49,8 +49,8 @@ d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_E(1.0)
 
-#fUin = HDF5File(mpi_comm_world(), out_dir + 'hdf5/U.h5', 'r')
-#d3model.init_U(fUin)
+fUin = HDF5File(mpi_comm_world(), out_dir + 'hdf5/U3.h5', 'r')
+d3model.init_U(fUin)
 
 # 2D model gets balance-velocity appropriate variables initialized :
 d2model.assign_submesh_variable(d2model.S,    d3model.S)
@@ -94,17 +94,17 @@ else:
   #d3model.init_beta(1e4)
   d3model.init_beta_SIA()
 
-#nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-#                              'preconditioner'           : 'hypre_amg',
-#                              'relative_tolerance'       : 1e-9,
-#                              'relaxation_parameter'     : 0.7,
-#                              'maximum_iterations'       : 30,
-#                              'error_on_nonconvergence'  : False}}
-nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+                              'preconditioner'           : 'hypre_amg',
                               'relative_tolerance'       : 1e-9,
                               'relaxation_parameter'     : 0.7,
                               'maximum_iterations'       : 30,
                               'error_on_nonconvergence'  : False}}
+#nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+#                              'relative_tolerance'       : 1e-9,
+#                              'relaxation_parameter'     : 0.7,
+#                              'maximum_iterations'       : 30,
+#                              'error_on_nonconvergence'  : False}}
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : True,
              'solve_pressure'       : True,
@@ -112,8 +112,6 @@ m_params  = {'solver'               : nparams,
 
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
-#Newton iteration 20: r (abs) = 3.322e+08 (tol = 1.000e-10) r (rel) = 7.273e-10 (tol = 1.000e-09)
-
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
@@ -140,17 +138,20 @@ d3model.save_xdmf(U_ob, 'U_ob')
 #d3model.save_xdmf(d3model.theta_app, 'theta_ini')
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
+#sys.exit(0)
 
 def cb_ftn():
   nrg.calc_bulk_density()
   nrg.solve_basal_melt_rate()
-  nrg.generate_approx_theta(annotate=False)
-  d3model.save_xdmf(d3model.theta_app, 'theta_app')
+  #nrg.generate_approx_theta(annotate=False)
   d3model.assign_submesh_variable(Tb,   d3model.T)
   d3model.assign_submesh_variable(Us,   d3model.U3)
   d3model.assign_submesh_variable(Wb,   d3model.W)
   d3model.assign_submesh_variable(Mb,   d3model.Mb)
   d3model.assign_submesh_variable(rhob, d3model.rho_b)
+  d3model.save_xdmf(d3model.T, 'T')
+  d3model.save_xdmf(d3model.theta_app, 'theta_app')
+  d3model.save_xdmf(d3model.theta,     'theta')
   d3model.save_xdmf(Tb,   'Tb')
   d3model.save_xdmf(Us,   'Us')
   d3model.save_xdmf(Wb,   'Wb')

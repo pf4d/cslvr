@@ -1054,6 +1054,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     dBed_g     = model.dBed_g
     dBed_f     = model.dBed_f
     dLat_t     = model.dLat_t
+    dLat_d     = model.dLat_d
     dBed       = model.dBed
      
     # new constants :

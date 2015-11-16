@@ -411,17 +411,17 @@ class MomentumDukowiczStokesReduced(Momentum):
       Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
       
     # 2) Potential energy
-    Pe     = rhoi * g * (u*S.dx(0) + v*S.dx(1))
+    Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
 
     # 3) Dissipation by sliding
-    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
+    Sl_gnd = - 0.5 * beta * (u**2 + v**2)
 
     # 4) pressure boundary
-    Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1] + w*N[2])
-    Pb_l   = rhoi*g*(S - z) * (u*N[0] + v*N[1] + w*N[2])
+    Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
+    Pb_l   = rhoi*g*(S - z) * (u*N[0] + v*N[1])
 
     # Variational principle
-    A      = + Vd_shf*dx_f + Vd_gnd*dx_g + Pe*dx \
+    A      = + Vd_shf*dx_f + Vd_gnd*dx_g - Pe*dx \
              - Sl_gnd*dBed_g - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
@@ -807,14 +807,15 @@ class MomentumDukowiczStokes(Momentum):
     f       = rhoi * Constant((0.0, 0.0, -g))
     tau_shf = h**2 / (12 * b_shf * rhoi**2)
     tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
-    Lsq_shf = -tau_shf * dot( (grad(p) - f), (grad(p) - f) )
-    Lsq_gnd = -tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
+    #tau_shf = h**2 / (12 * eta_shf)
+    #tau_gnd = h**2 / (12 * eta_gnd)
+    Lsq_shf = tau_shf * dot( (grad(p) - f), (grad(p) - f) )
+    Lsq_gnd = tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
     
     # variational principle :
-    #A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
-    #         - (Pe + Pc)*dx - (Sl + Nc)*dBed_g - Pb*dBed_f
-    A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
-             - (Pe + Pc)*dx - (Sl + Nc)*dBed_g - (Pb + Nc)*dBed_f
+    #A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
+    A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
+             - (Pe + Pc)*dx - Nc*dBed - Sl*dBed_g - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
@@ -831,17 +832,27 @@ class MomentumDukowiczStokes(Momentum):
     self.mom_Jac = derivative(self.mom_F, U, dU)
     
     self.mom_bcs = []
-      
+
+    ## pressure is zero on the surface :
+    #self.mom_bcs.append(DirichletBC(model.Q5.sub(3),
+    #                    Constant(0.0), model.ff, model.GAMMA_S_GND))
+    #self.mom_bcs.append(DirichletBC(model.Q5.sub(3),
+    #                    Constant(0.0), model.ff, model.GAMMA_S_FLT))
+    #self.mom_bcs.append(DirichletBC(model.Q5.sub(3),
+    #                    Constant(0.0), model.ff, model.GAMMA_U_GND))
+    #self.mom_bcs.append(DirichletBC(model.Q5.sub(3),
+    #                    Constant(0.0), model.ff, model.GAMMA_U_FLT))
+  
     # add lateral boundary conditions :  
     if use_lat_bcs:
       s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
 
-      self.mom_bcs.append(DirichletBC(Q4.sub(0),
+      self.mom_bcs.append(DirichletBC(model.Q5.sub(0),
                           model.u_lat, model.ff, model.GAMMA_D))
-      self.mom_bcs.append(DirichletBC(Q4.sub(1),
+      self.mom_bcs.append(DirichletBC(model.Q5.sub(1),
                           model.v_lat, model.ff, model.GAMMA_D))
-      self.mom_bcs.append(DirichletBC(Q4.sub(2),
+      self.mom_bcs.append(DirichletBC(model.Q5.sub(2),
                           model.w_lat, model.ff, model.GAMMA_D))
     
     self.eta_shf = eta_shf
@@ -1013,10 +1024,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    #self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
-    #self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
-    #self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
-    #self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
+    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
+    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
+    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
+    self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
 
     mesh       = model.mesh
     r          = model.r
@@ -1111,20 +1122,21 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary :
-    #Pb     = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
     Pb     = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
 
     # 7) stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))
     tau_shf = h**2 / (12 * b_shf * rhoi**2)
     tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
-    Lsq_shf = -tau_shf * dot( (grad(p) - f), (grad(p) - f) )
-    Lsq_gnd = -tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
+    #tau_shf = h**2 / (12 * eta_shf)
+    #tau_gnd = h**2 / (12 * eta_gnd)
+    Lsq_shf = tau_shf * dot( (grad(p) - f), (grad(p) - f) )
+    Lsq_gnd = tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
     
     # Variational principle
-    #A      = + (Vd_shf + Lsq_shf)*dx_f + (Vd_gnd + Lsq_gnd)*dx_g \
-    A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
-             - (Pe + Pc)*dx - (Sl_gnd + Nc)*dBed_g - (Pb + Nc)*dBed_f
+    #A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
+    A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
+             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
@@ -1141,6 +1153,16 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     self.mom_Jac = derivative(self.mom_F, U, dU)
     
     self.mom_bcs = []
+
+    # pressure is zero on the surface :
+    self.mom_bcs.append(DirichletBC(model.Q4.sub(3),
+                        Constant(0.0), model.ff, model.GAMMA_S_GND))
+    self.mom_bcs.append(DirichletBC(model.Q4.sub(3),
+                        Constant(0.0), model.ff, model.GAMMA_S_FLT))
+    self.mom_bcs.append(DirichletBC(model.Q4.sub(3),
+                        Constant(0.0), model.ff, model.GAMMA_U_GND))
+    self.mom_bcs.append(DirichletBC(model.Q4.sub(3),
+                        Constant(0.0), model.ff, model.GAMMA_U_FLT))
       
     # add lateral boundary conditions :  
     if use_lat_bcs:
@@ -1278,10 +1300,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
           annotate = annotate, solver_parameters = params['solver'])
     u, v, w, p = self.U.split()
     
-    #self.assx.assign(model.u, u, annotate=False)
-    #self.assy.assign(model.v, v, annotate=False)
-    #self.assz.assign(model.w, w, annotate=False)
-    #self.assp.assign(model.p, p, annotate=False)
+    self.assx.assign(model.u, u, annotate=False)
+    self.assy.assign(model.v, v, annotate=False)
+    self.assz.assign(model.w, w, annotate=False)
+    self.assp.assign(model.p, p, annotate=False)
     
     U3 = model.U3.split(True)
 

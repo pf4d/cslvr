@@ -17,7 +17,7 @@ out_dir = dir_b + str(i)   + '/thermo_solve/'
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',             'r')
-foutput = HDF5File(mpi_comm_world(), out_dir + 'hdf5/thermo_solve.h5', 'w')
+foutput = HDF5File(mpi_comm_world(), out_dir + 'hdf5/thermo_solve_DS.h5', 'w')
 
 # get the bed and surface meshes :
 bedmesh = Mesh()
@@ -35,7 +35,7 @@ d3model = D3Model(fdata,   out_dir, state=foutput)
 d2model = D2Model(bedmesh, out_dir, state=foutput)
 
 # setup full-stokes functionspaces with 'mini' enriched elements :
-d3model.generate_stokes_function_spaces(kind='mini')
+#d3model.generate_stokes_function_spaces(kind='mini')
 
 # initialize the 3D model vars :
 d3model.set_subdomains(fdata)
@@ -48,8 +48,6 @@ d3model.init_adot(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_E(1.0)
-d3model.init_u_lat(0.0)
-d3model.init_v_lat(0.0)
 
 # 2D model gets balance-velocity appropriate variables initialized :
 d2model.assign_submesh_variable(d2model.S,    d3model.S)
@@ -111,12 +109,10 @@ m_params  = {'solver'               : nparams,
 
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
-#Newton iteration 20: r (abs) = 3.322e+08 (tol = 1.000e-10) r (rel) = 7.273e-10 (tol = 1.000e-09)
-
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
 
@@ -142,7 +138,7 @@ d3model.save_xdmf(U_ob, 'U_ob')
 def cb_ftn():
   nrg.calc_bulk_density()
   nrg.solve_basal_melt_rate()
-  nrg.generate_approx_theta(annotate=False)
+  #nrg.generate_approx_theta(annotate=False)
   d3model.save_xdmf(d3model.theta_app, 'theta_app')
   d3model.assign_submesh_variable(Tb,   d3model.T)
   d3model.assign_submesh_variable(Us,   d3model.U3)
@@ -156,12 +152,14 @@ def cb_ftn():
   d3model.save_xdmf(rhob, 'rhob')
   d3model.save_xdmf(d3model.p, 'p')
 
-d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi*1e3, max_iter=15)
+d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi*1e3, max_iter=1)
 
 d3model.save_hdf5(d3model.theta)
 d3model.save_hdf5(d3model.T)
 d3model.save_hdf5(d3model.W)
 d3model.save_hdf5(d3model.U3)
+d3model.save_hdf5(d3model.p)
+d3model.save_hdf5(d3model.U_ob)
 d3model.save_hdf5(d3model.beta)
 d3model.save_hdf5(d3model.Mb)
 

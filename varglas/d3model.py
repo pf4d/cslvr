@@ -160,7 +160,8 @@ class D3Model(Model):
     elif kind == 'th':
       V           = VectorFunctionSpace(self.mesh, "CG", 2,
                                         constrained_domain=self.pBC)
-      self.MV     = V * self.Q
+      self.Q4     = V * self.Q
+      self.Q5     = V * self.Q * self.Q
     
     else:
       s = ">>> METHOD generate_stokes_function_spaces <kind> FIELD <<<\n" + \

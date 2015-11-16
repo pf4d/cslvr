@@ -622,7 +622,7 @@ class MeshRefiner(object):
     print_text(s, self.color)
     subprocess.call(cmd.split())
     
-    cmd = 'gzip ' + xml
+    cmd = 'gzip -f ' + xml
     s   = "\nExecuting :\n\n\t %s\n\n" % cmd
     print_text(s, self.color)
     subprocess.call(cmd.split())

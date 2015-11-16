@@ -44,24 +44,21 @@ msk = dbm.data['mask'] < 0.1
 
 #===============================================================================
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=50000.0, inverse=True)
+dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=300000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
 #dbm.data['ref'][slp] = 2000.0
-#dbm.data['ref'][shf] = 20000.0
-#dbm.data['ref'][nan] = 100000.0
-#dbm.data['ref'][msk] = 100000.0
+dbm.data['ref'][shf] = 20000.0
+dbm.data['ref'][nan] = 50000.0
+dbm.data['ref'][msk] = 50000.0
 
 print_min_max(dbm.data['ref'], 'ref')
 
-# plot to check :
-imshow(dbm.data['ref'][::-1,:])
-colorbar()
-tight_layout()
-show()
-
-#import sys
-#sys.exit(0)
+## plot to check :
+#imshow(dbm.data['ref'][::-1,:])
+#colorbar()
+#tight_layout()
+#show()
 
 
 #===============================================================================
@@ -72,7 +69,7 @@ m.create_contour('mask', zero_cntr=0.999, skip_pts=4)
 m.eliminate_intersections(dist=200)
 #m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)
-#m.extrude(h=100000, n_layers=8)
+m.extrude(h=100000, n_layers=8)
 m.close_file()
 
 

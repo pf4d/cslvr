@@ -418,7 +418,6 @@ class MomentumDukowiczStokesReduced(Momentum):
 
     # 4) pressure boundary
     Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
-    Pb_l   = rhoi*g*(S - z) * (u*N[0] + v*N[1])
 
     # Variational principle
     A      = + Vd_shf*dx_f + Vd_gnd*dx_g - Pe*dx \
@@ -428,7 +427,7 @@ class MomentumDukowiczStokesReduced(Momentum):
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using calving-front-pressure-boundary condition -"
       print_text(s, self.color())
-      A -= Pb*dLat_t - Pb_l*dLat_d
+      A -= Pb*dLat_t
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -1138,7 +1137,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     # Variational principle
     #A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
     A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
-             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb*dBed_f
+             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g# - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):

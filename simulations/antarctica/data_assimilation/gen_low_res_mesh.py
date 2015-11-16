@@ -18,7 +18,7 @@ dbm = DataInput(measure, gen_space=False)
 db2 = DataInput(bedmap2, gen_space=False)
 
 # get surface velocity magnitude :
-U_ob = log(sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16))
+U_ob = sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16)
 dbm.data['U_ob'] = U_ob
 
 dbm.set_data_min('U_ob', boundary=0.0, val=0.0)
@@ -60,8 +60,8 @@ colorbar()
 tight_layout()
 show()
 
-import sys
-sys.exit(0)
+#import sys
+#sys.exit(0)
 
 
 #===============================================================================

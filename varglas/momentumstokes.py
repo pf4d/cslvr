@@ -1123,6 +1123,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
 
     # 6) pressure boundary :
     Pb     = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
+    Pb_l   =   rhoi*g*(S - z) * (u*N[0] + v*N[1] + w*N[2])
 
     # 7) stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))
@@ -1142,7 +1143,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      A -= Pb*dLat_t
+      A -= Pb*dLat_t - Pb_l*dLat_d
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

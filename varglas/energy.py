@@ -278,11 +278,13 @@ class Enthalpy(Energy):
     self.theta_bc.append( DirichletBC(Q, theta_surface,
                                       model.ff, model.GAMMA_U_FLT) )
     
-    # apply T_w conditions of portion of ice in contact with water :
+    # apply T_melt conditions of portion of ice in contact with water :
     self.theta_bc.append( DirichletBC(Q, theta_float, 
                                       model.ff, model.GAMMA_B_FLT) )
+    self.theta_bc.append( DirichletBC(Q, theta_float, 
+                                      model.ff, model.GAMMA_L_UDR) )
     
-    # apply lateral boundaries if desired : 
+    # apply lateral ``divide'' boundaries if desired : 
     if use_lat_bc:
       s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())

@@ -7,7 +7,7 @@ from scipy.interpolate import interp2d
 #===============================================================================
 # data preparation :
 out_dir   = 'dump/meshes/'
-mesh_name = 'ant_mesh_low'
+mesh_name = 'ant_mesh_low_new'
 
 # get the data :
 measure = DataFactory.get_ant_measures()
@@ -18,7 +18,7 @@ dbm = DataInput(measure, gen_space=False)
 db2 = DataInput(bedmap2, gen_space=False)
 
 # get surface velocity magnitude :
-U_ob = sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16)
+U_ob = log(sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16))
 dbm.data['U_ob'] = U_ob
 
 dbm.set_data_min('U_ob', boundary=0.0, val=0.0)
@@ -37,27 +37,31 @@ mask   = interp(dbm.x, dbm.y)
 
 # get dofs for shelves where we restrict the element size :
 slp = gS_n >  30
-shf = mask >= 0.9
-gnd = mask <  0.9
-nan = mask >  10
+shf = mask >= 1.1
+nan = mask <  0.1
+msk = dbm.data['mask'] < 0.1
 
 
 #===============================================================================
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=100000.0, inverse=True)
+dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=50000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
 #dbm.data['ref'][slp] = 2000.0
-dbm.data['ref'][shf] = 20000.0
-dbm.data['ref'][nan] = 100000.0
+#dbm.data['ref'][shf] = 20000.0
+#dbm.data['ref'][nan] = 100000.0
+#dbm.data['ref'][msk] = 100000.0
 
 print_min_max(dbm.data['ref'], 'ref')
 
-## plot to check :
-#imshow(dbm.data['ref'][::-1,:])
-#colorbar()
-#tight_layout()
-#show()
+# plot to check :
+imshow(dbm.data['ref'][::-1,:])
+colorbar()
+tight_layout()
+show()
+
+import sys
+sys.exit(0)
 
 
 #===============================================================================
@@ -68,7 +72,7 @@ m.create_contour('mask', zero_cntr=0.999, skip_pts=4)
 m.eliminate_intersections(dist=200)
 #m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)
-m.extrude(h=100000, n_layers=8)
+#m.extrude(h=100000, n_layers=8)
 m.close_file()
 
 

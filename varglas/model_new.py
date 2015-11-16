@@ -17,7 +17,8 @@ class Model(object):
   GAMMA_S_FLT = 6   # shelf upper surface
   GAMMA_B_FLT = 5   # shelf lower surface
   GAMMA_D     = 7   # basin divides
-  GAMMA_T     = 4   # terminus
+  GAMMA_L_OVR = 4   # terminus
+  GAMMA_L_UDR = 10  # terminus
   GAMMA_U_GND = 8   # grounded surface with U observations
   GAMMA_U_FLT = 9   # shelf surface with U observations
 

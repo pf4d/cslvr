@@ -264,7 +264,10 @@ class D3Model(Model):
         if mark_divide:
           lat_mask_xy = lat_mask(x_m, y_m, z_m)
           if lat_mask_xy > 0:
-            self.ff[f] = 4
+            if z_m > 0:
+              self.ff[f] = 4
+            else:
+              self.ff[f] = 10
           else:
             self.ff[f] = 7
         # otherwise just mark it all the same :
@@ -307,8 +310,11 @@ class D3Model(Model):
     self.dSrf    =   self.ds(6) + self.ds(2) \
                    + self.ds(8) + self.ds(9) # surface
     self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_t  = self.ds(4)                # lateral terminus
-    self.dLat    = self.ds(4) + self.ds(7)   # lateral
+    self.dLat_to = self.ds(4)                # lateral terminus overwater
+    self.dLat_tu = self.ds(10)               # lateral terminus underwater
+    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
+    self.dLat    =   self.ds(4) + self.ds(7) \
+                   + self.ds(10)             # lateral
 
     if self.save_state:
       s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
@@ -406,8 +412,11 @@ class D3Model(Model):
     self.dSrf_f  = self.ds(6)                # surface of floating ice
     self.dSrf    = self.ds(6) + self.ds(2)   # surface
     self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_t  = self.ds(4)                # lateral terminus
-    self.dLat    = self.ds(4) + self.ds(7)   # lateral
+    self.dLat_to = self.ds(4)                # lateral terminus overwater
+    self.dLat_tu = self.ds(10)               # lateral terminus underwater
+    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
+    self.dLat    =   self.ds(4) + self.ds(7) \
+                   + self.ds(10)             # lateral
   
   def set_subdomains(self, f):
     """
@@ -442,8 +451,11 @@ class D3Model(Model):
     self.dSrf    =   self.ds(6) + self.ds(2) \
                    + self.ds(8) + self.ds(9) # surface
     self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_t  = self.ds(4)                # lateral terminus
-    self.dLat    = self.ds(4) + self.ds(7)   # lateral
+    self.dLat_to = self.ds(4)                # lateral terminus overwater
+    self.dLat_tu = self.ds(10)               # lateral terminus underwater
+    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
+    self.dLat    =   self.ds(4) + self.ds(7) \
+                   + self.ds(10)             # lateral
 
   def deform_mesh_to_geometry(self, S, B):
     """

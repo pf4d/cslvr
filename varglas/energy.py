@@ -413,6 +413,7 @@ class Enthalpy(Energy):
     dx      = model.dx
     dBed_g  = model.dBed_g
     dLat_d  = model.dLat_d
+    dLat_t  = model.dLat_t
     dx      = model.dx
     dx_f    = model.dx_f
     dx_g    = model.dx_g
@@ -424,9 +425,14 @@ class Enthalpy(Energy):
     h       = model.h
     N       = model.N
 
+    print type(model.N)
+
     dtheta  = TrialFunction(model.Q)
     psi     = TestFunction(model.Q)
     theta   = Function(model.Q)
+
+    u_s     = model.u_ob
+    v_s     = model.v_ob
 
     #Q_s_g   = project(Q_s_gnd, model.Q)
     #Q_s_f   = project(Q_s_shf, model.Q)
@@ -434,30 +440,30 @@ class Enthalpy(Energy):
     #Q_gnd   = model.vert_integrate(Q_s_gnd, d='down')
     #Q_shf   = model.vert_integrate(Q_s_shf, d='down')
 
-    # skewed test function in areas with high velocity :
-    U      = as_vector([u,v,w])
-    Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-    PE     = Unorm*h/(2*spy*k/(rho*c))
-    tau    = 1/tanh(PE) - 1/PE
-    psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
+    ## skewed test function in areas with high velocity :
+    #U      = as_vector([u,v,w])
+    #Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+    #PE     = Unorm*h/(2*spy*k/(rho*c))
+    #tau    = 1/tanh(PE) - 1/PE
+    #psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
    
-    # skewed test function in areas with high x-component velocity :
-    unorm  = abs(u) + DOLFIN_EPS 
-    PE     = unorm*h/(2*spy*k/(rho*c))
-    tau    = 1/tanh(PE) - 1/PE
-    psi_u  = psi + h*tau/(2*unorm) * u * psi.dx(2)
-    
-    # skewed test function in areas with high y-component velocity :
-    vnorm  = abs(v) + DOLFIN_EPS 
-    PE     = vnorm*h/(2*spy*k/(rho*c))
-    tau    = 1/tanh(PE) - 1/PE
-    psi_v  = psi + h*tau/(2*vnorm) * v * psi.dx(2)
-    
-    # skewed test function in areas with high vertical velocity :
-    wnorm  = abs(w) + DOLFIN_EPS 
-    PE     = wnorm*h/(2*spy*k/(rho*c))
-    tau    = 1/tanh(PE) - 1/PE
-    psi_w  = psi + h*tau/(2*wnorm) * w * psi.dx(2)
+    ## skewed test function in areas with high x-component velocity :
+    #unorm  = abs(u) + DOLFIN_EPS 
+    #PE     = unorm*h/(2*spy*k/(rho*c))
+    #tau    = 1/tanh(PE) - 1/PE
+    #psi_u  = psi + h*tau/(2*unorm) * u * psi.dx(2)
+    #
+    ## skewed test function in areas with high y-component velocity :
+    #vnorm  = abs(v) + DOLFIN_EPS 
+    #PE     = vnorm*h/(2*spy*k/(rho*c))
+    #tau    = 1/tanh(PE) - 1/PE
+    #psi_v  = psi + h*tau/(2*vnorm) * v * psi.dx(2)
+    #
+    ## skewed test function in areas with high vertical velocity :
+    #wnorm  = abs(w) + DOLFIN_EPS 
+    #PE     = wnorm*h/(2*spy*k/(rho*c))
+    #tau    = 1/tanh(PE) - 1/PE
+    #psi_w  = psi + h*tau/(2*wnorm) * w * psi.dx(2)
     
     # galerkin formulation :
     theta_a = - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
@@ -465,8 +471,12 @@ class Enthalpy(Energy):
     
     #theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
     #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-    theta_L = + q_geo * psi * dBed_g \
-              + rho * theta_s * dot(U, N) * dLat_d
+    theta_L = + (q_geo + q_fric) * psi * dBed_g \
+              + rho * theta_s * u_s * N[0] * psi * dLat_d \
+              + rho * theta_s * v_s * N[1] * psi * dLat_d \
+    #          - rho * u_s * theta_s.dx(0) * psi * dx \
+    #          - rho * v_s * theta_s.dx(1) * psi * dx \
+    #          + rho * theta_s * dot(U, N) * psi * dLat_d \
     #          - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
     #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
     #          + (q_geo + q_fric) * psi * dBed_g \
@@ -493,6 +503,8 @@ class Enthalpy(Energy):
     # apply T_w conditions of portion of ice in contact with water :
     theta_bc.append( DirichletBC(model.Q, theta_f,
                                  model.ff, model.GAMMA_B_FLT) )
+    theta_bc.append( DirichletBC(model.Q, theta_f, 
+                                 model.ff, model.GAMMA_L_UDR) )
    
     # solve the system :
     solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)

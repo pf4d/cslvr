@@ -34,7 +34,7 @@ Q3s = MixedFunctionSpace([Qs]*3)
 d3model = D3Model(fdata,   out_dir, state=foutput)
 d2model = D2Model(bedmesh, out_dir, state=foutput)
 
-# setup full-stokes functionspaces with 'mini' enriched elements :
+## setup full-stokes functionspaces with 'mini' enriched elements :
 #d3model.generate_stokes_function_spaces(kind='mini')
 
 # initialize the 3D model vars :
@@ -48,6 +48,8 @@ d3model.init_adot(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_E(1.0)
+
+d3model.save_xdmf(d3model.ff, 'ff')
 
 fUin = HDF5File(mpi_comm_world(), out_dir + 'hdf5/U3.h5', 'r')
 d3model.init_U(fUin)
@@ -134,11 +136,11 @@ d3model.assign_submesh_variable(U_ob, d3model.U_ob)
 d3model.save_xdmf(beta, 'beta_SIA')
 d3model.save_xdmf(U_ob, 'U_ob')
 
-#nrg.generate_approx_theta(init=True, annotate=False)
-#d3model.save_xdmf(d3model.theta_app, 'theta_ini')
-#d3model.save_xdmf(d3model.T,         'T_ini')
-#d3model.save_xdmf(d3model.W,         'W_ini')
-#sys.exit(0)
+nrg.generate_approx_theta(init=False, annotate=False)
+d3model.save_xdmf(d3model.theta_app, 'theta_ini')
+d3model.save_xdmf(d3model.T,         'T_ini')
+d3model.save_xdmf(d3model.W,         'W_ini')
+sys.exit(0)
 
 def cb_ftn():
   nrg.calc_bulk_density()

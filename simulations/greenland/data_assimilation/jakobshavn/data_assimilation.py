@@ -40,8 +40,6 @@ model.init_adot(fdata)
 model.init_U_ob(fdata, fdata)
 model.init_U_mask(fdata)
 model.init_E(1.0)
-model.init_u_lat(0.0)
-model.init_v_lat(0.0)
 
 # use T0 and beta0 from the previous thermo_solve :
 model.init_T(in_dir + 'T.xml')          # temp

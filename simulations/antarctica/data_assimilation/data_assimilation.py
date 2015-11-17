@@ -3,8 +3,6 @@ from varglas.energy   import Enthalpy
 from fenics           import *
 from dolfin_adjoint   import *
 
-#set_log_active(False)
-#set_log_level(PROGRESS)
 
 # set the base directory to save :
 i       = 0                                      # manually iterate
@@ -46,16 +44,12 @@ model.init_adot(fdata)
 model.init_U_ob(fdata, fdata)
 model.init_U_mask(fdata)
 model.init_E(1.0)
-model.init_u_lat(0.0)
-model.init_v_lat(0.0)
 
 # use T0 and beta0 resulting from thermo_solve.py :
 model.init_T(finput)          # temp
 model.init_W(finput)          # water
 model.init_beta(finput)       # friction
 model.init_U(finput)          # velocity
-
-model.save_xdmf(model.U3, 'U_ini')
 
 # Newton solver parameters for momentum :
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
@@ -81,11 +75,13 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 mom.solve(annotate=True)
 
 # form the cost functional :
-#J = mom.form_obj_ftn(integral=model.dSrf_u, kind='log_L2_hybrid', 
-#                     g1=0.01, g2=5000)
-J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
+J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid', 
+                     g1=0.01, g2=5000)
+#J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
+#R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
+#                     alpha=1.0)
 R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
                      alpha=1e-10)
 

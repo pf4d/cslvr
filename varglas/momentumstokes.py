@@ -1137,7 +1137,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     # Variational principle
     #A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
     A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
-             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g# - Pb*dBed_f
+             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):

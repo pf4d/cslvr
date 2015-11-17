@@ -7,7 +7,7 @@ measures = DataFactory.get_ant_measures(res=900)
 bedmap1  = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2  = DataFactory.get_bedmap2(thklim=thklim)
 
-mesh = Mesh('dump/meshes/ant_mesh_low.xml.gz')
+mesh = Mesh('dump/meshes/ant_mesh_low_new.xml.gz')
 
 dm = DataInput(measures, mesh=mesh)
 d1 = DataInput(bedmap1,  mesh=mesh)
@@ -24,8 +24,8 @@ v_ob  = dm.get_expression("vy",     near=False)
 U_msk = dm.get_expression("mask",   near=True)
 
 model = D3Model(mesh=mesh, out_dir=out_dir, save_state=True)
-model.calculate_boundaries(mask=M, adot=adot, U_mask=U_msk, mark_divide=False)
 model.deform_mesh_to_geometry(S, B)
+model.calculate_boundaries(mask=M, adot=adot, U_mask=U_msk, mark_divide=False)
 
 model.init_T_surface(T_s)
 model.init_q_geo(q_geo)

@@ -17,7 +17,7 @@ out_dir = dir_b + str(i)   + '/thermo_solve/'
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',             'r')
-foutput = HDF5File(mpi_comm_world(), out_dir + 'hdf5/thermo_solve_DS.h5', 'w')
+foutput = HDF5File(mpi_comm_world(), out_dir + 'hdf5/thermo_solve.h5', 'w')
 
 # get the bed and surface meshes :
 bedmesh = Mesh()
@@ -91,17 +91,17 @@ else:
   #d3model.init_beta(1e4)
   d3model.init_beta_SIA()
 
-#nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-#                              'preconditioner'           : 'hypre_amg',
-#                              'relative_tolerance'       : 1e-9,
-#                              'relaxation_parameter'     : 0.7,
-#                              'maximum_iterations'       : 30,
-#                              'error_on_nonconvergence'  : False}}
-nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+                              'preconditioner'           : 'hypre_amg',
                               'relative_tolerance'       : 1e-9,
                               'relaxation_parameter'     : 0.7,
                               'maximum_iterations'       : 30,
                               'error_on_nonconvergence'  : False}}
+#nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+#                              'relative_tolerance'       : 1e-9,
+#                              'relaxation_parameter'     : 0.7,
+#                              'maximum_iterations'       : 30,
+#                              'error_on_nonconvergence'  : False}}
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : True,
              'solve_pressure'       : True,
@@ -111,8 +111,8 @@ e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
 
@@ -152,7 +152,7 @@ def cb_ftn():
   d3model.save_xdmf(rhob, 'rhob')
   d3model.save_xdmf(d3model.p, 'p')
 
-d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi*1e3, max_iter=1)
+d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi, max_iter=15)
 
 d3model.save_hdf5(d3model.theta)
 d3model.save_hdf5(d3model.T)

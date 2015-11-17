@@ -47,7 +47,7 @@ msk = dbm.data['mask'] < 0.1
 dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=300000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
-#dbm.data['ref'][slp] = 2000.0
+dbm.data['ref'][slp] = 5000.0
 dbm.data['ref'][shf] = 20000.0
 dbm.data['ref'][nan] = 50000.0
 dbm.data['ref'][msk] = 50000.0

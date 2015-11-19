@@ -758,9 +758,20 @@ class DataFactory(object):
     
     # calculate mask gradient, to properly mark lateral boundaries :
     gradH = gradient(Hc)
-    L     = sqrt(gradH[0]**2 + gradH[1]**2 + 1e-16)
-    L[L > 0.01] = 1.0
-    L[L < 1.0]  = 0.0
+    L     = gradH[0]**2 + gradH[1]**2
+    L[L > 0.0] = 1.0
+    L[L < 1.0] = 0.0
+
+    # mark one more level in :
+    Hc[L > 0.0] = 0
+    
+    gradH = gradient(Hc)
+    L2    = gradH[0]**2 + gradH[1]**2
+    L2[L2 > 0.0] = 1.0
+    L2[L2 < 1.0] = 0.0
+    
+    # combine them :
+    L[L2 > 0.0] = 1.0
    
     # remove the junk data and impose thickness limit :
     H[H == -9999.0] = 0.0

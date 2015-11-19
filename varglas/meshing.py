@@ -757,7 +757,7 @@ class GetBasin(object):
 
     # Get path of this file, which should be in the src directory
     filename = inspect.getframeinfo(inspect.currentframe()).filename
-    home     = os.path.dirname(os.path.abspath(filename))
+    home     = os.path.dirname(os.path.abspath(filename)) + "/.."
 
     if di.cont == "greenland":
       path           = home + "/data/greenland/basins/"
@@ -846,7 +846,7 @@ class GetBasin(object):
     self.xycoords = array(self.xycoords)
     self.plot_coords["xycoords"] = self.xycoords
 
-    self.clean_edge() #clean (very rare) incorrectly identified edge points
+    #self.clean_edge() #clean (very rare) incorrectly identified edge points
     self.edge = array(self.edge)
 
   def clean_edge(self):
@@ -885,14 +885,15 @@ class GetBasin(object):
     lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
     xycoords = self.xycoords
+    n        = len(xycoords)
 
-    mask = ones(len(xycoords), dtype=bool)
+    mask = ones(n, dtype=bool)
 
     i = 0
-    while(i < len(xycoords)-1):
+    while(i < n-1):
       p1 = xycoords[i]
       j = i + 1
-      while(j < len(xycoords) and \
+      while(j < n and \
             lin_dist(p1, xycoords[j]) < self.edge_resolution):
         mask[j] = 0
         j += 1
@@ -900,10 +901,16 @@ class GetBasin(object):
 
     # fix end of array
     i = -1
-    while(len(xycoords) + i >= 0 and (not mask[i] or \
+    while(n + i >= 0 and (not mask[i] or \
           lin_dist(xycoords[0],xycoords[i]) < self.edge_resolution)):
       mask[i] = 0
       i -= 1
+
+    #for i in range(0,n-2):
+    #  p1 = xycoords[i]
+    #  p2 = xycoords[i+1]
+    #  if lin_dist(p1, p2) < self.edge_resolution:
+    #    mask[i] = 0
 
     # print results
     s    = "::: removed %s points closer than %s m to one another :::"% \
@@ -945,8 +952,8 @@ class GetBasin(object):
     """
     xycoords = self.xycoords
 
-    p1 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
-    p2 = Polygon(zip(other[:,0],other[:,1]))
+    p1 = Polygon( zip(xycoords[:,0], xycoords[:,1]) )
+    p2 = Polygon( zip(other[:,0],    other[:,1]   ) )
 
     intersection = p1.intersection(p2)
 
@@ -959,7 +966,7 @@ class GetBasin(object):
       p3 = intersection
 
     xycoords_intersect = array(zip(p3.exterior.xy[:][0], \
-                               p3.exterior.xy[:][1]))
+                                   p3.exterior.xy[:][1]))
 
     self.plot_coords["xycoords_intersect"] = xycoords_intersect
     self.xycoords = xycoords_intersect
@@ -1002,3 +1009,6 @@ class GetBasin(object):
     """
     self.check_dist()
     return self.xycoords
+
+
+

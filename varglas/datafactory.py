@@ -641,22 +641,22 @@ class DataFactory(object):
     mask[mask == 0]   = 1
     mask[mask == 127] = 0
     
-    # generate mask for lateral boundaries :
-    Hc = H.copy()
-    
-    Hc[Hc > 0] = 1
-    
-    # calculate mask gradient, to properly mark lateral boundaries :
-    gradH = gradient(Hc)
-    L     = sqrt(gradH[0]**2 + gradH[1]**2 + 1e-16)
-    L[L > 0.01] = 1.0
-    L[L < 1.0]  = 0.0
-   
     # remove the junk data and impose thickness limit :
     B = S - H
     H[H == 32767]  = thklim
     H[H <= thklim] = thklim
     S = B + H
+    
+    # generate mask for lateral boundaries :
+    Hc = mask.copy()
+    
+    Hc[mask > 0] = 1
+    
+    # calculate mask gradient, to properly mark lateral boundaries :
+    gradH = gradient(Hc)
+    L     = gradH[0]**2 + gradH[1]**2
+    L[L > 0.0] = 1.0
+    L[L < 1.0] = 0.0
 
     vara        = dict()
      

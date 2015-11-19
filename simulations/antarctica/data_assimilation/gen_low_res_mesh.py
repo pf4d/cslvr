@@ -41,6 +41,10 @@ shf = mask >= 1.1
 nan = mask <  0.1
 msk = dbm.data['mask'] < 0.1
 
+# eliminate just the edge of the mask so that we can properly interpolate
+# the geometry to the terminus :
+L = db2.data['lat_mask']
+db2.data['mask'][L > 0.0] = 0
 
 #===============================================================================
 # form field from which to refine :
@@ -65,9 +69,9 @@ print_min_max(dbm.data['ref'], 'ref')
 # generate the contour :
 m = MeshGenerator(db2, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.999, skip_pts=4)
+m.create_contour('mask', zero_cntr=0.999999999, skip_pts=0)
 m.eliminate_intersections(dist=200)
-#m.plot_contour()
+m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)
 m.extrude(h=100000, n_layers=8)
 m.close_file()

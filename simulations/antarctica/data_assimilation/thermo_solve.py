@@ -49,6 +49,8 @@ d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_E(1.0)
 
+d3model.save_xdmf(d3model.ff, 'ff')
+
 # 2D model gets balance-velocity appropriate variables initialized :
 d2model.assign_submesh_variable(d2model.S,    d3model.S)
 d2model.assign_submesh_variable(d2model.B,    d3model.B)

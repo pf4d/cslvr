@@ -1053,7 +1053,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     dBed_g     = model.dBed_g
     dBed_f     = model.dBed_f
     dLat_t     = model.dLat_t
+    dLat_to    = model.dLat_to
     dLat_d     = model.dLat_d
+    dLat       = model.dLat
     dBed       = model.dBed
      
     # new constants :
@@ -1122,7 +1124,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary :
-    Pb     = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
+    Pb_w   = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
     Pb_l   =   rhoi*g*(S - z) * (u*N[0] + v*N[1] + w*N[2])
 
     # 7) stabilization :
@@ -1137,13 +1139,13 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     # Variational principle
     #A      = + Vd_shf*dx_f + Vd_gnd*dx_g \
     A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
-             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb*dBed_f
+             - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb_w*dBed_f
     
     if (not model.use_periodic_boundaries 
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      A -= Pb*dLat_t - Pb_l*dLat_d
+      A -= Pb_w*dLat_t - Pb_l*dLat_to - Pb_l*dLat_d
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

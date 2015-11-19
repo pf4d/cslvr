@@ -424,8 +424,7 @@ class Enthalpy(Energy):
     q_geo   = model.q_geo
     h       = model.h
     N       = model.N
-
-    print type(model.N)
+    U       = as_vector([u,v,w])
 
     dtheta  = TrialFunction(model.Q)
     psi     = TestFunction(model.Q)
@@ -441,7 +440,6 @@ class Enthalpy(Energy):
     #Q_shf   = model.vert_integrate(Q_s_shf, d='down')
 
     ## skewed test function in areas with high velocity :
-    #U      = as_vector([u,v,w])
     #Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
     #PE     = Unorm*h/(2*spy*k/(rho*c))
     #tau    = 1/tanh(PE) - 1/PE
@@ -472,11 +470,11 @@ class Enthalpy(Energy):
     #theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
     #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
     theta_L = + (q_geo + q_fric) * psi * dBed_g \
-              + rho * theta_s * u_s * N[0] * psi * dLat_d \
-              + rho * theta_s * v_s * N[1] * psi * dLat_d \
+              + rho * theta_s * dot(U, N) * psi * dLat_d \
+    #          + rho * theta_s * u_s * N[0] * psi * dLat_d \
+    #          + rho * theta_s * v_s * N[1] * psi * dLat_d \
     #          - rho * u_s * theta_s.dx(0) * psi * dx \
     #          - rho * v_s * theta_s.dx(1) * psi * dx \
-    #          + rho * theta_s * dot(U, N) * psi * dLat_d \
     #          - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
     #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
     #          + (q_geo + q_fric) * psi * dBed_g \

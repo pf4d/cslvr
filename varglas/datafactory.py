@@ -724,7 +724,7 @@ class DataFactory(object):
                    'SurfaceElevation' : 'S',
                    'IceThickness'     : 'H',
                    'BedrockError'     : 'Herr',
-                   'LandMask'         : 'mask'}
+                   'LandMask'         : 'mask_orig'}
     
     s    = "    - data-fields collected : python dict key to access -"
     print_text(s, DataFactory.color)
@@ -736,15 +736,16 @@ class DataFactory(object):
       print_text('      Bamber : %-*s key : %s '%(30,v, txt), '230')
     
     # retrieve data :
-    x    = array(data.variables['projection_x_coordinate'][:])
-    y    = array(data.variables['projection_y_coordinate'][:])
-    Bo   = array(data.variables['BedrockElevation'][:])
-    S    = array(data.variables['SurfaceElevation'][:])
-    H    = array(data.variables['IceThickness'][:])
-    Herr = array(data.variables['BedrockError'][:])
-    mask = array(data.variables['LandMask'][:])
+    x         = array(data.variables['projection_x_coordinate'][:])
+    y         = array(data.variables['projection_y_coordinate'][:])
+    Bo        = array(data.variables['BedrockElevation'][:])
+    S         = array(data.variables['SurfaceElevation'][:])
+    H         = array(data.variables['IceThickness'][:])
+    Herr      = array(data.variables['BedrockError'][:])
+    mask_orig = array(data.variables['LandMask'][:])
 
     # format the mask for varglas :
+    mask = mask_orig.copy(True)
     mask[mask == 1] = 0
     mask[mask == 2] = 1
     mask[mask == 3] = 0
@@ -810,8 +811,8 @@ class DataFactory(object):
     vara['nx']                = len(x)
     vara['ny']                = len(y)
      
-    names = ['B', 'Bo', 'S', 'H', 'lat_mask', 'Herr', 'mask']
-    ftns  = [ B,   Bo,   S,   H,   L,          Herr,   mask]
+    names = ['B', 'Bo', 'S', 'H', 'lat_mask', 'Herr', 'mask', 'mask_orig']
+    ftns  = [ B,   Bo,   S,   H,   L,          Herr,   mask,   mask_orig]
     
     # save the data in matlab format :
     vara['dataset']   = 'Bamber'

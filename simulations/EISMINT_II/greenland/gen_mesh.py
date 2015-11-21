@@ -25,7 +25,7 @@ dbm.data['M'] = mask
 
 #===============================================================================
 # form field from which to refine :
-dbm.data['ref'] = mask.copy(True)
+dbm.data['ref'] = mask.astype('i')
 dbm.data['ref'][mask == 1] = 10000.0
 dbm.data['ref'][mask == 0] = 100000.0
 

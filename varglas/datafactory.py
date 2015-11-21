@@ -738,7 +738,7 @@ class DataFactory(object):
     # retrieve data :
     x    = array(data.variables['projection_x_coordinate'][:])
     y    = array(data.variables['projection_y_coordinate'][:])
-    B    = array(data.variables['BedrockElevation'][:])
+    Bo   = array(data.variables['BedrockElevation'][:])
     S    = array(data.variables['SurfaceElevation'][:])
     H    = array(data.variables['IceThickness'][:])
     Herr = array(data.variables['BedrockError'][:])
@@ -774,6 +774,7 @@ class DataFactory(object):
     L[L2 > 0.0] = 1.0
    
     # remove the junk data and impose thickness limit :
+    B   = Bo.copy(True)
     H[H == -9999.0] = 0.0
     S[H < thklim] = B[H < thklim] + thklim
     H[H < thklim] = thklim
@@ -809,8 +810,8 @@ class DataFactory(object):
     vara['nx']                = len(x)
     vara['ny']                = len(y)
      
-    names = ['B', 'S', 'H', 'lat_mask', 'Herr', 'mask']
-    ftns  = [ B,   S,   H,   L,          Herr,   mask]
+    names = ['B', 'Bo', 'S', 'H', 'lat_mask', 'Herr', 'mask']
+    ftns  = [ B,   Bo,   S,   H,   L,          Herr,   mask]
     
     # save the data in matlab format :
     vara['dataset']   = 'Bamber'

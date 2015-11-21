@@ -925,7 +925,7 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5,
-            extend='neither', show=True):
+            extend='neither', show=True, ext='.png', res=150):
   """
   INPUTS :
 
@@ -1123,7 +1123,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   d     = os.path.dirname(direc)
   if not os.path.exists(d):
     os.makedirs(d)
-  plt.savefig(direc + name + '.pdf')
+  plt.savefig(direc + name + ext, res=res)
   if show:
     plt.show()
   plt.close(fig)

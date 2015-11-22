@@ -254,7 +254,6 @@ class MassHybrid(Mass):
     self.J_thick = derivative(self.R_thick, H, dH)
 
     self.bc = []#NOTE ? DirichletBC(Q, thklim, 'on_boundary') ? maybe ?
-    print_min_max(adot, 'adot')
 
   def get_solve_params(self):
     """
@@ -309,8 +308,8 @@ class MassHybrid(Mass):
           form_compiler_parameters=params['ffc_params'],
           annotate=annotate)
 
-    print_min_max(model.ubar_c, 'ubar_c')
-    print_min_max(model.vbar_c, 'vbar_c')
+    print_min_max(model.ubar_c, 'ubar_c', cls=self)
+    print_min_max(model.vbar_c, 'vbar_c', cls=self)
 
     # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
     meth   = params['solver']['snes_solver']['method']
@@ -327,10 +326,10 @@ class MassHybrid(Mass):
     s.parameters.update(params['solver'])
     s.solve(annotate=annotate)
     
-    print_min_max(model.H, 'H')
+    print_min_max(model.H, 'H', cls=self)
     
     # update previous time step's H :
-    model.assign_variable(model.H0, model.H)
+    model.assign_variable(model.H0, model.H, cls=self)
     
     # update the surface :
     s    = "::: updating surface :::"
@@ -338,8 +337,7 @@ class MassHybrid(Mass):
     B_v = model.B.vector().array()
     H_v = model.H.vector().array()
     S_v = B_v + H_v
-    model.assign_variable(model.S, S_v)
-    print_min_max(model.S, 'S')
+    model.assign_variable(model.S, S_v, cls=self)
 
 
 class FirnMass(Mass):

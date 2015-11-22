@@ -263,22 +263,22 @@ class MomentumHybrid(Momentum):
     solve(self.mom_F == 0, self.U, J = self.mom_Jac,
           annotate = annotate, solver_parameters = params['solver'],
           form_compiler_parameters = params['ffc_params'])
-    print_min_max(self.U, 'U')
+    print_min_max(self.U, 'U', self.color())
 
     model.UHV.assign(self.U)
-    print_min_max(model.UHV, 'UHV')
+    print_min_max(model.UHV, 'UHV', self.color())
 
     self.assx.assign(model.u,   project(self.u(0.0), model.Q, annotate=False))
     self.assy.assign(model.v,   project(self.v(0.0), model.Q, annotate=False))
     self.assz.assign(model.w,   project(self.w(0.0), model.Q, annotate=False))
 
-    print_min_max(model.U3, 'U3_S')
+    print_min_max(model.U3, 'U3', self.color())
     
     self.assx.assign(model.u_b, project(self.u(1.0), model.Q, annotate=False))
     self.assy.assign(model.v_b, project(self.v(1.0), model.Q, annotate=False))
     self.assz.assign(model.w_b, project(self.w(1.0), model.Q, annotate=False))
 
-    print_min_max(model.U3_b, 'U3_B')
+    print_min_max(model.U3_b, 'U3_B', self.color())
 
 
 

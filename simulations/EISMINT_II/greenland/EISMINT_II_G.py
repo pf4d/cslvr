@@ -64,21 +64,19 @@ model.init_beta(1e9)
 model.init_H_bounds(thklim, 1e4)
 model.init_H_H0(thklim)
 model.init_q_geo(model.ghf)
-model.init_b(model.A0(0)**(-1/model.n(0)))
-model.eps_reg = 1e-5
+#model.assign_variable(model.eps_reg, 1e-5)
 
 #===============================================================================
 # initialize transient experiment physics :
 
 #bv  = BalanceVelocity(model, kappa=5.0)
 nrg = EnergyHybrid(model, transient=True)
-mom = MomentumHybrid(model, isothermal=True)
+mom = MomentumHybrid(model, isothermal=False)
 mas = MassHybrid(model, isothermal=False)
 
 # initialize temperature from lapse rate :
 nrg.solve_surface_climate()
-#T0 = project(as_vector([model.T_surface]*model.N_T), model.Z)
-model.init_T_T0(260)
+model.init_T_T0(model.T_surface)
 
 model.save_xdmf(model.T_surface, 'T_surface')
 model.save_xdmf(model.S,         'S')
@@ -90,12 +88,12 @@ def cb_ftn():
   model.save_xdmf(model.Ts, 'Ts')
   model.save_xdmf(model.Tb, 'Tb')
   model.save_xdmf(model.Mb, 'Mb')
-  model.save_xdmf(model.Us, 'Us')
+  model.save_xdmf(model.U3, 'Us')
   #model.save_xdmf(model.beta, 'beta')
   nrg.solve_surface_climate()
 
 model.transient_solve(mom, nrg, mas,
-                      t_start=0.0, t_end=50000.0, time_step=100,
+                      t_start=0.0, t_end=20000.0, time_step=1.0,
                       annotate=False, callback=cb_ftn)
 
 

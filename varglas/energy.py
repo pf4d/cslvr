@@ -53,7 +53,7 @@ class Energy(Physics):
     Tn    = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + T_w
     
     # Apply the lapse rate to the surface boundary condition
-    model.init_T_surface(Tn)
+    model.init_T_surface(Tn, cls=self)
   
   def solve(self, annotate=True, params=None):
     """ 
@@ -676,6 +676,8 @@ class EnergyHybrid(Energy):
     else:
       self.solve_params = solve_params
 
+    self.transient = transient
+
     # CONSTANTS
     year    = model.spy
     g       = model.g
@@ -730,15 +732,8 @@ class EnergyHybrid(Energy):
     Psi = TestFunction(Z)
     dT  = TrialFunction(Z)
     
-    self.T_   = Function(model.Z, name='T_')
-    self.T0_  = Function(model.Z, name='T0_')
-    
-    #model.assign_variable(self.T0_, project(as_vector([T_s]*N_T), Z))
-    model.assign_variable(self.T0_, 263)
-    model.assign_variable(self.T_, 263)
-
-    T  = VerticalFDBasis(self.T_,  deltax, coef, sigmas)
-    T0 = VerticalFDBasis(self.T0_, deltax, coef, sigmas)
+    T  = VerticalFDBasis(T_,  deltax, coef, sigmas)
+    T0 = VerticalFDBasis(T0_, deltax, coef, sigmas)
 
     # METRICS FOR COORDINATE TRANSFORM
     def dsdx(s):
@@ -791,10 +786,15 @@ class EnergyHybrid(Energy):
       Phi_strain = 4*eta_v(s)*epsilon_dot(s)
     
       # STABILIZATION SCHEME
-      Umag   = sqrt(u(s)**2 + v(s)**2 + 1e-3)
-      tau    = h/(2*Umag)
-      Psihat = Psi[i] + tau*(u(s)*Psi[i].dx(0) + v(s)*Psi[i].dx(1))
-    
+      #Umag   = sqrt(u(s)**2 + v(s)**2 + 1e-3)
+      #tau    = h/(2*Umag)
+      #Psihat = Psi[i] + tau*(u(s)*Psi[i].dx(0) + v(s)*Psi[i].dx(1))
+      Unorm  = sqrt(u(s)**2 + v(s)**2 + DOLFIN_EPS)
+      PE     = Unorm*h/(2*kappa)
+      tau    = 1/tanh(PE) - 1/PE
+      Psihat = Psi[i] + h*tau/(2*Unorm) * (+ u(s)*Psi[i].dx(0) \
+                                           + v(s)*Psi[i].dx(1) )
+      
       # SURFACE BOUNDARY
       if i==0:
         R_T += Psi[i]*(T(i) - T_s)*dx
@@ -858,29 +858,25 @@ class EnergyHybrid(Energy):
     model  = self.model
 
     # SOLVE TEMPERATURE
-    solve(lhs(self.R_T) == rhs(self.R_T), self.T_,
+    solve(lhs(self.R_T) == rhs(self.R_T), model.T_,
           solver_parameters=self.solve_params['solver'],
           form_compiler_parameters=self.solve_params['ffc_params'],
           annotate=annotate)
-    model.assign_variable(model.T_, self.T_)
-    print_min_max(model.T_, 'T_')
+    print_min_max(model.T_, 'T_', cls=self)
 
     if self.transient:
-      model.T0_.assign(self.T_)
+      model.T0_.assign(model.T_)
 
     #  correct for pressure melting point :
     T_v                 = model.T_.vector().array()
     T_melt_v            = model.Tm.vector().array()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
-    model.assign_variable(model.T_, T_v)
+    model.assign_variable(model.T_, T_v, cls=self)
     
     out_T = model.T_.split(True)            # deepcopy avoids projections
     
-    model.assign_variable(model.Ts, out_T[0])
-    model.assign_variable(model.Tb, out_T[-1]) 
-
-    print_min_max(model.Ts, 'T_S')
-    print_min_max(model.Tb, 'T_B')
+    model.assign_variable(model.Ts, out_T[0],  cls=self)
+    model.assign_variable(model.Tb, out_T[-1], cls=self) 
 
   def calc_T_melt(self, annotate=True):
     """
@@ -894,10 +890,8 @@ class EnergyHybrid(Energy):
     T_melt  = project(self.Tm, annotate=annotate)
     
     Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
-    model.assign_variable(model.T_melt, Tb_m)
-    model.assign_variable(model.Tm,     T_melt)
-    print_min_max(model.T_melt, 'T_melt')
-    print_min_max(model.Tm,     'Tm')
+    model.assign_variable(model.T_melt, Tb_m,   cls=self)
+    model.assign_variable(model.Tm,     T_melt, cls=self)
     
   def solve_basal_melt_rate(self):
     """
@@ -928,8 +922,7 @@ class EnergyHybrid(Energy):
     nMb_v = nMb.vector().array()
     #nMb_v[nMb_v < 0.0]  = 0.0
     #nMb_v[nMb_v > 10.0] = 10.0
-    model.assign_variable(model.Mb, nMb_v)
-    print_min_max(model.Mb, 'Mb')
+    model.assign_variable(model.Mb, nMb_v, cls=self)
 
 
 class EnergyFirn(Energy):

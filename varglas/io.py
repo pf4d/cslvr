@@ -155,7 +155,7 @@ class DataInput(object):
     the grid used by the other dataInput object <do>.  The field is saved
     to <do>.data[<fo>].
     """
-    s = "::: interpolating %s's '%s' field to %s's grid as %s :::"
+    s = "::: interpolating %s's '%s' field to %s's grid with key '%s' :::"
     print_text(s % (self.name, fn, do.name, fo) , self.color)
     interp      = interp2d(self.x, self.y, self.data[fn])
     fo_v        = interp(do.x, do.y)

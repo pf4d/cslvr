@@ -732,6 +732,10 @@ class EnergyHybrid(Energy):
     
     self.T_   = Function(model.Z, name='T_')
     self.T0_  = Function(model.Z, name='T0_')
+    
+    #model.assign_variable(self.T0_, project(as_vector([T_s]*N_T), Z))
+    model.assign_variable(self.T0_, 263)
+    model.assign_variable(self.T_, 263)
 
     T  = VerticalFDBasis(self.T_,  deltax, coef, sigmas)
     T0 = VerticalFDBasis(self.T0_, deltax, coef, sigmas)

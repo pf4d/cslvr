@@ -31,9 +31,9 @@ class MomentumHybrid(Momentum):
     else:
       self.solve_params = solve_params
     
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q)
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q)
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q)
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q)
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
     
     # CONSTANTS
     year    = model.spy
@@ -57,7 +57,7 @@ class MomentumHybrid(Momentum):
     Bw      = 1.73e3*year # model.a0 ice hardness
     Qc      = 6e4
     Qw      = model.Q0    # ice act. energy
-    Rc      = model.R     # gas constant
+    R       = model.R     # gas constant
     
     # MOMENTUM
     U       = Function(model.HV, name='U')
@@ -102,7 +102,7 @@ class MomentumHybrid(Momentum):
       s = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       def A_v(T):
-        return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+        return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
     
     def epsilon_dot(s):
       return ( + (u.dx(s,0) + u.ds(s)*dsdx(s))**2 \

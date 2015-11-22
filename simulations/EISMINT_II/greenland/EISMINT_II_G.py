@@ -1,5 +1,8 @@
 from pylab    import *
 from varglas  import *
+from varglas.energy           import EnergyHybrid
+from varglas.mass             import MassHybrid
+from varglas.momentumhybrid   import MomentumHybrid
 from fenics   import *
 
 parameters['form_compiler']['quadrature_degree'] = 2
@@ -22,12 +25,20 @@ mesh  = Mesh('dump/meshes/greenland_2D_mesh.xml.gz')
 dsr   = DataInput(searise, mesh=mesh)
 dbm   = DataInput(bamber,  mesh=mesh)
 
+B  = dbm.data['B']
+Bm = B[B != -9999].min()
+
+dbm.set_data_min('B', boundary=Bm, val=Bm)
+
+# create a mask for the continent :
 M             = dbm.data['mask_orig']
 m1            = M == 1
 m2            = M == 2
 mask          = logical_or(m1,m2)
 dbm.data['M'] = mask
-  
+ 
+# interpolate from the dbm grid to the dsr grid and make areas of ocean very
+# high negative accumulation to simulate a `calving frount' :
 dbm.interpolate_to_di(dsr, fn='M', fo='M')
 dsr.data['adot'][dsr.data['M'] == 0] = -10.0
 
@@ -41,21 +52,33 @@ lon   = dsr.get_expression("lon",   near=False)
 model = D2Model(mesh, out_dir = 'dump/results/')
 
 model.init_B(B)
+model.init_S(model.B.vector() + thklim)
+model.init_mask(1.0)
 model.init_adot(adot)
 model.init_lat(lat)
 model.init_lon(lon)
 model.init_beta(1e9)
 model.init_H_bounds(thklim, 1e4)
+model.init_H_H0(thklim)
 model.init_q_geo(model.ghf)
-model.eps_reg = 1e-10
+model.init_b(model.A0(0)**(-1/model.n(0)))
+model.eps_reg = 1e-5
 
 #===============================================================================
 # initialize transient experiment physics :
 
 #bv  = BalanceVelocity(model, kappa=5.0)
 nrg = EnergyHybrid(model, transient=True)
-mom = MomentumHybrid(model, isothermal=False)
-mas = MassHybrid(model, thklim=1.0, isothermal=False)
+mom = MomentumHybrid(model, isothermal=True)
+mas = MassHybrid(model, isothermal=False)
+
+# initialize temperature from lapse rate :
+nrg.solve_surface_climate()
+#T0 = project(as_vector([model.T_surface]*model.N_T), model.Z)
+model.init_T_T0(260)
+
+model.save_xdmf(model.T_surface, 'T_surface')
+model.save_xdmf(model.S,         'S')
 
 def cb_ftn():
   #bv.solve(annotate=False)
@@ -66,6 +89,7 @@ def cb_ftn():
   model.save_xdmf(model.Mb, 'Mb')
   model.save_xdmf(model.Us, 'Us')
   #model.save_xdmf(model.beta, 'beta')
+  nrg.solve_surface_climate()
 
 model.transient_solve(mom, nrg, mas,
                       t_start=0.0, t_end=50000.0, time_step=100,

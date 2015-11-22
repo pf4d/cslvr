@@ -1231,7 +1231,7 @@ class Model(object):
          or isinstance(u, dolfin.functions.function.Function):
         u.vector()[:] = var
       elif  isinstance(u, Constant):
-        u.assign(var, annotate=annotate)
+        u.assign(var)
     
     elif isinstance(var, np.ndarray):
       if var.dtype != np.float64:
@@ -1377,9 +1377,9 @@ class Model(object):
     self.v             = v
     self.w             = w
     
-    self.assx          = FunctionAssigner(self.Q3.sub(0), self.Q)
-    self.assy          = FunctionAssigner(self.Q3.sub(1), self.Q)
-    self.assz          = FunctionAssigner(self.Q3.sub(2), self.Q)
+    self.assx          = FunctionAssigner(u.function_space(), self.Q)
+    self.assy          = FunctionAssigner(v.function_space(), self.Q)
+    self.assz          = FunctionAssigner(w.function_space(), self.Q)
 
     # momentum model :
     self.eta           = Function(self.Q, name='eta')
@@ -1551,12 +1551,12 @@ class Model(object):
 
       # start the timer :
       tic = time()
-
-      # solve energy :
-      energy.solve(annotate=annotate)
       
       # solve velocity :
       momentum.solve(annotate=annotate)
+
+      # solve energy :
+      energy.solve(annotate=annotate)
 
       # solve mass :
       mass.solve(annotate=annotate)

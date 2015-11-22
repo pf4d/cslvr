@@ -111,7 +111,7 @@ class D2Model(Model):
     s = "    - 2D function spaces created - "
     print_text(s, self.D2Model_color)
   
-  def init_T_T0_(self, T):
+  def init_T_T0(self, T):
     """
     """
     s = "::: initializing temperature :::"
@@ -121,7 +121,7 @@ class D2Model(Model):
     print_min_max(self.T_,  'T_')
     print_min_max(self.T0_, 'T0_')
     
-  def init_H(self, H):
+  def init_H_H0(self, H):
     """
     """
     s = "::: initializing thickness :::"

@@ -14,7 +14,7 @@ class Mass(Physics):
 
   def __new__(self, model, *args, **kwargs):
     """
-    Creates and returns a new Energy object.
+    Creates and returns a new Mass object.
     """
     instance = Physics.__new__(self, model)
     return instance
@@ -27,7 +27,7 @@ class Mass(Physics):
   
   def solve(self, annotate=True, params=None):
     """ 
-    Perform the Newton solve of the energy equation.
+    Solve the conservation of mass equation for a free-surface evolution.
     """
     raiseNotDefined()
 
@@ -158,7 +158,7 @@ class MassHybrid(Mass):
   """
   New 2D hybrid model.
   """
-  def __init__(self, model, solve_params=None, thklim=1.0, isothermal=True):
+  def __init__(self, model, solve_params=None, isothermal=True):
     """
     """
     s = "::: INITIALIZING HYBRID MASS-BALANCE PHYSICS :::"
@@ -253,7 +253,7 @@ class MassHybrid(Mass):
     # Jacobian :
     self.J_thick = derivative(self.R_thick, H, dH)
 
-    self.bc = []#DirichletBC(Q, thklim, 'on_boundary')
+    self.bc = []#NOTE ? DirichletBC(Q, thklim, 'on_boundary') ? maybe ?
     print_min_max(adot, 'adot')
 
   def get_solve_params(self):

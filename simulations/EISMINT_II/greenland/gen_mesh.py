@@ -42,8 +42,7 @@ y2 = dbm.y_max
 cont = array([[x1, y1],
               [x2, y1],
               [x2, y2],
-              [x1, y2],
-              [x1, y1]])
+              [x1, y2]])
 
 m.set_contour(cont)
 

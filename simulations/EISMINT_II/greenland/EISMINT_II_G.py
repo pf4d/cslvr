@@ -29,20 +29,13 @@ mask          = logical_or(m1,m2)
 dbm.data['M'] = mask
   
 dbm.interpolate_to_di(dsr, fn='M', fo='M')
-dsr.adot[dsr.data['M'] == 0] = -10.0
+dsr.data['adot'][dsr.data['M'] == 0] = -10.0
 
 # get the data :
 B     = dbm.get_expression("B",     near=False)
 adot  = dsr.get_expression("adot",  near=False)
 lat   = dsr.get_expression("lat",   near=False)
 lon   = dsr.get_expression("lon",   near=False)
-
-class Adot(Expression):
-  Rel = 450000
-  s   = 1e-5
-  def eval(self,values,x):
-    values[0] = min(0.5,self.s*(self.Rel-sqrt((x[0] - x0)**2 + (x[1] - y0)**2)))
-adot = Adot(element=model.Q.ufl_element())
 
 # create a 2D model :
 model = D2Model(mesh, out_dir = 'dump/results/')

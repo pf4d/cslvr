@@ -45,12 +45,7 @@ cont = array([[x1, y1],
               [x1, y2],
               [x1, y1]])
 
-#m.set_contour(cont)
-
-m.create_contour('B', zero_cntr=-5600, skip_pts=0)
-
-m.intersection(cont)
-m.eliminate_intersections(dist=200)
+m.set_contour(cont)
 
 #m.eliminate_intersections(dist=200)
 #m.transform_contour(rignot)
@@ -58,7 +53,7 @@ m.eliminate_intersections(dist=200)
 #import sys
 #sys.exit(0)
 m.write_gmsh_contour(boundary_extend=False)
-m.plot_contour()
+#m.plot_contour()
 m.close_file()
 
 

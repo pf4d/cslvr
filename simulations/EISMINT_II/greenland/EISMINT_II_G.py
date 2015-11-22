@@ -5,13 +5,12 @@ from varglas.mass             import MassHybrid
 from varglas.momentumhybrid   import MomentumHybrid
 from fenics   import *
 
-parameters['form_compiler']['quadrature_degree'] = 2
-parameters['form_compiler']['precision']         = 30
-parameters['form_compiler']['optimize']          = True
-parameters['form_compiler']['cpp_optimize']      = True
-parameters['form_compiler']['representation']    = 'quadrature'
+#parameters['form_compiler']['quadrature_degree'] = 2
+#parameters['form_compiler']['precision']         = 30
+#parameters['form_compiler']['optimize']          = True
+#parameters['form_compiler']['representation']    = 'quadrature'
 
-thklim = 10.0
+thklim = 1.0
 
 # collect the raw data :
 searise = DataFactory.get_searise(thklim)
@@ -25,17 +24,21 @@ mesh  = Mesh('dump/meshes/greenland_2D_mesh.xml.gz')
 dsr   = DataInput(searise, mesh=mesh)
 dbm   = DataInput(bamber,  mesh=mesh)
 
-B  = dbm.data['B']
-Bm = B[B != -9999].min()
-
-dbm.set_data_min('B', boundary=Bm, val=Bm)
-
 # create a mask for the continent :
 M             = dbm.data['mask_orig']
 m1            = M == 1
 m2            = M == 2
 mask          = logical_or(m1,m2)
 dbm.data['M'] = mask
+
+# enforce max depth in regions off continent :
+B  = dbm.data['Bo']
+Bm = logical_and(B < -500, mask != 1)
+dbm.data['Bo'][Bm] = -500
+
+#B  = dbm.data['Bo']
+#Bm = B[B != -9999].min()
+#dbm.set_data_min('Bo', boundary=Bm, val=Bm)
  
 # interpolate from the dbm grid to the dsr grid and make areas of ocean very
 # high negative accumulation to simulate a `calving frount' :
@@ -43,7 +46,7 @@ dbm.interpolate_to_di(dsr, fn='M', fo='M')
 dsr.data['adot'][dsr.data['M'] == 0] = -10.0
 
 # get the data :
-B     = dbm.get_expression("B",     near=False)
+B     = dbm.get_expression("Bo",    near=False)
 adot  = dsr.get_expression("adot",  near=False)
 lat   = dsr.get_expression("lat",   near=False)
 lon   = dsr.get_expression("lon",   near=False)

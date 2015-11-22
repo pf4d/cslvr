@@ -53,7 +53,7 @@ m.set_contour(cont)
 #import sys
 #sys.exit(0)
 m.write_gmsh_contour(boundary_extend=False)
-m.plot_contour()
+#m.plot_contour()
 m.close_file()
 
 

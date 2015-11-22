@@ -837,6 +837,8 @@ class DataFactory(object):
     needed_vars = {'topg'       : 'B',
                    'usrf'       : 'S',
                    'surftemp'   : 'T',
+                   'lat'        : 'lat',
+                   'lon'        : 'lon',
                    'smb'        : 'adot',
                    'bheatflx'   : 'q_geo',
                    'dhdt'       : 'dhdt',

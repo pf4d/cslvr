@@ -154,7 +154,7 @@ class FreeSurface(Mass):
     self.assign_variable(self.dSdt, q)
 
 
-class MassTransportHybrid(Mass):
+class MassHybrid(Mass):
   """
   New 2D hybrid model.
   """
@@ -165,7 +165,7 @@ class MassTransportHybrid(Mass):
     print_text(s, self.color())
     
     if type(model) != D2Model:
-      s = ">>> MassTransportHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
+      s = ">>> MassHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
     

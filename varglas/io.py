@@ -1,5 +1,5 @@
 from scipy.io          import loadmat, savemat
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, interp2d
 from pylab             import array, linspace, ones, isnan, all, zeros, \
                               ndarray, e, nan, float64
 from fenics            import interpolate, Expression, Function, \
@@ -148,6 +148,16 @@ class DataInput(object):
     coordinate pair using the DataInput object's current projection.
     """
     return self.proj(lon,lat)
+
+  def interpolate_to_di(self, do, fn, fo):
+    """
+    interpolate the field with name <fn> from this dataInput object to 
+    the grid used by the other dataInput object <do>.  The field is saved
+    to <do>.data[<fo>].
+    """
+    interp      = interp2d(self.x, self.y, self.data[fn])
+    fo_v        = interp(do.x, do.y)
+    do.data[fo] = fo_v
 
   def transform_xy(self, di):
     """

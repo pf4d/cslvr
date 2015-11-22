@@ -13,7 +13,7 @@ class MomentumHybrid(Momentum):
   """
   2D hybrid model.
   """
-  def __init__(self, model, solve_params=None, linear=False, isothermal=True):
+  def __init__(self, model, solve_params=None, isothermal=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.

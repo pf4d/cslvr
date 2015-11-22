@@ -577,6 +577,22 @@ class Model(object):
     print_text(s, self.model_color)
     self.assign_variable(self.time_step, dt)
     print_min_max(self.time_step, 'time_step')
+  
+  def init_lat(self, lat):
+    """
+    """
+    s = "::: initializing grid latitude :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.lat, lat)
+    print_min_max(self.lat, 'lat')
+  
+  def init_lon(self, lon):
+    """
+    """
+    s = "::: initializing grid longitude :::"
+    print_text(s, self.model_color)
+    self.assign_variable(self.lon, lon)
+    print_min_max(self.lon, 'lon')
 
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
@@ -1325,6 +1341,8 @@ class Model(object):
     self.x             = SpatialCoordinate(self.mesh)
     self.h             = CellSize(self.mesh)
     self.N             = FacetNormal(self.mesh)
+    self.lat           = Function(self.Q, name='lat')
+    self.lon           = Function(self.Q, name='lon')
 
     # time step :
     self.time_step = Constant(100.0)

@@ -45,13 +45,15 @@ class Energy(Physics):
     print_text(s, self.color())
     model = self.model
 
-    T_ma  = model.T_ma
-    T_w   = model.T_w
+    T_w   = model.T_w(0)
     S     = model.S.vector().array()
     lat   = model.lat.vector().array()
+    lon   = model.lon.vector().array()
+    
+    Tn    = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + T_w
     
     # Apply the lapse rate to the surface boundary condition
-    model.assign_variable(model.T_surface, T_ma(S, lat) + T_w)
+    model.init_T_surface(Tn)
   
   def solve(self, annotate=True, params=None):
     """ 

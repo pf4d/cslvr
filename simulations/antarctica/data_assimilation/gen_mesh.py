@@ -28,7 +28,7 @@ db2.set_data_val('S',    32767,        0.0)
 gradS = gradient(db2.data['S'])
 gS_n  = sqrt(gradS[0]**2 + gradS[1]**2 + 1e-16)
 
-# create interpolation object to convert measures to bedmap2 coordinates :
+# create interpolation object to convert bedmap2 to measures coordinates :
 interp = interp2d(db2.x, db2.y, gS_n)
 gS_n   = interp(dbm.x, dbm.y)
 interp = interp2d(db2.x, db2.y, db2.data['mask'])

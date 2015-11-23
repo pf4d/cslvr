@@ -418,7 +418,7 @@ class MeshGenerator(object):
     # union of our original polygon and convex hull
     p1 = cascaded_union(polygons)
     p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
-    p3 = cascaded_union([p1,P2])
+    p3 = cascaded_union([p1,p2])
 
     xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
     self.plot_coords["xycoords_buf"] = xycoords_buf

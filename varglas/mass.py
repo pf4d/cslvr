@@ -14,7 +14,7 @@ class Mass(Physics):
 
   def __new__(self, model, *args, **kwargs):
     """
-    Creates and returns a new Energy object.
+    Creates and returns a new Mass object.
     """
     instance = Physics.__new__(self, model)
     return instance
@@ -27,7 +27,7 @@ class Mass(Physics):
   
   def solve(self, annotate=True, params=None):
     """ 
-    Perform the Newton solve of the energy equation.
+    Solve the conservation of mass equation for a free-surface evolution.
     """
     raiseNotDefined()
 
@@ -154,18 +154,18 @@ class FreeSurface(Mass):
     self.assign_variable(self.dSdt, q)
 
 
-class MassTransportHybrid(Mass):
+class MassHybrid(Mass):
   """
   New 2D hybrid model.
   """
-  def __init__(self, model, solve_params=None, thklim=1.0, isothermal=True):
+  def __init__(self, model, solve_params=None, isothermal=True):
     """
     """
     s = "::: INITIALIZING HYBRID MASS-BALANCE PHYSICS :::"
     print_text(s, self.color())
     
     if type(model) != D2Model:
-      s = ">>> MassTransportHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
+      s = ">>> MassHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
     
@@ -253,8 +253,15 @@ class MassTransportHybrid(Mass):
     # Jacobian :
     self.J_thick = derivative(self.R_thick, H, dH)
 
-    self.bc = []#DirichletBC(Q, thklim, 'on_boundary')
-    print_min_max(adot, 'adot')
+    self.bc = []#NOTE ? DirichletBC(Q, thklim, 'on_boundary') ? maybe ?
+   
+    # create solver for the problem : 
+    problem = NonlinearVariationalProblem(self.R_thick, model.H, 
+                J=self.J_thick, bcs=self.bc,
+                form_compiler_parameters=self.solve_params['ffc_params'])
+    problem.set_bounds(model.H_min, model.H_max)
+    self.solver = NonlinearVariationalSolver(problem)
+    self.solver.parameters.update(self.solve_params['solver'])
 
   def get_solve_params(self):
     """
@@ -309,8 +316,8 @@ class MassTransportHybrid(Mass):
           form_compiler_parameters=params['ffc_params'],
           annotate=annotate)
 
-    print_min_max(model.ubar_c, 'ubar_c')
-    print_min_max(model.vbar_c, 'vbar_c')
+    print_min_max(model.ubar_c, 'ubar_c', cls=self)
+    print_min_max(model.vbar_c, 'vbar_c', cls=self)
 
     # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
     meth   = params['solver']['snes_solver']['method']
@@ -320,17 +327,17 @@ class MassTransportHybrid(Mass):
     print_text(s % (meth, maxit), self.color())
    
     # define variational solver for the mass problem :
-    p = NonlinearVariationalProblem(self.R_thick, model.H, J=self.J_thick,
-          bcs=self.bc, form_compiler_parameters=params['ffc_params'])
-    p.set_bounds(model.H_min, model.H_max)
-    s = NonlinearVariationalSolver(p)
-    s.parameters.update(params['solver'])
-    s.solve(annotate=annotate)
+    #p = NonlinearVariationalProblem(self.R_thick, model.H, J=self.J_thick,
+    #      bcs=self.bc, form_compiler_parameters=params['ffc_params'])
+    #p.set_bounds(model.H_min, model.H_max)
+    #s = NonlinearVariationalSolver(p)
+    #s.parameters.update(params['solver'])
+    out = self.solver.solve(annotate=annotate)
     
-    print_min_max(model.H, 'H')
+    print_min_max(model.H, 'H', cls=self)
     
     # update previous time step's H :
-    model.assign_variable(model.H0, model.H)
+    model.assign_variable(model.H0, model.H, cls=self)
     
     # update the surface :
     s    = "::: updating surface :::"
@@ -338,8 +345,9 @@ class MassTransportHybrid(Mass):
     B_v = model.B.vector().array()
     H_v = model.H.vector().array()
     S_v = B_v + H_v
-    model.assign_variable(model.S, S_v)
-    print_min_max(model.S, 'S')
+    model.assign_variable(model.S, S_v, cls=self)
+
+    return out
 
 
 class FirnMass(Mass):

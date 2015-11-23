@@ -1,5 +1,5 @@
 from scipy.io          import loadmat, savemat
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, interp2d
 from pylab             import array, linspace, ones, isnan, all, zeros, \
                               ndarray, e, nan, float64
 from fenics            import interpolate, Expression, Function, \
@@ -148,6 +148,18 @@ class DataInput(object):
     coordinate pair using the DataInput object's current projection.
     """
     return self.proj(lon,lat)
+
+  def interpolate_to_di(self, do, fn, fo):
+    """
+    interpolate the field with name <fn> from this dataInput object to 
+    the grid used by the other dataInput object <do>.  The field is saved
+    to <do>.data[<fo>].
+    """
+    s = "::: interpolating %s's '%s' field to %s's grid with key '%s' :::"
+    print_text(s % (self.name, fn, do.name, fo) , self.color)
+    interp      = interp2d(self.x, self.y, self.data[fn])
+    fo_v        = interp(do.x, do.y)
+    do.data[fo] = fo_v
 
   def transform_xy(self, di):
     """
@@ -516,10 +528,12 @@ class DataOutput(object):
                       'projection'        : di.proj.srs})
 
 
-def print_min_max(u, title, color='97'):
+def print_min_max(u, title, color='97', cls=None):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
+  if cls is not None:
+    color = cls.color()
   if isinstance(u, GenericVector):
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())
@@ -550,10 +564,12 @@ def print_min_max(u, title, color='97'):
     print_text(er, 'red', 1)
 
 
-def get_text(text, color='white', atrb=0):
+def get_text(text, color='white', atrb=0, cls=None):
   """
   Returns text <text> from calling class <cl> for later printing.
   """
+  if cls is not None:
+    color = cls.color()
   if MPI.rank(mpi_comm_world())==0:
     if atrb != 0:
       text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))
@@ -562,10 +578,12 @@ def get_text(text, color='white', atrb=0):
     return text
 
 
-def print_text(text, color='white', atrb=0):
+def print_text(text, color='white', atrb=0, cls=None):
   """
   Print text <text> from calling class <cl> to the screen.
   """
+  if cls is not None:
+    color = cls.color()
   if MPI.rank(mpi_comm_world())==0:
     if atrb != 0:
       text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))

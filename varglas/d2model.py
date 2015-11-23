@@ -14,20 +14,21 @@ class D2Model(Model):
     """
     Create and instance of a 2D model.
     """
-    self.D2Model_color = '150'
-    
     s = "::: INITIALIZING 2D MODEL :::"
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
     
     Model.__init__(self, mesh, out_dir, save_state, state, 
                    use_periodic, **gfs_kwargs)
+  
+  def color(self):
+    return '150'
 
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
     """
     s = "    - using 2D periodic boundaries -"
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
 
     xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
     xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
@@ -77,7 +78,7 @@ class D2Model(Model):
     super(D2Model, self).set_mesh(mesh)
     
     s = "::: setting 2D mesh :::"
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
     
     if self.dim != 2:
       s = ">>> 2D MODEL REQUIRES A 2D MESH, EXITING <<<"
@@ -89,7 +90,7 @@ class D2Model(Model):
       self.dof        = self.mesh.size_global(0)
     s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
         % (self.dim, self.num_cells, self.num_facets, self.dof)
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
 
   def generate_function_spaces(self, use_periodic=False, **kwargs):
     """
@@ -103,43 +104,44 @@ class D2Model(Model):
     self.N_T      = kwargs.get('N_T',      8)
 
     s = "::: generating 2D function spaces :::"
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
     
     self.HV     = MixedFunctionSpace([self.Q]*2*self.poly_deg) # VELOCITY
     self.Z      = MixedFunctionSpace([self.Q]*self.N_T)        # TEMPERATURE
     
     s = "    - 2D function spaces created - "
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
   
-  def init_T_T0_(self, T):
+  def init_T_T0(self, T, cls=None):
     """
     """
-    s = "::: initializing temperature :::"
-    print_text(s, self.D2Model_color)
-    self.assign_variable(self.T_,  T)
-    self.assign_variable(self.T0_, T)
-    print_min_max(self.T_,  'T_')
-    print_min_max(self.T0_, 'T0_')
+    if cls is None:
+      cls = self
+    s = "::: initializing temperature in model.Q space to model.Z space :::"
+    print_text(s, cls=cls)
+    T = project(as_vector([T]*self.N_T), self.Z)
+    self.assign_variable(self.T_,  T, cls=cls)
+    self.assign_variable(self.T0_, T, cls=cls)
     
-  def init_H(self, H):
+  def init_H_H0(self, H, cls=None):
     """
     """
+    if cls is None:
+      cls = self
     s = "::: initializing thickness :::"
-    print_text(s, self.D2Model_color)
-    self.assign_variable(self.H,  H)
-    self.assign_variable(self.H0, H)
-    print_min_max(self.H,  'H')
-    print_min_max(self.H0, 'H0')
+    print_text(s, cls=cls)
+    self.assign_variable(self.H,  H, cls=cls)
+    self.assign_variable(self.H0, H, cls=cls)
 
-  def init_H_bounds(self, H_min, H_max):
+  def init_H_bounds(self, H_min, H_max, cls=None):
     """
     """
+    if cls is None:
+      cls = self
     s = "::: initializing bounds on thickness :::"
-    print_text(s, self.D2Model_color)
-    self.assign_variable(self.H_min, H_min)
-    self.assign_variable(self.H_max, H_max)
-    print_min_max(self.H_min, 'H_min')
-    print_min_max(self.H_max, 'H_max')
+    print_text(s, cls=cls)
+    self.assign_variable(self.H_min, H_min, cls=cls)
+    self.assign_variable(self.H_max, H_max, cls=cls)
 
   def initialize_variables(self):
     """
@@ -149,7 +151,7 @@ class D2Model(Model):
     super(D2Model, self).initialize_variables()
 
     s = "::: initializing 2D variables :::"
-    print_text(s, self.D2Model_color)
+    print_text(s, cls=self)
     
     # hybrid mass-balance :
     self.H             = Function(self.Q, name='H')

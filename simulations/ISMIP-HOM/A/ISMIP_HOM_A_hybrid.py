@@ -8,8 +8,7 @@ p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)
 mesh  = RectangleMesh(p1, p2, 25, 25)
 
-model = D2Model(out_dir = './results_hybrid/')
-model.set_mesh(mesh)
+model = D2Model(mesh, out_dir = './results_hybrid/')
 model.generate_function_spaces(use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
@@ -23,12 +22,11 @@ model.init_B(bed)
 model.init_mask(1.0)  # all grounded
 model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
-model.init_E(1.0)
 
 mom = MomentumHybrid(model, isothermal=True)
 mom.solve()
 
-model.save_pvd(model.U3, 'U')
+model.save_xdmf(model.U3, 'U')
 
 
 

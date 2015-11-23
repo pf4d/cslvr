@@ -64,7 +64,7 @@ model.init_beta(1e9)
 model.init_H_bounds(thklim, 1e4)
 model.init_H_H0(thklim)
 model.init_q_geo(model.ghf)
-#model.assign_variable(model.eps_reg, 1e-5)
+model.assign_variable(model.eps_reg, 1e-5)
 
 #===============================================================================
 # initialize transient experiment physics :
@@ -93,7 +93,7 @@ def cb_ftn():
   nrg.solve_surface_climate()
 
 model.transient_solve(mom, nrg, mas,
-                      t_start=0.0, t_end=35000.0, time_step=1.0,
+                      t_start=0.0, t_end=35000.0, time_step=10.0,
                       adaptive=True, annotate=False, callback=cb_ftn)
 
 

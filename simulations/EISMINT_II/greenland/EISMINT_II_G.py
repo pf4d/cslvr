@@ -36,6 +36,12 @@ B  = dbm.data['Bo']
 Bm = logical_and(B < -500, mask != 1)
 dbm.data['Bo'][Bm] = -500
 
+# create bounds on thickness :
+Hmax = ones(np.shape(mask))
+Hmax[mask == 1]  = 1e4
+Hmax[mask == 0]  = 1e2
+dbm.data['Hmax'] = Hmax
+
 #B  = dbm.data['Bo']
 #Bm = B[B != -9999].min()
 #dbm.set_data_min('Bo', boundary=Bm, val=Bm)
@@ -43,13 +49,14 @@ dbm.data['Bo'][Bm] = -500
 # interpolate from the dbm grid to the dsr grid and make areas of ocean very
 # high negative accumulation to simulate a `calving frount' :
 dbm.interpolate_to_di(dsr, fn='M', fo='M')
-dsr.data['adot'][dsr.data['M'] == 0] = -10.0
+dsr.data['adot'][dsr.data['M'] == 0] = -5.0
 
 # get the data :
 B     = dbm.get_expression("Bo",    near=False)
 adot  = dsr.get_expression("adot",  near=False)
 lat   = dsr.get_expression("lat",   near=False)
 lon   = dsr.get_expression("lon",   near=False)
+Hmax  = dbm.get_expression("Hmax",  near=True)
 
 # create a 2D model :
 model = D2Model(mesh, out_dir = 'dump/results/')
@@ -61,7 +68,7 @@ model.init_adot(adot)
 model.init_lat(lat)
 model.init_lon(lon)
 model.init_beta(1e9)
-model.init_H_bounds(thklim, 1e4)
+model.init_H_bounds(thklim, Hmax)
 model.init_H_H0(thklim)
 model.init_q_geo(model.ghf)
 model.assign_variable(model.eps_reg, 1e-5)

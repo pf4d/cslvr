@@ -404,6 +404,26 @@ class MeshGenerator(object):
     s    = "::: intersection contour created, length %s nodes :::"
     print_text(s % shape(self.longest_cont)[0], self.color)
 
+  def extend_edge(self, r):
+    """
+    Extends a 2d contour out from points labeled in self.edge by a distance
+    <r> (radius) in all directions.
+    """
+    xycoords = self.longest_cont
+
+    polygons = []
+    for i, v in enumerate(xycoords):
+      polygons.append(shapelyPoint(v[0],v[1]).buffer(r))
+
+    # union of our original polygon and convex hull
+    p1 = cascaded_union(polygons)
+    p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+    p3 = cascaded_union([p1,P2])
+
+    xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+    self.plot_coords["xycoords_buf"] = xycoords_buf
+    self.longest_cont = xycoords_buf
+
   def convert_msh_to_xml(self, mshfile, xmlfile):
     """
     convert <mshfile> .msh file to .xml file <xmlfile> via dolfin-convert.

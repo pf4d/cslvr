@@ -34,25 +34,27 @@ dbm.data['ref'][mask == 0] = 100000.0
 # generate the contour :
 m = MeshGenerator(dbm, mesh_name, out_dir)
 
-x1 = dbm.x_min
-x2 = dbm.x_max
-y1 = dbm.y_min
-y2 = dbm.y_max
+#x1 = dbm.x_min
+#x2 = dbm.x_max
+#y1 = dbm.y_min
+#y2 = dbm.y_max
+#
+#cont = array([[x1, y1],
+#              [x2, y1],
+#              [x2, y2],
+#              [x1, y2]])
+#
+#m.set_contour(cont)
 
-cont = array([[x1, y1],
-              [x2, y1],
-              [x2, y2],
-              [x1, y2]])
-
-m.set_contour(cont)
-
-#m.eliminate_intersections(dist=200)
+m.create_contour('M', zero_cntr=0.999, skip_pts=50)
+#m.plot_contour()
+m.extend_edge(100000)
+m.eliminate_intersections(dist=200)
 #m.transform_contour(rignot)
 #m.check_dist()
 #import sys
 #sys.exit(0)
 m.write_gmsh_contour(boundary_extend=False)
-#m.plot_contour()
 m.close_file()
 
 

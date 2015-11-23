@@ -75,6 +75,9 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 
 # solve the momentum, with annotation for dolfin-adjoint :
 mom.solve(annotate=True)
+model.save_xdmf(model.U3, 'U3')
+model.save_xdmf(model.u_ob, 'u_ob')
+model.save_xdmf(model.v_ob, 'v_ob')
 
 # form the cost functional :
 J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid', 
@@ -85,7 +88,7 @@ J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid',
 #R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
 #                     alpha=1.0)
 R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
-                     alpha=1e-10)
+                     alpha=1e-1)
 
 # define the objective functional to minimize :
 I = J + R
@@ -114,6 +117,7 @@ def deriv_cb(I, dI, beta):
   #  model.assign_submesh_variable(beta_b, beta)
   #  #model.save_xdmf(beta_b, 'beta_control', f_file=beta_f, t=i)
   #i += 1
+  model.assign_submesh_variable(beta_b, beta)
   model.save_xdmf(beta_b, 'beta_control')
 
 # hessian of objective function callback function (not used) :
@@ -123,7 +127,7 @@ def hessian_cb(I, ddI, beta):
 # define the control parameter :
 m = FunctionControl('beta')
 
-# create the reduced functional for to minimize :
+# create the reduced functional to minimize :
 F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post = deriv_cb,
                       hessian_cb = hessian_cb)

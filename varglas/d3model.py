@@ -24,19 +24,20 @@ class D3Model(Model):
     """
     Create and instance of a 3D model.
     """
-    self.D3Model_color = '130'
-    
     s = "::: INITIALIZING 3D MODEL :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     Model.__init__(self, mesh, out_dir, save_state, state, use_periodic)
+  
+  def color(self):
+    return '130'
 
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
     """
     s = "    - using 3D periodic boundaries -"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
     xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
@@ -90,7 +91,7 @@ class D3Model(Model):
     super(D3Model, self).set_mesh(mesh)
     
     s = "::: setting 3D mesh :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     self.mesh.init(1,2)
     if self.dim != 3:
@@ -103,7 +104,7 @@ class D3Model(Model):
       self.dof        = self.mesh.size_global(0)
     s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
         % (self.dim, self.num_cells, self.num_facets, self.dof)
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
   
   def set_flat_mesh(self, flat_mesh):
     """
@@ -112,7 +113,7 @@ class D3Model(Model):
     :param flat_mesh : Dolfin mesh to be written
     """
     s = "::: setting 3D mesh :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     self.flat_mesh = flat_mesh
     self.flat_dim  = self.flat_mesh.ufl_cell().topological_dimension()
@@ -129,7 +130,7 @@ class D3Model(Model):
     super(D3Model, self).generate_function_spaces(use_periodic)
 
     s = "::: generating 3D function spaces :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     ## mini elements :
     #self.Bub    = FunctionSpace(self.mesh, "B", 4, 
@@ -144,7 +145,7 @@ class D3Model(Model):
     #self.MV     = V * self.Q
     
     s = "    - 3D function spaces created - "
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
   def generate_stokes_function_spaces(self, kind='mini'):
     """
@@ -155,7 +156,7 @@ class D3Model(Model):
     If <kind> == 'th',   use Taylor-Hood elements.
     """
     s = "::: generating Stokes function spaces :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
         
     # mini elements :
     if kind == 'mini':
@@ -180,7 +181,7 @@ class D3Model(Model):
       sys.exit(1)
 
     s = "    - Stokes function spaces created - "
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
   def calculate_boundaries(self, mask=None, lat_mask=None, adot=None,
                            U_mask=None, mark_divide=False):
@@ -188,7 +189,7 @@ class D3Model(Model):
     Determines the boundaries of the current model mesh
     """
     s = "::: calculating boundaries :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     if lat_mask == None and mark_divide:
       s = ">>> IF PARAMETER <mark_divide> OF calculate_boundaries() IS " + \
@@ -221,7 +222,7 @@ class D3Model(Model):
 
     if mark_divide:
       s = "    - marking the interior facets for incomplete meshes -"
-      print_text(s, self.D3Model_color)
+      print_text(s, cls=self)
       self.init_lat_mask(lat_mask)
     
     tol = 1e-6
@@ -239,7 +240,7 @@ class D3Model(Model):
     #
     #   1 = high slope, upward facing ................ positive adot
     s = "    - iterating through %i facets - " % self.num_facets
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     for f in facets(self.mesh):
       n        = f.normal()
       x_m      = f.midpoint().x()
@@ -288,10 +289,10 @@ class D3Model(Model):
             self.ff[f] = 10
     
     s = "    - done - "
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     s = "    - iterating through %i cells - " % self.num_cells
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     for c in cells(self.mesh):
       x_m     = c.midpoint().x()
       y_m     = c.midpoint().y()
@@ -304,7 +305,7 @@ class D3Model(Model):
         self.cf[c] = 0
     
     s = "    - done - "
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     self.ds      = Measure('ds')[self.ff]
     self.dx      = Measure('dx')[self.cf]
@@ -331,15 +332,15 @@ class D3Model(Model):
 
     if self.save_state:
       s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(self.ff,     'ff')
 
       s = "::: writing 'ff_acc' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(self.ff_acc, 'ff_acc')
 
       s = "::: writing 'cf' CellFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(self.cf,     'cf')
     
   def calculate_flat_mesh_boundaries(self, mask=None, adot=None,
@@ -348,7 +349,7 @@ class D3Model(Model):
     Determines the boundaries of the current model mesh
     """
     s = "::: calculating flat_mesh boundaries :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
                                 constrained_domain=self.pBC)
@@ -367,7 +368,7 @@ class D3Model(Model):
     tol = 1e-6
     
     s = "    - iterating through %i facets of flat_mesh - " % self.num_facets
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     for f in facets(self.flat_mesh):
       n       = f.normal()
       x_m     = f.midpoint().x()
@@ -397,7 +398,7 @@ class D3Model(Model):
           self.ff_flat[f] = 4
     
     s = "    - done - "
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     self.ds_flat = Measure('ds')[self.ff_flat]
   
@@ -407,7 +408,7 @@ class D3Model(Model):
     to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
     """
     s = "::: setting 3D subdomains :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     self.ff     = ff
     self.cf     = cf
@@ -438,7 +439,7 @@ class D3Model(Model):
     MeshFunctions saved in an .h5 file <f>.
     """
     s = "::: setting 3D subdomains :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     self.ff     = MeshFunction('size_t', self.mesh)
     self.cf     = MeshFunction('size_t', self.mesh)
@@ -476,7 +477,7 @@ class D3Model(Model):
     surface <S> and bed <B>.
     """
     s = "::: deforming mesh to geometry :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     self.init_S(S)
     self.init_B(B)
@@ -489,18 +490,18 @@ class D3Model(Model):
     mesh_height = max_height - min_height
     
     s = "    - iterating through %i vertices - " % self.dof
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     for x in self.mesh.coordinates():
       x[2] = (x[2] / mesh_height) * ( + S(x[0],x[1],x[2]) \
                                       - B(x[0],x[1],x[2]) )
       x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     
     if self.save_state:
       s = "::: writing 'mesh' to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(self.mesh, 'mesh')
 
   def get_surface_mesh(self):
@@ -508,7 +509,7 @@ class D3Model(Model):
     Returns the surface of the mesh for this model instance.
     """
     s = "::: extracting surface mesh :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
@@ -519,7 +520,7 @@ class D3Model(Model):
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
       s = "::: writing 'srfmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(submesh, 'srfmesh')
     return submesh
 
@@ -528,7 +529,7 @@ class D3Model(Model):
     Returns the bed of the mesh for this model instance.
     """
     s = "::: extracting bed mesh :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
@@ -539,7 +540,7 @@ class D3Model(Model):
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
       s = "::: writing 'bedmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(submesh, 'bedmesh')
     return submesh
 
@@ -548,7 +549,7 @@ class D3Model(Model):
     Returns the bed of the mesh for this model instance.
     """
     s = "::: extracting bed mesh :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
@@ -559,7 +560,7 @@ class D3Model(Model):
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
       s = "::: writing 'bedmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      print_text(s % self.out_dir, cls=self)
       self.state.write(submesh, 'bedmesh')
     return submesh
       
@@ -569,9 +570,9 @@ class D3Model(Model):
     surface to the actual thickness at the bed.
     """
     s = "::: calculating z-varying thickness :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     H = project(self.S - self.x[2], self.Q, annotate=False)
-    print_min_max(H, 'H')
+    print_min_max(H, 'H', cls=self)
     return H
   
   def vert_extrude(self, u, d='up', Q='self'):
@@ -589,7 +590,7 @@ class D3Model(Model):
     and solving.  
     """
     s = "::: extruding function :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     if type(Q) != FunctionSpace:
       Q  = self.Q
     ff   = self.ff
@@ -609,8 +610,8 @@ class D3Model(Model):
     name = '%s extruded %s' % (u.name(), d)
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'function to be extruded')
-    print_min_max(v, 'extruded function')
+    print_min_max(u, 'function to be extruded', cls=self)
+    print_min_max(v, 'extruded function', cls=self)
     return v
   
   def vert_integrate(self, u, d='up', Q='self'):
@@ -618,7 +619,7 @@ class D3Model(Model):
     Integrate <u> from the bed to the surface.
     """
     s = "::: vertically integrating function :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     if type(Q) != FunctionSpace:
       Q = self.Q
@@ -640,7 +641,7 @@ class D3Model(Model):
     name   = '%s integrated %s' % (u.name(), d) 
     v      = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'vertically integrated function')
+    print_min_max(u, 'vertically integrated function', cls=self)
     return v
 
   def calc_vert_average(self, u):
@@ -653,9 +654,9 @@ class D3Model(Model):
     H    = self.S - self.B
     uhat = self.vert_integrate(u, d='up')
     s = "::: calculating vertical average :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
     ubar = project(uhat/H, self.Q, annotate=False)
-    print_min_max(ubar, 'ubar')
+    print_min_max(ubar, 'ubar', cls=self)
     name = "vertical average of %s" % u.name()
     ubar.rename(name, '')
     ubar = self.vert_extrude(ubar, d='down')
@@ -732,7 +733,7 @@ class D3Model(Model):
     super(D3Model, self).initialize_variables()
 
     s = "::: initializing 3D variables :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     # Depth below sea level :
     class Depth(Expression):

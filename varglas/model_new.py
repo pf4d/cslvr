@@ -1377,7 +1377,7 @@ class Model(object):
       cls = self.this
     # solve for vertical velocity :
     s  = "::: solving hydrostatic pressure :::"
-    print_text(s, cls=self.this)
+    print_text(s, cls=cls)
     rhoi   = self.rhoi
     g      = self.g
     S      = self.S

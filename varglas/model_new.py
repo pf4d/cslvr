@@ -1283,7 +1283,7 @@ class Model(object):
       print_text(s, self.model_color)
       File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
-  def save_xdmf(self, var, name, f_file=None):
+  def save_xdmf(self, var, name, f_file=None, t=0.0):
     """
     Save a <name>.xdmf file of the FEniCS Function <var> to this model's log 
     directory specified by model.out_dir.  If <f_file> is a File object, save 
@@ -1292,7 +1292,7 @@ class Model(object):
     if f_file != None:
       s       = "::: saving %s.xdmf file :::" % name
       print_text(s, self.model_color)
-      f_file << var
+      f_file << (var, float(t))
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
       print_text(s, self.model_color)

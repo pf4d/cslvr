@@ -12,7 +12,7 @@ class BalanceVelocity(Physics):
     """
     """ 
     s    = "::: INITIALIZING VELOCITY-BALANCE PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     if type(model) != D2Model:
       s = ">>> BalanceVelocity REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
@@ -81,55 +81,50 @@ class BalanceVelocity(Physics):
     model = self.model
     
     s    = "::: solving BalanceVelocity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     s    = "::: calculating surface gradient :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     dSdx   = project(model.S.dx(0), model.Q, annotate=annotate)
     dSdy   = project(model.S.dx(1), model.Q, annotate=annotate)
-    model.assign_variable(model.dSdx, dSdx)
-    model.assign_variable(model.dSdy, dSdy)
-    print_min_max(model.dSdx, 'dSdx')
-    print_min_max(model.dSdy, 'dSdy')
+    model.assign_variable(model.dSdx, dSdx, cls=self)
+    model.assign_variable(model.dSdy, dSdy, cls=self)
     
     # update velocity direction from driving stress :
     s    = "::: solving for smoothed x-component of driving stress " + \
            "with kappa = %f :::" % self.kappa
-    print_text(s, self.color())
+    print_text(s, cls=self)
     solve(self.a_dSdx == self.L_dSdx, model.Nx, annotate=annotate)
-    print_min_max(model.Nx, 'Nx')
+    print_min_max(model.Nx, 'Nx', cls=self)
     
     s    = "::: solving for smoothed y-component of driving stress :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     solve(self.a_dSdy == self.L_dSdy, model.Ny, annotate=annotate)
-    print_min_max(model.Ny, 'Ny')
+    print_min_max(model.Ny, 'Ny', cls=self)
     
     # normalize the direction vector :
     s    =   "::: calculating normalized velocity direction" \
            + " from driving stress :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     d_x_v = model.Nx.vector().array()
     d_y_v = model.Ny.vector().array()
     d_n_v = np.sqrt(d_x_v**2 + d_y_v**2 + 1e-16)
-    model.assign_variable(model.d_x, -d_x_v / d_n_v)
-    model.assign_variable(model.d_y, -d_y_v / d_n_v)
-    print_min_max(model.d_x, 'd_x')
-    print_min_max(model.d_y, 'd_y')
+    model.assign_variable(model.d_x, -d_x_v / d_n_v, cls=self)
+    model.assign_variable(model.d_y, -d_y_v / d_n_v, cls=self)
     
     # calculate balance-velocity :
     s    = "::: solving velocity balance magnitude :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     solve(self.B == self.a, model.Ubar, annotate=annotate)
-    print_min_max(model.Ubar, 'Ubar')
+    print_min_max(model.Ubar, 'Ubar', cls=self)
     
     # enforce positivity of balance-velocity :
     s    = "::: removing negative values of balance velocity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     Ubar_v = model.Ubar.vector().array()
     Ubar_v[Ubar_v < 0] = 0
-    model.assign_variable(model.Ubar, Ubar_v)
-    print_min_max(model.Ubar, 'Ubar')
+    model.assign_variable(model.Ubar, Ubar_v, cls=self)
 
 
 

@@ -75,9 +75,6 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 
 # solve the momentum, with annotation for dolfin-adjoint :
 mom.solve(annotate=True)
-model.save_xdmf(model.U3, 'U3')
-model.save_xdmf(model.u_ob, 'u_ob')
-model.save_xdmf(model.v_ob, 'v_ob')
 
 # form the cost functional :
 J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid', 
@@ -87,7 +84,7 @@ J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid',
 # form the regularization functional :
 #R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
 #                     alpha=1.0)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_f, kind='Tikhonov', 
                      alpha=1e-1)
 
 # define the objective functional to minimize :

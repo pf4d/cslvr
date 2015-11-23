@@ -78,9 +78,19 @@ class MeshGenerator(object):
       ind += 1
 
     # remove skip points and last point to avoid overlap :
-    longest_cont      = cl[amax_ind]
-    self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
+    self.longest_cont = cl[amax_ind]
     s    = "::: contour created, length %s nodes :::"
+    print_text(s % shape(self.longest_cont)[0], self.color)
+    self.remove_skip_points(skip_pts)
+
+  def remove_skip_points(self, skip_pts):
+    """
+    remove every other <skip_pts> node from the contour.
+    """
+    # remove skip points and last point to avoid overlap :
+    longest_cont      = self.longest_cont
+    self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
+    s    = "::: contour points skipped, new length %s nodes :::"
     print_text(s % shape(self.longest_cont)[0], self.color)
 
   def transform_contour(self, di):
@@ -417,11 +427,9 @@ class MeshGenerator(object):
 
     # union of our original polygon and convex hull
     p1 = cascaded_union(polygons)
-    p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
-    p3 = cascaded_union([p1,p2])
+    p3 = cascaded_union(p1)
 
     xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
-    self.plot_coords["xycoords_buf"] = xycoords_buf
     self.longest_cont = xycoords_buf
 
   def convert_msh_to_xml(self, mshfile, xmlfile):

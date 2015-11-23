@@ -27,7 +27,7 @@ dbm.data['M'] = mask
 # form field from which to refine :
 dbm.data['ref'] = mask.astype('i')
 dbm.data['ref'][mask == 1] = 10000.0
-dbm.data['ref'][mask == 0] = 100000.0
+dbm.data['ref'][mask == 0] = 10000.0
 
 
 #===============================================================================
@@ -47,8 +47,9 @@ m = MeshGenerator(dbm, mesh_name, out_dir)
 #m.set_contour(cont)
 
 m.create_contour('M', zero_cntr=0.999, skip_pts=50)
-#m.plot_contour()
-m.extend_edge(100000)
+m.extend_edge(200000)
+m.remove_skip_points(10)
+m.plot_contour()
 m.eliminate_intersections(dist=200)
 #m.transform_contour(rignot)
 #m.check_dist()

@@ -469,8 +469,8 @@ class Enthalpy(Energy):
     
     #theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
     #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-    theta_L = + (q_geo + q_fric) * psi * dBed_g \
-              + rho * theta_s * dot(U, N) * psi * dLat_d \
+    theta_L = + q_geo * psi * dBed_g \
+    #          + rho * theta_s * dot(U, N) * psi * dLat_d \
     #          + rho * theta_s * u_s * N[0] * psi * dLat_d \
     #          + rho * theta_s * v_s * N[1] * psi * dLat_d \
     #          - rho * u_s * theta_s.dx(0) * psi * dx \

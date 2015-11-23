@@ -252,7 +252,7 @@ class Model(object):
     s = "::: initializing internal energy approximation :::"
     print_text(s, self.model_color)
     self.assign_variable(self.theta_app, theta_app)
-    print_min_max(self.theta_app, 'theta')
+    print_min_max(self.theta_app, 'theta_app')
   
   def init_theta_surface(self, theta_surface):
     """

@@ -42,7 +42,7 @@ class Energy(Physics):
     saves to model.T_surface.
     """
     s    = "::: solving surface climate :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     model = self.model
 
     T_w   = model.T_w(0)
@@ -74,7 +74,7 @@ class Enthalpy(Energy):
     self.transient = transient
 
     s    = "::: INITIALIZING ENTHALPY PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D3Model:
       s = ">>> Enthalpy REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
@@ -164,12 +164,12 @@ class Enthalpy(Energy):
    
     # Surface boundary condition :
     s = "::: calculating energy boundary conditions :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     # initialize the boundary conditions :
-    model.init_theta_surface(theta_s)
-    model.init_theta_app(theta_s)
-    model.init_theta_float(theta_f)
+    model.init_theta_surface(theta_s, cls=self)
+    model.init_theta_app(theta_s, cls=self)
+    model.init_theta_float(theta_f, cls=self)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -203,7 +203,7 @@ class Enthalpy(Energy):
     # configure the module to run in steady state :
     if not transient:
       s = "    - using steady-state formulation -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*spy*k/(rho*c))
@@ -243,7 +243,7 @@ class Enthalpy(Energy):
     # configure the module to run in transient mode :
     else:
       s = "    - using transient formulation -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       dt      = model.time_step
 
       # Skewed test function.  Note that vertical velocity has 
@@ -289,7 +289,7 @@ class Enthalpy(Energy):
     # apply lateral ``divide'' boundaries if desired : 
     if use_lat_bc:
       s = "    - using divide-lateral boundary conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       self.theta_bc.append( DirichletBC(Q, model.theta_app,
                                         model.ff, model.GAMMA_D) )
     
@@ -364,7 +364,7 @@ class Enthalpy(Energy):
     Calculates pressure-melting point in model.T_melt.
     """
     s    = "::: calculating pressure-melting temperature :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     model = self.model
 
@@ -381,13 +381,11 @@ class Enthalpy(Energy):
     a = assemble(u * phi * dx, annotate=annotate)
 
     solve(a, Tm.vector(), l, annotate=annotate)
-    model.assign_variable(model.T_melt, Tm)
-    print_min_max(model.T_melt, 'T_melt')
+    model.assign_variable(model.T_melt, Tm, cls=self)
 
     Tm_v    = Tm.vector().array()
     theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
-    model.assign_variable(model.theta_melt, theta_m)
-    print_min_max(model.theta_melt, 'theta_melt')
+    model.assign_variable(model.theta_melt, theta_m, cls=self)
 
   def generate_approx_theta(self, init=False, annotate=True):
     """
@@ -398,7 +396,7 @@ class Enthalpy(Energy):
     creating a better initial energy solution for an initial momentum solve.
     """
     s    = "::: calculating approximate energy field :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     model   = self.model
     
@@ -508,13 +506,12 @@ class Enthalpy(Energy):
    
     # solve the system :
     solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)
-    model.assign_variable(model.theta_app, theta)
-    print_min_max(model.theta_app, 'theta_app')
+    model.assign_variable(model.theta_app, theta, cls=self)
 
     if init:
       # temperature solved with quadradic formula, using expression for c : 
       s = "::: calculating initial temperature :::"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       theta_v  = theta.vector().array()
       T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
       T_v      = T_n_v.copy()
@@ -525,19 +522,17 @@ class Enthalpy(Energy):
       warm         = theta_v >= theta_melt_v
       cold         = theta_v <  theta_melt_v
       T_v[warm]    = T_melt_v[warm]
-      model.assign_variable(model.T, T_v)
-      print_min_max(model.T,  'T')
+      model.assign_variable(model.T, T_v, cls=self)
       
       # water content solved diagnostically :
       s = "::: calculating initial water content :::"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       W_v  = (theta_v - theta_melt_v) / model.L(0)
       
       # update water content :
       W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-      model.assign_variable(model.W0, W_v, save=False)
-      model.assign_variable(model.W,  W_v)
-      print_min_max(model.W,  'W')
+      model.assign_variable(model.W0, W_v, cls=self, save=False)
+      model.assign_variable(model.W,  W_v, cls=self)
 
   def get_solve_params(self):
     """
@@ -566,7 +561,7 @@ class Enthalpy(Energy):
     
     # solve the linear equation for energy :
     s    = "::: solving energy :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     aw        = assemble(self.theta_a, annotate=annotate)
     Lw        = assemble(self.theta_L, annotate=annotate)
     for bc in self.theta_bc:
@@ -575,15 +570,14 @@ class Enthalpy(Energy):
     theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
     #solve(self.theta_a == self.theta_L, theta, self.theta_bc,
     #      solver_parameters = {"linear_solver" : sm}, annotate=False)
-    model.assign_variable(model.theta, theta)
-    print_min_max(model.theta, 'theta')
+    model.assign_variable(model.theta, theta, cls=self)
 
     if self.transient:
       self.theta0.assign(self.theta)
 
     # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     theta_v  = theta.vector().array()
     T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
@@ -594,20 +588,18 @@ class Enthalpy(Energy):
     warm         = theta_v >= theta_melt_v
     cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
-    model.assign_variable(T, T_v)
-    print_min_max(T,  'T')
+    model.assign_variable(T, T_v, cls=self)
     
     # water content solved diagnostically :
     s = "::: calculating water content :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     W_v  = (theta_v - theta_melt_v) / L(0)
     
     # update water content :
     #W_v[cold]       = 0.0   # no water where frozen 
     W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-    model.assign_variable(W0, W, save=False)
-    model.assign_variable(W,  W_v)
-    print_min_max(W,  'W')
+    model.assign_variable(W0, W, cls=self, save=False)
+    model.assign_variable(W,  W_v, cls=self)
    
   def solve_basal_melt_rate(self):
     """
@@ -615,7 +607,7 @@ class Enthalpy(Energy):
     """ 
     # calculate melt-rate : 
     s = "::: solving for basal melt-rate :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model    = self.model
     B        = model.B
@@ -639,8 +631,7 @@ class Enthalpy(Energy):
     T_v      = T.vector().array()
     nMb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
     nMb_v[model.shf_dofs] = 0.0    # does apply over floating regions
-    model.assign_variable(model.Mb, nMb_v)
-    print_min_max(model.Mb, 'Mb')
+    model.assign_variable(model.Mb, nMb_v, cls=self)
 
   def calc_bulk_density(self):
     """
@@ -648,11 +639,10 @@ class Enthalpy(Energy):
     """
     # calculate bulk density :
     s = "::: calculating bulk density :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     model       = self.model
     rho_b       = project(self.rho, annotate=False)
-    model.assign_variable(model.rho_b, rho_b)
-    print_min_max(model.rho_b,'rho_b')
+    model.assign_variable(model.rho_b, rho_b, cls=self)
 
 
 class EnergyHybrid(Energy):
@@ -664,7 +654,7 @@ class EnergyHybrid(Energy):
     Set up energy equation residual. 
     """
     s    = "::: INITIALIZING HYBRID ENERGY PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D2Model:
       s = ">>> EnergyHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
@@ -853,7 +843,7 @@ class EnergyHybrid(Energy):
     Solves for hybrid energy.
     """
     s    = "::: solving 'EnergyHybrid' for temperature :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model  = self.model
 
@@ -883,7 +873,7 @@ class EnergyHybrid(Energy):
     Calculates pressure-melting point in model.T_melt.
     """
     s    = "::: calculating pressure-melting temperature :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     model   = self.model
     
@@ -899,7 +889,7 @@ class EnergyHybrid(Energy):
     """ 
     # FIXME: need to form an expression for dT/dz
     s = "::: calculating basal melt-rate :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model  = self.model
     B      = model.B
@@ -931,7 +921,7 @@ class EnergyFirn(Energy):
     """
     """
     s    = "::: INITIALIZING FIRN ENERGY PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D1Model:
       s = ">>> FirnEnergy REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
@@ -1061,7 +1051,7 @@ class EnergyFirn(Energy):
     """
     """
     s    = "::: solving FirnEnergy :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model = self.model
 

@@ -544,24 +544,24 @@ class D3Model(Model):
       self.state.write(submesh, 'bedmesh')
     return submesh
 
-  def get_divide_mesh(self):
+  def get_lateral_mesh(self):
     """
-    Returns the bed of the mesh for this model instance.
+    Returns the sides of the mesh for this model instance.
     """
-    s = "::: extracting bed mesh :::"
-    print_text(s, cls=self)
+    s = "::: extracting lateral mesh :::"
+    print_text(s, self.D3Model_color)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
     pb      = CellFunction("size_t", bmesh, 0)
     for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
+      if abs(Facet(self.mesh, cellmap[c.index()]).normal().z()) < 1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
-      s = "::: writing 'bedmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(submesh, 'bedmesh')
+      s = "::: writing 'latmesh' mesh to '%sstate.h5' :::"
+      print_text(s % self.out_dir, self.D3Model_color)
+      self.state.write(submesh, 'latmesh')
     return submesh
       
   def calc_thickness(self):

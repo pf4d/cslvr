@@ -12,5 +12,6 @@ model = D3Model(mesh=f, out_dir=out_dir, save_state=True, state=fn)
 # automatically saved with save_state=True to f
 bedmesh = model.get_bed_mesh()
 srfmesh = model.get_surface_mesh()
+latmesh = model.get_lateral_mesh()
 
 

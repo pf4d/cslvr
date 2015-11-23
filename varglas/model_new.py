@@ -11,6 +11,16 @@ class Model(object):
   physics but rather the interface to use physics in different simulation 
   types.
   """
+
+  GAMMA_S_GND = 2   # grounded upper surface
+  GAMMA_B_GND = 3   # grounded lower surface (bedrock)
+  GAMMA_S_FLT = 6   # shelf upper surface
+  GAMMA_B_FLT = 5   # shelf lower surface
+  GAMMA_D     = 7   # basin divides
+  GAMMA_L_OVR = 4   # terminus over water
+  GAMMA_L_UDR = 10  # terminus under water
+  GAMMA_U_GND = 8   # grounded surface with U observations
+  GAMMA_U_FLT = 9   # shelf surface with U observations
   
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
                state=None, use_periodic=False, **gfs_kwargs):

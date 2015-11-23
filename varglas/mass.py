@@ -254,6 +254,14 @@ class MassHybrid(Mass):
     self.J_thick = derivative(self.R_thick, H, dH)
 
     self.bc = []#NOTE ? DirichletBC(Q, thklim, 'on_boundary') ? maybe ?
+   
+    # create solver for the problem : 
+    problem = NonlinearVariationalProblem(self.R_thick, model.H, 
+                J=self.J_thick, bcs=self.bc,
+                form_compiler_parameters=self.solve_params['ffc_params'])
+    problem.set_bounds(model.H_min, model.H_max)
+    self.solver = NonlinearVariationalSolver(problem)
+    self.solver.parameters.update(self.solve_params['solver'])
 
   def get_solve_params(self):
     """
@@ -319,12 +327,12 @@ class MassHybrid(Mass):
     print_text(s % (meth, maxit), self.color())
    
     # define variational solver for the mass problem :
-    p = NonlinearVariationalProblem(self.R_thick, model.H, J=self.J_thick,
-          bcs=self.bc, form_compiler_parameters=params['ffc_params'])
-    p.set_bounds(model.H_min, model.H_max)
-    s = NonlinearVariationalSolver(p)
-    s.parameters.update(params['solver'])
-    s.solve(annotate=annotate)
+    #p = NonlinearVariationalProblem(self.R_thick, model.H, J=self.J_thick,
+    #      bcs=self.bc, form_compiler_parameters=params['ffc_params'])
+    #p.set_bounds(model.H_min, model.H_max)
+    #s = NonlinearVariationalSolver(p)
+    #s.parameters.update(params['solver'])
+    out = self.solver.solve(annotate=annotate)
     
     print_min_max(model.H, 'H', cls=self)
     
@@ -338,6 +346,8 @@ class MassHybrid(Mass):
     H_v = model.H.vector().array()
     S_v = B_v + H_v
     model.assign_variable(model.S, S_v, cls=self)
+
+    return out
 
 
 class FirnMass(Mass):

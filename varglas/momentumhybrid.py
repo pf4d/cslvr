@@ -182,7 +182,14 @@ class MomentumHybrid(Momentum):
     self.dU  = dU
     self.Phi = Phi
     self.Lam = Lam
-
+    
+    problem = NonlinearVariationalProblem(
+                self.mom_F, self.U, 
+                J=self.mom_Jac,
+                form_compiler_parameters=self.solve_params['ffc_params'])
+    self.solver = NonlinearVariationalSolver(problem)
+    self.solver.parameters.update(self.solve_params['solver'])
+    
   def get_residual(self):
     """
     Returns the momentum residual.
@@ -233,8 +240,10 @@ class MomentumHybrid(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-                                  'relaxation_parameter'     : 0.7,
+    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+    nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+                                  'preconditioner'           : 'hypre_amg',
+                                  'relaxation_parameter'     : 1.0,
                                   'relative_tolerance'       : 1e-5,
                                   'absolute_tolerance'       : 1e7,
                                   'maximum_iterations'       : 20,
@@ -260,9 +269,10 @@ class MomentumHybrid(Momentum):
     print_text(s % (maxit, alpha), self.color())
     
     # compute solution :
-    solve(self.mom_F == 0, self.U, J = self.mom_Jac,
-          annotate = annotate, solver_parameters = params['solver'],
-          form_compiler_parameters = params['ffc_params'])
+    #s = solve(self.mom_F == 0, self.U, J = self.mom_Jac,
+    #      annotate = annotate, solver_parameters = params['solver'],
+    #      form_compiler_parameters = params['ffc_params'])
+    out = self.solver.solve()
     print_min_max(self.U, 'U', self.color())
 
     model.UHV.assign(self.U)
@@ -279,6 +289,8 @@ class MomentumHybrid(Momentum):
     self.assz.assign(model.w_b, project(self.w(1.0), model.Q, annotate=False))
 
     print_min_max(model.U3_b, 'U3_B', self.color())
+
+    return out
 
 
 

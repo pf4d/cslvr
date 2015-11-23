@@ -1560,9 +1560,76 @@ class Model(object):
     m = m % 60
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+  
+  def adaptive_update(self, mom, nrg, mas, t_start, t_end, t,
+                      annotate=False):
+    """
+    """
+    print_text("::: entering adpative solver :::", self.color())
+    stars = "*************************************************************"
+    time_start = time()
+    dt         = self.time_step(0)
+
+    # solve momentum equation, lower alpha on failure :
+    SOLVED_U   = False
+    alpha = mom.solve_params['solver']['newton_solver']['relaxation_parameter']
+    while not SOLVED_U:
+      if alpha < 0.2:
+        status_U = [False, False]
+        break
+      status_U = mom.solve(annotate=annotate)
+      SOLVED_U = status_U[1]
+      if not SOLVED_U:
+        alpha /= 1.43
+        print_text(stars, 'red', 1)
+        s = ">>> WARNING: Newton relaxation parameter lowered to %g <<<"
+        print_text(s % alpha, 'red', 1)
+        print_text(stars, 'red', 1)
+
+    # solve mass equations, lowering time step on failure :
+    SOLVED_H = False
+    while not SOLVED_H:
+      if dt < 1.e-5:
+        status_H = [False,False]
+        break
+      status_H = mas.solve(annotate=annotate)
+      SOLVED_H = status_H[1]
+      if t <= 100:
+        SOLVED_H = True
+      if not SOLVED_H:
+        dt /= 2.0
+        print_text(stars, 'red', 1)
+        print_text(">>> WARNING: Time step lowered to %g <<<" % dt, 'red', 1)
+        self.init_time_step(dt, cls=self)
+        print_text(stars, 'red', 1)
+
+    # print the stats to the screen :
+    run_time = time() - time_start
+    est_end  = (t_end - t) / dt * run_time/60/60
+      
+    print_text(stars, cls=self)
+    print_text("Current time %-*s : %g"               % (30, ' ', t),
+               cls=self)
+    print_text("Current time step %-*s : %g"          % (30, ' ', dt),
+               cls=self)
+    print_text("Momentum Newton iterations %-*s : %g" % (30, ' ', status_U[0]),
+               cls=self)
+    print_text("Mass Newton iterations %-*s : %g"     % (30, ' ', status_H[0]),
+               cls=self)
+    print_text("Time for to solve all (s) %-*s : %g"  % (30, ' ', run_time),
+               cls=self)
+    print_text("Time remaining est. (h) %-*s : %g"    % (30, ' ', est_end),
+               cls=self)
+    print_text(stars, cls=self)
+ 
+    t += dt
+    if SOLVED_U and SOLVED_H or t<100:
+        return True, dt, t
+    else:
+        return False, dt, t
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
-                      annotate=False, callback=None):
+                      adaptive=False, annotate=False, callback=None):
     """
     """
     s    = '::: performing transient run :::'
@@ -1587,11 +1654,14 @@ class Model(object):
       print_text(s % type(mass), 'red', 1)
       sys.exit(1)
     
+    stars = "*****************************************************************"
     self.init_time_step(time_step)
     self.step_time = []
-
-    t0 = time()
-    t  = t_start
+    t0             = time()
+    t              = t_start
+    dt             = time_step
+    alpha          = momentum.solve_params['solver']['newton_solver']
+    alpha          = alpha['relaxation_parameter']
    
     # Loop over all times
     while t <= t_end:
@@ -1599,14 +1669,66 @@ class Model(object):
       # start the timer :
       tic = time()
       
-      # solve velocity :
-      momentum.solve(annotate=annotate)
+      # solve momentum equation, lower alpha on failure :
+      if adaptive:
+        solved_u = False
+        par    = momentum.solve_params['solver']['newton_solver']
+        while not solved_u:
+          if par['relaxation_parameter'] < 0.2:
+            status_u = [False, False]
+            break
+          ## reset velocity for good convergence :
+          #self.assign_variable(momentum.get_U(), DOLFIN_EPS, cls=self)
+          status_u = momentum.solve(annotate=annotate)
+          solved_u = status_u[1]
+          if not solved_u:
+            par['relaxation_parameter'] /= 1.43
+            print_text(stars, 'red', 1)
+            s = ">>> WARNING: newton relaxation parameter lowered to %g <<<"
+            print_text(s % par['relaxation_parameter'], 'red', 1)
+            print_text(stars, 'red', 1)
 
-      # solve energy :
-      energy.solve(annotate=annotate)
+      # solve velocity :
+      else:
+        momentum.solve(annotate=annotate)
+    
+      # solve mass equations, lowering time step on failure :
+      if adaptive:
+        solved_h = False
+        while not solved_h:
+          if dt < DOLFIN_EPS:
+            status_h = [False,False]
+            break
+          H        = self.H.copy(True)
+          status_h = mass.solve(annotate=annotate)
+          solved_h = status_h[1]
+          if t <= 100:
+            solved_h = True
+          if not solved_h:
+            dt /= 2.0
+            print_text(stars, 'red', 1)
+            s = ">>> WARNING: time step lowered to %g <<<"
+            print_text(s % dt, 'red', 1)
+            self.init_time_step(dt, cls=self)
+            self.init_H_H0(H, cls=self)
+            print_text(stars, 'red', 1)
 
       # solve mass :
-      mass.solve(annotate=annotate)
+      else:
+        mass.solve(annotate=annotate)
+      
+      ## use adaptive solver if desired :
+      #if adaptive and (not mom_s[1] or not mas_s[1]):
+      #  s = "::: reducing time step for convergence :::"
+      #  print_text(s, self.color())
+      #  solved, dt, t = self.adaptive_update(momentum, energy, mass,
+      #                                       t_start, t_end, t,
+      #                                       annotate=annotate)
+      #  time_step = dt
+      #  self.init_time_step(dt)
+      
+      # solve energy :
+      energy.solve(annotate=annotate)
 
       # update pressure-melting point :
       energy.calc_T_melt(annotate=annotate)
@@ -1618,10 +1740,17 @@ class Model(object):
        
       # increment time step :
       s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
-      print_text(s % (t, time()-tic), 'red', 1)
+      print_text(s % (t+dt, time()-tic), 'red', 1)
 
-      t += time_step
+      t += dt
       self.step_time.append(time() - tic)
+      
+      if adaptive:
+        print_text("::: resetting alpha to normal :::", cls=self)
+        par['relaxation_parameter'] = alpha
+        print_text("::: resetting dt to normal :::", cls=self)
+        self.init_time_step(time_step, cls=self)
+      
 
     # calculate total time to compute
     s = time() - t0

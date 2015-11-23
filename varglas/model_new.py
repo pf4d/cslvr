@@ -659,14 +659,13 @@ class Model(object):
     
     """
     s = "::: initializing beta from SIA :::"
-    print_text(s, self.this.color())
-    r        = self.r
+    print_text(s, cls=self)
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
     gradS    = grad(self.S)
     H        = self.S - self.B
-    U_s      = Function(Q)
+    U_s      = Function(Q, name='U_s')
     if U_mag == None:
       U_v                        = self.U_ob.vector().array()
       Ubar_v                     = self.Ubar.vector().array()
@@ -674,23 +673,22 @@ class Model(object):
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v, save=False)
+    self.assign_variable(U_s, U_v, save=False, cls=self)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project((rhoi*g*H*S_mag) / (H**r * U_s), Q, annotate=False)
+    beta_0   = project((rhoi*g*H*S_mag) / U_s, Q, annotate=False)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
-    self.assign_variable(self.betaSIA, beta_0_v)
-    print_min_max(self.betaSIA, 'betaSIA', self.this.color())
+    self.assign_variable(self.betaSIA, beta_0_v, cls=self)
     
     if self.dim == 3:
       self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self)
       bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
-      #self.assign_variable(self.beta, self.betaSIA)
+      #self.assign_variable(self.beta, self.betaSIA, cls=self)
     elif self.dim == 2:
-      self.assign_variable(self.beta, self.betaSIA)
-    print_min_max(self.beta, 'beta', self.this.color())
+      self.assign_variable(self.beta, self.betaSIA, cls=self)
+    print_min_max(self.beta, 'beta', cls=self)
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
     r"""
@@ -703,7 +701,7 @@ class Model(object):
     
     """
     s = "::: initializing new sliding beta from SIA :::"
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
     r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
@@ -715,13 +713,13 @@ class Model(object):
     p        = -0.383
     q        = -0.349
     
-    U_s      = Function(Q)
+    U_s      = Function(Q, name='U_s')
     if U_mag == None:
       U_v = self.U_ob.vector().array()
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v)
+    self.assign_variable(U_s, U_v, cls=self)
     
     Ne       = H + rhow/rhoi * D
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
@@ -731,11 +729,11 @@ class Model(object):
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     #self.assign_variable(beta_0, beta_0_v)
-    print_min_max(beta_0, 'beta_0', self.this.color())
+    print_min_max(beta_0, 'beta_0', cls=self)
 
     #self.assign_variable(self.beta, beta_0)
     
-    self.assign_variable(self.beta, DOLFIN_EPS)
+    self.assign_variable(self.beta, DOLFIN_EPS, cls=self)
     bc_beta = DirichletBC(self.Q, beta_0, self.ff, GAMMA_B_GND)
     bc_beta.apply(self.beta.vector())
     
@@ -746,7 +744,7 @@ class Model(object):
     """
     """
     s    = "::: initializing beta from stats :::"
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
     
     q_geo  = self.q_geo
     T_s    = self.T_surface
@@ -764,13 +762,13 @@ class Model(object):
 
     Ubar_v = Ubar.vector().array()
     Ubar_v[Ubar_v < 1e-10] = 1e-10
-    self.assign_variable(Ubar, Ubar_v)
+    self.assign_variable(Ubar, Ubar_v, cls=self)
            
     D      = Function(Q)
     B_v    = B.vector().array()
     D_v    = D.vector().array()
     D_v[B_v < 0] = B_v[B_v < 0]
-    self.assign_variable(D, D_v)
+    self.assign_variable(D, D_v, cls=self)
 
     gradS = as_vector([S.dx(0), S.dx(1), 0.0])
     gradB = as_vector([B.dx(0), B.dx(1), 0.0])
@@ -996,7 +994,7 @@ class Model(object):
                 1.55871983e-13]
    
     for xx,nam in zip(X, names[idx]):
-      print_min_max(xx, nam, self.this.color())
+      print_min_max(xx, nam, cls=self)
 
     X_i  = []
     X_i.extend(X)
@@ -1021,15 +1019,15 @@ class Model(object):
       beta0                   = project(self.beta_f, Q, annotate=False)
       beta0_v                 = beta0.vector().array()
       beta0_v[beta0_v < 1e-2] = 1e-2
-      self.assign_variable(beta0, beta0_v)
+      self.assign_variable(beta0, beta0_v, cls=self)
     
-      self.assign_variable(self.beta, 1e-2)
+      self.assign_variable(self.beta, 1e-2, cls=self)
       bc_beta = DirichletBC(self.Q, beta0, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
     elif mode == 'transient':
-      self.assign_variable(self.beta, 200.0)
+      self.assign_variable(self.beta, 200.0, cls=self)
     
-    print_min_max(self.beta, 'beta_hat', self.this.color())
+    print_min_max(self.beta, 'beta_hat', cls=self)
  
   def update_stats_beta(self):
     """
@@ -1043,15 +1041,14 @@ class Model(object):
     ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
     beta_v[beta_v < 0.0]    = 0.0
     #beta_v[beta_v > 2500.0] = 2500.0
-    self.assign_variable(self.beta, beta_v)
-    print_min_max(self.beta, 'beta', self.this.color())
+    self.assign_variable(self.beta, beta_v, cls=self)
      
   def init_b_SIA(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """
     s = "::: initializing b from U_ob :::"
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
    
     x      = self.x
     S      = self.S
@@ -1100,14 +1097,14 @@ class Model(object):
    
     b_f = Function(Q)
     solve(lhs(R) == rhs(R), b_f, annotate=False)
-    self.assign_variable(b, b_f)
+    self.assign_variable(b, b_f, cls=self)
  
   def calc_eta(self):
     """
     Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
     Q       = self.Q
     R       = self.R
     T       = self.T
@@ -1146,14 +1143,13 @@ class Model(object):
     E_shf_v = E_shf.vector().array()
     E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
     E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
-    self.assign_variable(E, E_v)
+    self.assign_variable(E, E_v, cls=self)
 
     # calculate viscosity :
     b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
     eta     = project(eta, Q, annotate=False)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta', self.this.color())
+    self.assign_variable(self.eta, eta, cls=self)
 
   def calc_vert_average(self, u):
     """
@@ -1174,7 +1170,7 @@ class Model(object):
     updates model.misfit with D for plotting.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, self.this.color())
+    print_text(s % integral, cls=self)
 
     U_s    = Function(self.Q2)
     U_ob_s = Function(self.Q2)
@@ -1326,9 +1322,9 @@ class Model(object):
       if    isinstance(u, GenericVector) or isinstance(u, Function) \
          or isinstance(u, dolfin.functions.function.Function):
         s = "::: writing '%s' variable to '%sstate.h5' :::"
-        print_text(s % (u.name(), self.out_dir), self.this.color())
+        print_text(s % (u.name(), self.out_dir), cls=self)
         self.state.write(u, u.name())
-        print_text("    - done -", self.this.color())
+        print_text("    - done -", cls=self)
 
   def save_hdf5(self, u, name=None):
     """
@@ -1339,9 +1335,9 @@ class Model(object):
     if name == None:
       name = u.name()
     s = "::: writing '%s' variable to self.state file :::" % name
-    print_text(s, 'green')#self.this.color())
+    print_text(s, 'green')#cls=self)
     self.state.write(u, name)
-    print_text("    - done -", 'green')#self.this.color())
+    print_text("    - done -", 'green')#cls=self)
 
   def save_pvd(self, var, name, f_file=None):
     """
@@ -1351,11 +1347,11 @@ class Model(object):
     """
     if f_file != None:
       s       = "::: saving %s.pvd file :::" % name
-      print_text(s, 'green')#self.this.color())
+      print_text(s, 'green')#cls=self)
       f_file << var
     else:
       s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
-      print_text(s, 'green')#self.this.color())
+      print_text(s, 'green')#cls=self)
       File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
   def save_xdmf(self, var, name, f_file=None, t=0.0):
@@ -1366,27 +1362,28 @@ class Model(object):
     """
     if f_file != None:
       s       = "::: saving %s.xdmf file :::" % name
-      print_text(s, 'green')#self.this.color())
+      print_text(s, 'green')#cls=self)
       f_file << (var, float(t))
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
-      print_text(s, 'green')#self.this.color())
+      print_text(s, 'green')#cls=self)
       File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
   
-  def solve_hydrostatic_pressure(self, annotate=True):
+  def solve_hydrostatic_pressure(self, annotate=True, cls=None):
     """
     Solve for the hydrostatic pressure 'p'.
     """
+    if cls is None:
+      cls = self.this
     # solve for vertical velocity :
     s  = "::: solving hydrostatic pressure :::"
-    print_text(s, self.this.color())
+    print_text(s, cls=self.this)
     rhoi   = self.rhoi
     g      = self.g
     S      = self.S
     z      = self.x[2]
     p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
-    self.assign_variable(self.p, p)
-    print_min_max(self.p, 'p', self.this.color())
+    self.assign_variable(self.p, p, cls=cls)
   
   def initialize_variables(self):
     """
@@ -1394,7 +1391,7 @@ class Model(object):
     by the individually created model.
     """
     s = "::: initializing basic variables :::"
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
@@ -1498,7 +1495,7 @@ class Model(object):
     Perform thermo-mechanical coupling between momentum and energy.
     """
     s    = '::: performing thermo-mechanical coupling :::'
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
@@ -1529,7 +1526,8 @@ class Model(object):
     while inner_error > rtol and counter < max_iter:
      
       # need zero initial guess for Newton solve to converge : 
-      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False)
+      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
+                           cls=self.this)
       
       # solve velocity :
       momentum.solve(annotate=False)
@@ -1539,7 +1537,8 @@ class Model(object):
 
       # calculate L_infinity norm, increment counter :
       counter       += 1
-      inner_error_n  = norm(U_prev.vector() - self.U3.vector(), 'l2')
+      #inner_error_n  = norm(U_prev.vector() - self.U3.vector(), 'l2')
+      inner_error_n  = abs(U_prev.vector().max() - self.U3.vector().max())
       U_prev         = self.U3.copy(True)
       if self.MPI_rank==0:
         s0    = '>>> '
@@ -1550,18 +1549,18 @@ class Model(object):
         s5    = '(tol %.3e)' % rtol
         s6    = ' <<<'
         text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1, self.this.color())
+        text1 = get_text(s1, 'red')
         text2 = get_text(s2, 'red', 1)
-        text3 = get_text(s3, self.this.color())
+        text3 = get_text(s3, 'red')
         text4 = get_text(s4, 'red', 1)
-        text5 = get_text(s5, self.this.color())
+        text5 = get_text(s5, 'red')
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
       inner_error = inner_error_n
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, self.this.color())
+        print_text(s, cls=self)
         callback()
 
     # calculate total time to compute
@@ -1645,7 +1644,7 @@ class Model(object):
     """
     """
     s    = '::: performing transient run :::'
-    print_text(s, self.this.color())
+    print_text(s, cls=self)
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
@@ -1747,7 +1746,7 @@ class Model(object):
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, self.this.color())
+        print_text(s, cls=self)
         callback()
        
       # increment time step :

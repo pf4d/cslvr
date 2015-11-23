@@ -34,6 +34,8 @@ Q3s = MixedFunctionSpace([Qs]*3)
 model = D3Model(fdata, out_dir, state=foutput)
 model.set_subdomains(fdata)
 
+model.save_xdmf(model.ff, 'ff')
+
 # initialize variables :
 model.init_S(fdata)
 model.init_B(fdata)
@@ -108,10 +110,11 @@ def deriv_cb(I, dI, beta):
   #print_min_max(I,     'I')
   print_min_max(dI,    'dI/dbeta')
   #print_min_max(beta,  'beta')
-  if i % 100 == 0:
-    model.assign_submesh_variable(beta_b, beta)
-    model.save_xdmf(beta_b, 'beta_control', f_file=beta_f)
-  i += 1
+  #if i % 100 == 0:
+  #  model.assign_submesh_variable(beta_b, beta)
+  #  #model.save_xdmf(beta_b, 'beta_control', f_file=beta_f, t=i)
+  #i += 1
+  model.save_xdmf(beta_b, 'beta_control')
 
 # hessian of objective function callback function (not used) :
 def hessian_cb(I, ddI, beta):

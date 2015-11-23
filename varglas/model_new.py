@@ -11,16 +11,16 @@ class Model(object):
   physics but rather the interface to use physics in different simulation 
   types.
   """
-
+  
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
                state=None, use_periodic=False, **gfs_kwargs):
     """
     Create and instance of the model.
     """
-    self.model_color = '148'
-    
+    self.this = super(type(self), self)  # pointer to this base class
+  
     s = "::: INITIALIZING BASE MODEL :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=self.this)
     
     parameters['form_compiler']['quadrature_degree']  = 2
     parameters["std_out_all_processes"]               = False
@@ -45,12 +45,15 @@ class Model(object):
     else:
       self.state = state
 
+  def color(self):
+    return '148'
+
   def generate_constants(self):
     """
     Initializes important constants.
     """
     s = "::: generating constants :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=self.this)
 
     spy = 31556926.0
     ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(s*m^2)
@@ -164,7 +167,7 @@ class Model(object):
     saved with name 'mesh'.
     """
     s = "::: setting mesh :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=self.this)
 
     if isinstance(f, dolfin.cpp.io.HDF5File):
       self.mesh = Mesh()
@@ -192,7 +195,7 @@ class Model(object):
     Generates the finite-element function spaces used by all children of model.
     """
     s = "::: generating fundamental function spaces :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=self.this)
 
     if use_periodic:
       self.generate_pbc()
@@ -210,373 +213,430 @@ class Model(object):
     self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
 
     s = "    - fundamental function spaces created - "
-    print_text(s, self.model_color)
+    print_text(s, cls=self.this)
   
-  def init_S(self, S):
+  def init_S(self, S, cls=None):
     """
     Set the Function for the surface <S>. 
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializng surface topography :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.S, S)
-    print_min_max(self.S, 'S')
+    print_text(s, cls=cls)
+    self.assign_variable(self.S, S, cls=cls)
 
-  def init_B(self, B):
+  def init_B(self, B, cls=None):
     """
     Set the Function for the bed <B>.
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializng bed topography :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.B, B)
-    print_min_max(self.B, 'B')
+    print_text(s, cls=cls)
+    self.assign_variable(self.B, B, cls=cls)
   
-  def init_p(self, p):
+  def init_p(self, p, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing pressure :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.p, p)
-    print_min_max(self.p, 'p')
+    print_text(s, cls=cls)
+    self.assign_variable(self.p, p, cls=cls)
   
-  def init_theta(self, theta):
+  def init_theta(self, theta, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing internal energy :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.theta, theta)
-    print_min_max(self.theta, 'theta')
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta, theta, cls=cls)
   
-  def init_theta_app(self, theta_app):
+  def init_theta_app(self, theta_app, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing internal energy approximation :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.theta_app, theta_app)
-    print_min_max(self.theta_app, 'theta_app')
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta_app, theta_app, cls=cls)
   
-  def init_theta_surface(self, theta_surface):
+  def init_theta_surface(self, theta_surface, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing surface energy :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.theta_surface, theta_surface)
-    print_min_max(self.theta_surface, 'theta_surface')
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta_surface, theta_surface, cls=cls)
   
-  def init_theta_float(self, theta_float):
+  def init_theta_float(self, theta_float, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing floating bed energy :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.theta_float, theta_float)
-    print_min_max(self.theta_float, 'theta_float')
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta_float, theta_float, cls=cls)
   
-  def init_T(self, T):
+  def init_T(self, T, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing temperature :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.T, T)
-    print_min_max(self.T, 'T')
+    print_text(s, cls=cls)
+    self.assign_variable(self.T, T, cls=cls)
   
-  def init_W(self, W):
+  def init_W(self, W, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing water content :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.W, W)
-    print_min_max(self.W, 'W')
+    print_text(s, cls=cls)
+    self.assign_variable(self.W, W, cls=cls)
   
-  def init_Mb(self, Mb):
+  def init_Mb(self, Mb, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing basal melt rate :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.Mb, Mb)
-    print_min_max(self.Mb, 'Mb')
+    print_text(s, cls=cls)
+    self.assign_variable(self.Mb, Mb, cls=cls)
   
-  def init_adot(self, adot):
+  def init_adot(self, adot, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing accumulation :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.adot, adot)
-    print_min_max(self.adot, 'adot')
+    print_text(s, cls=cls)
+    self.assign_variable(self.adot, adot, cls=cls)
   
-  def init_beta(self, beta):
+  def init_beta(self, beta, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing basal traction coefficient :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.beta, beta)
-    print_min_max(self.beta, 'beta')
+    print_text(s, cls=cls)
+    self.assign_variable(self.beta, beta, cls=cls)
   
-  def init_b(self, b):
+  def init_b(self, b, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing rate factor over grounded and shelves :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.b, b)
-    print_min_max(self.b, 'b')
-    self.init_b_shf(b)
-    self.init_b_gnd(b)
+    print_text(s, cls=cls)
+    self.assign_variable(self.b, b, cls=cls)
+    self.init_b_shf(b, cls=cls)
+    self.init_b_gnd(b, cls=cls)
   
-  def init_b_shf(self, b_shf):
+  def init_b_shf(self, b_shf, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing rate factor over shelves :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.b_shf, b_shf)
-    print_min_max(self.b_shf, 'b_shf')
+    print_text(s, cls=cls)
+    self.assign_variable(self.b_shf, b_shf, cls=cls)
   
-  def init_b_gnd(self, b_gnd):
+  def init_b_gnd(self, b_gnd, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing rate factor over grounded ice :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.b_gnd, b_gnd)
-    print_min_max(self.b_gnd, 'b_gnd')
+    print_text(s, cls=cls)
+    self.assign_variable(self.b_gnd, b_gnd, cls=cls)
     
-  def init_E(self, E):
+  def init_E(self, E, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing enhancement factor over grounded and shelves :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.E, E)
-    print_min_max(self.E, 'E')
-    self.init_E_shf(E)
-    self.init_E_gnd(E)
+    print_text(s, cls=cls)
+    self.assign_variable(self.E, E, cls=cls)
+    self.init_E_shf(E, cls=cls)
+    self.init_E_gnd(E, cls=cls)
   
-  def init_E_shf(self, E_shf):
+  def init_E_shf(self, E_shf, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing enhancement factor over shelves :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.E_shf, E_shf)
-    print_min_max(self.E_shf, 'E_shf')
+    print_text(s, cls=cls)
+    self.assign_variable(self.E_shf, E_shf, cls=cls)
   
-  def init_E_gnd(self, E_gnd):
+  def init_E_gnd(self, E_gnd, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing enhancement factor over grounded ice :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.E_gnd, E_gnd)
-    print_min_max(self.E_gnd, 'E_gnd')
+    print_text(s, cls=cls)
+    self.assign_variable(self.E_gnd, E_gnd, cls=cls)
   
-  def init_eta(self, eta):
+  def init_eta(self, eta, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing viscosity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
+    print_text(s, cls=cls)
+    self.assign_variable(self.eta, eta, cls=cls)
   
-  def init_etabar(self, etabar):
+  def init_etabar(self, etabar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged viscosity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.etabar, etabar)
-    print_min_max(self.etabar, 'etabar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.etabar, etabar, cls=cls)
   
-  def init_ubar(self, ubar):
+  def init_ubar(self, ubar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged x-component of velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.ubar, ubar)
-    print_min_max(self.ubar, 'ubar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.ubar, ubar, cls=cls)
   
-  def init_vbar(self, vbar):
+  def init_vbar(self, vbar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged y-component of velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.vbar, vbar)
-    print_min_max(self.vbar, 'vbar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.vbar, vbar, cls=cls)
     
-  def init_wbar(self, wbar):
+  def init_wbar(self, wbar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged z-component of velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.wbar, wbar)
-    print_min_max(self.wbar, 'wbar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.wbar, wbar, cls=cls)
   
-  def init_T_surface(self, T_s):
+  def init_T_surface(self, T_s, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing surface temperature :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.T_surface, T_s)
-    print_min_max(self.T_surface, 'T_surface')
+    print_text(s, cls=cls)
+    self.assign_variable(self.T_surface, T_s, cls=cls)
   
-  def init_q_geo(self, q_geo):
+  def init_q_geo(self, q_geo, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing geothermal heat flux :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.q_geo, q_geo)
-    print_min_max(self.q_geo, 'q_geo')
+    print_text(s, cls=cls)
+    self.assign_variable(self.q_geo, q_geo, cls=cls)
   
-  def init_u(self, u):
+  def init_u(self, u, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing x-component of velocity :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=cls)
     u_t = Function(self.Q, name='u_t')
-    self.assign_variable(u_t, u, save=False)
+    self.assign_variable(u_t, u, save=False, cls=cls)
     self.assx.assign(self.u, u_t, annotate=False)
-    print_min_max(self.u, 'u')
   
-  def init_v(self, v):
+  def init_v(self, v, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing y-component of velocity :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=cls)
     v_t = Function(self.Q, name='v_t')
-    self.assign_variable(v_t, v, save=False)
+    self.assign_variable(v_t, v, save=False, cls=cls)
     self.assx.assign(self.v, v_t, annotate=False)
-    print_min_max(self.v, 'v')
   
-  def init_w(self, w):
+  def init_w(self, w, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing z-component of velocity :::"
-    print_text(s, self.model_color)
+    print_text(s, cls=cls)
     w_t = Function(self.Q, name='w_t')
-    self.assign_variable(w_t, w, save=False)
+    self.assign_variable(w_t, w, save=False, cls=cls)
     self.assx.assign(self.w, w_t, annotate=False)
-    print_min_max(self.w, 'w')
   
-  def init_vbar(self, vbar):
+  def init_vbar(self, vbar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged y-component of velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.vbar, vbar)
-    print_min_max(self.vbar, 'vbar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.vbar, vbar, cls=cls)
     
-  def init_wbar(self, wbar):
+  def init_wbar(self, wbar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged z-component of velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.wbar, wbar)
-    print_min_max(self.wbar, 'wbar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.wbar, wbar, cls=cls)
 
-  def init_U(self, U):
+  def init_U(self, U, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.U3, U)
-    print_min_max(self.U3, 'U3')
+    print_text(s, cls=cls)
+    self.assign_variable(self.U3, U, cls=cls)
     u,v,w    = self.U3.split(True)
     u_v      = u.vector().array()
     v_v      = v.vector().array()
     w_v      = w.vector().array()
     U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + DOLFIN_EPS)
-    self.assign_variable(self.U_mag, U_mag_v)
-    print_min_max(self.U_mag, 'U_mag')
+    self.assign_variable(self.U_mag, U_mag_v, cls=cls)
   
-  def init_U_ob(self, u_ob, v_ob):
+  def init_U_ob(self, u_ob, v_ob, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing surface velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.u_ob, u_ob)
-    self.assign_variable(self.v_ob, v_ob)
+    print_text(s, cls=cls)
+    self.assign_variable(self.u_ob, u_ob, cls=cls)
+    self.assign_variable(self.v_ob, v_ob, cls=cls)
     u_v      = self.u_ob.vector().array()
     v_v      = self.v_ob.vector().array()
     U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
-    self.assign_variable(self.U_ob, U_mag_v)
-    print_min_max(self.u_ob, 'u_ob')
-    print_min_max(self.v_ob, 'v_ob')
-    print_min_max(self.U_ob, 'U_ob')
+    self.assign_variable(self.U_ob, U_mag_v, cls=cls)
   
-  def init_Ubar(self, Ubar):
+  def init_Ubar(self, Ubar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing balance velocity :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.Ubar, Ubar)
-    print_min_max(self.Ubar, 'Ubar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.Ubar, Ubar, cls=cls)
   
-  def init_u_lat(self, u_lat):
+  def init_u_lat(self, u_lat, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing u lateral boundary condition :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.u_lat, u_lat)
-    print_min_max(self.u_lat, 'u_lat')
+    print_text(s, cls=cls)
+    self.assign_variable(self.u_lat, u_lat, cls=cls)
   
-  def init_v_lat(self, v_lat):
+  def init_v_lat(self, v_lat, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing v lateral boundary condition :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.v_lat, v_lat)
-    print_min_max(self.v_lat, 'v_lat')
+    print_text(s, cls=cls)
+    self.assign_variable(self.v_lat, v_lat, cls=cls)
   
-  def init_w_lat(self, w_lat):
+  def init_w_lat(self, w_lat, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing w lateral boundary condition :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.w_lat, w_lat)
-    print_min_max(self.w_lat, 'w_lat')
+    print_text(s, cls=cls)
+    self.assign_variable(self.w_lat, w_lat, cls=cls)
   
-  def init_mask(self, mask):
+  def init_mask(self, mask, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing shelf mask :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.mask, mask)
-    print_min_max(self.mask, 'mask')
+    print_text(s, cls=cls)
+    self.assign_variable(self.mask, mask, cls=cls)
     self.shf_dofs = np.where(self.mask.vector().array() == 2.0)[0]
     self.gnd_dofs = np.where(self.mask.vector().array() == 1.0)[0]
   
-  def init_U_mask(self, U_mask):
+  def init_U_mask(self, U_mask, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing velocity mask :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.U_mask, U_mask)
-    print_min_max(self.U_mask, 'U_mask')
+    print_text(s, cls=cls)
+    self.assign_variable(self.U_mask, U_mask, cls=cls)
     self.Uob_dofs         = np.where(self.U_mask.vector().array() == 1.0)[0]
     self.Uob_missing_dofs = np.where(self.U_mask.vector().array() == 0.0)[0]
   
-  def init_lat_mask(self, lat_mask):
+  def init_lat_mask(self, lat_mask, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing lateral boundary mask :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.lat_mask, lat_mask)
-    print_min_max(self.lat_mask, 'lat_mask')
+    print_text(s, cls=cls)
+    self.assign_variable(self.lat_mask, lat_mask, cls=cls)
   
-  def init_d_x(self, d_x):
+  def init_d_x(self, d_x, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing x-component-normalized-driving-stress direction :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.d_x, d_x)
-    print_min_max(self.d_x, 'd_x')
+    print_text(s, cls=cls)
+    self.assign_variable(self.d_x, d_x, cls=cls)
   
-  def init_d_y(self, d_y):
+  def init_d_y(self, d_y, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing y-component-normalized-driving-stress direction :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.d_y, d_y)
-    print_min_max(self.d_y, 'd_y')
+    print_text(s, cls=cls)
+    self.assign_variable(self.d_y, d_y, cls=cls)
   
-  def init_time_step(self, dt):
+  def init_time_step(self, dt, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing time step :::"
-    print_text(s, self.model_color)
-    self.assign_variable(self.time_step, dt)
-    print_min_max(self.time_step, 'time_step')
+    print_text(s, cls=cls)
+    self.assign_variable(self.time_step, dt, cls=cls)
+  
+  def init_lat(self, lat, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing grid latitude :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.lat, lat, cls=cls)
+  
+  def init_lon(self, lon, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing grid longitude :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.lon, lon, cls=cls)
 
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
@@ -589,7 +649,7 @@ class Model(object):
     
     """
     s = "::: initializing beta from SIA :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     r        = self.r
     Q        = self.Q
     rhoi     = self.rhoi
@@ -611,16 +671,16 @@ class Model(object):
     beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
     self.assign_variable(self.betaSIA, beta_0_v)
-    print_min_max(self.betaSIA, 'betaSIA')
+    print_min_max(self.betaSIA, 'betaSIA', self.this.color())
     
     if self.dim == 3:
-      #self.assign_variable(self.beta, DOLFIN_EPS, save=False)
-      #bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
-      #bc_beta.apply(self.beta.vector())
-      self.assign_variable(self.beta, self.betaSIA)
+      self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self)
+      bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
+      bc_beta.apply(self.beta.vector())
+      #self.assign_variable(self.beta, self.betaSIA)
     elif self.dim == 2:
       self.assign_variable(self.beta, self.betaSIA)
-    print_min_max(self.beta, 'beta')
+    print_min_max(self.beta, 'beta', self.this.color())
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
     r"""
@@ -633,7 +693,7 @@ class Model(object):
     
     """
     s = "::: initializing new sliding beta from SIA :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
@@ -661,7 +721,7 @@ class Model(object):
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     #self.assign_variable(beta_0, beta_0_v)
-    print_min_max(beta_0, 'beta_0')
+    print_min_max(beta_0, 'beta_0', self.this.color())
 
     #self.assign_variable(self.beta, beta_0)
     
@@ -676,7 +736,7 @@ class Model(object):
     """
     """
     s    = "::: initializing beta from stats :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     
     q_geo  = self.q_geo
     T_s    = self.T_surface
@@ -926,7 +986,7 @@ class Model(object):
                 1.55871983e-13]
    
     for xx,nam in zip(X, names[idx]):
-      print_min_max(xx, nam)
+      print_min_max(xx, nam, self.this.color())
 
     X_i  = []
     X_i.extend(X)
@@ -959,7 +1019,7 @@ class Model(object):
     elif mode == 'transient':
       self.assign_variable(self.beta, 200.0)
     
-    print_min_max(self.beta, 'beta0')
+    print_min_max(self.beta, 'beta_hat', self.this.color())
  
   def update_stats_beta(self):
     """
@@ -974,14 +1034,14 @@ class Model(object):
     beta_v[beta_v < 0.0]    = 0.0
     #beta_v[beta_v > 2500.0] = 2500.0
     self.assign_variable(self.beta, beta_v)
-    print_min_max(self.beta, 'beta')
+    print_min_max(self.beta, 'beta', self.this.color())
      
   def init_b_SIA(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """
     s = "::: initializing b from U_ob :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
    
     x      = self.x
     S      = self.S
@@ -1037,7 +1097,7 @@ class Model(object):
     Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     Q       = self.Q
     R       = self.R
     T       = self.T
@@ -1083,7 +1143,7 @@ class Model(object):
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
     eta     = project(eta, Q, annotate=False)
     self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
+    print_min_max(self.eta, 'eta', self.this.color())
 
   def calc_vert_average(self, u):
     """
@@ -1104,7 +1164,7 @@ class Model(object):
     updates model.misfit with D for plotting.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, self.model_color)
+    print_text(s % integral, self.this.color())
 
     U_s    = Function(self.Q2)
     U_ob_s = Function(self.Q2)
@@ -1205,17 +1265,19 @@ class Model(object):
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
 
-  def assign_variable(self, u, var, annotate=False, save=True):
+  def assign_variable(self, u, var, cls=None, annotate=False, save=True):
     """
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
     """
+    if cls is None:
+      cls = super(type(self), self)
     if isinstance(var, float) or isinstance(var, int):
       if    isinstance(u, GenericVector) or isinstance(u, Function) \
          or isinstance(u, dolfin.functions.function.Function):
         u.vector()[:] = var
       elif  isinstance(u, Constant):
-        u.assign(var, annotate=annotate)
+        u.assign(var)
     
     elif isinstance(var, np.ndarray):
       if var.dtype != np.float64:
@@ -1246,14 +1308,15 @@ class Model(object):
            "*************************************************************"
       print_text(s % type(var) , 'red', 1)
       u = var
+    print_min_max(u, u.name(), cls=cls)
 
     if self.save_state and save:
       if    isinstance(u, GenericVector) or isinstance(u, Function) \
          or isinstance(u, dolfin.functions.function.Function):
         s = "::: writing '%s' variable to '%sstate.h5' :::"
-        print_text(s % (u.name(), self.out_dir), self.model_color)
+        print_text(s % (u.name(), self.out_dir), self.this.color())
         self.state.write(u, u.name())
-        print_text("    - done -", self.model_color)
+        print_text("    - done -", self.this.color())
 
   def save_hdf5(self, u, name=None):
     """
@@ -1264,9 +1327,9 @@ class Model(object):
     if name == None:
       name = u.name()
     s = "::: writing '%s' variable to self.state file :::" % name
-    print_text(s, self.model_color)
+    print_text(s, 'green')#self.this.color())
     self.state.write(u, name)
-    print_text("    - done -", self.model_color)
+    print_text("    - done -", 'green')#self.this.color())
 
   def save_pvd(self, var, name, f_file=None):
     """
@@ -1276,14 +1339,14 @@ class Model(object):
     """
     if f_file != None:
       s       = "::: saving %s.pvd file :::" % name
-      print_text(s, self.model_color)
+      print_text(s, 'green')#self.this.color())
       f_file << var
     else:
       s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
-      print_text(s, self.model_color)
+      print_text(s, 'green')#self.this.color())
       File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
-  def save_xdmf(self, var, name, f_file=None):
+  def save_xdmf(self, var, name, f_file=None, t=0.0):
     """
     Save a <name>.xdmf file of the FEniCS Function <var> to this model's log 
     directory specified by model.out_dir.  If <f_file> is a File object, save 
@@ -1291,11 +1354,11 @@ class Model(object):
     """
     if f_file != None:
       s       = "::: saving %s.xdmf file :::" % name
-      print_text(s, self.model_color)
-      f_file << var
+      print_text(s, 'green')#self.this.color())
+      f_file << (var, float(t))
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
-      print_text(s, self.model_color)
+      print_text(s, 'green')#self.this.color())
       File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
   
   def solve_hydrostatic_pressure(self, annotate=True):
@@ -1304,14 +1367,14 @@ class Model(object):
     """
     # solve for vertical velocity :
     s  = "::: solving hydrostatic pressure :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     rhoi   = self.rhoi
     g      = self.g
     S      = self.S
     z      = self.x[2]
     p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
     self.assign_variable(self.p, p)
-    print_min_max(self.p, 'p')
+    print_min_max(self.p, 'p', self.this.color())
   
   def initialize_variables(self):
     """
@@ -1319,12 +1382,14 @@ class Model(object):
     by the individually created model.
     """
     s = "::: initializing basic variables :::"
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
     self.h             = CellSize(self.mesh)
     self.N             = FacetNormal(self.mesh)
+    self.lat           = Function(self.Q, name='lat')
+    self.lon           = Function(self.Q, name='lon')
 
     # time step :
     self.time_step = Constant(100.0)
@@ -1359,9 +1424,9 @@ class Model(object):
     self.v             = v
     self.w             = w
     
-    self.assx          = FunctionAssigner(self.Q3.sub(0), self.Q)
-    self.assy          = FunctionAssigner(self.Q3.sub(1), self.Q)
-    self.assz          = FunctionAssigner(self.Q3.sub(2), self.Q)
+    self.assx          = FunctionAssigner(u.function_space(), self.Q)
+    self.assy          = FunctionAssigner(v.function_space(), self.Q)
+    self.assz          = FunctionAssigner(w.function_space(), self.Q)
 
     # momentum model :
     self.eta           = Function(self.Q, name='eta')
@@ -1421,7 +1486,7 @@ class Model(object):
     Perform thermo-mechanical coupling between momentum and energy.
     """
     s    = '::: performing thermo-mechanical coupling :::'
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
@@ -1473,18 +1538,18 @@ class Model(object):
         s5    = '(tol %.3e)' % rtol
         s6    = ' <<<'
         text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1, self.model_color)
+        text1 = get_text(s1, self.this.color())
         text2 = get_text(s2, 'red', 1)
-        text3 = get_text(s3, self.model_color)
+        text3 = get_text(s3, self.this.color())
         text4 = get_text(s4, 'red', 1)
-        text5 = get_text(s5, self.model_color)
+        text5 = get_text(s5, self.this.color())
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
       inner_error = inner_error_n
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, self.model_color)
+        print_text(s, self.this.color())
         callback()
 
     # calculate total time to compute
@@ -1495,13 +1560,80 @@ class Model(object):
     m = m % 60
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+  
+  def adaptive_update(self, mom, nrg, mas, t_start, t_end, t,
+                      annotate=False):
+    """
+    """
+    print_text("::: entering adpative solver :::", self.color())
+    stars = "*************************************************************"
+    time_start = time()
+    dt         = self.time_step(0)
+
+    # solve momentum equation, lower alpha on failure :
+    SOLVED_U   = False
+    alpha = mom.solve_params['solver']['newton_solver']['relaxation_parameter']
+    while not SOLVED_U:
+      if alpha < 0.2:
+        status_U = [False, False]
+        break
+      status_U = mom.solve(annotate=annotate)
+      SOLVED_U = status_U[1]
+      if not SOLVED_U:
+        alpha /= 1.43
+        print_text(stars, 'red', 1)
+        s = ">>> WARNING: Newton relaxation parameter lowered to %g <<<"
+        print_text(s % alpha, 'red', 1)
+        print_text(stars, 'red', 1)
+
+    # solve mass equations, lowering time step on failure :
+    SOLVED_H = False
+    while not SOLVED_H:
+      if dt < 1.e-5:
+        status_H = [False,False]
+        break
+      status_H = mas.solve(annotate=annotate)
+      SOLVED_H = status_H[1]
+      if t <= 100:
+        SOLVED_H = True
+      if not SOLVED_H:
+        dt /= 2.0
+        print_text(stars, 'red', 1)
+        print_text(">>> WARNING: Time step lowered to %g <<<" % dt, 'red', 1)
+        self.init_time_step(dt, cls=self)
+        print_text(stars, 'red', 1)
+
+    # print the stats to the screen :
+    run_time = time() - time_start
+    est_end  = (t_end - t) / dt * run_time/60/60
+      
+    print_text(stars, cls=self)
+    print_text("Current time %-*s : %g"               % (30, ' ', t),
+               cls=self)
+    print_text("Current time step %-*s : %g"          % (30, ' ', dt),
+               cls=self)
+    print_text("Momentum Newton iterations %-*s : %g" % (30, ' ', status_U[0]),
+               cls=self)
+    print_text("Mass Newton iterations %-*s : %g"     % (30, ' ', status_H[0]),
+               cls=self)
+    print_text("Time for to solve all (s) %-*s : %g"  % (30, ' ', run_time),
+               cls=self)
+    print_text("Time remaining est. (h) %-*s : %g"    % (30, ' ', est_end),
+               cls=self)
+    print_text(stars, cls=self)
+ 
+    t += dt
+    if SOLVED_U and SOLVED_H or t<100:
+        return True, dt, t
+    else:
+        return False, dt, t
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
-                      annotate=False, callback=None):
+                      adaptive=False, annotate=False, callback=None):
     """
     """
     s    = '::: performing transient run :::'
-    print_text(s, self.model_color)
+    print_text(s, self.this.color())
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
@@ -1522,41 +1654,103 @@ class Model(object):
       print_text(s % type(mass), 'red', 1)
       sys.exit(1)
     
+    stars = "*****************************************************************"
     self.init_time_step(time_step)
     self.step_time = []
-
-    t0 = time()
-    t  = t_start
+    t0             = time()
+    t              = t_start
+    dt             = time_step
+    alpha          = momentum.solve_params['solver']['newton_solver']
+    alpha          = alpha['relaxation_parameter']
    
     # Loop over all times
     while t <= t_end:
 
       # start the timer :
       tic = time()
-
-      # solve energy :
-      energy.solve(annotate=annotate)
       
+      # solve momentum equation, lower alpha on failure :
+      if adaptive:
+        solved_u = False
+        par    = momentum.solve_params['solver']['newton_solver']
+        while not solved_u:
+          if par['relaxation_parameter'] < 0.2:
+            status_u = [False, False]
+            break
+          ## reset velocity for good convergence :
+          #self.assign_variable(momentum.get_U(), DOLFIN_EPS, cls=self)
+          status_u = momentum.solve(annotate=annotate)
+          solved_u = status_u[1]
+          if not solved_u:
+            par['relaxation_parameter'] /= 1.43
+            print_text(stars, 'red', 1)
+            s = ">>> WARNING: newton relaxation parameter lowered to %g <<<"
+            print_text(s % par['relaxation_parameter'], 'red', 1)
+            print_text(stars, 'red', 1)
+
       # solve velocity :
-      momentum.solve(annotate=annotate)
+      else:
+        momentum.solve(annotate=annotate)
+    
+      # solve mass equations, lowering time step on failure :
+      if adaptive:
+        solved_h = False
+        while not solved_h:
+          if dt < DOLFIN_EPS:
+            status_h = [False,False]
+            break
+          H        = self.H.copy(True)
+          status_h = mass.solve(annotate=annotate)
+          solved_h = status_h[1]
+          if t <= 100:
+            solved_h = True
+          if not solved_h:
+            dt /= 2.0
+            print_text(stars, 'red', 1)
+            s = ">>> WARNING: time step lowered to %g <<<"
+            print_text(s % dt, 'red', 1)
+            self.init_time_step(dt, cls=self)
+            self.init_H_H0(H, cls=self)
+            print_text(stars, 'red', 1)
 
       # solve mass :
-      mass.solve(annotate=annotate)
+      else:
+        mass.solve(annotate=annotate)
+      
+      ## use adaptive solver if desired :
+      #if adaptive and (not mom_s[1] or not mas_s[1]):
+      #  s = "::: reducing time step for convergence :::"
+      #  print_text(s, self.color())
+      #  solved, dt, t = self.adaptive_update(momentum, energy, mass,
+      #                                       t_start, t_end, t,
+      #                                       annotate=annotate)
+      #  time_step = dt
+      #  self.init_time_step(dt)
+      
+      # solve energy :
+      energy.solve(annotate=annotate)
 
       # update pressure-melting point :
       energy.calc_T_melt(annotate=annotate)
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, self.model_color)
+        print_text(s, self.this.color())
         callback()
        
       # increment time step :
       s = '>>> Time: %i yr, CPU time for last dt: %.3f s <<<'
-      print_text(s % (t, time()-tic), 'red', 1)
+      print_text(s % (t+dt, time()-tic), 'red', 1)
 
-      t += time_step
+      t += dt
       self.step_time.append(time() - tic)
+      
+      if adaptive:
+        print_text("::: resetting alpha to normal :::", cls=self)
+        par['relaxation_parameter'] = alpha
+        print_text("::: resetting dt to normal :::", cls=self)
+        self.init_time_step(time_step, cls=self)
+      
 
     # calculate total time to compute
     s = time() - t0

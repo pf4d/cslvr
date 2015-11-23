@@ -13,7 +13,7 @@ class MomentumHybrid(Momentum):
   """
   2D hybrid model.
   """
-  def __init__(self, model, solve_params=None, linear=False, isothermal=True):
+  def __init__(self, model, solve_params=None, isothermal=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
@@ -31,9 +31,9 @@ class MomentumHybrid(Momentum):
     else:
       self.solve_params = solve_params
     
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q)
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q)
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q)
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q)
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
     
     # CONSTANTS
     year    = model.spy
@@ -57,7 +57,7 @@ class MomentumHybrid(Momentum):
     Bw      = 1.73e3*year # model.a0 ice hardness
     Qc      = 6e4
     Qw      = model.Q0    # ice act. energy
-    Rc      = model.R     # gas constant
+    R       = model.R     # gas constant
     
     # MOMENTUM
     U       = Function(model.HV, name='U')
@@ -102,7 +102,7 @@ class MomentumHybrid(Momentum):
       s = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       def A_v(T):
-        return conditional(le(T,263.15),Bc*exp(-Qc/(Rc*T)),Bw*exp(-Qw/(Rc*T)))
+        return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
     
     def epsilon_dot(s):
       return ( + (u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
@@ -182,7 +182,14 @@ class MomentumHybrid(Momentum):
     self.dU  = dU
     self.Phi = Phi
     self.Lam = Lam
-
+    
+    problem = NonlinearVariationalProblem(
+                self.mom_F, self.U, 
+                J=self.mom_Jac,
+                form_compiler_parameters=self.solve_params['ffc_params'])
+    self.solver = NonlinearVariationalSolver(problem)
+    self.solver.parameters.update(self.solve_params['solver'])
+    
   def get_residual(self):
     """
     Returns the momentum residual.
@@ -233,8 +240,10 @@ class MomentumHybrid(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
+    #nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+    #                              'preconditioner'           : 'hypre_amg',
     nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-                                  'relaxation_parameter'     : 0.7,
+                                  'relaxation_parameter'     : 1.0,
                                   'relative_tolerance'       : 1e-5,
                                   'absolute_tolerance'       : 1e7,
                                   'maximum_iterations'       : 20,
@@ -260,25 +269,28 @@ class MomentumHybrid(Momentum):
     print_text(s % (maxit, alpha), self.color())
     
     # compute solution :
-    solve(self.mom_F == 0, self.U, J = self.mom_Jac,
-          annotate = annotate, solver_parameters = params['solver'],
-          form_compiler_parameters = params['ffc_params'])
-    print_min_max(self.U, 'U')
+    #s = solve(self.mom_F == 0, self.U, J = self.mom_Jac,
+    #      annotate = annotate, solver_parameters = params['solver'],
+    #      form_compiler_parameters = params['ffc_params'])
+    out = self.solver.solve()
+    print_min_max(self.U, 'U', self.color())
 
     model.UHV.assign(self.U)
-    print_min_max(model.UHV, 'UHV')
+    print_min_max(model.UHV, 'UHV', self.color())
 
     self.assx.assign(model.u,   project(self.u(0.0), model.Q, annotate=False))
     self.assy.assign(model.v,   project(self.v(0.0), model.Q, annotate=False))
     self.assz.assign(model.w,   project(self.w(0.0), model.Q, annotate=False))
 
-    print_min_max(model.U3, 'U3_S')
+    print_min_max(model.U3, 'U3', self.color())
     
     self.assx.assign(model.u_b, project(self.u(1.0), model.Q, annotate=False))
     self.assy.assign(model.v_b, project(self.v(1.0), model.Q, annotate=False))
     self.assz.assign(model.w_b, project(self.w(1.0), model.Q, annotate=False))
 
-    print_min_max(model.U3_b, 'U3_B')
+    print_min_max(model.U3_b, 'U3_B', self.color())
+
+    return out
 
 
 

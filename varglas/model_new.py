@@ -1759,11 +1759,13 @@ class Model(object):
       
       # for the subsequent iteration, reset the parameters to normal :
       if adaptive:
-        print_text("::: resetting alpha to normal :::", cls=self)
-        par['relaxation_parameter'] = alpha
-        print_text("::: resetting dt to normal :::", cls=self)
-        self.init_time_step(time_step, cls=self)
-        dt = time_step
+        if par['relaxation_parameter'] != alpha:
+          print_text("::: resetting alpha to normal :::", cls=self)
+          par['relaxation_parameter'] = alpha
+        if dt != time_step:
+          print_text("::: resetting dt to normal :::", cls=self)
+          self.init_time_step(time_step, cls=self)
+          dt = time_step
       
 
     # calculate total time to compute

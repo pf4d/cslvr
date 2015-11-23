@@ -240,9 +240,9 @@ class MomentumHybrid(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-    nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                                  'preconditioner'           : 'hypre_amg',
+    #nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+    #                              'preconditioner'           : 'hypre_amg',
+    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
                                   'relaxation_parameter'     : 1.0,
                                   'relative_tolerance'       : 1e-5,
                                   'absolute_tolerance'       : 1e7,

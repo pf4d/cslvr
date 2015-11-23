@@ -674,10 +674,10 @@ class Model(object):
     print_min_max(self.betaSIA, 'betaSIA', self.this.color())
     
     if self.dim == 3:
-      #self.assign_variable(self.beta, DOLFIN_EPS, save=False)
-      #bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
-      #bc_beta.apply(self.beta.vector())
-      self.assign_variable(self.beta, self.betaSIA)
+      self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self)
+      bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
+      bc_beta.apply(self.beta.vector())
+      #self.assign_variable(self.beta, self.betaSIA)
     elif self.dim == 2:
       self.assign_variable(self.beta, self.betaSIA)
     print_min_max(self.beta, 'beta', self.this.color())

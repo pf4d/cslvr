@@ -659,7 +659,7 @@ class Model(object):
     
     """
     s = "::: initializing beta from SIA :::"
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
@@ -673,22 +673,22 @@ class Model(object):
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v, save=False, cls=self)
+    self.assign_variable(U_s, U_v, save=False, cls=self.this)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project((rhoi*g*H*S_mag) / U_s, Q, annotate=False)
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
-    self.assign_variable(self.betaSIA, beta_0_v, cls=self)
+    self.assign_variable(self.betaSIA, beta_0_v, cls=self.this)
     
     if self.dim == 3:
-      self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self)
+      self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self.this)
       bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
-      #self.assign_variable(self.beta, self.betaSIA, cls=self)
+      #self.assign_variable(self.beta, self.betaSIA, cls=self.this)
     elif self.dim == 2:
-      self.assign_variable(self.beta, self.betaSIA, cls=self)
-    print_min_max(self.beta, 'beta', cls=self)
+      self.assign_variable(self.beta, self.betaSIA, cls=self.this)
+    print_min_max(self.beta, 'beta', cls=self.this)
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
     r"""
@@ -701,7 +701,7 @@ class Model(object):
     
     """
     s = "::: initializing new sliding beta from SIA :::"
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
     r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
@@ -719,7 +719,7 @@ class Model(object):
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v, cls=self)
+    self.assign_variable(U_s, U_v, cls=self.this)
     
     Ne       = H + rhow/rhoi * D
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
@@ -729,11 +729,11 @@ class Model(object):
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     #self.assign_variable(beta_0, beta_0_v)
-    print_min_max(beta_0, 'beta_0', cls=self)
+    print_min_max(beta_0, 'beta_0', cls=self.this)
 
     #self.assign_variable(self.beta, beta_0)
     
-    self.assign_variable(self.beta, DOLFIN_EPS, cls=self)
+    self.assign_variable(self.beta, DOLFIN_EPS, cls=self.this)
     bc_beta = DirichletBC(self.Q, beta_0, self.ff, GAMMA_B_GND)
     bc_beta.apply(self.beta.vector())
     
@@ -744,7 +744,7 @@ class Model(object):
     """
     """
     s    = "::: initializing beta from stats :::"
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
     
     q_geo  = self.q_geo
     T_s    = self.T_surface
@@ -762,13 +762,13 @@ class Model(object):
 
     Ubar_v = Ubar.vector().array()
     Ubar_v[Ubar_v < 1e-10] = 1e-10
-    self.assign_variable(Ubar, Ubar_v, cls=self)
+    self.assign_variable(Ubar, Ubar_v, cls=self.this)
            
     D      = Function(Q)
     B_v    = B.vector().array()
     D_v    = D.vector().array()
     D_v[B_v < 0] = B_v[B_v < 0]
-    self.assign_variable(D, D_v, cls=self)
+    self.assign_variable(D, D_v, cls=self.this)
 
     gradS = as_vector([S.dx(0), S.dx(1), 0.0])
     gradB = as_vector([B.dx(0), B.dx(1), 0.0])
@@ -994,7 +994,7 @@ class Model(object):
                 1.55871983e-13]
    
     for xx,nam in zip(X, names[idx]):
-      print_min_max(xx, nam, cls=self)
+      print_min_max(xx, nam, cls=self.this)
 
     X_i  = []
     X_i.extend(X)
@@ -1019,15 +1019,15 @@ class Model(object):
       beta0                   = project(self.beta_f, Q, annotate=False)
       beta0_v                 = beta0.vector().array()
       beta0_v[beta0_v < 1e-2] = 1e-2
-      self.assign_variable(beta0, beta0_v, cls=self)
+      self.assign_variable(beta0, beta0_v, cls=self.this)
     
-      self.assign_variable(self.beta, 1e-2, cls=self)
+      self.assign_variable(self.beta, 1e-2, cls=self.this)
       bc_beta = DirichletBC(self.Q, beta0, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
     elif mode == 'transient':
-      self.assign_variable(self.beta, 200.0, cls=self)
+      self.assign_variable(self.beta, 200.0, cls=self.this)
     
-    print_min_max(self.beta, 'beta_hat', cls=self)
+    print_min_max(self.beta, 'beta_hat', cls=self.this)
  
   def update_stats_beta(self):
     """
@@ -1041,14 +1041,14 @@ class Model(object):
     ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
     beta_v[beta_v < 0.0]    = 0.0
     #beta_v[beta_v > 2500.0] = 2500.0
-    self.assign_variable(self.beta, beta_v, cls=self)
+    self.assign_variable(self.beta, beta_v, cls=self.this)
      
   def init_b_SIA(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """
     s = "::: initializing b from U_ob :::"
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
    
     x      = self.x
     S      = self.S
@@ -1097,14 +1097,14 @@ class Model(object):
    
     b_f = Function(Q)
     solve(lhs(R) == rhs(R), b_f, annotate=False)
-    self.assign_variable(b, b_f, cls=self)
+    self.assign_variable(b, b_f, cls=self.this)
  
   def calc_eta(self):
     """
     Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
     Q       = self.Q
     R       = self.R
     T       = self.T
@@ -1143,13 +1143,13 @@ class Model(object):
     E_shf_v = E_shf.vector().array()
     E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
     E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
-    self.assign_variable(E, E_v, cls=self)
+    self.assign_variable(E, E_v, cls=self.this)
 
     # calculate viscosity :
     b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
     eta     = project(eta, Q, annotate=False)
-    self.assign_variable(self.eta, eta, cls=self)
+    self.assign_variable(self.eta, eta, cls=self.this)
 
   def calc_vert_average(self, u):
     """
@@ -1170,7 +1170,7 @@ class Model(object):
     updates model.misfit with D for plotting.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, cls=self)
+    print_text(s % integral, cls=self.this)
 
     U_s    = Function(self.Q2)
     U_ob_s = Function(self.Q2)
@@ -1205,8 +1205,8 @@ class Model(object):
     u_v     = self.u.vector().array()
     v_v     = self.v.vector().array()
     theta_v = np.arctan2(u_v, v_v)
-    theta   = Function(self.Q)
-    self.assign_variable(theta, theta_v)
+    theta   = Function(self.Q, name='theta_U_angle')
+    self.assign_variable(theta, theta_v, cls=self.this)
     return theta
 
   def rotate(self, M, theta):
@@ -1258,8 +1258,8 @@ class Model(object):
     # convert back to fenics :
     U_f = []
     for u_v in U_v:
-      u_f = Function(Q)
-      self.assign_variable(u_f, u_v)
+      u_f = Function(Q, name='u_f')
+      self.assign_variable(u_f, u_v, cls=self.this)
       U_f.append(u_f)
 
     # return a UFL vector :
@@ -1300,7 +1300,7 @@ class Model(object):
       u.interpolate(var, annotate=annotate)
 
     elif isinstance(var, GenericVector):
-      self.assign_variable(u, var.array(), annotate=annotate)
+      self.assign_variable(u, var.array(), annotate=annotate, cls=cls)
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1322,9 +1322,9 @@ class Model(object):
       if    isinstance(u, GenericVector) or isinstance(u, Function) \
          or isinstance(u, dolfin.functions.function.Function):
         s = "::: writing '%s' variable to '%sstate.h5' :::"
-        print_text(s % (u.name(), self.out_dir), cls=self)
+        print_text(s % (u.name(), self.out_dir), cls=cls)
         self.state.write(u, u.name())
-        print_text("    - done -", cls=self)
+        print_text("    - done -", cls=cls)
 
   def save_hdf5(self, u, name=None):
     """
@@ -1335,9 +1335,9 @@ class Model(object):
     if name == None:
       name = u.name()
     s = "::: writing '%s' variable to self.state file :::" % name
-    print_text(s, 'green')#cls=self)
+    print_text(s, 'green')#cls=self.this)
     self.state.write(u, name)
-    print_text("    - done -", 'green')#cls=self)
+    print_text("    - done -", 'green')#cls=self.this)
 
   def save_pvd(self, var, name, f_file=None):
     """
@@ -1347,11 +1347,11 @@ class Model(object):
     """
     if f_file != None:
       s       = "::: saving %s.pvd file :::" % name
-      print_text(s, 'green')#cls=self)
+      print_text(s, 'green')#cls=self.this)
       f_file << var
     else:
       s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
-      print_text(s, 'green')#cls=self)
+      print_text(s, 'green')#cls=self.this)
       File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
   def save_xdmf(self, var, name, f_file=None, t=0.0):
@@ -1362,11 +1362,11 @@ class Model(object):
     """
     if f_file != None:
       s       = "::: saving %s.xdmf file :::" % name
-      print_text(s, 'green')#cls=self)
+      print_text(s, 'green')#cls=self.this)
       f_file << (var, float(t))
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
-      print_text(s, 'green')#cls=self)
+      print_text(s, 'green')#cls=self.this)
       File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
   
   def solve_hydrostatic_pressure(self, annotate=True, cls=None):
@@ -1391,7 +1391,7 @@ class Model(object):
     by the individually created model.
     """
     s = "::: initializing basic variables :::"
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
@@ -1495,7 +1495,7 @@ class Model(object):
     Perform thermo-mechanical coupling between momentum and energy.
     """
     s    = '::: performing thermo-mechanical coupling :::'
-    print_text(s, cls=self)
+    print_text(s, cls=self.this)
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy

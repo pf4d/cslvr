@@ -93,7 +93,7 @@ def cb_ftn():
   nrg.solve_surface_climate()
 
 model.transient_solve(mom, nrg, mas,
-                      t_start=0.0, t_end=35000.0, time_step=10.0,
+                      t_start=0.0, t_end=35000.0, time_step=25.0,
                       adaptive=True, annotate=False, callback=cb_ftn)
 
 

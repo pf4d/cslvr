@@ -1689,7 +1689,7 @@ class Model(object):
           if par['relaxation_parameter'] < 0.2:
             status_u = [False, False]
             break
-          # reset velocity for good convergence :
+          # always reset velocity for good convergence :
           self.assign_variable(momentum.get_U(), DOLFIN_EPS, cls=self)
           status_u = momentum.solve(annotate=annotate)
           solved_u = status_u[1]
@@ -1749,13 +1749,6 @@ class Model(object):
         s    = '::: calling callback function :::'
         print_text(s, self.this.color())
         callback()
-      
-      if adaptive:
-        print_text("::: resetting alpha to normal :::", cls=self)
-        par['relaxation_parameter'] = alpha
-        print_text("::: resetting dt to normal :::", cls=self)
-        self.init_time_step(time_step, cls=self)
-        dt = time_step
        
       # increment time step :
       s = '>>> Time: %g yr, CPU time for last dt: %.3f s <<<'
@@ -1763,6 +1756,14 @@ class Model(object):
 
       t += dt
       self.step_time.append(time() - tic)
+      
+      # for the subsequent iteration, reset the parameters to normal :
+      if adaptive:
+        print_text("::: resetting alpha to normal :::", cls=self)
+        par['relaxation_parameter'] = alpha
+        print_text("::: resetting dt to normal :::", cls=self)
+        self.init_time_step(time_step, cls=self)
+        dt = time_step
       
 
     # calculate total time to compute

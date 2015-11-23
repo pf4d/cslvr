@@ -154,7 +154,7 @@ class Enthalpy(Energy):
     theta0 = Function(Q)
 
     # pressure melting point, never annotate for initial guess :
-    model.solve_hydrostatic_pressure(annotate=False, cls=self)
+    model.solve_hydrostatic_pressure(annotate=False)
     self.calc_T_melt(annotate=False)
 
     T_s_v   = T_surface.vector().array()

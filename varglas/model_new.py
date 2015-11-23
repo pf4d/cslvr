@@ -1560,7 +1560,7 @@ class Model(object):
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, cls=self)
+        print_text(s, cls=self.this)
         callback()
 
     # calculate total time to compute
@@ -1746,7 +1746,7 @@ class Model(object):
 
       if callback != None:
         s    = '::: calling callback function :::'
-        print_text(s, cls=self)
+        print_text(s, cls=self.this)
         callback()
        
       # increment time step :
@@ -1759,11 +1759,11 @@ class Model(object):
       # for the subsequent iteration, reset the parameters to normal :
       if adaptive:
         if par['relaxation_parameter'] != alpha:
-          print_text("::: resetting alpha to normal :::", cls=self)
+          print_text("::: resetting alpha to normal :::", cls=self.this)
           par['relaxation_parameter'] = alpha
         if dt != time_step:
-          print_text("::: resetting dt to normal :::", cls=self)
-          self.init_time_step(time_step, cls=self)
+          print_text("::: resetting dt to normal :::", cls=self.this)
+          self.init_time_step(time_step, cls=self.this)
           dt = time_step
       
 

@@ -31,6 +31,7 @@ model.init_T_surface(T_s)
 model.init_q_geo(q_geo)
 model.init_U_ob(u_ob, v_ob)
 
+model.save_xdmf(model.ff, 'ff')
 model.state.close()
 
 

@@ -176,10 +176,10 @@ class MomentumBP(Momentum):
       print_text(s, self.color())
 
       self.mom_bcs.append(DirichletBC(V.sub(0),
-                          model.u_lat, model.ff, model.GAMMA_D))
+                          model.u_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(V.sub(1),
-                          model.v_lat, model.ff, model.GAMMA_D))
-      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_D)
+                          model.v_lat, model.ff, model.GAMMA_L_DVD))
+      #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_L_DVD)
     
     self.U       = U 
     self.wf      = wf

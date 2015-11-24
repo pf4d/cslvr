@@ -130,20 +130,20 @@ F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       hessian_cb = hessian_cb)
 
 # optimize with scipy's fmin_l_bfgs_b :
-#b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),
-#                 options={"disp"    : True,
-#                          "maxiter" : 1000,
-#                          "gtol"    : 1e-5})
+b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),
+                 options={"disp"    : True,
+                          "maxiter" : 1000,
+                          "gtol"    : 1e-5})
 
-# or optimize with IPOpt (preferred) :
-problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
-parameters = {"tol"                : 1e-8,
-              "acceptable_tol"     : 1e-6,
-              "maximum_iterations" : 1000,
-              "ma97_order"         : "metis",
-              "linear_solver"      : "ma97"}
-solver = IPOPTSolver(problem, parameters=parameters)
-b_opt  = solver.solve()
+## or optimize with IPOpt (preferred) :
+#problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
+#parameters = {"tol"                : 1e-8,
+#              "acceptable_tol"     : 1e-6,
+#              "maximum_iterations" : 1000,
+#              "ma97_order"         : "metis",
+#              "linear_solver"      : "ma97"}
+#solver = IPOPTSolver(problem, parameters=parameters)
+#b_opt  = solver.solve()
 print_min_max(b_opt, 'b_opt')
 
 # initalize the model with the optimal traction :

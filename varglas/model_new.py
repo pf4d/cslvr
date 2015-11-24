@@ -16,7 +16,7 @@ class Model(object):
   GAMMA_B_GND = 3   # grounded lower surface (bedrock)
   GAMMA_S_FLT = 6   # shelf upper surface
   GAMMA_B_FLT = 5   # shelf lower surface
-  GAMMA_D     = 7   # basin divides
+  GAMMA_L_DVD = 7   # basin divides
   GAMMA_L_OVR = 4   # terminus over water
   GAMMA_L_UDR = 10  # terminus under water
   GAMMA_U_GND = 8   # grounded surface with U observations

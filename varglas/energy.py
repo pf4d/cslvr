@@ -291,11 +291,11 @@ class Enthalpy(Energy):
       s = "    - using divide-lateral boundary conditions -"
       print_text(s, cls=self)
       self.theta_bc.append( DirichletBC(Q, model.theta_app,
-                                        model.ff, model.GAMMA_D) )
+                                        model.ff, model.GAMMA_L_DVD) )
     
     # always mark the divide (if present) essential :
     #self.theta_bc.append( DirichletBC(Q, theta_surface,
-    #                                  model.ff, model.GAMMA_D) )
+    #                                  model.ff, model.GAMMA_L_DVD) )
     #code = 'theta_s + (x[2] - S)*(146.3 + 7.253*T)/(9.828 * exp(-0.0057*T))' +\
     #                 '*(q_geo + beta*(u*u + v*v + w*w))'
     #theta_lat = Expression(code, theta_s=theta_surface, S=S, T=T,
@@ -323,7 +323,8 @@ class Enthalpy(Energy):
     #                       theta_s=theta_surface, S=S, B=B, 
     #                       k=model.ki, c=model.ci, rho=rhoi,
     #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
-    #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff, model.GAMMA_D) )
+    #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff,
+    #                                  model.GAMMA_L_DVD) )
 
     self.theta   = theta
     self.theta0  = theta0

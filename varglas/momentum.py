@@ -180,8 +180,8 @@ class Momentum(Physics):
 
   def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
     """
-    Forms and returns regularization functional for used with adjoint, saved to 
-    self.R.
+    Formulates, and returns the regularization functional for use 
+    with adjoint, saved to self.R.
     """
     self.alpha = alpha   # need to save this for printing values.
 

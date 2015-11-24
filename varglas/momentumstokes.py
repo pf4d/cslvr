@@ -172,11 +172,11 @@ class MomentumStokes(Momentum):
       print_text(s, self.color())
 
       self.mom_bcs.append(DirichletBC(model.MV.sub(0).sub(0),
-                                      model.u_lat, model.ff, model.GAMMA_D))
+                                      model.u_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(model.MV.sub(0).sub(1),
-                                      model.v_lat, model.ff, model.GAMMA_D))
+                                      model.v_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(model.MV.sub(0).sub(2),
-                                      model.w_lat, model.ff, model.GAMMA_D))
+                                      model.w_lat, model.ff, model.GAMMA_L_DVD))
 
     #self.mom_bcs.append(DirichletBC(model.MV.sub(0), 
     #                                Constant((0,0,0)), model.ff, 
@@ -447,9 +447,9 @@ class MomentumDukowiczStokesReduced(Momentum):
       s = "    - using divide-lateral boundary conditions -"
       print_text(s, self.color())
       self.mom_bcs.append(DirichletBC(model.Q2.sub(0),
-                          model.u_lat, model.ff, model.GAMMA_D))
+                          model.u_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(model.Q2.sub(1),
-                          model.v_lat, model.ff, model.GAMMA_D))
+                          model.v_lat, model.ff, model.GAMMA_L_DVD))
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
@@ -851,11 +851,11 @@ class MomentumDukowiczStokes(Momentum):
       print_text(s, self.color())
 
       self.mom_bcs.append(DirichletBC(model.Q5.sub(0),
-                          model.u_lat, model.ff, model.GAMMA_D))
+                          model.u_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(model.Q5.sub(1),
-                          model.v_lat, model.ff, model.GAMMA_D))
+                          model.v_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(model.Q5.sub(2),
-                          model.w_lat, model.ff, model.GAMMA_D))
+                          model.w_lat, model.ff, model.GAMMA_L_DVD))
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
@@ -1176,11 +1176,11 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       print_text(s, self.color())
 
       self.mom_bcs.append(DirichletBC(Q4.sub(0),
-                          model.u_lat, model.ff, model.GAMMA_D))
+                          model.u_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(Q4.sub(1),
-                          model.v_lat, model.ff, model.GAMMA_D))
+                          model.v_lat, model.ff, model.GAMMA_L_DVD))
       self.mom_bcs.append(DirichletBC(Q4.sub(2),
-                          model.w_lat, model.ff, model.GAMMA_D))
+                          model.w_lat, model.ff, model.GAMMA_L_DVD))
     
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd

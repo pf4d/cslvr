@@ -69,7 +69,7 @@ print_min_max(dbm.data['ref'], 'ref')
 # generate the contour :
 m = MeshGenerator(db2, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.999999999, skip_pts=0)
+m.create_contour('mask', zero_cntr=0.999999999, skip_pts=5)
 m.eliminate_intersections(dist=200)
 m.plot_contour()
 m.write_gmsh_contour(boundary_extend=False)

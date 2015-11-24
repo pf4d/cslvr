@@ -31,32 +31,32 @@ m2            = M == 2
 mask          = logical_or(m1,m2)
 dbm.data['M'] = mask
 
-# enforce max depth in regions off continent :
-B  = dbm.data['Bo']
-Bm = logical_and(B < 0, mask != 1)
-dbm.data['Bo'][Bm] = 0
-
-# create bounds on thickness :
-Hmax = ones(np.shape(mask))
-Hmax[mask == 1]  = 1e4
-Hmax[mask == 0]  = 1e2
-dbm.data['Hmax'] = Hmax
-
+## enforce max depth in regions off continent :
+#B  = dbm.data['Bo']
+#Bm = logical_and(B < 0, mask != 1)
+#dbm.data['Bo'][Bm] = 0
+#
+## create bounds on thickness :
+#Hmax = ones(np.shape(mask))
+#Hmax[mask == 1]  = 1e4
+#Hmax[mask == 0]  = 1e2
+#dbm.data['Hmax'] = Hmax
+#
 #B  = dbm.data['Bo']
 #Bm = B[B != -9999].min()
 #dbm.set_data_min('Bo', boundary=Bm, val=Bm)
- 
-# interpolate from the dbm grid to the dsr grid and make areas of ocean very
-# high negative accumulation to simulate a `calving frount' :
-dbm.interpolate_to_di(dsr, fn='M', fo='M')
-dsr.data['adot'][dsr.data['M'] == 0] = -100.0
+# 
+## interpolate from the dbm grid to the dsr grid and make areas of ocean very
+## high negative accumulation to simulate a `calving frount' :
+#dbm.interpolate_to_di(dsr, fn='M', fo='M')
+#dsr.data['adot'][dsr.data['M'] == 0] = -100.0
 
 # get the data :
 B     = dbm.get_expression("Bo",    near=False)
 adot  = dsr.get_expression("adot",  near=False)
 lat   = dsr.get_expression("lat",   near=False)
 lon   = dsr.get_expression("lon",   near=False)
-Hmax  = dbm.get_expression("Hmax",  near=True)
+#Hmax  = dbm.get_expression("Hmax",  near=True)
 mask  = dbm.get_expression("M",     near=True)
 
 # create a 2D model :
@@ -64,7 +64,7 @@ model = D2Model(mesh, out_dir = 'dump/results/')
 
 model.init_B(B)
 model.init_S(model.B.vector() + thklim)
-model.init_mask(mask)
+model.init_mask(1.0)
 model.init_adot(adot)
 model.init_lat(lat)
 model.init_lon(lon)

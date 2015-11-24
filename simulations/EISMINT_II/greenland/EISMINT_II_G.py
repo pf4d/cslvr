@@ -33,8 +33,8 @@ dbm.data['M'] = mask
 
 # enforce max depth in regions off continent :
 B  = dbm.data['Bo']
-Bm = logical_and(B < -500, mask != 1)
-dbm.data['Bo'][Bm] = -500
+Bm = logical_and(B < 0, mask != 1)
+dbm.data['Bo'][Bm] = 0
 
 # create bounds on thickness :
 Hmax = ones(np.shape(mask))
@@ -49,7 +49,7 @@ dbm.data['Hmax'] = Hmax
 # interpolate from the dbm grid to the dsr grid and make areas of ocean very
 # high negative accumulation to simulate a `calving frount' :
 dbm.interpolate_to_di(dsr, fn='M', fo='M')
-dsr.data['adot'][dsr.data['M'] == 0] = -5.0
+dsr.data['adot'][dsr.data['M'] == 0] = -100.0
 
 # get the data :
 B     = dbm.get_expression("Bo",    near=False)
@@ -57,18 +57,19 @@ adot  = dsr.get_expression("adot",  near=False)
 lat   = dsr.get_expression("lat",   near=False)
 lon   = dsr.get_expression("lon",   near=False)
 Hmax  = dbm.get_expression("Hmax",  near=True)
+mask  = dbm.get_expression("M",     near=True)
 
 # create a 2D model :
 model = D2Model(mesh, out_dir = 'dump/results/')
 
 model.init_B(B)
 model.init_S(model.B.vector() + thklim)
-model.init_mask(1.0)
+model.init_mask(mask)
 model.init_adot(adot)
 model.init_lat(lat)
 model.init_lon(lon)
 model.init_beta(1e9)
-model.init_H_bounds(thklim, Hmax)
+model.init_H_bounds(thklim, 1e4)#Hmax)
 model.init_H_H0(thklim)
 model.init_q_geo(model.ghf)
 model.assign_variable(model.eps_reg, 1e-5)
@@ -83,6 +84,7 @@ mas = MassHybrid(model, isothermal=False)
 
 # initialize temperature from lapse rate :
 nrg.solve_surface_climate()
+#nrg.adjust_adot()
 model.init_T_T0(model.T_surface)
 
 model.save_xdmf(model.T_surface, 'T_surface')
@@ -90,17 +92,19 @@ model.save_xdmf(model.S,         'S')
 
 def cb_ftn():
   #bv.solve(annotate=False)
-  model.save_xdmf(model.S,  'S')
-  model.save_xdmf(model.H,  'H')
-  model.save_xdmf(model.Ts, 'Ts')
-  model.save_xdmf(model.Tb, 'Tb')
-  model.save_xdmf(model.Mb, 'Mb')
-  model.save_xdmf(model.U3, 'Us')
+  model.save_xdmf(model.S,    'S')
+  model.save_xdmf(model.H,    'H')
+  model.save_xdmf(model.Ts,   'Ts')
+  model.save_xdmf(model.Tb,   'Tb')
+  model.save_xdmf(model.Mb,   'Mb')
+  model.save_xdmf(model.U3,   'Us')
+  model.save_xdmf(model.adot, 'adot')
   #model.save_xdmf(model.beta, 'beta')
   nrg.solve_surface_climate()
+  #nrg.adjust_adot()
 
 model.transient_solve(mom, nrg, mas,
-                      t_start=0.0, t_end=35000.0, time_step=25.0,
+                      t_start=0.0, t_end=35000.0, time_step=10.0,
                       adaptive=True, annotate=False, callback=cb_ftn)
 
 

@@ -49,11 +49,33 @@ class Energy(Physics):
     S     = model.S.vector().array()
     lat   = model.lat.vector().array()
     lon   = model.lon.vector().array()
-    
+   
+    # greenland : 
     Tn    = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + T_w
+
+    ## antarctica :
+    #Tn    = 34.46 - 0.00914*S - 0.27974*lat
     
     # Apply the lapse rate to the surface boundary condition
     model.init_T_surface(Tn, cls=self)
+ 
+  def adjust_adot(self):
+    """
+    """
+    s    = "::: solving surface accumulation :::"
+    print_text(s, cls=self)
+    model = self.model
+
+    T_w   = model.T_w(0)
+    T     = model.T_surface.vector().array()
+
+    adot  = 2.5 * 2**((T-T_w)/10)
+    
+    shf_dofs = np.where(model.mask.vector().array() == 0.0)[0]
+    adot[model.shf_dofs] = -100
+
+    model.init_adot(adot, cls=self)
+
   
   def solve(self, annotate=True, params=None):
     """ 

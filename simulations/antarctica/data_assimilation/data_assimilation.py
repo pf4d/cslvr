@@ -68,8 +68,9 @@ m_params  = {'solver'               : nparams,
              'vert_solve_method'    : 'mumps'}
 
 # create a Momentum instance with linearized viscosity for incompelete-adjoint :
-mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False, 
-                                    linear=True)
+#mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False, 
+#                                    linear=True)
+mom = MomentumDukowiczBP(model, m_params, isothermal=False, linear=True)
 #mom = MomentumDukowiczStokes(model, m_params, isothermal=False, linear=True)
 #mom = MomentumBP(model, m_params, isothermal=False, linear=True)
 
@@ -77,14 +78,14 @@ mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False,
 mom.solve(annotate=True)
 
 # form the cost functional :
-J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid', 
+J = mom.form_obj_ftn(integral=model.dSrf, kind='log_L2_hybrid', 
                      g1=0.01, g2=5000)
 #J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
 #R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
 #                     alpha=1.0)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
                      alpha=1e-1)
 
 # define the objective functional to minimize :
@@ -114,8 +115,8 @@ def deriv_cb(I, dI, beta):
   #  model.assign_submesh_variable(beta_b, beta)
   #  #model.save_xdmf(beta_b, 'beta_control', f_file=beta_f, t=i)
   #i += 1
-  #model.assign_submesh_variable(beta_b, beta)
-  #model.save_xdmf(beta_b, 'beta_control')
+  model.assign_submesh_variable(beta_b, beta)
+  model.save_xdmf(beta_b, 'beta_control')
 
 # define the control parameter :
 m = FunctionControl('beta')
@@ -126,7 +127,7 @@ m = FunctionControl('beta')
 F = ReducedFunctional(Functional(I), m)
 
 # optimize with scipy's fmin_l_bfgs_b :
-b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),
+b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 1e7),
                  options={"disp"    : True,
                           "maxiter" : 1000,
                           "gtol"    : 1e-5})

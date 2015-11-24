@@ -1283,7 +1283,7 @@ class Model(object):
          or isinstance(u, dolfin.functions.function.Function):
         u.vector()[:] = var
       elif  isinstance(u, Constant):
-        u.assign(var)
+        u.assign(var, annotate=annotate)
       elif  isinstance(u, float) or isinstance(u, int):
         u = var
     

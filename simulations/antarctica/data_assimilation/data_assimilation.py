@@ -114,20 +114,16 @@ def deriv_cb(I, dI, beta):
   #  model.assign_submesh_variable(beta_b, beta)
   #  #model.save_xdmf(beta_b, 'beta_control', f_file=beta_f, t=i)
   #i += 1
-  model.assign_submesh_variable(beta_b, beta)
-  model.save_xdmf(beta_b, 'beta_control')
-
-# hessian of objective function callback function (not used) :
-def hessian_cb(I, ddI, beta):
-  print_min_max(ddI, 'd/db dI/db')
+  #model.assign_submesh_variable(beta_b, beta)
+  #model.save_xdmf(beta_b, 'beta_control')
 
 # define the control parameter :
 m = FunctionControl('beta')
 
 # create the reduced functional to minimize :
-F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-                      derivative_cb_post = deriv_cb,
-                      hessian_cb = hessian_cb)
+#F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+#                      derivative_cb_post = deriv_cb)
+F = ReducedFunctional(Functional(I), m)
 
 # optimize with scipy's fmin_l_bfgs_b :
 b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(1e-6, 1e7),

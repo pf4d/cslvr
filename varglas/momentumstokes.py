@@ -287,8 +287,8 @@ class MomentumStokes(Momentum):
                      annotate=False)
     self.assp.assign(model.p, p, annotate=False)
 
-    print_min_max(model.U3, 'U')
-    print_min_max(model.p,  'p')
+    print_min_max(model.U3, 'U', cls=self)
+    print_min_max(model.p,  'p', cls=self)
 
 
 class MomentumDukowiczStokesReduced(Momentum):
@@ -669,9 +669,9 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0], 'u')
-    print_min_max(U3[1], 'v')
-    print_min_max(U3[2], 'w')
+    print_min_max(U3[0], 'u', cls=self)
+    print_min_max(U3[1], 'v', cls=self)
+    print_min_max(U3[2], 'w', cls=self)
 
 
 class MomentumDukowiczStokes(Momentum):
@@ -989,11 +989,11 @@ class MomentumDukowiczStokes(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0],     'u')
-    print_min_max(U3[1],     'v')
-    print_min_max(U3[2],     'w')
-    print_min_max(model.p,   'p')
-    print_min_max(model.lam, 'lam')
+    print_min_max(U3[0],     'u',   cls=self)
+    print_min_max(U3[1],     'v',   cls=self)
+    print_min_max(U3[2],     'w',   cls=self)
+    print_min_max(model.p,   'p',   cls=self)
+    print_min_max(model.lam, 'lam', cls=self)
 
 
 class MomentumDukowiczBrinkerhoffStokes(Momentum):
@@ -1313,10 +1313,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0], 'u')
-    print_min_max(U3[1], 'v')
-    print_min_max(U3[2], 'w')
-    print_min_max(model.p, 'p')
+    print_min_max(U3[0], 'u',   cls=self)
+    print_min_max(U3[1], 'v',   cls=self)
+    print_min_max(U3[2], 'w',   cls=self)
+    print_min_max(model.p, 'p', cls=self)
 
 
 

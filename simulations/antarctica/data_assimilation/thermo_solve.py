@@ -8,7 +8,7 @@ import sys
 
 # get the input args :
 i       = 0
-dir_b   = 'dump/low/0'     # directory to save
+dir_b   = 'dump/low_BP/0'     # directory to save
 
 # set the relavent directories (complicated, right?!) :
 var_dir = 'dump/vars_low/'
@@ -114,7 +114,8 @@ e_params  = {'solver'               : 'mumps',
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczBP(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
 

@@ -13,5 +13,6 @@ model = D3Model(mesh=f, out_dir=out_dir, save_state=True, state=fn)
 bedmesh = model.get_bed_mesh()
 srfmesh = model.get_surface_mesh()
 
+fn.close()
 
 

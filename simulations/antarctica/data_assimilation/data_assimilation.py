@@ -84,7 +84,7 @@ J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid',
 # form the regularization functional :
 #R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
 #                     alpha=1.0)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed_f, kind='Tikhonov', 
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
                      alpha=1e-1)
 
 # define the objective functional to minimize :
@@ -161,6 +161,7 @@ model.save_xdmf(model.beta, 'beta_opt')
 model.save_hdf5(model.U3)
 model.save_hdf5(model.beta)
 
+foutput.close()
 
 ## invert for enhancement over shelves :
 #else:

@@ -165,5 +165,5 @@ d3model.save_hdf5(d3model.U_ob)
 d3model.save_hdf5(d3model.beta)
 d3model.save_hdf5(d3model.Mb)
 
-
+foutput.close()
 

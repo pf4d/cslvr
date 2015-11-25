@@ -158,7 +158,7 @@ class MassHybrid(Mass):
   """
   New 2D hybrid model.
   """
-  def __init__(self, model, solve_params=None, isothermal=True):
+  def __init__(self, model, thklim=1.0, solve_params=None, isothermal=True):
     """
     """
     s = "::: INITIALIZING HYBRID MASS-BALANCE PHYSICS :::"
@@ -254,6 +254,7 @@ class MassHybrid(Mass):
     self.J_thick = derivative(self.R_thick, H, dH)
 
     self.bc = []#NOTE ? DirichletBC(Q, thklim, 'on_boundary') ? maybe ?
+    self.bc = [DirichletBC(Q, thklim, 'on_boundary')]
    
     # create solver for the problem : 
     problem = NonlinearVariationalProblem(self.R_thick, model.H, 

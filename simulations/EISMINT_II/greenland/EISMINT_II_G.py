@@ -31,11 +31,11 @@ m2            = M == 2
 mask          = logical_or(m1,m2)
 dbm.data['M'] = mask
 
-## enforce max depth in regions off continent :
-#B  = dbm.data['Bo']
-#Bm = logical_and(B < 0, mask != 1)
-#dbm.data['Bo'][Bm] = 0
-#
+# enforce max depth in regions off continent :
+B  = dbm.data['Bo']
+Bm = logical_and(B < 0, mask != 1)
+dbm.data['Bo'][Bm] = 0
+
 ## create bounds on thickness :
 #Hmax = ones(np.shape(mask))
 #Hmax[mask == 1]  = 1e4
@@ -45,11 +45,11 @@ dbm.data['M'] = mask
 #B  = dbm.data['Bo']
 #Bm = B[B != -9999].min()
 #dbm.set_data_min('Bo', boundary=Bm, val=Bm)
-# 
-## interpolate from the dbm grid to the dsr grid and make areas of ocean very
-## high negative accumulation to simulate a `calving frount' :
-#dbm.interpolate_to_di(dsr, fn='M', fo='M')
-#dsr.data['adot'][dsr.data['M'] == 0] = -100.0
+ 
+# interpolate from the dbm grid to the dsr grid and make areas of ocean very
+# high negative accumulation to simulate a `calving frount' :
+dbm.interpolate_to_di(dsr, fn='M', fo='M')
+dsr.data['adot'][dsr.data['M'] == 0] = -1.0
 
 # get the data :
 B     = dbm.get_expression("Bo",    near=False)
@@ -104,7 +104,7 @@ def cb_ftn():
   #nrg.adjust_adot()
 
 model.transient_solve(mom, nrg, mas,
-                      t_start=0.0, t_end=35000.0, time_step=10.0,
+                      t_start=0.0, t_end=35000.0, time_step=25.0,
                       adaptive=True, annotate=False, callback=cb_ftn)
 
 

@@ -84,10 +84,10 @@ J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid',
 #J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
-#R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
-#                     alpha=1.0)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
-                     alpha=1e-10)
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
+                     alpha=1.0)
+#R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
+#                     alpha=1e-10)
 
 # define the objective functional to minimize :
 I = J + R
@@ -123,9 +123,8 @@ def deriv_cb(I, dI, beta):
 m = FunctionControl('beta')
 
 # create the reduced functional to minimize :
-#F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-#                      derivative_cb_post = deriv_cb)
-F = ReducedFunctional(Functional(I), m)
+F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+                      derivative_cb_post = deriv_cb)
 
 ## optimize with scipy's fmin_l_bfgs_b :
 #b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 1e7),

@@ -193,8 +193,8 @@ class Momentum(Physics):
       print_text(s, 'red', 1)
       sys.exit(1)
     elif kind == 'TV':
-      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
-      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + DOLFIN_EPS) * dR
+      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-12) * dR
+      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-12) * dR
     elif kind == 'Tikhonov':
       R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
       Rp = 0.5 * inner(grad(c), grad(c)) * dR

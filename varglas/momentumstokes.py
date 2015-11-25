@@ -387,7 +387,7 @@ class MomentumDukowiczStokesReduced(Momentum):
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
       T_c     = 263.15
-      #Theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+      #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
       #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
       #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
       #W_T     = conditional( lt(W,     0.01),    W,            0.01)

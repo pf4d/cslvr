@@ -79,15 +79,15 @@ mom = MomentumDukowiczBP(model, m_params, isothermal=False, linear=True)
 mom.solve(annotate=True)
 
 # form the cost functional :
-J = mom.form_obj_ftn(integral=model.dSrf, kind='log_L2_hybrid', 
+J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid', 
                      g1=0.01, g2=5000)
 #J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
-R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
-                     alpha=1.0)
-#R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
-#                     alpha=1e-10)
+#R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
+#                     alpha=1.0)
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
+                     alpha=1e-10)
 
 # define the objective functional to minimize :
 I = J + R

@@ -48,6 +48,7 @@ model.init_U_mask(fdata)
 model.init_E(1.0)
 
 # use T0 and beta0 resulting from thermo_solve.py :
+model.init_theta(finput)      # energy
 model.init_T(finput)          # temp
 model.init_W(finput)          # water
 model.init_beta(finput)       # friction
@@ -83,10 +84,10 @@ J = mom.form_obj_ftn(integral=model.dSrf, kind='log_L2_hybrid',
 #J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
-#R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
-#                     alpha=1.0)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
-                     alpha=1e-1)
+R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
+                     alpha=1.0)
+#R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
+#                     alpha=1e-10)
 
 # define the objective functional to minimize :
 I = J + R
@@ -126,21 +127,21 @@ m = FunctionControl('beta')
 #                      derivative_cb_post = deriv_cb)
 F = ReducedFunctional(Functional(I), m)
 
-# optimize with scipy's fmin_l_bfgs_b :
-b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 1e7),
-                 options={"disp"    : True,
-                          "maxiter" : 1000,
-                          "gtol"    : 1e-5})
-
-## or optimize with IPOpt (preferred) :
-#problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
-#parameters = {"tol"                : 1e-8,
-#              "acceptable_tol"     : 1e-6,
-#              "maximum_iterations" : 1000,
-#              "ma97_order"         : "metis",
-#              "linear_solver"      : "ma97"}
-#solver = IPOPTSolver(problem, parameters=parameters)
-#b_opt  = solver.solve()
+## optimize with scipy's fmin_l_bfgs_b :
+#b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0, 1e7),
+#                 options={"disp"    : True,
+#                          "maxiter" : 1000,
+#                          "gtol"    : 1e-5})
+#
+# or optimize with IPOpt (preferred) :
+problem = MinimizationProblem(F, bounds=(1e-6, 1e7))
+parameters = {"tol"                : 1e-8,
+              "acceptable_tol"     : 1e-6,
+              "maximum_iterations" : 1000,
+              "ma97_order"         : "metis",
+              "linear_solver"      : "ma97"}
+solver = IPOPTSolver(problem, parameters=parameters)
+b_opt  = solver.solve()
 print_min_max(b_opt, 'b_opt')
 
 # initalize the model with the optimal traction :

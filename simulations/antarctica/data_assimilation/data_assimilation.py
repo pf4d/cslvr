@@ -85,7 +85,7 @@ J = mom.form_obj_ftn(integral=model.dSrf_gu, kind='log_L2_hybrid',
 
 # form the regularization functional :
 R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='TV', 
-                     alpha=1.0)
+                     alpha=1e-14)
 #R = mom.form_reg_ftn(model.beta, integral=model.dBed_g, kind='Tikhonov', 
 #                     alpha=1e-10)
 

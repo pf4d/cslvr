@@ -7,12 +7,12 @@ import sys
 
 
 # get the input args :
-i       = 0
+i       = 1
 dir_b   = 'dump/low/0'     # directory to save
 
 # set the relavent directories (complicated, right?!) :
 var_dir = 'dump/vars_low/'
-out_dir = dir_b + str(i)   + '/thermo_solve/'
+out_dir = dir_b + str(i) + '/thermo_solve/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
@@ -87,7 +87,7 @@ if i > 0:
   d3model.init_T(fin_tmc)      # temp
   d3model.init_W(fin_tmc)      # water
   d3model.init_beta(fin_inv)   # friction
-  d3model.init_E_shf(fin_inv)  # enhancement
+  #d3model.init_E_shf(fin_inv)  # enhancement
 else:
   d3model.init_T(d3model.T_surface)
   #d3model.init_beta(1e4)
@@ -114,10 +114,12 @@ e_params  = {'solver'               : 'mumps',
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczBP(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczBP(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, epsdot_ftn=mom.strain_rate_tensor)
+
+d3model.save_xdmf(d3model.p, 'p')
 
 # functions over appropriate surfaces for saving :
 beta = Function(Qb,  name='beta_SIA')
@@ -130,7 +132,7 @@ rhob = Function(Qb,  name='rhob')
 
 d3model.assign_submesh_variable(beta, d3model.beta)
 d3model.assign_submesh_variable(U_ob, d3model.U_ob)
-d3model.save_xdmf(beta, 'beta_SIA')
+d3model.save_xdmf(d3model.beta, 'beta_SIA')
 d3model.save_xdmf(U_ob, 'U_ob')
 
 #nrg.generate_approx_theta(init=True, annotate=False)

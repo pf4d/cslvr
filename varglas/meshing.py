@@ -138,7 +138,8 @@ class MeshGenerator(object):
   def eliminate_intersections(self, dist=10):
     """
     Eliminate intersecting boundary elements. <dist> is an integer specifiying
-    how far forward to look to eliminate intersections.
+    how far forward to look to eliminate intersections.  If any intersections
+    are found, this method is called recursively until none are found.
     """
     s    = "::: eliminating intersections :::"
     print_text(s, self.color)
@@ -157,6 +158,7 @@ class MeshGenerator(object):
     lc   = self.longest_cont
 
     flag = ones(len(lc))
+    intr = False
     for ii in range(len(lc)-1):
 
       A = Point(*lc[ii])
@@ -172,6 +174,7 @@ class MeshGenerator(object):
           print_text(s % (ii+1, jj), 'red')
           flag[ii+1] = 0
           flag[jj]   = 0
+          intr       = True
 
     counter  = 0
     new_cont = zeros((sum(flag),2))
@@ -183,6 +186,9 @@ class MeshGenerator(object):
     self.longest_cont = new_cont
     s    = "::: eliminated %i nodes :::"
     print_text(s % sum(flag == 0), self.color)
+    # call again if required :
+    if intr:
+      self.eliminate_intersections(dist)
 
   def restart(self):
     """

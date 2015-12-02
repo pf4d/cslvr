@@ -203,6 +203,9 @@ class Enthalpy(Energy):
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
+    # coefficient for diffusion of ice-water mixture -- no water diffusion :
+    k_c   = conditional( lt(T, T_w), 1.0, 0.0)
+
     # frictional heating :
     q_fric = beta * inner(U,U)
 
@@ -219,8 +222,7 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
 
     # basal heat-flux natural boundary condition :
-    #g_b = conditional( gt(W, 1e-10), 0.0, q_geo + q_fric )
-    g_b = q_geo + q_fric
+    g_b = conditional( gt(W, 1.0), 0.0, q_geo + q_fric )
 
     # configure the module to run in steady state :
     if not transient:
@@ -620,7 +622,8 @@ class Enthalpy(Energy):
     
     # update water content :
     #W_v[cold]       = 0.0   # no water where frozen 
-    W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
+    W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
+    #W_v[W_v > 1.0]  = 1.0    # capped at 100% water, i.e., no hot water.
     model.assign_variable(W0, W, cls=self, save=False)
     model.assign_variable(W,  W_v, cls=self)
    

@@ -1268,6 +1268,8 @@ class Model(object):
   def assign_submesh_variable(self, u_to, u_from):
     """
     """
+    s   = "::: assigning submesh variable :::"
+    print_text(s, cls=self.this)
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
 
@@ -1373,17 +1375,7 @@ class Model(object):
     """
     Solve for the hydrostatic pressure 'p'.
     """
-    if cls is None:
-      cls = self.this
-    # solve for vertical velocity :
-    s  = "::: solving hydrostatic pressure :::"
-    print_text(s, cls=cls)
-    rhoi   = self.rhoi
-    g      = self.g
-    S      = self.S
-    z      = self.x[2]
-    p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
-    self.assign_variable(self.p, p, cls=cls)
+    raiseNotDefined()
   
   def initialize_variables(self):
     """

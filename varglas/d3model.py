@@ -509,8 +509,8 @@ class D3Model(Model):
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
-      s = "::: writing 'srfmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
+      s = "::: writing 'srfmesh' mesh to self.state file :::"
+      print_text(s, cls=self)
       self.state.write(submesh, 'srfmesh')
     return submesh
 
@@ -529,8 +529,8 @@ class D3Model(Model):
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
-      s = "::: writing 'bedmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
+      s = "::: writing 'bedmesh' mesh to self.state file :::"
+      print_text(s, cls=self)
       self.state.write(submesh, 'bedmesh')
     return submesh
 
@@ -549,8 +549,8 @@ class D3Model(Model):
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
-      s = "::: writing 'latmesh' mesh to '%sstate.h5' :::"
-      print_text(s % self.out_dir, self.D3Model_color)
+      s = "::: writing 'latmesh' mesh to self.state file :::"
+      print_text(s, self.D3Model_color)
       self.state.write(submesh, 'latmesh')
     return submesh
       
@@ -561,9 +561,31 @@ class D3Model(Model):
     """
     s = "::: calculating z-varying thickness :::"
     print_text(s, cls=self)
-    H = project(self.S - self.x[2], self.Q, annotate=False)
+    #H = project(self.S - self.x[2], self.Q, annotate=False)
+    H          = self.vert_integrate(Constant(1.0), d='down')
+    Hv         = H.vector()
+    Hv[Hv < 0] = 0.0
     print_min_max(H, 'H', cls=self)
     return H
+  
+  def solve_hydrostatic_pressure(self, annotate=True, cls=None):
+    """
+    Solve for the hydrostatic pressure 'p'.
+    """
+    if cls is None:
+      cls = self
+    # solve for vertical velocity :
+    s  = "::: solving hydrostatic pressure :::"
+    print_text(s, cls=cls)
+    rhoi   = self.rhoi
+    g      = self.g
+    #S      = self.S
+    #z      = self.x[2]
+    #p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
+    p      = self.vert_integrate(rhoi*g, d='down')
+    pv     = p.vector()
+    pv[pv < 0] = 0.0
+    self.assign_variable(self.p, p, cls=cls)
   
   def vert_extrude(self, u, d='up', Q='self'):
     r"""
@@ -579,7 +601,7 @@ class D3Model(Model):
   
     and solving.  
     """
-    s = "::: extruding function :::"
+    s = "::: extruding function %s :::" % d
     print_text(s, cls=self)
     if type(Q) != FunctionSpace:
       Q  = self.Q
@@ -597,6 +619,8 @@ class D3Model(Model):
     elif d == 'down':
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
     name = '%s extruded %s' % (u.name(), d)
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
@@ -626,9 +650,11 @@ class D3Model(Model):
     elif d == 'down':
       bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
       bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
       a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
-    name   = '%s integrated %s' % (u.name(), d) 
+    name   = 'value integrated %s' % d 
     v      = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
     print_min_max(u, 'vertically integrated function', cls=self)

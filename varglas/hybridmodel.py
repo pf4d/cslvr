@@ -5,7 +5,7 @@ from varglas.model_new import Model
 from pylab             import inf, np
 import sys
 
-class D2Model(Model):
+class HybridModel(Model):
   """ 
   """
 

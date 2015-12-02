@@ -18,23 +18,23 @@ var_dir = 'dump/vars_jakobshavn/'
 ts_dir  = dir_b + str(i-1) + '/thermo_solve/xml/'
 in_dir  = dir_b + str(i-1) + '/inverted/xml/'
 
-f = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
+fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
+fmesh = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
 
 state = HDF5File(mpi_comm_world(), out_dir + '/thermo_solve/hdf5/state.h5', 'w')
 model = D3Model(f, out_dir + '/thermo_solve/', save_state=True, state=state)
-model.set_subdomains(f)
+model.set_subdomains(fdata)
+model.set_srf_mesh(fmesh)
 
-model.init_S(f)
-model.init_B(f)
-model.init_mask(f)
+model.init_S(fdata)
+model.init_B(fdata)
+model.init_mask(fdata)
 model.init_q_geo(model.ghf)
-model.init_T_surface(f)
-model.init_adot(f)
-model.init_U_ob(f, f)
-model.init_U_mask(f)
+model.init_T_surface(fdata)
+model.init_adot(fdata)
+model.init_U_ob(fdata, fdata)
+model.init_U_mask(fdata)
 model.init_E(1.0)
-model.init_u_lat(0.0)
-model.init_v_lat(0.0)
 
 # use T0 and beta0 from the previous run :
 if i > 0:

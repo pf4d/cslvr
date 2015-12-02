@@ -102,7 +102,7 @@ class D3Model(Model):
     
     :param flat_mesh : Dolfin mesh to be written
     """
-    s = "::: setting 3D mesh :::"
+    s = "::: setting 3D ``flat'' mesh :::"
     print_text(s, cls=self)
 
     self.flat_mesh = flat_mesh
@@ -111,6 +111,66 @@ class D3Model(Model):
       s = ">>> 3D MODEL REQUIRES A 3D FLAT_MESH, EXITING <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
+
+  def set_srf_mesh(self, srfmesh):
+    """
+    Set the surface boundary mesh.
+    """
+    s = "::: setting surface boundary mesh :::"
+    print_text(s, cls=self)
+
+    if isinstance(srfmesh, dolfin.cpp.io.HDF5File):
+      self.srfmesh = Mesh()
+      srfmesh.read(self.srfmesh, 'srfmesh', False)
+
+    elif isinstance(srfmesh, dolfin.cpp.mesh.Mesh):
+      self.srfmesh = srfmesh
+
+  def set_bed_mesh(self, bedmesh):
+    """
+    Set the basal boundary mesh.
+    """
+    s = "::: setting basal boundary mesh :::"
+    print_text(s, cls=self)
+
+    if isinstance(bedmesh, dolfin.cpp.io.HDF5File):
+      self.bedmesh = Mesh()
+      bedmesh.read(self.bedmesh, 'bedmesh', False)
+
+    elif isinstance(bedmesh, dolfin.cpp.mesh.Mesh):
+      self.bedmesh = bedmesh
+
+  def set_lat_mesh(self, latmesh):
+    """
+    Set the lateral boundary mesh.
+    """
+    s = "::: setting lateral boundary mesh :::"
+    print_text(s, cls=self)
+
+    if isinstance(latmesh, dolfin.cpp.io.HDF5File):
+      self.latmesh = Mesh()
+      latmesh.read(self.latmesh, 'latmesh', False)
+
+    elif isinstance(latmesh, dolfin.cpp.mesh.Mesh):
+      self.latmesh = latmesh
+
+    self.Q_lat = FunctionSpace(self.latmesh, 'CG', 1)
+
+  def set_dvd_mesh(self, dvdmesh):
+    """
+    Set the lateral divide boundary mesh.
+    """
+    s = "::: setting lateral divide boundary mesh :::"
+    print_text(s, cls=self)
+
+    if isinstance(dvdmesh, dolfin.cpp.io.HDF5File):
+      self.dvdmesh = Mesh()
+      dvdmesh.read(self.dvdmesh, 'dvdmesh', False)
+
+    elif isinstance(dvdmesh, dolfin.cpp.mesh.Mesh):
+      self.dvdmesh = dvdmesh
+
+    self.Q_dvd = FunctionSpace(self.dvdmesh, 'CG', 1)
 
   def generate_function_spaces(self, use_periodic=False):
     """
@@ -289,7 +349,7 @@ class D3Model(Model):
       z_m     = c.midpoint().z()
       mask_xy = mask(x_m, y_m, z_m)
 
-      if mask_xy > 0:
+      if mask_xy > 1:
         self.cf[c] = 1
       else:
         self.cf[c] = 0
@@ -539,7 +599,7 @@ class D3Model(Model):
     Returns the sides of the mesh for this model instance.
     """
     s = "::: extracting lateral mesh :::"
-    print_text(s, self.D3Model_color)
+    print_text(s, cls=self)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
@@ -550,8 +610,34 @@ class D3Model(Model):
     submesh = SubMesh(bmesh, pb, 1)
     if self.save_state:
       s = "::: writing 'latmesh' mesh to self.state file :::"
-      print_text(s, self.D3Model_color)
+      print_text(s, cls=self)
       self.state.write(submesh, 'latmesh')
+    return submesh
+
+  def get_divide_mesh(self):
+    """
+    Returns the divide sides of the mesh for this model instance.
+    """
+    s = "::: extracting lateral divide mesh :::"
+    print_text(s, cls=self)
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = CellFunction("size_t", bmesh, 0)
+    self.lat_mask.set_allow_extrapolation(True)
+    for c in cells(bmesh):
+      f       = Facet(self.mesh, cellmap[c.index()])
+      n       = f.normal()
+      x_m     = f.midpoint().x()
+      y_m     = f.midpoint().y()
+      z_m     = f.midpoint().z()
+      if abs(n.z()) < 1e-3 and self.lat_mask(x_m, y_m, z_m) <= 0:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)
+    if self.save_state:
+      s = "::: writing 'dvdmesh' mesh to self.state file :::"
+      print_text(s, cls=self)
+      self.state.write(submesh, 'dvdmesh')
     return submesh
       
   def calc_thickness(self):

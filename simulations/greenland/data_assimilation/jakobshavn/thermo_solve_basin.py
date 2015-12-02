@@ -19,26 +19,19 @@ fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',             'r')
 foutput = HDF5File(mpi_comm_world(), out_dir + 'hdf5/thermo_solve.h5', 'w')
 
-# get the bed and surface meshes :
-bedmesh = Mesh()
-srfmesh = Mesh()
-fmeshes.read(bedmesh, 'bedmesh', False)
-fmeshes.read(srfmesh, 'srfmesh', False)
+# create 3D model for stokes solves :
+d3model = D3Model(fdata, out_dir, state=foutput)
 
-# create boundary function spaces for saving variables :
-Qb  = FunctionSpace(bedmesh, 'CG', 1)
-Qs  = FunctionSpace(srfmesh, 'CG', 1)
-Q3s = MixedFunctionSpace([Qs]*3)
-
-# create 3D model for stokes solves, and 2D model for balance velocity :
-d3model = D3Model(fdata,   out_dir, state=foutput)
-d2model = D2Model(bedmesh, out_dir, state=foutput)
+# init subdomains and boundary meshes :
+d3model.set_subdomains(fdata)
+d3model.set_srf_mesh(fmeshes)
+d3model.set_bed_mesh(fmeshes)
+d3model.set_dvd_mesh(fmeshes)
 
 ## setup full-stokes functionspaces with 'mini' enriched elements :
 #d3model.generate_stokes_function_spaces(kind='mini')
 
 # initialize the 3D model vars :
-d3model.set_subdomains(fdata)
 d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_mask(fdata)
@@ -54,10 +47,32 @@ d3model.save_xdmf(d3model.ff, 'ff')
 #fUin = HDF5File(mpi_comm_world(), out_dir + 'hdf5/U3.h5', 'r')
 #d3model.init_U(fUin)
 
+#===============================================================================
+# create 2D model for balance velocity :
+d2model = D2Model(d3model.dvdmesh, out_dir, state=foutput)
+
 # 2D model gets balance-velocity appropriate variables initialized :
-d2model.assign_submesh_variable(d2model.S,    d3model.S)
-d2model.assign_submesh_variable(d2model.B,    d3model.B)
-d2model.assign_submesh_variable(d2model.adot, d3model.adot)
+d2model.assign_submesh_variable(d2model.S,        d3model.S)
+d2model.assign_submesh_variable(d2model.B,        d3model.B)
+d2model.assign_submesh_variable(d2model.adot,     d3model.adot)
+d2model.assign_submesh_variable(d2model.mask,     d3model.mask)
+d2model.assign_submesh_variable(d2model.U_mask,   d3model.U_mask)
+d2model.assign_submesh_variable(d2model.lat_mask, d3model.lat_mask)
+
+d2model.calculate_boundaries(0, 0, mask=d2model.mask,
+                             lat_mask=d2model.lat_mask,
+                             U_mask=d2model.U_mask,
+                             adot=d2model.adot,
+                             latmesh=True, mark_divide=True)
+
+d2model.save_xdmf(d2model.ff, 'd2ff')
+d2model.save_xdmf(d2model.cf, 'd2cf')
+
+
+
+
+d2model.state.close()
+sys.exit(0)
 
 # solve the balance velocity :
 bv = BalanceVelocity(d2model, kappa=5.0)
@@ -80,6 +95,12 @@ Ubar_e = d3model.vert_extrude(d3model.Ubar, d='up')
 d3model.init_d_x(d_x_e)
 d3model.init_d_y(d_y_e)
 d3model.init_Ubar(Ubar_e)
+
+# create boundary function spaces for saving variables :
+Qb  = FunctionSpace(d3model.bedmesh, 'CG', 1)
+Qs  = FunctionSpace(d3model.srfmesh, 'CG', 1)
+Q3s = MixedFunctionSpace([Qs]*3)
+#===============================================================================
 
 # use T0 and beta0 from the previous run :
 if i > 0:

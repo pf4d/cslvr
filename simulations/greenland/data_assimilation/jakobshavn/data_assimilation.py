@@ -250,7 +250,7 @@ d3model.assimilate_data(mom, nrg, control=d3model.beta, obj_ftn=I,
                         post_tmc_callback=tmc_post_cb_ftn,
                         post_adj_callback=adj_post_cb_ftn,
                         adj_callback=deriv_cb, 
-                        tmc_rtol=1e3*pi, tmc_max_iter=50)
+                        tmc_rtol=pi, tmc_max_iter=50)
  
 # save all the objective function values : 
 from numpy import savetxt, array

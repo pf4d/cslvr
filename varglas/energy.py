@@ -810,7 +810,7 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
     model       = self.model
     rho_b       = project(self.rho, annotate=False)
-    model.assign_variable(model.rho_b, rho_b, cls=self)
+    model.assign_variable(model.rhob, rho_b, cls=self)
 
 
 class EnergyHybrid(Energy):

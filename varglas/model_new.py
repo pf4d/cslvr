@@ -199,6 +199,8 @@ class Model(object):
     Set the output directory to something new.
     """
     self.out_dir = out_dir
+    s = "::: output directory changed to '%s' :::" % out_dir
+    print_text(s, cls=self.this)
 
   def generate_function_spaces(self, use_periodic=False):
     """
@@ -1160,43 +1162,6 @@ class Model(object):
     """
     raiseNotDefined()
 
-  def calc_misfit(self, integral):
-    """
-    Calculates the misfit of model and observations, 
-
-      D = ||U - U_ob||
-
-    over shelves or grounded depending on the paramter <integral>, then 
-    updates model.misfit with D for plotting.
-    """
-    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, cls=self.this)
-
-    U_s    = Function(self.Q2)
-    U_ob_s = Function(self.Q2)
-    U      = as_vector([self.u,    self.v])
-    U_ob   = as_vector([self.u_ob, self.v_ob])
-
-    if integral == 'shelves':
-      bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_FLT)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_FLT)
-    elif integral == 'grounded':
-      bc_U    = DirichletBC(self.Q2, U,    self.ff, GAMMA_S_GND)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, GAMMA_S_GND)
-    
-    bc_U.apply(U_s.vector())
-    bc_U_ob.apply(U_ob_s.vector())
-
-    # calculate L_inf vector norm :
-    U_s_v    = U_s.vector().array()
-    U_ob_s_v = U_ob_s.vector().array()
-    D_v      = U_s_v - U_ob_s_v
-    D        = MPI.max(mpi_comm_world(), D_v.max())
-    
-    s    = "||U - U_ob|| : %.3E" % D
-    print_text(s, '208', 1)
-    self.misfit = D
-
   def get_theta(self):
     """
     Returns the angle in radians of the horizontal velocity vector from 
@@ -1328,17 +1293,22 @@ class Model(object):
         self.state.write(u, u.name())
         print_text("    - done -", cls=cls)
 
-  def save_hdf5(self, u, name=None):
+  def save_hdf5(self, u, f=None, name=None):
     """
     Save a FEniCS Function <u> to this model's self.state h5 file to the 
-    hdf5 subdirectory of self.out_dir.  In <name>=None, this will save the flie
-    under <u>.name().
+    hdf5 subdirectory of self.out_dir or to hdf5 file <f> if set.
+    If <name>=None, this will save the flie under <u>.name().
     """
     if name == None:
       name = u.name()
-    s = "::: writing '%s' variable to self.state file :::" % name
-    print_text(s, 'green')#cls=self.this)
-    self.state.write(u, name)
+    if f == None:
+      s = "::: writing '%s' variable to self.state file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      self.state.write(u, name)
+    else:
+      s = "::: writing '%s' variable to hdf5 file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      f.write(u, name)
     print_text("    - done -", 'green')#cls=self.this)
 
   def save_pvd(self, var, name, f_file=None):
@@ -1449,6 +1419,7 @@ class Model(object):
     self.q_geo         = Function(self.Q, name='q_geo')
     self.W             = Function(self.Q, name='W')
     self.Mb            = Function(self.Q, name='Mb')
+    self.rhob          = Function(self.Q, name='rhob')
     self.T_melt        = Function(self.Q, name='T_melt')     # pressure-melting
     self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
@@ -1456,6 +1427,7 @@ class Model(object):
     # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
     self.misfit        = 0.0              # ||U - U_ob||
+    self.control_opt   = Function(self.Q, name='control_opt')
 
     # balance Velocity model :
     self.adot          = Function(self.Q, name='adot')
@@ -1486,8 +1458,9 @@ class Model(object):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
-    s    = '::: performing thermo-mechanical coupling :::'
-    print_text(s, cls=self.this)
+    s    = '::: performing thermo-mechanical coupling with rtol = %.3e and ' + \
+           'max_iter = %i :::'
+    print_text(s % (rtol, max_iter), cls=self.this)
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
@@ -1508,14 +1481,14 @@ class Model(object):
     inner_error = np.inf
    
     # number of iterations
-    counter     = 0
+    counter     = 1
    
     # previous velocity for norm calculation
     U_prev      = self.U3.copy(True)
 
     # perform a Picard iteration until the L_\infty norm of the velocity 
     # difference is less than tolerance :
-    while inner_error > rtol and counter < max_iter:
+    while inner_error > rtol and counter <= max_iter:
      
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
@@ -1563,73 +1536,178 @@ class Model(object):
     m = m % 60
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+
+  def assimilate_data(self, momentum, energy, control, obj_ftn,
+                      bounds, method='l_bfgs_b', adj_iter=100,
+                      iterations=100, save_state=True,
+                      tmc_save_vars=None,
+                      adj_save_vars=None,
+                      tmc_callback=None,
+                      post_tmc_callback=None,
+                      post_adj_callback=None,
+                      adj_callback=None, 
+                      tmc_rtol=1e-6, tmc_max_iter=15):
+    """
+    """
+    s    = '::: performing assimilation process with %i iterations :::'
+    print_text(s % iterations, cls=self.this)
+
+    # retain base install directory :
+    out_dir_i = self.out_dir
+
+    # number of digits for saving variables :
+    n_i  = len(str(iterations))
+    
+    # starting time :
+    t0   = time()
+
+    # L_\infty norm in velocity between iterations :
+    inner_error = np.inf
+   
+    # number of iterations :
+    counter     = 1
+   
+    # previous velocity for norm calculation
+    U_prev      = self.U3.copy(True)
+
+    # objective function callback function : 
+    def eval_cb(I, beta):
+      s    = '::: adjoint objective eval post callback function :::'
+      print_text(s, cls=self.this)
+      print_min_max(I,    'I',         cls=self.this)
+      print_min_max(beta, 'beta',      cls=self.this)
+    
+    # objective gradient callback function :
+    def deriv_cb(I, dI, beta):
+      s    = '::: adjoint obj. gradient post callback function :::'
+      print_text(s, cls=self.this)
+      print_min_max(dI,    'dI/dbeta', cls=self.this)
+      if adj_callback is not None:
+        adj_callback(I, dI, beta)
+    
+    # define the control parameter :
+    m = Control(control, value=control)
+    
+    # create the reduced functional to minimize :
+    F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
+                          derivative_cb_post=deriv_cb)
   
-  def adaptive_update(self, mom, nrg, mas, t_start, t_end, t,
-                      annotate=False):
-    """
-    """
-    print_text("::: entering adpative solver :::", self.color())
-    stars = "*************************************************************"
-    time_start = time()
-    dt         = self.time_step(0)
-
-    # solve momentum equation, lower alpha on failure :
-    SOLVED_U   = False
-    alpha = mom.solve_params['solver']['newton_solver']['relaxation_parameter']
-    while not SOLVED_U:
-      if alpha < 0.2:
-        status_U = [False, False]
-        break
-      status_U = mom.solve(annotate=annotate)
-      SOLVED_U = status_U[1]
-      if not SOLVED_U:
-        alpha /= 1.43
-        print_text(stars, 'red', 1)
-        s = ">>> WARNING: Newton relaxation parameter lowered to %g <<<"
-        print_text(s % alpha, 'red', 1)
-        print_text(stars, 'red', 1)
-
-    # solve mass equations, lowering time step on failure :
-    SOLVED_H = False
-    while not SOLVED_H:
-      if dt < 1.e-5:
-        status_H = [False,False]
-        break
-      status_H = mas.solve(annotate=annotate)
-      SOLVED_H = status_H[1]
-      if t <= 100:
-        SOLVED_H = True
-      if not SOLVED_H:
-        dt /= 2.0
-        print_text(stars, 'red', 1)
-        print_text(">>> WARNING: Time step lowered to %g <<<" % dt, 'red', 1)
-        self.init_time_step(dt, cls=self)
-        print_text(stars, 'red', 1)
-
-    # print the stats to the screen :
-    run_time = time() - time_start
-    est_end  = (t_end - t) / dt * run_time/60/60
+    # assimilate the data : 
+    while counter <= iterations:
+      s    = '::: entering iterate %i of %i of assimilation process :::'
+      print_text(s % (counter, iterations), cls=self.this)
+   
+      # reset the momentum to the original configuration : 
+      if counter > 1:
+        momentum.reset()
+       
+      # set a new unique output directory :
+      out_dir_n = 'thermo_%0*d/' % (n_i, counter)
+      self.set_out_dir(out_dir_i + out_dir_n)
       
-    print_text(stars, cls=self)
-    print_text("Current time %-*s : %g"               % (30, ' ', t),
-               cls=self)
-    print_text("Current time step %-*s : %g"          % (30, ' ', dt),
-               cls=self)
-    print_text("Momentum Newton iterations %-*s : %g" % (30, ' ', status_U[0]),
-               cls=self)
-    print_text("Mass Newton iterations %-*s : %g"     % (30, ' ', status_H[0]),
-               cls=self)
-    print_text("Time for to solve all (s) %-*s : %g"  % (30, ' ', run_time),
-               cls=self)
-    print_text("Time remaining est. (h) %-*s : %g"    % (30, ' ', est_end),
-               cls=self)
-    print_text(stars, cls=self)
- 
-    t += dt
-    if SOLVED_U and SOLVED_H or t<100:
-        return True, dt, t
-    else:
-        return False, dt, t
+      # thermo-mechanical couple :
+      self.thermo_solve(momentum, energy, callback=tmc_callback,
+                        rtol=tmc_rtol, max_iter=tmc_max_iter)
+
+      # call the post function if set :
+      if post_tmc_callback is not None:
+        s    = '::: calling post-thermo-couple callback function :::'
+        print_text(s, cls=self.this)
+        post_tmc_callback()
+       
+      # save state to numbered hdf5 file :
+      if save_state:
+        s    = '::: saving variables in dict tmc_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'hdf5/thermo_%0*d.h5' % (n_i, counter)
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        
+        for var in tmc_save_vars:
+          self.save_hdf5(var, f=foutput)
+        
+        foutput.close()
+   
+      # let us know that we've started the adjoining process : 
+      s    = '::: performing adjoint-based assimilation :::'
+      print_text(s, cls=self.this)
+      
+      # set a new unique output directory :
+      out_dir_n = 'inverted_%0*d/' % (n_i, counter)
+      self.set_out_dir(out_dir_i + out_dir_n)
+
+      # the incomplete adjoint means the viscosity is linear :
+      momentum.linearize_viscosity()
+
+      # solve the momentum equations with annotation enabled :
+      s    = '::: solving forward problem for dolfin-adjoint annotatation :::'
+      print_text(s, cls=self.this)
+      momentum.solve(annotate=True)
+     
+      # now solve the control optimization problem : 
+      s    = "::: starting adjoint-control optimization with method '%s' :::"
+      print_text(s % method, cls=self.this)
+
+      # optimize with scipy's fmin_l_bfgs_b :
+      if method == 'l_bfgs_b': 
+        b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
+                         options={"disp"    : True,
+                                  "maxiter" : adj_iter,
+                                  "gtol"    : 1e-5})
+      
+      # or optimize with IPOpt (preferred) :
+      elif method == 'ipopt':
+        try:
+          import pyipopt
+        except ImportError:
+          info_red("""You do not have IPOPT and/or pyipopt installed.
+                      When compiling IPOPT, make sure to link against HSL,
+                      as it is a necessity for practical problems.""")
+          raise
+        problem = MinimizationProblem(F, bounds=bounds)
+        parameters = {"tol"                : 1e-8,
+                      "acceptable_tol"     : 1e-6,
+                      "maximum_iterations" : adj_iter,
+                      "print_level"        : 1,
+                      "ma97_order"         : "metis",
+                      "linear_solver"      : "ma97"}
+        solver = IPOPTSolver(problem, parameters=parameters)
+        b_opt  = solver.solve()
+
+      # make the optimal control parameter available :
+      self.assign_variable(self.control_opt, b_opt, cls=self.this)
+      
+      # call the post function if set :
+      if post_adj_callback is not None:
+        s    = '::: calling post-adjoined callback function :::'
+        print_text(s, cls=self.this)
+        post_adj_callback()
+       
+      # save state to unique hdf5 file :
+      if save_state:
+        s    = '::: saving variables in dict adj_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'hdf5/inverted_%0*d.h5' % (n_i, counter)
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        
+        for var in adj_save_vars:
+          self.save_hdf5(var, f=foutput)
+        
+        foutput.close()
+    
+      # reset entire dolfin-adjoint state for the next thermo-solve :
+      adj_reset()
+
+      # increment the counter and move on :
+      counter += 1
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
                       adaptive=False, annotate=False, callback=None):

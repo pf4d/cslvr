@@ -4,12 +4,10 @@ from pylab             import *
 from scipy.interpolate import RectBivariateSpline
 
 
-kappa = 1.0  # ice thickness to refine
-
 #===============================================================================
 # data preparation :
 out_dir   = 'dump/meshes/'
-mesh_name = 'jakobshavn_3D_%iH_mesh_basin' % int(kappa)
+mesh_name = 'jakobshavn_3D_U_mesh_basin'
 
 # get the data :
 bamber   = DataFactory.get_bamber()
@@ -21,11 +19,14 @@ drg      = DataInput(rignot,  gen_space=False)
 
 drg.change_projection(dbm)
 
+# get surface velocity magnitude :
+U_ob = sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)
+drg.data['U_ob'] = U_ob
+
 
 #===============================================================================
 # form field from which to refine :
-dbm.data['ref'] = kappa*dbm.data['H'].copy()
-dbm.data['ref'][dbm.data['ref'] < kappa*1000.0] = kappa*1000.0
+drg.rescale_field('U_ob', 'ref', umin=1000.0, umax=100000.0, inverse=True)
 
 # eliminate just the edge of the mask so that we can properly interpolate
 # the geometry to the terminus :
@@ -36,28 +37,26 @@ dbm.data['mask'][L > 0.0] = 0
 # generate the contour :
 m = MeshGenerator(dbm, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.99, skip_pts=0)
+m.create_contour('mask', zero_cntr=0.0001, skip_pts=0)
 
 gb = GetBasin(dbm, basin='7.1', edge_resolution=500)
-gb.extend_edge(1200)
+#gb.extend_edge(1200)
 gb.intersection(m.longest_cont)
-#gb.plot_xycoords_buf(Show=True, other=m.longest_cont)
+gb.plot_xycoords_buf(Show=True, other=m.longest_cont)
 m.set_contour(gb.get_xy_contour())
 
 m.eliminate_intersections(dist=200)
-#m.transform_contour(rignot)
 m.check_dist()
-#import sys
-#sys.exit(0)
+m.transform_contour(drg)
 m.write_gmsh_contour(boundary_extend=False)
 m.plot_contour()
-m.extrude(h=100000, n_layers=8)
+m.extrude(h=100000, n_layers=10)
 m.close_file()
 
 
 #===============================================================================
 # refine :
-ref_bm = MeshRefiner(dbm, 'ref', gmsh_file_name = out_dir + mesh_name)
+ref_bm = MeshRefiner(drg, 'ref', gmsh_file_name = out_dir + mesh_name)
 
 a,aid = ref_bm.add_static_attractor()
 ref_bm.set_background_field(aid)

@@ -163,7 +163,7 @@ def assimilate(h,H,g):
     
     model.assign_variable(model.beta, b_opt)
     mom.solve(annotate=False)
-    mom.print_eval_ftns()
+    mom.calc_eval_ftns()
 
     beta_true_v = beta_true.vector()
     beta_opt_v  = b_opt.vector()

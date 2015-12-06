@@ -10,7 +10,7 @@ bamber   = DataFactory.get_bamber(1.0)
 rignot   = DataFactory.get_rignot()
 
 # define the mesh :
-mesh = Mesh('dump/meshes/jakobshavn_3D_1H_mesh_basin.xml.gz')
+mesh = Mesh('dump/meshes/jakobshavn_3D_U_mesh_basin.xml.gz')
 
 # create data objects to use with varglas :
 dsr     = DataInput(searise,  mesh=mesh)
@@ -18,9 +18,9 @@ dbm     = DataInput(bamber,   mesh=mesh)
 drg     = DataInput(rignot,   mesh=mesh)
 
 # change the projection of all data to be the same as the mesh :
-#dbm.change_projection(drg)
-#dsr.change_projection(drg)
-drg.change_projection(dbm)
+dbm.change_projection(drg)
+dsr.change_projection(drg)
+#drg.change_projection(dbm)
 
 # get the expressions used by varglas :
 S     = dbm.get_expression('S',        near=False)
@@ -42,6 +42,8 @@ model.calculate_boundaries(mask=M, lat_mask=L, U_mask=U_msk, adot=adot,
 model.init_T_surface(T_s)
 model.init_q_geo(q_geo)
 model.init_U_ob(u_ob, v_ob)
+
+model.state.close()
 
 
 

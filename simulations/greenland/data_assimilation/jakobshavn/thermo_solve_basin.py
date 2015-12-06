@@ -7,7 +7,7 @@ import sys
 
 
 # get the input args :
-i       = 0
+i       = 3
 dir_b   = 'dump/jakob_basin/0'     # directory to save
 
 # set the relavent directories (complicated, right?!) :
@@ -49,30 +49,37 @@ d3model.save_xdmf(d3model.ff, 'ff')
 
 #===============================================================================
 # create 2D model for balance velocity :
-d2model = D2Model(d3model.dvdmesh, out_dir, state=foutput)
+#d2model = D2Model(d3model.dvdmesh, out_dir, state=foutput)
+#
+## 2D model gets balance-velocity appropriate variables initialized :
+#d2model.assign_submesh_variable(d2model.S,         d3model.S)
+#d2model.assign_submesh_variable(d2model.B,         d3model.B)
+#d2model.assign_submesh_variable(d2model.mask,      d3model.mask)
+#d2model.assign_submesh_variable(d2model.q_geo,     d3model.q_geo)
+#d2model.assign_submesh_variable(d2model.T_surface, d3model.T_surface)
+#d2model.assign_submesh_variable(d2model.adot,      d3model.adot)
+#d2model.assign_submesh_variable(d2model.u_ob,      d3model.u_ob)
+#d2model.assign_submesh_variable(d2model.v_ob,      d3model.v_ob)
+#d2model.assign_submesh_variable(d2model.U_mask,    d3model.U_mask)
+#d2model.assign_submesh_variable(d2model.lat_mask,  d3model.lat_mask)
+#
+#d2model.calculate_boundaries(mask=d2model.mask,
+#                             lat_mask=d2model.lat_mask,
+#                             U_mask=d2model.U_mask,
+#                             adot=d2model.adot,
+#                             latmesh=True, mark_divide=True)
+#
+#d2model.save_xdmf(d2model.ff, 'd2ff')
+#d2model.save_xdmf(d2model.cf, 'd2cf')
+#
+#d2model.state.close()
+#sys.exit(0)
 
-# 2D model gets balance-velocity appropriate variables initialized :
-d2model.assign_submesh_variable(d2model.S,        d3model.S)
-d2model.assign_submesh_variable(d2model.B,        d3model.B)
-d2model.assign_submesh_variable(d2model.adot,     d3model.adot)
-d2model.assign_submesh_variable(d2model.mask,     d3model.mask)
-d2model.assign_submesh_variable(d2model.U_mask,   d3model.U_mask)
-d2model.assign_submesh_variable(d2model.lat_mask, d3model.lat_mask)
+d2model = D2Model(d3model.bedmesh, out_dir, state=foutput)
 
-d2model.calculate_boundaries(0, 0, mask=d2model.mask,
-                             lat_mask=d2model.lat_mask,
-                             U_mask=d2model.U_mask,
-                             adot=d2model.adot,
-                             latmesh=True, mark_divide=True)
-
-d2model.save_xdmf(d2model.ff, 'd2ff')
-d2model.save_xdmf(d2model.cf, 'd2cf')
-
-
-
-
-d2model.state.close()
-sys.exit(0)
+d2model.assign_submesh_variable(d2model.S,         d3model.S)
+d2model.assign_submesh_variable(d2model.B,         d3model.B)
+d2model.assign_submesh_variable(d2model.adot,      d3model.adot)
 
 # solve the balance velocity :
 bv = BalanceVelocity(d2model, kappa=5.0)
@@ -111,11 +118,13 @@ if i > 0:
   d3model.init_T(fin_tmc)      # temp
   d3model.init_W(fin_tmc)      # water
   d3model.init_beta(fin_inv)   # friction
-  d3model.init_E_shf(fin_inv)  # enhancement
+  #d3model.init_E_shf(fin_inv)  # enhancement
 else:
   d3model.init_T(d3model.T_surface)
   #d3model.init_beta(1e4)
   d3model.init_beta_SIA()
+  #d2model.init_beta_SIA()
+  #d2model.init_T(d2model.T_surface)
 
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
@@ -157,15 +166,15 @@ d3model.assign_submesh_variable(U_ob, d3model.U_ob)
 d3model.save_xdmf(beta, 'beta_SIA')
 d3model.save_xdmf(U_ob, 'U_ob')
 
-nrg.generate_approx_theta(init=True, annotate=False)
-d3model.save_xdmf(d3model.theta_app, 'theta_ini')
-d3model.save_xdmf(d3model.T,         'T_ini')
-d3model.save_xdmf(d3model.W,         'W_ini')
+#nrg.generate_approx_theta(init=True, annotate=False)
+#d3model.save_xdmf(d3model.theta_app, 'theta_ini')
+#d3model.save_xdmf(d3model.T,         'T_ini')
+#d3model.save_xdmf(d3model.W,         'W_ini')
 
 def cb_ftn():
   nrg.calc_bulk_density()
   nrg.solve_basal_melt_rate()
-  nrg.generate_approx_theta(annotate=False)
+  #nrg.generate_approx_theta(annotate=False)
   d3model.assign_submesh_variable(Tb,   d3model.T)
   d3model.assign_submesh_variable(Us,   d3model.U3)
   d3model.assign_submesh_variable(Wb,   d3model.W)
@@ -181,7 +190,7 @@ def cb_ftn():
   d3model.save_xdmf(rhob, 'rhob')
   d3model.save_xdmf(d3model.p, 'p')
 
-d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi*1e3, max_iter=2)
+d3model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=pi, max_iter=50)
 
 d3model.save_hdf5(d3model.theta)
 d3model.save_hdf5(d3model.T)
@@ -189,6 +198,9 @@ d3model.save_hdf5(d3model.W)
 d3model.save_hdf5(d3model.U3)
 d3model.save_hdf5(d3model.beta)
 d3model.save_hdf5(d3model.Mb)
+
+d3model.state.close()
+d2model.state.close()
 
 
 

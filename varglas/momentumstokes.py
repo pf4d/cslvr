@@ -4,6 +4,7 @@ from varglas.io             import print_text, print_min_max
 from varglas.d3model        import D3Model
 from varglas.physics_new    import Physics
 from varglas.momentum       import Momentum
+from copy                   import deepcopy
 import sys
 
 
@@ -16,14 +17,32 @@ class MomentumStokes(Momentum):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
-    s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
-    print_text(s, self.color())
-    
     if type(model) != D3Model:
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
+    # save the starting values, as other algorithms might change the 
+    # values to suit their requirements :
+    if isinstance(solve_params, dict):
+      self.solve_params_s  = deepcopy(solve_params)
+    else:
+      self.solve_params_s  = solve_params
+    self.isothermal_s      = isothermal
+    self.linear_s          = linear
+    self.use_lat_bcs_s     = use_lat_bcs
+    self.use_pressure_bc_s = use_pressure_bc
+    
+    self.initialize(model, solve_params, isothermal, linear,
+                    use_lat_bcs, use_pressure_bc)
+
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """
+    """
+    s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
+    print_text(s, self.color())
+    
     if solve_params == None:
       self.solve_params = self.default_solve_params()
     else:
@@ -296,6 +315,29 @@ class MomentumDukowiczStokesReduced(Momentum):
   """
   def __init__(self, model, solve_params=None, isothermal=True,
                linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """
+    """
+    if type(model) != D3Model:
+      s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+
+    # save the starting values, as other algorithms might change the 
+    # values to suit their requirements :
+    if isinstance(solve_params, dict):
+      self.solve_params_s  = deepcopy(solve_params)
+    else:
+      self.solve_params_s  = solve_params
+    self.isothermal_s      = isothermal
+    self.linear_s          = linear
+    self.use_lat_bcs_s     = use_lat_bcs
+    self.use_pressure_bc_s = use_pressure_bc
+    
+    self.initialize(model, solve_params, isothermal, linear,
+                    use_lat_bcs, use_pressure_bc)
+
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
@@ -303,10 +345,9 @@ class MomentumDukowiczStokesReduced(Momentum):
     s = "::: INITIALIZING DUKOWICZ REDUCED FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
     
-    if type(model) != D3Model:
-      s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
-      print_text(s % type(model) , 'red', 1)
-      sys.exit(1)
+    # NOTE: not sure why this is ever changed, but the model.assimilate_data
+    #       method throws an error if I don't do this :
+    parameters["adjoint"]["stop_annotating"] = False
 
     if solve_params == None:
       self.solve_params = self.default_solve_params()

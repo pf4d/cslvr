@@ -679,7 +679,7 @@ class DataFactory(object):
     mask[mask == 4] = 0
     
     # generate mask for lateral boundaries :
-    Hc = mask.copy()
+    Hc = mask.copy(True)
     
     # calculate mask gradient, to properly mark lateral boundaries :
     gradH = gradient(Hc)

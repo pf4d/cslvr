@@ -2,6 +2,7 @@ from fenics                 import *
 from dolfin_adjoint         import *
 from varglas.io             import print_text, print_min_max
 from varglas.physics_new    import Physics
+from copy                   import deepcopy
 import sys
 
 
@@ -16,6 +17,46 @@ class Momentum(Physics):
     """
     instance = Physics.__new__(self, model)
     return instance
+  
+  def reset(self):
+    """
+    reset the momentum to the original configuration.
+    """
+    s = "::: RE-INITIALIZING MOMENTUM PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.initialize(self.model, solve_params=self.solve_params_s,
+                    isothermal=self.isothermal_s, linear=self.linear_s,
+                    use_lat_bcs=self.use_lat_bcs_s, 
+                    use_pressure_bc=self.use_pressure_bc_s)
+
+  def linearize_viscosity(self):
+    """
+    reset the momentum to the original configuration.
+    """
+    s = "::: RE-INITIALIZING MOMENTUM PHYSICS WITH LINEAR VISCOSITY :::"
+    print_text(s, self.color())
+   
+    # deepcopy the parameters so that we can change them without changing
+    # the original values we started with :
+    mom_params = deepcopy(self.solve_params_s)
+      
+    # adjust the parameters for incomplete-adjoint :
+    new_params = mom_params['solver']['newton_solver']
+
+    # only affects non-full-stokes formulations :
+    mom_params['solve_vert_velocity']     = False
+    mom_params['solve_pressure']          = False
+
+    # the linear momentum systems solve much faster :
+    new_params['relaxation_parameter']    = 1.0
+    new_params['maximum_iterations']      = 3
+    new_params['error_on_nonconvergence'] = False
+
+    self.initialize(self.model, solve_params=mom_params,
+                    isothermal=self.isothermal_s, linear=True,
+                    use_lat_bcs=self.use_lat_bcs_s, 
+                    use_pressure_bc=self.use_pressure_bc_s)
   
   def color(self):
     """
@@ -211,15 +252,15 @@ class Momentum(Physics):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
-    if self.obj_ftn_type == 'log_lin_hybrid':
+    if self.obj_ftn_type == 'log_L2_hybrid':
       J1 = assemble(self.J1)
       J2 = assemble(self.J2)
-      print_min_max(J1, 'J1')
-      print_min_max(J2, 'J2')
+      print_min_max(J1, 'J1', cls=self)
+      print_min_max(J2, 'J2', cls=self)
     R = assemble(self.R)
     J = assemble(self.J)
-    print_min_max(R, 'R')
-    print_min_max(J, 'J')
+    print_min_max(R, 'R', cls=self)
+    print_min_max(J, 'J', cls=self)
     
   def Lagrangian(self):
     """

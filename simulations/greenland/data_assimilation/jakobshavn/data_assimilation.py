@@ -7,9 +7,9 @@ import sys
 
 
 # set the relavent directories :
-var_dir = 'dump/vars_jakobshavn_basin/'
-out_dir = 'dump/jakob_basin_new/'       # base directory to save
-ini_dir = out_dir + 'initialization/'   # initial directory to save
+var_dir = 'dump/vars_jakobshavn_basin/'  # directory from gen_vars.py
+out_dir = 'dump/jakob_basin/'            # base directory to save
+ini_dir = out_dir + 'initialization/'    # initial directory to save
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
@@ -242,8 +242,8 @@ d3model.set_out_dir(out_dir)
 # assimilate ! :
 d3model.assimilate_data(mom, nrg, control=d3model.beta, obj_ftn=I,
                         bounds=(2*DOLFIN_EPS, 1e7),
-                        method='ipopt', adj_iter=2,
-                        iterations=5, save_state=True,
+                        method='ipopt', adj_iter=100,
+                        iterations=100, save_state=True,
                         tmc_save_vars=tmc_save_vars,
                         adj_save_vars=adj_save_vars,
                         tmc_callback=None,

@@ -248,6 +248,7 @@ d3model.assimilate_U_ob(mom, nrg,
                         post_adj_callback = adj_post_cb_ftn,
                         adj_callback      = deriv_cb, 
                         tmc_rtol          = pi,
+                        tmc_atol          = pi,
                         tmc_max_iter      = 50)
  
 # save all the objective function values : 

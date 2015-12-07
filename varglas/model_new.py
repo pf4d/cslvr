@@ -1458,13 +1458,13 @@ class Model(object):
     self.tau_jj        = Function(self.Q, name='tau_jj')
 
   def thermo_solve(self, momentum, energy, callback=None, 
-                   rtol=1e-6, max_iter=15):
+                   atol=1e-6, rtol=1e-6, max_iter=50):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
-    s    = '::: performing thermo-mechanical coupling with rtol = %.3e and ' + \
-           'max_iter = %i :::'
-    print_text(s % (rtol, max_iter), cls=self.this)
+    s    = '::: performing thermo-mechanical coupling with atol = %.3e, ' + \
+           'rtol = %.3e, and max_iter = %i :::'
+    print_text(s % (atol, rtol, max_iter), cls=self.this)
     
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
@@ -1496,18 +1496,19 @@ class Model(object):
     ## convert to pseudo-timestepping for smooth convergence : 
     #energy.make_transient(time_step = 5.0)
 
-    # L_\infty norm in velocity between iterations :
-    inner_error = np.inf
+    # L_2 erro norm between iterations :
+    abs_error = np.inf
+    rel_error = np.inf
    
     # number of iterations
-    counter     = 1
+    counter   = 1
    
     # previous velocity for norm calculation
     U_prev      = self.theta.copy(True)#U3.copy(True)
 
-    # perform a Picard iteration until the L_\infty norm of the velocity 
-    # difference is less than tolerance :
-    while inner_error > rtol and counter <= max_iter:
+    # perform a fixed-point iteration until the L_2 norm of error 
+    # is less than tolerance :
+    while (abs_error > atol or rel_error > rtol) and counter <= max_iter:
      
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
@@ -1520,18 +1521,20 @@ class Model(object):
       energy.solve(annotate=False)
 
       # calculate L_infinity norm, increment counter :
-      #inner_error_n  = norm(U_prev.vector() - self.U3.vector(), 'l2')
-      #inner_error_n  = abs(U_prev.vector().max() - self.U3.vector().max())
-      #U_prev         = self.U3.copy(True)
-      inner_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
-      U_prev         = self.theta.copy(True)
+      abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+      if counter == 1:
+        rel_error  = abs_error_n
+      else:
+        rel_error  = abs(abs_error - abs_error_n)
+      abs_error = abs_error_n
+      U_prev     = self.theta.copy(True)
       if self.MPI_rank==0:
         s0    = '>>> '
-        s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
-        s2    = 'r0 = %.3e'  % inner_error
-        s3    = ', '
-        s4    = 'r = %.3e ' % inner_error_n
-        s5    = '(tol %.3e)' % rtol
+        s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
+        s2    = 'r (abs) = %.3e ' % abs_error
+        s3    = '(tol %.3e), '    % atol
+        s4    = 'r (rel) = %.3e ' % rel_error
+        s5    = '(tol %.3e)'      % rtol
         s6    = ' <<<'
         text0 = get_text(s0, 'red', 1)
         text1 = get_text(s1, 'red')
@@ -1541,7 +1544,6 @@ class Model(object):
         text5 = get_text(s5, 'red')
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
-      inner_error = inner_error_n
       counter    += 1
 
       if callback != None:
@@ -1569,7 +1571,7 @@ class Model(object):
                       post_tmc_callback=None,
                       post_adj_callback=None,
                       adj_callback=None, 
-                      tmc_rtol=1e-6, tmc_max_iter=15):
+                      tmc_atol=1e-6, tmc_rtol=1e-6, tmc_max_iter=15):
     """
     """
     s    = '::: performing assimilation process with %i iterations :::'
@@ -1604,7 +1606,7 @@ class Model(object):
     
     # thermo-mechanical couple :
     self.thermo_solve(momentum, energy, callback=tmc_callback,
-                      rtol=tmc_rtol, max_iter=tmc_max_iter)
+                      atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
 
     # call the post function if set :
     if post_ini_callback is not None:
@@ -1638,7 +1640,7 @@ class Model(object):
       
       # thermo-mechanical couple :
       self.thermo_solve(momentum, energy, callback=tmc_callback,
-                        rtol=tmc_rtol, max_iter=tmc_max_iter)
+                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
 
       # call the post function if set :
       if post_tmc_callback is not None:
@@ -1686,10 +1688,10 @@ class Model(object):
         if method == 'ipopt':
           global counter_n
           s0    = '>>> '
-          s1    = 'iteration %i (max %i) complete' % (counter_n, iterations)
+          s1    = 'iteration %i (max %i) complete'
           s2    = ' <<<'
           text0 = get_text(s0, 'red', 1)
-          text1 = get_text(s1, 'red')
+          text1 = get_text(s1 % (counter_n, iterations * adj_iter), 'red')
           text2 = get_text(s2, 'red', 1)
           if MPI.rank(mpi_comm_world())==0:
             print text0 + text1 + text2

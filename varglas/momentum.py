@@ -3,6 +3,7 @@ from dolfin_adjoint         import *
 from varglas.io             import print_text, print_min_max
 from varglas.physics_new    import Physics
 from copy                   import deepcopy
+from varglas.helper         import raiseNotDefined
 import sys
 
 
@@ -17,6 +18,33 @@ class Momentum(Physics):
     """
     instance = Physics.__new__(self, model)
     return instance
+  
+  def __init__(self, model, solve_params=None, isothermal=True,
+               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """
+    """
+    # save the starting values, as other algorithms might change the 
+    # values to suit their requirements :
+    if isinstance(solve_params, dict):
+      self.solve_params_s  = deepcopy(solve_params)
+    else:
+      self.solve_params_s  = solve_params
+    self.isothermal_s      = isothermal
+    self.linear_s          = linear
+    self.use_lat_bcs_s     = use_lat_bcs
+    self.use_pressure_bc_s = use_pressure_bc
+    
+    self.initialize(model, solve_params, isothermal, linear,
+                    use_lat_bcs, use_pressure_bc)
+  
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.  Note that any Momentum object *must*
+    call this method.  See the existing child Momentum objects for reference.
+    """
+    raiseNotDefined()
   
   def reset(self):
     """

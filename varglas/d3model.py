@@ -880,7 +880,6 @@ class D3Model(Model):
     self.theta_surface = Function(self.Q, name='theta_surface')
     self.theta_float   = Function(self.Q, name='theta_float')
     self.theta_app     = Function(self.Q, name='theta_app')
-    self.theta         = Function(self.Q, name='theta')
     self.theta0        = Function(self.Q, name='theta0')
     self.W0            = Function(self.Q, name='W0')
     self.thetahat      = Function(self.Q, name='thetahat')

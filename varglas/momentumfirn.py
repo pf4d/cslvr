@@ -10,7 +10,8 @@ import sys
 
 class MomentumFirn(Momentum):
 
-  def __init__(self, model, solve_params=None):
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     """
     s = "::: INITIALIZING FIRN MOMENTUM PHYSICS :::"

@@ -11,35 +11,15 @@ import sys
 class MomentumStokes(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None, isothermal=True,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
-    """ 
-    Here we set up the problem, and do all of the differentiation and
-    memory allocation type stuff.
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
+    """
     """
     if type(model) != D3Model:
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
-    # save the starting values, as other algorithms might change the 
-    # values to suit their requirements :
-    if isinstance(solve_params, dict):
-      self.solve_params_s  = deepcopy(solve_params)
-    else:
-      self.solve_params_s  = solve_params
-    self.isothermal_s      = isothermal
-    self.linear_s          = linear
-    self.use_lat_bcs_s     = use_lat_bcs
-    self.use_pressure_bc_s = use_pressure_bc
-    
-    self.initialize(model, solve_params, isothermal, linear,
-                    use_lat_bcs, use_pressure_bc)
-
-  def initialize(self, model, solve_params=None, isothermal=True,
-                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
-    """
-    """
     s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
     
@@ -313,35 +293,17 @@ class MomentumStokes(Momentum):
 class MomentumDukowiczStokesReduced(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None, isothermal=True,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
-    """
-    """
-    if type(model) != D3Model:
-      s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
-      print_text(s % type(model) , 'red', 1)
-      sys.exit(1)
-
-    # save the starting values, as other algorithms might change the 
-    # values to suit their requirements :
-    if isinstance(solve_params, dict):
-      self.solve_params_s  = deepcopy(solve_params)
-    else:
-      self.solve_params_s  = solve_params
-    self.isothermal_s      = isothermal
-    self.linear_s          = linear
-    self.use_lat_bcs_s     = use_lat_bcs
-    self.use_pressure_bc_s = use_pressure_bc
-    
-    self.initialize(model, solve_params, isothermal, linear,
-                    use_lat_bcs, use_pressure_bc)
-
   def initialize(self, model, solve_params=None, isothermal=True,
                  linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
+    if type(model) != D3Model:
+      s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+
     s = "::: INITIALIZING DUKOWICZ REDUCED FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
     
@@ -721,8 +683,8 @@ class MomentumDukowiczStokesReduced(Momentum):
 class MomentumDukowiczStokes(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None, isothermal=True,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
@@ -1043,8 +1005,8 @@ class MomentumDukowiczStokes(Momentum):
 class MomentumDukowiczBrinkerhoffStokes(Momentum):
   """  
   """
-  def __init__(self, model, solve_params=None, isothermal=True,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.

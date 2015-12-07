@@ -300,6 +300,9 @@ class Model(object):
     s = "::: initializing temperature :::"
     print_text(s, cls=cls)
     self.assign_variable(self.T, T, cls=cls)
+    T_v = self.T.vector().array()
+    theta_v = 146.3*T_v + 7.253/2.0*T_v**2
+    self.init_theta(theta_v)
   
   def init_W(self, W, cls=None):
     """
@@ -1417,6 +1420,7 @@ class Model(object):
     # energy model :
     self.T             = Function(self.Q, name='T')
     self.q_geo         = Function(self.Q, name='q_geo')
+    self.theta         = Function(self.Q, name='theta')
     self.W             = Function(self.Q, name='W')
     self.Mb            = Function(self.Q, name='Mb')
     self.rhob          = Function(self.Q, name='rhob')
@@ -1475,7 +1479,22 @@ class Model(object):
       print_text(s % type(energy) , 'red', 1)
       sys.exit(1)
 
+    # mark starting time :
     t0   = time()
+
+    # ensure that we have a steady-state form :
+    if energy.transient:
+      energy.make_steady_state()
+
+    ## initialization step :
+    ## solve velocity :
+    #momentum.solve(annotate=False)
+
+    ## solve energy (along with temperature and water content) :
+    #energy.solve(annotate=False)
+ 
+    ## convert to pseudo-timestepping for smooth convergence : 
+    #energy.make_transient(time_step = 5.0)
 
     # L_\infty norm in velocity between iterations :
     inner_error = np.inf
@@ -1484,7 +1503,7 @@ class Model(object):
     counter     = 1
    
     # previous velocity for norm calculation
-    U_prev      = self.U3.copy(True)
+    U_prev      = self.theta.copy(True)#U3.copy(True)
 
     # perform a Picard iteration until the L_\infty norm of the velocity 
     # difference is less than tolerance :
@@ -1501,10 +1520,11 @@ class Model(object):
       energy.solve(annotate=False)
 
       # calculate L_infinity norm, increment counter :
-      counter       += 1
       #inner_error_n  = norm(U_prev.vector() - self.U3.vector(), 'l2')
-      inner_error_n  = abs(U_prev.vector().max() - self.U3.vector().max())
-      U_prev         = self.U3.copy(True)
+      #inner_error_n  = abs(U_prev.vector().max() - self.U3.vector().max())
+      #U_prev         = self.U3.copy(True)
+      inner_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+      U_prev         = self.theta.copy(True)
       if self.MPI_rank==0:
         s0    = '>>> '
         s1    = 'Picard iteration %i (max %i) done: ' % (counter, max_iter)
@@ -1522,6 +1542,7 @@ class Model(object):
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
       inner_error = inner_error_n
+      counter    += 1
 
       if callback != None:
         s    = '::: calling callback function :::'
@@ -1537,12 +1558,14 @@ class Model(object):
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
-  def assimilate_data(self, momentum, energy, control, obj_ftn,
+  def assimilate_U_ob(self, momentum, energy, control, obj_ftn,
                       bounds, method='l_bfgs_b', adj_iter=100,
                       iterations=100, save_state=True,
+                      ini_save_vars=None,
                       tmc_save_vars=None,
                       adj_save_vars=None,
                       tmc_callback=None,
+                      post_ini_callback=None,
                       post_tmc_callback=None,
                       post_adj_callback=None,
                       adj_callback=None, 
@@ -1565,44 +1588,52 @@ class Model(object):
     inner_error = np.inf
    
     # number of iterations :
-    counter     = 1
+    counter = 1
+
+    # need this for the derivative callback :
+    global counter_n
+    counter_n = 0 
    
     # previous velocity for norm calculation
     U_prev      = self.U3.copy(True)
 
-    # objective function callback function : 
-    def eval_cb(I, beta):
-      s    = '::: adjoint objective eval post callback function :::'
+    # initialization step :
+    # set the initialization output directory :
+    out_dir_n = 'initialization/'
+    self.set_out_dir(out_dir_i + out_dir_n)
+    
+    # thermo-mechanical couple :
+    self.thermo_solve(momentum, energy, callback=tmc_callback,
+                      rtol=tmc_rtol, max_iter=tmc_max_iter)
+
+    # call the post function if set :
+    if post_ini_callback is not None:
+      s    = '::: calling post-initialization callback function :::'
       print_text(s, cls=self.this)
-      print_min_max(I,    'I',         cls=self.this)
-      print_min_max(beta, 'beta',      cls=self.this)
-    
-    # objective gradient callback function :
-    def deriv_cb(I, dI, beta):
-      s    = '::: adjoint obj. gradient post callback function :::'
+      post_ini_callback()
+     
+    # save state to numbered hdf5 file :
+    if save_state:
+      s    = '::: saving initialized variables in dict arg ini_save_vars :::'
       print_text(s, cls=self.this)
-      print_min_max(dI,    'dI/dbeta', cls=self.this)
-      if adj_callback is not None:
-        adj_callback(I, dI, beta)
-    
-    # define the control parameter :
-    m = Control(control, value=control)
-    
-    # create the reduced functional to minimize :
-    F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
-                          derivative_cb_post=deriv_cb)
-  
+      out_file = self.out_dir + 'hdf5/thermo_ini.h5'
+      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+      
+      for var in ini_save_vars:
+        self.save_hdf5(var, f=foutput)
+      
+      foutput.close()
+
     # assimilate the data : 
     while counter <= iterations:
       s    = '::: entering iterate %i of %i of assimilation process :::'
       print_text(s % (counter, iterations), cls=self.this)
    
       # reset the momentum to the original configuration : 
-      if counter > 1:
-        momentum.reset()
+      momentum.reset()
        
       # set a new unique output directory :
-      out_dir_n = 'thermo_%0*d/' % (n_i, counter)
+      out_dir_n = '%0*d/' % (n_i, counter)
       self.set_out_dir(out_dir_i + out_dir_n)
       
       # thermo-mechanical couple :
@@ -1617,7 +1648,7 @@ class Model(object):
        
       # save state to numbered hdf5 file :
       if save_state:
-        s    = '::: saving variables in dict tmc_save_vars :::'
+        s    = '::: saving variables in list arg tmc_save_vars :::'
         print_text(s, cls=self.this)
         out_file = self.out_dir + 'hdf5/thermo_%0*d.h5' % (n_i, counter)
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
@@ -1631,10 +1662,6 @@ class Model(object):
       s    = '::: performing adjoint-based assimilation :::'
       print_text(s, cls=self.this)
       
-      # set a new unique output directory :
-      out_dir_n = 'inverted_%0*d/' % (n_i, counter)
-      self.set_out_dir(out_dir_i + out_dir_n)
-
       # the incomplete adjoint means the viscosity is linear :
       momentum.linearize_viscosity()
 
@@ -1646,6 +1673,39 @@ class Model(object):
       # now solve the control optimization problem : 
       s    = "::: starting adjoint-control optimization with method '%s' :::"
       print_text(s % method, cls=self.this)
+
+      # objective function callback function : 
+      def eval_cb(I, beta):
+        s    = '::: adjoint objective eval post callback function :::'
+        print_text(s, cls=self.this)
+        print_min_max(I,    'I',         cls=self.this)
+        print_min_max(beta, 'beta',      cls=self.this)
+      
+      # objective gradient callback function :
+      def deriv_cb(I, dI, beta):
+        if method == 'ipopt':
+          global counter_n
+          s0    = '>>> '
+          s1    = 'iteration %i (max %i) complete' % (counter_n, iterations)
+          s2    = ' <<<'
+          text0 = get_text(s0, 'red', 1)
+          text1 = get_text(s1, 'red')
+          text2 = get_text(s2, 'red', 1)
+          if MPI.rank(mpi_comm_world())==0:
+            print text0 + text1 + text2
+          counter_n += 1
+        s    = '::: adjoint obj. gradient post callback function :::'
+        print_text(s, cls=self.this)
+        print_min_max(dI,    'dI/dbeta', cls=self.this)
+        if adj_callback is not None:
+          adj_callback(I, dI, beta)
+      
+      # define the control parameter :
+      m = Control(control, value=control)
+      
+      # create the reduced functional to minimize :
+      F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
+                            derivative_cb_post=deriv_cb)
 
       # optimize with scipy's fmin_l_bfgs_b :
       if method == 'l_bfgs_b': 
@@ -1684,7 +1744,7 @@ class Model(object):
        
       # save state to unique hdf5 file :
       if save_state:
-        s    = '::: saving variables in dict adj_save_vars :::'
+        s    = '::: saving variables in list arg adj_save_vars :::'
         print_text(s, cls=self.this)
         out_file = self.out_dir + 'hdf5/inverted_%0*d.h5' % (n_i, counter)
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')

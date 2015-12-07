@@ -10,8 +10,8 @@ import sys
 class MomentumBP(Momentum):
   """				
   """
-  def __init__(self, model, solve_params=None, isothermal=True,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     Initializes the class's variables to default values that are then set
     by the individually created model.
@@ -360,8 +360,8 @@ class MomentumBP(Momentum):
 class MomentumDukowiczBP(Momentum):
   """				
   """
-  def __init__(self, model, solve_params=None, isothermal=True,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+  def initialize(self, model, solve_params=None, isothermal=True,
+                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     Initializes the class's variables to default values that are then set
     by the individually created model.

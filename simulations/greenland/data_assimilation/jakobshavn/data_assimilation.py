@@ -9,14 +9,13 @@ import sys
 # set the relavent directories :
 var_dir = 'dump/vars_jakobshavn_basin/'  # directory from gen_vars.py
 out_dir = 'dump/jakob_basin/'            # base directory to save
-ini_dir = out_dir + 'initialization/'    # initial directory to save
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',             'r')
 
 # create 3D model for stokes solves :
-d3model = D3Model(fdata, ini_dir)
+d3model = D3Model(fdata, out_dir)
 
 # init subdomains and boundary meshes :
 d3model.set_subdomains(fdata)
@@ -36,9 +35,8 @@ d3model.init_T_surface(fdata)
 d3model.init_adot(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
+d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
-
-d3model.save_xdmf(d3model.ff, 'ff')
 
 #fUin = HDF5File(mpi_comm_world(), out_dir + 'hdf5/U3.h5', 'r')
 #d3model.init_U(fUin)
@@ -71,7 +69,7 @@ d3model.save_xdmf(d3model.ff, 'ff')
 #d2model.state.close()
 #sys.exit(0)
 
-d2model = D2Model(d3model.bedmesh, ini_dir)
+d2model = D2Model(d3model.bedmesh, out_dir)
 
 d2model.assign_submesh_variable(d2model.S,      d3model.S)
 d2model.assign_submesh_variable(d2model.B,      d3model.B)
@@ -80,8 +78,6 @@ d2model.assign_submesh_variable(d2model.adot,   d3model.adot)
 # solve the balance velocity :
 bv = BalanceVelocity(d2model, kappa=5.0)
 bv.solve(annotate=False)
-
-d2model.save_xdmf(d2model.Ubar, 'Ubar')
 
 # assign the balance velocity to the 3D model's bed :
 d3model.assign_submesh_variable(d3model.d_x,  d2model.d_x)
@@ -129,9 +125,6 @@ d3model.init_beta_SIA()
 #d2model.init_beta_SIA()
 #d2model.init_T(d2model.T_surface)
 
-d3model.save_xdmf(beta, 'beta_SIA')
-d3model.save_xdmf(U_ob, 'U_ob')
-
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
                               'relative_tolerance'       : 1e-9,
@@ -155,7 +148,7 @@ e_params  = {'solver'               : 'mumps',
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
-nrg = Enthalpy(d3model, e_params, use_lat_bc=True, 
+nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
 #nrg.generate_approx_theta(init=True, annotate=False)
@@ -222,6 +215,9 @@ tmc_save_vars = [d3model.T,
 adj_save_vars = [d3model.beta,
                  d3model.U3]
 
+# the initial step saves everything :
+ini_save_vars = tmc_save_vars + [d3model.Ubar, d3model.U_ob, d3model.beta]
+
 # form the cost functional :
 J = mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
                      g1=0.01, g2=5000)
@@ -240,17 +236,24 @@ I = J + R
 d3model.set_out_dir(out_dir)
 
 # assimilate ! :
-d3model.assimilate_data(mom, nrg, control=d3model.beta, obj_ftn=I,
-                        bounds=(2*DOLFIN_EPS, 1e7),
-                        method='ipopt', adj_iter=100,
-                        iterations=100, save_state=True,
-                        tmc_save_vars=tmc_save_vars,
-                        adj_save_vars=adj_save_vars,
-                        tmc_callback=None,
-                        post_tmc_callback=tmc_post_cb_ftn,
-                        post_adj_callback=adj_post_cb_ftn,
-                        adj_callback=deriv_cb, 
-                        tmc_rtol=pi, tmc_max_iter=50)
+d3model.assimilate_U_ob(mom, nrg, 
+                        control           = d3model.beta,
+                        obj_ftn           = I,
+                        bounds            = (2*DOLFIN_EPS, 1e7),
+                        method            = 'ipopt',
+                        adj_iter          = 100,
+                        iterations        = 100,
+                        save_state        = True,
+                        ini_save_vars     = ini_save_vars,
+                        tmc_save_vars     = tmc_save_vars,
+                        adj_save_vars     = adj_save_vars,
+                        tmc_callback      = tmc_post_cb_ftn,
+                        post_ini_callback = tmc_post_cb_ftn,
+                        post_tmc_callback = tmc_post_cb_ftn,
+                        post_adj_callback = adj_post_cb_ftn,
+                        adj_callback      = deriv_cb, 
+                        tmc_rtol          = pi,
+                        tmc_max_iter      = 50)
  
 # save all the objective function values : 
 from numpy import savetxt, array

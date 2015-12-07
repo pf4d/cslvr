@@ -5,7 +5,9 @@ from varglas.d3model        import D3Model
 from varglas.d2model        import D2Model
 from varglas.d1model        import D1Model
 from varglas.physics_new    import Physics
-from varglas.helper         import VerticalBasis, VerticalFDBasis
+from varglas.helper         import VerticalBasis, VerticalFDBasis, \
+                                   raiseNotDefined
+from copy                   import deepcopy
 import numpy                    as np
 import sys
 
@@ -21,6 +23,73 @@ class Energy(Physics):
     """
     instance = Physics.__new__(self, model)
     return instance
+  
+  def __init__(self, model, solve_params=None, transient=False,
+               use_lat_bc=False, epsdot_ftn=None):
+    """
+    """
+    # save the starting values, as other algorithms might change the 
+    # values to suit their requirements :
+    if isinstance(solve_params, dict):
+      self.solve_params_s  = deepcopy(solve_params)
+    else:
+      self.solve_params_s  = solve_params
+    self.transient_s       = transient
+    self.use_lat_bc_s      = use_lat_bc
+    self.epsdot_ftn_s      = epsdot_ftn
+    
+    self.initialize(model, solve_params, transient,
+                    use_lat_bc, epsdot_ftn)
+  
+  def initialize(self, model, solve_params=None, transient=False,
+                 use_lat_bc=False, epsdot_ftn=None, reset=False):
+    """ 
+    Here we set up the problem, and do all of the differentiation and
+    memory allocation type stuff.  Note that any Energy object *must*
+    call this method.  See the existing child Energy objects for reference.
+    """
+    raiseNotDefined()
+  
+  def make_transient(self, time_step):
+    """
+    reset the momentum to the original configuration.
+    """
+    s = "::: RE-INITIALIZING ENERGY PHYSICS WITH TRANSIENT FORM :::"
+    print_text(s, self.color())
+
+    self.model.init_time_step(time_step, cls=self)
+    
+    self.initialize(model=self.model, solve_params=self.solve_params_s,
+                    transient = True,
+                    use_lat_bc = self.use_lat_bc_s,
+                    epsdot_ftn = self.epsdot_ftn_s,
+                    reset = True)
+  
+  def make_steady_state(self):
+    """
+    reset the momentum to the original configuration.
+    """
+    s = "::: RE-INITIALIZING ENERGY PHYSICS WITH STEADY-STATE FORM :::"
+    print_text(s, self.color())
+    
+    self.initialize(model=self.model, solve_params=self.solve_params_s,
+                    transient = False,
+                    use_lat_bc = self.use_lat_bc_s,
+                    epsdot_ftn = self.epsdot_ftn_s,
+                    reset = True)
+   
+  def reset(self):
+    """
+    reset the momentum to the original configuration.
+    """
+    s = "::: RE-INITIALIZING ENERGY PHYSICS :::"
+    print_text(s, self.color())
+    
+    self.initialize(model=self.model, solve_params=self.solve_params_s,
+                    transient = self.transient_s,
+                    use_lat_bc = self.use_lat_bc_s,
+                    epsdot_ftn = self.epsdot_ftn_s,
+                    reset = True)
   
   def color(self):
     """
@@ -87,9 +156,8 @@ class Energy(Physics):
 class Enthalpy(Energy):
   """
   """ 
-  
-  def __init__(self, model, solve_params=None, transient=False,
-               use_lat_bc=False, epsdot_ftn=None):
+  def initialize(self, model, solve_params=None, transient=False,
+                 use_lat_bc=False, epsdot_ftn=None, reset=False):
     """ 
     Set up energy equation residual. 
     """
@@ -172,26 +240,28 @@ class Enthalpy(Energy):
     # define test and trial functions : 
     psi    = TestFunction(Q)
     dtheta = TrialFunction(Q)
-    theta  = Function(Q)
-    theta0 = Function(Q)
+    theta  = Function(Q, name='energy.theta')
+    theta0 = Function(Q, name='energy.theta0')
 
-    # pressure melting point, never annotate for initial guess :
-    model.solve_hydrostatic_pressure(annotate=False)
-    self.calc_T_melt(annotate=False)
+    # initialize the boundary conditions, if we have not already :
+    if not reset:
+      # pressure melting point, never annotate for initial guess :
+      model.solve_hydrostatic_pressure(annotate=False)
+      self.calc_T_melt(annotate=False)
 
-    T_s_v   = T_surface.vector().array()
-    T_m_v   = T_melt.vector().array()
-    theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
-    theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
-   
-    # Surface boundary condition :
-    s = "::: calculating energy boundary conditions :::"
-    print_text(s, cls=self)
+      T_s_v   = T_surface.vector().array()
+      T_m_v   = T_melt.vector().array()
+      theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
+      theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
+     
+      # Surface boundary condition :
+      s = "::: calculating energy boundary conditions :::"
+      print_text(s, cls=self)
 
-    # initialize the boundary conditions :
-    model.init_theta_surface(theta_s, cls=self)
-    model.init_theta_app(theta_s, cls=self)
-    model.init_theta_float(theta_f, cls=self)
+      # initialize the boundary conditions :
+      model.init_theta_surface(theta_s, cls=self)
+      model.init_theta_app(theta_s,     cls=self)
+      model.init_theta_float(theta_f,   cls=self)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -223,6 +293,7 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     g_b = conditional( gt(W, 1.0), 0.0, q_geo + q_fric )
+    #g_b  = q_geo + q_fric
 
     # configure the module to run in steady state :
     if not transient:
@@ -263,12 +334,21 @@ class Enthalpy(Energy):
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_f
       #          + rho * theta_surface * dot(U, N) * psihat * dLat_d \
+
+      self.theta_a = theta_a
+      self.theta_L = theta_L
+      #self.theta_a = lhs(theta_a - theta_L)
+      #self.theta_L = rhs(theta_a - theta_L)
       
     # configure the module to run in transient mode :
     else:
       s = "    - using transient formulation -"
       print_text(s, cls=self)
       dt      = model.time_step
+   
+      # we need to initialize the previous time step, so I hope you've 
+      # either called model.init_theta() or model.init_T() :
+      model.assign_variable(theta0, model.theta, cls=self)
 
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.
@@ -284,14 +364,15 @@ class Enthalpy(Energy):
       # implicit system (linearized) for energy at time theta_{n+1}
       theta_a = + rho * (dtheta - theta0) / dt * psi * dx \
                 + rho * dot(U, grad(thetamid)) * psihat * dx \
+                - spy * dot(grad(k/c), grad(thetamid)) * psi * dx \
                 + spy * k/c * dot(grad(psi), grad(thetamid)) * dx \
       
-      theta_L = + q_b * psi * dBed_g \
+      theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_f
 
-    self.theta_a = theta_a
-    self.theta_L = theta_L
+      self.theta_a = lhs(theta_a - theta_L)
+      self.theta_L = rhs(theta_a - theta_L)
     
     # surface boundary condition : 
     self.theta_bc = []
@@ -740,7 +821,7 @@ class Enthalpy(Energy):
     model.assign_variable(model.theta, theta, cls=self)
 
     if self.transient:
-      self.theta0.assign(self.theta)
+      model.assign_variable(self.theta0, self.theta, annotate=annotate)
 
     # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"
@@ -817,7 +898,8 @@ class EnergyHybrid(Energy):
   """
   New 2D hybrid model.
   """
-  def __init__(self, model, transient=False, solve_params=None):
+  def initialize(self, model, solve_params=None, transient=False,
+                 use_lat_bc=False, epsdot_ftn=None):
     """ 
     Set up energy equation residual. 
     """

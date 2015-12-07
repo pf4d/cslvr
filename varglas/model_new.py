@@ -1469,12 +1469,12 @@ class Model(object):
     from varglas.momentum import Momentum
     from varglas.energy   import Energy
     
-    if momentum.__class__.__base__ != Momentum:
+    if not isinstance(momentum, Momentum):
       s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
       print_text(s % type(momentum) , 'red', 1)
       sys.exit(1)
     
-    if energy.__class__.__base__ != Energy:
+    if not isinstance(energy, Energy):
       s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
       print_text(s % type(energy) , 'red', 1)
       sys.exit(1)

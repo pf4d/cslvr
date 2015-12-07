@@ -153,6 +153,405 @@ class Energy(Physics):
     raiseNotDefined()
 
 
+class EnthalpySimple(Energy):
+  """
+  """ 
+  def initialize(self, model, solve_params=None, transient=False,
+                 use_lat_bc=False, epsdot_ftn=None, reset=False):
+    """ 
+    Set up energy equation residual. 
+    """
+    self.transient = transient
+
+    s    = "::: INITIALIZING SIMPLE-ENTHALPY PHYSICS :::"
+    print_text(s, cls=self)
+
+    if type(model) != D3Model:
+      s = ">>> EnthalpySimple REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+      print_text(s % type(model) , 'red', 1)
+      sys.exit(1)
+   
+    # set solver parameters : 
+    if solve_params == None:
+      self.solve_params = self.default_solve_params()
+    else:
+      self.solve_params = solve_params
+    
+    # set the function that returns the strain-rate tensor, default is full :
+    if epsdot_ftn == None:
+      self.strain_rate_tensor = self.default_strain_rate_tensor
+    else:
+      self.strain_rate_tensor = epsdot_ftn
+
+    r             = model.r
+    mesh          = model.mesh
+    V             = model.Q3
+    Q             = model.Q
+    n             = model.n
+    eps_reg       = model.eps_reg
+    T             = model.T
+    T_melt        = model.T_melt
+    Mb            = model.Mb
+    L             = model.L
+    T_w           = model.T_w
+    gamma         = model.gamma
+    S             = model.S
+    B             = model.B
+    H             = S - B
+    x             = model.x
+    W             = model.W
+    R             = model.R
+    U             = model.U3
+    u             = model.u
+    v             = model.v
+    w             = model.w
+    eps_reg       = model.eps_reg
+    g             = model.g
+    beta          = model.beta
+    rhoi          = model.rhoi
+    rhow          = model.rhow
+    ki            = model.ki
+    kw            = model.kw
+    ci            = model.ci
+    cw            = model.cw
+    T_surface     = model.T_surface
+    theta_surface = model.theta_surface
+    theta_float   = model.theta_float
+    theta_app     = model.theta_app
+    q_geo         = model.q_geo
+    thetahat      = model.thetahat
+    uhat          = model.uhat
+    vhat          = model.vhat
+    what          = model.what
+    mhat          = model.mhat
+    spy           = model.spy
+    h             = model.h
+    ds            = model.ds
+    dSrf          = model.dSrf
+    dBed_g        = model.dBed_g
+    dBed_f        = model.dBed_f
+    dBed          = model.dBed
+    dLat_t        = model.dLat_t
+    dx            = model.dx
+    dx_f          = model.dx_f
+    dx_g          = model.dx_g
+    E_shf         = model.E_shf
+    E_gnd         = model.E_gnd
+    N             = model.N
+    
+    # define test and trial functions : 
+    psi    = TestFunction(Q)
+    dtheta = TrialFunction(Q)
+    theta  = Function(Q, name='energy.theta')
+    theta0 = Function(Q, name='energy.theta0')
+
+    # initialize the boundary conditions, if we have not already :
+    if not reset:
+      # pressure melting point, never annotate for initial guess :
+      model.solve_hydrostatic_pressure(annotate=False)
+      self.calc_T_melt(annotate=False)
+
+      T_s_v   = T_surface.vector().array()
+      T_m_v   = T_melt.vector().array()
+      theta_s = ci(0)*T_s_v
+      theta_f = ci(0)*T_m_v
+     
+      # Surface boundary condition :
+      s = "::: calculating energy boundary conditions :::"
+      print_text(s, cls=self)
+
+      # initialize the boundary conditions :
+      model.init_theta_surface(theta_s, cls=self)
+      model.init_theta_app(theta_s,     cls=self)
+      model.init_theta_float(theta_f,   cls=self)
+
+    # bulk properties :
+    kappa =  ki / (rhoi*ci)             # bulk thermal diffusivity
+
+    # coefficient for diffusion of ice-water mixture -- no water diffusion :
+    k_c   = conditional( lt(T, T_w), 1.0, 0.0)
+
+    # frictional heating :
+    q_fric = beta * inner(U,U)
+
+    # Strain heating = stress*strain
+    epsdot  = self.effective_strain_rate(U)
+    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    #W_T     = conditional( lt(W, 0.01),   W,            0.01)
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    Q_s_gnd = 4 * eta_gnd * epsdot
+    Q_s_shf = 4 * eta_shf * epsdot
+
+    # basal heat-flux natural boundary condition :
+    g_b = conditional( gt(W, 1.0), 0.0, q_geo + q_fric )
+    #g_b  = q_geo + q_fric
+
+    # configure the module to run in steady state :
+    if not transient:
+      s = "    - using steady-state formulation -"
+      print_text(s, cls=self)
+      # skewed test function in areas with high velocity :
+      Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+      PE     = Unorm*h/(2*spy*ki/(rhoi*ci))
+      tau    = 1/tanh(PE) - 1/PE
+      psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
+      
+      # cannonical form, same as below :
+      #psihat = h*tau/(2*Unorm) * dot(U, grad(psi))
+      #
+      ## residual :
+      #delta  = + rho * dot(U, grad(dtheta)) * psihat * dx \
+      #         - div(rho * spy * kappa * grad(dtheta)) * psihat * dx \
+      #         - Q_s_gnd * psihat * dx_g \
+      #         - Q_s_shf * psihat * dx_f \
+      #
+      ## galerkin formulation :
+      #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
+      #         + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
+      #         - (q_geo + q_fric) * psi * dBed_g \
+      #         - Q_s_gnd * psi * dx_g \
+      #         - Q_s_shf * psi * dx_f \
+      #         + delta
+
+      #theta_a = lhs(F)
+      #theta_L = rhs(F)
+
+      # galerkin formulation :
+      theta_a = + rhoi * dot(U, grad(dtheta)) * psihat * dx \
+                + spy  * ki/ci * dot(grad(psi), grad(dtheta)) * dx \
+      
+      theta_L = + g_b * psi * dBed_g \
+                + Q_s_gnd * psi * dx_g \
+                + Q_s_shf * psi * dx_f
+      #          + rho * theta_surface * dot(U, N) * psihat * dLat_d \
+
+      self.theta_a = theta_a
+      self.theta_L = theta_L
+      #self.theta_a = lhs(theta_a - theta_L)
+      #self.theta_L = rhs(theta_a - theta_L)
+      
+    # configure the module to run in transient mode :
+    else:
+      s = "    - using transient formulation -"
+      print_text(s, cls=self)
+      dt      = model.time_step
+   
+      # we need to initialize the previous time step, so I hope you've 
+      # either called model.init_theta() or model.init_T() :
+      model.assign_variable(theta0, model.theta, cls=self)
+
+      # Skewed test function.  Note that vertical velocity has 
+      # the mesh velocity subtracted from it.
+      Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+      PE     = Unorm*h/(2*spy*ki/(rhoi*ci))
+      tau    = 1/tanh(PE) - 1/PE
+      psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
+
+      nu = 0.5
+      # Crank Nicholson method
+      thetamid = nu*dtheta + (1 - nu)*theta0
+      
+      # implicit system (linearized) for energy at time theta_{n+1}
+      theta_a = + rhoi * (dtheta - theta0) / dt * psi * dx \
+                + rhoi * dot(U, grad(thetamid)) * psihat * dx \
+                + spy  * ki/ci * dot(grad(psi), grad(thetamid)) * dx \
+      
+      theta_L = + g_b * psi * dBed_g \
+                + Q_s_gnd * psi * dx_g \
+                + Q_s_shf * psi * dx_f
+
+      self.theta_a = lhs(theta_a - theta_L)
+      self.theta_L = rhs(theta_a - theta_L)
+    
+    # surface boundary condition : 
+    self.theta_bc = []
+    self.theta_bc.append( DirichletBC(Q, theta_surface, 
+                                      model.ff, model.GAMMA_S_GND) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface,
+                                      model.ff, model.GAMMA_S_FLT) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface, 
+                                      model.ff, model.GAMMA_U_GND) )
+    self.theta_bc.append( DirichletBC(Q, theta_surface,
+                                      model.ff, model.GAMMA_U_FLT) )
+    
+    # apply T_melt conditions of portion of ice in contact with water :
+    self.theta_bc.append( DirichletBC(Q, theta_float, 
+                                      model.ff, model.GAMMA_B_FLT) )
+    self.theta_bc.append( DirichletBC(Q, theta_float, 
+                                      model.ff, model.GAMMA_L_UDR) )
+    
+    # apply lateral ``divide'' boundaries if desired : 
+    if use_lat_bc:
+      s = "    - using divide-lateral boundary conditions -"
+      print_text(s, cls=self)
+      self.theta_bc.append( DirichletBC(Q, model.theta_app,
+                                        model.ff, model.GAMMA_L_DVD) )
+    
+    self.theta   = theta
+    self.theta0  = theta0
+    self.q_fric  = q_fric
+    self.Q_s_gnd = Q_s_gnd
+    self.Q_s_shf = Q_s_shf
+  
+  def default_strain_rate_tensor(self, U):
+    """
+    return the default unsimplified-strain-rate tensor for velocity <U>.
+    """
+    u,v,w  = U
+    epi    = 0.5 * (grad(U) + grad(U).T)
+    return epi
+  
+  def effective_strain_rate(self, U):
+    """
+    return the effective strain rate squared.
+    """
+    epi    = self.strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
+    
+  def calc_T_melt(self, annotate=True):
+    """
+    Calculates pressure-melting point in model.T_melt.
+    """
+    s    = "::: calculating pressure-melting temperature :::"
+    print_text(s, cls=self)
+
+    model = self.model
+
+    dx    = model.dx
+    gamma = model.gamma
+    T_w   = model.T_w
+    p     = model.p
+    ci    = model.ci
+
+    u   = TrialFunction(model.Q)
+    phi = TestFunction(model.Q)
+    Tm  = Function(model.Q)
+
+    l = assemble((T_w - gamma * p) * phi * dx, annotate=annotate)
+    a = assemble(u * phi * dx, annotate=annotate)
+
+    solve(a, Tm.vector(), l, annotate=annotate)
+    model.assign_variable(model.T_melt, Tm, cls=self)
+
+    Tm_v    = Tm.vector().array()
+    theta_m = ci(0)*Tm_v
+    model.assign_variable(model.theta_melt, theta_m, cls=self)
+
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+  
+  def solve(self, annotate=False):
+    """ 
+    Solve the energy equations, saving enthalpy to model.theta, temperature 
+    to model.T, and water content to model.W.
+    """
+    model      = self.model
+    mesh       = model.mesh
+    Q          = model.Q
+    T_melt     = model.T_melt
+    T          = model.T
+    W          = model.W
+    W0         = model.W0
+    L          = model.L
+    ci         = model.ci
+    theta      = self.theta
+
+    if self.solve_params['use_surface_climate']:
+      self.solve_surface_climate()
+    
+    # solve the linear equation for energy :
+    s    = "::: solving energy :::"
+    print_text(s, cls=self)
+    aw        = assemble(self.theta_a, annotate=annotate)
+    Lw        = assemble(self.theta_L, annotate=annotate)
+    for bc in self.theta_bc:
+      bc.apply(aw, Lw)
+    theta_solver = LUSolver(self.solve_params['solver'])
+    theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
+    #solve(self.theta_a == self.theta_L, theta, self.theta_bc,
+    #      solver_parameters = {"linear_solver" : sm}, annotate=False)
+    model.assign_variable(model.theta, theta, cls=self)
+
+    if self.transient:
+      model.assign_variable(self.theta0, self.theta, annotate=annotate)
+
+    # temperature solved with quadradic formula, using expression for c : 
+    s = "::: calculating temperature :::"
+    print_text(s, cls=self)
+    theta_v  = theta.vector().array()
+    T_n_v    = theta_v / ci(0)
+    T_v      = T_n_v.copy()
+    
+    # update temperature for wet/dry areas :
+    T_melt_v     = T_melt.vector().array()
+    theta_melt_v = model.theta_melt.vector().array()
+    warm         = theta_v >= theta_melt_v
+    cold         = theta_v <  theta_melt_v
+    T_v[warm]    = T_melt_v[warm]
+    model.assign_variable(T, T_v, cls=self)
+    
+    # water content solved diagnostically :
+    s = "::: calculating water content :::"
+    print_text(s, cls=self)
+    W_v  = (theta_v - theta_melt_v) / L(0)
+    
+    # update water content :
+    #W_v[cold]       = 0.0   # no water where frozen 
+    W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
+    W_v[W_v > 0.01] = 0.01    # capped at 100% water, i.e., no hot water.
+    model.assign_variable(W0, W, cls=self, save=False)
+    model.assign_variable(W,  W_v, cls=self)
+   
+  def solve_basal_melt_rate(self):
+    """
+    Solve for the basal melt rate stored in model.Mb.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving for basal melt-rate :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    B        = model.B
+    rhoi     = model.rhoi
+    theta    = model.theta
+    T        = model.T
+    T_melt   = model.T_melt
+    L        = model.L
+    q_geo    = model.q_geo
+    rhoi     = model.rhoi
+    ki       = model.ki
+    ci       = model.ci
+    q_fric   = self.q_fric
+
+    gradB = as_vector([B.dx(0), B.dx(1), -1])
+    dTdn  = ki/ci * dot(grad(theta), gradB)
+    nMb   = project((q_geo + q_fric - dTdn) / (L*rho), model.Q,
+                    annotate=False)
+    nMb_v    = nMb.vector().array()
+    T_melt_v = T_melt.vector().array()
+    T_v      = T.vector().array()
+    nMb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
+    nMb_v[model.shf_dofs] = 0.0    # does apply over floating regions
+    model.assign_variable(model.Mb, nMb_v, cls=self)
+
+
 class Enthalpy(Energy):
   """
   """ 

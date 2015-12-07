@@ -1,5 +1,5 @@
 from varglas          import *
-from varglas.energy   import Enthalpy 
+from varglas.energy   import Enthalpy
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *
@@ -107,7 +107,6 @@ Tb     = Function(Qb,  name='Tb')
 Us     = Function(Q3s, name='Us')
 Wb     = Function(Qb,  name='Wb')
 Mb     = Function(Qb,  name='Mb')
-rhob   = Function(Qb,  name='rhob')
 beta_b = Function(Qb,  name="beta_control")
 
 # saving the regularization and cost functional values for convergence :
@@ -158,18 +157,15 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 
 # post-thermo-solve callback function :
 def tmc_post_cb_ftn():
-  nrg.calc_bulk_density()
   nrg.solve_basal_melt_rate()
   d3model.assign_submesh_variable(Tb,   d3model.T)
   d3model.assign_submesh_variable(Us,   d3model.U3)
   d3model.assign_submesh_variable(Wb,   d3model.W)
   d3model.assign_submesh_variable(Mb,   d3model.Mb)
-  d3model.assign_submesh_variable(rhob, d3model.rhob)
   d3model.save_xdmf(Tb,   'Tb')
   d3model.save_xdmf(Us,   'Us')
   d3model.save_xdmf(Wb,   'Wb')
   d3model.save_xdmf(Mb,   'Mb')
-  d3model.save_xdmf(rhob, 'rhob')
 
 # derivative of objective function callback function : 
 def deriv_cb(I, dI, beta):
@@ -208,7 +204,6 @@ tmc_save_vars = [d3model.T,
                  d3model.W,
                  d3model.theta,
                  d3model.U3,
-                 d3model.rhob,
                  d3model.Mb]
 
 # after every completed adjoining, save the state of these functions :
@@ -247,7 +242,7 @@ d3model.assimilate_U_ob(mom, nrg,
                         ini_save_vars     = ini_save_vars,
                         tmc_save_vars     = tmc_save_vars,
                         adj_save_vars     = adj_save_vars,
-                        tmc_callback      = tmc_post_cb_ftn,
+                        tmc_callback      = None,
                         post_ini_callback = tmc_post_cb_ftn,
                         post_tmc_callback = tmc_post_cb_ftn,
                         post_adj_callback = adj_post_cb_ftn,

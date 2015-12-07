@@ -145,12 +145,18 @@ m_params  = {'solver'               : nparams,
 e_params  = {'solver'               : 'mumps',
              'use_surface_climate'  : False}
 
-#mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-#mom = MomentumBP(d3model, m_params, isothermal=False)
-nrg = Enthalpy(d3model, e_params, use_lat_bc=True, 
-               epsdot_ftn=mom.strain_rate_tensor)
+##mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
+##mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+##mom = MomentumBP(d3model, m_params, isothermal=False)
+#nrg = Enthalpy(d3model, e_params, use_lat_bc=True, 
+#               epsdot_ftn=mom.strain_rate_tensor)
+  
+F = Monolithic(model, solve_params=None, transient=False,
+               use_lat_bcs=True, isothermal=False,
+               linear=False, use_pressure_bc=True)
+
+F.solve()
 
 # functions over appropriate surfaces for saving :
 beta = Function(Qb,  name='beta_SIA')

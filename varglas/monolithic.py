@@ -18,7 +18,7 @@ class Monolithic(Physics):
   """
   """
   def __init__(self, model, solve_params=None, transient=False,
-               use_lat_bcs=False, epsdot_ftn=None, isothermal=True,
+               use_lat_bcs=False, isothermal=True,
                linear=False, use_pressure_bc=True):
     """
     """
@@ -38,12 +38,6 @@ class Monolithic(Physics):
     else:
       self.solve_params = solve_params
     
-    # set the function that returns the strain-rate tensor, default is full :
-    if epsdot_ftn == None:
-      self.strain_rate_tensor = self.default_strain_rate_tensor
-    else:
-      self.strain_rate_tensor = epsdot_ftn
-
     r             = model.r
     mesh          = model.mesh
     V             = model.Q3
@@ -62,10 +56,6 @@ class Monolithic(Physics):
     x             = model.x
     W             = model.W
     R             = model.R
-    U             = model.U3
-    u             = model.u
-    v             = model.v
-    w             = model.w
     eps_reg       = model.eps_reg
     g             = model.g
     beta          = model.beta
@@ -77,6 +67,7 @@ class Monolithic(Physics):
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
     theta_float   = model.theta_float
+    theta_melt    = model.theta_melt
     theta_app     = model.theta_app
     q_geo         = model.q_geo
     thetahat      = model.thetahat
@@ -141,17 +132,14 @@ class Monolithic(Physics):
     else:
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
-      T       = model.T
-      #theta   = model.theta
-      W       = model.W
-      R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
       T_c     = 263.15
       theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+      W_c     = (theta - theta_melt) / L
       a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-      W_T     = conditional( lt(W,     0.01),    W,            0.01)
+      W_T     = conditional( lt(W_c,   0.01),    W,            0.01)
       #a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
       #Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
       #W_T     = conditional( lt(W, 0.01), W,            0.01)
@@ -194,6 +182,7 @@ class Monolithic(Physics):
     model.init_theta_surface(theta_s, cls=self)
     model.init_theta_app(theta_s,     cls=self)
     model.init_theta_float(theta_f,   cls=self)
+    model.init_theta(theta_f,   cls=self)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -217,13 +206,13 @@ class Monolithic(Physics):
 
     # basal heat-flux natural boundary condition :
     g_b = conditional( gt(W, 1.0), 0.0, q_geo + q_fric )
-    #g_b  = q_geo + q_fric
+    g_b  = q_geo + q_fric
 
     # skewed test function in areas with high velocity :
-    Unorm  = sqrt(dot(U_v, U_v) + DOLFIN_EPS)
+    Unorm  = sqrt(dot(U_v, U_v) + 1e-1)
     PE     = Unorm*h/(2*spy*k/(rho*c))
     tau    = 1/tanh(PE) - 1/PE
-    xihat = xi + h*tau/(2*Unorm) * dot(U_v, grad(xi))
+    xihat  = xi + h*tau/(2*Unorm) * dot(U_v, grad(xi))
     
     # galerkin formulation :
     theta_a = + rho * dot(U_v, grad(theta)) * xihat * dx \
@@ -272,8 +261,8 @@ class Monolithic(Physics):
                       model.u_lat, model.ff, model.GAMMA_L_DVD))
       self.bcs.append(DirichletBC(Q3.sub(0).sub(1),
                       model.v_lat, model.ff, model.GAMMA_L_DVD))
-      self.bcs.append( DirichletBC(Q3.sub(1), model.theta_app,
-                                   model.ff, model.GAMMA_L_DVD) )
+    self.bcs.append( DirichletBC(Q3.sub(1), model.theta_app,
+                                 model.ff, model.GAMMA_L_DVD) )
 
     # surface boundary condition : 
     self.bcs.append( DirichletBC(Q3.sub(1), theta_surface,
@@ -302,10 +291,8 @@ class Monolithic(Physics):
     self.w       = w
     self.dU      = dU
     self.Phi     = Phi
-    self.Lam     = Lam
     self.epsdot  = epsdot
     
-    self.theta   = theta
     self.c       = c
     self.k       = k
     self.rho     = rho
@@ -361,7 +348,6 @@ class Monolithic(Physics):
     W0         = model.W0
     L          = model.L
     c          = self.c
-    theta      = self.theta
     params     = self.solve_params
     
     # solve nonlinear system :
@@ -490,5 +476,93 @@ class Monolithic(Physics):
                                   'error_on_nonconvergence'  : False}}
     m_params  = {'solver'      : nparams}
     return m_params
+  
+  def get_residual(self):
+    """
+    Returns the momentum residual.
+    """
+    return self.F
+
+  def get_U(self):
+    """
+    Return the velocity Function.
+    """
+    return self.U
+
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+  
+  def strain_rate_tensor(self, U):
+    """
+    return the strain-rate tensor for the velocity <U>.
+    """
+    u,v,w  = U
+    epi    = 0.5 * (grad(U) + grad(U).T)
+    epi22  = -u.dx(0) - v.dx(1)          # incompressibility
+    epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi[0,2]],
+                        [epi[1,0],  epi[1,1],  epi[1,2]],
+                        [epi[2,0],  epi[2,1],  epi22]])
+    return epsdot
+
+  def stress_tensor(self, U, p, eta):
+    """
+    return the BP Cauchy stress tensor.
+    """
+    s   = "::: forming the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    I     = Identity(3)
+    tau   = self.deviatoric_stress_tensor(U, eta)
+
+    sigma = tau - p*I
+    return sigma
+    
+  def deviatoric_stress_tensor(self, U, eta):
+    """
+    return the Cauchy stress tensor.
+    """
+    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
+    print_text(s, self.color)
+
+    epi = self.strain_rate_tensor(U)
+    tau = 2 * eta * epi
+    return tau
+  
+  def effective_stress(self, U, eta):
+    """
+    return the effective stress squared.
+    """
+    tau    = self.deviatoric_stress_tensor(U, eta)
+    tu_xx  = tau[0,0]
+    tu_yy  = tau[1,1]
+    tu_zz  = tau[2,2]
+    tu_xy  = tau[0,1]
+    tu_xz  = tau[0,2]
+    tu_yz  = tau[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
+                    + tu_xy**2 + tu_xz**2 + tu_yz**2
+    return taudot
+
+  def effective_strain_rate(self, U):
+    """
+    return the effective strain rate squared.
+    """
+    epi    = self.strain_rate_tensor(U)
+    ep_xx  = epi[0,0]
+    ep_yy  = epi[1,1]
+    ep_zz  = epi[2,2]
+    ep_xy  = epi[0,1]
+    ep_xz  = epi[0,2]
+    ep_yz  = epi[1,2]
+    
+    # Second invariant of the strain rate tensor squared
+    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
+                    + ep_xy**2 + ep_xz**2 + ep_yz**2
+    return epsdot
   
 

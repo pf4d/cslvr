@@ -255,14 +255,10 @@ class Monolithic(Physics):
       
     # add lateral boundary conditions :  
     if use_lat_bcs:
-      s = "    - using divide-lateral boundary conditions -"
+      s = "    - using divide-lateral-energy boundary condition -"
       print_text(s, self.color())
-      self.bcs.append(DirichletBC(Q3.sub(0).sub(0),
-                      model.u_lat, model.ff, model.GAMMA_L_DVD))
-      self.bcs.append(DirichletBC(Q3.sub(0).sub(1),
-                      model.v_lat, model.ff, model.GAMMA_L_DVD))
-    self.bcs.append( DirichletBC(Q3.sub(1), model.theta_app,
-                                 model.ff, model.GAMMA_L_DVD) )
+      self.bcs.append( DirichletBC(Q3.sub(1), model.theta_app,
+                                   model.ff, model.GAMMA_L_DVD) )
 
     # surface boundary condition : 
     self.bcs.append( DirichletBC(Q3.sub(1), theta_surface,

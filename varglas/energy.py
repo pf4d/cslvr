@@ -611,6 +611,7 @@ class Enthalpy(Energy):
     rhow          = model.rhow
     kw            = model.kw
     cw            = model.cw
+    L             = model.L
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
     theta_float   = model.theta_float
@@ -671,7 +672,7 @@ class Enthalpy(Energy):
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
     kappa =  k / (rho*c)             # bulk thermal diffusivity
-
+    
     # coefficient for diffusion of ice-water mixture -- no water diffusion :
     k_c   = conditional( lt(T, T_w), 1.0, 0.0)
 
@@ -691,8 +692,9 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
 
     # basal heat-flux natural boundary condition :
-    g_b = conditional( gt(W, 1.0), 0.0, q_geo + q_fric )
-    #g_b  = q_geo + q_fric
+    g_c = q_geo + q_fric
+    g_h = - k * dot(grad(T), N)
+    g_b = conditional( lt(W, 0.0), g_c, g_h)
 
     # configure the module to run in steady state :
     if not transient:
@@ -1259,19 +1261,16 @@ class Enthalpy(Energy):
     
     model    = self.model
     B        = model.B
-    rhoi     = model.rhoi
-    theta    = model.theta
     T        = model.T
     T_melt   = model.T_melt
     L        = model.L
     q_geo    = model.q_geo
     rho      = self.rho
     k        = self.k
-    c        = self.c
     q_fric   = self.q_fric
 
     gradB = as_vector([B.dx(0), B.dx(1), -1])
-    dTdn  = k/c * dot(grad(theta), gradB)
+    dTdn  = k * dot(grad(T), gradB)
     nMb   = project((q_geo + q_fric - dTdn) / (L*rho), model.Q,
                     annotate=False)
     nMb_v    = nMb.vector().array()

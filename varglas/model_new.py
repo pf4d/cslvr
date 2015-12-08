@@ -1486,15 +1486,15 @@ class Model(object):
     if energy.transient:
       energy.make_steady_state()
 
-    ## initialization step :
-    ## solve velocity :
-    #momentum.solve(annotate=False)
+    # initialization step :
+    # solve velocity :
+    momentum.solve(annotate=False)
 
-    ## solve energy (along with temperature and water content) :
-    #energy.solve(annotate=False)
+    # solve energy (along with temperature and water content) :
+    energy.solve(annotate=False)
  
-    ## convert to pseudo-timestepping for smooth convergence : 
-    #energy.make_transient(time_step = 5.0)
+    # convert to pseudo-timestepping for smooth convergence : 
+    energy.make_transient(time_step = 1.0)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf

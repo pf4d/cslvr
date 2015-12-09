@@ -438,8 +438,8 @@ class MomentumDukowiczBP(Momentum):
     du,  dv  = dU
     u,   v   = U
 
-    eps_reg    = model.eps_reg
-    n          = model.n
+    eps_reg  = model.eps_reg
+    n        = model.n
     
     if isothermal:
       s   = "    - using isothermal rate-factor -"
@@ -451,16 +451,22 @@ class MomentumDukowiczBP(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      #theta   = model.theta
+      theta_m = model.theta_melt
+      theta   = model.theta
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
       T_c     = 263.15
-      #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+      theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+      theta_w = 0.01*L + theta_melt
+      W_w     = (theta - theta_melt)/L
       #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
       #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-      #W_T     = conditional( lt(W,     0.01),    W,            0.01)
+      #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+      #W_c     = conditional( gt(theta, theta_m), 1.0,          0.00)
+      #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
       a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
       W_T     = conditional( lt(W, 0.01), W,            0.01)
@@ -620,7 +626,7 @@ class MomentumDukowiczBP(Momentum):
                  'vert_solve_method'    : 'mumps'}
     return m_params
 
-  def solve_pressure(self):
+  def solve_pressure(self, annotate=True):
     """
     Solve for the Dukowicz BP pressure to model.p.
     """
@@ -640,8 +646,10 @@ class MomentumDukowiczBP(Momentum):
     eta_gnd = self.eta_gnd
     w       = self.w
 
-    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), Q, annotate=False)
-    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), Q, annotate=False)
+    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), Q,
+                      annotate=annotate)
+    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), Q,
+                      annotate=annotate)
     
     # unify the pressure over shelves and grounded ice : 
     p_v                 = p.vector().array()
@@ -651,7 +659,7 @@ class MomentumDukowiczBP(Momentum):
     p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
     model.assign_variable(p, p_v, cls=self)
 
-  def solve_vert_velocity(self):
+  def solve_vert_velocity(self, annotate=True):
     """ 
     Perform the Newton solve of the first order equations 
     """
@@ -666,13 +674,13 @@ class MomentumDukowiczBP(Momentum):
     #if self.bc_w != None:
     #  self.bc_w.apply(aw, Lw)
     w_solver = LUSolver(self.solve_params['vert_solve_method'])
-    w_solver.solve(aw, self.w.vector(), Lw, annotate=False)
+    w_solver.solve(aw, self.w.vector(), Lw, annotate=annotate)
     #solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
     #      solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True},
     #                           annotate=False)
     
-    self.assz.assign(model.w, self.w)
+    self.assz.assign(model.w, self.w, annotate=annotate)
     print_min_max(self.w, 'w', cls=self)
     
   def solve(self, annotate=True):
@@ -696,17 +704,15 @@ class MomentumDukowiczBP(Momentum):
           annotate = annotate, solver_parameters = params['solver'])
     u, v = self.U.split()
 
-    #self.assign_variable(model.u, u)
-    #self.assign_variable(model.v, v)
-    self.assx.assign(model.u, u)
-    self.assy.assign(model.v, v)
+    self.assx.assign(model.u, u, annotate=annotate)
+    self.assy.assign(model.v, v, annotate=annotate)
 
     print_min_max(self.U, 'U', cls=self)
       
     if params['solve_vert_velocity']:
-      self.solve_vert_velocity()
+      self.solve_vert_velocity(annotate)
     if params['solve_pressure']:
-      self.solve_pressure()
+      self.solve_pressure(annotate)
 
 
 

@@ -1569,6 +1569,7 @@ class Model(object):
 
   def assimilate_U_ob(self, momentum, energy, control, obj_ftn,
                       bounds, method='l_bfgs_b', adj_iter=100,
+                      incomplete=True,
                       iterations=100, save_state=True,
                       ini_save_vars=None,
                       tmc_save_vars=None,

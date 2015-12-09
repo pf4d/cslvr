@@ -145,8 +145,8 @@ e_params  = {'solver'               : 'mumps',
 
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-#mom = MomentumBP(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
+mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 

@@ -1220,7 +1220,7 @@ class Enthalpy(Energy):
     theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
     #solve(self.theta_a == self.theta_L, theta, self.theta_bc,
     #      solver_parameters = {"linear_solver" : sm}, annotate=False)
-    model.assign_variable(model.theta, theta, cls=self)
+    model.assign_variable(model.theta, theta, annotate=annotate, cls=self)
 
     if self.transient:
       model.assign_variable(self.theta0, self.theta, cls=self,

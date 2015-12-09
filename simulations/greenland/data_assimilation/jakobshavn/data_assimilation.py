@@ -137,7 +137,7 @@ nparams = {'newton_solver' : {'linear_solver'            : 'cg',
 #                              'error_on_nonconvergence'  : False}}
 m_params  = {'solver'               : nparams,
              'solve_vert_velocity'  : True,
-             'solve_pressure'       : True,
+             'solve_pressure'       : False,
              'vert_solve_method'    : 'mumps'}
 
 e_params  = {'solver'               : 'mumps',
@@ -236,19 +236,19 @@ d3model.assimilate_U_ob(mom, nrg,
                         obj_ftn           = I,
                         bounds            = (2*DOLFIN_EPS, 1e7),
                         method            = 'ipopt',
-                        adj_iter          = 100,
-                        iterations        = 100,
+                        adj_iter          = 50,
+                        iterations        = 20,
                         save_state        = True,
                         ini_save_vars     = ini_save_vars,
                         tmc_save_vars     = tmc_save_vars,
                         adj_save_vars     = adj_save_vars,
-                        tmc_callback      = None,
+                        tmc_callback      = tmc_post_cb_ftn,
                         post_ini_callback = tmc_post_cb_ftn,
                         post_tmc_callback = tmc_post_cb_ftn,
                         post_adj_callback = adj_post_cb_ftn,
                         adj_callback      = deriv_cb, 
-                        tmc_rtol          = pi,
-                        tmc_atol          = pi,
+                        tmc_rtol          = 1e-6,
+                        tmc_atol          = 1000,
                         tmc_max_iter      = 50)
  
 # save all the objective function values : 

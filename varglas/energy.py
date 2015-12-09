@@ -694,7 +694,8 @@ class Enthalpy(Energy):
     # basal heat-flux natural boundary condition :
     g_c = q_geo + q_fric
     g_h = - k * dot(grad(T), N)
-    g_b = conditional( lt(W, 0.0), g_c, g_h)
+    #g_b = conditional( gt(W, 0.0), g_c/2.0, g_c)
+    g_b = g_c
 
     # configure the module to run in steady state :
     if not transient:
@@ -1222,7 +1223,8 @@ class Enthalpy(Energy):
     model.assign_variable(model.theta, theta, cls=self)
 
     if self.transient:
-      model.assign_variable(self.theta0, self.theta, annotate=annotate)
+      model.assign_variable(self.theta0, self.theta, cls=self,
+                            annotate=annotate)
 
     # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"

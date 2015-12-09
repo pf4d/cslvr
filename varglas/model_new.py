@@ -1485,16 +1485,23 @@ class Model(object):
     # ensure that we have a steady-state form :
     if energy.transient:
       energy.make_steady_state()
-
+    
     # initialization step :
-    # solve velocity :
-    momentum.solve(annotate=False)
+    s    = '::: performing initialization step :::'
+    print_text(s, cls=self.this)
 
-    # solve energy (along with temperature and water content) :
-    energy.solve(annotate=False)
+    ## always set the initial water content to zero, so that the friction
+    ## and geothermal heat flux are applied everywhere on the bed :
+    #self.init_W(0.0, cls=self.this)
+
+    ## solve velocity :
+    #momentum.solve(annotate=False)
+
+    ## solve energy (along with temperature and water content) :
+    #energy.solve(annotate=False)
  
-    # convert to pseudo-timestepping for smooth convergence : 
-    energy.make_transient(time_step = 1.0)
+    ## convert to pseudo-timestepping for smooth convergence : 
+    #energy.make_transient(time_step = 25.0)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1504,11 +1511,11 @@ class Model(object):
     counter   = 1
    
     # previous velocity for norm calculation
-    U_prev      = self.theta.copy(True)#U3.copy(True)
+    U_prev    = self.theta.copy(True)#U3.copy(True)
 
     # perform a fixed-point iteration until the L_2 norm of error 
     # is less than tolerance :
-    while (abs_error > atol or rel_error > rtol) and counter <= max_iter:
+    while abs_error > atol and rel_error > rtol and counter <= max_iter:
      
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,

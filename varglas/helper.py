@@ -925,7 +925,7 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5,
-            extend='neither', show=True, ext='.png', res=150):
+            basin=None, extend='neither', show=True, ext='.png', res=150):
   """
   INPUTS :
 
@@ -1007,27 +1007,30 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
  
   # Greenland : 
   elif di.cont == 'greenland':
-    w   = 1532453.49654
-    h   = 2644074.78236
-    fig = plt.figure(figsize=(8,11.5))
-    ax  = fig.add_axes()
-    
-    # new projection :
-    m = Basemap(ax=ax, width=w, height=h, resolution='h', 
-                projection='stere', lat_ts=71, 
-                lon_0=-41.5, lat_0=71)
-    
-    # draw lat/lon grid lines every 5 degrees.
-    # labels = [left,right,top,bottom]
-    m.drawmeridians(np.arange(0, 360, 5.0),
-                    color = 'black',
-                    labels = [False, False, False, True])
-    m.drawparallels(np.arange(-90, 90, 5.0), 
-                    color = 'black', 
-                    labels = [True, False, True, False])
-    m.drawmapscale(-34, 60.5, -41.5, 71, 400, 
-                   yoffset  = 0.01 * (m.ymax - m.ymin), 
-                   barstyle = 'fancy')
+    if basin == 'jakobshavn':
+      pass
+    else:
+      w   = 1532453.49654
+      h   = 2644074.78236
+      fig = plt.figure(figsize=(8,11.5))
+      ax  = fig.add_axes()
+      
+      # new projection :
+      m = Basemap(ax=ax, width=w, height=h, resolution='h', 
+                  projection='stere', lat_ts=71, 
+                  lon_0=-41.5, lat_0=71)
+      
+      # draw lat/lon grid lines every 5 degrees.
+      # labels = [left,right,top,bottom]
+      m.drawmeridians(np.arange(0, 360, 5.0),
+                      color = 'black',
+                      labels = [False, False, False, True])
+      m.drawparallels(np.arange(-90, 90, 5.0), 
+                      color = 'black', 
+                      labels = [True, False, True, False])
+      m.drawmapscale(-34, 60.5, -41.5, 71, 400, 
+                     yoffset  = 0.01 * (m.ymax - m.ymin), 
+                     barstyle = 'fancy')
 
   # convert to new projection coordinates from lon,lat :
   x, y  = m(lon, lat)

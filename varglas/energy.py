@@ -720,7 +720,8 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    mdot = W_c * W_w * Mb * rho * L
+    Wmax = Constant(1.0)
+    mdot = W_c * W_w / Wmax * Mb * rho * L
     g_b  = q_geo + q_fric - mdot
 
     # configure the module to run in steady state :
@@ -870,6 +871,7 @@ class Enthalpy(Energy):
     self.q_fric  = q_fric
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
+    self.Wmax    = Wmax
   
   def default_strain_rate_tensor(self, U):
     """
@@ -1291,6 +1293,7 @@ class Enthalpy(Energy):
     #W_v[W_v > 1.0]  = 1.0    # capped at 100% water, i.e., no hot water.
     model.assign_variable(W0, W, cls=self, save=False)
     model.assign_variable(W,  W_v, cls=self)
+    self.Wmax.assign(W_v.max() + DOLFIN_EPS)  # set the max water content
    
   def solve_basal_melt_rate(self):
     """

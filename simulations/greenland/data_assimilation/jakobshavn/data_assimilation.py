@@ -7,8 +7,10 @@ import sys
 
 
 # set the relavent directories :
-var_dir = 'dump/vars_jakobshavn_basin/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_basin/'            # base directory to save
+#var_dir = 'dump/vars_jakobshavn_basin/'  # directory from gen_vars.py
+#out_dir = 'dump/jakob_basin/'            # base directory to save
+var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
+out_dir = 'dump/jakob_small/'            # base directory to save
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')

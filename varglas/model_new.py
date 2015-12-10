@@ -1638,38 +1638,13 @@ class Model(object):
     while counter <= iterations:
       s    = '::: entering iterate %i of %i of assimilation process :::'
       print_text(s % (counter, iterations), cls=self.this)
-   
-      # reset the momentum to the original configuration : 
-      momentum.reset()
        
       # set a new unique output directory :
       out_dir_n = '%0*d/' % (n_i, counter)
       self.set_out_dir(out_dir_i + out_dir_n)
-      
-      # thermo-mechanical couple :
-      self.thermo_solve(momentum, energy, callback=tmc_callback,
-                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
-
-      # call the post function if set :
-      if post_tmc_callback is not None:
-        s    = '::: calling post-thermo-couple callback function :::'
-        print_text(s, cls=self.this)
-        post_tmc_callback()
-       
-      # save state to numbered hdf5 file :
-      if save_state:
-        s    = '::: saving variables in list arg tmc_save_vars :::'
-        print_text(s, cls=self.this)
-        out_file = self.out_dir + 'hdf5/thermo_%0*d.h5' % (n_i, counter)
-        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        
-        for var in tmc_save_vars:
-          self.save_hdf5(var, f=foutput)
-        
-        foutput.close()
    
       # let us know that we've started the adjoining process : 
-      s    = '::: performing adjoint-based assimilation :::'
+      s    = '::: beginning adjoint-based assimilation process :::'
       print_text(s, cls=self.this)
       
       # the incomplete adjoint means the viscosity is linear :
@@ -1746,7 +1721,7 @@ class Model(object):
       # make the optimal control parameter available :
       self.assign_variable(self.control_opt, b_opt, cls=self.this)
       
-      # call the post function if set :
+      # call the post-adjoint callback function if set :
       if post_adj_callback is not None:
         s    = '::: calling post-adjoined callback function :::'
         print_text(s, cls=self.this)
@@ -1760,6 +1735,31 @@ class Model(object):
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
         
         for var in adj_save_vars:
+          self.save_hdf5(var, f=foutput)
+        
+        foutput.close()
+      
+      # reset the momentum to the original configuration : 
+      momentum.reset()
+      
+      # thermo-mechanical couple :
+      self.thermo_solve(momentum, energy, callback=tmc_callback,
+                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
+
+      # call the post-thermo-couple callback function if set :
+      if post_tmc_callback is not None:
+        s    = '::: calling post-thermo-couple callback function :::'
+        print_text(s, cls=self.this)
+        post_tmc_callback()
+       
+      # save state to numbered hdf5 file :
+      if save_state:
+        s    = '::: saving variables in list arg tmc_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'hdf5/thermo_%0*d.h5' % (n_i, counter)
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        
+        for var in tmc_save_vars:
           self.save_hdf5(var, f=foutput)
         
         foutput.close()

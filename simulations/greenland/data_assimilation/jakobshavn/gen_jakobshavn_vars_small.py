@@ -18,9 +18,9 @@ dbm     = DataInput(bamber,   mesh=mesh)
 drg     = DataInput(rignot,   mesh=mesh)
 
 # change the projection of all data to be the same as the mesh :
-#dbm.change_projection(drg)
-#dsr.change_projection(drg)
-drg.change_projection(dbm)
+dbm.change_projection(drg)
+dsr.change_projection(drg)
+#drg.change_projection(dbm)
 
 # get the expressions used by varglas :
 S     = dbm.get_expression('S',        near=False)
@@ -43,5 +43,8 @@ model.init_T_surface(T_s)
 model.init_q_geo(q_geo)
 model.init_U_ob(u_ob, v_ob)
 
+model.save_xdmf(model.U_ob, 'U_ob')
+
+model.state.close()
 
 

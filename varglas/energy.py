@@ -704,8 +704,8 @@ class Enthalpy(Energy):
     a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
     Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
     W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
-    W_c     = conditional( lt(theta, theta_m), 0.0,          1.0)
-    W_a     = conditional( lt(theta, theta_m), 0.0,          W_w)
+    W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
+    W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
 
     # viscosity and strain-heating :
     b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
@@ -721,7 +721,7 @@ class Enthalpy(Energy):
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
     Wmax = Constant(1.0)
-    mdot = W_c * W_w / Wmax * Mb * rho * L
+    mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
     g_b  = q_geo + q_fric - mdot
 
     # configure the module to run in steady state :

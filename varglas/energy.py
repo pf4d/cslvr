@@ -589,7 +589,8 @@ class Enthalpy(Energy):
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
-    T_melt        = model.T_melt
+    T_m           = model.T_melt
+    W             = model.W
     Mb            = model.Mb
     L             = model.L
     T_w           = model.T_w
@@ -598,7 +599,6 @@ class Enthalpy(Energy):
     B             = model.B
     H             = S - B
     x             = model.x
-    W             = model.W
     R             = model.R
     U             = model.U3
     u             = model.u
@@ -616,6 +616,7 @@ class Enthalpy(Energy):
     theta_surface = model.theta_surface
     theta_float   = model.theta_float
     theta_app     = model.theta_app
+    theta_m       = model.theta_melt
     q_geo         = model.q_geo
     thetahat      = model.thetahat
     uhat          = model.uhat
@@ -650,7 +651,7 @@ class Enthalpy(Energy):
       self.calc_T_melt(annotate=False)
 
       T_s_v   = T_surface.vector().array()
-      T_m_v   = T_melt.vector().array()
+      T_m_v   = T_m.vector().array()
       theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
       theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
      
@@ -663,6 +664,21 @@ class Enthalpy(Energy):
       model.init_theta_app(theta_s,     cls=self)
       model.init_theta_float(theta_f,   cls=self)
 
+    # frictional heating :
+    q_fric = beta * inner(U,U)
+
+    ## Strain heating = stress*strain
+    #epsdot  = self.effective_strain_rate(U)
+    #a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    #Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    #W_T     = conditional( lt(W, 0.01),   W,            0.01)
+    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    #Q_s_gnd = 4 * eta_gnd * epsdot
+    #Q_s_shf = 4 * eta_shf * epsdot
+
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
     ci    = 146.3 + 7.253*T
@@ -671,31 +687,41 @@ class Enthalpy(Energy):
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
+    k     =  spy * k                 # convert to J/(a*m*K)
     kappa =  k / (rho*c)             # bulk thermal diffusivity
-    
-    # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(T, T_w), 1.0, 0.0)
+      
+    # strain-rate :
+    epsdot  = self.effective_strain_rate(U) + eps_reg
 
-    # frictional heating :
-    q_fric = beta * inner(U,U)
+    # thermal properties :
+    T_c     = 263.15
+    theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+    theta_w = 0.01*L + theta_m
+    W_w     = (theta - theta_m)/L
+    T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
 
-    # Strain heating = stress*strain
-    epsdot  = self.effective_strain_rate(U)
-    a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    W_T     = conditional( lt(W, 0.01),   W,            0.01)
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    # discontinuous properties :
+    a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
+    W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+    W_c     = conditional( lt(theta, theta_m), 0.0,          1.0)
+    W_a     = conditional( lt(theta, theta_m), 0.0,          W_w)
+
+    # viscosity and strain-heating :
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
+    
+    # coefficient for diffusion of ice-water mixture -- no water diffusion :
+    k_c   = conditional( lt(theta, theta_m), 1.0, 0.0)
 
     # basal heat-flux natural boundary condition :
-    g_c = q_geo + q_fric
-    g_h = - k * dot(grad(T), N)
-    #g_b = conditional( gt(W, 0.0), g_c/2.0, g_c)
-    g_b = g_c
+    Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
+    mdot = W_c * W_w * Mb * rho * L
+    g_b  = q_geo + q_fric - mdot
 
     # configure the module to run in steady state :
     if not transient:
@@ -703,7 +729,7 @@ class Enthalpy(Energy):
       print_text(s, cls=self)
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*spy*k/(rho*c))
+      PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       
@@ -712,13 +738,13 @@ class Enthalpy(Energy):
       #
       ## residual :
       #delta  = + rho * dot(U, grad(dtheta)) * psihat * dx \
-      #         - div(rho * spy * kappa * grad(dtheta)) * psihat * dx \
+      #         - div(rho * kappa * grad(dtheta)) * psihat * dx \
       #         - Q_s_gnd * psihat * dx_g \
       #         - Q_s_shf * psihat * dx_f \
       #
       ## galerkin formulation :
       #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
-      #         + rho * spy * kappa * dot(grad(psi), grad(dtheta)) * dx \
+      #         + rho * kappa * dot(grad(psi), grad(dtheta)) * dx \
       #         - (q_geo + q_fric) * psi * dBed_g \
       #         - Q_s_gnd * psi * dx_g \
       #         - Q_s_shf * psi * dx_f \
@@ -728,9 +754,9 @@ class Enthalpy(Energy):
       #theta_L = rhs(F)
 
       # galerkin formulation :
-      theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
-                - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
-                + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
+      theta_a = + rho * dot(U, grad(theta)) * psihat * dx \
+                - dot(grad(k/c), grad(theta)) * psi * dx \
+                + k/c * dot(grad(psi), grad(theta)) * dx \
       
       theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
@@ -741,6 +767,7 @@ class Enthalpy(Energy):
       self.theta_L = theta_L
       #self.theta_a = lhs(theta_a - theta_L)
       #self.theta_L = rhs(theta_a - theta_L)
+      self.nrg_F   = self.theta_a - self.theta_L
       
     # configure the module to run in transient mode :
     else:
@@ -755,7 +782,7 @@ class Enthalpy(Energy):
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*spy*k/(rho*c))
+      PE     = Unorm*h/(2*kappa)
       tau    = 1/tanh(PE) - 1/PE
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
@@ -766,8 +793,8 @@ class Enthalpy(Energy):
       # implicit system (linearized) for energy at time theta_{n+1}
       theta_a = + rho * (dtheta - theta0) / dt * psi * dx \
                 + rho * dot(U, grad(thetamid)) * psihat * dx \
-                - spy * dot(grad(k/c), grad(thetamid)) * psi * dx \
-                + spy * k/c * dot(grad(psi), grad(thetamid)) * dx \
+                - dot(grad(k/c), grad(thetamid)) * psi * dx \
+                + k/c * dot(grad(psi), grad(thetamid)) * dx \
       
       theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
@@ -832,6 +859,8 @@ class Enthalpy(Energy):
     #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
     #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff,
     #                                  model.GAMMA_L_DVD) )
+    
+    self.nrg_Jac = derivative(self.nrg_F, theta, dtheta)
 
     self.theta   = theta
     self.theta0  = theta0
@@ -1212,15 +1241,25 @@ class Enthalpy(Energy):
     # solve the linear equation for energy :
     s    = "::: solving energy :::"
     print_text(s, cls=self)
-    aw        = assemble(self.theta_a, annotate=annotate)
-    Lw        = assemble(self.theta_L, annotate=annotate)
-    for bc in self.theta_bc:
-      bc.apply(aw, Lw)
-    theta_solver = LUSolver(self.solve_params['solver'])
-    theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
-    #solve(self.theta_a == self.theta_L, theta, self.theta_bc,
-    #      solver_parameters = {"linear_solver" : sm}, annotate=False)
+    #aw        = assemble(self.theta_a, annotate=annotate)
+    #Lw        = assemble(self.theta_L, annotate=annotate)
+    #for bc in self.theta_bc:
+    #  bc.apply(aw, Lw)
+    #theta_solver = LUSolver(self.solve_params['solver'])
+    #theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
+    ##solve(self.theta_a == self.theta_L, theta, self.theta_bc,
+    ##      solver_parameters = {"linear_solver" : sm}, annotate=False)
+
+    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                                  'relative_tolerance'       : 1e-9,
+                                  'relaxation_parameter'     : 1.0,
+                                  'maximum_iterations'       : 10,
+                                  'error_on_nonconvergence'  : False}}
+    solve(self.nrg_F == 0, theta, J = self.nrg_Jac, bcs = self.theta_bc,
+          annotate = annotate, solver_parameters = nparams)
+    
     model.assign_variable(model.theta, theta, annotate=annotate, cls=self)
+
 
     if self.transient:
       model.assign_variable(self.theta0, self.theta, cls=self,

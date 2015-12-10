@@ -66,8 +66,8 @@ class Model(object):
     print_text(s, cls=self.this)
 
     spy = 31556926.0
-    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(s*m^2)
-    
+    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(a*m^2)
+
     # Constants :
     self.kcHh    = Constant(3.7e-9)
     self.kcHh.rename('kcHh', 'creep coefficient high')

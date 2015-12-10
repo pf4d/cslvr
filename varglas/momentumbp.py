@@ -452,26 +452,30 @@ class MomentumDukowiczBP(Momentum):
       print_text(s, self.color())
       T       = model.T
       theta_m = model.theta_melt
+      T_m     = model.T_melt
       theta   = model.theta
+      L       = model.L
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
       T_c     = 263.15
       theta_c = 146.3*T_c + 7.253/2.0*T_c**2
-      theta_w = 0.01*L + theta_melt
-      W_w     = (theta - theta_melt)/L
-      #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
-      #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-      #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
-      #W_c     = conditional( gt(theta, theta_m), 1.0,          0.00)
-      #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
-      Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
-      W_T     = conditional( lt(W, 0.01), W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      theta_w = 0.01*L + theta_m
+      T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
+      W_w     = (theta - theta_m)/L
+      a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
+      W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+      W_c     = conditional( lt(theta, theta_m), 0.0,          1.0)
+      T_v     = conditional( lt(theta, theta_m), T_w,          T_m)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      #a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
+      #Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
+      #W_T     = conditional( lt(W, 0.01), W,            0.01)
+      #b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:

@@ -1,7 +1,7 @@
 from fenics                 import *
 from dolfin_adjoint         import *
 from varglas.io             import print_text, print_min_max
-from varglas.physics_new    import Physics
+from varglas.physics        import Physics
 from copy                   import deepcopy
 from varglas.helper         import raiseNotDefined
 import sys

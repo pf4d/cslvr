@@ -1,4 +1,4 @@
-from varglas.physics_new import Physics
+from varglas.physics import Physics
 
 class Age(Physics):
   r"""

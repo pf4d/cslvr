@@ -1,5 +1,4 @@
-from varglas  import MeshGenerator, MeshRefiner, DataFactory, DataInput, \
-                     print_min_max
+from varglas           import *
 from pylab             import *
 from scipy.interpolate import interp2d
 

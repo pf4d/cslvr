@@ -1,4 +1,4 @@
-from varglas import D3Model, MeshFactory, DataFactory, DataInput
+from varglas import *
 from fenics  import *
 
 out_dir  = 'dump/vars_high/'

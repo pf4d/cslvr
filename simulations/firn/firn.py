@@ -1,7 +1,6 @@
 from fenics          import *
 from dolfin_adjoint  import *
-from varglas         import FirnPlot, D1Model, MomentumFirn
-from varglas.energy  import EnergyFirn
+from varglas         import *
 import sys
 import pylab as p
     

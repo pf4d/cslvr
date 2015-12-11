@@ -1,4 +1,4 @@
-from physics_new import Physics
+from physics     import Physics
 from varglas.io  import print_text, print_min_max
 from fenics      import *
 

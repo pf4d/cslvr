@@ -1,7 +1,5 @@
 from fenics  import *
 from varglas import *
-from varglas.energy import EnergyHybrid
-from varglas.mass   import MassTransportHybrid
 
 #set_log_active(False)
 

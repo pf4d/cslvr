@@ -1,5 +1,4 @@
 from varglas          import *
-from varglas.energy   import Enthalpy 
 from fenics           import *
 from dolfin_adjoint   import *
 

@@ -4,7 +4,7 @@ from varglas.io             import print_text, print_min_max
 from varglas.d3model        import D3Model
 from varglas.d2model        import D2Model
 from varglas.d1model        import D1Model
-from varglas.physics_new    import Physics
+from varglas.physics        import Physics
 from varglas.helper         import VerticalBasis, VerticalFDBasis, \
                                    raiseNotDefined
 from varglas.momentum       import Momentum

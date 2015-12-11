@@ -1,6 +1,4 @@
-from varglas.meshing           import MeshGenerator, MeshRefiner
-from varglas.data.data_factory import DataFactory
-from varglas.io                import DataInput, print_min_max
+from varglas                   import *
 from pylab                     import *
 from scipy.interpolate         import interp2d
 

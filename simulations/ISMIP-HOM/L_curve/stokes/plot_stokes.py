@@ -1,4 +1,4 @@
-from varglas     import D3Model, print_text, print_min_max, plot_variable
+from varglas     import *
 from pylab       import *
 from fenics      import *
 from numpy       import loadtxt, array

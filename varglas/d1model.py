@@ -1,7 +1,7 @@
 from fenics            import *
 from dolfin_adjoint    import *
 from varglas.io        import print_text, get_text, print_min_max
-from varglas.model_new import Model
+from varglas.model     import Model
 from scipy.interpolate import interp1d
 import numpy               as np
 import matplotlib          as plt

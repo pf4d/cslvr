@@ -1,11 +1,11 @@
-from varglas.physics_new import Physics 
+from varglas.physics     import Physics 
 from varglas.io          import print_text, print_min_max
 from varglas.d2model     import D2Model
 from varglas.d3model     import D3Model
 from varglas.helper      import VerticalBasis, VerticalFDBasis, \
                                 VerticalIntegrator
-from fenics         import *
-from dolfin_adjoint import *
+from fenics              import *
+from dolfin_adjoint      import *
 
 class Mass(Physics):
   """
@@ -110,6 +110,159 @@ class FreeSurface(Mass):
     self.what                   = what
     self.mhat                   = mhat
     self.dSdt                   = dSdt
+
+  def rhs_func_explicit(self, t, S, *f_args):
+    """
+    This function calculates the change in height of the surface of the
+    ice sheet.
+    
+    :param t : Time
+    :param S : Current height of the ice sheet
+    :rtype   : Array containing rate of change of the ice surface values
+    """
+    model             = self.model
+    config            = self.config
+    thklim            = config['free_surface']['thklim']
+    B                 = model.B.compute_vertex_values()
+    S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
+    
+    # the surface is never on a periodic FunctionSpace :
+    if config['periodic_boundary_conditions']:
+      d2v = dof_to_vertex_map(model.Q_non_periodic)
+    else:
+      d2v = dof_to_vertex_map(model.Q)
+    
+    model.assign_variable(model.S, S[d2v])
+   
+    if config['velocity']['on']:
+      model.U.vector()[:] = 0.0
+      self.velocity_instance.solve()
+      if config['velocity']['log']:
+        U = project(as_vector([model.u, model.v, model.w]))
+        s    = '::: saving velocity U.pvd file :::'
+        print_text(s, self.color())
+        self.file_U << U
+      print_min_max(U, 'U')
+
+    if config['surface_climate']['on']:
+      self.surface_climate_instance.solve()
+   
+    if config['free_surface']['on']:
+      self.surface_instance.solve()
+      if self.config['log']:
+        s    = '::: saving surface S.pvd file :::'
+        print_text(s, self.color())
+        self.file_S << model.S
+      print_min_max(model.S, 'S')
+ 
+    return model.dSdt.compute_vertex_values()
+
+  def really_solve(self):
+    """
+    Performs the physics, evaluating and updating the enthalpy and age as 
+    well as storing the velocity, temperature, and the age in vtk files.
+
+    """
+    s    = '::: solving TransientSolver :::'
+    print_text(s, self.color())
+
+    t0     = time()
+
+    model  = self.model
+    config = self.config
+    
+    t      = config['t_start']
+    t_end  = config['t_end']
+    dt     = config['time_step'](0)
+    thklim = config['free_surface']['thklim']
+   
+    mesh   = model.mesh 
+    adot   = model.adot
+    sigma  = model.sigma
+
+    S      = model.S
+    B      = model.B
+
+    if config['periodic_boundary_conditions']:
+      d2v      = dof_to_vertex_map(model.Q_non_periodic)
+      mhat_non = Function(model.Q_non_periodic)
+    else:
+      d2v      = dof_to_vertex_map(model.Q)
+
+    # Loop over all times
+    while t <= t_end:
+
+      B_a = B.compute_vertex_values()
+      S_v = S.compute_vertex_values()
+      
+      tic = time()
+
+      S_0 = S_v
+      f_0 = self.rhs_func_explicit(t, S_0)
+      S_1 = S_0 + dt*f_0
+      S_1[(S_1-B_a) < thklim] = thklim + B_a[(S_1-B_a) < thklim]
+      model.assign_variable(S, S_1[d2v])
+
+      f_1                     = self.rhs_func_explicit(t, S_1)
+      S_2                     = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
+      S_2[(S_2-B_a) < thklim] = thklim + B_a[(S_2-B_a) < thklim] 
+      model.assign_variable(S, S_2[d2v])
+     
+      mesh.coordinates()[:, 2] = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
+      if config['periodic_boundary_conditions']:
+        temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
+        model.assign_variable(mhat_non, temp)
+        m_temp = project(mhat_non,model.Q)
+        model.assign_variable(model.mhat, m_temp.vector().get_local())
+      else:
+        temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
+        model.assign_variable(model.mhat, temp)
+      # Calculate enthalpy update
+      if self.config['enthalpy']['on']:
+        self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
+                                   vhat=model.v, what=model.w, mhat=model.mhat)
+        if self.config['enthalpy']['log']:
+          s    = '::: saving temperature T.pvd file :::'
+          print_text(s, self.color())
+          self.file_T << model.T
+        print_min_max(model.H,  'H')
+        print_min_max(model.T,  'T')
+        print_min_max(model.Mb, 'Mb')
+        print_min_max(model.W,  'W')
+
+      # Calculate age update
+      if self.config['age']['on']:
+        self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
+                                vhat=model.v, what=model.w, mhat=model.mhat)
+        if config['log']: 
+          s   = '::: saving age age.pvd file :::'
+          print_text(s, self.color())
+          self.file_a << model.age
+        print_min_max(model.age, 'age')
+
+      # store information : 
+      if self.config['log']:
+        self.t_log.append(t)
+        M = assemble(self.surface_instance.M)
+        self.mass.append(M)
+
+      # increment time step :
+      s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<' \
+          % (t, time()-tic, M/self.M_prev)
+      print_text(s, 'red', 1)
+
+      self.M_prev = M
+      t          += dt
+      self.step_time.append(time() - tic)
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
     
   def solve(self):
     """

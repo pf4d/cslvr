@@ -2,7 +2,7 @@ from fenics                 import *
 from dolfin_adjoint         import *
 from varglas.io             import print_text, print_min_max
 from varglas.d3model        import D3Model
-from varglas.physics_new    import Physics
+from varglas.physics        import Physics
 from varglas.momentum       import Momentum
 import sys
 

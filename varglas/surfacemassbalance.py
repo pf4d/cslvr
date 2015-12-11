@@ -1,4 +1,4 @@
-from physics_new import Physics
+from physics import Physics
 
 
 class SurfaceMassBalance(Physics):

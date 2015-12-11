@@ -544,138 +544,6 @@ def write_gmsh(mesh,path):
   output.close()
 
 
-def default_nonlin_solver_params():
-  """ 
-  Returns a set of default solver parameters that yield good performance
-  """
-  nparams = {'linear_solver'            : 'cg',
-             'preconditioner'           : 'hypre_amg',
-             'relative_tolerance'       : 1e-8,
-             'relaxation_parameter'     : 1.0,
-             'maximum_iterations'       : 25,
-             'error_on_nonconvergence'  : False}
-  return {'newton_solver' : nparams}
-
-
-def default_ffc_options():
-  """ 
-  Returns a set of default ffc options that yield good performance
-  """
-  ffc_options = {"optimize"               : True,
-                 "eliminate_zeros"        : True,
-                 "precompute_basis_const" : True,
-                 "precompute_ip_const"    : True}
-   
-  return ffc_options
-
-
-def default_config():
-  """
-  Returns a set of default configuration parameters to help users get started.
-  """
-  config = { 'mode'                         : 'steady',
-             'model_order'                  : 'BP',
-             'use_dukowicz'                 : True,
-             't_start'                      : None,
-             't_end'                        : None,
-             'time_step'                    : Constant(1.0),
-             'output_path'                  : None,
-             'wall_markers'                 : [],
-             'periodic_boundary_conditions' : False,
-             'use_pressure_boundary'        : True,
-             'log'                          : True,
-             'log_history'                  : False,
-             'coupled' : 
-             { 
-               'on'                  : False,
-               'inner_tol'           : 1e-10,
-               'max_iter'            : 0,
-             },
-             'velocity' : 
-             { 
-               'on'                  : True,
-               'log'                 : True,
-               'full_BP'             : False,
-               'poly_degree'         : 2,
-               'newton_params'       : default_nonlin_solver_params(),
-               'ffc_options'         : default_ffc_options(),
-               'vert_solve_method'   : 'mumps',
-               'solve_vert_velocity' : True,
-               'eta_gnd'             : None,
-               'eta_shf'             : None,
-               'use_U0'              : False,
-               'A'                   : 1e-16,
-               'r'                   : 0.0,
-               'E'                   : 1.0,
-               'use_lat_bcs'         : False,
-               'calc_pressure'       : False,
-               'transient_beta'      : 'na',
-             },
-             'enthalpy' : 
-             { 
-               'on'                  : False,
-               'log'                 : True,
-               'N_T'                 : 8,
-               'solve_method'        : 'mumps',
-               'use_surface_climate' : False,
-               'lateral_boundaries'  : None,
-               'ffc_options'         : default_ffc_options(),
-             },
-             'free_surface' :
-             { 
-               'on'                  : False,
-               'lump_mass_matrix'    : False,
-               'use_pdd'             : False,
-               'observed_smb'        : None,
-               'use_shock_capturing' : False,
-               'thklim'              : 10.0,
-               'static_boundary_conditions' : False,
-               'ffc_options'         : default_ffc_options(),
-             },  
-             'age' : 
-             { 
-               'on'                  : False,
-               'log'                 : True,
-               'use_smb_for_ela'     : True,
-               'ela'                 : None,
-             },
-             'surface_climate' : 
-             { 
-               'on'                  : False,
-               'T_ma'                : None,
-               'T_ju'                : None,
-               'beta_w'              : None,
-               'sigma'               : None,
-               'precip'              : None,
-             },
-             'adjoint' :
-             { 
-               'alpha'               : 0.0,
-               'gamma1'              : 1.0,
-               'gamma2'              : 100.0,
-               'max_fun'             : 20,
-               'objective_function'  : 'log',
-               'surface_integral'    : 'grounded',
-               'control_domain'      : 'bed',
-               'bounds'              : None,
-               'control_variable'    : None,
-               'regularization_type' : 'Tikhonov',
-             },
-             'balance_velocity' :
-             {
-               'on'                  : False,
-               'log'                 : True,
-               'kappa'               : 10.0,
-             },
-             'stokes_balance' :
-             {
-               'on'                  : False,
-               'log'                 : True,
-               'vert_integrate'      : False,
-             }}
-  return config
-
-
 def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
   """
   This function iterates through the cells and vertces of the mesh in order
@@ -961,8 +829,10 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   if isinstance(u, str):
     s = "::: plotting %s's \"%s\" field data directly :::" % (di.name, u)
     print_text(s, '242')
-    vx,vy  = np.meshgrid(di.x, di.y)
-    v      = di.data[u]
+    vx,vy   = np.meshgrid(di.x, di.y)
+    v       = di.data[u]
+    lon,lat = di.proj(vx, vy, inverse=True)
+    cont    = di.cont
 
   elif isinstance(u, Function):
     s = "::: plotting FEniCS Function \"%s\" :::" % name
@@ -973,16 +843,25 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     v     = u.compute_vertex_values(mesh)
     vx    = coord[:,0]
     vy    = coord[:,1]
+    if isinstance(di, dict) and 'pyproj_Proj' in di.keys() \
+       and 'continent' in di.keys():
+      lon,lat = di['pyproj_Proj'](vx, vy, inverse=True)
+      cont    = di['continent']
+    else:
+      s = ">>> plotIce REQUIRES A 'DataFactory' DICTIONARY FOR " + \
+          "PROJECTION STORED AS KEY 'pyproj_Proj' AND THE CONTINENT TYPE " + \
+          "STORED AS KEY 'continent' <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
+      
 
-  # get lon,lat from coordinates :
-  lon,lat = di.proj(vx, vy, inverse=True)
   
   # the width/height numbers were calculated from vertices from a mesh :
   #w = 1.05 * (vx.max() - vx.min())
   #h = 1.05 * (vy.max() - vy.min())
 
   # Antarctica :
-  if di.cont == 'antarctica':
+  if cont == 'antarctica':
     w   = 5513335.22665
     h   = 4602848.6605
     fig = plt.figure(figsize=(14,10))
@@ -1006,9 +885,31 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
                    barstyle = 'fancy')
  
   # Greenland : 
-  elif di.cont == 'greenland':
+  elif cont == 'greenland':
     if basin == 'jakobshavn':
-      pass
+      w     = 350000
+      h     = 200000
+      lon_0 = -46.6
+      lat_0 = 69.25
+      fig   = plt.figure(figsize=(14,7))
+      ax    = fig.add_axes()
+      
+      # new projection :
+      m = Basemap(ax=ax, width=w, height=h, resolution='h', 
+                  projection='stere', lat_ts=lat_0, 
+                  lon_0=lon_0, lat_0=lat_0)
+      
+      # draw lat/lon grid lines every degree.
+      # labels = [left,right,top,bottom]
+      m.drawmeridians(np.arange(0, 360, 2.0),
+                      color = 'black',
+                      labels = [False, False, False, True])
+      m.drawparallels(np.arange(65, 71, 0.5), 
+                      color = 'black', 
+                      labels = [True, False, True, False])
+      m.drawmapscale(-44.5, 68.5, lon_0, lat_0, 100, 
+                     yoffset  = 0.01 * (m.ymax - m.ymin), 
+                     barstyle = 'fancy')
     else:
       w   = 1532453.49654
       h   = 2644074.78236

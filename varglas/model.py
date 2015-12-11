@@ -1,12 +1,7 @@
-from fenics               import *
-from ufl.indexed          import Indexed
-from abc                  import ABCMeta, abstractmethod
-from varglas.physics      import Physics
-from varglas.solvers      import Solver
-from varglas.helper       import default_config
-from varglas.io           import print_text, print_min_max
-import numpy                      as np
-import varglas.physical_constants as pc
+from fenics         import *
+from dolfin_adjoint import *
+from varglas.io     import print_text, get_text, print_min_max
+import numpy        as np
 import sys
 
 class Model(object):
@@ -17,609 +12,647 @@ class Model(object):
   types.
   """
 
-  def __init__(self, config=None):
+  GAMMA_S_GND = 2   # grounded upper surface
+  GAMMA_B_GND = 3   # grounded lower surface (bedrock)
+  GAMMA_S_FLT = 6   # shelf upper surface
+  GAMMA_B_FLT = 5   # shelf lower surface
+  GAMMA_L_DVD = 7   # basin divides
+  GAMMA_L_OVR = 4   # terminus over water
+  GAMMA_L_UDR = 10  # terminus under water
+  GAMMA_U_GND = 8   # grounded surface with U observations
+  GAMMA_U_FLT = 9   # shelf surface with U observations
+  
+  def __init__(self, mesh, out_dir='./results/', save_state=False, 
+               state=None, use_periodic=False, **gfs_kwargs):
     """
     Create and instance of the model.
     """
+    self.this = super(type(self), self)  # pointer to this base class
+  
+    s = "::: INITIALIZING BASE MODEL :::"
+    print_text(s, cls=self.this)
+    
+    parameters['form_compiler']['quadrature_degree']  = 2
+    parameters["std_out_all_processes"]               = False
+    parameters['form_compiler']['cpp_optimize']       = True
+
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
-    if config == None:
-      self.config = default_config()
+
+    self.out_dir     = out_dir
+    self.save_state  = save_state
+    self.MPI_rank    = MPI.rank(mpi_comm_world())
+    self.use_periodic_boundaries = use_periodic
+    
+    self.generate_constants()
+    self.set_mesh(mesh)
+    self.generate_function_spaces(use_periodic, **gfs_kwargs)
+    self.initialize_variables()
+
+    # create a new state called "state.h5" :
+    if save_state and state == None:
+      self.state = HDF5File(self.mesh.mpi_comm(),
+                            out_dir + 'state.h5', 'w')
     else:
-      self.config = config
-    self.MPI_rank = MPI.rank(mpi_comm_world())
-    self.color    = '148'#'purple_1a'
+      self.state = state
+
+  def color(self):
+    return '148'
+
+  def generate_constants(self):
+    """
+    Initializes important constants.
+    """
+    s = "::: generating constants :::"
+    print_text(s, cls=self.this)
+
+    spy = 31556926.0
+    ghf = 0.042 * spy  # W/m^2 = J/(s*m^2) = spy * J/(a*m^2)
+
+    # Constants :
+    self.kcHh    = Constant(3.7e-9)
+    self.kcHh.rename('kcHh', 'creep coefficient high')
+
+    self.kcLw    = Constant(9.2e-9)
+    self.kcLw.rename('kcLw', 'creep coefficient low ')
+
+    self.kg      = Constant(1.3e-7)
+    self.kg.rename('kg', 'grain growth coefficient')
+
+    self.Ec      = Constant(60e3)
+    self.Ec.rename('Ec', 'act. energy for water in ice')
+
+    self.Eg      = Constant(42.4e3)
+    self.Eg.rename('Eg', 'act. energy for grain growth')
+
+    self.thetasp = Constant(2009.0 * 273.15)
+    self.thetasp.rename('thetasp', 'Internal energy of ice at Tw')
+    
+    self.etaw    = Constant(1.787e-3)
+    self.etaw.rename('etaw', 'Dynamic viscosity of water at Tw')
+
+    self.r       = Constant(0.0)
+    self.r.rename('r', 'thickness exponent in sliding law')
+
+    self.eps_reg = Constant(1e-15)
+    self.eps_reg.rename('eps_reg', 'strain rate regularization parameter')
+
+    self.n       = Constant(3.0)
+    self.n.rename('n', 'viscosity nonlinearity parameter')
+
+    self.spy     = Constant(spy)
+    self.spy.rename('spy', 'seconds per year')
+
+    self.A0      = Constant(1e-16)
+    self.A0.rename('A0', 'flow rate factor')
+
+    self.rhoi    = Constant(917.0)
+    self.rhoi.rename('rhoi', 'ice density')
+
+    self.rhow    = Constant(1000.0)
+    self.rhow.rename('rhow', 'water density')
+
+    self.rhosw   = Constant(1028.0)
+    self.rhosw.rename('rhosw', 'sea-water density')
+    
+    self.rhom    = Constant(550.0)
+    self.rhom.rename('rhom', 'firn pore close-off density')
+
+    self.rhoc    = Constant(815.0)
+    self.rhoc.rename('rhoc', 'firn density critical value')
+
+    self.g       = Constant(9.80665)
+    self.g.rename('g', 'gravitational acceleration')
+
+    self.a0      = Constant(5.45e10)
+    self.a0.rename('a0', 'ice hardness limit')
+
+    self.Q0      = Constant(13.9e4)
+    self.Q0.rename('Q0', 'ice activation energy')
+
+    self.R       = Constant(8.3144621)
+    self.R.rename('R', 'universal gas constant')
+
+    self.ki      = Constant(2.1)
+    self.ki.rename('ki', 'thermal conductivity of ice')
+
+    self.kw      = Constant(0.561)
+    self.kw.rename('kw', 'thermal conductivity of water')
+
+    self.ci      = Constant(2009.0)
+    self.ci.rename('ci', 'heat capacity of ice')
+    
+    self.cw      = Constant(4217.6)
+    self.cw.rename('cw', 'Heat capacity of water at Tw')
+
+    self.L       = Constant(3.3355e5)
+    self.L.rename('L', 'latent heat of ice')
+
+    self.ghf     = Constant(ghf)
+    self.ghf.rename('ghf', 'geothermal heat flux')
+
+    self.gamma   = Constant(9.8e-8)
+    self.gamma.rename('gamma', 'pressure melting point depth dependence')
+
+    self.nu      = Constant(3.5e3)
+    self.nu.rename('nu', 'moisture diffusivity')
+
+    self.T_w     = Constant(273.15)
+    self.T_w.rename('T_w', 'Triple point of water')
+
+  def init_state(self, fn):
+    """
+    set the self.state .h5 file for saving variables to <f>.h5 in self.out_dir.
+    """
+    self.state = HDF5File(mpi_comm_world(), self.out_dir + fn + '.h5', 'w')
 
   def generate_pbc(self):
     """
     return a SubDomain of periodic lateral boundaries.
     """
-    s = "    - using periodic boundaries -"
-    print_text(s, self.color)
-
-    xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
-    xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
-    ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
-    ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+    raiseNotDefined()
     
-    class PeriodicBoundary(SubDomain):
-      
-      def inside(self, x, on_boundary):
-        """
-        Return True if on left or bottom boundary AND NOT on one 
-        of the two corners (0, 1) and (1, 0).
-        """
-        return bool((near(x[0], xmin) or near(x[1], ymin)) and \
-                    (not ((near(x[0], xmin) and near(x[1], ymax)) \
-                     or (near(x[0], xmax) and near(x[1], ymin)))) \
-                     and on_boundary)
-
-      def map(self, x, y):
-        """
-        Remap the values on the top and right sides to the bottom and left
-        sides.
-        """
-        if near(x[0], xmax) and near(x[1], ymax):
-          y[0] = x[0] - xmax
-          y[1] = x[1] - ymax
-          y[2] = x[2]
-        elif near(x[0], xmax):
-          y[0] = x[0] - xmax
-          y[1] = x[1]
-          y[2] = x[2]
-        elif near(x[1], ymax):
-          y[0] = x[0]
-          y[1] = x[1] - ymax
-          y[2] = x[2]
-        else:
-          y[0] = x[0]
-          y[1] = x[1]
-          y[2] = x[2]
-
-    self.pBC = PeriodicBoundary()
-
-  def set_mesh(self, mesh):
+  def set_mesh(self, f):
     """
-    Sets the mesh.
-    
-    :param mesh : Dolfin mesh to be written
+    Sets the mesh to <f>, either a dolfin.Mesh or .h5 with a mesh file 
+    saved with name 'mesh'.
     """
     s = "::: setting mesh :::"
-    print_text(s, self.color)
-    self.mesh       = mesh
-    self.flat_mesh  = Mesh(mesh)
-    self.dim        = self.mesh.ufl_cell().topological_dimension()
-    self.mesh.init(1,2)
-    if self.dim == 3:
-      self.num_facets = self.mesh.size_global(2)
-      self.num_cells  = self.mesh.size_global(3)
-      self.dof        = self.mesh.size_global(0)
-    elif self.dim == 2:
-      self.num_facets = self.mesh.size_global(1)
-      self.num_cells  = self.mesh.size_global(2)
-      self.dof        = self.mesh.size_global(0)
-    s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
-        % (self.dim, self.num_cells, self.num_facets, self.dof)
-    print_text(s, self.color)
-    self.generate_function_spaces()
+    print_text(s, cls=self.this)
 
-  def generate_function_spaces(self):
-    """
-    Generates the appropriate finite-element function spaces from parameters
-    specified in the config file for the model.
-    """
-    s = "::: generating %s function spaces :::" % self.config['model_order']
-    print_text(s, self.color)
-    if self.config['periodic_boundary_conditions']:
-      self.generate_pbc()
-    else:
-      self.pBC = None
-    self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
-                                constrained_domain=self.pBC)
-    if     self.config['model_order'] != 'L1L2' \
-       and self.config['model_order'] != 'SSA':
-      self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                  constrained_domain=self.pBC)
-      if self.config['model_order'] == 'BP':
-        if self.config['velocity']['full_BP']:
-          self.Q3     = MixedFunctionSpace([self.Q]*3)
-        else:
-          self.Q2     = MixedFunctionSpace([self.Q]*2)
-      elif self.config['model_order'] == 'stokes':
-        self.Q4     = MixedFunctionSpace([self.Q]*4)
-        # mini elements :
-        self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-                                    constrained_domain=self.pBC)
-        self.MQ     = self.Q + self.Bub
-        M3          = MixedFunctionSpace([self.MQ]*3)
-        self.MV     = MixedFunctionSpace([M3,self.Q])
-        # Taylor-Hood elements :
-        #V           = VectorFunctionSpace(self.mesh, "CG", 2,
-        #                                  constrained_domain=self.pBC)
-        #self.MV     = V * self.Q
-      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
-    else:
-      poly_degree = self.config['velocity']['poly_degree']
-      self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
-      self.Q2     = MixedFunctionSpace([self.Q]*2)
-      self.Q3     = MixedFunctionSpace([self.Q]*3)
-      N_T         = self.config['enthalpy']['N_T']
-      self.HV     = MixedFunctionSpace([self.Q]*2*poly_degree) # VELOCITY
-      self.Z      = MixedFunctionSpace([self.Q]*N_T)           # TEMPERATURE
-      self.Q2     = MixedFunctionSpace([self.Q]*2)
-    
-    self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
+    if isinstance(f, dolfin.cpp.io.HDF5File):
+      self.mesh = Mesh()
+      f.read(self.mesh, 'mesh', False)
 
-    s = "    - function spaces created - "
-    print_text(s, self.color)
-    
-  def set_surface_and_bed(self, S, B):
-    """
-    Set the Functions for the surface <S> and bed <B>.
-    """
-    s = "::: setting the surface and bed functions :::"
-    print_text(s, self.color)
-    self.S = S
-    self.B = B
-    print_min_max(S, 'S')
-    print_min_max(B, 'B')
-  
-  def set_geometry(self, surface, bed, deform=True):
-    """
-    Sets the geometry of the surface and bed of the ice sheet.
-    
-    :param surface : Expression representing the surface of the mesh
-    :param bed     : Expression representing the base of the mesh
-    :param mask    : Expression representing a mask of grounded (0) and 
-                     floating (1) areas of the ice.
-    """
-    s = "::: setting geometry :::"
-    print_text(s, self.color)
+    elif isinstance(f, dolfin.cpp.mesh.Mesh):
+      self.mesh = f
 
-    self.S_ex = surface
-    self.B_ex = bed
-    
-    if deform:
-      self.deform_mesh_to_geometry()
-    
-    self.S = interpolate(self.S_ex, self.Q_non_periodic)
-    self.B = interpolate(self.B_ex, self.Q_non_periodic)
-    print_min_max(self.S, 'S')
-    print_min_max(self.B, 'B')
-
-  def deform_mesh_to_geometry(self):
-    """
-    Deforms the mesh to the geometry.
-    """
-    s = "::: deforming mesh to geometry :::"
-    print_text(s, self.color)
-    
-    # transform z :
-    # thickness = surface - base, z = thickness + base
-    # Get the height of the mesh, assumes that the base is at z=0
-    max_height  = self.mesh.coordinates()[:,2].max()
-    min_height  = self.mesh.coordinates()[:,2].min()
-    mesh_height = max_height - min_height
-    
-    s = "    - iterating through %i vertices - " % self.dof
-    print_text(s, self.color)
-    
-    for x in self.mesh.coordinates():
-      x[2] = (x[2] / mesh_height) * ( + self.S_ex(x[0],x[1],x[2]) \
-                                      - self.B_ex(x[0],x[1],x[2]) )
-      x[2] = x[2] + self.B_ex(x[0], x[1], x[2])
-
-  def set_subdomains(self, ff, cf, ff_acc):
-    """
-    Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
-    to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
-    """
-    s = "::: setting subdomains :::"
-    print_text(s, self.color)
-    self.ff     = ff
-    self.cf     = cf
-    self.ff_acc = ff_acc
-    self.ds     = Measure('ds')[self.ff]
-    self.dx     = Measure('dx')[self.cf]
+    self.dim   = self.mesh.ufl_cell().topological_dimension()
 
   def calculate_boundaries(self, mask=None, adot=None):
     """
     Determines the boundaries of the current model mesh
     """
-    # default to all grounded ice :
-    if mask == None:
-      mask = Expression('0.0', element=self.Q.ufl_element())
-    
-    # default to all positive accumulation :
-    if adot == None:
-      adot = Expression('1.0', element=self.Q.ufl_element())
-    
-    s = "::: calculating boundaries :::"
-    print_text(s, self.color)
-    
-    # this function contains markers which may be applied to facets of the mesh
-    self.ff      = FacetFunction('size_t', self.mesh,      0)
-    self.ff_acc  = FacetFunction('size_t', self.mesh,      0)
-    self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
-    
-    self.cf      = CellFunction('size_t',  self.mesh,      0)
-    dofmap       = self.Q.dofmap()
-    shf_dofs     = []
-    gnd_dofs     = []
-    
-    tol = 1e-6
-    
-    # iterate through the facets and mark each if on a boundary :
-    #
-    #   2 = high slope, upward facing ................ grounded surface
-    #   3 = grounded high slope, downward facing ..... grounded base
-    #   4 = low slope, upward or downward facing ..... sides
-    #   5 = floating ................................. floating base
-    #   6 = floating ................................. floating surface
-    #   7 = floating sides
-    #
-    # facet for accumulation :
-    #
-    #   1 = high slope, upward facing ................ positive adot
-    s = "    - iterating through %i facets - " % self.num_facets
-    print_text(s, self.color)
-    for f in facets(self.mesh):
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-      adot_xy = adot(x_m, y_m, z_m)
-      
-      if   n.z() >=  tol and f.exterior():
-        if adot_xy > 0:
-          self.ff_acc[f] = 1
-        #if mask_xy > 0:
-        #  self.ff[f] = 6
-        #else:
-        #  self.ff[f] = 2
-        self.ff[f] = 2
-    
-      elif n.z() <= -tol and f.exterior():
-        #if mask_xy > 0:
-        #  self.ff[f] = 5
-        #else:
-        #  self.ff[f] = 3
-        self.ff[f] = 3
-    
-      elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff[f] = 4
-        else:
-          self.ff[f] = 7
-        #self.ff[f] = 4
-    
-    for f in facets(self.flat_mesh):
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-    
-      if   n.z() >=  tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 6
-        else:
-          self.ff_flat[f] = 2
-    
-      elif n.z() <= -tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 5
-        else:
-          self.ff_flat[f] = 3
-    
-      elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mask_xy > 0:
-          self.ff_flat[f] = 4
-        else:
-          self.ff_flat[f] = 7
-        #self.ff_flat[f] = 4
-    
-    s = "    - iterating through %i cells - " % self.num_cells
-    print_text(s, self.color)
-    for c in cells(self.mesh):
-      x_m     = c.midpoint().x()
-      y_m     = c.midpoint().y()
-      z_m     = c.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-
-      if mask_xy > 0:
-        self.cf[c] = 1
-        shf_dofs.extend(dofmap.cell_dofs(c.index()))
-      else:
-        self.cf[c] = 0
-        gnd_dofs.extend(dofmap.cell_dofs(c.index()))
-
-    self.shf_dofs = list(set(shf_dofs))
-    self.gnd_dofs = list(set(gnd_dofs))
-
-    self.ds      = Measure('ds')[self.ff]
-    self.ds_flat = Measure('ds')[self.ff_flat]
-    self.dx      = Measure('dx')[self.cf]
-
-  def init_U(self, u, v, w):
-    """
-    """
-    s = "::: initializing velocity :::"
-    print_text(s, self.color)
-    self.assign_variable(self.u, u)
-    self.assign_variable(self.v, v)
-    self.assign_variable(self.w, w)
-    print_min_max(self.u, 'u')
-    print_min_max(self.v, 'v')
-    print_min_max(self.w, 'w')
+    raiseNotDefined()
   
-  def init_P(self, P):
+  def set_out_dir(self, out_dir):
+    """
+    Set the output directory to something new.
+    """
+    self.out_dir = out_dir
+    s = "::: output directory changed to '%s' :::" % out_dir
+    print_text(s, cls=self.this)
+
+  def generate_function_spaces(self, use_periodic=False):
+    """
+    Generates the finite-element function spaces used by all children of model.
+    """
+    s = "::: generating fundamental function spaces :::"
+    print_text(s, cls=self.this)
+
+    if use_periodic:
+      self.generate_pbc()
+    else:
+      self.pBC = None
+    self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
+                                constrained_domain=self.pBC)
+    self.Qp     = FunctionSpace(self.mesh,      "CG", 2, 
+                                constrained_domain=self.pBC)
+    self.Q2     = MixedFunctionSpace([self.Q]*2)
+    self.Q3     = MixedFunctionSpace([self.Q]*3)
+    self.Q4     = MixedFunctionSpace([self.Q]*4)
+    self.Q5     = MixedFunctionSpace([self.Q]*5)
+    self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
+    self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+
+    s = "    - fundamental function spaces created - "
+    print_text(s, cls=self.this)
+  
+  def init_S(self, S, cls=None):
+    """
+    Set the Function for the surface <S>. 
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializng surface topography :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.S, S, cls=cls)
+
+  def init_B(self, B, cls=None):
+    """
+    Set the Function for the bed <B>.
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializng bed topography :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.B, B, cls=cls)
+  
+  def init_p(self, p, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing pressure :::"
-    print_text(s, self.color)
-    self.assign_variable(self.P, P)
-    print_min_max(self.P, 'P')
+    print_text(s, cls=cls)
+    self.assign_variable(self.p, p, cls=cls)
   
-  def init_T(self, T):
+  def init_theta(self, theta, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing internal energy :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta, theta, cls=cls)
+  
+  def init_theta_app(self, theta_app, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing internal energy approximation :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta_app, theta_app, cls=cls)
+  
+  def init_theta_surface(self, theta_surface, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing surface energy :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta_surface, theta_surface, cls=cls)
+  
+  def init_theta_float(self, theta_float, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing floating bed energy :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.theta_float, theta_float, cls=cls)
+  
+  def init_T(self, T, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
     s = "::: initializing temperature :::"
-    print_text(s, self.color)
-    self.assign_variable(self.T, T)
-    print_min_max(self.T, 'T')
+    print_text(s, cls=cls)
+    self.assign_variable(self.T, T, cls=cls)
+    T_v = self.T.vector().array()
+    theta_v = 146.3*T_v + 7.253/2.0*T_v**2
+    self.init_theta(theta_v)
   
-  def init_W(self, W):
+  def init_W(self, W, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing water content :::"
-    print_text(s, self.color)
-    self.assign_variable(self.W, W)
-    print_min_max(self.W, 'W')
+    print_text(s, cls=cls)
+    self.assign_variable(self.W, W, cls=cls)
   
-  def init_Mb(self, Mb):
+  def init_Mb(self, Mb, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing basal melt rate :::"
-    print_text(s, self.color)
-    self.assign_variable(self.Mb, Mb)
-    print_min_max(self.Mb, 'Mb')
+    print_text(s, cls=cls)
+    self.assign_variable(self.Mb, Mb, cls=cls)
   
-  def init_adot(self, adot):
+  def init_adot(self, adot, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing accumulation :::"
-    print_text(s, self.color)
-    self.assign_variable(self.adot, adot)
-    print_min_max(self.adot, 'adot')
-    s = "::: removing junk accumulation :::"
-    print_text(s, self.color)
-    adot_v = self.adot.vector().array()
-    #adot_v[adot_v < -100] = 0
-    self.assign_variable(self.adot, adot_v)
-    print_min_max(self.adot, 'adot')
+    print_text(s, cls=cls)
+    self.assign_variable(self.adot, adot, cls=cls)
   
-  def init_beta(self, beta):
+  def init_beta(self, beta, cls=None):
     """
     """
-    s = "::: initializing basal friction coefficient :::"
-    print_text(s, self.color)
-    self.assign_variable(self.beta, beta)
-    print_min_max(self.beta, 'beta')
+    if cls is None:
+      cls = self.this
+    s = "::: initializing basal traction coefficient :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.beta, beta, cls=cls)
   
-  def init_b(self, b):
+  def init_b(self, b, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing rate factor over grounded and shelves :::"
-    print_text(s, self.color)
-    self.init_b_shf(b)
-    self.init_b_gnd(b)
+    print_text(s, cls=cls)
+    self.assign_variable(self.b, b, cls=cls)
+    self.init_b_shf(b, cls=cls)
+    self.init_b_gnd(b, cls=cls)
   
-  def init_b_shf(self, b_shf):
+  def init_b_shf(self, b_shf, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing rate factor over shelves :::"
-    print_text(s, self.color)
-    if type(self.b_shf) != Function:
-      self.b_shf = Function(self.Q)
-    self.assign_variable(self.b_shf, b_shf)
-    print_min_max(self.b_shf, 'b_shf')
+    print_text(s, cls=cls)
+    self.assign_variable(self.b_shf, b_shf, cls=cls)
   
-  def init_b_gnd(self, b_gnd):
+  def init_b_gnd(self, b_gnd, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing rate factor over grounded ice :::"
-    print_text(s, self.color)
-    if type(self.b_gnd) != Function:
-      self.b_gnd = Function(self.Q)
-    self.assign_variable(self.b_gnd, b_gnd)
-    print_min_max(self.b_gnd, 'b_gnd')
-  
-  def init_E(self, E):
+    print_text(s, cls=cls)
+    self.assign_variable(self.b_gnd, b_gnd, cls=cls)
+    
+  def init_E(self, E, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing enhancement factor over grounded and shelves :::"
-    print_text(s, self.color)
-    self.init_E_shf(E)
-    self.init_E_gnd(E)
+    print_text(s, cls=cls)
+    self.assign_variable(self.E, E, cls=cls)
+    self.init_E_shf(E, cls=cls)
+    self.init_E_gnd(E, cls=cls)
   
-  def init_E_shf(self, E_shf):
+  def init_E_shf(self, E_shf, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing enhancement factor over shelves :::"
-    print_text(s, self.color)
-    self.assign_variable(self.E_shf, E_shf)
-    print_min_max(self.E_shf, 'E_shf')
+    print_text(s, cls=cls)
+    self.assign_variable(self.E_shf, E_shf, cls=cls)
   
-  def init_E_gnd(self, E_gnd):
+  def init_E_gnd(self, E_gnd, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing enhancement factor over grounded ice :::"
-    print_text(s, self.color)
-    self.assign_variable(self.E_gnd, E_gnd)
-    print_min_max(self.E_gnd, 'E_gnd')
+    print_text(s, cls=cls)
+    self.assign_variable(self.E_gnd, E_gnd, cls=cls)
   
-  def init_eta(self, eta):
+  def init_eta(self, eta, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing viscosity :::"
-    print_text(s, self.color)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
+    print_text(s, cls=cls)
+    self.assign_variable(self.eta, eta, cls=cls)
   
-  def init_etabar(self, etabar):
+  def init_etabar(self, etabar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing vertically averaged viscosity :::"
-    print_text(s, self.color)
-    self.assign_variable(self.etabar, etabar)
-    print_min_max(self.etabar, 'etabar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.etabar, etabar, cls=cls)
   
-  def init_component_Ubar(self, ubar, vbar, wbar):
+  def init_ubar(self, ubar, cls=None):
     """
     """
-    s = "::: initializing vertically averaged velocity :::"
-    print_text(s, self.color)
-    self.assign_variable(self.ubar, ubar)
-    self.assign_variable(self.vbar, vbar)
-    self.assign_variable(self.wbar, wbar)
-    print_min_max(self.ubar, 'ubar')
-    print_min_max(self.vbar, 'vbar')
-    print_min_max(self.wbar, 'wbar')
+    if cls is None:
+      cls = self.this
+    s = "::: initializing vertically averaged x-component of velocity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.ubar, ubar, cls=cls)
   
-  def init_T_surface(self, T_s):
+  def init_vbar(self, vbar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing vertically averaged y-component of velocity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.vbar, vbar, cls=cls)
+    
+  def init_wbar(self, wbar, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing vertically averaged z-component of velocity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.wbar, wbar, cls=cls)
+  
+  def init_T_surface(self, T_s, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
     s = "::: initializing surface temperature :::"
-    print_text(s, self.color)
-    self.assign_variable(self.T_surface, T_s)
-    print_min_max(self.T_surface, 'T_surface')
+    print_text(s, cls=cls)
+    self.assign_variable(self.T_surface, T_s, cls=cls)
   
-  def init_q_geo(self, q_geo):
+  def init_q_geo(self, q_geo, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing geothermal heat flux :::"
-    print_text(s, self.color)
-    self.assign_variable(self.q_geo, q_geo)
-    print_min_max(self.q_geo, 'q_geo')
+    print_text(s, cls=cls)
+    self.assign_variable(self.q_geo, q_geo, cls=cls)
   
-  def init_U_ob(self, u_ob, v_ob):
+  def init_u(self, u, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing x-component of velocity :::"
+    print_text(s, cls=cls)
+    u_t = Function(self.Q, name='u_t')
+    self.assign_variable(u_t, u, save=False, cls=cls)
+    self.assx.assign(self.u, u_t, annotate=False)
+  
+  def init_v(self, v, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing y-component of velocity :::"
+    print_text(s, cls=cls)
+    v_t = Function(self.Q, name='v_t')
+    self.assign_variable(v_t, v, save=False, cls=cls)
+    self.assx.assign(self.v, v_t, annotate=False)
+  
+  def init_w(self, w, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing z-component of velocity :::"
+    print_text(s, cls=cls)
+    w_t = Function(self.Q, name='w_t')
+    self.assign_variable(w_t, w, save=False, cls=cls)
+    self.assx.assign(self.w, w_t, annotate=False)
+  
+  def init_vbar(self, vbar, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing vertically averaged y-component of velocity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.vbar, vbar, cls=cls)
+    
+  def init_wbar(self, wbar, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing vertically averaged z-component of velocity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.wbar, wbar, cls=cls)
+
+  def init_U(self, U, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing velocity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.U3, U, cls=cls)
+    u,v,w    = self.U3.split(True)
+    u_v      = u.vector().array()
+    v_v      = v.vector().array()
+    w_v      = w.vector().array()
+    U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + DOLFIN_EPS)
+    self.assign_variable(self.U_mag, U_mag_v, cls=cls)
+  
+  def init_U_ob(self, u_ob, v_ob, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
     s = "::: initializing surface velocity :::"
-    print_text(s, self.color)
-    self.assign_variable(self.u_ob, u_ob)
-    self.assign_variable(self.v_ob, v_ob)
+    print_text(s, cls=cls)
+    self.assign_variable(self.u_ob, u_ob, cls=cls)
+    self.assign_variable(self.v_ob, v_ob, cls=cls)
     u_v      = self.u_ob.vector().array()
     v_v      = self.v_ob.vector().array()
     U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
-    self.assign_variable(self.U_ob, U_mag_v)
-    print_min_max(self.u_ob, 'u_ob')
-    print_min_max(self.v_ob, 'v_ob')
-    print_min_max(self.U_ob, 'U_ob')
-    
-  def init_H(self, H):
-    """
-    """
-    s = "::: initializing thickness :::"
-    print_text(s, self.color)
-    self.assign_variable(self.H,  H)
-    self.assign_variable(self.H0, H)
-    print_min_max(self.H, 'H')
-
-  def init_H_bounds(self, H_min, H_max):
-    """
-    """
-    s = "::: initializing bounds on thickness :::"
-    print_text(s, self.color)
-    self.assign_variable(self.H_min, H_min)
-    self.assign_variable(self.H_max, H_max)
-    print_min_max(self.H_min, 'H_min')
-    print_min_max(self.H_max, 'H_max')
+    self.assign_variable(self.U_ob, U_mag_v, cls=cls)
   
-  def init_Ubar(self, Ubar):
+  def init_Ubar(self, Ubar, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing balance velocity :::"
-    print_text(s, self.color)
-    self.assign_variable(self.Ubar, Ubar)
-    print_min_max(self.Ubar, 'Ubar')
+    print_text(s, cls=cls)
+    self.assign_variable(self.Ubar, Ubar, cls=cls)
   
-  def init_u_lat(self, u_lat):
+  def init_u_lat(self, u_lat, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing u lateral boundary condition :::"
-    print_text(s, self.color)
-    self.assign_variable(self.u_lat, u_lat)
-    print_min_max(self.u_lat, 'u_lat')
+    print_text(s, cls=cls)
+    self.assign_variable(self.u_lat, u_lat, cls=cls)
   
-  def init_v_lat(self, v_lat):
+  def init_v_lat(self, v_lat, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing v lateral boundary condition :::"
-    print_text(s, self.color)
-    self.assign_variable(self.v_lat, v_lat)
-    print_min_max(self.v_lat, 'v_lat')
+    print_text(s, cls=cls)
+    self.assign_variable(self.v_lat, v_lat, cls=cls)
   
-  def init_w_lat(self, w_lat):
+  def init_w_lat(self, w_lat, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing w lateral boundary condition :::"
-    print_text(s, self.color)
-    self.assign_variable(self.w_lat, w_lat)
-    print_min_max(self.w_lat, 'w_lat')
+    print_text(s, cls=cls)
+    self.assign_variable(self.w_lat, w_lat, cls=cls)
   
-  def init_mask(self, mask):
+  def init_mask(self, mask, cls=None):
     """
     """
+    if cls is None:
+      cls = self.this
     s = "::: initializing shelf mask :::"
-    print_text(s, self.color)
-    self.assign_variable(self.mask, mask)
-    print_min_max(self.mask, 'mask')
-    self.shf_dofs = np.where(self.mask.vector().array() >  0.0)[0]
-    self.gnd_dofs = np.where(self.mask.vector().array() == 0.0)[0]
-
-  def set_parameters(self, params):
-    """
-    Sets the model's dictionary of parameters
-    
-    :param params: :class:`~src.physical_constants.IceParameters` object 
-       containing model-relavent parameters
-    """
-    self.params = params
+    print_text(s, cls=cls)
+    self.assign_variable(self.mask, mask, cls=cls)
+    self.shf_dofs = np.where(self.mask.vector().array() == 2.0)[0]
+    self.gnd_dofs = np.where(self.mask.vector().array() == 1.0)[0]
   
-  def get_surface_mesh(self):
+  def init_U_mask(self, U_mask, cls=None):
     """
-    Returns the surface of the mesh for this model instance.
     """
-    s = "::: extracting bed mesh :::"
-    print_text(s, self.color)
+    if cls is None:
+      cls = self.this
+    s = "::: initializing velocity mask :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.U_mask, U_mask, cls=cls)
+    self.Uob_dofs         = np.where(self.U_mask.vector().array() == 1.0)[0]
+    self.Uob_missing_dofs = np.where(self.U_mask.vector().array() == 0.0)[0]
+  
+  def init_lat_mask(self, lat_mask, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing lateral boundary mask :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.lat_mask, lat_mask, cls=cls)
+  
+  def init_d_x(self, d_x, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing x-component-normalized-driving-stress direction :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.d_x, d_x, cls=cls)
+  
+  def init_d_y(self, d_y, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing y-component-normalized-driving-stress direction :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.d_y, d_y, cls=cls)
+  
+  def init_time_step(self, dt, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing time step :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.time_step, dt, cls=cls)
+  
+  def init_lat(self, lat, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing grid latitude :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.lat, lat, cls=cls)
+  
+  def init_lon(self, lon, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing grid longitude :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.lon, lon, cls=cls)
 
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
-    for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    return submesh
-
-  def get_bed_mesh(self):
-    """
-    Returns the bed of the mesh for this model instance.
-    """
-    s = "::: extracting bed mesh :::"
-    print_text(s, self.color)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
-    for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    return submesh
-      
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -627,38 +660,40 @@ class Model(object):
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
-    \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    \beta \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
     s = "::: initializing beta from SIA :::"
-    print_text(s, self.color)
-    r        = 0.0
+    print_text(s, cls=self.this)
     Q        = self.Q
     rhoi     = self.rhoi
     g        = self.g
-    S        = self.S
-    B        = self.B
-    H        = S - B
-    U_s      = Function(Q)
+    gradS    = grad(self.S)
+    H        = self.S - self.B
+    U_s      = Function(Q, name='U_s')
     if U_mag == None:
-      U_v = self.U_ob.vector().array()
+      U_v                        = self.U_ob.vector().array()
+      Ubar_v                     = self.Ubar.vector().array()
+      U_v[self.Uob_missing_dofs] = Ubar_v[self.Uob_missing_dofs]
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v)
-    print_min_max(U_s, 'U_s')
-    S_mag    = sqrt(inner(grad(S), grad(S)) + DOLFIN_EPS)
-    beta_0   = project(sqrt((rhoi*g*H*S_mag) / (H**r * U_s)), Q)
+    self.assign_variable(U_s, U_v, save=False, cls=self.this)
+    S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
+    beta_0   = project((rhoi*g*H*S_mag) / U_s, Q, annotate=False)
     beta_0_v = beta_0.vector().array()
-    beta_0_v[beta_0_v < 1e-3] = 1e-3
-    self.betaSIA = Function(Q)
-    self.assign_variable(self.betaSIA, beta_0_v)
-    print_min_max(self.betaSIA, 'betaSIA')
+    beta_0_v[beta_0_v < 1e-2] = 1e-2
+    self.betaSIA = Function(Q, name='betaSIA')
+    self.assign_variable(self.betaSIA, beta_0_v, cls=self.this)
     
-    self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, 3)
-    bc_beta.apply(self.beta.vector())
-    print_min_max(self.beta, 'beta')
+    if self.dim == 3:
+      self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self.this)
+      bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
+      bc_beta.apply(self.beta.vector())
+      #self.assign_variable(self.beta, self.betaSIA, cls=self.this)
+    elif self.dim == 2:
+      self.assign_variable(self.beta, self.betaSIA, cls=self.this)
+    print_min_max(self.beta, 'beta', cls=self.this)
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
     r"""
@@ -667,11 +702,11 @@ class Model(object):
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
-    \beta^2 \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    \beta \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
     
     """
     s = "::: initializing new sliding beta from SIA :::"
-    print_text(s, self.color)
+    print_text(s, cls=self.this)
     r        = 0.0
     Q        = self.Q
     rhoi     = self.rhoi
@@ -683,40 +718,39 @@ class Model(object):
     p        = -0.383
     q        = -0.349
     
-    U_s      = Function(Q)
+    U_s      = Function(Q, name='U_s')
     if U_mag == None:
       U_v = self.U_ob.vector().array()
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v)
+    self.assign_variable(U_s, U_v, cls=self.this)
     
     Ne       = H + rhow/rhoi * D
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta     = U_s**(1/p) / ( rhoi * g * H * S_mag * Ne**(q/p) )
-    beta_0   = project(beta, Q)
+    beta_0   = project(beta, Q, annotate=False)
     
     beta_0_v = beta_0.vector().array()
     beta_0_v[beta_0_v < DOLFIN_EPS] = DOLFIN_EPS
     #self.assign_variable(beta_0, beta_0_v)
-    print_min_max(beta_0, 'beta_0')
+    print_min_max(beta_0, 'beta_0', cls=self.this)
 
     #self.assign_variable(self.beta, beta_0)
     
-    self.assign_variable(self.beta, DOLFIN_EPS)
-    bc_beta = DirichletBC(self.Q, beta_0, self.ff, 3)
+    self.assign_variable(self.beta, DOLFIN_EPS, cls=self.this)
+    bc_beta = DirichletBC(self.Q, beta_0, self.ff, GAMMA_B_GND)
     bc_beta.apply(self.beta.vector())
     
     #self.betaSIA = Function(Q)
     #self.assign_variable(self.betaSIA, beta_0_v)
     
-  def init_beta_stats(self, mdl='U', use_temp=False):
+  def init_beta_stats(self, mdl='Ubar', use_temp=False, mode='steady'):
     """
     """
     s    = "::: initializing beta from stats :::"
-    print_text(s, self.color)
+    print_text(s, cls=self.this)
     
-    config = self.config
     q_geo  = self.q_geo
     T_s    = self.T_surface
     adot   = self.adot
@@ -731,22 +765,15 @@ class Model(object):
     g      = self.g
     H      = S - B
 
-    if mdl == 'Ubar' or mdl == 'U_Ubar':
-      #config['balance_velocity']['on']    = True
-      config['balance_velocity']['kappa'] = 5.0
-   
-    elif mdl == 'stress':
-      config['stokes_balance']['on']      = True
-
     Ubar_v = Ubar.vector().array()
     Ubar_v[Ubar_v < 1e-10] = 1e-10
-    self.assign_variable(Ubar, Ubar_v)
+    self.assign_variable(Ubar, Ubar_v, cls=self.this)
            
-    D      = Function(Q)
+    D      = Function(Q, name='D')
     B_v    = B.vector().array()
     D_v    = D.vector().array()
     D_v[B_v < 0] = B_v[B_v < 0]
-    self.assign_variable(D, D_v)
+    self.assign_variable(D, D_v, cls=self.this)
 
     gradS = as_vector([S.dx(0), S.dx(1), 0.0])
     gradB = as_vector([B.dx(0), B.dx(1), 0.0])
@@ -972,7 +999,7 @@ class Model(object):
                 1.55871983e-13]
    
     for xx,nam in zip(X, names[idx]):
-      print_min_max(xx, nam)
+      print_min_max(xx, nam, cls=self.this)
 
     X_i  = []
     X_i.extend(X)
@@ -991,28 +1018,48 @@ class Model(object):
     for xx,bb in zip(X_i, bhat[1:]):
       self.beta_f += Constant(bb)*xx
       #self.beta_f *= exp(Constant(bb)*xx)
-    self.beta_f = exp(self.beta_f)
+    self.beta_f = exp(self.beta_f)**2
     
-    if config['mode'] == 'steady':
-      beta0                   = project(self.beta_f, Q)
+    #if mode == 'steady':
+    #  beta0                   = project(self.beta_f, Q, annotate=False)
+    #  beta0_v                 = beta0.vector().array()
+    #  beta0_v[beta0_v < 1e-2] = 1e-2
+    #  self.assign_variable(beta0, beta0_v, cls=self.this)
+    #
+    #  self.assign_variable(self.beta, 1e-2, cls=self.this)
+    #  bc_beta = DirichletBC(self.Q, beta0, self.ff, self.GAMMA_B_GND)
+    #  bc_beta.apply(self.beta.vector())
+    
+    if mode == 'steady':
+      beta0  = project(self.beta_f, Q, annotate=False)
       beta0_v                 = beta0.vector().array()
-      beta0_v[beta0_v < 1e-2] = 1e-2
-      self.assign_variable(beta0, beta0_v)
+      beta0_v[beta0_v < DOLFIN_EPS] = DOLFIN_EPS
+      self.init_beta(beta0_v, cls=self.this)
+    elif mode == 'transient':
+      self.assign_variable(self.beta, 200.0, cls=self.this)
     
-      self.assign_variable(self.beta, 1e-2)
-      bc_beta = DirichletBC(self.Q, beta0, self.ff, 3)
-      bc_beta.apply(self.beta.vector())
-    elif config['mode'] == 'transient':
-      self.assign_variable(self.beta, 200.0)
-    
-    print_min_max(self.beta, 'beta0')
+    print_min_max(self.beta, 'beta_hat', cls=self.this)
+ 
+  def update_stats_beta(self):
+    """
+    Re-compute the statistical friction field and save into model.beta.
+    """
+    s    = "::: updating statistical beta :::"
+    print_text(s, self.D3Model_color)
+    beta   = project(self.beta_f, self.Q, annotate=False)
+    beta_v = beta.vector().array()
+    ##betaSIA_v = self.betaSIA.vector().array()
+    ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
+    beta_v[beta_v < 0.0]    = 0.0
+    #beta_v[beta_v > 2500.0] = 2500.0
+    self.assign_variable(self.beta, beta_v, cls=self.this)
      
-  def init_b(self, b, U_ob, gradS):
+  def init_b_SIA(self, b, U_ob, gradS):
     r"""
     Init rate-factor b from U_ob. 
     """
     s = "::: initializing b from U_ob :::"
-    print_text(s, self.color)
+    print_text(s, cls=self.this)
    
     x      = self.x
     S      = self.S
@@ -1035,7 +1082,7 @@ class Model(object):
     b_f    = TrialFunction(Q)
     phi    = TestFunction(Q)
 
-    epi    = self.BP_strain_rate(U_ob)
+    epi    = self.strain_rate(U_ob)
     ep_xx  = epi[0,0]
     ep_yy  = epi[1,1]
     ep_xy  = epi[0,1]
@@ -1060,35 +1107,15 @@ class Model(object):
          #+ rhoi * g * gradS[1] * phi * dx \
    
     b_f = Function(Q)
-    solve(lhs(R) == rhs(R), b_f)
-    self.assign_variable(b, b_f)
-
-  def unify_eta(self):
-    """
-    Unifies viscosity defined over grounded and shelves to model.eta.
-    """
-    s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
-    print_text(s, self.color)
-    
-    eta_shf = project(self.eta_shf, self.Q)
-    eta_gnd = project(self.eta_gnd, self.Q)
-   
-    # remove areas where viscosities overlap : 
-    eta_shf.vector()[self.gnd_dofs] = 0.0
-    eta_gnd.vector()[self.shf_dofs] = 0.0
-
-    # unify eta to self.eta :
-    eta = project(eta_shf + eta_gnd, self.Q)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
+    solve(lhs(R) == rhs(R), b_f, annotate=False)
+    self.assign_variable(b, b_f, cls=self.this)
  
   def calc_eta(self):
     """
     Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
-    print_text(s, self.color)
-    config  = self.config
+    print_text(s, cls=self.this)
     Q       = self.Q
     R       = self.R
     T       = self.T
@@ -1103,10 +1130,7 @@ class Model(object):
     E       = self.E
     U       = as_vector([u,v,w])
     
-    if config['velocity']['full_BP'] or config['model_order'] == 'stokes':
-      epsdot = self.effective_strain(U)
-    else:
-      epsdot = self.BP_effective_strain(U)
+    epsdot = self.effective_strain_rate(U)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
     a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
@@ -1130,190 +1154,13 @@ class Model(object):
     E_shf_v = E_shf.vector().array()
     E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
     E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
-    self.assign_variable(E, E_v)
+    self.assign_variable(E, E_v, cls=self.this)
 
     # calculate viscosity :
     b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta     = project(eta, Q)
-    self.assign_variable(self.eta, eta)
-    print_min_max(self.eta, 'eta')
-
-  def strain_rate_tensor(self, U):
-    """
-    return the strain-rate tensor of <U>.
-    """
-    return 0.5 * (grad(U) + grad(U).T)
-
-  def BP_strain_rate_tensor(self, U):
-    """
-    return the 'Blatter-Pattyn' simplified strain-rate tensor of <U>.
-    """
-    u,v,w = U
-    epi   = 0.5 * (grad(U) + grad(U).T)
-    epi02 = 0.5*u.dx(2)
-    epi12 = 0.5*v.dx(2)
-    epi22 = -u.dx(0) - v.dx(1)  # incompressibility
-    epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02],
-                        [epi[1,0],  epi[1,1],  epi12],
-                        [epi02,     epi12,     epi22]])
-    return epsdot
-    
-  def effective_strain(self, U):
-    """
-    return the effective strain rate squared.
-    """
-    epi    = self.strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                    + ep_xy**2 + ep_xz**2 + ep_yz**2
-    return epsdot
-    
-  def BP_effective_strain(self, U):
-    """
-    return the BP effective strain rate squared.
-    """
-    epi    = self.BP_strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-             + ep_xy**2 + ep_xz**2 + ep_yz**2
-    return epsdot
-
-  def stress_tensor(self):
-    """
-    return the Cauchy stress tensor.
-    """
-    s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color)
-    U   = as_vector([self.u, self.v, self.w])
-    epi = self.strain_rate_tensor(U)
-    dim = self.mesh.ufl_cell().topological_dimension()
-    I   = Identity(dim)
-
-    sigma = 2*self.eta*epi - self.P*I
-    return sigma
-
-  def BP_stress_tensor(self):
-    """
-    return the Cauchy stress tensor.
-    """
-    s   = "::: forming the BP Cauchy stress tensor :::"
-    print_text(s, self.color)
-    U   = as_vector([self.u, self.v, self.w])
-    epi = self.BP_strain_rate_tensor(U)
-    dim = self.mesh.ufl_cell().topological_dimension()
-    I   = Identity(dim)
-
-    sigma = 2*self.eta*epi - self.P*I
-    return sigma
-  
-  def calc_BP_pressure(self):
-    """
-    Calculate the continuous pressure field.
-    """
-    s    = "::: calculating pressure :::"
-    print_text(s, self.color)
-    rhoi = self.rhoi
-    g    = self.g
-    S    = self.S
-    x    = self.x
-    eta  = self.eta
-    w    = self.w
-    p    = project(rhoi*g*(S - x[2]) + 2*eta*w.dx(2), self.Q)
-    self.assign_variable(self.P, p)
-    print_min_max(self.P, 'p')
-  
-  def calc_thickness(self):
-    """
-    Calculate the continuous thickness field which increases from 0 at the 
-    surface to the actual thickness at the bed.
-    """
-    s = "::: calculating z-varying thickness :::"
-    print_text(s, self.color)
-    H = project(self.S - self.x[2], self.Q)
-    print_min_max(H, 'H')
-    return H
-  
-  def vert_extrude(self, u, d='up', Q='self'):
-    r"""
-    This extrudes a function <u> vertically in the direction <d> = 'up' or
-    'down'.
-    It does this by formulating a variational problem:
-  
-    :Conditions: 
-    .. math::
-    \frac{\partial v}{\partial z} = 0
-    
-    v|_b = u
-  
-    and solving.  
-    """
-    s = "::: extruding function :::"
-    print_text(s, self.color)
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff  = self.ff
-    phi = TestFunction(Q)
-    v   = TrialFunction(Q)
-    a   = v.dx(2) * phi * dx
-    L   = DOLFIN_EPS * phi * dx
-    bcs = []
-    # extrude bed (ff = 3,5) 
-    if d == 'up':
-      bcs.append(DirichletBC(Q, u, ff, 3))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, 5))  # shelves
-    # extrude surface (ff = 2,6) 
-    elif d == 'down':
-      bcs.append(DirichletBC(Q, u, ff, 2))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, 6))  # shelves
-    v   = Function(Q)
-    solve(a == L, v, bcs)
-    print_min_max(u, 'function to be extruded')
-    print_min_max(v, 'extruded function')
-    return v
-  
-  def vert_integrate(self, u, d='up', Q='self'):
-    """
-    Integrate <u> from the bed to the surface.
-    """
-    s = "::: vertically integrating function :::"
-    print_text(s, self.color)
-
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff  = self.ff
-    phi = TestFunction(Q)
-    v   = TrialFunction(Q)
-    bcs = []
-    # integral is zero on bed (ff = 3,5) 
-    if d == 'up':
-      bcs.append(DirichletBC(Q, 0.0, ff, 3))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, 5))  # shelves
-      a      = v.dx(2) * phi * dx
-    # integral is zero on surface (ff = 2,6) 
-    elif d == 'down':
-      bcs.append(DirichletBC(Q, 0.0, ff, 2))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, 6))  # shelves
-      a      = -v.dx(2) * phi * dx
-    L      = u * phi * dx
-    v      = Function(Q)
-    solve(a == L, v, bcs)
-    print_min_max(u, 'vertically integrated function')
-    return v
+    eta     = project(eta, Q, annotate=False)
+    self.assign_variable(self.eta, eta, cls=self.this)
 
   def calc_vert_average(self, u):
     """
@@ -1322,53 +1169,7 @@ class Model(object):
     :param u: Function representing the model's function space
     :rtype:   Dolfin projection and Function of the vertical average
     """
-    H    = self.S - self.B
-    uhat = self.vert_integrate(u, d='up')
-    s = "::: calculating vertical average :::"
-    print_text(s, self.color)
-    ubar = project(uhat/H, self.Q)
-    print_min_max(ubar, 'ubar')
-    ubar = self.vert_extrude(ubar, d='down')
-    return ubar
-
-  def calc_misfit(self, integral):
-    """
-    Calculates the misfit of model and observations, 
-
-      D = ||U - U_ob||
-
-    over shelves or grounded depending on the paramter <integral>, then 
-    updates model.misfit with D for plotting.
-    """
-    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, self.color)
-
-    Q2     = self.Q2
-    ff     = self.ff
-    U_s    = Function(Q2)
-    U_ob_s = Function(Q2)
-    U      = as_vector([self.u,    self.v])
-    U_ob   = as_vector([self.u_ob, self.v_ob])
-
-    if integral == 'shelves':
-      bc_U    = DirichletBC(self.Q2, U,    ff, 6)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 6)
-    elif integral == 'grounded':
-      bc_U    = DirichletBC(self.Q2, U,    ff, 2)
-      bc_U_ob = DirichletBC(self.Q2, U_ob, ff, 2)
-    
-    bc_U.apply(U_s.vector())
-    bc_U_ob.apply(U_ob_s.vector())
-
-    # calculate L_inf vector norm :
-    U_s_v    = U_s.vector().array()
-    U_ob_s_v = U_ob_s.vector().array()
-    D_v      = U_s_v - U_ob_s_v
-    D        = MPI.max(mpi_comm_world(), D_v.max())
-    
-    s    = "||U - U_ob|| : %.3E" % D
-    print_text(s, '208', 1)
-    self.misfit = D
+    raiseNotDefined()
 
   def get_theta(self):
     """
@@ -1378,8 +1179,8 @@ class Model(object):
     u_v     = self.u.vector().array()
     v_v     = self.v.vector().array()
     theta_v = np.arctan2(u_v, v_v)
-    theta   = Function(self.Q)
-    self.assign_variable(theta, theta_v)
+    theta   = Function(self.Q, name='theta_U_angle')
+    self.assign_variable(theta, theta_v, cls=self.this)
     return theta
 
   def rotate(self, M, theta):
@@ -1431,409 +1232,695 @@ class Model(object):
     # convert back to fenics :
     U_f = []
     for u_v in U_v:
-      u_f = Function(Q)
-      self.assign_variable(u_f, u_v)
+      u_f = Function(Q, name='u_f')
+      self.assign_variable(u_f, u_v, cls=self.this)
       U_f.append(u_f)
 
     # return a UFL vector :
     return as_vector(U_f)
 
-  def assign_variable(self, u, var):
+  def assign_submesh_variable(self, u_to, u_from):
+    """
+    """
+    s   = "::: assigning submesh variable :::"
+    print_text(s, cls=self.this)
+    lg = LagrangeInterpolator()
+    lg.interpolate(u_to, u_from)
+
+  def assign_variable(self, u, var, cls=None, annotate=False, save=True):
     """
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
     """
-    if   isinstance(var, pc.PhysicalConstant):
-      u.vector()[:] = var.real
-
-    elif isinstance(var, float) or isinstance(var, int):
-      u.vector()[:] = var
+    if cls is None:
+      cls = super(type(self), self)
+    if isinstance(var, float) or isinstance(var, int):
+      if    isinstance(u, GenericVector) or isinstance(u, Function) \
+         or isinstance(u, dolfin.functions.function.Function):
+        u.vector()[:] = var
+      elif  isinstance(u, Constant):
+        u.assign(var)
+      elif  isinstance(u, float) or isinstance(u, int):
+        u = var
     
     elif isinstance(var, np.ndarray):
+      if var.dtype != np.float64:
+        var = var.astype(np.float64)
       u.vector().set_local(var)
       u.vector().apply('insert')
     
-    elif isinstance(var, Expression) or isinstance(var, Constant)  \
-         or isinstance(var, GenericVector) or isinstance(var, Function):
-      u.interpolate(var)
+    elif isinstance(var, Expression) \
+      or isinstance(var, Constant)  \
+      or isinstance(var, Function) \
+      or isinstance(var, dolfin.functions.function.Function):
+      u.interpolate(var, annotate=annotate)
+
+    elif isinstance(var, GenericVector):
+      self.assign_variable(u, var.array(), annotate=annotate, cls=cls)
 
     elif isinstance(var, str):
       File(var) >> u
 
+    elif isinstance(var, HDF5File):
+      var.read(u, u.name())
+
     else:
       s =  "*************************************************************\n" + \
            "assign_variable() function requires a Function, array, float,\n" + \
-           " int, Vector, Expression, or string path to .xml, not \n" + \
-           "%s.  Replacing object entirely\n" + \
+           " int, Vector, Expression, Constant, or string path to .xml,\n"   + \
+           "not %s.  Replacing object entirely\n" + \
            "*************************************************************"
-      print_text(s % type(var) , 'red')
+      print_text(s % type(var) , 'red', 1)
       u = var
+    print_min_max(u, u.name(), cls=cls)
 
-  def globalize_parameters(self, namespace=None):
-    """
-    This function converts the parameter dictinary into global object
-    
-    :param namespace: Optional namespace in which to place the global variables
-    """
-    for v in self.variables.iteritems():
-      vars(namespace)[v[0]] = v[1]
+    if self.save_state and save:
+      if    isinstance(u, GenericVector) or isinstance(u, Function) \
+         or isinstance(u, dolfin.functions.function.Function):
+        s = "::: writing '%s' variable to '%sstate.h5' :::"
+        print_text(s % (u.name(), self.out_dir), cls=cls)
+        self.state.write(u, u.name())
+        print_text("    - done -", cls=cls)
 
-  def save_pvd(self, var, name):
+  def save_hdf5(self, u, f=None, name=None):
+    """
+    Save a FEniCS Function <u> to this model's self.state h5 file to the 
+    hdf5 subdirectory of self.out_dir or to hdf5 file <f> if set.
+    If <name>=None, this will save the flie under <u>.name().
+    """
+    if name == None:
+      name = u.name()
+    if f == None:
+      s = "::: writing '%s' variable to self.state file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      self.state.write(u, name)
+    else:
+      s = "::: writing '%s' variable to hdf5 file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      f.write(u, name)
+    print_text("    - done -", 'green')#cls=self.this)
+
+  def save_pvd(self, var, name, f_file=None):
     """
     Save a <name>.pvd file of the FEniCS Function <var> to this model's log 
-    directory specified by the config['output_path'] field.
+    directory specified by model.out_dir.  If <f_file> is a File object, save 
+    to this instead.
     """
-    outpath = self.config['output_path']
-    s       = "::: saving %s%s.pvd file :::" % (outpath, name)
-    print_text(s, self.color)
-    File(outpath + name + '.pvd') << var
-
-  def save_xml(self, var, name):
-    """
-    Save a <name>.xml file of the FEniCS Function <var> to this model's log 
-    directory specified by the config['output_path'] field.
-    """
-    outpath = self.config['output_path']
-    s       = "::: saving %s%s.xml file :::" % (outpath, name)
-    print_text(s, self.color)
-    File(outpath + '/' +  name + '.xml') << var
-
-  def init_viscosity_mode(self, mode):
-    """
-    Initialize the rate-factor b, viscosit eta, and viscous dissipation term 
-    used by the Enthalpy and Dukowicz velocity solvers.  The values of <mode>
-    may be :
-    
-      'isothermal' :  use the values of model.A0 for b = A0^{-1/n}
-      'linear'     :  use the values in the current model.u, model.v, 
-                      and model.w to form the viscosity; requires that b has 
-                      been initialized previously
-      'full'       :  use the full temperature-dependent rate factor.
-
-    """
-    s = "::: initializing viscosity :::"
-    print_text(s, self.color)
-
-    config = self.config
-
-    # Set the value of b, the temperature dependent ice hardness parameter,
-    # using the most recently calculated temperature field.
-    #
-    #   eta = visosity,
-    #   b   = rate factor
-    #   Vd  = viscous dissipation
-    #   shf = volume over shelves
-    #   gnd = volume over grounded ice
-    #
-    if   mode == 'isothermal':
-      s  = "    - using isothermal visosity formulation -"
-      print_text(s, self.color)
-      print_min_max(self.A0, 'A')
-      A0         = self.A0
-      n          = self.n
-      epsdot     = self.epsdot
-      eps_reg    = self.eps_reg
-      b          = A0**(-1/n)
-      self.b_shf = b
-      self.b_gnd = b
-      print_min_max(self.b_shf, 'b')
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
-    
-    elif mode == 'linear':
-      s     = "    - using linear viscosity formulation -"
-      print_text(s, self.color)
-      n         = self.n
-      eps_reg   = self.eps_reg
-      u_cpy     = self.u.copy(True)
-      v_cpy     = self.v.copy(True)
-      w_cpy     = self.w.copy(True)
-      U         = as_vector([u_cpy, v_cpy, w_cpy])
-      if config['velocity']['full_BP'] or config['model_order'] == 'stokes':
-        epsdot  = self.effective_strain(U)
-      else:
-        epsdot  = self.BP_effective_strain(U)
-      self.eta_shf = 0.5 * self.b_shf * epsdot**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * epsdot**((1-n)/(2*n))
-      self.Vd_shf  = 2 * self.eta_shf * self.epsdot
-      self.Vd_gnd  = 2 * self.eta_gnd * self.epsdot
-    
-    elif mode == 'full':
-      s     = "    - using full viscosity formulation -"
-      print_text(s, self.color)
-      n       = self.n
-      epsdot  = self.epsdot
-      eps_reg = self.eps_reg
-      T       = self.T
-      W       = self.W
-      R       = self.R
-      E_shf   = self.E_shf
-      E_gnd   = self.E_gnd
-      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-      self.b_shf   = ( E_shf*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      self.b_gnd   = ( E_gnd*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
-      self.eta_shf = 0.5 * self.b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.eta_gnd = 0.5 * self.b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      self.Vd_shf  = (2*n)/(n+1)*self.b_shf*(epsdot + eps_reg)**((n+1)/(2*n))
-      self.Vd_gnd  = (2*n)/(n+1)*self.b_gnd*(epsdot + eps_reg)**((n+1)/(2*n))
-    
+    if f_file != None:
+      s       = "::: saving %s.pvd file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      f_file << var
     else:
-      s = "    - ACCEPTABLE CHOICES FOR VISCOSITY ARE 'linear', " + \
-          "'isothermal', OR 'full' -"
-      print_text(s, 'red', 1)
-      sys.exit(1)
-    
-  def init_hybrid_variables(self):
-    """
-    """
-    # hybrid mass-balance :
-    self.H             = Function(self.Q)
-    self.H0            = Function(self.Q)
-    self.ubar_c        = Function(self.Q)
-    self.vbar_c        = Function(self.Q)
-    self.H_min         = Function(self.Q)
-    self.H_max         = Function(self.Q)
+      s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
+      print_text(s, 'green')#cls=self.this)
+      File(self.out_dir + 'pvd/' + name + '.pvd') << var
 
-    # hybrid energy-balance :
-    N_T                = self.config['enthalpy']['N_T']
-    self.deltax        = 1./(N_T-1.)
-    self.sigmas        = np.linspace(0, 1, N_T, endpoint=True)
-    self.T_            = Function(self.Z)
-    self.T0_           = Function(self.Z)
-    self.Ts            = Function(self.Q)
-    self.Tb            = Function(self.Q)
-    
-    # hybrid momentum :
-    self.U             = Function(self.HV)
-    self.u_s           = Function(self.Q)
-    self.v_s           = Function(self.Q)
-    self.w_s           = Function(self.Q)
-    self.u_b           = Function(self.Q)
-    self.v_b           = Function(self.Q)
-    self.w_b           = Function(self.Q)
-    
-  def init_SSA_variables(self):
+  def save_xdmf(self, var, name, f_file=None, t=0.0):
     """
+    Save a <name>.xdmf file of the FEniCS Function <var> to this model's log 
+    directory specified by model.out_dir.  If <f_file> is a File object, save 
+    to this instead.
     """
-    s = "    - initializing SSA variables -"
-    print_text(s, self.color)
-    
-    self.U   = Function(self.Q2)
-    self.dU  = TrialFunction(self.Q2)
-    self.Phi = TestFunction(self.Q2)
-    self.Lam = Function(self.Q2)
-
-    self.etabar = Function(self.Q)
-    self.ubar   = Function(self.Q)
-    self.vbar   = Function(self.Q)
-    self.wbar   = Function(self.Q)
-    
-    #self.epsdot = self.effective_strain(self.U)
-    #self.init_higher_order_variables()
-
-  def init_BP_variables(self):
-    """
-    """
-    if self.config['velocity']['full_BP']:
-      s = "    - initializing full BP variables -"
-      self.U   = Function(self.Q3)
-      self.dU  = TrialFunction(self.Q3)
-      self.Phi = TestFunction(self.Q3)
-      self.Lam = Function(self.Q3)
+    if f_file != None:
+      s       = "::: saving %s.xdmf file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      f_file << (var, float(t))
     else :
-      s = "    - initializing BP variables -"
-      self.U   = Function(self.Q2)
-      self.dU  = TrialFunction(self.Q2)
-      self.Phi = TestFunction(self.Q2)
-      self.Lam = Function(self.Q2)
-    print_text(s, self.color)
-    
-    # Second invariant of the strain rate tensor squared
-    if self.config['velocity']['full_BP']:
-      self.epsdot = self.effective_strain(self.U)
-    else:
-      U_t = as_vector([self.U[0], self.U[1], 0.0])
-      self.epsdot = self.BP_effective_strain(U_t)
-    self.init_higher_order_variables()
-
-  def init_stokes_variables(self):
+      s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
+      print_text(s, 'green')#cls=self.this)
+      File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
+  
+  def solve_hydrostatic_pressure(self, annotate=True, cls=None):
     """
+    Solve for the hydrostatic pressure 'p'.
     """
-    s = "    - initializing full-stokes variables -"
-    print_text(s, self.color)
-    # velocity :
-    if self.config['use_dukowicz']:
-      self.U   = Function(self.Q4)
-      self.dU  = TrialFunction(self.Q4)
-      self.Phi = TestFunction(self.Q4)
-      self.Lam = Function(self.Q4)
-      U        = as_vector([self.U[0], self.U[1], self.U[2]])
-    else:
-      self.U   = Function(self.MV)
-      self.dU  = TrialFunction(self.MV)
-      self.Phi = TestFunction(self.MV)
-      self.Lam = Function(self.MV)
-      U, P     = split(self.U)
-    
-    # Second invariant of the strain rate tensor squared
-    self.epsdot = self.effective_strain(U)
-    self.init_higher_order_variables()
-
-  def init_higher_order_variables(self):
-    """
-    """
-    s = "    - initializing higher-order variables -"
-    print_text(s, self.color)
-
-    # sigma coordinate :
-    self.sigma         = project((self.x[2] - self.B) / (self.S - self.B))
-    print_min_max(self.sigma, 'sigma')
-
-    # free surface model :
-    self.Shat          = Function(self.Q_flat)
-    self.dSdt          = Function(self.Q_flat)
-    self.ahat          = Function(self.Q_flat)
-    self.uhat_f        = Function(self.Q_flat)
-    self.vhat_f        = Function(self.Q_flat)
-    self.what_f        = Function(self.Q_flat)
-    self.M             = Function(self.Q_flat)
-    
+    raiseNotDefined()
+  
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
     by the individually created model.
     """
-    s = "::: initializing variables :::"
-    print_text(s, self.color)
-
-    config = self.config
-    
-    # initialize constants and make them globally available :
-    self.set_parameters(pc.IceParameters())
-    self.params.globalize_parameters(self)
+    s = "::: initializing basic variables :::"
+    print_text(s, cls=self.this)
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
     self.h             = CellSize(self.mesh)
     self.N             = FacetNormal(self.mesh)
+    self.lat           = Function(self.Q, name='lat')
+    self.lon           = Function(self.Q, name='lon')
 
-    # shelf mask (1 if shelf) :
-    self.mask          = Function(self.Q)
+    # time step :
+    self.time_step = Constant(100.0)
+    self.time_step.rename('time_step', 'time step')
+
+    # shelf mask (2 if shelf) :
+    self.mask          = Function(self.Q, name='mask')
+
+    # lateral boundary mask (1 if on lateral boundary) :
+    self.lat_mask      = Function(self.Q, name='lat_mask')
+
+    # velocity mask (1 if velocity measurements present) :
+    self.U_mask        = Function(self.Q, name='U_mask')
+
+    # topography :
+    self.S             = Function(self.Q_non_periodic, name='S')
+    self.B             = Function(self.Q_non_periodic, name='B')
     
-    # Depth below sea level :
-    class Depth(Expression):
-      def eval(self, values, x):
-        values[0] = min(0, x[2])
-    self.D = Depth(element=self.Q.ufl_element())
-
-    # Velocity model
-    self.u             = Function(self.Q)
-    self.v             = Function(self.Q)
-    self.w             = Function(self.Q)
-    self.P             = Function(self.Q)
-    self.beta          = Function(self.Q)
-    self.mhat          = Function(self.Q)
-    self.E             = Function(self.Q)
-    self.E_gnd         = Function(self.Q)
-    self.E_shf         = Function(self.Q)
-    self.eta           = Function(self.Q)
-    self.u_ob          = Function(self.Q)
-    self.v_ob          = Function(self.Q)
-    self.U_ob          = Function(self.Q)
-    self.u_lat         = Function(self.Q)
-    self.v_lat         = Function(self.Q)
-    self.w_lat         = Function(self.Q)
+    # velocity observations :
+    self.U_ob          = Function(self.Q, name='U_ob')
+    self.u_ob          = Function(self.Q, name='u_ob')
+    self.v_ob          = Function(self.Q, name='v_ob')
     
-    # Enthalpy model
-    self.theta_surface = Function(self.Q)
-    self.theta_float   = Function(self.Q)
-    self.theta         = Function(self.Q)
-    self.theta0        = Function(self.Q) # initial enthalpy
-    self.T             = Function(self.Q)
-    self.q_geo         = Function(self.Q)
-    self.W0            = Function(self.Q)
-    self.W             = Function(self.Q)
-    self.Mb            = Function(self.Q)
-    self.thetahat      = Function(self.Q) # Midpoint values
-    self.uhat          = Function(self.Q) # Midpoint values
-    self.vhat          = Function(self.Q) # Midpoint values
-    self.what          = Function(self.Q) # Midpoint values
-    self.mhat          = Function(self.Q) # ALE is required: we change the mesh 
-    self.T_melt        = Function(self.Q) # pressure-melting point
-    self.kappa         = Function(self.Q)
-    self.Kcoef         = Function(self.Q)
+    # unified velocity :
+    self.U_mag         = Function(self.Q,  name='U_mag')
+    self.U3            = Function(self.Q3, name='U3')
+    u,v,w              = self.U3.split()
+    u.rename('u', '')
+    v.rename('v', '')
+    w.rename('w', '')
+    self.u             = u
+    self.v             = v
+    self.w             = w
+    
+    self.assx          = FunctionAssigner(u.function_space(), self.Q)
+    self.assy          = FunctionAssigner(v.function_space(), self.Q)
+    self.assz          = FunctionAssigner(w.function_space(), self.Q)
 
-    # Age model   
-    self.age           = Function(self.Q)
-    self.a0            = Function(self.Q)
-
-    # Surface climate model
-    self.smb           = Function(self.Q)
-    self.precip        = Function(self.Q)
-    self.T_surface     = Function(self.Q)
-
-    # Adjoint model
-    self.adot          = Function(self.Q)
+    # momentum model :
+    self.eta           = Function(self.Q, name='eta')
+    self.p             = Function(self.Q, name='p')
+    self.beta          = Function(self.Q, name='beta')
+    self.E             = Function(self.Q, name='E')
+    self.E_gnd         = Function(self.Q, name='E_gnd')
+    self.E_shf         = Function(self.Q, name='E_shf')
+    self.b             = Function(self.Q, name='b')
+    self.b_gnd         = Function(self.Q, name='b_gnd')
+    self.b_shf         = Function(self.Q, name='b_shf')
+    self.u_lat         = Function(self.Q, name='u_lat')
+    self.v_lat         = Function(self.Q, name='v_lat')
+    self.w_lat         = Function(self.Q, name='w_lat')
+    self.lam           = Function(self.Q, name='lam')
+    
+    # energy model :
+    self.T             = Function(self.Q, name='T')
+    self.q_geo         = Function(self.Q, name='q_geo')
+    self.theta         = Function(self.Q, name='theta')
+    self.W             = Function(self.Q, name='W')
+    self.Mb            = Function(self.Q, name='Mb')
+    self.rhob          = Function(self.Q, name='rhob')
+    self.T_melt        = Function(self.Q, name='T_melt')     # pressure-melting
+    self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
+    self.T_surface     = Function(self.Q, name='T_surface')
+    
+    # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
     self.misfit        = 0.0              # ||U - U_ob||
+    self.control_opt   = Function(self.Q, name='control_opt')
 
-    # Balance Velocity model :
-    self.kappa         = Function(self.Q)
-    self.adot          = Function(self.Q)
-    self.dSdx          = Function(self.Q)
-    self.dSdy          = Function(self.Q)
-    self.d_x           = Function(self.Q)
-    self.d_y           = Function(self.Q)
-    self.Ubar          = Function(self.Q)
-    self.Nx            = Function(self.Q)
-    self.Ny            = Function(self.Q)
+    # balance Velocity model :
+    self.adot          = Function(self.Q, name='adot')
+    self.dSdx          = Function(self.Q, name='dSdx')
+    self.dSdy          = Function(self.Q, name='dSdy')
+    self.d_x           = Function(self.Q, name='d_x')
+    self.d_y           = Function(self.Q, name='d_y')
+    self.Ubar          = Function(self.Q, name='Ubar')
+    self.Nx            = Function(self.Q, name='Nx')
+    self.Ny            = Function(self.Q, name='Ny')
     
     # Stokes-balance model :
-    self.u_s           = Function(self.Q)
-    self.u_t           = Function(self.Q)
-    self.F_id          = Function(self.Q)
-    self.F_jd          = Function(self.Q)
-    self.F_ib          = Function(self.Q)
-    self.F_jb          = Function(self.Q)
-    self.F_ip          = Function(self.Q)
-    self.F_jp          = Function(self.Q)
-    self.F_ii          = Function(self.Q)
-    self.F_ij          = Function(self.Q)
-    self.F_iz          = Function(self.Q)
-    self.F_ji          = Function(self.Q)
-    self.F_jj          = Function(self.Q)
-    self.F_jz          = Function(self.Q)
-    self.tau_id        = Function(self.Q)
-    self.tau_jd        = Function(self.Q)
-    self.tau_ib        = Function(self.Q)
-    self.tau_jb        = Function(self.Q)
-    self.tau_ip        = Function(self.Q)
-    self.tau_jp        = Function(self.Q)
-    self.tau_ii        = Function(self.Q)
-    self.tau_ij        = Function(self.Q)
-    self.tau_iz        = Function(self.Q)
-    self.tau_ji        = Function(self.Q)
-    self.tau_jj        = Function(self.Q)
-    self.tau_jz        = Function(self.Q)
+    self.u_s           = Function(self.Q, name='u_s')
+    self.u_t           = Function(self.Q, name='u_t')
+    self.tau_id        = Function(self.Q, name='tau_id')
+    self.tau_jd        = Function(self.Q, name='tau_jd')
+    self.tau_ib        = Function(self.Q, name='tau_ib')
+    self.tau_jb        = Function(self.Q, name='tau_jb')
+    self.tau_ip        = Function(self.Q, name='tau_ip')
+    self.tau_jp        = Function(self.Q, name='tau_jp')
+    self.tau_ii        = Function(self.Q, name='tau_ii')
+    self.tau_ij        = Function(self.Q, name='tau_ij')
+    self.tau_ji        = Function(self.Q, name='tau_ji')
+    self.tau_jj        = Function(self.Q, name='tau_jj')
+
+  def thermo_solve(self, momentum, energy, callback=None, 
+                   atol=1e-6, rtol=1e-6, max_iter=50):
+    """ 
+    Perform thermo-mechanical coupling between momentum and energy.
+    """
+    s    = '::: performing thermo-mechanical coupling with atol = %.3e, ' + \
+           'rtol = %.3e, and max_iter = %i :::'
+    print_text(s % (atol, rtol, max_iter), cls=self.this)
     
-    if   config['model_order'] == 'stokes':
-      self.init_stokes_variables()
-    elif config['model_order'] == 'BP':
-      self.init_BP_variables()
-    elif config['model_order'] == 'SSA':
-      self.init_SSA_variables()
-    elif config['model_order'] == 'L1L2':
-      self.init_hybrid_variables()
-    else:
-      s = "    - PLEASE SPECIFY A MODEL ORDER; MAY BE 'stokes', 'BP', " + \
-          "SSA, or 'L1L2' -"
-      print_text(s, 'red', 1)
+    from varglas.momentum import Momentum
+    from varglas.energy   import Energy
+    
+    if not isinstance(momentum, Momentum):
+      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+      print_text(s % type(momentum) , 'red', 1)
+      sys.exit(1)
+    
+    if not isinstance(energy, Energy):
+      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+      print_text(s % type(energy) , 'red', 1)
       sys.exit(1)
 
+    # mark starting time :
+    t0   = time()
+
+    # ensure that we have a steady-state form :
+    if energy.transient:
+      energy.make_steady_state()
     
+    # initialization step :
+    s    = '::: performing initialization step :::'
+    print_text(s, cls=self.this)
+
+    ## always set the initial water content to zero, so that the friction
+    ## and geothermal heat flux are applied everywhere on the bed :
+    #self.init_W(0.0, cls=self.this)
+
+    ## solve velocity :
+    #momentum.solve(annotate=False)
+
+    ## solve energy (along with temperature and water content) :
+    #energy.solve(annotate=False)
+ 
+    ## convert to pseudo-timestepping for smooth convergence : 
+    #energy.make_transient(time_step = 25.0)
+
+    # L_2 erro norm between iterations :
+    abs_error = np.inf
+    rel_error = np.inf
+   
+    # number of iterations
+    counter   = 1
+   
+    # previous velocity for norm calculation
+    U_prev    = self.theta.copy(True)#U3.copy(True)
+
+    # perform a fixed-point iteration until the L_2 norm of error 
+    # is less than tolerance :
+    while abs_error > atol and rel_error > rtol and counter <= max_iter:
+     
+      # need zero initial guess for Newton solve to converge : 
+      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
+                           cls=self.this)
+      
+      # solve velocity :
+      momentum.solve(annotate=False)
+
+      # solve energy (temperature, water content) :
+      energy.solve(annotate=False)
+
+      # calculate L_infinity norm, increment counter :
+      abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+      if counter == 1:
+        rel_error  = abs_error_n
+      else:
+        rel_error  = abs(abs_error - abs_error_n)
+      abs_error = abs_error_n
+      U_prev     = self.theta.copy(True)
+      if self.MPI_rank==0:
+        s0    = '>>> '
+        s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
+        s2    = 'r (abs) = %.3e ' % abs_error
+        s3    = '(tol %.3e), '    % atol
+        s4    = 'r (rel) = %.3e ' % rel_error
+        s5    = '(tol %.3e)'      % rtol
+        s6    = ' <<<'
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1, 'red')
+        text2 = get_text(s2, 'red', 1)
+        text3 = get_text(s3, 'red')
+        text4 = get_text(s4, 'red', 1)
+        text5 = get_text(s5, 'red')
+        text6 = get_text(s6, 'red', 1)
+        print text0 + text1 + text2 + text3 + text4 + text5 + text6
+      counter    += 1
+
+      if callback != None:
+        s    = '::: calling callback function :::'
+        print_text(s, cls=self.this)
+        callback()
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
+
+  def assimilate_U_ob(self, momentum, energy, control, obj_ftn,
+                      bounds, method='l_bfgs_b', adj_iter=100,
+                      incomplete=True,
+                      iterations=100, save_state=True,
+                      ini_save_vars=None,
+                      tmc_save_vars=None,
+                      adj_save_vars=None,
+                      tmc_callback=None,
+                      post_ini_callback=None,
+                      post_tmc_callback=None,
+                      post_adj_callback=None,
+                      adj_callback=None, 
+                      tmc_atol=1e-6, tmc_rtol=1e-6, tmc_max_iter=15):
+    """
+    """
+    s    = '::: performing assimilation process with %i iterations :::'
+    print_text(s % iterations, cls=self.this)
+
+    # retain base install directory :
+    out_dir_i = self.out_dir
+
+    # number of digits for saving variables :
+    n_i  = len(str(iterations))
+    
+    # starting time :
+    t0   = time()
+
+    # L_\infty norm in velocity between iterations :
+    inner_error = np.inf
+   
+    # number of iterations :
+    counter = 1
+
+    # need this for the derivative callback :
+    global counter_n
+    counter_n = 0 
+   
+    # previous velocity for norm calculation
+    U_prev      = self.U3.copy(True)
+
+    # initialization step :
+    # set the initialization output directory :
+    out_dir_n = 'initialization/'
+    self.set_out_dir(out_dir_i + out_dir_n)
+    
+    # thermo-mechanical couple :
+    self.thermo_solve(momentum, energy, callback=tmc_callback,
+                      atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
+
+    # call the post function if set :
+    if post_ini_callback is not None:
+      s    = '::: calling post-initialization callback function :::'
+      print_text(s, cls=self.this)
+      post_ini_callback()
+     
+    # save state to numbered hdf5 file :
+    if save_state:
+      s    = '::: saving initialized variables in dict arg ini_save_vars :::'
+      print_text(s, cls=self.this)
+      out_file = self.out_dir + 'hdf5/thermo_ini.h5'
+      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+      
+      for var in ini_save_vars:
+        self.save_hdf5(var, f=foutput)
+      
+      foutput.close()
+
+    # assimilate the data : 
+    while counter <= iterations:
+      s    = '::: entering iterate %i of %i of assimilation process :::'
+      print_text(s % (counter, iterations), cls=self.this)
+       
+      # set a new unique output directory :
+      out_dir_n = '%0*d/' % (n_i, counter)
+      self.set_out_dir(out_dir_i + out_dir_n)
+   
+      # let us know that we've started the adjoining process : 
+      s    = '::: beginning adjoint-based assimilation process :::'
+      print_text(s, cls=self.this)
+      
+      # the incomplete adjoint means the viscosity is linear :
+      momentum.linearize_viscosity()
+
+      # solve the momentum equations with annotation enabled :
+      s    = '::: solving forward problem for dolfin-adjoint annotatation :::'
+      print_text(s, cls=self.this)
+      momentum.solve(annotate=True)
+     
+      # now solve the control optimization problem : 
+      s    = "::: starting adjoint-control optimization with method '%s' :::"
+      print_text(s % method, cls=self.this)
+
+      # objective function callback function : 
+      def eval_cb(I, beta):
+        s    = '::: adjoint objective eval post callback function :::'
+        print_text(s, cls=self.this)
+        print_min_max(I,    'I',         cls=self.this)
+        print_min_max(beta, 'beta',      cls=self.this)
+      
+      # objective gradient callback function :
+      def deriv_cb(I, dI, beta):
+        if method == 'ipopt':
+          global counter_n
+          s0    = '>>> '
+          s1    = 'iteration %i (max %i) complete'
+          s2    = ' <<<'
+          text0 = get_text(s0, 'red', 1)
+          text1 = get_text(s1 % (counter_n, iterations * adj_iter), 'red')
+          text2 = get_text(s2, 'red', 1)
+          if MPI.rank(mpi_comm_world())==0:
+            print text0 + text1 + text2
+          counter_n += 1
+        s    = '::: adjoint obj. gradient post callback function :::'
+        print_text(s, cls=self.this)
+        print_min_max(dI,    'dI/dbeta', cls=self.this)
+        if adj_callback is not None:
+          adj_callback(I, dI, beta)
+      
+      # define the control parameter :
+      m = Control(control, value=control)
+      
+      # create the reduced functional to minimize :
+      F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
+                            derivative_cb_post=deriv_cb)
+
+      # optimize with scipy's fmin_l_bfgs_b :
+      if method == 'l_bfgs_b': 
+        b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
+                         options={"disp"    : True,
+                                  "maxiter" : adj_iter,
+                                  "gtol"    : 1e-5})
+      
+      # or optimize with IPOpt (preferred) :
+      elif method == 'ipopt':
+        try:
+          import pyipopt
+        except ImportError:
+          info_red("""You do not have IPOPT and/or pyipopt installed.
+                      When compiling IPOPT, make sure to link against HSL,
+                      as it is a necessity for practical problems.""")
+          raise
+        problem = MinimizationProblem(F, bounds=bounds)
+        parameters = {"tol"                : 1e-8,
+                      "acceptable_tol"     : 1e-6,
+                      "maximum_iterations" : adj_iter,
+                      "print_level"        : 1,
+                      "ma97_order"         : "metis",
+                      "linear_solver"      : "ma97"}
+        solver = IPOPTSolver(problem, parameters=parameters)
+        b_opt  = solver.solve()
+
+      # make the optimal control parameter available :
+      self.assign_variable(self.control_opt, b_opt, cls=self.this)
+      
+      # call the post-adjoint callback function if set :
+      if post_adj_callback is not None:
+        s    = '::: calling post-adjoined callback function :::'
+        print_text(s, cls=self.this)
+        post_adj_callback()
+       
+      # save state to unique hdf5 file :
+      if save_state:
+        s    = '::: saving variables in list arg adj_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'hdf5/inverted_%0*d.h5' % (n_i, counter)
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        
+        for var in adj_save_vars:
+          self.save_hdf5(var, f=foutput)
+        
+        foutput.close()
+      
+      # reset the momentum to the original configuration : 
+      momentum.reset()
+      
+      # thermo-mechanical couple :
+      self.thermo_solve(momentum, energy, callback=tmc_callback,
+                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
+
+      # call the post-thermo-couple callback function if set :
+      if post_tmc_callback is not None:
+        s    = '::: calling post-thermo-couple callback function :::'
+        print_text(s, cls=self.this)
+        post_tmc_callback()
+       
+      # save state to numbered hdf5 file :
+      if save_state:
+        s    = '::: saving variables in list arg tmc_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'hdf5/thermo_%0*d.h5' % (n_i, counter)
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        
+        for var in tmc_save_vars:
+          self.save_hdf5(var, f=foutput)
+        
+        foutput.close()
+    
+      # reset entire dolfin-adjoint state for the next thermo-solve :
+      adj_reset()
+
+      # increment the counter and move on :
+      counter += 1
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
+
+  def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
+                      adaptive=False, annotate=False, callback=None):
+    """
+    """
+    s    = '::: performing transient run :::'
+    print_text(s, cls=self)
+    
+    from varglas.momentum import Momentum
+    from varglas.energy   import Energy
+    from varglas.mass     import Mass
+    
+    if momentum.__class__.__base__ != Momentum:
+      s = ">>> transient_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+      print_text(s % type(momentum), 'red', 1)
+      sys.exit(1)
+    
+    if energy.__class__.__base__ != Energy:
+      s = ">>> transient_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+      print_text(s % type(energy), 'red', 1)
+      sys.exit(1)
+    
+    if mass.__class__.__base__ != Mass:
+      s = ">>> transient_solve REQUIRES A 'Mass' INSTANCE, NOT %s <<<"
+      print_text(s % type(mass), 'red', 1)
+      sys.exit(1)
+    
+    stars = "*****************************************************************"
+    self.init_time_step(time_step)
+    self.step_time = []
+    t0             = time()
+    t              = t_start
+    dt             = time_step
+    alpha          = momentum.solve_params['solver']['newton_solver']
+    alpha          = alpha['relaxation_parameter']
+   
+    # Loop over all times
+    while t <= t_end:
+
+      # start the timer :
+      tic = time()
+      
+      # solve momentum equation, lower alpha on failure :
+      if adaptive:
+        solved_u = False
+        par    = momentum.solve_params['solver']['newton_solver']
+        while not solved_u:
+          if par['relaxation_parameter'] < 0.2:
+            status_u = [False, False]
+            break
+          # always reset velocity for good convergence :
+          self.assign_variable(momentum.get_U(), DOLFIN_EPS, cls=self)
+          status_u = momentum.solve(annotate=annotate)
+          solved_u = status_u[1]
+          if not solved_u:
+            par['relaxation_parameter'] /= 1.43
+            print_text(stars, 'red', 1)
+            s = ">>> WARNING: newton relaxation parameter lowered to %g <<<"
+            print_text(s % par['relaxation_parameter'], 'red', 1)
+            print_text(stars, 'red', 1)
+
+      # solve velocity :
+      else:
+        momentum.solve(annotate=annotate)
+    
+      # solve mass equations, lowering time step on failure :
+      if adaptive:
+        solved_h = False
+        while not solved_h:
+          if dt < DOLFIN_EPS:
+            status_h = [False,False]
+            break
+          H        = self.H.copy(True)
+          status_h = mass.solve(annotate=annotate)
+          solved_h = status_h[1]
+          if t <= 100:
+            solved_h = True
+          if not solved_h:
+            dt /= 2.0
+            print_text(stars, 'red', 1)
+            s = ">>> WARNING: time step lowered to %g <<<"
+            print_text(s % dt, 'red', 1)
+            self.init_time_step(dt, cls=self)
+            self.init_H_H0(H, cls=self)
+            print_text(stars, 'red', 1)
+
+      # solve mass :
+      else:
+        mass.solve(annotate=annotate)
+      
+      ## use adaptive solver if desired :
+      #if adaptive and (not mom_s[1] or not mas_s[1]):
+      #  s = "::: reducing time step for convergence :::"
+      #  print_text(s, self.color())
+      #  solved, dt, t = self.adaptive_update(momentum, energy, mass,
+      #                                       t_start, t_end, t,
+      #                                       annotate=annotate)
+      #  time_step = dt
+      #  self.init_time_step(dt)
+      
+      # solve energy :
+      energy.solve(annotate=annotate)
+
+      # update pressure-melting point :
+      energy.calc_T_melt(annotate=annotate)
+
+      if callback != None:
+        s    = '::: calling callback function :::'
+        print_text(s, cls=self.this)
+        callback()
+       
+      # increment time step :
+      s = '>>> Time: %g yr, CPU time for last dt: %.3f s <<<'
+      print_text(s % (t+dt, time()-tic), 'red', 1)
+
+      t += dt
+      self.step_time.append(time() - tic)
+      
+      # for the subsequent iteration, reset the parameters to normal :
+      if adaptive:
+        if par['relaxation_parameter'] != alpha:
+          print_text("::: resetting alpha to normal :::", cls=self.this)
+          par['relaxation_parameter'] = alpha
+        if dt != time_step:
+          print_text("::: resetting dt to normal :::", cls=self.this)
+          self.init_time_step(time_step, cls=self.this)
+          dt = time_step
+      
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
 
 
 

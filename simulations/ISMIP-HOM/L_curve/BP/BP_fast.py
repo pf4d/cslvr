@@ -1,5 +1,4 @@
-from varglas          import D3Model, MomentumBP, print_text, print_min_max
-from varglas.energy   import Enthalpy 
+from varglas          import *
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *

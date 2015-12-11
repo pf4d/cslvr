@@ -1,8 +1,5 @@
 from pylab    import *
 from varglas  import *
-from varglas.energy           import EnergyHybrid
-from varglas.mass             import MassHybrid
-from varglas.momentumhybrid   import MomentumHybrid
 from fenics   import *
 
 #parameters['form_compiler']['quadrature_degree'] = 2

@@ -2,7 +2,7 @@ from fenics              import *
 from dolfin_adjoint      import *
 from varglas.io          import print_text, print_min_max
 from varglas.d2model     import D2Model
-from varglas.physics_new import Physics
+from varglas.physics     import Physics
 from varglas.momentum    import Momentum
 from varglas.helper      import VerticalBasis, VerticalFDBasis, \
                                 VerticalIntegrator

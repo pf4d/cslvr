@@ -1,5 +1,4 @@
-from varglas           import MeshGenerator, MeshRefiner, GetBasin, \
-                              DataFactory, DataInput, print_min_max
+from varglas           import *
 from pylab             import *
 from scipy.interpolate import RectBivariateSpline
 

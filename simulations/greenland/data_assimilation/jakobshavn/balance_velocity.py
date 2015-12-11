@@ -1,8 +1,8 @@
 from fenics  import *
 from varglas import *
 
-in_dir  = "dump/vars_jakobshavn/"
-out_dir = 'dump/jakob_da_ipopt_SIA0_SR/00/balance_velocity/'
+in_dir  = "dump/vars_jakobshavn_small/"
+out_dir = 'dump/jakob_small/balance_velocity/'
 
 # load a mesh :
 fmeshes = HDF5File(mpi_comm_world(), in_dir + 'submeshes.h5', 'r')

@@ -834,7 +834,8 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     lon,lat = di.proj(vx, vy, inverse=True)
     cont    = di.cont
 
-  elif isinstance(u, Function):
+  elif isinstance(u, Function) \
+    or isinstance(u, dolfin.functions.function.Function):
     s = "::: plotting FEniCS Function \"%s\" :::" % name
     print_text(s, '242')
     mesh  = u.function_space().mesh()
@@ -989,19 +990,20 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       #cs = plt.contourf(x, y, v, levels=levels, 
       #                  cmap=cmap, norm=norm, extend=extend)
       cs = plt.contourf(x, y, v, levels=levels, 
-                        cmap=cmap, norm=norm)
+                        cmap=cmap, norm=norm, extend=extend)
     else:
       cs = plt.contourf(x, y, v, levels=levels, 
                         cmap=cmap, norm=norm)
   
-  elif isinstance(u, Function):
+  elif isinstance(u, Function) \
+    or isinstance(u, dolfin.functions.function.Function):
     #cs = plt.tripcolor(x, y, fi, v, shading='gouraud', 
     #                   cmap=get_cmap(cmap), norm=norm)
     if scale != 'log':
       #cs = plt.tricontourf(x, y, fi, v, levels=levels, 
       #                     cmap=cmap, norm=norm, extend=extend)
       cs = plt.tricontourf(x, y, fi, v, levels=levels, 
-                           cmap=cmap, norm=norm)
+                           cmap=cmap, norm=norm, extend=extend)
     else:
       cs = plt.tricontourf(x, y, fi, v, levels=levels, 
                            cmap=cmap, norm=norm)

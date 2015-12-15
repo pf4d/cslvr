@@ -652,6 +652,96 @@ class Model(object):
     s = "::: initializing grid longitude :::"
     print_text(s, cls=cls)
     self.assign_variable(self.lon, lon, cls=cls)
+  
+  def init_tau_id(self, tau_id, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_id :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_id, tau_id, cls=cls)
+  
+  def init_tau_jd(self, tau_jd, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_jd :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_jd, tau_jd, cls=cls)
+  
+  def init_tau_ib(self, tau_ib, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_ib :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_ib, tau_ib, cls=cls)
+  
+  def init_tau_jb(self, tau_jb, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_jb :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_jb, tau_jb, cls=cls)
+  
+  def init_tau_ii(self, tau_ii, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_ii :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_ii, tau_ii, cls=cls)
+  
+  def init_tau_ij(self, tau_ij, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_ij :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_ij, tau_ij, cls=cls)
+  
+  def init_tau_iz(self, tau_iz, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_iz :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_iz, tau_iz, cls=cls)
+  
+  def init_tau_ji(self, tau_ji, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_ji :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_ji, tau_ji, cls=cls)
+  
+  def init_tau_jj(self, tau_jj, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_jj :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_jj, tau_jj, cls=cls)
+  
+  def init_tau_jz(self, tau_jz, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_jz :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_jz, tau_jz, cls=cls)
 
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
@@ -968,7 +1058,7 @@ class Model(object):
                   2.54399352e+00,  -4.21129483e+01]
     
     elif mdl == 'stress':
-      X    = [x0,x1,x5,x7,x14,x16,x18,x21,x22,x24,x25,x26]
+      X    = [x0,x1,x5,x7,x14,x16,x18,x21,x23,x24,x25,x26]
       idx  = [ 0, 1, 5, 7, 14, 16, 18, 21, 23, 24, 25, 26]
       bhat = [  5.47574225e+00,   9.14001489e-04,  -1.03229081e-03,
                -7.04987042e-04,   2.15686223e+00,  -1.52869679e+00,
@@ -1110,7 +1200,7 @@ class Model(object):
     solve(lhs(R) == rhs(R), b_f, annotate=False)
     self.assign_variable(b, b_f, cls=self.this)
  
-  def calc_eta(self):
+  def calc_eta(self, epsdot_ftn):
     """
     Calculates viscosity, set to model.eta.
     """
@@ -1121,22 +1211,19 @@ class Model(object):
     T       = self.T
     W       = self.W
     n       = self.n
-    u       = self.u
-    v       = self.v
-    w       = self.w
     eps_reg = self.eps_reg
     E_shf   = self.E_shf
     E_gnd   = self.E_gnd
     E       = self.E
-    U       = as_vector([u,v,w])
-    
-    epsdot = self.effective_strain_rate(U)
+
+    # effective strain-rate squared :
+    epsdot  = epsdot_ftn(self.U3)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
     a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
     Q_T    = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    #a_T     = Function(Q)
-    #Q_T     = Function(Q)
+    #a_T     = Function(Q, name='a_T')
+    #Q_T     = Function(Q, name='Q_T')
     #T_v     = T.vector().array()
     #a_T_v   = a_T.vector().array()
     #Q_T_v   = Q_T.vector().array()
@@ -1144,23 +1231,23 @@ class Model(object):
     #a_T_v[T_v >= 263.15] = 5.45e10 
     #Q_T_v[T_v  < 263.15] = 6e4
     #Q_T_v[T_v >= 263.15] = 13.9e4 
-    #self.assign_variable(a_T, a_T_v)
-    #self.assign_variable(Q_T, Q_T_v)
-   
+    #self.assign_variable(a_T, a_T_v, cls=self.this)
+    #self.assign_variable(Q_T, Q_T_v, cls=self.this)
+
     # unify the enhancement factor over shelves and grounded ice : 
-    E   = Function(Q)
-    E_v = E.vector().array()
-    E_gnd_v = E_gnd.vector().array()
-    E_shf_v = E_shf.vector().array()
-    E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
-    E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
-    self.assign_variable(E, E_v, cls=self.this)
+    E                  = self.E
+    #E_v                = E.vector().array()
+    #E_gnd_v            = E_gnd.vector().array()
+    #E_shf_v            = E_shf.vector().array()
+    #E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
+    #E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
+    #self.assign_variable(E, E_v, cls=self.this)
 
     # calculate viscosity :
     b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
     eta     = project(eta, Q, annotate=False)
-    self.assign_variable(self.eta, eta, cls=self.this)
+    self.init_eta(eta)
 
   def calc_vert_average(self, u):
     """

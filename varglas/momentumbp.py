@@ -221,7 +221,7 @@ class MomentumBP(Momentum):
                         [epi[1,0],  epi[1,1],  epi12],
                         [epi02,     epi12,     epi22]])
     return epsdot
-    
+
   def effective_strain_rate(self, U):
     """
     return the BP effective strain rate squared.

@@ -62,8 +62,8 @@ class SSA_Balance(Physics):
     tau_id = phi * rhoi * g * H * gradS[0] * dx
     tau_jd = psi * rhoi * g * H * gradS[1] * dx
 
-    tau_ib = - beta**2 * s * phi * dx
-    tau_jb = - beta**2 * t * psi * dx
+    tau_ib = - beta * s * phi * dx
+    tau_jb = - beta * t * psi * dx
 
     tau_1  = - 2 * etabar * H * dot(epi_1, gradphi) * dx
     tau_2  = - 2 * etabar * H * dot(epi_2, gradpsi) * dx
@@ -148,8 +148,8 @@ class SSA_Balance(Physics):
     tau_id_s = phi * rhoi * g * H * gradS[0] * dx
     tau_jd_s = phi * rhoi * g * H * gradS[1] * dx
 
-    tau_ib_s = - beta**2 * s * phi * dx
-    tau_jb_s = - beta**2 * t * phi * dx
+    tau_ib_s = - beta * s * phi * dx
+    tau_jb_s = - beta * t * phi * dx
 
     tau_ii_s = - 2 * etabar * H * epi_1[0] * gradphi[0] * dx
     tau_ij_s = - 2 * etabar * H * epi_1[1] * gradphi[1] * dx
@@ -181,32 +181,36 @@ class SSA_Balance(Physics):
 
 class BP_Balance(Physics):
 
-  def __init__(self, model, config):
+  def __init__(self, model, momentum, vert_integrate=True):
     """
     """
     s    = "::: INITIALIZING BP-BALANCE PHYSICS :::"
     print_text(s, self.color())
-
-    self.model  = model
-    self.config = config
+    
+    self.momentum       = momentum
+    self.vert_integrate = vert_integrate
 
     mesh     = model.mesh
     Q        = model.Q
     Q2       = model.Q2
-    u        = model.u
-    v        = model.v
+    U        = model.U3
     S        = model.S
     B        = model.B
     H        = S - B
     beta     = model.beta
     rhoi     = model.rhoi
-    rhow     = model.rhow
+    rhosw    = model.rhosw
     g        = model.g
     x        = model.x
     N        = model.N
     D        = model.D
     eta      = model.eta
-    
+    R        = model.R
+    T        = model.T
+    W        = model.W
+    n        = model.n
+    eps_reg  = model.eps_reg
+    E        = model.E
     
     dx       = model.dx
     dx_f     = model.dx_f
@@ -217,13 +221,23 @@ class BP_Balance(Physics):
     dLat_t   = model.dLat_t
     dBed     = model.dBed
     
-    f_w      = rhoi*g*(S - x[2]) + rhow*g*D
+    # calculate viscosity :
+    epsdot   = momentum.effective_strain_rate(model.U3)
+    a_T      = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T      = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    b        = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    eta      = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
+   
+    # pressure boundary : 
+    f_w      = rhoi*g*(S - x[2]) - rhosw*g*D
     
     Phi      = TestFunction(Q2)
     phi, psi = split(Phi)
     dU       = TrialFunction(Q2)
     du, dv   = split(dU)
     
+    # get the components of horizontal velocity :
+    u,v,w    = U.split(True)
     U        = as_vector([u, v])
     U_nm     = model.normalize_vector(U)
     U_n      = as_vector([U_nm[0],  U_nm[1]])
@@ -263,8 +277,8 @@ class BP_Balance(Physics):
     F_id = phi * rhoi * g * gradS[0] * dx
     F_jd = psi * rhoi * g * gradS[1] * dx
     
-    F_ib = - beta**2 * s * phi * dBed
-    F_jb = - beta**2 * t * psi * dBed
+    F_ib = - beta * s * phi * dBed
+    F_jb = - beta * t * psi * dBed
     
     F_ip = f_w * N[0] * phi * dLat_t
     F_jp = f_w * N[1] * psi * dLat_t
@@ -276,36 +290,33 @@ class BP_Balance(Physics):
     delta_2  = F_2 + F_jb + F_jp - F_jd
     
     delta  = delta_1 + delta_2
-    U_s    = Function(Q2)
+    U_s    = Function(Q2, name='U_s')
 
     # make the variables available to solve :
+    self.eta   = eta
     self.delta = delta
-    self.U_nm  = U_nm
     self.U_s   = U_s
     self.U_n   = U_n
     self.U_t   = U_t
     self.f_w   = f_w
-    
+
   def solve(self):
     """
     """
-    model = self.model
-    model.calc_eta()
-    
     s    = "::: solving 'BP_Balance' for flow direction :::"
     print_text(s, self.color())
+    
+    model = self.model
+
     solve(lhs(self.delta) == rhs(self.delta), self.U_s)
     u_s, u_t = self.U_s.split(True)
-    model.assign_variable(model.u_s, u_s)
-    model.assign_variable(model.u_t, u_t)
-    print_min_max(model.u_s, 'u_s')
-    print_min_max(model.u_t, 'u_t')
+    model.assign_variable(model.u_s, u_s, cls=self)
+    model.assign_variable(model.u_t, u_t, cls=self)
 
   def solve_component_stress(self):  
     """
     """
     model  = self.model
-    config = self.config
     
     s    = "solving 'BP_Balance' for internal forces :::" 
     print_text(s, self.color())
@@ -318,7 +329,8 @@ class BP_Balance(Physics):
     H       = S - B
     rhoi    = model.rhoi
     g       = model.g
-    eta     = model.eta
+    eta     = self.eta
+    f_w     = self.f_w
     
     dx      = model.dx
     dx_f    = model.dx_f
@@ -330,16 +342,21 @@ class BP_Balance(Physics):
     dBed    = model.dBed
     
     # solve with corrected velociites :
-    model   = self.model
-    config  = self.config
-
-    Q       = model.Q
-    f_w     = self.f_w
     U_s     = self.U_s
     U_n     = self.U_n
     U_t     = self.U_t
-    U_nm    = self.U_nm
+    
+    ## or not :
+    #u,v,w    = model.U3.split(True)
+    #U        = as_vector([u, v])
+    #U_mag    = sqrt(dot(U,U) + DOLFIN_EPS) 
+    #U_n      = U / U_mag
+    #U_t      = as_vector([v, -u]) / U_mag
+    #s        = dot(U, U_n)
+    #t        = dot(U, U_t)
+    #U_s      = as_vector([s, t])
 
+    # functionspaces :
     phi     = TestFunction(Q)
     dtau    = TrialFunction(Q)
     
@@ -364,22 +381,22 @@ class BP_Balance(Physics):
     gradphi = as_vector([dphidi, dphidj, phi.dx(2)])
     gradS   = as_vector([dSdi,   dSdj,   S.dx(2)  ])
     
-    epi_1   = as_vector([dsdi, 
+    epi_1   = as_vector([dsdi + dwdz, 
                          0.5*(dsdj + dtdi),
                          0.5*dsdz             ])
     epi_2   = as_vector([0.5*(dtdi + dsdj),
-                         dtdj,
+                         dtdj + dwdz,
                          0.5*dtdz             ])
     
-    F_id_s = + phi * rhoi * g * gradS[0] * dx \
-             - 2 * eta * dwdz * dphidi * dx #\
+    F_id_s = + phi * rhoi * g * gradS[0] * dx #\
+    #         - 2 * eta * dwdz * dphidi * dx #\
     #         + 2 * eta * dwdz * phi * N[0] * U_n[0] * ds
-    F_jd_s = + phi * rhoi * g * gradS[1] * dx \
-             - 2 * eta * dwdz * dphidj * dx #\
+    F_jd_s = + phi * rhoi * g * gradS[1] * dx #\
+    #         - 2 * eta * dwdz * dphidj * dx #\
     #         + 2 * eta * dwdz * phi * N[1] * U_n[1] * ds
     
-    F_ib_s = - beta**2 * s * phi * dBed
-    F_jb_s = - beta**2 * t * phi * dBed
+    F_ib_s = - beta * s * phi * dBed
+    F_jb_s = - beta * t * phi * dBed
     
     F_ip_s = f_w * N[0] * phi * dLat_t
     F_jp_s = f_w * N[1] * phi * dLat_t
@@ -387,7 +404,7 @@ class BP_Balance(Physics):
     F_pn_s = f_w * N[0] * phi * dLat_t
     F_pt_s = f_w * N[1] * phi * dLat_t
      
-    F_ii_s = - 2 * eta * epi_1[0] * gradphi[0] * dx# \
+    F_ii_s = - 2 * eta * epi_1[0] * gradphi[0] * dx \
     #         + 2 * eta * epi_1[0] * phi * N[0] * U_n[0] * ds
     #         + f_w * N[0] * phi * U_n[0] * dLat_t
     F_ij_s = - 2 * eta * epi_1[1] * gradphi[1] * dx# \
@@ -434,7 +451,7 @@ class BP_Balance(Physics):
     solve(M, model.F_jz.vector(), assemble(F_jz_s))
     print_min_max(model.F_jz, 'F_jz')
    
-    if config['stokes_balance']['vert_integrate']: 
+    if self.vert_integrate: 
       s    = "::: vertically integrating 'BP_Balance' internal forces :::"
       print_text(s, self.color())
       
@@ -455,28 +472,18 @@ class BP_Balance(Physics):
       tau_ib   = model.vert_extrude(model.F_ib, d='up')
       tau_jb   = model.vert_extrude(model.F_jb, d='up')
      
-      model.assign_variable(model.tau_id, tau_id)
-      model.assign_variable(model.tau_jd, tau_jd)
-      model.assign_variable(model.tau_ib, tau_ib)
-      model.assign_variable(model.tau_jb, tau_jb)
-      model.assign_variable(model.tau_ip, tau_ip)
-      model.assign_variable(model.tau_jp, tau_jp)
-      model.assign_variable(model.tau_ii, tau_ii)
-      model.assign_variable(model.tau_ij, tau_ij)
-      model.assign_variable(model.tau_iz, tau_iz)
-      model.assign_variable(model.tau_ji, tau_ji)
-      model.assign_variable(model.tau_jj, tau_jj)
-      model.assign_variable(model.tau_jz, tau_jz)
-    
-      print_min_max(model.tau_id, 'tau_id')
-      print_min_max(model.tau_jd, 'tau_jd')
-      print_min_max(model.tau_ib, 'tau_ib')
-      print_min_max(model.tau_jb, 'tau_jb')
-      print_min_max(model.tau_ip, 'tau_ip')
-      print_min_max(model.tau_jp, 'tau_jp')
-      print_min_max(model.tau_ii, 'tau_ii')
-      print_min_max(model.tau_ij, 'tau_ij')
-      print_min_max(model.tau_iz, 'tau_iz')
-      print_min_max(model.tau_ji, 'tau_ji')
-      print_min_max(model.tau_jj, 'tau_jj')
-      print_min_max(model.tau_jz, 'tau_jz')
+      model.assign_variable(model.tau_id, tau_id, cls=self)
+      model.assign_variable(model.tau_jd, tau_jd, cls=self)
+      model.assign_variable(model.tau_ib, tau_ib, cls=self)
+      model.assign_variable(model.tau_jb, tau_jb, cls=self)
+      model.assign_variable(model.tau_ip, tau_ip, cls=self)
+      model.assign_variable(model.tau_jp, tau_jp, cls=self)
+      model.assign_variable(model.tau_ii, tau_ii, cls=self)
+      model.assign_variable(model.tau_ij, tau_ij, cls=self)
+      model.assign_variable(model.tau_iz, tau_iz, cls=self)
+      model.assign_variable(model.tau_ji, tau_ji, cls=self)
+      model.assign_variable(model.tau_jj, tau_jj, cls=self)
+      model.assign_variable(model.tau_jz, tau_jz, cls=self)
+
+
+

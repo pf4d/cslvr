@@ -1555,8 +1555,8 @@ class Model(object):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
-    s    = '::: performing thermo-mechanical coupling with atol = %.3e, ' + \
-           'rtol = %.3e, and max_iter = %i :::'
+    s    = '::: performing thermo-mechanical coupling with atol = %.2e, ' + \
+           'rtol = %.2e, and max_iter = %i :::'
     print_text(s % (atol, rtol, max_iter), cls=self.this)
     
     from varglas import Momentum
@@ -1631,10 +1631,10 @@ class Model(object):
       if self.MPI_rank==0:
         s0    = '>>> '
         s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
-        s2    = 'r (abs) = %.3e ' % abs_error
-        s3    = '(tol %.3e), '    % atol
-        s4    = 'r (rel) = %.3e ' % rel_error
-        s5    = '(tol %.3e)'      % rtol
+        s2    = 'r (abs) = %.2e ' % abs_error
+        s3    = '(tol %.2e), '    % atol
+        s4    = 'r (rel) = %.2e ' % rel_error
+        s5    = '(tol %.2e)'      % rtol
         s6    = ' <<<'
         text0 = get_text(s0, 'red', 1)
         text1 = get_text(s1, 'red')

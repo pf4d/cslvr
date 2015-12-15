@@ -53,7 +53,7 @@ m.eliminate_intersections(dist=20)
 m.transform_contour(rignot)
 m.check_dist()
 m.write_gmsh_contour(boundary_extend=False)
-m.plot_contour()
+#m.plot_contour()
 m.extrude(h=100000, n_layers=10)
 m.close_file()
 

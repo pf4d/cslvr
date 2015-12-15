@@ -1559,8 +1559,8 @@ class Model(object):
            'rtol = %.3e, and max_iter = %i :::'
     print_text(s % (atol, rtol, max_iter), cls=self.this)
     
-    from varglas.momentum import Momentum
-    from varglas.energy   import Energy
+    from varglas import Momentum
+    from varglas import Energy
     
     if not isinstance(momentum, Momentum):
       s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"

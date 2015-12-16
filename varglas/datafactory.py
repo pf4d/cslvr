@@ -115,12 +115,12 @@ class DataFactory(object):
     vara     = dict()
     
     d    = TiffFile(direc + 'vx.tif')
-    mask = (d.asarray()[::-1, :] != -2e9).astype('i')
-   
+    mask = (d.asarray() != -2e9).astype('i')
+    
     ftns = [mask]
     for n in files[1:]:
       data    = TiffFile(direc + n + '.tif')
-      ftns.append(data)
+      ftns.append(data.asarray())
       print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
     print_text('      Measures : %-*s key : "%s"'%(30,files[0],files[0]), '230')
      
@@ -150,9 +150,9 @@ class DataFactory(object):
     
     # save the data in matlab format :
     vara['pyproj_Proj']       = p
-    vara['map_western_edge']  = west 
-    vara['map_eastern_edge']  = east 
-    vara['map_southern_edge'] = south 
+    vara['map_western_edge']  = west
+    vara['map_eastern_edge']  = east
+    vara['map_southern_edge'] = south
     vara['map_northern_edge'] = north
     vara['nx']                = nx
     vara['ny']                = ny

@@ -9,11 +9,13 @@ import sys
 #var_dir = 'dump/vars_jakobshavn_basin/'  # directory from gen_vars.py
 #out_dir = 'dump/jakob_basin/'            # base directory to save
 var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_small/'            # base directory to save
+out_dir = 'dump/jakob_small_rstrt/'      # base directory to save
+old_dir = 'dump/jakob_small/'            # base directory to save
 
 # create HDF5 files for saving and loading data :
-fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',         'r')
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',             'r')
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',           'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',               'r')
+frstrt  = HDF5File(mpi_comm_world(), old_dir + '01/hdf5/inverted_01.h5', 'r')
 
 # create 3D model for stokes solves :
 d3model = D3Model(fdata, out_dir)
@@ -120,7 +122,8 @@ Ms  = []
 #===============================================================================
 # generate initial traction field :
 d3model.init_T(d3model.T_surface)
-d3model.init_beta_SIA()
+#d3model.init_beta_SIA()
+d3model.init_beta(frstrt)
 #d3model.init_beta(1e4)
 #d2model.init_beta_SIA()
 #d2model.init_T(d2model.T_surface)
@@ -156,6 +159,8 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.theta_app, 'theta_ini')
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
+  
+nrg.solve_basal_melt_rate()
 
 # post-thermo-solve callback function :
 def tmc_post_cb_ftn():

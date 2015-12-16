@@ -1834,6 +1834,9 @@ class Model(object):
       
       # reset the momentum to the original configuration : 
       momentum.reset()
+
+      # correct the basal melt rate :
+      energy.solve_basal_melt_rate()
       
       # thermo-mechanical couple :
       self.thermo_solve(momentum, energy, callback=tmc_callback,

@@ -853,7 +853,8 @@ class Enthalpy(Energy):
     ##solve(self.theta_a == self.theta_L, theta, self.theta_bc,
     ##      solver_parameters = {"linear_solver" : sm}, annotate=False)
 
-    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+    nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
                                   'relative_tolerance'       : 1e-9,
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 10,

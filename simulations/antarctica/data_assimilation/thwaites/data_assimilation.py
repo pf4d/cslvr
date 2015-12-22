@@ -10,8 +10,8 @@ var_dir = 'dump/vars_thwaites_basin/'    # directory from gen_vars.py
 out_dir = 'dump/thwaites_basin/'         # base directory to save
 
 # create HDF5 files for saving and loading data :
-fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',           'r')
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',               'r')
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',   'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',       'r')
 
 # create 3D model for stokes solves :
 d3model = D3Model(fdata, out_dir)
@@ -241,7 +241,7 @@ d3model.assimilate_U_ob(mom, nrg,
                         ini_save_vars     = ini_save_vars,
                         adj_save_vars     = adj_save_vars,
                         tmc_callback      = tmc_cb_ftn,
-                        post_ini_callback = tmc_post_cb_ftn,
+                        post_ini_callback = None,
                         post_adj_callback = adj_post_cb_ftn,
                         adj_callback      = deriv_cb,
                         tmc_rtol          = 1e-6,

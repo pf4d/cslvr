@@ -51,8 +51,8 @@ db2.data['mask'][L > 0.0] = 0
 dbm.rescale_field('U_ob', 'ref', umin=1000.0, umax=100000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
-dbm.data['ref'][slp] = 5000.0
-dbm.data['ref'][shf] = 20000.0
+dbm.data['ref'][slp] = 1000.0
+#dbm.data['ref'][shf] = 20000.0
 dbm.data['ref'][nan] = 50000.0
 dbm.data['ref'][msk] = 50000.0
 
@@ -71,17 +71,16 @@ m = MeshGenerator(db2, mesh_name, out_dir)
 
 m.create_contour('mask', zero_cntr=0.0001, skip_pts=0)
 
-gb = GetBasin(db2, basin='21', edge_resolution=500)
-#gb.extend_edge(1200)
+gb = GetBasin(db2, basin='21', edge_resolution=10000)
 gb.intersection(m.longest_cont)
-#gb.plot_xycoords_buf(Show=True, other=m.longest_cont)
+gb.plot_xycoords_buf(other=m.longest_cont)
 m.set_contour(gb.get_xy_contour())
 
 m.eliminate_intersections(dist=200)
 m.check_dist()
 m.write_gmsh_contour(boundary_extend=False)
 #m.plot_contour()
-#m.extrude(h=100000, n_layers=10)
+m.extrude(h=100000, n_layers=10)
 m.close_file()
 
 

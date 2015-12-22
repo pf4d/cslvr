@@ -918,6 +918,7 @@ class GetBasin(object):
     """
     lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
+    edge     = self.edge
     xycoords = self.xycoords
     n        = len(xycoords)
 
@@ -927,8 +928,7 @@ class GetBasin(object):
     while(i < n-1):
       p1 = xycoords[i]
       j = i + 1
-      while(j < n and \
-            lin_dist(p1, xycoords[j]) < self.edge_resolution):
+      while(j < n and lin_dist(p1, xycoords[j]) < self.edge_resolution):
         mask[j] = 0
         j += 1
       i = j
@@ -984,6 +984,9 @@ class GetBasin(object):
     NOTE: it's probably better to extend the boundary before taking the
     intersection.
     """
+    s    = "::: taking intersection with new contour of length %i :::"
+    print_text(s % len(other), self.color)
+
     xycoords = self.xycoords
 
     p1 = Polygon( zip(xycoords[:,0], xycoords[:,1]) )
@@ -1004,8 +1007,11 @@ class GetBasin(object):
 
     self.plot_coords["xycoords_intersect"] = xycoords_intersect
     self.xycoords = xycoords_intersect
+    
+    s    = "::: intersection createed with length %i :::"
+    print_text(s % len(self.xycoords), self.color)
 
-  def plot_xycoords_buf(self, Show=True, other=None):
+  def plot_xycoords_buf(self, other=None):
     """
     """
     fig = figure()
@@ -1025,23 +1031,21 @@ class GetBasin(object):
     xycoords = self.plot_coords["xycoords"]
     ax.plot(xycoords[:,0], xycoords[:,1], 'r', lw=2.5)
 
-    from numpy import ma
-    interior = ma.masked_array(xycoords, array([zip(self.edge,self.edge)]))
-    ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
+    #from numpy import ma
+    #interior = ma.masked_array(xycoords, array([zip(self.edge,self.edge)]))
+    #ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
 
     # plot intersection
     if "xycoords_intersect" in self.plot_coords:
       xycoords_intersect = self.plot_coords["xycoords_intersect"]
-      ax.plot(xycoords_intersect[:,0], xycoords_intersect[:,1], 'c', lw=1)
+      ax.plot(xycoords_intersect[:,0], xycoords_intersect[:,1], 'c', lw=8)
 
     ax.set_title("boundaries")
-    if Show:
-      show()
+    show()
 
   def get_xy_contour(self):
     """
     """
-    self.check_dist()
     return self.xycoords
 
 

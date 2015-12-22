@@ -799,8 +799,8 @@ class GetBasin(object):
       self.imagefile = path + "Grn_Drainage_Systems.png"
     elif di.cont == "antarctica":
       path           = home + "/data/antarctica/basins/"
-      self.datafile  = path + "Ant_Grounded_DrainageSystem_Polygons.txt"
-      self.imagefile = path + "Ant_ICESatDSMaps_Fig_1_sm.jpg"
+      self.datafile  = path + "Ant_Full_DrainageSystem_Polygons.txt"
+      self.imagefile = path + "Ant_ICESatDSMaps_Fig_1.jpg"
     else:
       s = "Can not find data corresponding to location %s" % di.cont
       print_text(s, 'red', 1)

@@ -6,16 +6,12 @@ import sys
 
 
 # set the relavent directories :
-#var_dir = 'dump/vars_jakobshavn_basin/'  # directory from gen_vars.py
-#out_dir = 'dump/jakob_basin/'            # base directory to save
-var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_small_rstrt_3/'    # base directory to save
-old_dir = 'dump/jakob_small_rstrt_2/'    # base directory to save
+var_dir = 'dump/vars_thwaites_basin/'    # directory from gen_vars.py
+out_dir = 'dump/thwaites_basin/'         # base directory to save
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',           'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',               'r')
-frstrt  = HDF5File(mpi_comm_world(), old_dir + '03/hdf5/inverted_03.h5', 'r')
 
 # create 3D model for stokes solves :
 d3model = D3Model(fdata, out_dir)
@@ -122,8 +118,7 @@ Ms  = []
 #===============================================================================
 # generate initial traction field :
 d3model.init_T(d3model.T_surface)
-#d3model.init_beta_SIA()
-d3model.init_beta(frstrt)
+d3model.init_beta_SIA()
 #d3model.init_beta(1e4)
 #d2model.init_beta_SIA()
 #d2model.init_T(d2model.T_surface)

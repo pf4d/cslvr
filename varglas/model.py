@@ -1578,10 +1578,13 @@ class Model(object):
     # ensure that we have a steady-state form :
     if energy.transient:
       energy.make_steady_state()
-    
-    # initialization step :
-    s    = '::: performing initialization step :::'
-    print_text(s, cls=self.this)
+ 
+    # prime the basal melt rate : 
+    energy.solve_basal_melt_rate()
+ 
+    ## initialization step :
+    #s    = '::: performing initialization step :::'
+    #print_text(s, cls=self.this)
 
     ## always set the initial water content to zero, so that the friction
     ## and geothermal heat flux are applied everywhere on the bed :
@@ -1665,11 +1668,9 @@ class Model(object):
                       incomplete=True,
                       iterations=100, save_state=True,
                       ini_save_vars=None,
-                      tmc_save_vars=None,
                       adj_save_vars=None,
                       tmc_callback=None,
                       post_ini_callback=None,
-                      post_tmc_callback=None,
                       post_adj_callback=None,
                       adj_callback=None, 
                       tmc_atol=1e-6, tmc_rtol=1e-6, tmc_max_iter=15):
@@ -1714,7 +1715,7 @@ class Model(object):
       s    = '::: calling post-initialization callback function :::'
       print_text(s, cls=self.this)
       post_ini_callback()
-     
+
     # save state to numbered hdf5 file :
     if save_state:
       s    = '::: saving initialized variables in dict arg ini_save_vars :::'
@@ -1814,6 +1815,16 @@ class Model(object):
       # make the optimal control parameter available :
       self.assign_variable(self.control_opt, b_opt, cls=self.this)
       
+      # reset the momentum to the original configuration : 
+      momentum.reset()
+
+      # correct the basal melt rate :
+      energy.solve_basal_melt_rate()
+      
+      # thermo-mechanical couple :
+      self.thermo_solve(momentum, energy, callback=tmc_callback,
+                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
+
       # call the post-adjoint callback function if set :
       if post_adj_callback is not None:
         s    = '::: calling post-adjoined callback function :::'
@@ -1832,34 +1843,6 @@ class Model(object):
         
         foutput.close()
       
-      # reset the momentum to the original configuration : 
-      momentum.reset()
-
-      # correct the basal melt rate :
-      energy.solve_basal_melt_rate()
-      
-      # thermo-mechanical couple :
-      self.thermo_solve(momentum, energy, callback=tmc_callback,
-                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
-
-      # call the post-thermo-couple callback function if set :
-      if post_tmc_callback is not None:
-        s    = '::: calling post-thermo-couple callback function :::'
-        print_text(s, cls=self.this)
-        post_tmc_callback()
-       
-      # save state to numbered hdf5 file :
-      if save_state:
-        s    = '::: saving variables in list arg tmc_save_vars :::'
-        print_text(s, cls=self.this)
-        out_file = self.out_dir + 'hdf5/thermo_%0*d.h5' % (n_i, counter)
-        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        
-        for var in tmc_save_vars:
-          self.save_hdf5(var, f=foutput)
-        
-        foutput.close()
-    
       # reset entire dolfin-adjoint state for the next thermo-solve :
       adj_reset()
 

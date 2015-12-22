@@ -7,7 +7,7 @@ import sys
 dir_b   = 'dump/jakob_small/'
 var_dir = 'dump/vars_jakobshavn_small/'       # directory from gen_vars.py
 in_dir  = dir_b + 'initialization/hdf5/'      # input dir
-out_dir = 'plot/initialization/'              # base directory to save
+out_dir = 'plot_rstrt/initialization/'        # base directory to save
 
 # create HDF5 files for saving and loading data :
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',        'r')
@@ -68,9 +68,9 @@ srfmodel = D2Model(srfmesh, out_dir)
 d2model.assign_submesh_variable(srfmodel.U3,        d3model.U3)
 d2model.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
 
-# solve the balance velocity :
-bv = BalanceVelocity(d2model, kappa=5.0)
-bv.solve(annotate=False)
+## solve the balance velocity :
+#bv = BalanceVelocity(d2model, kappa=5.0)
+#bv.solve(annotate=False)
 
 #===============================================================================
 # collect the raw data :
@@ -80,12 +80,12 @@ cmap = 'RdGy'
 
 plotIce(drg, d2model.W, name='W', direc=out_dir,
         title='$W$', basin='jakobshavn',
-        cmap=cmap,  scale='lin', umin=None, umax=0.1,
+        cmap=cmap,  scale='lin', umin=None, umax=0.15,
         numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)
 
 plotIce(drg, d2model.Mb, name='Mb', direc=out_dir,
         title='$M_B$', basin='jakobshavn',
-        cmap=cmap,  scale='log', umin=0.03, umax=2,
+        cmap=cmap,  scale='log', umin=0.03, umax=4,
         numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)
 
 plotIce(drg, srfmodel.U_mag, name='U', direc=out_dir,
@@ -95,14 +95,7 @@ plotIce(drg, srfmodel.U_mag, name='U', direc=out_dir,
 
 plotIce(drg, d2model.beta, name='beta_SIA', direc=out_dir,
         title=r'$\beta_{SIA}$', basin='jakobshavn',
-        cmap=cmap,  scale='log', umin=5, umax=3e3,
-        numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)
-
-d2model.init_beta_stats(mdl='U', use_temp=False, mode='steady')
-
-plotIce(drg, d2model.beta, name='betahat', direc=out_dir,
-        title=r'$\hat{\beta}$', basin='jakobshavn',
-        cmap=cmap,  scale='log', umin=5, umax=3e3,
+        cmap=cmap,  scale='log', umin=1e-4, umax=1e4,
         numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)
 
 

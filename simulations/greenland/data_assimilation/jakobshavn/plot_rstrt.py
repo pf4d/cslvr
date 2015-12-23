@@ -2,14 +2,14 @@ from varglas        import *
 from fenics         import *
 import sys
 
-i = '08'
+i = '01'
 
 
 # set the relavent directories :
-dir_b   = 'dump/jakob_small_rstrt/'
-var_dir = 'dump/vars_jakobshavn_small/'       # directory from gen_vars.py
-in_dir  = dir_b + i + '/hdf5/'                # input dir
-out_dir = 'plot_rstrt/' + i + '/'             # base directory to save
+dir_b   = 'dump/jakob_small/'
+var_dir = 'dump/vars_jakobshavn_small/'    # directory from gen_vars.py
+in_dir  = dir_b + i + '/hdf5/'             # input dir
+out_dir = 'plot/' + i + '/'                # base directory to save
 
 # not deformed mesh :
 mesh    = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')

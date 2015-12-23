@@ -199,7 +199,6 @@ def adj_post_cb_ftn():
   d3model.save_xdmf(Us,     'U_opt')
   d3model.save_xdmf(beta_b, 'beta_opt')
 
-# after every completed coupling, save the state of these functions :
 
 # after every completed adjoining, save the state of these functions :
 adj_save_vars = [d3model.beta,
@@ -244,7 +243,7 @@ d3model.assimilate_U_ob(mom, nrg,
                         post_ini_callback = None,
                         post_adj_callback = adj_post_cb_ftn,
                         adj_callback      = deriv_cb,
-                        tmc_rtol          = 1e-6,
+                        tmc_rtol          = 1e0,
                         tmc_atol          = 1e2,
                         tmc_max_iter      = 50)
  

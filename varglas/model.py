@@ -1814,6 +1814,12 @@ class Model(object):
 
       # make the optimal control parameter available :
       self.assign_variable(self.control_opt, b_opt, cls=self.this)
+
+      # call the post-adjoint callback function if set :
+      if post_adj_callback is not None:
+        s    = '::: calling post-adjoined callback function :::'
+        print_text(s, cls=self.this)
+        post_adj_callback()
       
       # reset the momentum to the original configuration : 
       momentum.reset()
@@ -1824,12 +1830,6 @@ class Model(object):
       # thermo-mechanical couple :
       self.thermo_solve(momentum, energy, callback=tmc_callback,
                         atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
-
-      # call the post-adjoint callback function if set :
-      if post_adj_callback is not None:
-        s    = '::: calling post-adjoined callback function :::'
-        print_text(s, cls=self.this)
-        post_adj_callback()
        
       # save state to unique hdf5 file :
       if save_state:

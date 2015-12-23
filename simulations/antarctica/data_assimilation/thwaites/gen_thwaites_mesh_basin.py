@@ -20,9 +20,9 @@ db2 = DataInput(bedmap2, gen_space=False)
 U_ob = sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16)
 dbm.data['U_ob'] = U_ob
 
-dbm.set_data_min('U_ob', boundary=0.0, val=0.0)
-db2.set_data_val("H",    32767,        0.0)
-db2.set_data_val('S',    32767,        0.0)
+#dbm.set_data_min('U_ob', boundary=0.0, val=0.0)
+#db2.set_data_val("H",    32767,        0.0)
+#db2.set_data_val('S',    32767,        0.0)
 
 # calculate surface gradient :
 gradS = gradient(db2.data['S'])
@@ -51,10 +51,10 @@ db2.data['mask'][L > 0.0] = 0
 dbm.rescale_field('U_ob', 'ref', umin=1000.0, umax=100000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
-dbm.data['ref'][slp] = 1000.0
-#dbm.data['ref'][shf] = 20000.0
-dbm.data['ref'][nan] = 50000.0
-dbm.data['ref'][msk] = 50000.0
+dbm.data['ref'][slp] = 2000.0
+dbm.data['ref'][shf] = 5000.0
+#dbm.data['ref'][nan] = 50000.0
+#dbm.data['ref'][msk] = 50000.0
 
 print_min_max(dbm.data['ref'], 'ref')
 
@@ -69,7 +69,7 @@ print_min_max(dbm.data['ref'], 'ref')
 # generate the contour :
 m = MeshGenerator(db2, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.0001, skip_pts=0)
+m.create_contour('mask', zero_cntr=1e-9, skip_pts=0)
 
 gb = GetBasin(db2, basin='21')
 gb.extend_boundary(1000)

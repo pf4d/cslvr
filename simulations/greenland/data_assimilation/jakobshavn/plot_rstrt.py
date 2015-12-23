@@ -2,7 +2,7 @@ from varglas        import *
 from fenics         import *
 import sys
 
-i = '01'
+i = sys.argv[1]
 
 
 # set the relavent directories :

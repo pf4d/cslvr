@@ -764,9 +764,6 @@ class GetBasin(object):
       an instance of a DataInput obect (see above) needed for the projection
       function
 
-    edeg_resolution:
-      distance between points on boundary
-
     basin:
       basin number. If left as None, the program will prompt you to pick a basin
 
@@ -777,7 +774,7 @@ class GetBasin(object):
   extension of the domain will help here too.
 
   """
-  def __init__(self, di, basin=None, edge_resolution=1000.0):
+  def __init__(self, di, basin=None):
     """
     """
     self.color  = 'grey_46'
@@ -786,8 +783,7 @@ class GetBasin(object):
     s    = "::: INITIALIZING BASIN GENERATOR :::"
     print_text(s, self.color)
 
-    self.edge_resolution = edge_resolution
-    self.plot_coords     = {}
+    self.plot_coords  = {}
 
     # Get path of this file, which should be in the src directory
     filename = inspect.getframeinfo(inspect.currentframe()).filename
@@ -858,21 +854,17 @@ class GetBasin(object):
       delta_X = lin_dist(p_n, p_p)
       distance += delta_X
 
-      if distance > self.edge_resolution:
-        if delta_X > 500.:            # edge points are further apart
-          self.edge.append(True)
-        else:
-          self.edge.append(False)
-        self.xycoords.append(p_n)
-        distance = 0.
-        p_p = p_n
+      if delta_X > 500.:            # edge points are further apart
+        self.edge.append(True)
       else:
-        p_p = p_n
+        self.edge.append(False)
+      self.xycoords.append(p_n)
+      distance = 0.
+      p_p = p_n
 
     """
     # remove points at end of array that may overlap
-    while(len(self.xycoords) > 0 and \
-          lin_dist(self.xycoords[0],self.xycoords[-1]) < self.edge_resolution):
+    while(len(self.xycoords) > 0):
       self.xycoords.pop()
       self.edge.pop()
     """
@@ -882,6 +874,9 @@ class GetBasin(object):
 
     #self.clean_edge() #clean (very rare) incorrectly identified edge points
     self.edge = array(self.edge)
+    
+    s    = "::: basin contour created with length %i :::"
+    print_text(s % len(self.xycoords), self.color)
 
   def clean_edge(self):
     """
@@ -911,7 +906,7 @@ class GetBasin(object):
         if not check_n(i, edge, check, lambda v: v):
           edge[i] = False
 
-  def check_dist(self):
+  def check_dist(self, r):
     """
     remove points in xycoords that are not a linear distance of at least
     <dist> from previous point.
@@ -928,7 +923,7 @@ class GetBasin(object):
     while(i < n-1):
       p1 = xycoords[i]
       j = i + 1
-      while(j < n and lin_dist(p1, xycoords[j]) < self.edge_resolution):
+      while(j < n and lin_dist(p1, xycoords[j]) < r):
         mask[j] = 0
         j += 1
       i = j
@@ -936,28 +931,57 @@ class GetBasin(object):
     # fix end of array
     i = -1
     while(n + i >= 0 and (not mask[i] or \
-          lin_dist(xycoords[0],xycoords[i]) < self.edge_resolution)):
+          lin_dist(xycoords[0],xycoords[i]) < r)):
       mask[i] = 0
       i -= 1
 
     #for i in range(0,n-2):
     #  p1 = xycoords[i]
     #  p2 = xycoords[i+1]
-    #  if lin_dist(p1, p2) < self.edge_resolution:
+    #  if lin_dist(p1, p2) < r:
     #    mask[i] = 0
 
     # print results
     s    = "::: removed %s points closer than %s m to one another :::"% \
-            (str(len(mask) - sum(mask)), self.edge_resolution)
+            (str(len(mask) - sum(mask)), r)
     print_text(s, self.color)
 
     self.xycoords = xycoords[mask]
+
+  def extend_boundary(self, r):
+    """
+    Extends a 2d contour out from points in self.xycoords by a distance
+    <r> (radius) in all directions.
+    """
+    s    = "::: extending boundary by %i meters :::" % r
+    print_text(s, self.color)
+
+    xycoords = self.xycoords
+
+    polygons = []
+    for i, v in enumerate(xycoords):
+      polygons.append(shapelyPoint(v[0],v[1]).buffer(r))
+
+    # union of our original polygon and convex hull
+    p1 = cascaded_union(polygons)
+    p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+    p3 = cascaded_union([p1,p2])
+
+    xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+    self.plot_coords["xycoords_buf"] = xycoords_buf
+    self.xycoords = xycoords_buf
+    s    = "::: extended contour created of length %i :::" % len(self.xycoords)
+    print_text(s, self.color)
 
   def extend_edge(self, r):
     """
     Extends a 2d contour out from points labeled in self.edge by a distance
     <r> (radius) in all directions.
+    NOTE: this only works for greenland.
     """
+    s    = "::: extending edge by %i meters :::" % r
+    print_text(s, self.color)
+
     xycoords = self.xycoords
     edge = self.edge
 
@@ -1008,7 +1032,7 @@ class GetBasin(object):
     self.plot_coords["xycoords_intersect"] = xycoords_intersect
     self.xycoords = xycoords_intersect
     
-    s    = "::: intersection createed with length %i :::"
+    s    = "::: intersection created with length %i :::"
     print_text(s % len(self.xycoords), self.color)
 
   def plot_xycoords_buf(self, other=None):

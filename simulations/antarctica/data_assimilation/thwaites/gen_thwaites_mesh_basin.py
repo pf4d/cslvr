@@ -71,7 +71,9 @@ m = MeshGenerator(db2, mesh_name, out_dir)
 
 m.create_contour('mask', zero_cntr=0.0001, skip_pts=0)
 
-gb = GetBasin(db2, basin='21', edge_resolution=10000)
+gb = GetBasin(db2, basin='21')
+gb.extend_boundary(1000)
+gb.check_dist(5000)
 gb.intersection(m.longest_cont)
 gb.plot_xycoords_buf(other=m.longest_cont)
 m.set_contour(gb.get_xy_contour())

@@ -238,7 +238,7 @@ d3model.assimilate_U_ob(mom, nrg,
                         obj_ftn           = I,
                         bounds            = (1e-5, 1e7),
                         method            = 'l_bfgs_b',
-                        adj_iter          = 1,
+                        adj_iter          = 1000,
                         iterations        = 10,
                         save_state        = True,
                         ini_save_vars     = ini_save_vars,
@@ -249,7 +249,7 @@ d3model.assimilate_U_ob(mom, nrg,
                         adj_callback      = deriv_cb,
                         tmc_rtol          = 1e0,
                         tmc_atol          = 1e2,
-                        tmc_max_iter      = 1)
+                        tmc_max_iter      = 50)
  
 # save all the objective function values : 
 from numpy import savetxt, array

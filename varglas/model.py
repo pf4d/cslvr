@@ -1788,10 +1788,11 @@ class Model(object):
 
       # optimize with scipy's fmin_l_bfgs_b :
       if method == 'l_bfgs_b': 
-        b_opt = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
-                         options={"disp"    : True,
-                                  "maxiter" : adj_iter,
-                                  "gtol"    : 1e-5})
+        out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
+                       options={"disp"    : True,
+                                "maxiter" : adj_iter,
+                                "gtol"    : 1e-5})
+        b_opt = out[0]
       
       # or optimize with IPOpt (preferred) :
       elif method == 'ipopt':

@@ -687,7 +687,7 @@ class D3Model(Model):
   
     and solving.  
     """
-    s = "::: extruding function %s :::" % d
+    s = "::: extruding function %swards :::" % d
     print_text(s, cls=self)
     if type(Q) != FunctionSpace:
       Q  = self.Q

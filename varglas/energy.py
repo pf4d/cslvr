@@ -166,10 +166,10 @@ class Enthalpy(Energy):
     s    = "::: INITIALIZING ENTHALPY PHYSICS :::"
     print_text(s, cls=self)
 
-    if type(model) != D3Model:
-      s = ">>> Enthalpy REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
-      print_text(s % type(model) , 'red', 1)
-      sys.exit(1)
+    #if type(model) != D3Model:
+    #  s = ">>> Enthalpy REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+    #  print_text(s % type(model) , 'red', 1)
+    #  sys.exit(1)
    
     # set solver parameters : 
     if solve_params == None:
@@ -248,7 +248,7 @@ class Enthalpy(Energy):
     # initialize the boundary conditions, if we have not already :
     if not reset:
       # pressure melting point, never annotate for initial guess :
-      model.solve_hydrostatic_pressure(annotate=False)
+      model.solve_hydrostatic_pressure(annotate=False, cls=self)
       self.calc_T_melt(annotate=False)
 
       T_s_v   = T_surface.vector().array()
@@ -264,21 +264,6 @@ class Enthalpy(Energy):
       model.init_theta_surface(theta_s, cls=self)
       model.init_theta_app(theta_s,     cls=self)
       model.init_theta_float(theta_f,   cls=self)
-
-    # frictional heating :
-    q_fric = beta * inner(U,U)
-
-    ## Strain heating = stress*strain
-    #epsdot  = self.effective_strain_rate(U)
-    #a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    #Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    #W_T     = conditional( lt(W, 0.01),   W,            0.01)
-    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
-    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
-    #Q_s_gnd = 4 * eta_gnd * epsdot
-    #Q_s_shf = 4 * eta_shf * epsdot
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -317,13 +302,19 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
     
     # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(theta, theta_m), 1.0, 0.0)
+    k_c   = conditional( lt(theta, theta_m), 1.0, 1/10.0)
+
+    # frictional heating :
+    q_fric = beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    Wmax = Constant(1.0)
-    mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
-    g_b  = q_geo + q_fric - mdot
+    Wmax = sqrt(inner(W_w,W_w) + DOLFIN_EPS)#Constant(1.0)
+    #mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
+    mdot = W_c * Mb * rho * L
+    alpha = model.alpha
+    g_b  = q_geo + q_fric - alpha * mdot
+    #g_b  = W_c * (q_geo + q_fric)
 
     # configure the module to run in steady state :
     if not transient:
@@ -363,12 +354,9 @@ class Enthalpy(Energy):
       theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
                 + Q_s_shf * psi * dx_f
-      #          + rho * theta_surface * dot(U, N) * psihat * dLat_d \
 
       self.theta_a = theta_a
       self.theta_L = theta_L
-      #self.theta_a = lhs(theta_a - theta_L)
-      #self.theta_L = rhs(theta_a - theta_L)
       self.nrg_F   = self.theta_a - self.theta_L
       
     # configure the module to run in transient mode :
@@ -428,7 +416,7 @@ class Enthalpy(Energy):
       print_text(s, cls=self)
       self.theta_bc.append( DirichletBC(Q, model.theta_app,
                                         model.ff, model.GAMMA_L_DVD) )
-    
+   
     # always mark the divide (if present) essential :
     #self.theta_bc.append( DirichletBC(Q, theta_surface,
     #                                  model.ff, model.GAMMA_L_DVD) )
@@ -469,6 +457,7 @@ class Enthalpy(Energy):
     self.c       = c
     self.k       = k
     self.rho     = rho
+    self.kappa   = kappa
     self.q_fric  = q_fric
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
@@ -508,173 +497,19 @@ class Enthalpy(Energy):
 
     model = self.model
 
-    dx    = model.dx
     gamma = model.gamma
     T_w   = model.T_w
     p     = model.p
 
-    u   = TrialFunction(model.Q)
-    phi = TestFunction(model.Q)
-    Tm  = Function(model.Q)
-
-    l = assemble((T_w - gamma * p) * phi * dx, annotate=annotate)
-    a = assemble(u * phi * dx, annotate=annotate)
-
-    solve(a, Tm.vector(), l, annotate=annotate)
+    Tm = project(T_w - gamma * p, annotate=annotate)
     model.assign_variable(model.T_melt, Tm, cls=self)
+    model.save_xdmf(model.T_melt, 'T_melt')
 
     Tm_v    = Tm.vector().array()
     theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
     model.assign_variable(model.theta_melt, theta_m, cls=self)
 
-  def generate_approx_theta(self, init=False, annotate=True):
-    """
-    generate approximate energy field from the surface temperature and boundary
-    conditions to model.theta_app.
-    
-    If init=True, this will discount strain- and frictional- heating, thus 
-    creating a better initial energy solution for a first momentum solve.
-    """
-    s    = "::: calculating approximate energy field :::"
-    print_text(s, cls=self)
-
-    model   = self.model
-    
-    theta   = self.theta
-    c       = self.c
-    k       = self.k
-    rho     = self.rho
-    q_fric  = self.q_fric
-    Q_s_gnd = self.Q_s_gnd
-    Q_s_shf = self.Q_s_shf
-
-    theta_s = model.theta_surface
-    theta_f = model.theta_float
-    dx      = model.dx
-    dBed_g  = model.dBed_g
-    dLat_d  = model.dLat_d
-    dLat_t  = model.dLat_t
-    dx      = model.dx
-    dx_f    = model.dx_f
-    dx_g    = model.dx_g
-    u       = model.u
-    v       = model.v
-    w       = model.w
-    spy     = model.spy
-    q_geo   = model.q_geo
-    h       = model.h
-    N       = model.N
-    U       = as_vector([u,v,w])
-
-    dtheta  = TrialFunction(model.Q)
-    psi     = TestFunction(model.Q)
-    theta   = Function(model.Q)
-
-    u_s     = model.u_ob
-    v_s     = model.v_ob
-
-    #Q_s_g   = project(Q_s_gnd, model.Q)
-    #Q_s_f   = project(Q_s_shf, model.Q)
-
-    #Q_gnd   = model.vert_integrate(Q_s_gnd, d='down')
-    #Q_shf   = model.vert_integrate(Q_s_shf, d='down')
-
-    ## skewed test function in areas with high velocity :
-    #Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-    #PE     = Unorm*h/(2*spy*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
-   
-    ## skewed test function in areas with high x-component velocity :
-    #unorm  = abs(u) + DOLFIN_EPS 
-    #PE     = unorm*h/(2*spy*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psi_u  = psi + h*tau/(2*unorm) * u * psi.dx(2)
-    #
-    ## skewed test function in areas with high y-component velocity :
-    #vnorm  = abs(v) + DOLFIN_EPS 
-    #PE     = vnorm*h/(2*spy*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psi_v  = psi + h*tau/(2*vnorm) * v * psi.dx(2)
-    #
-    ## skewed test function in areas with high vertical velocity :
-    #wnorm  = abs(w) + DOLFIN_EPS 
-    #PE     = wnorm*h/(2*spy*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psi_w  = psi + h*tau/(2*wnorm) * w * psi.dx(2)
-    
-    # galerkin formulation :
-    theta_a = - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
-              + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
-    
-    #theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
-    #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-    theta_L = + q_geo * psi * dBed_g \
-    #          + rho * theta_s * dot(U, N) * psi * dLat_d \
-    #          + rho * theta_s * u_s * N[0] * psi * dLat_d \
-    #          + rho * theta_s * v_s * N[1] * psi * dLat_d \
-    #          - rho * u_s * theta_s.dx(0) * psi * dx \
-    #          - rho * v_s * theta_s.dx(1) * psi * dx \
-    #          - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
-    #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-    #          + (q_geo + q_fric) * psi * dBed_g \
-    #          - rho * u * theta_s.dx(0) * psi * dx \
-    #          - rho * v * theta_s.dx(1) * psi * dx \
-
-    ## add strain-heating and advective terms if velocities 
-    ## have been initialized :
-    #if not init:
-    #  theta_L += Q_s_gnd * psi * dx_g + Q_s_shf * psi * dx_f
-    #  #theta_a += rho * w * dtheta.dx(2) * psi_w * dx \
-    
-    # surface boundary condition : 
-    theta_bc = []
-    theta_bc.append( DirichletBC(model.Q, theta_s,
-                                 model.ff, model.GAMMA_S_GND) )
-    theta_bc.append( DirichletBC(model.Q, theta_s,
-                                 model.ff, model.GAMMA_S_FLT) )
-    theta_bc.append( DirichletBC(model.Q, theta_s,
-                                 model.ff, model.GAMMA_U_GND) )
-    theta_bc.append( DirichletBC(model.Q, theta_s,
-                                 model.ff, model.GAMMA_U_FLT) )
-    
-    # apply T_w conditions of portion of ice in contact with water :
-    theta_bc.append( DirichletBC(model.Q, theta_f,
-                                 model.ff, model.GAMMA_B_FLT) )
-    theta_bc.append( DirichletBC(model.Q, theta_f, 
-                                 model.ff, model.GAMMA_L_UDR) )
-   
-    # solve the system :
-    solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)
-    model.assign_variable(model.theta_app, theta, cls=self)
-
-    if init:
-      # temperature solved with quadradic formula, using expression for c : 
-      s = "::: calculating initial temperature :::"
-      print_text(s, cls=self)
-      theta_v  = theta.vector().array()
-      T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
-      T_v      = T_n_v.copy()
-      
-      # update temperature for wet/dry areas :
-      T_melt_v     = model.T_melt.vector().array()
-      theta_melt_v = model.theta_melt.vector().array()
-      warm         = theta_v >= theta_melt_v
-      cold         = theta_v <  theta_melt_v
-      T_v[warm]    = T_melt_v[warm]
-      model.assign_variable(model.T, T_v, cls=self)
-      
-      # water content solved diagnostically :
-      s = "::: calculating initial water content :::"
-      print_text(s, cls=self)
-      W_v  = (theta_v - theta_melt_v) / model.L(0)
-      
-      # update water content :
-      W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-      model.assign_variable(model.W0, W_v, cls=self, save=False)
-      model.assign_variable(model.W,  W_v, cls=self)
-
-  def solve_divide(self, annotate=True):
+  def solve_divide(self, init=False, annotate=True):
     """
     """
     s    = "::: calculating energy over lateral boundaries :::"
@@ -686,12 +521,22 @@ class Enthalpy(Energy):
     c       = self.c
     k       = self.k
     rho     = self.rho
+    kappa   = self.kappa
     q_fric  = self.q_fric
     Q_s_gnd = self.Q_s_gnd
     Q_s_shf = self.Q_s_shf
 
     theta_s = model.theta_surface
     theta_f = model.theta_float
+    theta_m = model.theta_melt
+    L       = model.L
+    R       = model.R
+    n       = model.n
+    E_shf   = model.E_shf
+    E_gnd   = model.E_gnd
+    T_m     = model.T_melt
+    T       = model.T
+    W       = model.W
     dx      = model.dx
     dBed_g  = model.dBed_g
     dLat_d  = model.dLat_d
@@ -702,18 +547,26 @@ class Enthalpy(Energy):
     u       = model.u
     v       = model.v
     w       = model.w
-    spy     = model.spy
     q_geo   = model.q_geo
+    beta    = model.beta
     h       = model.h
     N       = model.N
     U       = as_vector([u,v,w])
 
-    dtheta  = TrialFunction(model.Q_lat)
-    psi     = TestFunction(model.Q_lat)
-    theta   = Function(model.Q_lat)
+    phi  = TestFunction(model.V)
+    du   = TrialFunction(model.V)
+    U_t  = U - dot(U, N)*N
+    a_n  = inner(du,  phi) * dLat_d
+    L_n  = inner(U_t, phi) * dLat_d
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=annotate)
+    B_n  = assemble(L_n, annotate=annotate)
+    A_n.ident_zeros()
+    U_t  = Function(model.V)
+    solve(A_n, U_t.vector(), B_n, 'cg', 'amg', annotate=annotate)
 
-    u_s     = model.u_ob
-    v_s     = model.v_ob
+    dtheta  = TrialFunction(model.Q)
+    psi     = TestFunction(model.Q)
+    theta   = Function(model.Q)
 
     #Q_s_g   = project(Q_s_gnd, model.Q)
     #Q_s_f   = project(Q_s_shf, model.Q)
@@ -723,45 +576,82 @@ class Enthalpy(Energy):
 
     ## skewed test function in areas with high velocity :
     #Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-    #PE     = Unorm*h/(2*spy*k/(rho*c))
+    #PE     = Unorm*h/(2*k/(rho*c))
     #tau    = 1/tanh(PE) - 1/PE
     #psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
    
     ## skewed test function in areas with high x-component velocity :
     #unorm  = abs(u) + DOLFIN_EPS 
-    #PE     = unorm*h/(2*spy*k/(rho*c))
+    #PE     = unorm*h/(2*k/(rho*c))
     #tau    = 1/tanh(PE) - 1/PE
     #psi_u  = psi + h*tau/(2*unorm) * u * psi.dx(2)
     #
     ## skewed test function in areas with high y-component velocity :
     #vnorm  = abs(v) + DOLFIN_EPS 
-    #PE     = vnorm*h/(2*spy*k/(rho*c))
+    #PE     = vnorm*h/(2*k/(rho*c))
     #tau    = 1/tanh(PE) - 1/PE
     #psi_v  = psi + h*tau/(2*vnorm) * v * psi.dx(2)
     #
     ## skewed test function in areas with high vertical velocity :
     #wnorm  = abs(w) + DOLFIN_EPS 
-    #PE     = wnorm*h/(2*spy*k/(rho*c))
+    #PE     = wnorm*h/(2*k/(rho*c))
     #tau    = 1/tanh(PE) - 1/PE
     #psi_w  = psi + h*tau/(2*wnorm) * w * psi.dx(2)
     
-    # galerkin formulation :
-    theta_a = - spy * dot(grad(k/c), grad(dtheta)) * psi * dx \
-              + spy * k/c * dot(grad(psi), grad(dtheta)) * dx \
+    # thermal properties :
+    T_c     = 263.15
+    theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+    theta_w = 0.01*L + theta_m
+    W_w     = (theta - theta_m)/L
+    T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
+
+    # discontinuous properties :
+    a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
+    W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+    W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
+    W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
+
+    # viscosity and strain-heating :
+    epsdot  = self.effective_strain_rate(U_t) + model.eps_reg
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    Q_s_gnd = 4 * eta_gnd * epsdot
+    Q_s_shf = 4 * eta_shf * epsdot
     
-    #theta_L = - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
-    #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-    theta_L = + q_geo * psi * dBed_g \
-    #          + rho * theta_s * dot(U, N) * psi * dLat_d \
-    #          + rho * theta_s * u_s * N[0] * psi * dLat_d \
-    #          + rho * theta_s * v_s * N[1] * psi * dLat_d \
-    #          - rho * u_s * theta_s.dx(0) * psi * dx \
-    #          - rho * v_s * theta_s.dx(1) * psi * dx \
-    #          - spy * k/c * psi.dx(0) * theta_s.dx(0) * dx \
-    #          - spy * k/c * psi.dx(1) * theta_s.dx(1) * dx \
-    #          + (q_geo + q_fric) * psi * dBed_g \
-    #          - rho * u * theta_s.dx(0) * psi * dx \
-    #          - rho * v * theta_s.dx(1) * psi * dx \
+    # coefficient for diffusion of ice-water mixture -- no water diffusion :
+    k_c   = conditional( lt(theta, theta_m), 1.0, 1/10.0)
+
+    # frictional heating :
+    q_fric = beta * inner(U_t, U_t)
+
+    # basal heat-flux natural boundary condition :
+    Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
+    Wmax = Constant(1.0)
+    mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
+    g_b  = q_geo + q_fric - mdot
+    g_b  = W_c * (q_geo + q_fric)
+      
+    # SUPG :
+    Unorm  = sqrt(dot(U_t, U_t) + 1e-15)
+    PE     = Unorm*h/(2*kappa)
+    tau    = 1/tanh(PE) - 1/PE
+    psihat = psi + h*tau/(2*Unorm) * dot(U_t, grad(psi))
+    
+    # galerkin formulation :
+    theta_a = + rho * dot(U_t, grad(theta)) * psihat * dx \
+              - dot(grad(k/c), grad(theta)) * psi * dx \
+              + k/c * dot(grad(psi), grad(theta)) * dx \
+    
+    theta_L = + g_b * psi * dBed_g \
+              + Q_s_gnd * psi * dx_g \
+              + Q_s_shf * psi * dx_f
+
+    nrg_F = theta_a - theta_L
+    
+    nrg_Jac = derivative(nrg_F, theta, dtheta)
 
     ## add strain-heating and advective terms if velocities 
     ## have been initialized :
@@ -787,7 +677,15 @@ class Enthalpy(Energy):
                                  model.ff, model.GAMMA_L_UDR) )
    
     # solve the system :
-    solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)
+    #solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)
+    nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+                                  'preconditioner'           : 'amg',
+                                  'relative_tolerance'       : 1e-9,
+                                  'relaxation_parameter'     : 1.0,
+                                  'maximum_iterations'       : 10,
+                                  'error_on_nonconvergence'  : False}}
+    solve(nrg_F == 0, theta, J = nrg_Jac, bcs = theta_bc,
+          annotate = annotate, solver_parameters = nparams)
     model.assign_variable(model.theta_app, theta, cls=self)
 
     if init:
@@ -855,6 +753,7 @@ class Enthalpy(Energy):
 
     #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
     nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+                                  'preconditioner'           : 'amg',
                                   'relative_tolerance'       : 1e-9,
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 10,
@@ -895,7 +794,7 @@ class Enthalpy(Energy):
     #W_v[W_v > 1.0]  = 1.0    # capped at 100% water, i.e., no hot water.
     model.assign_variable(W0, W, cls=self, save=False)
     model.assign_variable(W,  W_v, cls=self)
-    self.Wmax.assign(W_v.max() + DOLFIN_EPS)  # set the max water content
+    #self.Wmax.assign(W_v.max() + DOLFIN_EPS)  # set the max water content
    
   def solve_basal_melt_rate(self):
     """

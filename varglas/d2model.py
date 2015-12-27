@@ -327,12 +327,12 @@ class D2Model(Model):
     #    self.cf[c] = 1
     #  else:
     #    self.cf[c] = 0
-    #
+
     #s = "    - done - "
     #print_text(s, cls=self)
 
     self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.ff]
+    self.dx      = Measure('dx')#[self.cf]
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating

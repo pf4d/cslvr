@@ -743,6 +743,24 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.tau_jz, tau_jz, cls=cls)
 
+  def init_alpha(self, alpha, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing mdot coefficient :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.alpha, alpha, cls=cls)
+
+  def init_n_f(self, n, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing outward-normal-vector function n_f :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.n_f, n, cls=cls)
+
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -1258,6 +1276,35 @@ class Model(object):
     """
     raiseNotDefined()
 
+  def calc_normal_vector(self, cls=None):
+    """
+    calculates the outward normal vector as a FEniCS function.  This could then
+    be used in any DirichletBC.  Saved to self.n_f.
+    """
+    s     = "::: calculating normal-vector function :::"
+    print_text(s, cls=cls)
+
+    n       = self.N
+    n_trial = TrialFunction(self.V)
+    n_test  = TestFunction(self.V)
+
+    a = inner(n_trial, n_test)*ds
+    L = inner(n,       n_test)*ds
+
+    A = assemble(a, keep_diagonal=True)
+    A.ident_zeros() # Regularize the matrix
+    b = assemble(L)
+
+    n = Function(self.V)
+    solve(A, n.vector(), b, 'cg', 'amg')
+    
+    area = assemble(Constant(1.0)*ds(self.mesh))
+    nds  = assemble(inner(n, n)*ds)
+    s = "    - average value of normal on boundary: %.3f - " % (nds / area)
+    print_text(s, cls=cls)
+    
+    self.init_n_f(n, cls=cls)
+
   def get_theta(self):
     """
     Returns the angle in radians of the horizontal velocity vector from 
@@ -1457,6 +1504,7 @@ class Model(object):
     self.N             = FacetNormal(self.mesh)
     self.lat           = Function(self.Q, name='lat')
     self.lon           = Function(self.Q, name='lon')
+    self.n_f           = Function(self.V, name='n_f')
 
     # time step :
     self.time_step = Constant(100.0)
@@ -1520,6 +1568,7 @@ class Model(object):
     self.T_melt        = Function(self.Q, name='T_melt')     # pressure-melting
     self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
+    self.alpha         = Function(self.Q, name='alpha')
     
     # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
@@ -1579,9 +1628,6 @@ class Model(object):
     if energy.transient:
       energy.make_steady_state()
  
-    # prime the basal melt rate : 
-    energy.solve_basal_melt_rate()
- 
     ## initialization step :
     #s    = '::: performing initialization step :::'
     #print_text(s, cls=self.this)
@@ -1616,7 +1662,7 @@ class Model(object):
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
                            cls=self.this)
-      
+     
       # solve velocity :
       momentum.solve(annotate=False)
 

@@ -311,8 +311,9 @@ class Enthalpy(Energy):
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
     Wmax = sqrt(inner(W_w,W_w) + DOLFIN_EPS)#Constant(1.0)
     #mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
-    mdot = W_c * Mb * rho * L
     alpha = model.alpha
+    W_t  = conditional( gt(W_w, 0.07), 1.0, 0.0)
+    mdot = Mb * rho * L
     g_b  = q_geo + q_fric - alpha * mdot
     #g_b  = W_c * (q_geo + q_fric)
 
@@ -756,7 +757,7 @@ class Enthalpy(Energy):
                                   'preconditioner'           : 'amg',
                                   'relative_tolerance'       : 1e-9,
                                   'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 10,
+                                  'maximum_iterations'       : 5,
                                   'error_on_nonconvergence'  : False}}
     solve(self.nrg_F == 0, theta, J = self.nrg_Jac, bcs = self.theta_bc,
           annotate = annotate, solver_parameters = nparams)

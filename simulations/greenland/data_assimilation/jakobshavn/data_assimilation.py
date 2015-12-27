@@ -182,6 +182,7 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
 #d3model.save_hdf5(d3model.U3, fU)
 #fU.close()
+#sys.exit(0)
 #nrg.solve_divide(annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
       
@@ -197,30 +198,44 @@ def deriv_cb(I, dI, alpha):
   print_text(s)
   print_min_max(dI,    'dI/dalpha')
 
-d3model.init_alpha(0.3)
+d3model.init_alpha(0.0)
 
 nrg.solve(annotate=True)
+d3model.save_xdmf(d3model.W, 'W')
 
 theta   = d3model.theta
 theta_m = d3model.theta_melt
 L       = d3model.L
+theta_c = theta_m + 0.03*L
+alpha   = d3model.alpha
+dBed    = d3model.dBed
+gamma   = 1e-6
 
-W_c  = conditional( le(theta, theta_m), 0.0, 1.0)
-#X    = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
-J    = W_c * ( (theta - theta_m)/L - 0.03 ) * dx
+J    = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dBed
+R    = gamma * 0.5 * inner(grad(alpha), grad(alpha)) * dBed
+I    = J + R
 
-m = Control(d3model.alpha, value=d3model.alpha)
+m = Control(alpha, value=alpha)
       
-F = ReducedFunctional(Functional(J), m, eval_cb_post=eval_cb,
+F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                       derivative_cb_post=deriv_cb)
         
 out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,1),
                options={"disp"    : True,
-                        "maxiter" : 1000,
+                        "maxiter" : 200,
                         "gtol"    : 1e-5})
 a_opt = out[0]
+d3model.save_xdmf(a_opt, 'a_opt')
+print_min_max(a_opt, 'a_opt')
 
 d3model.init_alpha(a_opt)
+d3model.save_xdmf(d3model.alpha, 'alpha')
+Control(d3model.alpha).update(a_opt)
+theta_opt = DolfinAdjointVariable(d3model.theta).tape_value()
+
+W_w = project( (theta_opt - theta_m)/L )
+W_w.vector()[W_w.vector() < 0] = 0.0
+d3model.save_xdmf(W_w, 'W_w')
 
 nrg.solve()
 d3model.save_xdmf(d3model.T, 'T')

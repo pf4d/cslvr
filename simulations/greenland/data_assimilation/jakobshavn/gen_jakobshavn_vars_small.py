@@ -2,7 +2,7 @@ from varglas import *
 from fenics  import *
 from pylab   import *
 
-out_dir  = 'dump/vars_jakobshavn_small/'
+out_dir  = 'dump/vars_jakobshavn_crude/'
 
 # collect the raw data :
 searise  = DataFactory.get_searise()
@@ -10,7 +10,7 @@ bamber   = DataFactory.get_bamber(1.0)
 rignot   = DataFactory.get_rignot()
 
 # define the mesh :
-mesh = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')
+mesh = Mesh('dump/meshes/jakobshavn_3D_crude_block.xml.gz')
 
 # create data objects to use with varglas :
 dsr     = DataInput(searise,  mesh=mesh)

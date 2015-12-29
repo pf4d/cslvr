@@ -135,6 +135,10 @@ Us     = Function(Q3s, name='Us')
 Wb     = Function(Qb,  name='Wb')
 Mb     = Function(Qb,  name='Mb')
 beta_b = Function(Qb,  name="beta_control")
+a_b    = Function(Qb,  name="alpha_control")
+
+a_f    = XDMFFile(d3model.bedmesh.mpi_comm(),
+                  d3model.out_dir + 'xdmf/alpha_control.xdmf')
 
 # saving the regularization and cost functional values for convergence :
 Rs  = []
@@ -192,27 +196,29 @@ def eval_cb(I, alpha):
   print_min_max(I,    'I')
   print_min_max(alpha, 'alpha')
 
+global t
+t = 0
+
 # objective gradient callback function :
 def deriv_cb(I, dI, alpha):
+  global t
   s    = '::: adjoint obj. gradient post callback function :::'
   print_text(s)
   print_min_max(dI,    'dI/dalpha')
+  d3model.assign_submesh_variable(a_b, alpha)
+  d3model.save_xdmf(a_b, 'alpha_control_%i' % t)
+  t += 1
 
 d3model.init_alpha(0.0)
 
 nrg.solve(annotate=True)
 d3model.save_xdmf(d3model.W, 'W')
 
-theta   = d3model.theta
-theta_m = d3model.theta_melt
-L       = d3model.L
-theta_c = theta_m + 0.03*L
 alpha   = d3model.alpha
-dBed    = d3model.dBed
-gamma   = 1e-6
+gamma   = 1e10
 
-J    = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dBed
-R    = gamma * 0.5 * inner(grad(alpha), grad(alpha)) * dBed
+J    = nrg.water_content_obj_ftn()
+R    = nrg.water_content_reg_ftn(gamma, kind='Tikhonov')
 I    = J + R
 
 m = Control(alpha, value=alpha)
@@ -230,7 +236,7 @@ print_min_max(a_opt, 'a_opt')
 
 d3model.init_alpha(a_opt)
 d3model.save_xdmf(d3model.alpha, 'alpha')
-Control(d3model.alpha).update(a_opt)
+m.update(a_opt)
 theta_opt = DolfinAdjointVariable(d3model.theta).tape_value()
 
 W_w = project( (theta_opt - theta_m)/L )
@@ -240,6 +246,21 @@ d3model.save_xdmf(W_w, 'W_w')
 nrg.solve()
 d3model.save_xdmf(d3model.T, 'T')
 d3model.save_xdmf(d3model.W, 'W')
+
+# save all the objective function values : 
+from numpy import savetxt, array
+import os
+
+if d3model.MPI_rank==0:
+  d = out_dir + 'objective_ftns/'
+  if not os.path.exists(d):
+    os.makedirs(d)
+  savetxt(d + 'Rs.txt',   array(Rs))
+  savetxt(d + 'Js.txt',   array(Js))
+  savetxt(d + 'J1s.txt',  array(J1s))
+  savetxt(d + 'J2s.txt',  array(J2s))
+  savetxt(d + 'Ms.txt',   array(Ms))
+
 sys.exit(0)
 
 #nrg.generate_approx_theta(init=True, annotate=False)

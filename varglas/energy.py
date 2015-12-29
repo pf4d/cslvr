@@ -144,8 +144,52 @@ class Energy(Physics):
     adot[model.shf_dofs] = -100
 
     model.init_adot(adot, cls=self)
-
   
+  def water_content_obj_ftn(self):
+    """
+    Forms and returns an objective functional for use with adjoint.
+    Saves to self.J.
+    """
+    model    = self.model
+
+    dGnd     = model.dGnd
+    theta    = model.theta
+    theta_m  = d3model.theta_melt
+    L        = d3model.L
+    theta_c  = theta_m + 0.03*L
+    
+    J    = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dGnd
+    self.J  = J
+    return J
+
+  def water_content_reg_ftn(self, gamma, kind='Tikhonov'):
+    """
+    Formulates, and returns the regularization functional for use 
+    with adjoint, saved to self.R.
+    """
+    dGnd     = model.dGnd
+    alpha    = model.alpha
+    
+    # form regularization term 'R' :
+    if kind != 'TV' and kind != 'Tikhonov' and kind != 'square':
+      s    =   ">>> VALID REGULARIZATIONS ARE 'TV', 'Tikhonov', or 'square' <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
+    elif kind == 'TV':
+      R  = gamma * 0.5 * sqrt(inner(grad(alpha), grad(alpha)) + 1e-15) * dGnd
+      Rp = 0.5 * sqrt(inner(grad(alpha), grad(alpha)) + 1e-15) * dGnd
+    elif kind == 'Tikhonov':
+      R  = gamma * 0.5 * inner(grad(alpha), grad(alpha)) * dGnd
+      Rp = 0.5 * inner(grad(alpha), grad(alpha)) * dGnd
+    elif kind == 'square':
+      R  = gamma * 0.5 * alpha**2 * dGnd
+      Rp = 0.5 * alpha**2 * dGnd
+    s   = "::: forming %s regularization with parameter gamma = %.2E :::"
+    print_text(s % (kind, gamma), self.color())
+    self.R  = R
+    self.Rp = Rp
+    return R
+
   def solve(self, annotate=True, params=None):
     """ 
     Perform the Newton solve of the energy equation.

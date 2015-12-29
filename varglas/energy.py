@@ -1,6 +1,6 @@
 from fenics                 import *
 from dolfin_adjoint         import *
-from varglas.io             import print_text, print_min_max
+from varglas.io             import get_text, print_text, print_min_max
 from varglas.d3model        import D3Model
 from varglas.d2model        import D2Model
 from varglas.d1model        import D1Model
@@ -150,12 +150,14 @@ class Energy(Physics):
     Forms and returns an objective functional for use with adjoint.
     Saves to self.J.
     """
-    model    = self.model
+    s   = "::: forming water-optimization cost functional :::"
+    print_text(s, self.color())
 
-    dGnd     = model.dGnd
+    model    = self.model
+    dGnd     = model.dBed_g
     theta    = model.theta
-    theta_m  = d3model.theta_melt
-    L        = d3model.L
+    theta_m  = model.theta_melt
+    L        = model.L
     theta_c  = theta_m + 0.03*L
     
     J    = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dGnd
@@ -167,7 +169,11 @@ class Energy(Physics):
     Formulates, and returns the regularization functional for use 
     with adjoint, saved to self.R.
     """
-    dGnd     = model.dGnd
+    s   = "::: forming %s regularization with parameter gamma = %.2E :::"
+    print_text(s % (kind, gamma), self.color())
+
+    model    = self.model
+    dGnd     = model.dBed_g
     alpha    = model.alpha
     
     # form regularization term 'R' :
@@ -184,8 +190,6 @@ class Energy(Physics):
     elif kind == 'square':
       R  = gamma * 0.5 * alpha**2 * dGnd
       Rp = 0.5 * alpha**2 * dGnd
-    s   = "::: forming %s regularization with parameter gamma = %.2E :::"
-    print_text(s % (kind, gamma), self.color())
     self.R  = R
     self.Rp = Rp
     return R
@@ -461,40 +465,8 @@ class Enthalpy(Energy):
       print_text(s, cls=self)
       self.theta_bc.append( DirichletBC(Q, model.theta_app,
                                         model.ff, model.GAMMA_L_DVD) )
-   
-    # always mark the divide (if present) essential :
-    #self.theta_bc.append( DirichletBC(Q, theta_surface,
-    #                                  model.ff, model.GAMMA_L_DVD) )
-    #code = 'theta_s + (x[2] - S)*(146.3 + 7.253*T)/(9.828 * exp(-0.0057*T))' +\
-    #                 '*(q_geo + beta*(u*u + v*v + w*w))'
-    #theta_lat = Expression(code, theta_s=theta_surface, S=S, T=T,
-    #                       q_geo=q_geo)#, beta=beta, u=u, v=v, w=w)
-    #===========================================================================
-    #code = \
-    #'''
-    #theta_s
-    #+ exp(log((146.3 + 7.253*Tv)/(9.828 * exp(-0.0057*Tv))
-    #      * (q_geo + beta*(u*u + v*v + w*w))) + B)
-    #  * (   exp(rho*w*(146.3 + 7.253*Tv)/(9.828 * exp(-0.0057*Tv)) * x[2] )
-    #      - exp(rho*w*(146.3 + 7.253*Tv)/(9.828 * exp(-0.0057*Tv)) * S)   )
-    #'''
-    #theta_lat = Expression(code,
-    #                       theta_s=theta_surface, S=S, B=B, Tv=T, rho=rhoi,
-    #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
-    #===========================================================================
-    #code = \
-    #'''
-    #theta_s
-    #+ exp(log(c/k * (q_geo + beta*(u*u + v*v + w*w))) + B)
-    #  * ( exp(rho*w*c/k * x[2]) - exp(rho*w*c/k * S) )
-    #'''
-    #theta_lat = Expression(code,
-    #                       theta_s=theta_surface, S=S, B=B, 
-    #                       k=model.ki, c=model.ci, rho=rhoi,
-    #                       q_geo=q_geo, beta=beta, u=u, v=v, w=w)
-    #self.theta_bc.append( DirichletBC(Q, theta_lat, model.ff,
-    #                                  model.GAMMA_L_DVD) )
-    
+  
+    # Jacobian : 
     self.nrg_Jac = derivative(self.nrg_F, theta, dtheta)
 
     self.theta   = theta
@@ -598,6 +570,7 @@ class Enthalpy(Energy):
     N       = model.N
     U       = as_vector([u,v,w])
 
+    # solve for tangential component of velocity over the 'divides' :
     phi  = TestFunction(model.V)
     du   = TrialFunction(model.V)
     U_t  = U - dot(U, N)*N
@@ -609,40 +582,11 @@ class Enthalpy(Energy):
     U_t  = Function(model.V)
     solve(A_n, U_t.vector(), B_n, 'cg', 'amg', annotate=annotate)
 
+    # basis functions for thermal regime over the lateral boundaries :
     dtheta  = TrialFunction(model.Q)
     psi     = TestFunction(model.Q)
     theta   = Function(model.Q)
 
-    #Q_s_g   = project(Q_s_gnd, model.Q)
-    #Q_s_f   = project(Q_s_shf, model.Q)
-
-    #Q_gnd   = model.vert_integrate(Q_s_gnd, d='down')
-    #Q_shf   = model.vert_integrate(Q_s_shf, d='down')
-
-    ## skewed test function in areas with high velocity :
-    #Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-    #PE     = Unorm*h/(2*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
-   
-    ## skewed test function in areas with high x-component velocity :
-    #unorm  = abs(u) + DOLFIN_EPS 
-    #PE     = unorm*h/(2*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psi_u  = psi + h*tau/(2*unorm) * u * psi.dx(2)
-    #
-    ## skewed test function in areas with high y-component velocity :
-    #vnorm  = abs(v) + DOLFIN_EPS 
-    #PE     = vnorm*h/(2*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psi_v  = psi + h*tau/(2*vnorm) * v * psi.dx(2)
-    #
-    ## skewed test function in areas with high vertical velocity :
-    #wnorm  = abs(w) + DOLFIN_EPS 
-    #PE     = wnorm*h/(2*k/(rho*c))
-    #tau    = 1/tanh(PE) - 1/PE
-    #psi_w  = psi + h*tau/(2*wnorm) * w * psi.dx(2)
-    
     # thermal properties :
     T_c     = 263.15
     theta_c = 146.3*T_c + 7.253/2.0*T_c**2
@@ -698,12 +642,6 @@ class Enthalpy(Energy):
     
     nrg_Jac = derivative(nrg_F, theta, dtheta)
 
-    ## add strain-heating and advective terms if velocities 
-    ## have been initialized :
-    #if not init:
-    #  theta_L += Q_s_gnd * psi * dx_g + Q_s_shf * psi * dx_f
-    #  #theta_a += rho * w * dtheta.dx(2) * psi_w * dx \
-    
     # surface boundary condition : 
     theta_bc = []
     theta_bc.append( DirichletBC(model.Q, theta_s,
@@ -770,23 +708,16 @@ class Enthalpy(Energy):
     Solve the energy equations, saving enthalpy to model.theta, temperature 
     to model.T, and water content to model.W.
     """
-    model      = self.model
-    mesh       = model.mesh
-    Q          = model.Q
-    T_melt     = model.T_melt
-    T          = model.T
-    W          = model.W
-    W0         = model.W0
-    L          = model.L
-    c          = self.c
-    theta      = self.theta
-
+    model = self.model
+    
+    # update the surface climate if desired :
     if self.solve_params['use_surface_climate']:
       self.solve_surface_climate()
     
-    # solve the linear equation for energy :
+    # solve the energy equation :
     s    = "::: solving energy :::"
     print_text(s, cls=self)
+
     #aw        = assemble(self.theta_a, annotate=annotate)
     #Lw        = assemble(self.theta_L, annotate=annotate)
     #for bc in self.theta_bc:
@@ -803,26 +734,46 @@ class Enthalpy(Energy):
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 5,
                                   'error_on_nonconvergence'  : False}}
-    solve(self.nrg_F == 0, theta, J = self.nrg_Jac, bcs = self.theta_bc,
-          annotate = annotate, solver_parameters = nparams)
+    solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
+          annotate=annotate, solver_parameters=nparams)
     
-    model.assign_variable(model.theta, theta, annotate=annotate, cls=self)
+    # update the model variable :
+    model.assign_variable(model.theta, self.theta, annotate=annotate, cls=self)
 
-
+    # update the previous energy if solving the transient equation :
     if self.transient:
       model.assign_variable(self.theta0, self.theta, cls=self,
                             annotate=annotate)
 
+    # update the temperature and water content for other physics :
+    self.partition_energy()
+
+  def partition_energy(self):
+    """
+    solve for the water content model.W and temperature model.T.
+    """
     # temperature solved with quadradic formula, using expression for c : 
     s = "::: calculating temperature :::"
     print_text(s, cls=self)
+    
+    model      = self.model
+    theta      = model.theta
+    theta_melt = model.theta_melt
+    T_melt     = model.T_melt
+    T          = model.T
+    W          = model.W
+    W0         = model.W0
+    L          = model.L
+    c          = self.c
+    
+    # temperature is a quadradic function of energy :
     theta_v  = theta.vector().array()
     T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
     
-    # update temperature for wet/dry areas :
+    # correct for the pressure-melting point :
     T_melt_v     = T_melt.vector().array()
-    theta_melt_v = model.theta_melt.vector().array()
+    theta_melt_v = theta_melt.vector().array()
     warm         = theta_v >= theta_melt_v
     cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
@@ -834,13 +785,131 @@ class Enthalpy(Energy):
     W_v  = (theta_v - theta_melt_v) / L(0)
     
     # update water content :
-    #W_v[cold]       = 0.0   # no water where frozen 
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
-    #W_v[W_v > 1.0]  = 1.0    # capped at 100% water, i.e., no hot water.
-    model.assign_variable(W0, W, cls=self, save=False)
+    model.assign_variable(W0, W,   cls=self, save=False)  # never save
     model.assign_variable(W,  W_v, cls=self)
-    #self.Wmax.assign(W_v.max() + DOLFIN_EPS)  # set the max water content
+
+  def optimize_water_flux(self, iterations, gamma, reg_kind='Tikhonov',
+                          method='ipopt', adj_callback=None):
+    """
+    determine the correct basal-water flux.
+    """
+    s    = '::: optimizing for water-flux with %i iterations :::'
+    print_text(s % iterations, cls=self)
+
+    model = self.model
+
+    # starting time :
+    t0   = time()
+
+    # need this for the derivative callback :
+    global counter
+    counter = 0 
+    
+    # now solve the control optimization problem : 
+    s    = "::: starting adjoint-control optimization with method '%s' :::"
+    print_text(s % method, cls=self)
+    
+    def eval_cb(I, alpha):
+      s    = '::: adjoint objective eval post callback function :::'
+      print_text(s, cls=self)
+      print_min_max(I,     'I',     cls=self)
+      print_min_max(alpha, 'alpha', cls=self)
+    
+    # objective gradient callback function :
+    def deriv_cb(I, dI, alpha):
+      if method == 'ipopt':
+        global counter
+        s0    = '>>> '
+        s1    = 'iteration %i (max %i) complete'
+        s2    = ' <<<'
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1 % (counter, iterations), 'red')
+        text2 = get_text(s2, 'red', 1)
+        if MPI.rank(mpi_comm_world())==0:
+          print text0 + text1 + text2
+        counter += 1
+      s    = '::: adjoint obj. gradient post callback function :::'
+      print_text(s, cls=self)
+      print_min_max(dI,    'dI/dalpha', cls=self)
+      if adj_callback is not None:
+        adj_callback(I, dI, alpha)
+    
+    # initialize with zero water retention :
+    model.init_alpha(0.0, cls=self)
    
+    # solve the momentum equations with annotation enabled :
+    s    = '::: solving forward problem for dolfin-adjoint annotatation :::'
+    print_text(s, cls=self)
+    self.solve(annotate=True)
+   
+    # get the cost, regularization, and objective functionals :
+    J = self.water_content_obj_ftn()
+    R = self.water_content_reg_ftn(gamma, kind=reg_kind)
+    I = J + R
+
+    # define the control variable :    
+    m = Control(model.alpha, value=model.alpha)
+
+    # state the minimization problem :
+    F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+                          derivative_cb_post=deriv_cb)
+
+    # optimize with scipy's fmin_l_bfgs_b :
+    if method == 'l_bfgs_b': 
+      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,1),
+                     options={"disp"    : True,
+                              "maxiter" : iterations,
+                              "gtol"    : 1e-5})
+      a_opt = out[0]
+    
+    # or optimize with IPOpt (preferred) :
+    elif method == 'ipopt':
+      try:
+        import pyipopt
+      except ImportError:
+        info_red("""You do not have IPOPT and/or pyipopt installed.
+                    When compiling IPOPT, make sure to link against HSL,
+                    as it is a necessity for practical problems.""")
+        raise
+      problem = MinimizationProblem(F, bounds=(0,1))
+      parameters = {"tol"                : 1e-8,
+                    "acceptable_tol"     : 1e-6,
+                    "maximum_iterations" : iterations,
+                    "print_level"        : 1,
+                    "ma97_order"         : "metis",
+                    "ma86_order"         : "metis",
+                    "linear_solver"      : "ma57"}
+      solver = IPOPTSolver(problem, parameters=parameters)
+      a_opt  = solver.solve()
+    
+    # let's see it :
+    print_min_max(a_opt, 'a_opt')
+
+    # make the optimal control variable available :
+    model.init_alpha(a_opt)
+    #Control(model.alpha).update(a_opt)  # FIXME: does this work?
+
+    # make the optimal state varaiable available :
+    theta_opt = DolfinAdjointVariable(model.theta).tape_value()
+    model.init_theta(theta_opt, cls=self)
+    
+    #W_w = project( (theta_opt - theta_m)/L )
+    #W_w.vector()[W_w.vector() < 0] = 0.0
+    #model.save_xdmf(W_w, 'W_w')
+
+    # reset entire dolfin-adjoint state :
+    adj_reset()
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
+
   def solve_basal_melt_rate(self):
     """
     Solve for the basal melt rate stored in model.Mb.

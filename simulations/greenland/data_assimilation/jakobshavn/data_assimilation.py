@@ -189,63 +189,33 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #sys.exit(0)
 #nrg.solve_divide(annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
-      
-def eval_cb(I, alpha):
-  s    = '::: adjoint objective eval post callback function :::'
-  print_text(s)
-  print_min_max(I,    'I')
-  print_min_max(alpha, 'alpha')
 
+# counter for saving .xdmf files :
 global t
 t = 0
 
+# number of digits for saving variables :
+iterations = 200
+gamma      = 1e10
+n_i        = len(str(iterations))
+      
 # objective gradient callback function :
 def deriv_cb(I, dI, alpha):
   global t
-  s    = '::: adjoint obj. gradient post callback function :::'
-  print_text(s)
-  print_min_max(dI,    'dI/dalpha')
   d3model.assign_submesh_variable(a_b, alpha)
-  d3model.save_xdmf(a_b, 'alpha_control_%i' % t)
+  d3model.save_xdmf(a_b, 'alpha_control_%0*d' % (n_i, t))
   t += 1
 
-d3model.init_alpha(0.0)
+nrg.optimize_water_flux(iterations, gamma, reg_kind='Tikhonov',
+                        method='ipopt', adj_callback=deriv_cb)
 
-nrg.solve(annotate=True)
-d3model.save_xdmf(d3model.W, 'W')
+nrg.partition_energy()
 
-alpha   = d3model.alpha
-gamma   = 1e10
-
-J    = nrg.water_content_obj_ftn()
-R    = nrg.water_content_reg_ftn(gamma, kind='Tikhonov')
-I    = J + R
-
-m = Control(alpha, value=alpha)
-      
-F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-                      derivative_cb_post=deriv_cb)
-        
-out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,1),
-               options={"disp"    : True,
-                        "maxiter" : 200,
-                        "gtol"    : 1e-5})
-a_opt = out[0]
-d3model.save_xdmf(a_opt, 'a_opt')
-print_min_max(a_opt, 'a_opt')
-
-d3model.init_alpha(a_opt)
 d3model.save_xdmf(d3model.alpha, 'alpha')
-m.update(a_opt)
-theta_opt = DolfinAdjointVariable(d3model.theta).tape_value()
+d3model.save_xdmf(d3model.T,     'T')
+d3model.save_xdmf(d3model.W,     'W')
 
-W_w = project( (theta_opt - theta_m)/L )
-W_w.vector()[W_w.vector() < 0] = 0.0
-d3model.save_xdmf(W_w, 'W_w')
-
-nrg.solve()
-d3model.save_xdmf(d3model.T, 'T')
-d3model.save_xdmf(d3model.W, 'W')
+sys.exit(0)
 
 # save all the objective function values : 
 from numpy import savetxt, array
@@ -260,8 +230,6 @@ if d3model.MPI_rank==0:
   savetxt(d + 'J1s.txt',  array(J1s))
   savetxt(d + 'J2s.txt',  array(J2s))
   savetxt(d + 'Ms.txt',   array(Ms))
-
-sys.exit(0)
 
 #nrg.generate_approx_theta(init=True, annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_ini')
@@ -313,8 +281,6 @@ def adj_post_cb_ftn():
   d3model.assign_submesh_variable(beta_b, d3model.beta)
   d3model.save_xdmf(Us,     'U_opt')
   d3model.save_xdmf(beta_b, 'beta_opt')
-
-# after every completed coupling, save the state of these functions :
 
 # after every completed adjoining, save the state of these functions :
 adj_save_vars = [d3model.beta,

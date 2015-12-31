@@ -177,11 +177,67 @@ e_params  = {'solver'               : 'mumps',
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczBP(d3model, m_params, isothermal=False)
+mom = MomentumDukowiczBP(d3model, m_params, linear=False, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
+#===============================================================================
+## derivative of objective function callback function : 
+#def deriv_cb(I, dI, beta):
+#  # calculate the L_inf norm of misfit :
+#  d3model.init_beta(beta)
+#  mom.calc_misfit(d3model.GAMMA_U_GND)
+#  mom.print_eval_ftns()
+#  d3model.assign_submesh_variable(beta_b, beta)
+#  d3model.save_xdmf(beta_b, 'beta_control')
+#
+## post-adjoint-iteration callback function :
+#def adj_post_cb_ftn():
+#  #mom.solve_params['solve_vert_velocity'] = True
+#  #mom.solve(annotate=False)
+#
+#  # calculate the L_inf norm of misfit :
+#  mom.calc_misfit(d3model.GAMMA_U_GND)
+#  
+#  # print the regularization and cost function values :  
+#  mom.print_eval_ftns()
+#
+#  # save the optimal velocity and beta fields for viewing with paraview :
+#  d3model.assign_submesh_variable(Us,     d3model.U3)
+#  d3model.assign_submesh_variable(beta_b, d3model.beta)
+#  d3model.save_xdmf(Us,     'U_opt')
+#  d3model.save_xdmf(beta_b, 'beta_opt')
+#
+## after every completed adjoining, save the state of these functions :
+#adj_save_vars = [d3model.beta, d3model.U3]
+#
+## form the cost functional :
+#J = mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+#                     g1=0.01, g2=5000)
+#
+## form the regularization functional :
+#R = mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', 
+#                     alpha=1.0)
+#
+## define the objective functional to minimize :
+#I = J + R
+#
+#mom.linearize_viscosity()
+#
+## optimize for beta :
+#mom.optimize_U_ob(control           = d3model.beta,
+#                  obj_ftn           = I,
+#                  bounds            = (1e-5, 1e7),
+#                  method            = 'ipopt',
+#                  adj_iter          = 20,
+#                  adj_save_vars     = adj_save_vars,
+#                  adj_callback      = deriv_cb,
+#                  post_adj_callback = adj_post_cb_ftn)
+#
+#sys.exit(0)
+#
+#===============================================================================
 #d3model.thermo_solve(mom, nrg, callback=None, max_iter=1)
 #fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
 #d3model.save_hdf5(d3model.U3, fU)
@@ -190,6 +246,7 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #nrg.solve_divide(annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
 
+#===============================================================================
 # counter for saving .xdmf files :
 global t
 t = 0
@@ -200,14 +257,14 @@ gamma      = 1e10
 n_i        = len(str(iterations))
       
 # objective gradient callback function :
-def deriv_cb(I, dI, alpha):
+def cb(I, dI, alpha):
   global t
   d3model.assign_submesh_variable(a_b, alpha)
   d3model.save_xdmf(a_b, 'alpha_control_%0*d' % (n_i, t))
   t += 1
 
 nrg.optimize_water_flux(iterations, gamma, reg_kind='Tikhonov',
-                        method='ipopt', adj_callback=deriv_cb)
+                        method='ipopt', adj_callback=cb)
 
 nrg.partition_energy()
 
@@ -230,6 +287,7 @@ if d3model.MPI_rank==0:
   savetxt(d + 'J1s.txt',  array(J1s))
   savetxt(d + 'J2s.txt',  array(J2s))
   savetxt(d + 'Ms.txt',   array(Ms))
+#===============================================================================
 
 #nrg.generate_approx_theta(init=True, annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_ini')

@@ -826,39 +826,6 @@ class D3Model(Model):
     taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
                     + tu_xy**2 + tu_xz**2 + tu_yz**2
     return taudot
-
-  def calc_misfit(self, integral):
-    """
-    Calculates the misfit of model and observations, 
-
-      D = ||U - U_ob||
-
-    over shelves or grounded depending on the paramter <integral>, then 
-    updates model.misfit with D for plotting.
-    """
-    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, cls=self.this)
-
-    U_s    = Function(self.Q2)
-    U_ob_s = Function(self.Q2)
-    U      = as_vector([self.u,    self.v])
-    U_ob   = as_vector([self.u_ob, self.v_ob])
-
-    bc_U    = DirichletBC(self.Q2, U,    self.ff, integral)
-    bc_U_ob = DirichletBC(self.Q2, U_ob, self.ff, integral)
-    
-    bc_U.apply(U_s.vector())
-    bc_U_ob.apply(U_ob_s.vector())
-
-    # calculate L_inf vector norm :
-    U_s_v    = U_s.vector().array()
-    U_ob_s_v = U_ob_s.vector().array()
-    D_v      = U_s_v - U_ob_s_v
-    D        = MPI.max(mpi_comm_world(), D_v.max())
-    
-    s    = "||U - U_ob|| : %.3E" % D
-    print_text(s, '208', 1)
-    self.misfit = D
   
   def initialize_variables(self):
     """

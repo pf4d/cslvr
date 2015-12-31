@@ -77,7 +77,7 @@ class Energy(Physics):
                     use_lat_bc = self.use_lat_bc_s,
                     epsdot_ftn = self.epsdot_ftn_s,
                     reset = True)
-   
+ 
   def reset(self):
     """
     reset the momentum to the original configuration.
@@ -90,7 +90,7 @@ class Energy(Physics):
                     use_lat_bc = self.use_lat_bc_s,
                     epsdot_ftn = self.epsdot_ftn_s,
                     reset = True)
-  
+
   def color(self):
     """
     return the default color for this class.
@@ -145,7 +145,7 @@ class Energy(Physics):
 
     model.init_adot(adot, cls=self)
   
-  def water_content_obj_ftn(self):
+  def form_obj_ftn(self):
     """
     Forms and returns an objective functional for use with adjoint.
     Saves to self.J.
@@ -154,27 +154,24 @@ class Energy(Physics):
     print_text(s, self.color())
 
     model    = self.model
+    theta    = self.theta
     dGnd     = model.dBed_g
-    theta    = model.theta
     theta_m  = model.theta_melt
     L        = model.L
     theta_c  = theta_m + 0.03*L
     
-    J    = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dGnd
+    J       = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dGnd
     self.J  = J
     return J
 
-  def water_content_reg_ftn(self, gamma, kind='Tikhonov'):
+  def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
     """
     Formulates, and returns the regularization functional for use 
     with adjoint, saved to self.R.
     """
-    s   = "::: forming %s regularization with parameter gamma = %.2E :::"
-    print_text(s % (kind, gamma), self.color())
+    self.alpha = alpha   # need to save this for printing values.
 
-    model    = self.model
-    dGnd     = model.dBed_g
-    alpha    = model.alpha
+    dR = integral
     
     # form regularization term 'R' :
     if kind != 'TV' and kind != 'Tikhonov' and kind != 'square':
@@ -182,17 +179,28 @@ class Energy(Physics):
       print_text(s, 'red', 1)
       sys.exit(1)
     elif kind == 'TV':
-      R  = gamma * 0.5 * sqrt(inner(grad(alpha), grad(alpha)) + 1e-15) * dGnd
-      Rp = 0.5 * sqrt(inner(grad(alpha), grad(alpha)) + 1e-15) * dGnd
+      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
+      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
     elif kind == 'Tikhonov':
-      R  = gamma * 0.5 * inner(grad(alpha), grad(alpha)) * dGnd
-      Rp = 0.5 * inner(grad(alpha), grad(alpha)) * dGnd
+      R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
+      Rp = 0.5 * inner(grad(c), grad(c)) * dR
     elif kind == 'square':
-      R  = gamma * 0.5 * alpha**2 * dGnd
-      Rp = 0.5 * alpha**2 * dGnd
+      R  = alpha * 0.5 * c**2 * dR
+      Rp = 0.5 * c**2 * dR
+    s   = "::: forming %s regularization with parameter alpha = %.2E :::"
+    print_text(s % (kind, alpha), self.color())
     self.R  = R
-    self.Rp = Rp
+    self.Rp = Rp  # needed for L-curve
     return R
+  
+  def print_eval_ftns(self):
+    """
+    Used to facilitate printing the objective function in adjoint solves.
+    """
+    R = assemble(self.Rp, annotate=False)
+    J = assemble(self.J,  annotate=False)
+    print_min_max(R, 'R', cls=self)
+    print_min_max(J, 'J', cls=self)
 
   def solve(self, annotate=True, params=None):
     """ 
@@ -832,6 +840,15 @@ class Enthalpy(Energy):
       s    = '::: adjoint obj. gradient post callback function :::'
       print_text(s, cls=self)
       print_min_max(dI,    'dI/dalpha', cls=self)
+      
+      # update the DA current velocity to the model for evaluation 
+      # purposes only; the model.assign_variable function is 
+      # annotated for purposes of linking physics models to the adjoint
+      # process :
+      theta_opt = DolfinAdjointVariable(model.theta).tape_value()
+      model.init_theta(theta_opt, cls=self)
+     
+      # call that callback, if you want :
       if adj_callback is not None:
         adj_callback(I, dI, alpha)
     
@@ -844,8 +861,9 @@ class Enthalpy(Energy):
     self.solve(annotate=True)
    
     # get the cost, regularization, and objective functionals :
-    J = self.water_content_obj_ftn()
-    R = self.water_content_reg_ftn(gamma, kind=reg_kind)
+    J = self.form_obj_ftn()
+    R = self.form_reg_ftn(model.alpha, integral=model.dBed_g,
+                          kind=reg_kind, alpha=gamma)
     I = J + R
 
     # define the control variable :    
@@ -887,16 +905,8 @@ class Enthalpy(Energy):
     print_min_max(a_opt, 'a_opt')
 
     # make the optimal control variable available :
-    model.init_alpha(a_opt)
+    model.init_alpha(a_opt, cls=self)
     #Control(model.alpha).update(a_opt)  # FIXME: does this work?
-
-    # make the optimal state varaiable available :
-    theta_opt = DolfinAdjointVariable(model.theta).tape_value()
-    model.init_theta(theta_opt, cls=self)
-    
-    #W_w = project( (theta_opt - theta_m)/L )
-    #W_w.vector()[W_w.vector() < 0] = 0.0
-    #model.save_xdmf(W_w, 'W_w')
 
     # reset entire dolfin-adjoint state :
     adj_reset()

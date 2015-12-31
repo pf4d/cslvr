@@ -1,6 +1,6 @@
 from fenics                 import *
 from dolfin_adjoint         import *
-from varglas.io             import print_text, print_min_max
+from varglas.io             import get_text, print_text, print_min_max
 from varglas.physics        import Physics
 from copy                   import deepcopy
 from varglas.helper         import raiseNotDefined
@@ -198,28 +198,41 @@ class Momentum(Physics):
     self.obj_ftn_type = kind   # need to save this for printing values.
     
     model    = self.model
+    
+    # note that even if self.reset() or self.linearize_viscosity() are called,
+    # this will still point to the velocity function, and hence only one call
+    # to this function is required :
+    U        = self.get_U()
 
     dGamma   = integral
     u_ob     = model.u_ob
     v_ob     = model.v_ob
     adot     = model.adot
     S        = model.S
-    U        = self.get_U()
+    U3       = model.U3
+    um       = U3[0]
+    vm       = U3[1]
+    wm       = U3[2]
 
     if kind == 'log':
-      J   = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
-                      / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
+      J      = 0.5 * ln(  (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+                        / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
+      self.J = 0.5 * ln(  (sqrt(um**2 + vm**2) + 0.01) \
+                        / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
       s   = "::: forming log objective function :::"
     
     elif kind == 'kinematic':
-      J   = 0.5 * (+ U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
+      J      = 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
+      self.J = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dGamma
       s   = "::: getting kinematic objective function :::"
 
     elif kind == 'L2':
-      J   = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
+      J      = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
+      self.J = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
       s   = "::: getting L2 objective function :::"
 
     elif kind == 'ratio':
+      #NOTE: experimental
       U_n   = sqrt(U[0]**2 + U[1]**2 + DOLFIN_EPS)
       Uob_n = sqrt(u_ob**2 + v_ob**2 + DOLFIN_EPS)
       #J     = 0.5 * (+ (1 - (U[0] + 1e-4)/(u_ob + 1e-4))
@@ -231,10 +244,14 @@ class Momentum(Physics):
       J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
       J2  = g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
-      self.J1  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
-      self.J2  = 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+      self.J1  = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
+      self.J2  = 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
-      J   = J1 + J2
+      self.J1p = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
+      self.J2p = g2 * 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
+                                / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
+      J      = J1 + J2
+      self.J = self.J1p + self.J2p
       s   = "::: getting log/L2 hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
 
@@ -244,7 +261,6 @@ class Momentum(Physics):
       print_text(s, 'red', 1)
       sys.exit(1)
     print_text(s, self.color())
-    self.J  = J
     return J
 
   def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
@@ -262,8 +278,8 @@ class Momentum(Physics):
       print_text(s, 'red', 1)
       sys.exit(1)
     elif kind == 'TV':
-      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-12) * dR
-      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-12) * dR
+      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
+      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
     elif kind == 'Tikhonov':
       R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
       Rp = 0.5 * inner(grad(c), grad(c)) * dR
@@ -273,20 +289,54 @@ class Momentum(Physics):
     s   = "::: forming %s regularization with parameter alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
     self.R  = R
-    self.Rp = Rp
+    self.Rp = Rp  # needed for L-curve
     return R
+
+  def calc_misfit(self, integral):
+    """
+    Calculates the misfit of model and observations, 
+
+      D = ||U - U_ob||
+
+    over shelves or grounded depending on the paramter <integral>, then 
+    updates model.misfit with D for plotting.
+    """
+    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
+    print_text(s % integral, cls=self)
+
+    model  = self.model
+    u,v,w  = model.U3
+
+    U_s    = Function(model.Q2)
+    U_ob_s = Function(model.Q2)
+    U      = as_vector([u,          v])
+    U_ob   = as_vector([model.u_ob, model.v_ob])
+
+    bc_U    = DirichletBC(model.Q2, U,    model.ff, integral)
+    bc_U_ob = DirichletBC(model.Q2, U_ob, model.ff, integral)
+    
+    bc_U.apply(U_s.vector())
+    bc_U_ob.apply(U_ob_s.vector())
+
+    # calculate L_inf vector norm :
+    D_v      = U_s.vector() - U_ob_s.vector()
+    D        = MPI.max(mpi_comm_world(), D_v.max())
+
+    s    = "||U - U_ob|| : %.3E" % D
+    print_text(s, '208', 1)
+    model.misfit = D
   
   def print_eval_ftns(self):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
     if self.obj_ftn_type == 'log_L2_hybrid':
-      J1 = assemble(self.J1)
-      J2 = assemble(self.J2)
+      J1 = assemble(self.J1, annotate=False)
+      J2 = assemble(self.J2, annotate=False)
       print_min_max(J1, 'J1', cls=self)
       print_min_max(J2, 'J2', cls=self)
-    R = assemble(self.R)
-    J = assemble(self.J)
+    R = assemble(self.Rp, annotate=False)
+    J = assemble(self.J,  annotate=False)
     print_min_max(R, 'R', cls=self)
     print_min_max(J, 'J', cls=self)
     
@@ -388,5 +438,139 @@ class Momentum(Physics):
     #      annotate=False)
     #print_min_max(norm(model.Lam), '||Lam||')
     print_min_max(Lam, 'Lam')
+
+  def optimize_U_ob(self, control, obj_ftn, bounds,
+                    method            = 'l_bfgs_b',
+                    adj_iter          = 100,
+                    adj_save_vars     = None,
+                    adj_callback      = None,
+                    post_adj_callback = None):
+    """
+    """
+    s    = "::: solving optimal control to minimize ||u - u_ob|| with " + \
+           "control parmeter '%s' :::"
+    print_text(s % control.name(), cls=self)
+
+    model = self.model
+
+    # starting time :
+    t0   = time()
+
+    # need this for the derivative callback :
+    global counter
+    counter = 0 
+   
+    # solve the momentum equations with annotation enabled :
+    s    = '::: solving momentum forward problem for dolfin-adjoint :::'
+    print_text(s, cls=self)
+    self.solve(annotate=True)
+    
+    # now solve the control optimization problem : 
+    s    = "::: starting adjoint-control optimization with method '%s' :::"
+    print_text(s % method, cls=self)
+
+    # objective function callback function : 
+    def eval_cb(I, c):
+      s    = '::: adjoint objective eval post callback function :::'
+      print_text(s, cls=self)
+      print_min_max(I,    'I',         cls=self)
+      print_min_max(c,    'control',   cls=self)
+    
+    # objective gradient callback function :
+    def deriv_cb(I, dI, c):
+      if method == 'ipopt':
+        global counter
+        s0    = '>>> '
+        s1    = 'iteration %i (max %i) complete'
+        s2    = ' <<<'
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1 % (counter, adj_iter), 'red')
+        text2 = get_text(s2, 'red', 1)
+        if MPI.rank(mpi_comm_world())==0:
+          print text0 + text1 + text2
+        counter += 1
+      s    = '::: adjoint obj. gradient post callback function :::'
+      print_text(s, cls=self)
+      print_min_max(dI,    'dI/dcontrol', cls=self)
+      
+      # update the DA current velocity to the model for evaluation 
+      # purposes only; the model.assign_variable function is 
+      # annotated for purposes of linking physics models to the adjoint
+      # process :
+      u_opt = DolfinAdjointVariable(model.U3).tape_value()
+      model.init_U(u_opt, cls=self)
+
+      # call that callback, if you want :
+      if adj_callback is not None:
+        adj_callback(I, dI, c)
+    
+    # define the control parameter :
+    m = Control(control, value=control)
+    
+    # create the reduced functional to minimize :
+    F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
+                          derivative_cb_post=deriv_cb)
+
+    # optimize with scipy's fmin_l_bfgs_b :
+    if method == 'l_bfgs_b': 
+      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
+                     options={"disp"    : True,
+                              "maxiter" : adj_iter,
+                              "gtol"    : 1e-5})
+      b_opt = out[0]
+    
+    # or optimize with IPOpt (preferred) :
+    elif method == 'ipopt':
+      try:
+        import pyipopt
+      except ImportError:
+        info_red("""You do not have IPOPT and/or pyipopt installed.
+                    When compiling IPOPT, make sure to link against HSL,
+                    as it is a necessity for practical problems.""")
+        raise
+      problem = MinimizationProblem(F, bounds=bounds)
+      parameters = {"tol"                : 1e-8,
+                    "acceptable_tol"     : 1e-6,
+                    "maximum_iterations" : adj_iter,
+                    "print_level"        : 1,
+                    "ma97_order"         : "metis",
+                    "linear_solver"      : "ma97"}
+      solver = IPOPTSolver(problem, parameters=parameters)
+      b_opt  = solver.solve()
+
+    # make the optimal control parameter available :
+    model.assign_variable(control, b_opt, cls=self)
+    #Control(control).update(b_opt)  # FIXME: does this work?
+    
+    # call the post-adjoint callback function if set :
+    if post_adj_callback is not None:
+      s    = '::: calling post-adjoined callback function :::'
+      print_text(s, cls=self)
+      post_adj_callback()
+    
+    # save state to unique hdf5 file :
+    if isinstance(adj_save_vars, list):
+      s    = '::: saving variables in list arg adj_save_vars :::'
+      print_text(s, cls=self)
+      out_file = model.out_dir + 'hdf5/inverted.h5'
+      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+      
+      for var in adj_save_vars:
+        model.save_hdf5(var, f=foutput)
+      
+      foutput.close()
+    
+    # reset entire dolfin-adjoint state for the next thermo-solve :
+    adj_reset()
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
+
 
 

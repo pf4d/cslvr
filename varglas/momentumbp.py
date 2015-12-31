@@ -268,7 +268,7 @@ class MomentumBP(Momentum):
                  'vert_solve_method'    : 'mumps'}
     return m_params
 
-  def solve_pressure(self):
+  def solve_pressure(self, annotate=annotate):
     """
     Solve for the BP pressure 'p'.
     """
@@ -288,8 +288,8 @@ class MomentumBP(Momentum):
     eta_gnd = self.eta_gnd
     w       = self.wf
 
-    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), Q, annotate=False)
-    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), Q, annotate=False)
+    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), Q, annotate=annotate)
+    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), Q, annotate=annotate)
     
     # unify the pressure over shelves and grounded ice : 
     p_v                 = p.vector().array()
@@ -297,9 +297,9 @@ class MomentumBP(Momentum):
     p_shf_v             = p_shf.vector().array()
     p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
     p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
-    model.assign_variable(p, p_v, cls=self)
+    model.assign_variable(p, p_v, cls=self, annotate=annotate)
 
-  def solve_vert_velocity(self):
+  def solve_vert_velocity(self, annotate=False):
     """ 
     Perform the Newton solve of the first order equations 
     """
@@ -314,13 +314,13 @@ class MomentumBP(Momentum):
     if self.bc_w != None:
       self.bc_w.apply(aw, Lw)
     w_solver = LUSolver(self.solve_params['vert_solve_method'])
-    w_solver.solve(aw, self.wf.vector(), Lw, annotate=False)
+    w_solver.solve(aw, self.wf.vector(), Lw, annotate=annotate)
     #solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
     #      solver_parameters = {"linear_solver" : sm})#,
     #                           "symmetric" : True},
     #                           annotate=False)
     
-    self.assz.assign(model.w, self.wf)
+    self.assz.assign(model.w, self.wf, annotate=annotate)
     print_min_max(self.wf, 'w', cls=self)
     
   def solve(self, annotate=True):
@@ -346,15 +346,15 @@ class MomentumBP(Momentum):
 
     #self.assign_variable(model.u, u)
     #self.assign_variable(model.v, v)
-    self.assx.assign(model.u, u)
-    self.assy.assign(model.v, v)
+    self.assx.assign(model.u, u, annotate=annotate)
+    self.assy.assign(model.v, v, annotate=annotate)
 
     print_min_max(self.U, 'U', cls=self)
       
     if params['solve_vert_velocity']:
-      self.solve_vert_velocity()
+      self.solve_vert_velocity(annotate=annotate)
     if params['solve_pressure']:
-      self.solve_pressure()
+      self.solve_pressure(annotate=annotate)
 
 
 class MomentumDukowiczBP(Momentum):
@@ -716,7 +716,7 @@ class MomentumDukowiczBP(Momentum):
     if params['solve_vert_velocity']:
       self.solve_vert_velocity(annotate)
     if params['solve_pressure']:
-      self.solve_pressure(annotate)
+      self.solve_pressure(annotate=False)
 
 
 

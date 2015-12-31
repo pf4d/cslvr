@@ -3,6 +3,8 @@ from dolfin_adjoint import *
 from varglas.io     import print_text, get_text, print_min_max
 import numpy        as np
 import sys
+import os
+    
 
 class Model(object):
   """ 
@@ -1406,11 +1408,12 @@ class Model(object):
     elif isinstance(var, Expression) \
       or isinstance(var, Constant)  \
       or isinstance(var, Function) \
-      or isinstance(var, dolfin.functions.function.Function):
-      u.interpolate(var, annotate=annotate)
+      or isinstance(var, dolfin.functions.function.Function) \
+      or isinstance(var, GenericVector):
+      u.assign(var, annotate=annotate)
 
-    elif isinstance(var, GenericVector):
-      self.assign_variable(u, var.array(), annotate=annotate, cls=cls)
+    #elif isinstance(var, GenericVector):
+    #  self.assign_variable(u, var.array(), annotate=annotate, cls=cls)
 
     elif isinstance(var, str):
       File(var) >> u
@@ -1734,9 +1737,6 @@ class Model(object):
     # starting time :
     t0   = time()
 
-    # L_\infty norm in velocity between iterations :
-    inner_error = np.inf
-   
     # number of iterations :
     counter = 1
 
@@ -1744,9 +1744,6 @@ class Model(object):
     global counter_n
     counter_n = 0 
    
-    # previous velocity for norm calculation
-    U_prev      = self.U3.copy(True)
-
     # initialization step :
     # set the initialization output directory :
     out_dir_n = 'initialization/'
@@ -1904,6 +1901,72 @@ class Model(object):
     m = m % 60
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+
+  def L_curve(self, alphas, physics, control, int_domain, reg_kind='Tikhonov',
+              pre_callback=None, post_callback=None):
+    """
+    """
+    s    = '::: starting L-curve procedure :::'
+    print_text(s, cls=self.this)
+
+    from varglas import Physics
+
+    if not isinstance(physics, Physics):
+      s = ">>> L_curve() REQUIRES A 'Physics' INSTANCE, NOT %s <<<"
+      print_text(s % type(momentum) , 'red', 1)
+      sys.exit(1)
+
+    # retain base install directory :
+    out_dir_i = self.out_dir
+
+    # functional lists to be populated :
+    Js     = []
+    Rs     = []
+   
+    # iterate through each of the regularization parameters provided : 
+    for alpha in alphas:
+      s    = '::: performing L-curve iteration with alpha = %.3e :::' % alpha
+      print_text(s, cls=self.this)
+      
+      # set the appropriate output directory :
+      out_dir_n = 'alpha_%.1E/' % alpha
+      self.set_out_dir(out_dir_i + out_dir_n)
+      
+      # call the pre-adjoint callback function :
+      if pre_callback is not None:
+        s    = '::: calling L-curve pre-adjoint pre_callback() :::'
+        print_text(s, cls=self.this)
+        pre_callback()
+     
+      # get new regularization functional : 
+      R = physics.form_reg_ftn(control, integral=int_domain,
+                               kind=kind, alpha=alpha)
+
+      #FIXME: solve the adjoint system :
+      physics.adj_ftn()
+      
+      # calculate functionals of interest :
+      Rs.append(assemble(physics.Rp))
+      Js.append(assemble(physics.J))
+      
+      # call the pre-adjoint callback function :
+      if post_callback is not None:
+        s    = '::: calling L-curve post-adjoint pre_callback() :::'
+        print_text(s, cls=self.this)
+        post_callback()
+    
+    s    = '::: L-curve procedure complete :::'
+    print_text(s, cls=self.this)
+   
+    # save the resulting functional values and alphas to CSF : 
+    if self.MPI_rank==0:
+      d = out_dir_i + 'functionals/'
+      if not os.path.exists(d):
+        os.makedirs(d)
+      np.savetxt(d + 'Rs.txt',   np.array(Rs))
+      np.savetxt(d + 'Js.txt',   np.array(Js))
+      np.savetxt(d + 'as.txt',   np.array(alphas))
+      
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
                       adaptive=False, annotate=False, callback=None):

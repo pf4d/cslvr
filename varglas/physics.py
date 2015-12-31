@@ -1,4 +1,7 @@
 from helper import raiseNotDefined
+from fenics         import *
+from dolfin_adjoint import *
+from varglas.io     import print_text
 
 
 class Physics(object):
@@ -32,6 +35,35 @@ class Physics(object):
     Returns the solve parameters.
     """
     return self.default_solve_params()
+
+  def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
+    """
+    Formulates, and returns the regularization functional for use 
+    with adjoint, saved to self.R.
+    """
+    self.alpha = alpha   # need to save this for printing values.
+
+    dR = integral
+    
+    # form regularization term 'R' :
+    if kind != 'TV' and kind != 'Tikhonov' and kind != 'square':
+      s    =   ">>> VALID REGULARIZATIONS ARE 'TV', 'Tikhonov', or 'square' <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
+    elif kind == 'TV':
+      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
+      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
+    elif kind == 'Tikhonov':
+      R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
+      Rp = 0.5 * inner(grad(c), grad(c)) * dR
+    elif kind == 'square':
+      R  = alpha * 0.5 * c**2 * dR
+      Rp = 0.5 * c**2 * dR
+    s   = "::: forming %s regularization with parameter alpha = %.2E :::"
+    print_text(s % (kind, alpha), self.color())
+    self.R  = R
+    self.Rp = Rp  # needed for L-curve
+    return R
 
   def solve(self):
     """

@@ -163,35 +163,6 @@ class Energy(Physics):
     J       = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dGnd
     self.J  = J
     return J
-
-  def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
-    """
-    Formulates, and returns the regularization functional for use 
-    with adjoint, saved to self.R.
-    """
-    self.alpha = alpha   # need to save this for printing values.
-
-    dR = integral
-    
-    # form regularization term 'R' :
-    if kind != 'TV' and kind != 'Tikhonov' and kind != 'square':
-      s    =   ">>> VALID REGULARIZATIONS ARE 'TV', 'Tikhonov', or 'square' <<<"
-      print_text(s, 'red', 1)
-      sys.exit(1)
-    elif kind == 'TV':
-      R  = alpha * 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
-      Rp = 0.5 * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
-    elif kind == 'Tikhonov':
-      R  = alpha * 0.5 * inner(grad(c), grad(c)) * dR
-      Rp = 0.5 * inner(grad(c), grad(c)) * dR
-    elif kind == 'square':
-      R  = alpha * 0.5 * c**2 * dR
-      Rp = 0.5 * c**2 * dR
-    s   = "::: forming %s regularization with parameter alpha = %.2E :::"
-    print_text(s % (kind, alpha), self.color())
-    self.R  = R
-    self.Rp = Rp  # needed for L-curve
-    return R
   
   def print_eval_ftns(self):
     """
@@ -852,18 +823,14 @@ class Enthalpy(Energy):
       if adj_callback is not None:
         adj_callback(I, dI, alpha)
     
-    # initialize with zero water retention :
-    model.init_alpha(0.0, cls=self)
-   
     # solve the momentum equations with annotation enabled :
     s    = '::: solving forward problem for dolfin-adjoint annotatation :::'
     print_text(s, cls=self)
     self.solve(annotate=True)
    
     # get the cost, regularization, and objective functionals :
-    J = self.form_obj_ftn()
-    R = self.form_reg_ftn(model.alpha, integral=model.dBed_g,
-                          kind=reg_kind, alpha=gamma)
+    J = self.J
+    R = self.R
     I = J + R
 
     # define the control variable :    
@@ -917,7 +884,7 @@ class Enthalpy(Energy):
     h = m / 60.0
     s = s % 60
     m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    text = "time to optimize for water flux: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
   def solve_basal_melt_rate(self):

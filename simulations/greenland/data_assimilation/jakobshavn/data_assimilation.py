@@ -247,9 +247,7 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
 
 #===============================================================================
-# counter for saving .xdmf files :
-global t
-t = 0
+d3model.set_out_dir(out_dir + 'L_curve/')
 
 # number of digits for saving variables :
 iterations = 200
@@ -257,14 +255,36 @@ gamma      = 1e10
 n_i        = len(str(iterations))
       
 # objective gradient callback function :
-def cb(I, dI, alpha):
-  global t
-  d3model.assign_submesh_variable(a_b, alpha)
-  d3model.save_xdmf(a_b, 'alpha_control_%0*d' % (n_i, t))
-  t += 1
+def post_cb():
+  nrg.partition_energy()
+  d3model.save_xdmf(d3model.alpha, 'alpha_opt')
+  d3model.save_xdmf(d3model.theta, 'theta_opt')
+  d3model.save_xdmf(d3model.T,     'T_opt')
+  d3model.save_xdmf(d3model.W,     'W_opt')
 
-nrg.optimize_water_flux(iterations, gamma, reg_kind='Tikhonov',
-                        method='ipopt', adj_callback=cb)
+adj_kwargs = {'iterations'   : iterations,
+              'gamma'        : gamma,
+              'reg_kind'     : 'Tikhonov',
+              'method'       : 'ipopt',
+              'adj_callback' : None}
+
+alphas = [1e8, 1e9, 1e10, 1e11, 1e12]
+
+Lc_kwargs = {'alphas'        : alphas,
+             'physics'       : nrg,
+             'control'       : d3model.alpha,
+             'int_domain'    : d3model.dBed_g,
+             'adj_ftn'       : nrg.optimize_water_flux,
+             'adj_kwargs'    : adj_kwargs,
+             'reg_kind'      : 'Tikhonov',
+             'pre_callback'  : None,
+             'post_callback' : post_cb}
+
+J = nrg.form_obj_ftn()
+ 
+d3model.L_curve(**Lc_kwargs)
+
+#nrg.optimize_water_flux(**adj_kwargs)
 
 nrg.partition_energy()
 

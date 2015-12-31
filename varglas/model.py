@@ -1709,7 +1709,7 @@ class Model(object):
     h = m / 60.0
     s = s % 60
     m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
   def assimilate_U_ob(self, momentum, energy, control, obj_ftn,
@@ -1902,31 +1902,37 @@ class Model(object):
     text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
-  def L_curve(self, alphas, physics, control, int_domain, reg_kind='Tikhonov',
-              pre_callback=None, post_callback=None):
+  def L_curve(self, alphas, physics, control, int_domain, adj_ftn, adj_kwargs,
+              reg_kind='Tikhonov', pre_callback=None, post_callback=None):
     """
     """
     s    = '::: starting L-curve procedure :::'
     print_text(s, cls=self.this)
-
-    from varglas import Physics
-
-    if not isinstance(physics, Physics):
-      s = ">>> L_curve() REQUIRES A 'Physics' INSTANCE, NOT %s <<<"
-      print_text(s % type(momentum) , 'red', 1)
-      sys.exit(1)
+    
+    # starting time :
+    t0   = time()
 
     # retain base install directory :
     out_dir_i = self.out_dir
+
+    # retain initial control parameter for consistency :
+    control_ini = control.copy(True)
 
     # functional lists to be populated :
     Js     = []
     Rs     = []
    
     # iterate through each of the regularization parameters provided : 
-    for alpha in alphas:
+    for i,alpha in enumerate(alphas):
       s    = '::: performing L-curve iteration with alpha = %.3e :::' % alpha
-      print_text(s, cls=self.this)
+      print_text(s, atrb=1, cls=self.this)
+
+      # reset everything after the first iteration :
+      if i > 0:
+        s    = '::: initializing physics :::'
+        print_text(s, cls=self.this)
+        physics.reset()
+        self.assign_variable(control, control_ini, cls=self.this)
       
       # set the appropriate output directory :
       out_dir_n = 'alpha_%.1E/' % alpha
@@ -1940,10 +1946,10 @@ class Model(object):
      
       # get new regularization functional : 
       R = physics.form_reg_ftn(control, integral=int_domain,
-                               kind=kind, alpha=alpha)
+                               kind=reg_kind, alpha=alpha)
 
-      #FIXME: solve the adjoint system :
-      physics.adj_ftn()
+      # solve the adjoint system :
+      adj_ftn(**adj_kwargs)
       
       # calculate functionals of interest :
       Rs.append(assemble(physics.Rp))
@@ -1966,6 +1972,15 @@ class Model(object):
       np.savetxt(d + 'Rs.txt',   np.array(Rs))
       np.savetxt(d + 'Js.txt',   np.array(Js))
       np.savetxt(d + 'as.txt',   np.array(alphas))
+
+    # calculate total time to compute
+    s = time() - t0
+    m = s / 60.0
+    h = m / 60.0
+    s = s % 60
+    m = m % 60
+    text = "time to complete L-curve procedure: %02d:%02d:%02d" % (h,m,s)
+    print_text(text, 'red', 1)
       
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
@@ -2102,7 +2117,7 @@ class Model(object):
     h = m / 60.0
     s = s % 60
     m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    text = "total time to perform transient run: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
 

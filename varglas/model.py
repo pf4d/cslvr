@@ -2,6 +2,7 @@ from fenics         import *
 from dolfin_adjoint import *
 from varglas.io     import print_text, get_text, print_min_max
 import numpy        as np
+import pylab        as pl
 import sys
 import os
     
@@ -1603,7 +1604,7 @@ class Model(object):
     self.tau_jj        = Function(self.Q, name='tau_jj')
 
   def thermo_solve(self, momentum, energy, callback=None, 
-                   atol=1e-6, rtol=1e-6, max_iter=50):
+                   atol=1e2, rtol=1e0, max_iter=50):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
@@ -1712,21 +1713,19 @@ class Model(object):
     text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
-  def assimilate_U_ob(self, momentum, energy, control, obj_ftn,
-                      bounds, method='l_bfgs_b', adj_iter=100,
-                      incomplete=True,
-                      iterations=100, save_state=True,
-                      ini_save_vars=None,
-                      adj_save_vars=None,
-                      tmc_callback=None,
-                      post_ini_callback=None,
-                      post_adj_callback=None,
-                      adj_callback=None, 
-                      tmc_atol=1e-6, tmc_rtol=1e-6, tmc_max_iter=15):
+  def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,
+                      incomplete        = True,
+                      ini_save_vars     = None,
+                      post_save_vars    = None,
+                      post_ini_callback = None):
     """
     """
     s    = '::: performing assimilation process with %i iterations :::'
     print_text(s % iterations, cls=self.this)
+
+    # need the physics instances :
+    momentum = tmc_kwargs['momentum']
+    energy   = tmc_kwargs['energy']
 
     # retain base install directory :
     out_dir_i = self.out_dir
@@ -1740,18 +1739,13 @@ class Model(object):
     # number of iterations :
     counter = 1
 
-    # need this for the derivative callback :
-    global counter_n
-    counter_n = 0 
-   
     # initialization step :
     # set the initialization output directory :
     out_dir_n = 'initialization/'
     self.set_out_dir(out_dir_i + out_dir_n)
     
     # thermo-mechanical couple :
-    self.thermo_solve(momentum, energy, callback=tmc_callback,
-                      atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
+    self.thermo_solve(**tmc_kwargs)
 
     # call the post function if set :
     if post_ini_callback is not None:
@@ -1760,7 +1754,7 @@ class Model(object):
       post_ini_callback()
 
     # save state to numbered hdf5 file :
-    if save_state:
+    if isinstance(ini_save_vars, list):
       s    = '::: saving initialized variables in dict arg ini_save_vars :::'
       print_text(s, cls=self.this)
       out_file = self.out_dir + 'hdf5/thermo_ini.h5'
@@ -1785,106 +1779,25 @@ class Model(object):
       print_text(s, cls=self.this)
       
       # the incomplete adjoint means the viscosity is linear :
-      momentum.linearize_viscosity()
+      if incomplete: momentum.linearize_viscosity()
 
-      # solve the momentum equations with annotation enabled :
-      s    = '::: solving forward problem for dolfin-adjoint annotatation :::'
-      print_text(s, cls=self.this)
-      momentum.solve(annotate=True)
-     
-      # now solve the control optimization problem : 
-      s    = "::: starting adjoint-control optimization with method '%s' :::"
-      print_text(s % method, cls=self.this)
+      # optimize the velocity : 
+      momentum.optimize_U_ob(**uop_kwargs)
 
-      # objective function callback function : 
-      def eval_cb(I, beta):
-        s    = '::: adjoint objective eval post callback function :::'
-        print_text(s, cls=self.this)
-        print_min_max(I,    'I',         cls=self.this)
-        print_min_max(beta, 'beta',      cls=self.this)
-      
-      # objective gradient callback function :
-      def deriv_cb(I, dI, beta):
-        if method == 'ipopt':
-          global counter_n
-          s0    = '>>> '
-          s1    = 'iteration %i (max %i) complete'
-          s2    = ' <<<'
-          text0 = get_text(s0, 'red', 1)
-          text1 = get_text(s1 % (counter_n, iterations * adj_iter), 'red')
-          text2 = get_text(s2, 'red', 1)
-          if MPI.rank(mpi_comm_world())==0:
-            print text0 + text1 + text2
-          counter_n += 1
-        s    = '::: adjoint obj. gradient post callback function :::'
-        print_text(s, cls=self.this)
-        print_min_max(dI,    'dI/dbeta', cls=self.this)
-        if adj_callback is not None:
-          adj_callback(I, dI, beta)
-      
-      # define the control parameter :
-      m = Control(control, value=control)
-      
-      # create the reduced functional to minimize :
-      F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
-                            derivative_cb_post=deriv_cb)
-
-      # optimize with scipy's fmin_l_bfgs_b :
-      if method == 'l_bfgs_b': 
-        out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
-                       options={"disp"    : True,
-                                "maxiter" : adj_iter,
-                                "gtol"    : 1e-5})
-        b_opt = out[0]
-      
-      # or optimize with IPOpt (preferred) :
-      elif method == 'ipopt':
-        try:
-          import pyipopt
-        except ImportError:
-          info_red("""You do not have IPOPT and/or pyipopt installed.
-                      When compiling IPOPT, make sure to link against HSL,
-                      as it is a necessity for practical problems.""")
-          raise
-        problem = MinimizationProblem(F, bounds=bounds)
-        parameters = {"tol"                : 1e-8,
-                      "acceptable_tol"     : 1e-6,
-                      "maximum_iterations" : adj_iter,
-                      "print_level"        : 1,
-                      "ma97_order"         : "metis",
-                      "linear_solver"      : "ma97"}
-        solver = IPOPTSolver(problem, parameters=parameters)
-        b_opt  = solver.solve()
-
-      # make the optimal control parameter available :
-      self.assign_variable(self.control_opt, b_opt, cls=self.this)
-
-      # call the post-adjoint callback function if set :
-      if post_adj_callback is not None:
-        s    = '::: calling post-adjoined callback function :::'
-        print_text(s, cls=self.this)
-        post_adj_callback()
-      
       # reset the momentum to the original configuration : 
-      momentum.reset()
+      if incomplete: momentum.reset()
 
-      # correct the basal melt rate :
-      energy.solve_basal_melt_rate()
-      
-      # thermo-mechanical couple :
-      self.thermo_solve(momentum, energy, callback=tmc_callback,
-                        atol=tmc_atol, rtol=tmc_rtol, max_iter=tmc_max_iter)
+      # thermo-mechanically couple :
+      self.thermo_solve(**tmc_kwargs)
        
       # save state to unique hdf5 file :
-      if save_state:
-        s    = '::: saving variables in list arg adj_save_vars :::'
+      if isinstance(post_save_vars, list):
+        s    = '::: saving variables in list arg post_save_vars :::'
         print_text(s, cls=self.this)
         out_file = self.out_dir + 'hdf5/inverted_%0*d.h5' % (n_i, counter)
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        
-        for var in adj_save_vars:
+        for var in post_save_vars:
           self.save_hdf5(var, f=foutput)
-        
         foutput.close()
       
       # reset entire dolfin-adjoint state for the next thermo-solve :
@@ -1899,8 +1812,8 @@ class Model(object):
     h = m / 60.0
     s = s % 60
     m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
-    print_text(text, 'red', 1)
+    text = "time to compute TMC optimized ||u - u_ob||: %02d:%02d:%02d"
+    print_text(text % (h,m,s) , 'red', 1)
 
   def L_curve(self, alphas, physics, control, int_domain, adj_ftn, adj_kwargs,
               reg_kind='Tikhonov', pre_callback=None, post_callback=None):
@@ -1924,8 +1837,8 @@ class Model(object):
    
     # iterate through each of the regularization parameters provided : 
     for i,alpha in enumerate(alphas):
-      s    = '::: performing L-curve iteration with alpha = %.3e :::' % alpha
-      print_text(s, atrb=1, cls=self.this)
+      s    = '::: performing L-curve iteration %i with alpha = %.3e :::'
+      print_text(s % (i,alpha) , atrb=1, cls=self.this)
 
       # reset everything after the first iteration :
       if i > 0:
@@ -1940,7 +1853,7 @@ class Model(object):
       
       # call the pre-adjoint callback function :
       if pre_callback is not None:
-        s    = '::: calling L-curve pre-adjoint pre_callback() :::'
+        s    = '::: calling L_curve() pre-adjoint pre_callback() :::'
         print_text(s, cls=self.this)
         pre_callback()
      
@@ -1953,11 +1866,11 @@ class Model(object):
       
       # calculate functionals of interest :
       Rs.append(assemble(physics.Rp))
-      Js.append(assemble(physics.J))
+      Js.append(assemble(physics.Jp))
       
       # call the pre-adjoint callback function :
       if post_callback is not None:
-        s    = '::: calling L-curve post-adjoint pre_callback() :::'
+        s    = '::: calling L_curve() post-adjoint post_callback() :::'
         print_text(s, cls=self.this)
         post_callback()
     
@@ -1972,6 +1885,19 @@ class Model(object):
       np.savetxt(d + 'Rs.txt',   np.array(Rs))
       np.savetxt(d + 'Js.txt',   np.array(Js))
       np.savetxt(d + 'as.txt',   np.array(alphas))
+
+      fig = pl.figure()
+      ax  = fig.add_subplot(111)
+      
+      ax.set_xscale('log')
+      ax.set_yscale('log')
+      ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
+      ax.set_xlabel(r'$\ln\left( \mathscr{J}\left(\alpha\right) \right)$')
+      
+      ax.plot(np.array(Js), np.array(Rs), 'ko-', lw=2.0)
+      pl.grid()
+      pl.savefig(do + 'L_curve.png', dpi=200)
+      pl.close(fig)
 
     # calculate total time to compute
     s = time() - t0

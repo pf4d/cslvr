@@ -158,8 +158,8 @@ d3model.init_beta_SIA()
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
                               'relative_tolerance'       : 1e-9,
-                              'relaxation_parameter'     : 0.7,
-                              'maximum_iterations'       : 30,
+                              'relaxation_parameter'     : 1.0,
+                              'maximum_iterations'       : 3,
                               'error_on_nonconvergence'  : False}}
 #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
 #                              'relative_tolerance'       : 1e-9,
@@ -177,31 +177,25 @@ e_params  = {'solver'               : 'mumps',
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczBP(d3model, m_params, linear=False, isothermal=False)
+mom = MomentumDukowiczBP(d3model, m_params, linear=True, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
 #===============================================================================
 ## derivative of objective function callback function : 
+#d3model.set_out_dir(out_dir + 'u_inversion/')
+#
 #def deriv_cb(I, dI, beta):
 #  # calculate the L_inf norm of misfit :
-#  d3model.init_beta(beta)
 #  mom.calc_misfit(d3model.GAMMA_U_GND)
-#  mom.print_eval_ftns()
 #  d3model.assign_submesh_variable(beta_b, beta)
 #  d3model.save_xdmf(beta_b, 'beta_control')
 #
 ## post-adjoint-iteration callback function :
 #def adj_post_cb_ftn():
-#  #mom.solve_params['solve_vert_velocity'] = True
-#  #mom.solve(annotate=False)
-#
-#  # calculate the L_inf norm of misfit :
-#  mom.calc_misfit(d3model.GAMMA_U_GND)
-#  
-#  # print the regularization and cost function values :  
-#  mom.print_eval_ftns()
+#  mom.solve_params['solve_vert_velocity'] = True
+#  mom.solve(annotate=False)
 #
 #  # save the optimal velocity and beta fields for viewing with paraview :
 #  d3model.assign_submesh_variable(Us,     d3model.U3)
@@ -213,21 +207,32 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #adj_save_vars = [d3model.beta, d3model.U3]
 #
 ## form the cost functional :
-#J = mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
-#                     g1=0.01, g2=5000)
+#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+#                 g1=0.01, g2=5000)
 #
 ## form the regularization functional :
-#R = mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', 
-#                     alpha=1.0)
+#mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', 
+#                 alpha=1.0)
 #
-## define the objective functional to minimize :
-#I = J + R
-#
+### post-thermo-solve callback function :
+##def tmc_cb_ftn():
+##  nrg.solve_basal_melt_rate()
+##  d3model.assign_submesh_variable(Tb,   d3model.T)
+##  d3model.assign_submesh_variable(Us,   d3model.U3)
+##  d3model.assign_submesh_variable(Wb,   d3model.W)
+##  d3model.assign_submesh_variable(Mb,   d3model.Mb)
+##  d3model.save_xdmf(Tb,   'Tb')
+##  d3model.save_xdmf(Us,   'Us')
+##  d3model.save_xdmf(Wb,   'Wb')
+##  d3model.save_xdmf(Mb,   'Mb')
+##  d3model.save_xdmf(d3model.T, 'T')
+##  d3model.save_xdmf(d3model.W, 'W')
+##
+##d3model.thermo_solve(mom, nrg, callback=tmc_cb_ftn)
 #mom.linearize_viscosity()
 #
 ## optimize for beta :
-#mom.optimize_U_ob(control           = d3model.beta,
-#                  obj_ftn           = I,
+#mom.optimize_u_ob(control           = d3model.beta,
 #                  bounds            = (1e-5, 1e7),
 #                  method            = 'ipopt',
 #                  adj_iter          = 20,
@@ -236,7 +241,7 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #                  post_adj_callback = adj_post_cb_ftn)
 #
 #sys.exit(0)
-#
+
 #===============================================================================
 #d3model.thermo_solve(mom, nrg, callback=None, max_iter=1)
 #fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
@@ -247,12 +252,17 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
 
 #===============================================================================
-d3model.set_out_dir(out_dir + 'L_curve/')
+d3model.set_out_dir(out_dir + 'W_L_curve/')
 
 # number of digits for saving variables :
-iterations = 200
+iterations = 25
 gamma      = 1e10
 n_i        = len(str(iterations))
+
+# derivative of objective function callback function : 
+def deriv_cb(I, dI, alpha):
+  d3model.assign_submesh_variable(a_b, alpha)
+  d3model.save_xdmf(a_b, 'alpha_control')
       
 # objective gradient callback function :
 def post_cb():
@@ -266,7 +276,7 @@ adj_kwargs = {'iterations'   : iterations,
               'gamma'        : gamma,
               'reg_kind'     : 'Tikhonov',
               'method'       : 'ipopt',
-              'adj_callback' : None}
+              'adj_callback' : deriv_cb}
 
 alphas = [1e8, 1e9, 1e10, 1e11, 1e12]
 
@@ -280,40 +290,78 @@ Lc_kwargs = {'alphas'        : alphas,
              'pre_callback'  : None,
              'post_callback' : post_cb}
 
-J = nrg.form_obj_ftn()
+nrg.form_obj_ftn(kind='abs')
  
 d3model.L_curve(**Lc_kwargs)
 
 #nrg.optimize_water_flux(**adj_kwargs)
 
-nrg.partition_energy()
-
-d3model.save_xdmf(d3model.alpha, 'alpha')
-d3model.save_xdmf(d3model.T,     'T')
-d3model.save_xdmf(d3model.W,     'W')
-
 sys.exit(0)
 
-# save all the objective function values : 
-from numpy import savetxt, array
-import os
-
-if d3model.MPI_rank==0:
-  d = out_dir + 'objective_ftns/'
-  if not os.path.exists(d):
-    os.makedirs(d)
-  savetxt(d + 'Rs.txt',   array(Rs))
-  savetxt(d + 'Js.txt',   array(Js))
-  savetxt(d + 'J1s.txt',  array(J1s))
-  savetxt(d + 'J2s.txt',  array(J2s))
-  savetxt(d + 'Ms.txt',   array(Ms))
 #===============================================================================
+#d3model.set_out_dir(out_dir + 'u_L_curve/')
+#
+## derivative of objective function callback function : 
+#def deriv_cb(I, dI, beta):
+#  # calculate the L_inf norm of misfit :
+#  mom.calc_misfit(d3model.GAMMA_U_GND)
+#  d3model.assign_submesh_variable(beta_b, beta)
+#  d3model.save_xdmf(beta_b, 'beta_control')
+#
+## post-adjoint-iteration callback function :
+#def post_cb():
+#  # re-solve the momentum equations with vertical velocity and optimal beta :
+#  m_params['solve_vert_velocity'] = True
+#  mom.solve(annotate=False)
+#
+#  # save the optimal velocity and beta fields for viewing with paraview :
+#  d3model.save_xdmf(d3model.U3,   'U_opt')
+#  d3model.save_xdmf(d3model.beta, 'beta_opt')
+#
+## form the cost functional :
+#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+#                 g1=0.01, g2=5000)
+#
+## number of digits for saving variables :
+#iterations = 2
+#gamma      = 1e10
+#n_i        = len(str(iterations))
+#
+## after every completed adjoining, save the state of these functions :
+#adj_save_vars = [d3model.beta, d3model.U3]
+#
+#uop_kwargs = {'control'           : d3model.beta,
+#              'bounds'            : (1e-5, 1e7),
+#              'method'            : 'ipopt',
+#              'adj_iter'          : 10,
+#              'adj_save_vars'     : adj_save_vars,
+#              'adj_callback'      : deriv_cb,
+#              'post_adj_callback' : post_cb}
+#      
+#alphas = [0.5, 1.0, 1.5]
+#
+#Lc_kwargs = {'alphas'        : alphas,
+#             'physics'       : mom,
+#             'control'       : d3model.beta,
+#             'int_domain'    : d3model.dBed_g,
+#             'adj_ftn'       : mom.optimize_u_ob,
+#             'adj_kwargs'    : uop_kwargs,
+#             'reg_kind'      : 'TV',
+#             'pre_callback'  : None,
+#             'post_callback' : None}
+#
+#d3model.L_curve(**Lc_kwargs)
+#
+#sys.exit(0)
 
+#===============================================================================
 #nrg.generate_approx_theta(init=True, annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_ini')
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
-  
+
+d3model.set_out_dir(out_dir + 'tmc_inversion/')
+
 # post-thermo-solve callback function :
 def tmc_cb_ftn():
   nrg.solve_basal_melt_rate()
@@ -330,30 +378,17 @@ def tmc_cb_ftn():
 
 # derivative of objective function callback function : 
 def deriv_cb(I, dI, beta):
+  # calculate the L_inf norm of misfit :
+  mom.calc_misfit(d3model.GAMMA_U_GND)
   d3model.assign_submesh_variable(beta_b, beta)
   d3model.save_xdmf(beta_b, 'beta_control')
 
 # post-adjoint-iteration callback function :
 def adj_post_cb_ftn():
-  d3model.init_beta(d3model.control_opt)
-
   # re-solve the momentum equations with vertical velocity and optimal beta :
   m_params['solve_vert_velocity'] = True
   mom.solve(annotate=False)
 
-  # calculate the L_inf norm of misfit :
-  d3model.calc_misfit(d3model.GAMMA_U_GND)
-  
-  # print the regularization and cost function values :  
-  mom.print_eval_ftns()
-
-  # collect all the functionals :
-  Rs.append(assemble(mom.Rp))
-  Js.append(assemble(mom.J))
-  J1s.append(assemble(mom.J1))
-  J2s.append(assemble(mom.J2))
-  Ms.append(d3model.misfit)
-  
   # save the optimal velocity and beta fields for viewing with paraview :
   d3model.assign_submesh_variable(Us,     d3model.U3)
   d3model.assign_submesh_variable(beta_b, d3model.beta)
@@ -372,54 +407,40 @@ adj_save_vars = [d3model.beta,
 ini_save_vars = adj_save_vars + [d3model.Ubar, d3model.U_ob]
 
 # form the cost functional :
-J = mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
-                     g1=0.01, g2=5000)
-#J = mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='ratio')
+mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+                 g1=0.01, g2=5000)
+#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
-R = mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', 
-                     alpha=1.0)
-#R = mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='Tikhonov', 
-#                     alpha=1e-6)
+mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', alpha=1.0)
+#mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='Tikhonov', 
+#                 alpha=1e-6)
 
-# define the objective functional to minimize :
-I = J + R
+tmc_kwargs = {'momentum'          : mom,
+              'energy'            : nrg,
+              'callback'          : tmc_cb_ftn, 
+              'atol'              : 1e2,
+              'rtol'              : 1e0,
+              'max_iter'          : 50}
 
-# reset the output directory to the base : 
-d3model.set_out_dir(out_dir)
+uop_kwargs = {'control'           : d3model.beta,
+              'bounds'            : (1e-5, 1e7),
+              'method'            : 'ipopt',
+              'adj_iter'          : 10,
+              'adj_save_vars'     : None,
+              'adj_callback'      : deriv_cb,
+              'post_adj_callback' : adj_post_cb_ftn}
+
+ass_kwargs = {'iterations'        : 10,
+              'tmc_kwargs'        : tmc_kwargs,
+              'uop_kwargs'        : uop_kwargs,
+              'incomplete'        : True,
+              'ini_save_vars'     : ini_save_vars,
+              'post_save_vars'    : adj_save_vars,
+              'post_ini_callback' : None}
 
 # assimilate ! :
-d3model.assimilate_U_ob(mom, nrg, 
-                        control           = d3model.beta,
-                        obj_ftn           = I,
-                        bounds            = (1e-5, 1e7),
-                        method            = 'ipopt',
-                        adj_iter          = 1000,
-                        iterations        = 10,
-                        save_state        = True,
-                        ini_save_vars     = ini_save_vars,
-                        adj_save_vars     = adj_save_vars,
-                        tmc_callback      = tmc_cb_ftn,
-                        post_ini_callback = None,
-                        post_adj_callback = adj_post_cb_ftn,
-                        adj_callback      = deriv_cb,
-                        tmc_rtol          = 1e0,
-                        tmc_atol          = 1e2,
-                        tmc_max_iter      = 50)
+d3model.assimilate_U_ob(**ass_kwargs) 
+
+
  
-# save all the objective function values : 
-from numpy import savetxt, array
-import os
-
-if d3model.MPI_rank==0:
-  d = out_dir + 'objective_ftns/'
-  if not os.path.exists(d):
-    os.makedirs(d)
-  savetxt(d + 'Rs.txt',   array(Rs))
-  savetxt(d + 'Js.txt',   array(Js))
-  savetxt(d + 'J1s.txt',  array(J1s))
-  savetxt(d + 'J2s.txt',  array(J2s))
-  savetxt(d + 'Ms.txt',   array(Ms))
-
-
-

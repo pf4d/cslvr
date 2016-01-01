@@ -63,7 +63,6 @@ class Physics(object):
     print_text(s % (kind, alpha), self.color())
     self.R  = R
     self.Rp = Rp  # needed for L-curve
-    return R
 
   def solve(self):
     """

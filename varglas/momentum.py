@@ -4,7 +4,9 @@ from varglas.io             import get_text, print_text, print_min_max
 from varglas.physics        import Physics
 from copy                   import deepcopy
 from varglas.helper         import raiseNotDefined
+import numpy                    as np
 import sys
+import os
 
 
 class Momentum(Physics):
@@ -215,29 +217,31 @@ class Momentum(Physics):
     wm       = U3[2]
 
     if kind == 'log':
-      J      = 0.5 * ln(  (sqrt(U[0]**2 + U[1]**2) + 0.01) \
+      J  = 0.5 * ln(  (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                         / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
-      self.J = 0.5 * ln(  (sqrt(um**2 + vm**2) + 0.01) \
-                        / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
+      Jp = 0.5 * ln(  (sqrt(um**2 + vm**2) + 0.01) \
+                    / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
       s   = "::: forming log objective function :::"
     
     elif kind == 'kinematic':
-      J      = 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
-      self.J = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dGamma
+      J  = 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
+      Jp = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dGamma
       s   = "::: getting kinematic objective function :::"
 
     elif kind == 'L2':
-      J      = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
-      self.J = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
+      J  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
+      Jp = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
       s   = "::: getting L2 objective function :::"
 
     elif kind == 'ratio':
       #NOTE: experimental
       U_n   = sqrt(U[0]**2 + U[1]**2 + DOLFIN_EPS)
+      U_m   = sqrt(um**2   + vm**2   + DOLFIN_EPS)
       Uob_n = sqrt(u_ob**2 + v_ob**2 + DOLFIN_EPS)
       #J     = 0.5 * (+ (1 - (U[0] + 1e-4)/(u_ob + 1e-4))
       #               + (1 - (U[1] + 1e-4)/(v_ob + 1e-4)) ) * Uob_n/U_n * dGamma
       J     = 0.5 * (1 -  (U_n + 0.01) / (Uob_n + 0.01))**2 * dGamma
+      Jp    = 0.5 * (1 -  (U_m + 0.01) / (Uob_n + 0.01))**2 * dGamma
       s     = "::: getting ratio objective function :::"
     
     elif kind == 'log_L2_hybrid':
@@ -250,8 +254,8 @@ class Momentum(Physics):
       self.J1p = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
       self.J2p = g2 * 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
                                 / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
-      J      = J1 + J2
-      self.J = self.J1p + self.J2p
+      J  = J1 + J2
+      Jp = self.J1p + self.J2p
       s   = "::: getting log/L2 hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
 
@@ -261,7 +265,8 @@ class Momentum(Physics):
       print_text(s, 'red', 1)
       sys.exit(1)
     print_text(s, self.color())
-    return J
+    self.J  = J
+    self.Jp = Jp
 
   def calc_misfit(self, integral):
     """
@@ -297,19 +302,23 @@ class Momentum(Physics):
     print_text(s, '208', 1)
     model.misfit = D
   
-  def print_eval_ftns(self):
+  def calc_functionals(self):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
+    R = assemble(self.Rp, annotate=False)
+    print_min_max(R, 'R', cls=self)
+    
+    J = assemble(self.Jp, annotate=False)
+    print_min_max(J, 'J', cls=self)
     if self.obj_ftn_type == 'log_L2_hybrid':
       J1 = assemble(self.J1, annotate=False)
-      J2 = assemble(self.J2, annotate=False)
       print_min_max(J1, 'J1', cls=self)
+      
+      J2 = assemble(self.J2, annotate=False)
       print_min_max(J2, 'J2', cls=self)
-    R = assemble(self.Rp, annotate=False)
-    J = assemble(self.J,  annotate=False)
-    print_min_max(R, 'R', cls=self)
-    print_min_max(J, 'J', cls=self)
+      return (R, J, J1, J2)
+    return (R, J)
     
   def Lagrangian(self):
     """
@@ -410,7 +419,7 @@ class Momentum(Physics):
     #print_min_max(norm(model.Lam), '||Lam||')
     print_min_max(Lam, 'Lam')
 
-  def optimize_U_ob(self, control, obj_ftn, bounds,
+  def optimize_u_ob(self, control, bounds,
                     method            = 'l_bfgs_b',
                     adj_iter          = 100,
                     adj_save_vars     = None,
@@ -430,6 +439,14 @@ class Momentum(Physics):
     # need this for the derivative callback :
     global counter
     counter = 0 
+    
+    # functional lists to be populated :
+    global Rs, Js, J1s, J2s
+    Rs     = []
+    Js     = []
+    if self.obj_ftn_type == 'log_L2_hybrid':
+      J1s  = []
+      J2s  = []
    
     # solve the momentum equations with annotation enabled :
     s    = '::: solving momentum forward problem :::'
@@ -449,8 +466,8 @@ class Momentum(Physics):
     
     # objective gradient callback function :
     def deriv_cb(I, dI, c):
+      global counter, Rs, Js, J1s, J2s
       if method == 'ipopt':
-        global counter
         s0    = '>>> '
         s1    = 'iteration %i (max %i) complete'
         s2    = ' <<<'
@@ -471,15 +488,29 @@ class Momentum(Physics):
       u_opt = DolfinAdjointVariable(model.U3).tape_value()
       model.init_U(u_opt, cls=self)
 
+      # print functional values :
+      control.assign(c, annotate=False)
+      ftnls = self.calc_functionals()
+
+      # functional lists to be populated :
+      Rs.append(ftnls[0])
+      Js.append(ftnls[1])
+      if self.obj_ftn_type == 'log_L2_hybrid':
+        J1s.append(ftnls[2])
+        J2s.append(ftnls[3])
+
       # call that callback, if you want :
       if adj_callback is not None:
         adj_callback(I, dI, c)
+   
+    # get the cost, regularization, and objective functionals :
+    I = self.J + self.R
     
     # define the control parameter :
     m = Control(control, value=control)
     
     # create the reduced functional to minimize :
-    F = ReducedFunctional(Functional(obj_ftn), m, eval_cb_post=eval_cb,
+    F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
                           derivative_cb_post=deriv_cb)
 
     # optimize with scipy's fmin_l_bfgs_b :
@@ -512,10 +543,14 @@ class Momentum(Physics):
     # make the optimal control parameter available :
     model.assign_variable(control, b_opt, cls=self)
     #Control(control).update(b_opt)  # FIXME: does this work?
+
+    # zero out self.velocity for good convergence for any subsequent solves,
+    # e.g. model.L_curve() :
+    model.assign_variable(self.get_U(), DOLFIN_EPS, save=False, cls=self)
     
     # call the post-adjoint callback function if set :
     if post_adj_callback is not None:
-      s    = '::: calling post-adjoined callback function :::'
+      s    = '::: calling optimize_u_ob() post-adjoined callback function :::'
       print_text(s, cls=self)
       post_adj_callback()
     
@@ -530,18 +565,33 @@ class Momentum(Physics):
         model.save_hdf5(var, f=foutput)
       
       foutput.close()
-    
-    # reset entire dolfin-adjoint state for the next thermo-solve :
+
+    # reset entire dolfin-adjoint state :
     adj_reset()
 
     # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
+    tf = time()
+    s  = tf - t0
+    m  = s / 60.0
+    h  = m / 60.0
+    s  = s % 60
+    m  = m % 60
+    text = "time to optimize ||u - u_ob||: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+    
+    # save all the objective functional values : 
+    d    = model.out_dir + 'objective_ftnls_history/'
+    s    = '::: saving objective functionals to %s :::'
+    print_text(s % d, cls=self)
+    if model.MPI_rank==0:
+      if not os.path.exists(d):
+        os.makedirs(d)
+      np.savetxt(d + 'time.txt', np.array([tf - t0]))
+      np.savetxt(d + 'Rs.txt',   np.array(Rs))
+      np.savetxt(d + 'Js.txt',   np.array(Js))
+      if self.obj_ftn_type == 'log_L2_hybrid':
+        np.savetxt(d + 'J1s.txt',  np.array(J1s))
+        np.savetxt(d + 'J2s.txt',  np.array(J2s))
 
 
 

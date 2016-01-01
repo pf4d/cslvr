@@ -9,7 +9,9 @@ from varglas.helper         import VerticalBasis, VerticalFDBasis, \
                                    raiseNotDefined
 from copy                   import deepcopy
 import numpy                    as np
+import pylab                    as pl
 import sys
+import os
 
 
 class Energy(Physics):
@@ -145,7 +147,7 @@ class Energy(Physics):
 
     model.init_adot(adot, cls=self)
   
-  def form_obj_ftn(self):
+  def form_obj_ftn(self, kind='abs'):
     """
     Forms and returns an objective functional for use with adjoint.
     Saves to self.J.
@@ -155,23 +157,67 @@ class Energy(Physics):
 
     model    = self.model
     theta    = self.theta
+    thetam   = model.theta
     dGnd     = model.dBed_g
     theta_m  = model.theta_melt
     L        = model.L
     theta_c  = theta_m + 0.03*L
+   
+    if kind == 'L2': 
+      self.J   = 0.5 * sqrt((theta  - theta_c)**2 + DOLFIN_EPS) * dGnd
+      self.Jp  = 0.5 * sqrt((thetam - theta_c)**2 + DOLFIN_EPS) * dGnd
+      s   = "::: getting L2 objective function :::"
+    elif kind == 'abs': 
+      self.J   = 0.5 * abs(theta  - theta_c) * dGnd
+      self.Jp  = 0.5 * abs(thetam - theta_c) * dGnd
+      s   = "::: getting absolute value objective function :::"
+    else:
+      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'L2' " + \
+          "or 'abs', NOT '%s' <<<" % kind
+      print_text(s, 'red', 1)
+      sys.exit(1)
+    print_text(s, self.color())
+
+  def calc_misfit(self):
+    """
+    Calculates the misfit, 
+    """
+    s   = "::: calculating misfit L-infty norm ||theta - theta_c|| :::"
+    print_text(s, cls=self)
+
+    model   = self.model
+    theta   = model.theta
+    theta_m = model.theta_melt
+    L       = model.L(0)
+
+    theta_s = Function(model.Q)
+    theta_o = Function(model.Q)
+
+    theta_v   = theta.vector().array()
+    theta_c_v = theta_m.vector().array() + 0.03 * L
+    theta_o.vector().set_local(np.abs(theta_v - theta_c_v))
+    theta_o.vector().apply('insert')
+
+    bc_theta  = DirichletBC(model.Q, theta_o, model.ff, model.GAMMA_B_GND)
     
-    J       = 0.5 * sqrt((theta - theta_c)**2 + DOLFIN_EPS) * dGnd
-    self.J  = J
-    return J
+    bc_theta.apply(theta_s.vector())
+
+    # calculate L_inf vector norm :
+    D        = MPI.max(mpi_comm_world(), theta_s.vector().max())
+
+    s    = "||theta - theta_c|| : %.3E" % D
+    print_text(s, '208', 1)
+    return D
   
-  def print_eval_ftns(self):
+  def calc_functionals(self):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
     R = assemble(self.Rp, annotate=False)
-    J = assemble(self.J,  annotate=False)
+    J = assemble(self.Jp, annotate=False)
     print_min_max(R, 'R', cls=self)
     print_min_max(J, 'J', cls=self)
+    return (R, J)
 
   def solve(self, annotate=True, params=None):
     """ 
@@ -499,7 +545,6 @@ class Enthalpy(Energy):
 
     Tm = project(T_w - gamma * p, annotate=annotate)
     model.assign_variable(model.T_melt, Tm, cls=self)
-    model.save_xdmf(model.T_melt, 'T_melt')
 
     Tm_v    = Tm.vector().array()
     theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
@@ -785,6 +830,12 @@ class Enthalpy(Energy):
     global counter
     counter = 0 
     
+    # functional lists to be populated :
+    global Rs, Js, Ds
+    Rs = []
+    Js = []
+    Ds = []
+    
     # now solve the control optimization problem : 
     s    = "::: starting adjoint-control optimization with method '%s' :::"
     print_text(s % method, cls=self)
@@ -797,8 +848,8 @@ class Enthalpy(Energy):
     
     # objective gradient callback function :
     def deriv_cb(I, dI, alpha):
+      global counter, Rs, Js
       if method == 'ipopt':
-        global counter
         s0    = '>>> '
         s1    = 'iteration %i (max %i) complete'
         s2    = ' <<<'
@@ -818,7 +869,17 @@ class Enthalpy(Energy):
       # process :
       theta_opt = DolfinAdjointVariable(model.theta).tape_value()
       model.init_theta(theta_opt, cls=self)
-     
+
+      # print functional values :
+      model.alpha.assign(alpha, annotate=False)
+      ftnls = self.calc_functionals()
+      D     = self.calc_misfit()
+
+      # functional lists to be populated :
+      Rs.append(ftnls[0])
+      Js.append(ftnls[1])
+      Ds.append(D)
+
       # call that callback, if you want :
       if adj_callback is not None:
         adj_callback(I, dI, alpha)
@@ -829,9 +890,7 @@ class Enthalpy(Energy):
     self.solve(annotate=True)
    
     # get the cost, regularization, and objective functionals :
-    J = self.J
-    R = self.R
-    I = J + R
+    I = self.J + self.R
 
     # define the control variable :    
     m = Control(model.alpha, value=model.alpha)
@@ -879,13 +938,56 @@ class Enthalpy(Energy):
     adj_reset()
 
     # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
+    tf = time()
+    s  = tf - t0
+    m  = s / 60.0
+    h  = m / 60.0
+    s  = s % 60
+    m  = m % 60
     text = "time to optimize for water flux: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+    
+    # save all the objective functional values : 
+    d    = model.out_dir + 'objective_ftnls_history/'
+    s    = '::: saving objective functionals to %s :::'
+    print_text(s % d, cls=self)
+    if model.MPI_rank==0:
+      if not os.path.exists(d):
+        os.makedirs(d)
+      np.savetxt(d + 'time.txt', np.array([tf - t0]))
+      np.savetxt(d + 'Rs.txt',   np.array(Rs))
+      np.savetxt(d + 'Js.txt',   np.array(Js))
+      np.savetxt(d + 'Ds.txt',   np.array(Ds))
+
+      fig = pl.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\mathscr{J}\left(\theta\right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Js), 'r-', lw=2.0)
+      pl.grid()
+      pl.savefig(d + 'J.png', dpi=200)
+      pl.close(fig)
+
+      fig = pl.figure()
+      ax  = fig.add_subplot(111)
+      ax.set_yscale('log')
+      ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Rs), 'r-', lw=2.0)
+      pl.grid()
+      pl.savefig(d + 'R.png', dpi=200)
+      pl.close(fig)
+
+      fig = pl.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\mathscr{D}\left(\theta\right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Ds), 'r-', lw=2.0)
+      pl.grid()
+      pl.savefig(d + 'D.png', dpi=200)
+      pl.close(fig)
 
   def solve_basal_melt_rate(self):
     """

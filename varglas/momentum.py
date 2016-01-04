@@ -282,21 +282,39 @@ class Momentum(Physics):
 
     model  = self.model
     u,v,w  = model.U3
-
-    U_s    = Function(model.Q2)
-    U_ob_s = Function(model.Q2)
-    U      = as_vector([u,          v])
-    U_ob   = as_vector([model.u_ob, model.v_ob])
-
-    bc_U    = DirichletBC(model.Q2, U,    model.ff, integral)
-    bc_U_ob = DirichletBC(model.Q2, U_ob, model.ff, integral)
+    u_ob   = model.u_ob
+    v_ob   = model.v_ob
     
-    bc_U.apply(U_s.vector())
-    bc_U_ob.apply(U_ob_s.vector())
+    # convert everything for low-level manipulations :
+    u_v    = u.vector().array()
+    v_v    = v.vector().array()
+    u_ob_v = u_ob.vector().array()
+    v_ob_v = v_ob.vector().array()
+
+    # the magnitude of error :
+    D_x_v  = abs(u_v - u_ob_v)
+    D_y_v  = abs(v_v - v_ob_v)
+
+    # apply to x-component :
+    D_x    = Function(model.Q)
+    D_x.vector().set_local(D_x_v)
+    D_x.vector().apply('insert')
+
+    # apply to y-componet : 
+    D_y    = Function(model.Q)
+    D_y.vector().set_local(D_y_v)
+    D_y.vector().apply('insert')
+
+    # convert to vector and set up essential B.C. :
+    D      = as_vector([D_x, D_y])
+    bc_D   = DirichletBC(model.Q2, D, model.ff, integral)
+    
+    # apply the difference only over the surface we need :
+    D_s    = Function(model.Q2)
+    bc_D.apply(D_s.vector())
 
     # calculate L_inf vector norm :
-    D_v      = U_s.vector() - U_ob_s.vector()
-    D        = MPI.max(mpi_comm_world(), D_v.max())
+    D      = MPI.max(mpi_comm_world(), D_s.vector().max())
 
     s    = "||U - U_ob|| : %.3E" % D
     print_text(s, '208', 1)

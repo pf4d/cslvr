@@ -255,7 +255,7 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 d3model.set_out_dir(out_dir + 'W_L_curve/')
 
 # number of digits for saving variables :
-iterations = 25
+iterations = 300
 gamma      = 1e10
 n_i        = len(str(iterations))
 
@@ -278,7 +278,7 @@ adj_kwargs = {'iterations'   : iterations,
               'method'       : 'ipopt',
               'adj_callback' : deriv_cb}
 
-alphas = [1e8, 1e9, 1e10, 1e11, 1e12]
+alphas = [1e10, 5e10, 1e11, 5e11, 1e12]
 
 Lc_kwargs = {'alphas'        : alphas,
              'physics'       : nrg,

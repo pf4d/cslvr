@@ -1,8 +1,8 @@
-from fenics         import *
-from dolfin_adjoint import *
-from varglas.io     import print_text, get_text, print_min_max
-import numpy        as np
-import pylab        as pl
+from fenics               import *
+from dolfin_adjoint       import *
+from varglas.io           import print_text, get_text, print_min_max
+import numpy              as np
+import matplotlib.pyplot  as plt
 import sys
 import os
     
@@ -1886,18 +1886,18 @@ class Model(object):
       np.savetxt(d + 'Js.txt',   np.array(Js))
       np.savetxt(d + 'as.txt',   np.array(alphas))
 
-      fig = pl.figure()
+      fig = plt.figure()
       ax  = fig.add_subplot(111)
       
       ax.set_xscale('log')
       ax.set_yscale('log')
-      ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
-      ax.set_xlabel(r'$\ln\left( \mathscr{J}\left(\alpha\right) \right)$')
+      ax.set_ylabel(r'$\mathscr{R}$')
+      ax.set_xlabel(r'$\mathscr{J}$')
       
       ax.plot(np.array(Js), np.array(Rs), 'ko-', lw=2.0)
-      pl.grid()
-      pl.savefig(do + 'L_curve.png', dpi=200)
-      pl.close(fig)
+      plt.grid()
+      plt.savefig(d + 'L_curve.png', dpi=200)
+      plt.close(fig)
 
     # calculate total time to compute
     s = time() - t0

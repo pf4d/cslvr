@@ -9,7 +9,7 @@ from varglas.helper         import VerticalBasis, VerticalFDBasis, \
                                    raiseNotDefined
 from copy                   import deepcopy
 import numpy                    as np
-import pylab                    as pl
+import matplotlib.pyplot        as plt
 import sys
 import os
 
@@ -190,16 +190,18 @@ class Energy(Physics):
     theta_m = model.theta_melt
     L       = model.L(0)
 
+    # set up functions for surface (s) and current objective (o) :
     theta_s = Function(model.Q)
     theta_o = Function(model.Q)
 
+    # calculate L_inf norm :
     theta_v   = theta.vector().array()
     theta_c_v = theta_m.vector().array() + 0.03 * L
     theta_o.vector().set_local(np.abs(theta_v - theta_c_v))
     theta_o.vector().apply('insert')
-
+ 
+    # apply difference over only grounded surface :
     bc_theta  = DirichletBC(model.Q, theta_o, model.ff, model.GAMMA_B_GND)
-    
     bc_theta.apply(theta_s.vector())
 
     # calculate L_inf vector norm :
@@ -959,35 +961,35 @@ class Enthalpy(Energy):
       np.savetxt(d + 'Js.txt',   np.array(Js))
       np.savetxt(d + 'Ds.txt',   np.array(Ds))
 
-      fig = pl.figure()
+      fig = plt.figure()
       ax  = fig.add_subplot(111)
       #ax.set_yscale('log')
       ax.set_ylabel(r'$\mathscr{J}\left(\theta\right)$')
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Js), 'r-', lw=2.0)
-      pl.grid()
-      pl.savefig(d + 'J.png', dpi=200)
-      pl.close(fig)
+      plt.grid()
+      plt.savefig(d + 'J.png', dpi=200)
+      plt.close(fig)
 
-      fig = pl.figure()
+      fig = plt.figure()
       ax  = fig.add_subplot(111)
       ax.set_yscale('log')
       ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Rs), 'r-', lw=2.0)
-      pl.grid()
-      pl.savefig(d + 'R.png', dpi=200)
-      pl.close(fig)
+      plt.grid()
+      plt.savefig(d + 'R.png', dpi=200)
+      plt.close(fig)
 
-      fig = pl.figure()
+      fig = plt.figure()
       ax  = fig.add_subplot(111)
       #ax.set_yscale('log')
       ax.set_ylabel(r'$\mathscr{D}\left(\theta\right)$')
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Ds), 'r-', lw=2.0)
-      pl.grid()
-      pl.savefig(d + 'D.png', dpi=200)
-      pl.close(fig)
+      plt.grid()
+      plt.savefig(d + 'D.png', dpi=200)
+      plt.close(fig)
 
   def solve_basal_melt_rate(self):
     """

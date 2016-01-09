@@ -163,16 +163,20 @@ class Energy(Physics):
     L        = model.L
     theta_c  = theta_m + 0.03*L
    
-    if kind == 'L2': 
-      self.J   = 0.5 * sqrt((theta  - theta_c)**2 + DOLFIN_EPS) * dGnd
-      self.Jp  = 0.5 * sqrt((thetam - theta_c)**2 + DOLFIN_EPS) * dGnd
+    if kind == 'TV': 
+      self.J   = sqrt((theta  - theta_c)**2 + 1e-15) * dGnd
+      self.Jp  = sqrt((thetam - theta_c)**2 + 1e-15) * dGnd
+      s   = "::: getting TV objective function :::"
+    elif kind == 'L2': 
+      self.J   = 0.5 * (theta  - theta_c)**2 * dGnd
+      self.Jp  = 0.5 * (thetam - theta_c)**2 * dGnd
       s   = "::: getting L2 objective function :::"
     elif kind == 'abs': 
-      self.J   = 0.5 * abs(theta  - theta_c) * dGnd
-      self.Jp  = 0.5 * abs(thetam - theta_c) * dGnd
+      self.J   = abs(theta  - theta_c) * dGnd
+      self.Jp  = abs(thetam - theta_c) * dGnd
       s   = "::: getting absolute value objective function :::"
     else:
-      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'L2' " + \
+      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'TV', 'L2' " + \
           "or 'abs', NOT '%s' <<<" % kind
       print_text(s, 'red', 1)
       sys.exit(1)

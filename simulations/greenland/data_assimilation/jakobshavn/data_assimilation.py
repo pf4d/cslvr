@@ -274,11 +274,12 @@ def post_cb():
 
 adj_kwargs = {'iterations'   : iterations,
               'gamma'        : gamma,
-              'reg_kind'     : 'Tikhonov',
+              'reg_kind'     : 'abs',
               'method'       : 'ipopt',
               'adj_callback' : deriv_cb}
 
-alphas = [1e10, 5e10, 1e11, 5e11, 1e12]
+#alphas = [1e8, 1e9, 5e9, 1e10, 5e10, 1e11]
+alphas = [1e-1, 1.0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]
 
 Lc_kwargs = {'alphas'        : alphas,
              'physics'       : nrg,
@@ -286,7 +287,7 @@ Lc_kwargs = {'alphas'        : alphas,
              'int_domain'    : d3model.dBed_g,
              'adj_ftn'       : nrg.optimize_water_flux,
              'adj_kwargs'    : adj_kwargs,
-             'reg_kind'      : 'Tikhonov',
+             'reg_kind'      : 'abs',
              'pre_callback'  : None,
              'post_callback' : post_cb}
 

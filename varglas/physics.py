@@ -45,9 +45,12 @@ class Physics(object):
 
     dR = integral
     
+    kinds = ['TV', 'Tikhonov', 'square', 'abs']
+    
     # form regularization term 'R' :
-    if kind != 'TV' and kind != 'Tikhonov' and kind != 'square':
-      s    =   ">>> VALID REGULARIZATIONS ARE 'TV', 'Tikhonov', or 'square' <<<"
+    if kind not in kinds:
+      s    =   ">>> VALID REGULARIZATIONS ARE 'TV', 'Tikhonov', 'square', " + \
+               " or 'abs' <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
     elif kind == 'TV':
@@ -59,6 +62,9 @@ class Physics(object):
     elif kind == 'square':
       R  = alpha * 0.5 * c**2 * dR
       Rp = 0.5 * c**2 * dR
+    elif kind == 'abs':
+      R  = alpha * abs(c) * dR
+      Rp = abs(c) * dR
     s   = "::: forming %s regularization with parameter alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
     self.R  = R

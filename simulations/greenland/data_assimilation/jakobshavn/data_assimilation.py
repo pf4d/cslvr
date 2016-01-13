@@ -40,8 +40,8 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 
-fUin = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'r')
-d3model.init_U(fUin)
+#fUin = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'r')
+#d3model.init_U(fUin)
 
 #===============================================================================
 ## create 2D model for lateral energy solution :
@@ -155,11 +155,17 @@ d3model.init_beta_SIA()
 #bedmodel.init_beta_SIA()
 #bedmodel.init_T(bedmodel.T_surface)
 
+#nparams = {'newton_solver' : {'linear_solver'            : 'cg',
+#                              'preconditioner'           : 'hypre_amg',
+#                              'relative_tolerance'       : 1e-9,
+#                              'relaxation_parameter'     : 1.0,
+#                              'maximum_iterations'       : 3,
+#                              'error_on_nonconvergence'  : False}}
 nparams = {'newton_solver' : {'linear_solver'            : 'cg',
                               'preconditioner'           : 'hypre_amg',
                               'relative_tolerance'       : 1e-9,
-                              'relaxation_parameter'     : 1.0,
-                              'maximum_iterations'       : 3,
+                              'relaxation_parameter'     : 0.7,
+                              'maximum_iterations'       : 30,
                               'error_on_nonconvergence'  : False}}
 #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
 #                              'relative_tolerance'       : 1e-9,
@@ -177,7 +183,8 @@ e_params  = {'solver'               : 'mumps',
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczBP(d3model, m_params, linear=True, isothermal=False)
+#mom = MomentumDukowiczBP(d3model, m_params, linear=True, isothermal=False)
+mom = MomentumDukowiczBP(d3model, m_params, linear=False, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
 nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
@@ -243,11 +250,11 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #sys.exit(0)
 
 #===============================================================================
-#d3model.thermo_solve(mom, nrg, callback=None, max_iter=1)
-#fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
-#d3model.save_hdf5(d3model.U3, fU)
-#fU.close()
-#sys.exit(0)
+d3model.thermo_solve(mom, nrg, callback=None, max_iter=1)
+fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
+d3model.save_hdf5(d3model.U3, fU)
+fU.close()
+sys.exit(0)
 #nrg.solve_divide(annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
 
@@ -255,8 +262,8 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 d3model.set_out_dir(out_dir + 'W_L_curve_TV_reg_L2_obj/')
 
 # number of digits for saving variables :
-iterations = 200
-gamma      = 1e10
+iterations = 500
+gamma      = 2.5e7
 n_i        = len(str(iterations))
 
 # derivative of objective function callback function : 
@@ -279,7 +286,7 @@ adj_kwargs = {'iterations'   : iterations,
               'adj_callback' : deriv_cb}
 
 #alphas = [1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2.5e6]  # TV obj
-alphas = [1e5, 1e6, 1e7, 2.5e7, 5e7, 7.5e7, 1e8]
+alphas = [1e5, 1e6, 1e7, 2.5e7, 5e7, 7.5e7]
 
 Lc_kwargs = {'alphas'        : alphas,
              'physics'       : nrg,

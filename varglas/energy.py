@@ -39,6 +39,9 @@ class Energy(Physics):
     self.transient_s       = transient
     self.use_lat_bc_s      = use_lat_bc
     self.epsdot_ftn_s      = epsdot_ftn
+
+    self.T_ini     = self.model.T.copy(True)
+    self.W_ini     = self.model.W.copy(True)
     
     self.initialize(model, solve_params, transient,
                     use_lat_bc, epsdot_ftn)
@@ -86,6 +89,9 @@ class Energy(Physics):
     """
     s = "::: RE-INITIALIZING ENERGY PHYSICS :::"
     print_text(s, self.color())
+
+    self.model.init_T(self.T_ini)
+    self.model.init_W(self.W_ini)
     
     self.initialize(model=self.model, solve_params=self.solve_params_s,
                     transient = self.transient_s,
@@ -269,8 +275,8 @@ class Enthalpy(Energy):
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
-    T_m           = model.T_melt
     W             = model.W
+    T_m           = model.T_melt
     Mb            = model.Mb
     L             = model.L
     T_w           = model.T_w
@@ -343,17 +349,6 @@ class Enthalpy(Energy):
       model.init_theta_surface(theta_s, cls=self)
       model.init_theta_app(theta_s,     cls=self)
       model.init_theta_float(theta_f,   cls=self)
-
-    # thermal conductivity and heat capacity (Greve and Blatter 2009) :
-    ki    = 9.828 * exp(-0.0057*T)
-    ci    = 146.3 + 7.253*T
-    
-    # bulk properties :
-    k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
-    c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
-    rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    k     =  spy * k                 # convert to J/(a*m*K)
-    kappa =  k / (rho*c)             # bulk thermal diffusivity
       
     # strain-rate :
     epsdot  = self.effective_strain_rate(U) + eps_reg
@@ -382,6 +377,17 @@ class Enthalpy(Energy):
     
     # coefficient for diffusion of ice-water mixture -- no water diffusion :
     k_c   = conditional( lt(theta, theta_m), 1.0, 1/10.0)
+
+    # thermal conductivity and heat capacity (Greve and Blatter 2009) :
+    ki    = 9.828 * exp(-0.0057*T)
+    ci    = 146.3 + 7.253*T
+    
+    # bulk properties :
+    k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
+    c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
+    rho   =  (1 - W)*rhoi + W*rhow   # bulk density
+    k     =  spy * k                 # convert to J/(a*m*K)
+    kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :
     q_fric = beta * inner(U,U)
@@ -791,9 +797,9 @@ class Enthalpy(Energy):
     theta_melt = model.theta_melt
     T_melt     = model.T_melt
     T          = model.T
+    L          = model.L
     W          = model.W
     W0         = model.W0
-    L          = model.L
     c          = self.c
     
     # temperature is a quadradic function of energy :
@@ -816,8 +822,8 @@ class Enthalpy(Energy):
     
     # update water content :
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
-    model.assign_variable(W0, W,   cls=self, save=False)  # never save
-    model.assign_variable(W,  W_v, cls=self)
+    model.assign_variable(W0,  W,    cls=self, save=False) # never save
+    model.assign_variable(W,   W_v,  cls=self)
 
   def optimize_water_flux(self, iterations, gamma, reg_kind='Tikhonov',
                           method='ipopt', adj_callback=None):

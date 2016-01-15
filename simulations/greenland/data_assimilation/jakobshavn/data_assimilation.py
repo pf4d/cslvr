@@ -40,8 +40,8 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 
-#fUin = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'r')
-#d3model.init_U(fUin)
+fUin = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'r')
+d3model.init_U(fUin)
 
 #===============================================================================
 ## create 2D model for lateral energy solution :
@@ -177,16 +177,12 @@ m_params  = {'solver'               : nparams,
              'solve_pressure'       : False,
              'vert_solve_method'    : 'mumps'}
 
-e_params  = {'solver'               : 'mumps',
-             'use_surface_climate'  : False}
-
 #mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczBP(d3model, m_params, linear=True, isothermal=False)
 mom = MomentumDukowiczBP(d3model, m_params, linear=False, isothermal=False)
 #mom = MomentumBP(d3model, m_params, isothermal=False)
-nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True, 
+nrg = Enthalpy(d3model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
 #===============================================================================
@@ -250,16 +246,20 @@ nrg = Enthalpy(d3model, e_params, transient=False, use_lat_bc=True,
 #sys.exit(0)
 
 #===============================================================================
-d3model.thermo_solve(mom, nrg, callback=None, max_iter=1)
-fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
-d3model.save_hdf5(d3model.U3, fU)
-fU.close()
-sys.exit(0)
+#mom.solve(annotate=False)
+#fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
+#d3model.save_hdf5(d3model.U3, fU)
+#fU.close()
+#sys.exit(0)
 #nrg.solve_divide(annotate=False)
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
 
 #===============================================================================
-d3model.set_out_dir(out_dir + 'W_L_curve_TV_reg_L2_obj/')
+d3model.set_out_dir(out_dir + 'W_L_curve_TV_reg_L2_obj_high_linear/')
+
+# save these for later analysis :  
+q_fric = project(nrg.q_fric)
+d3model.save_xdmf(q_fric, 'q_fric')
 
 # number of digits for saving variables :
 iterations = 500
@@ -274,10 +274,12 @@ def deriv_cb(I, dI, alpha):
 # objective gradient callback function :
 def post_cb():
   nrg.partition_energy()
+  nrg.solve_basal_melt_rate()
   d3model.save_xdmf(d3model.alpha, 'alpha_opt')
   d3model.save_xdmf(d3model.theta, 'theta_opt')
   d3model.save_xdmf(d3model.T,     'T_opt')
   d3model.save_xdmf(d3model.W,     'W_opt')
+  d3model.save_xdmf(d3model.Mb,    'Mb_opt')
 
 adj_kwargs = {'iterations'   : iterations,
               'gamma'        : gamma,
@@ -299,7 +301,7 @@ Lc_kwargs = {'alphas'        : alphas,
              'post_callback' : post_cb}
 
 nrg.form_obj_ftn(kind='L2')
- 
+
 d3model.L_curve(**Lc_kwargs)
 
 #nrg.optimize_water_flux(**adj_kwargs)

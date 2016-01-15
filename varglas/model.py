@@ -1671,7 +1671,10 @@ class Model(object):
       momentum.solve(annotate=False)
 
       # solve energy (temperature, water content) :
-      energy.solve(annotate=False)
+      #energy.solve(annotate=False)
+      energy.optimize_water_flux(400, 2.5e7, reg_kind='L2',
+                                 method='ipopt', adj_callback=None)
+      energy.partition_energy()
 
       # calculate L_infinity norm, increment counter :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

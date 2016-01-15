@@ -172,17 +172,17 @@ class Energy(Physics):
     if kind == 'TV': 
       self.J   = sqrt((theta  - theta_c)**2 + 1e-15) * dGnd
       self.Jp  = sqrt((thetam - theta_c)**2 + 1e-15) * dGnd
-      s   = "::: getting TV objective function :::"
+      s   = "::: forming TV objective functional :::"
     elif kind == 'L2': 
       self.J   = 0.5 * (theta  - theta_c)**2 * dGnd
       self.Jp  = 0.5 * (thetam - theta_c)**2 * dGnd
-      s   = "::: getting L2 objective function :::"
+      s   = "::: forming L2 objective functional :::"
     elif kind == 'abs': 
       self.J   = abs(theta  - theta_c) * dGnd
       self.Jp  = abs(thetam - theta_c) * dGnd
-      s   = "::: getting absolute value objective function :::"
+      s   = "::: forming absolute value objective functional :::"
     else:
-      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'TV', 'L2' " + \
+      s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'TV', 'L2' " + \
           "or 'abs', NOT '%s' <<<" % kind
       print_text(s, 'red', 1)
       sys.exit(1)
@@ -292,6 +292,7 @@ class Enthalpy(Energy):
     w             = model.w
     eps_reg       = model.eps_reg
     g             = model.g
+    alpha         = model.alpha
     beta          = model.beta
     rhoi          = model.rhoi
     rhow          = model.rhow
@@ -355,28 +356,40 @@ class Enthalpy(Energy):
 
     # thermal properties :
     T_c     = 263.15
-    theta_c = 146.3*T_c + 7.253/2.0*T_c**2
-    theta_w = 0.01*L + theta_m
+    #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+    #theta_w = 0.01*L + theta_m
     W_w     = (theta - theta_m)/L
     T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
-
+    self.T  = conditional( lt(T, T_m), T_w, T_m)
+    self.W  = conditional( lt(T, T_m), 0.0, W_w)
+      
     # discontinuous properties :
-    a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
-    Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-    W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
-    W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
-    W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
+    #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
+    #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
+    #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+    #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
+    #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
+    a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
+    W_T     = conditional( lt(W, 0.01), W,            0.01)
+    #W_T     = conditional( lt(W_t, 0.00), 0.0,        W_t)
 
     # viscosity and strain-heating :
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    #Q_s_gnd = 4 * eta_gnd * epsdot
+    #Q_s_shf = 4 * eta_shf * epsdot
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
     
     # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(theta, theta_m), 1.0, 1/10.0)
+    k_c   = conditional( lt(T, T_m), 1.0, 1/10.0)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -394,13 +407,10 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    Wmax = sqrt(inner(W_w,W_w) + DOLFIN_EPS)#Constant(1.0)
+    Wmax = Constant(1.0)
     #mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
-    alpha = model.alpha
-    W_t  = conditional( gt(W_w, 0.07), 1.0, 0.0)
     mdot = Mb * rho * L
     g_b  = q_geo + q_fric - alpha * mdot
-    #g_b  = W_c * (q_geo + q_fric)
 
     # configure the module to run in steady state :
     if not transient:
@@ -433,9 +443,9 @@ class Enthalpy(Energy):
       #theta_L = rhs(F)
 
       # galerkin formulation :
-      theta_a = + rho * dot(U, grad(theta)) * psihat * dx \
-                - dot(grad(k/c), grad(theta)) * psi * dx \
-                + k/c * dot(grad(psi), grad(theta)) * dx \
+      theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
+                - dot(grad(k/c), grad(dtheta)) * psi * dx \
+                + k/c * dot(grad(psi), grad(dtheta)) * dx \
       
       theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
@@ -738,6 +748,15 @@ class Enthalpy(Energy):
     Returns the solve parameters.
     """
     return self.solve_params
+
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    params  = {'solver' : {'linear_solver'       : 'gmres',
+                           'preconditioner'      : 'amg'},
+               'use_surface_climate' : False}
+    return params
   
   def solve(self, annotate=False):
     """ 
@@ -757,21 +776,20 @@ class Enthalpy(Energy):
     #aw        = assemble(self.theta_a, annotate=annotate)
     #Lw        = assemble(self.theta_L, annotate=annotate)
     #for bc in self.theta_bc:
-    #  bc.apply(aw, Lw)
-    #theta_solver = LUSolver(self.solve_params['solver'])
-    #theta_solver.solve(aw, theta.vector(), Lw, annotate=annotate)
-    ##solve(self.theta_a == self.theta_L, theta, self.theta_bc,
-    ##      solver_parameters = {"linear_solver" : sm}, annotate=False)
+    #  bc.apply(aw, Lw, annotate=annotate)
+    #theta_solver = KrylovSolver(self.solve_params['solver'])
+    #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
+    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
+          solver_parameters = self.solve_params['solver'], annotate=annotate)
 
-    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-    nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
-                                  'preconditioner'           : 'amg',
-                                  'relative_tolerance'       : 1e-9,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 5,
-                                  'error_on_nonconvergence'  : False}}
-    solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
-          annotate=annotate, solver_parameters=nparams)
+    #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+    #                              'preconditioner'           : 'amg',
+    #                              'relative_tolerance'       : 1e-9,
+    #                              'relaxation_parameter'     : 1.0,
+    #                              'maximum_iterations'       : 10,
+    #                              'error_on_nonconvergence'  : False}}
+    #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
+    #      annotate=annotate, solver_parameters=nparams)
     
     # update the model variable :
     model.assign_variable(model.theta, self.theta, annotate=annotate, cls=self)
@@ -782,9 +800,9 @@ class Enthalpy(Energy):
                             annotate=annotate)
 
     # update the temperature and water content for other physics :
-    self.partition_energy()
+    self.partition_energy(annotate=annotate)
 
-  def partition_energy(self):
+  def partition_energy(self, annotate=False):
     """
     solve for the water content model.W and temperature model.T.
     """
@@ -793,13 +811,13 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
     
     model      = self.model
+    T          = model.T
+    W          = model.W
+    W0         = model.W0
     theta      = model.theta
     theta_melt = model.theta_melt
     T_melt     = model.T_melt
-    T          = model.T
     L          = model.L
-    W          = model.W
-    W0         = model.W0
     c          = self.c
     
     # temperature is a quadradic function of energy :
@@ -824,6 +842,22 @@ class Enthalpy(Energy):
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
     model.assign_variable(W0,  W,    cls=self, save=False) # never save
     model.assign_variable(W,   W_v,  cls=self)
+   
+    # NOTE: to get annotation to work, something similar to this must be done,
+    #       right now, this doesn't work : 
+    #W_w     = (self.theta - theta_melt)/L
+    #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*self.theta)) / 7.253
+    #T_n  = conditional( lt(T, T_melt), T_w, T_melt)
+    #W_n  = conditional( lt(T, T_melt), 0.0, W_w)
+
+    #W_n = project(W_n, annotate=annotate)
+    #model.W.assign(W_n, annotate=annotate)
+    ##model.assign_variable(W0, W,   cls=self, annotate=annotate, save=False)
+    ##model.assign_variable(W,  W_n, cls=self, annotate=annotate)
+
+    #T_n = project(T_n, annotate=annotate)
+    #model.T.assign(T_n, annotate=annotate)
+    ##model.assign_variable(T,  T_n, cls=self, annotate=annotate)
 
   def optimize_water_flux(self, iterations, gamma, reg_kind='Tikhonov',
                           method='ipopt', adj_callback=None):

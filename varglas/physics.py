@@ -65,7 +65,8 @@ class Physics(object):
     elif kind == 'abs':
       R  = alpha * abs(c) * dR
       Rp = abs(c) * dR
-    s   = "::: forming %s regularization with parameter alpha = %.2E :::"
+    s   = "::: forming %s regularization functional with parameter" + \
+          " alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
     self.R  = R
     self.Rp = Rp  # needed for L-curve

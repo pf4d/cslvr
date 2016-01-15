@@ -221,17 +221,17 @@ class Momentum(Physics):
                         / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
       Jp = 0.5 * ln(  (sqrt(um**2 + vm**2) + 0.01) \
                     / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
-      s   = "::: forming log objective function :::"
+      s   = "::: forming log objective functional :::"
     
     elif kind == 'kinematic':
       J  = 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
       Jp = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dGamma
-      s   = "::: getting kinematic objective function :::"
+      s   = "::: forming kinematic objective functional :::"
 
     elif kind == 'L2':
       J  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
       Jp = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
-      s   = "::: getting L2 objective function :::"
+      s   = "::: forming L2 objective functional :::"
 
     elif kind == 'ratio':
       #NOTE: experimental
@@ -242,7 +242,7 @@ class Momentum(Physics):
       #               + (1 - (U[1] + 1e-4)/(v_ob + 1e-4)) ) * Uob_n/U_n * dGamma
       J     = 0.5 * (1 -  (U_n + 0.01) / (Uob_n + 0.01))**2 * dGamma
       Jp    = 0.5 * (1 -  (U_m + 0.01) / (Uob_n + 0.01))**2 * dGamma
-      s     = "::: getting ratio objective function :::"
+      s     = "::: forming ratio objective functional :::"
     
     elif kind == 'log_L2_hybrid':
       J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
@@ -256,11 +256,11 @@ class Momentum(Physics):
                                 / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
       J  = J1 + J2
       Jp = self.J1p + self.J2p
-      s   = "::: getting log/L2 hybrid objective with gamma_1 = " \
+      s   = "::: forming log/L2 hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
 
     else:
-      s = ">>> ADJOINT OBJECTION FUNCTION MAY BE 'L2', " + \
+      s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'L2', " + \
           "'log', 'kinematic', OR 'log_L2_hybrid', NOT '%s' <<<" % kind
       print_text(s, 'red', 1)
       sys.exit(1)
@@ -459,9 +459,10 @@ class Momentum(Physics):
     counter = 0 
     
     # functional lists to be populated :
-    global Rs, Js, J1s, J2s
+    global Rs, Js, Ds, J1s, J2s
     Rs     = []
     Js     = []
+    Ds     = []
     if self.obj_ftn_type == 'log_L2_hybrid':
       J1s  = []
       J2s  = []
@@ -509,10 +510,12 @@ class Momentum(Physics):
       # print functional values :
       control.assign(c, annotate=False)
       ftnls = self.calc_functionals()
+      D     = self.calc_misfit()
 
       # functional lists to be populated :
       Rs.append(ftnls[0])
       Js.append(ftnls[1])
+      Ds.append(D)
       if self.obj_ftn_type == 'log_L2_hybrid':
         J1s.append(ftnls[2])
         J2s.append(ftnls[3])

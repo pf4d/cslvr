@@ -755,6 +755,24 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.alpha, alpha, cls=cls)
 
+  def init_alpha_crit(self, alpha_crit, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing crit-value of mdot coefficient :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.alpha_crit, alpha_crit, cls=cls)
+
+  def init_Wb_flux(self, Wb_flux, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing basal-water flux :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.Wb_flux, Wb_flux, cls=cls)
+
   def init_n_f(self, n, cls=None):
     """
     """
@@ -1573,6 +1591,8 @@ class Model(object):
     self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
     self.alpha         = Function(self.Q, name='alpha')
+    self.alpha_crit    = Function(self.Q, name='alpha_crit')
+    self.Wb_flux       = Function(self.Q, name='Wb_flux')
     
     # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
@@ -1603,7 +1623,7 @@ class Model(object):
     self.tau_ji        = Function(self.Q, name='tau_ji')
     self.tau_jj        = Function(self.Q, name='tau_jj')
 
-  def thermo_solve(self, momentum, energy, callback=None, 
+  def thermo_solve(self, momentum, energy, wop_kwargs, callback=None, 
                    atol=1e2, rtol=1e0, max_iter=50):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
@@ -1631,7 +1651,13 @@ class Model(object):
     # ensure that we have a steady-state form :
     if energy.transient:
       energy.make_steady_state()
- 
+
+    # retain base install directory :
+    out_dir_i = self.out_dir
+
+    # number of digits for saving variables :
+    n_i  = len(str(max_iter))
+    
     ## initialization step :
     #s    = '::: performing initialization step :::'
     #print_text(s, cls=self.this)
@@ -1652,16 +1678,21 @@ class Model(object):
     # L_2 erro norm between iterations :
     abs_error = np.inf
     rel_error = np.inf
+    err_a     = [abs_error]
    
     # number of iterations
     counter   = 1
    
     # previous velocity for norm calculation
-    U_prev    = self.theta.copy(True)#U3.copy(True)
+    U_prev    = self.theta.copy(True)
 
     # perform a fixed-point iteration until the L_2 norm of error 
     # is less than tolerance :
     while abs_error > atol and rel_error > rtol and counter <= max_iter:
+       
+      # set a new unique output directory :
+      out_dir_n = 'tmc/%0*d/' % (n_i, counter)
+      self.set_out_dir(out_dir_i + out_dir_n)
      
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
@@ -1671,13 +1702,12 @@ class Model(object):
       momentum.solve(annotate=False)
 
       # solve energy (temperature, water content) :
-      #energy.solve(annotate=False)
-      energy.optimize_water_flux(400, 2.5e7, reg_kind='L2',
-                                 method='ipopt', adj_callback=None)
+      energy.optimize_water_flux(**wop_kwargs)
       energy.partition_energy()
 
       # calculate L_infinity norm, increment counter :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+      err_a.append(abs_error_n)
       if counter == 1:
         rel_error  = abs_error_n
       else:
@@ -1703,24 +1733,38 @@ class Model(object):
       counter    += 1
 
       if callback != None:
-        s    = '::: calling callback function :::'
+        s    = '::: calling thermo-couple-callback function :::'
         print_text(s, cls=self.this)
         callback()
+    
+    # reset the base directory ! :
+    self.set_out_dir(out_dir_i)
 
     # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
+    tf = time()
+    s  = tf - t0
+    m  = s / 60.0
+    h  = m / 60.0
+    s  = s % 60
+    m  = m % 60
     text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+       
+    # save the convergence history : 
+    d    = self.out_dir + 'tmc/convergence_history/'
+    s    = "::: saving convergence info to \'%s\' :::"
+    print_text(s % d, cls=self)
+    if self.MPI_rank==0:
+      if not os.path.exists(d):
+        os.makedirs(d)
+      np.savetxt(d + 'time.txt',     np.array([tf - t0]))
+      np.savetxt(d + 'abs_err.txt',  np.array(err_a))
 
   def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,
-                      incomplete        = True,
-                      ini_save_vars     = None,
-                      post_save_vars    = None,
-                      post_ini_callback = None):
+                      incomplete          = True,
+                      ini_save_vars       = None,
+                      post_iter_save_vars = None,
+                      post_ini_callback   = None):
     """
     """
     s    = '::: performing assimilation process with %i iterations :::'
@@ -1752,7 +1796,8 @@ class Model(object):
 
     # call the post function if set :
     if post_ini_callback is not None:
-      s    = '::: calling post-initialization callback function :::'
+      s    = '::: calling post-initialization assimilate_U_ob ' + \
+             'callback function :::'
       print_text(s, cls=self.this)
       post_ini_callback()
 
@@ -1792,20 +1837,26 @@ class Model(object):
 
       # thermo-mechanically couple :
       self.thermo_solve(**tmc_kwargs)
+      
+      if self.MPI_rank==0:
+        s0    = '>>> '
+        s1    = 'U_ob assimilation iteration %i (max %i) done'
+        s2    = ' <<<'
+        text0 = get_text(s0,                         'red', 1)
+        text1 = get_text(s1 % (counter, iterations), 'red')
+        text2 = get_text(s6,                         'red', 1)
+        print text0 + text1 + text2
        
       # save state to unique hdf5 file :
-      if isinstance(post_save_vars, list):
-        s    = '::: saving variables in list arg post_save_vars :::'
+      if isinstance(post_iter_save_vars, list):
+        s    = '::: saving variables in list arg post_iter_save_vars :::'
         print_text(s, cls=self.this)
         out_file = self.out_dir + 'hdf5/inverted_%0*d.h5' % (n_i, counter)
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        for var in post_save_vars:
+        for var in post_iter_save_vars:
           self.save_hdf5(var, f=foutput)
         foutput.close()
       
-      # reset entire dolfin-adjoint state for the next thermo-solve :
-      adj_reset()
-
       # increment the counter and move on :
       counter += 1
 

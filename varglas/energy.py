@@ -230,6 +230,14 @@ class Energy(Physics):
     print_min_max(R, 'R', cls=self)
     print_min_max(J, 'J', cls=self)
     return (R, J)
+  
+  def calc_obj(self):
+    """
+    Used to facilitate printing the objective function in adjoint solves.
+    """
+    J = assemble(self.Jp, annotate=False)
+    print_min_max(J, 'J', cls=self)
+    return J
 
   def solve(self, annotate=True, params=None):
     """ 
@@ -389,7 +397,7 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
     
     # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(T, T_m), 1.0, 1/10.0)
+    k_c   = conditional( lt(T, T_m), 1.0, 1e-3)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -399,7 +407,7 @@ class Enthalpy(Energy):
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    k     =  spy * k                 # convert to J/(a*m*K)
+    k     =  spy * k_c * k           # convert to J/(a*m*K)
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :
@@ -518,6 +526,7 @@ class Enthalpy(Energy):
 
     self.theta   = theta
     self.theta0  = theta0
+    self.mdot    = mdot
     self.c       = c
     self.k       = k
     self.rho     = rho
@@ -572,7 +581,7 @@ class Enthalpy(Energy):
     theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
     model.assign_variable(model.theta_melt, theta_m, cls=self)
 
-  def solve_divide(self, init=False, annotate=True):
+  def solve_divide(self, init=False, annotate=False):
     """
     """
     s    = "::: calculating energy over lateral boundaries :::"
@@ -612,6 +621,7 @@ class Enthalpy(Energy):
     w       = model.w
     q_geo   = model.q_geo
     beta    = model.beta
+    alpha   = model.alpha
     h       = model.h
     N       = model.N
     U       = as_vector([u,v,w])
@@ -641,33 +651,37 @@ class Enthalpy(Energy):
     T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
 
     # discontinuous properties :
-    a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
-    Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-    W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
-    W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
-    W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
+    #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
+    #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
+    #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+    #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
+    #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
+    a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
+    Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
+    W_T     = conditional( lt(W, 0.01), W,            0.01)
 
     # viscosity and strain-heating :
     epsdot  = self.effective_strain_rate(U_t) + model.eps_reg
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    #Q_s_gnd = 4 * eta_gnd * epsdot
+    #Q_s_shf = 4 * eta_shf * epsdot
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
     
-    # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(theta, theta_m), 1.0, 1/10.0)
-
     # frictional heating :
     q_fric = beta * inner(U_t, U_t)
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    Wmax = Constant(1.0)
-    mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
-    g_b  = q_geo + q_fric - mdot
-    g_b  = W_c * (q_geo + q_fric)
+    mdot = Mb * rho * L
+    g_b  = q_geo + q_fric - alpha * mdot
       
     # SUPG :
     Unorm  = sqrt(dot(U_t, U_t) + 1e-15)
@@ -676,17 +690,17 @@ class Enthalpy(Energy):
     psihat = psi + h*tau/(2*Unorm) * dot(U_t, grad(psi))
     
     # galerkin formulation :
-    theta_a = + rho * dot(U_t, grad(theta)) * psihat * dx \
-              - dot(grad(k/c), grad(theta)) * psi * dx \
-              + k/c * dot(grad(psi), grad(theta)) * dx \
+    theta_a = + rho * dot(U_t, grad(dtheta)) * psihat * dx \
+              - dot(grad(k/c), grad(dtheta)) * psi * dx \
+              + k/c * dot(grad(psi), grad(dtheta)) * dx \
     
     theta_L = + g_b * psi * dBed_g \
               + Q_s_gnd * psi * dx_g \
               + Q_s_shf * psi * dx_f
 
-    nrg_F = theta_a - theta_L
+    #nrg_F = theta_a - theta_L
     
-    nrg_Jac = derivative(nrg_F, theta, dtheta)
+    #nrg_Jac = derivative(nrg_F, theta, dtheta)
 
     # surface boundary condition : 
     theta_bc = []
@@ -706,15 +720,16 @@ class Enthalpy(Energy):
                                  model.ff, model.GAMMA_L_UDR) )
    
     # solve the system :
-    #solve(theta_a == theta_L, theta, theta_bc, annotate=annotate)
-    nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
-                                  'preconditioner'           : 'amg',
-                                  'relative_tolerance'       : 1e-9,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 10,
-                                  'error_on_nonconvergence'  : False}}
-    solve(nrg_F == 0, theta, J = nrg_Jac, bcs = theta_bc,
-          annotate = annotate, solver_parameters = nparams)
+    #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+    #                              'preconditioner'           : 'amg',
+    #                              'relative_tolerance'       : 1e-9,
+    #                              'relaxation_parameter'     : 1.0,
+    #                              'maximum_iterations'       : 10,
+    #                              'error_on_nonconvergence'  : False}}
+    #solve(nrg_F == 0, theta, J = nrg_Jac, bcs = theta_bc,
+    #      annotate = annotate, solver_parameters = nparams)
+    solve(theta_a == theta_L, theta, theta_bc,
+          solver_parameters = self.solve_params['solver'], annotate=annotate)
     model.assign_variable(model.theta_app, theta, cls=self)
 
     if init:
@@ -859,13 +874,12 @@ class Enthalpy(Energy):
     #model.T.assign(T_n, annotate=annotate)
     ##model.assign_variable(T,  T_n, cls=self, annotate=annotate)
 
-  def optimize_water_flux(self, iterations, gamma, reg_kind='Tikhonov',
-                          method='ipopt', adj_callback=None):
+  def optimize_water_flux(self, max_iter, method='ipopt', adj_callback=None):
     """
     determine the correct basal-water flux.
     """
-    s    = '::: optimizing for water-flux with %i iterations :::'
-    print_text(s % iterations, cls=self)
+    s    = '::: optimizing for water-flux in %i maximum iterations :::'
+    print_text(s % max_iter, cls=self)
 
     model = self.model
 
@@ -878,7 +892,7 @@ class Enthalpy(Energy):
     
     # functional lists to be populated :
     global Rs, Js, Ds
-    Rs = []
+    #Rs = []
     Js = []
     Ds = []
     
@@ -900,7 +914,7 @@ class Enthalpy(Energy):
         s1    = 'iteration %i (max %i) complete'
         s2    = ' <<<'
         text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1 % (counter, iterations), 'red')
+        text1 = get_text(s1 % (counter, max_iter), 'red')
         text2 = get_text(s2, 'red', 1)
         if MPI.rank(mpi_comm_world())==0:
           print text0 + text1 + text2
@@ -918,12 +932,14 @@ class Enthalpy(Energy):
 
       # print functional values :
       model.alpha.assign(alpha, annotate=False)
-      ftnls = self.calc_functionals()
+      #ftnls = self.calc_functionals()
+      J     = self.calc_obj()
       D     = self.calc_misfit()
 
       # functional lists to be populated :
-      Rs.append(ftnls[0])
-      Js.append(ftnls[1])
+      #Rs.append(ftnls[0])
+      #Js.append(ftnls[1])
+      Js.append(J)
       Ds.append(D)
 
       # call that callback, if you want :
@@ -936,7 +952,11 @@ class Enthalpy(Energy):
     self.solve(annotate=True)
    
     # get the cost, regularization, and objective functionals :
-    I = self.J + self.R
+    I = self.J
+    try:
+      I += self.R
+    except AttributeError:
+      print_text('    - not using regularization -', cls=self)
 
     # define the control variable :    
     m = Control(model.alpha, value=model.alpha)
@@ -949,7 +969,7 @@ class Enthalpy(Energy):
     if method == 'l_bfgs_b': 
       out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,1),
                      options={"disp"    : True,
-                              "maxiter" : iterations,
+                              "maxiter" : max_iter,
                               "gtol"    : 1e-5})
       a_opt = out[0]
     
@@ -965,7 +985,7 @@ class Enthalpy(Energy):
       problem = MinimizationProblem(F, bounds=(0,1))
       parameters = {"tol"                : 1e-8,
                     "acceptable_tol"     : 1e-6,
-                    "maximum_iterations" : iterations,
+                    "maximum_iterations" : max_iter,
                     "print_level"        : 1,
                     "ma97_order"         : "metis",
                     "ma86_order"         : "metis",
@@ -1001,7 +1021,7 @@ class Enthalpy(Energy):
       if not os.path.exists(d):
         os.makedirs(d)
       np.savetxt(d + 'time.txt', np.array([tf - t0]))
-      np.savetxt(d + 'Rs.txt',   np.array(Rs))
+      #np.savetxt(d + 'Rs.txt',   np.array(Rs))
       np.savetxt(d + 'Js.txt',   np.array(Js))
       np.savetxt(d + 'Ds.txt',   np.array(Ds))
 
@@ -1015,15 +1035,15 @@ class Enthalpy(Energy):
       plt.savefig(d + 'J.png', dpi=200)
       plt.close(fig)
 
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      ax.set_yscale('log')
-      ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(np.array(Rs), 'r-', lw=2.0)
-      plt.grid()
-      plt.savefig(d + 'R.png', dpi=200)
-      plt.close(fig)
+      #fig = plt.figure()
+      #ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      #ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
+      #ax.set_xlabel(r'iteration')
+      #ax.plot(np.array(Rs), 'r-', lw=2.0)
+      #plt.grid()
+      #plt.savefig(d + 'R.png', dpi=200)
+      #plt.close(fig)
 
       fig = plt.figure()
       ax  = fig.add_subplot(111)
@@ -1035,12 +1055,44 @@ class Enthalpy(Energy):
       plt.savefig(d + 'D.png', dpi=200)
       plt.close(fig)
 
+  def solve_basal_water_flux(self):
+    """
+    Solve for the basal-water flux stored in model.Wb_flux.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving for basal-water flux :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    alpha    = model.alpha
+    Mb       = model.Mb
+
+    wb_f = project( alpha * Mb, annotate=False)
+    model.init_Wb_flux(wb_f, cls=self)
+
+  def solve_critical_alpha(self):
+    """
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving for critical alpha :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    q_geo    = model.q_geo
+    Mb       = model.Mb
+    L        = model.L
+    rho      = self.rho
+    q_fric   = self.q_fric
+
+    alpha_crit = project( (q_geo + q_fric) / (Mb*L*rho), annotate=False)
+    model.init_alpha_crit(alpha_crit, cls=self)
+
   def solve_basal_melt_rate(self):
     """
     Solve for the basal melt rate stored in model.Mb.
     """ 
     # calculate melt-rate : 
-    s = "::: solving for basal melt-rate :::"
+    s = "::: solving for basal-melt rate :::"
     print_text(s, cls=self)
     
     model    = self.model

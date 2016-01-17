@@ -437,9 +437,9 @@ class Momentum(Physics):
     #print_min_max(norm(model.Lam), '||Lam||')
     print_min_max(Lam, 'Lam')
 
-  def optimize_u_ob(self, control, bounds,
+  def optimize_U_ob(self, control, bounds,
                     method            = 'l_bfgs_b',
-                    adj_iter          = 100,
+                    max_iter          = 100,
                     adj_save_vars     = None,
                     adj_callback      = None,
                     post_adj_callback = None):
@@ -491,7 +491,7 @@ class Momentum(Physics):
         s1    = 'iteration %i (max %i) complete'
         s2    = ' <<<'
         text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1 % (counter, adj_iter), 'red')
+        text1 = get_text(s1 % (counter, max_iter), 'red')
         text2 = get_text(s2, 'red', 1)
         if MPI.rank(mpi_comm_world())==0:
           print text0 + text1 + text2
@@ -538,7 +538,7 @@ class Momentum(Physics):
     if method == 'l_bfgs_b': 
       out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
                      options={"disp"    : True,
-                              "maxiter" : adj_iter,
+                              "maxiter" : max_iter,
                               "gtol"    : 1e-5})
       b_opt = out[0]
     
@@ -554,7 +554,7 @@ class Momentum(Physics):
       problem = MinimizationProblem(F, bounds=bounds)
       parameters = {"tol"                : 1e-8,
                     "acceptable_tol"     : 1e-6,
-                    "maximum_iterations" : adj_iter,
+                    "maximum_iterations" : max_iter,
                     "print_level"        : 1,
                     "ma97_order"         : "metis",
                     "linear_solver"      : "ma97"}

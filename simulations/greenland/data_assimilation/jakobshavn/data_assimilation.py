@@ -133,12 +133,10 @@ U_ob   = Function(Qs,  name='U_ob')
 Tb     = Function(Qb,  name='Tb')
 Us     = Function(Q3s, name='Us')
 Wb     = Function(Qb,  name='Wb')
+Wb_fl  = Function(Qb,  name="Wb_flux")
 Mb     = Function(Qb,  name='Mb')
-beta_b = Function(Qb,  name="beta_control")
-a_b    = Function(Qb,  name="alpha_control")
-
-a_f    = XDMFFile(d3model.bedmesh.mpi_comm(),
-                  d3model.out_dir + 'xdmf/alpha_control.xdmf')
+betab  = Function(Qb,  name="beta_control")
+alphab = Function(Qb,  name="alpha_control")
 
 # saving the regularization and cost functional values for convergence :
 Rs  = []
@@ -255,58 +253,66 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.theta_app, 'theta_app')
 
 #===============================================================================
-d3model.set_out_dir(out_dir + 'W_L_curve_TV_reg_L2_obj_high_linear/')
-
-# save these for later analysis :  
-q_fric = project(nrg.q_fric)
-d3model.save_xdmf(q_fric, 'q_fric')
-
-# number of digits for saving variables :
-iterations = 500
-gamma      = 2.5e7
-n_i        = len(str(iterations))
-
-# derivative of objective function callback function : 
-def deriv_cb(I, dI, alpha):
-  d3model.assign_submesh_variable(a_b, alpha)
-  d3model.save_xdmf(a_b, 'alpha_control')
-      
-# objective gradient callback function :
-def post_cb():
-  nrg.partition_energy()
-  nrg.solve_basal_melt_rate()
-  d3model.save_xdmf(d3model.alpha, 'alpha_opt')
-  d3model.save_xdmf(d3model.theta, 'theta_opt')
-  d3model.save_xdmf(d3model.T,     'T_opt')
-  d3model.save_xdmf(d3model.W,     'W_opt')
-  d3model.save_xdmf(d3model.Mb,    'Mb_opt')
-
-adj_kwargs = {'iterations'   : iterations,
-              'gamma'        : gamma,
-              'reg_kind'     : 'TV',
-              'method'       : 'ipopt',
-              'adj_callback' : deriv_cb}
-
-#alphas = [1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2.5e6]  # TV obj
-alphas = [1e5, 1e6, 1e7, 2.5e7, 5e7, 7.5e7]
-
-Lc_kwargs = {'alphas'        : alphas,
-             'physics'       : nrg,
-             'control'       : d3model.alpha,
-             'int_domain'    : d3model.dBed_g,
-             'adj_ftn'       : nrg.optimize_water_flux,
-             'adj_kwargs'    : adj_kwargs,
-             'reg_kind'      : 'TV',
-             'pre_callback'  : None,
-             'post_callback' : post_cb}
-
-nrg.form_obj_ftn(kind='L2')
-
-d3model.L_curve(**Lc_kwargs)
-
+#d3model.set_out_dir(out_dir + 'W_L_curve_no_reg_linear/')
+#
+## save these for later analysis :  
+#q_fric = project(nrg.q_fric, annotate=False)
+#d3model.save_xdmf(q_fric, 'q_fric')
+#
+## number of digits for saving variables :
+#iterations = 150
+#gamma      = 2.5e7
+#n_i        = len(str(iterations))
+#
+## derivative of objective function callback function : 
+#def deriv_cb(I, dI, alpha):
+#  d3model.assign_submesh_variable(a_b, alpha)
+#  d3model.save_xdmf(a_b, 'alpha_control')
+#      
+## objective gradient callback function :
+#def post_cb():
+#  nrg.partition_energy()
+#  nrg.solve_basal_melt_rate()
+#  d3model.save_xdmf(d3model.alpha, 'alpha_opt')
+#  d3model.save_xdmf(d3model.theta, 'theta_opt')
+#  d3model.save_xdmf(d3model.T,     'T_opt')
+#  d3model.save_xdmf(d3model.W,     'W_opt')
+#  d3model.save_xdmf(d3model.Mb,    'Mb_opt')
+#
+#adj_kwargs = {'iterations'   : iterations,
+#              'gamma'        : gamma,
+#              'reg_kind'     : 'TV',
+#              'method'       : 'ipopt',
+#              'adj_callback' : deriv_cb}
+#
+##alphas = [1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2.5e6]  # TV obj
+#alphas = [1e5, 1e6, 1e7, 2.5e7, 5e7, 7.5e7]
+#
+#Lc_kwargs = {'alphas'        : alphas,
+#             'physics'       : nrg,
+#             'control'       : d3model.alpha,
+#             'int_domain'    : d3model.dBed_g,
+#             'adj_ftn'       : nrg.optimize_water_flux,
+#             'adj_kwargs'    : adj_kwargs,
+#             'reg_kind'      : 'TV',
+#             'pre_callback'  : None,
+#             'post_callback' : post_cb}
+#
+#nrg.form_obj_ftn(kind='L2')
+#
+##d3model.L_curve(**Lc_kwargs)
+#
 #nrg.optimize_water_flux(**adj_kwargs)
-
-sys.exit(0)
+#  
+#nrg.partition_energy()
+#nrg.solve_basal_melt_rate()
+#d3model.save_xdmf(d3model.alpha, 'alpha_opt')
+#d3model.save_xdmf(d3model.theta, 'theta_opt')
+#d3model.save_xdmf(d3model.T,     'T_opt')
+#d3model.save_xdmf(d3model.W,     'W_opt')
+#d3model.save_xdmf(d3model.Mb,    'Mb_opt')
+#
+#sys.exit(0)
 
 #===============================================================================
 #d3model.set_out_dir(out_dir + 'u_L_curve/')
@@ -369,88 +375,94 @@ sys.exit(0)
 #d3model.save_xdmf(d3model.theta_app, 'theta_ini')
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
-#
-#d3model.set_out_dir(out_dir + 'tmc_inversion/')
-#
-## post-thermo-solve callback function :
-#def tmc_cb_ftn():
-#  nrg.solve_basal_melt_rate()
-#  d3model.assign_submesh_variable(Tb,   d3model.T)
-#  d3model.assign_submesh_variable(Us,   d3model.U3)
-#  d3model.assign_submesh_variable(Wb,   d3model.W)
-#  d3model.assign_submesh_variable(Mb,   d3model.Mb)
-#  d3model.save_xdmf(Tb,   'Tb')
-#  d3model.save_xdmf(Us,   'Us')
-#  d3model.save_xdmf(Wb,   'Wb')
-#  d3model.save_xdmf(Mb,   'Mb')
-#  d3model.save_xdmf(d3model.T, 'T')
-#  d3model.save_xdmf(d3model.W, 'W')
-#
-## derivative of objective function callback function : 
-#def deriv_cb(I, dI, beta):
-#  # calculate the L_inf norm of misfit :
-#  mom.calc_misfit(d3model.GAMMA_U_GND)
-#  d3model.assign_submesh_variable(beta_b, beta)
-#  d3model.save_xdmf(beta_b, 'beta_control')
-#
-## post-adjoint-iteration callback function :
-#def adj_post_cb_ftn():
-#  # re-solve the momentum equations with vertical velocity and optimal beta :
-#  m_params['solve_vert_velocity'] = True
-#  mom.solve(annotate=False)
-#
-#  # save the optimal velocity and beta fields for viewing with paraview :
-#  d3model.assign_submesh_variable(Us,     d3model.U3)
-#  d3model.assign_submesh_variable(beta_b, d3model.beta)
-#  d3model.save_xdmf(Us,     'U_opt')
-#  d3model.save_xdmf(beta_b, 'beta_opt')
-#
-## after every completed adjoining, save the state of these functions :
-#adj_save_vars = [d3model.beta,
-#                 d3model.U3,
-#                 d3model.T,
-#                 d3model.W,
-#                 d3model.theta,
-#                 d3model.Mb]
-#
-## the initial step saves everything :
-#ini_save_vars = adj_save_vars + [d3model.Ubar, d3model.U_ob]
-#
-## form the cost functional :
-#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
-#                 g1=0.01, g2=5000)
-##mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='ratio')
-#
-## form the regularization functional :
-#mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', alpha=1.0)
-##mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='Tikhonov', 
-##                 alpha=1e-6)
-#
-#tmc_kwargs = {'momentum'          : mom,
-#              'energy'            : nrg,
-#              'callback'          : tmc_cb_ftn, 
-#              'atol'              : 1e2,
-#              'rtol'              : 1e0,
-#              'max_iter'          : 50}
-#
-#uop_kwargs = {'control'           : d3model.beta,
-#              'bounds'            : (1e-5, 1e7),
-#              'method'            : 'ipopt',
-#              'adj_iter'          : 10,
-#              'adj_save_vars'     : None,
-#              'adj_callback'      : deriv_cb,
-#              'post_adj_callback' : adj_post_cb_ftn}
-#
-#ass_kwargs = {'iterations'        : 10,
-#              'tmc_kwargs'        : tmc_kwargs,
-#              'uop_kwargs'        : uop_kwargs,
-#              'incomplete'        : True,
-#              'ini_save_vars'     : ini_save_vars,
-#              'post_save_vars'    : adj_save_vars,
-#              'post_ini_callback' : None}
-#
-## assimilate ! :
-#d3model.assimilate_U_ob(**ass_kwargs) 
-#
-#
-# 
+
+d3model.set_out_dir(out_dir + 'tmc_inversion/')
+
+# post-thermo-solve callback function :
+def tmc_cb_ftn():
+  nrg.solve_basal_melt_rate()
+  nrg.solve_basal_water_flux()
+  #nrg.solve_critical_alpha()
+  d3model.save_xdmf(d3model.U3,         'U')
+  d3model.save_xdmf(d3model.T,          'T')
+  d3model.save_xdmf(d3model.W,          'W')
+  d3model.save_xdmf(d3model.Wb_flux,    'Wb_flux')
+  d3model.save_xdmf(d3model.Mb,         'Mb')
+  d3model.save_xdmf(d3model.alpha,      'alpha')
+  #d3model.save_xdmf(d3model.alpha_crit, 'alpha_crit')
+
+# derivative of objective function callback function : 
+def deriv_cb(I, dI, beta):
+  d3model.assign_submesh_variable(betab, beta)
+  d3model.save_xdmf(betab, 'beta_control')
+
+# post-adjoint-iteration callback function :
+def adj_post_cb_ftn():
+  # re-solve the momentum equations with vertical velocity and optimal beta :
+  m_params['solve_vert_velocity'] = True
+  mom.solve(annotate=False)
+
+  # save the optimal velocity and beta fields for viewing with paraview :
+  d3model.save_xdmf(d3model.U3,   'U_opt')
+  d3model.save_xdmf(d3model.beta, 'beta_opt')
+
+# after every completed adjoining, save the state of these functions :
+adj_save_vars = [d3model.beta,
+                 d3model.U3,
+                 d3model.T,
+                 d3model.W,
+                 d3model.Wb_flux,
+                 d3model.theta,
+                 d3model.alpha,
+                 d3model.alpha_crit,
+                 d3model.Mb]
+
+# the initial step saves everything :
+ini_save_vars = adj_save_vars + [d3model.Ubar, d3model.U_ob]
+
+# form the objective functional for water-flux optimization :
+nrg.form_obj_ftn(kind='L2')
+
+# form the cost functional :
+mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+                 g1=0.01, g2=5000)
+#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='ratio')
+
+# form the regularization functional :
+mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', alpha=1.0)
+#mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='Tikhonov', 
+#                 alpha=1e-6)
+
+wop_kwargs = {'max_iter'            : 150, 
+              'method'              : 'ipopt',
+              'adj_callback'        : None}
+                                    
+tmc_kwargs = {'momentum'            : mom,
+              'energy'              : nrg,
+              'wop_kwargs'          : wop_kwargs,
+              'callback'            : tmc_cb_ftn, 
+              'atol'                : 1e2,
+              'rtol'                : 1e0,
+              'max_iter'            : 50}
+                                    
+uop_kwargs = {'control'             : d3model.beta,
+              'bounds'              : (1e-5, 1e7),
+              'method'              : 'ipopt',
+              'max_iter'            : 250,
+              'adj_save_vars'       : None,
+              'adj_callback'        : None,
+              'post_adj_callback'   : adj_post_cb_ftn}
+                                    
+ass_kwargs = {'iterations'          : 10,
+              'tmc_kwargs'          : tmc_kwargs,
+              'uop_kwargs'          : uop_kwargs,
+              'incomplete'          : True,
+              'ini_save_vars'       : ini_save_vars,
+              'post_iter_save_vars' : adj_save_vars,
+              'post_ini_callback'   : None}
+
+# assimilate ! :
+d3model.assimilate_U_ob(**ass_kwargs) 
+
+
+ 

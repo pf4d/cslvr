@@ -208,7 +208,7 @@ class Momentum(Physics):
     # to this function is required :
     U        = self.get_U()
 
-    dGamma   = integral
+    dGamma   = model.ds(integral)
     u_ob     = model.u_ob
     v_ob     = model.v_ob
     adot     = model.adot
@@ -267,6 +267,8 @@ class Momentum(Physics):
       print_text(s, 'red', 1)
       sys.exit(1)
     print_text(s, self.color())
+    s = "    - integrated over %s -" % model.boundaries[integral]
+    print_text(s, self.color())
     self.J  = J
     self.Jp = Jp
 
@@ -280,12 +282,12 @@ class Momentum(Physics):
     the self.form_obj_ftn().
     Updates model.misfit with D for plotting.
     """
-    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
-    print_text(s % integral, cls=self)
+    s   = "::: calculating misfit L-infty norm ||U - U_ob|| over %s :::"
+    print_text(s % self.model.boundaries[self.integral], cls=self)
 
     model    = self.model
     integral = self.integral
-    u,v,w    = model.U3
+    u,v,w    = model.U3.split(True)
     u_ob     = model.u_ob
     v_ob     = model.v_ob
     

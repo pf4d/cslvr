@@ -36,14 +36,15 @@ class Physics(object):
     """
     return self.default_solve_params()
 
-  def form_reg_ftn(self, c, integral, kind='Tikhonov', alpha=1.0):
+  def form_reg_ftn(self, c, integral, kind='TV', alpha=1.0):
     """
     Formulates, and returns the regularization functional for use 
     with adjoint, saved to self.R.
     """
     self.alpha = alpha   # need to save this for printing values.
+    model = self.model
 
-    dR = integral
+    dR = model.ds(integral)
     
     kinds = ['TV', 'Tikhonov', 'square', 'abs']
     
@@ -68,6 +69,8 @@ class Physics(object):
     s   = "::: forming %s regularization functional with parameter" + \
           " alpha = %.2E :::"
     print_text(s % (kind, alpha), self.color())
+    s = "    - integrated over %s -" % model.boundaries[integral]
+    print_text(s, self.color())
     self.R  = R
     self.Rp = Rp  # needed for L-curve
 

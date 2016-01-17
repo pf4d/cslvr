@@ -208,11 +208,11 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #adj_save_vars = [d3model.beta, d3model.U3]
 #
 ## form the cost functional :
-#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+#mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 
 #                 g1=0.01, g2=5000)
 #
 ## form the regularization functional :
-#mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', 
+#mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND, kind='TV', 
 #                 alpha=1.0)
 #
 ### post-thermo-solve callback function :
@@ -291,7 +291,7 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #Lc_kwargs = {'alphas'        : alphas,
 #             'physics'       : nrg,
 #             'control'       : d3model.alpha,
-#             'int_domain'    : d3model.dBed_g,
+#             'int_domain'    : d3model.GAMMA_B_GND,
 #             'adj_ftn'       : nrg.optimize_water_flux,
 #             'adj_kwargs'    : adj_kwargs,
 #             'reg_kind'      : 'TV',
@@ -335,7 +335,7 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #  d3model.save_xdmf(d3model.beta, 'beta_opt')
 #
 ## form the cost functional :
-#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+#mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 
 #                 g1=0.01, g2=5000)
 #
 ## number of digits for saving variables :
@@ -359,7 +359,7 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #Lc_kwargs = {'alphas'        : alphas,
 #             'physics'       : mom,
 #             'control'       : d3model.beta,
-#             'int_domain'    : d3model.dBed_g,
+#             'int_domain'    : d3model.GAMMA_B_GND,
 #             'adj_ftn'       : mom.optimize_u_ob,
 #             'adj_kwargs'    : uop_kwargs,
 #             'reg_kind'      : 'TV',
@@ -424,14 +424,14 @@ ini_save_vars = adj_save_vars + [d3model.Ubar, d3model.U_ob]
 nrg.form_obj_ftn(kind='L2')
 
 # form the cost functional :
-mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
+mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 
                  g1=0.01, g2=5000)
-#mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='ratio')
 
 # form the regularization functional :
-mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='TV', alpha=1.0)
-#mom.form_reg_ftn(d3model.beta, integral=d3model.dBed_g, kind='Tikhonov', 
-#                 alpha=1e-6)
+mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
+                 kind='TV', alpha=1.0)
+#mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
+#                  kind='Tikhonov', alpha=1e-6)
 
 wop_kwargs = {'max_iter'            : 150, 
               'method'              : 'ipopt',

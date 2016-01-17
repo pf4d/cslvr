@@ -24,6 +24,16 @@ class Model(object):
   GAMMA_L_UDR = 10  # terminus under water
   GAMMA_U_GND = 8   # grounded surface with U observations
   GAMMA_U_FLT = 9   # shelf surface with U observations
+
+  boundaries = {GAMMA_S_GND : 'grounded upper surface',
+                GAMMA_B_GND : 'grounded lower surface (bedrock)',
+                GAMMA_S_FLT : 'shelf upper surface',
+                GAMMA_B_FLT : 'shelf lower surface',
+                GAMMA_L_DVD : 'basin divides',
+                GAMMA_L_OVR : 'terminus over water',
+                GAMMA_L_UDR : 'terminus under water',
+                GAMMA_U_GND : 'grounded upper surface with U observations',
+                GAMMA_U_FLT : 'shelf upper surface with U observations'}
   
   def __init__(self, mesh, out_dir='./results/', save_state=False, 
                state=None, use_periodic=False, **gfs_kwargs):

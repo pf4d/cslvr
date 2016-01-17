@@ -5,6 +5,7 @@ from varglas.physics        import Physics
 from copy                   import deepcopy
 from varglas.helper         import raiseNotDefined
 import numpy                    as np
+import matplotlib.pyplot        as plt
 import sys
 import os
 
@@ -197,7 +198,8 @@ class Momentum(Physics):
     Forms and returns an objective functional for use with adjoint.
     Saves to self.J.
     """
-    self.obj_ftn_type = kind   # need to save this for printing values.
+    self.obj_ftn_type = kind     # need to save this for printing values.
+    self.integral     = integral # this too.
     
     model    = self.model
     
@@ -268,22 +270,24 @@ class Momentum(Physics):
     self.J  = J
     self.Jp = Jp
 
-  def calc_misfit(self, integral):
+  def calc_misfit(self):
     """
     Calculates the misfit of model and observations, 
 
       D = ||U - U_ob||
 
-    over shelves or grounded depending on the paramter <integral>, then 
-    updates model.misfit with D for plotting.
+    over shelves or grounded depending on the paramter <integral> sent to
+    the self.form_obj_ftn().
+    Updates model.misfit with D for plotting.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over '%s' :::"
     print_text(s % integral, cls=self)
 
-    model  = self.model
-    u,v,w  = model.U3
-    u_ob   = model.u_ob
-    v_ob   = model.v_ob
+    model    = self.model
+    integral = self.integral
+    u,v,w    = model.U3
+    u_ob     = model.u_ob
+    v_ob     = model.v_ob
     
     # convert everything for low-level manipulations :
     u_v    = u.vector().array()
@@ -600,7 +604,7 @@ class Momentum(Physics):
     text = "time to optimize ||u - u_ob||: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
     
-    # save all the objective functional values : 
+    # save all the objective functional values with rudimentary plot : 
     d    = model.out_dir + 'objective_ftnls_history/'
     s    = '::: saving objective functionals to %s :::'
     print_text(s % d, cls=self)
@@ -613,6 +617,58 @@ class Momentum(Physics):
       if self.obj_ftn_type == 'log_L2_hybrid':
         np.savetxt(d + 'J1s.txt',  np.array(J1s))
         np.savetxt(d + 'J2s.txt',  np.array(J2s))
+
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\mathscr{J}\left( \mathbf{u} \right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Js), 'r-', lw=2.0)
+      plt.grid()
+      plt.savefig(d + 'J.pdf')
+      plt.close(fig)
+
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\mathscr{R}\left( \beta \right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Rs), 'r-', lw=2.0)
+      plt.grid()
+      plt.savefig(d + 'R.pdf')
+      plt.close(fig)
+
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\mathscr{D}\left( \mathbf{u} \right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Ds), 'r-', lw=2.0)
+      plt.grid()
+      plt.savefig(d + 'D.pdf')
+      plt.close(fig)
+      
+      if self.obj_ftn_type == 'log_L2_hybrid':
+
+        fig = plt.figure()
+        ax  = fig.add_subplot(111)
+        #ax.set_yscale('log')
+        ax.set_ylabel(r'$\mathscr{J}_1\left( \mathbf{u} \right)$')
+        ax.set_xlabel(r'iteration')
+        ax.plot(np.array(J1s), 'r-', lw=2.0)
+        plt.grid()
+        plt.savefig(d + 'J1.pdf')
+        plt.close(fig)
+ 
+        fig = plt.figure()
+        ax  = fig.add_subplot(111)
+        #ax.set_yscale('log')
+        ax.set_ylabel(r'$\mathscr{J}_2\left( \mathbf{u} \right)$')
+        ax.set_xlabel(r'iteration')
+        ax.plot(np.array(J2s), 'r-', lw=2.0)
+        plt.grid()
+        plt.savefig(d + 'J2.pdf')
+        plt.close(fig)
 
 
 

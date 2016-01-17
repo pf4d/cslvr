@@ -1753,7 +1753,7 @@ class Model(object):
     # save the convergence history : 
     d    = self.out_dir + 'tmc/convergence_history/'
     s    = "::: saving convergence info to \'%s\' :::"
-    print_text(s % d, cls=self)
+    print_text(s % d, cls=self.this)
     if self.MPI_rank==0:
       if not os.path.exists(d):
         os.makedirs(d)
@@ -1844,7 +1844,7 @@ class Model(object):
         s2    = ' <<<'
         text0 = get_text(s0,                         'red', 1)
         text1 = get_text(s1 % (counter, iterations), 'red')
-        text2 = get_text(s6,                         'red', 1)
+        text2 = get_text(s2,                         'red', 1)
         print text0 + text1 + text2
        
       # save state to unique hdf5 file :

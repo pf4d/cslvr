@@ -1038,7 +1038,7 @@ class Enthalpy(Energy):
       #fig = plt.figure()
       #ax  = fig.add_subplot(111)
       #ax.set_yscale('log')
-      #ax.set_ylabel(r'$\ln\left( \mathscr{R}\left(\alpha\right) \right)$')
+      #ax.set_ylabel(r'$\mathscr{R}\left(\alpha\right)$')
       #ax.set_xlabel(r'iteration')
       #ax.plot(np.array(Rs), 'r-', lw=2.0)
       #plt.grid()

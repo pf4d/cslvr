@@ -40,7 +40,7 @@ class DataFactory(object):
     global home
  
     if res == 900:
-      direc    = home + '/antarctica/measures/antarctica_ice_velocity.nc' 
+      direc    = home + '/antarctica/measures/antarctica_ice_velocity_900m.nc' 
     elif res == 450:
       direc    = home + '/antarctica/measures/antarctica_ice_velocity_450m.nc' 
     else:

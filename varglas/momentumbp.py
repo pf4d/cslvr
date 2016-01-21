@@ -40,9 +40,9 @@ class MomentumBP(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
     eps_reg    = model.eps_reg
@@ -288,8 +288,8 @@ class MomentumBP(Momentum):
     eta_gnd = self.eta_gnd
     w       = self.wf
 
-    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), Q, annotate=annotate)
-    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), Q, annotate=annotate)
+    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), annotate=annotate)
+    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), annotate=annotate)
     
     # unify the pressure over shelves and grounded ice : 
     p_v                 = p.vector().array()
@@ -395,9 +395,9 @@ class MomentumDukowiczBP(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
     r          = model.r
@@ -634,9 +634,9 @@ class MomentumDukowiczBP(Momentum):
     eta_gnd = self.eta_gnd
     w       = self.w
 
-    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), Q,
+    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2),
                       annotate=annotate)
-    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), Q,
+    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2),
                       annotate=annotate)
     
     # unify the pressure over shelves and grounded ice : 

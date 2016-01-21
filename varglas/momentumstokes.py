@@ -36,10 +36,10 @@ class MomentumStokes(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx = FunctionAssigner(model.Q3.sub(0), model.Q)
-    self.assy = FunctionAssigner(model.Q3.sub(1), model.Q)
-    self.assz = FunctionAssigner(model.Q3.sub(2), model.Q)
-    self.assp = FunctionAssigner(model.Q,         model.MV.sub(1))
+    self.assx = FunctionAssigner(model.u.function_space(), model.Q)
+    self.assy = FunctionAssigner(model.v.function_space(), model.Q)
+    self.assz = FunctionAssigner(model.w.function_space(), model.Q)
+    self.assp = FunctionAssigner(model.p.function_space(), model.MV.sub(1))
 
     mesh      = model.mesh
     eps_reg   = model.eps_reg
@@ -325,9 +325,9 @@ class MomentumDukowiczStokesReduced(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q)
+    self.assx = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
+    self.assy = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
+    self.assz = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
     r          = model.r
@@ -710,11 +710,11 @@ class MomentumDukowiczStokes(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q5.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q5.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q5.sub(2))
-    self.assp  = FunctionAssigner(model.Q,         model.Q5.sub(3))
-    self.assl  = FunctionAssigner(model.Q,         model.Q5.sub(4))
+    self.assx  = FunctionAssigner(model.u.function_space(),   model.Q5.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(),   model.Q5.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(),   model.Q5.sub(2))
+    self.assp  = FunctionAssigner(model.p.function_space(),   model.Q5.sub(3))
+    self.assl  = FunctionAssigner(model.lam.function_space(), model.Q5.sub(4))
 
     mesh       = model.mesh
     r          = model.r
@@ -1032,10 +1032,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.Q3.sub(0), model.Q4.sub(0))
-    self.assy  = FunctionAssigner(model.Q3.sub(1), model.Q4.sub(1))
-    self.assz  = FunctionAssigner(model.Q3.sub(2), model.Q4.sub(2))
-    self.assp  = FunctionAssigner(model.Q,         model.Q4.sub(3))
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q4.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q4.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q4.sub(2))
+    self.assp  = FunctionAssigner(model.p.function_space(), model.Q4.sub(3))
 
     mesh       = model.mesh
     r          = model.r
@@ -1284,11 +1284,23 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+    #                              'relative_tolerance'       : 1e-8,
+    #                              'relaxation_parameter'     : 1.0,
+    #                              'maximum_iterations'       : 25,
+    #                              'error_on_nonconvergence'  : False}}
+    nparams = {'newton_solver' : {'linear_solver'            : 'tfqmr',
+                                  'preconditioner'           : 'petsc_amg',
                                   'relative_tolerance'       : 1e-8,
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False}}
+                                  'error_on_nonconvergence'  : False,
+                                  'krylov_solver'            :
+                                  {'monitor_convergence' : False,
+                                   'preconditioner'      :
+                                   {
+                                    'structure' : 'same'}
+                                  }}}
     m_params  = {'solver'      : nparams}
     return m_params
 
@@ -1319,9 +1331,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0], 'u',   cls=self)
-    print_min_max(U3[1], 'v',   cls=self)
-    print_min_max(U3[2], 'w',   cls=self)
+    print_min_max(U3[0],   'u', cls=self)
+    print_min_max(U3[1],   'v', cls=self)
+    print_min_max(U3[2],   'w', cls=self)
     print_min_max(model.p, 'p', cls=self)
 
 

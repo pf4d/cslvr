@@ -1,4 +1,4 @@
-from varglas  import D3Model, MomentumDukowiczStokes
+from varglas  import *#D3Model, MomentumDukowiczStokes
 from fenics   import Point, BoxMesh, Expression, sqrt, pi
 
 alpha = 0.5 * pi / 180 
@@ -6,10 +6,9 @@ L     = 40000
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
-mesh  = BoxMesh(p1, p2, 25, 25, 10)
+mesh  = BoxMesh(p1, p2, 10,10,4)#25, 25, 10)
 
-model = D3Model(out_dir = './results_stokes/')
-model.set_mesh(mesh)
+model = D3Model(mesh, out_dir = './results_stokes/')
 model.generate_function_spaces(use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
@@ -21,14 +20,12 @@ bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
 model.calculate_boundaries()
 model.deform_mesh_to_geometry(surface, bed)
 
-model.init_S(surface)
-model.init_B(bed)
 model.init_mask(1.0)  # all grounded
 model.init_beta(1000)
 model.init_b(model.A0(0)**(-1/model.n(0)))
 model.init_E(1.0)
 
-mom = MomentumDukowiczStokes(model, isothermal=True)
+mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=True)
 mom.solve()
 
 model.save_pvd(model.p,  'p')

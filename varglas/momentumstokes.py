@@ -249,11 +249,28 @@ class MomentumStokes(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-                                  'relative_tolerance'       : 1e-8,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False}}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'tfqmr',
+                'preconditioner'           : 'petsc_amg',
+                'relative_tolerance'       : 1e-8,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  'preconditioner' :
+                  {
+                    'structure' : 'same'
+                  }
+                }
+              }}
+    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+    #                              'relative_tolerance'       : 1e-8,
+    #                              'relaxation_parameter'     : 1.0,
+    #                              'maximum_iterations'       : 25,
+    #                              'error_on_nonconvergence'  : False}}
     m_params  = {'solver'      : nparams}
     return m_params
 
@@ -567,14 +584,26 @@ class MomentumDukowiczStokesReduced(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                                  'preconditioner'           : 'hypre_amg',
-                                  'relative_tolerance'       : 1e-8,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False}}
-    m_params  = {'solver'         : nparams,
-                 'solve_pressure' : True}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'cg',
+                'preconditioner'           : 'hypre_amg',
+                'relative_tolerance'       : 1e-8,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  #'preconditioner' :
+                  #{
+                  #  'structure' : 'same'
+                  #}
+                }
+              }}
+    m_params  = {'solver'               : nparams,
+                 'solve_vert_velocity'  : True,
+                 'solve_pressure'       : True}
     return m_params
   
   #def solve_pressure(self, annotate=True):
@@ -959,11 +988,23 @@ class MomentumDukowiczStokes(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-                                  'relative_tolerance'       : 1e-8,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False}}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'tfqmr',
+                'preconditioner'           : 'petsc_amg',
+                'relative_tolerance'       : 1e-8,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  #'preconditioner' :
+                  #{
+                  #  'structure' : 'same'
+                  #}
+                }
+              }}
     m_params  = {'solver'      : nparams}
     return m_params
 
@@ -1284,11 +1325,6 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    #nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-    #                              'relative_tolerance'       : 1e-8,
-    #                              'relaxation_parameter'     : 1.0,
-    #                              'maximum_iterations'       : 25,
-    #                              'error_on_nonconvergence'  : False}}
     nparams = {'newton_solver' :
               {
                 'linear_solver'            : 'tfqmr',

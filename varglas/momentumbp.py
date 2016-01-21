@@ -256,12 +256,23 @@ class MomentumBP(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                                  'preconditioner'           : 'hypre_amg',
-                                  'relative_tolerance'       : 1e-8,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False}}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'cg',
+                'preconditioner'           : 'hypre_amg',
+                'relative_tolerance'       : 1e-8,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  #'preconditioner' :
+                  #{
+                  #  'structure' : 'same'
+                  #}
+                }
+              }}
     m_params  = {'solver'               : nparams,
                  'solve_vert_velocity'  : True,
                  'solve_pressure'       : True,
@@ -602,12 +613,23 @@ class MomentumDukowiczBP(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                                  'preconditioner'           : 'hypre_amg',
-                                  'relative_tolerance'       : 1e-8,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False}}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'cg',
+                'preconditioner'           : 'hypre_amg',
+                'relative_tolerance'       : 1e-8,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  #'preconditioner' :
+                  #{
+                  #  'structure' : 'same'
+                  #}
+                }
+              }}
     m_params  = {'solver'               : nparams,
                  'solve_vert_velocity'  : True,
                  'solve_pressure'       : True,

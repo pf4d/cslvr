@@ -8,7 +8,7 @@ p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)
 mesh  = RectangleMesh(p1, p2, 25, 25)
 
-model = D2Model(mesh, out_dir = './results_hybrid/')
+model = D2Model(mesh, out_dir = './ISMIP_HOM_A_hybrid_results/')
 model.generate_function_spaces(use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,

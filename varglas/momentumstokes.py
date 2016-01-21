@@ -1289,18 +1289,23 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     #                              'relaxation_parameter'     : 1.0,
     #                              'maximum_iterations'       : 25,
     #                              'error_on_nonconvergence'  : False}}
-    nparams = {'newton_solver' : {'linear_solver'            : 'tfqmr',
-                                  'preconditioner'           : 'petsc_amg',
-                                  'relative_tolerance'       : 1e-8,
-                                  'relaxation_parameter'     : 1.0,
-                                  'maximum_iterations'       : 25,
-                                  'error_on_nonconvergence'  : False,
-                                  'krylov_solver'            :
-                                  {'monitor_convergence' : False,
-                                   'preconditioner'      :
-                                   {
-                                    'structure' : 'same'}
-                                  }}}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'tfqmr',
+                'preconditioner'           : 'petsc_amg',
+                'relative_tolerance'       : 1e-8,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  'preconditioner' :
+                  {
+                    'structure' : 'same'
+                  }
+                }
+              }}
     m_params  = {'solver'      : nparams}
     return m_params
 

@@ -783,6 +783,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.Wb_flux, Wb_flux, cls=cls)
 
+  def init_PE(self, PE, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing grid Peclet number :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.PE, PE, cls=cls)
+
   def init_n_f(self, n, cls=None):
     """
     """
@@ -1603,6 +1612,7 @@ class Model(object):
     self.alpha         = Function(self.Q, name='alpha')
     self.alpha_crit    = Function(self.Q, name='alpha_crit')
     self.Wb_flux       = Function(self.Q, name='Wb_flux')
+    self.PE            = Function(self.Q, name='PE')
     
     # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
@@ -1688,7 +1698,8 @@ class Model(object):
     # L_2 erro norm between iterations :
     abs_error = np.inf
     rel_error = np.inf
-    err_a     = [abs_error]
+    err_a     = []
+    tht_a     = []
    
     # number of iterations
     counter   = 1
@@ -1718,6 +1729,7 @@ class Model(object):
       # calculate L_infinity norm, increment counter :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
       err_a.append(abs_error_n)
+      tht_a.append(norm(self.theta.vector(), 'l2'))
       if counter == 1:
         rel_error  = abs_error_n
       else:
@@ -1767,8 +1779,29 @@ class Model(object):
     if self.MPI_rank==0:
       if not os.path.exists(d):
         os.makedirs(d)
-      np.savetxt(d + 'time.txt',     np.array([tf - t0]))
-      np.savetxt(d + 'abs_err.txt',  np.array(err_a))
+      np.savetxt(d + 'time.txt',        np.array([tf - t0]))
+      np.savetxt(d + 'abs_err.txt',     np.array(err_a))
+      np.savetxt(d + 'theta_norm.txt',  np.array(tht_a))
+      
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\Vert \theta_{n-1} - \theta_n \Vert$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(err_a), 'k-', lw=2.0)
+      plt.grid()
+      plt.savefig(d + 'abs_err.pdf')
+      plt.close(fig)
+      
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      #ax.set_yscale('log')
+      ax.set_ylabel(r'$\Vert \theta_n \Vert$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(err_a), 'k-', lw=2.0)
+      plt.grid()
+      plt.savefig(d + 'theta_norm.pdf')
+      plt.close(fig)
 
   def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,
                       incomplete          = True,

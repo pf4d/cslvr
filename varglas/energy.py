@@ -407,7 +407,8 @@ class Enthalpy(Energy):
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    k     =  spy * k_c * k           # convert to J/(a*m*K)
+    #k     =  spy * k_c * k           # convert to J/(a*m*K)
+    k     =  spy * k                 # convert to J/(a*m*K)
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :
@@ -560,7 +561,58 @@ class Enthalpy(Energy):
     epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
                     + ep_xy**2 + ep_xz**2 + ep_yz**2
     return epsdot
-    
+
+  def calc_PE(self, avg=False):
+    """
+    calculates the grid P\'{e}clet number to self.model.PE.
+
+    if avg=True, calculate the vertical average.
+    """
+    s    = "::: calculating Peclet number :::"
+    print_text(s, cls=self)
+
+    model = self.model
+    kappa = self.kappa
+
+    U = model.U3
+    h = model.h
+
+    Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
+    PE     = Unorm*h/(2*kappa)
+    if avg:
+      PE = model.calc_vert_average(PE)
+    else:
+      PE = project(PE, annotate=False)
+    model.init_PE(PE, cls=self)
+
+  def calc_internal_water(self):
+    """
+    calculates the integrated sum of water content W. 
+    """
+    s   = "::: calculating integral of internal water content :::"
+    print_text(s, cls=self)
+
+    model   = self.model
+    W       = model.W
+
+    # internal water content unknown :
+    W_i    = Function(model.Q)
+
+    # calculate L_inf norm :
+    W_v   = W.vector().array()
+    W_i.vector().set_local(W_v)
+    W_i.vector().apply('insert')
+ 
+    # eliminate any water content on the boundaries :
+    for domain in model.boundaries:
+      bc_i = DirichletBC(model.Q, 0.0, model.ff, domain)
+      bc_i.apply(W_i.vector())
+
+    # calculate downward vertical integral :
+    W_int = model.vert_integrate(W_i, d='down')
+
+    return W_int
+
   def calc_T_melt(self, annotate=True):
     """
     Calculates pressure-melting point in model.T_melt.

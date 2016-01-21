@@ -376,20 +376,22 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
 
-d3model.set_out_dir(out_dir + 'tmc_inversion/')
+d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10/')
 
 # post-thermo-solve callback function :
 def tmc_cb_ftn():
   nrg.solve_basal_melt_rate()
   nrg.solve_basal_water_flux()
-  #nrg.solve_critical_alpha()
+  nrg.calc_PE()#avg=True)
+  W_int = nrg.calc_internal_water()
   d3model.save_xdmf(d3model.U3,         'U')
   d3model.save_xdmf(d3model.T,          'T')
   d3model.save_xdmf(d3model.W,          'W')
   d3model.save_xdmf(d3model.Wb_flux,    'Wb_flux')
   d3model.save_xdmf(d3model.Mb,         'Mb')
   d3model.save_xdmf(d3model.alpha,      'alpha')
-  #d3model.save_xdmf(d3model.alpha_crit, 'alpha_crit')
+  d3model.save_xdmf(d3model.PE,         'PE')
+  d3model.save_xdmf(W_int,              'W_int')
 
 # derivative of objective function callback function : 
 def deriv_cb(I, dI, beta):
@@ -429,7 +431,7 @@ mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid',
 
 # form the regularization functional :
 mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
-                 kind='TV', alpha=1.0)
+                 kind='TV', alpha=10.0)
 #mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #                  kind='Tikhonov', alpha=1e-6)
 

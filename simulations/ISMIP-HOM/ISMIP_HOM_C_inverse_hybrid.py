@@ -16,6 +16,7 @@ mesh  = RectangleMesh(p1, p2, 25, 25)
 
 model = HybridModel(mesh, out_dir = out_dir + 'initial/')
 model.generate_function_spaces(use_periodic = True)
+model.calculate_boundaries()
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                      element=model.Q.ufl_element())
@@ -34,7 +35,9 @@ model.init_E(1.0)                              # no enhancement factor
 mom = MomentumHybrid(model, isothermal=True)
 mom.solve(annotate=False)
 
-u,v,w = model.U3.split(True)
+u     = project(mom.u(0.0), annotate=False)
+v     = project(mom.v(0.0), annotate=False)
+w     = project(mom.w(0.0), annotate=False)
 u_o   = u.vector().array()
 v_o   = v.vector().array()
 n     = len(u_o)
@@ -47,8 +50,8 @@ v_error = U_e * random.randn(n)
 u_ob    = u_o + u_error
 v_ob    = v_o + v_error
 
-model.assign_variable(u, u_ob)
-model.assign_variable(v, v_ob)
+model.assign_variable(u, u_ob, annotate=False)
+model.assign_variable(v, v_ob, annotate=False)
 
 model.init_U_ob(u, v)
 
@@ -78,11 +81,11 @@ def adj_post_cb_ftn():
 adj_save_vars = [model.beta, model.U3]
 
 # form the cost functional :
-mom.form_obj_ftn(integral=model.GAMMA_U_GND, kind='log_L2_hybrid', 
+mom.form_obj_ftn(integral=model.OMEGA_GND, kind='log_L2_hybrid', 
                  g1=0.01, g2=5000)
 
 # form the regularization functional :
-mom.form_reg_ftn(model.beta, integral=model.GAMMA_B_GND, kind='TV', 
+mom.form_reg_ftn(model.beta, integral=model.OMEGA_GND, kind='TV', 
                  alpha=1.0)
 
 # solving the incomplete adjoint is more efficient :

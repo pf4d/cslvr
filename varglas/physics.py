@@ -44,7 +44,11 @@ class Physics(object):
     self.alpha = alpha   # need to save this for printing values.
     model = self.model
 
-    dR = model.ds(integral)
+    # differentiate between regularization over cells or facets :
+    if integral in [model.OMEGA_GND, model.OMEGA_FLT]:
+      dR = model.dx(integral)
+    else:
+      dR = model.ds(integral)
     
     kinds = ['TV', 'Tikhonov', 'square', 'abs']
     

@@ -23,11 +23,6 @@ class MomentumStokes(Momentum):
     s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
     
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
-
     # momenturm and adjoint :
     G         = Function(model.MV, name = 'G')
     Lam       = Function(model.MV, name = 'Lam')
@@ -274,7 +269,7 @@ class MomentumStokes(Momentum):
     m_params  = {'solver'      : nparams}
     return m_params
 
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """ 
     Perform the Newton solve of the full-Stokes equations 
     """
@@ -327,11 +322,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     # NOTE: not sure why this is ever changed, but the model.assimilate_data
     #       method throws an error if I don't do this :
     parameters["adjoint"]["stop_annotating"] = False
-
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
 
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'G')
@@ -673,7 +663,7 @@ class MomentumDukowiczStokesReduced(Momentum):
 
     self.assz.assign(model.w, w, annotate=False)
 
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """ 
     Perform the Newton solve of the reduced full-Stokes equations 
     """
@@ -725,11 +715,6 @@ class MomentumDukowiczStokes(Momentum):
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
-
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
 
     # momenturm and adjoint :
     U      = Function(model.Q5, name = 'G')
@@ -1008,7 +993,7 @@ class MomentumDukowiczStokes(Momentum):
     m_params  = {'solver'      : nparams}
     return m_params
 
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """ 
     Perform the Newton solve of the full-Stokes equations 
     """
@@ -1059,11 +1044,6 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
-
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
 
     # momenturm and adjoint :
     U      = Function(model.Q4, name = 'G')
@@ -1327,8 +1307,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     """
     nparams = {'newton_solver' :
               {
-                'linear_solver'            : 'tfqmr',
-                'preconditioner'           : 'petsc_amg',
+                #'linear_solver'            : 'tfqmr',
+                #'preconditioner'           : 'petsc_amg',
+                'linear_solver'            : 'mumps',
                 'relative_tolerance'       : 1e-8,
                 'relaxation_parameter'     : 1.0,
                 'maximum_iterations'       : 25,
@@ -1345,7 +1326,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     m_params  = {'solver'      : nparams}
     return m_params
 
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """ 
     Perform the Newton solve of the full-Stokes equations 
     """

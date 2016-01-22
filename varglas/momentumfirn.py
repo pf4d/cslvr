@@ -22,11 +22,6 @@ class MomentumFirn(Momentum):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
     
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
-
     mesh    = model.mesh
     Q       = model.Q
     Q3      = model.Q3

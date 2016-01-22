@@ -362,7 +362,6 @@ class D3Model(Model):
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
-    self.dx      = self.dx(1) + self.dx(0)   # internal
     self.dBed_g  = self.ds(3)                # grounded bed
     self.dBed_f  = self.ds(5)                # floating bed
     self.dBed    = self.ds(3) + self.ds(5)   # bed
@@ -468,7 +467,6 @@ class D3Model(Model):
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
-    self.dx      = self.dx(1) + self.dx(0)   # internal
     self.dBed_g  = self.ds(3)                # grounded bed
     self.dBed_f  = self.ds(5)                # floating bed
     self.dBed    = self.ds(3) + self.ds(5)   # bed
@@ -503,7 +501,6 @@ class D3Model(Model):
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
-    self.dx      = self.dx(1) + self.dx(0)   # internal
     self.dBed_g  = self.ds(3)                # grounded bed
     self.dBed_f  = self.ds(5)                # floating bed
     self.dBed    = self.ds(3) + self.ds(5)   # bed

@@ -1,13 +1,11 @@
-from varglas          import D3Model, MomentumDukowiczStokes, print_text, \
-                             print_min_max
-from varglas.energy   import Enthalpy 
+from varglas          import *
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *
 
 #set_log_active(False)
 
-out_dir = './results_stokes/'
+out_dir = './ISMIP_HOM_C_inverse_results/'
 
 alpha = 0.1 * pi / 180
 L     = 40000
@@ -16,8 +14,7 @@ p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
 mesh  = BoxMesh(p1, p2, 25, 25, 10)
 
-model = D3Model(out_dir = out_dir + 'initial/')
-model.set_mesh(mesh)
+model = D3Model(mesh, out_dir = out_dir + 'true/')
 model.generate_function_spaces(use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
@@ -30,20 +27,15 @@ beta    = Expression('1000 - 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
 model.calculate_boundaries()
 model.deform_mesh_to_geometry(surface, bed)
 
-model.init_S(surface)
-model.init_B(bed)
-model.init_mask(0.0)  # all grounded
-model.init_beta(beta)
-model.init_b(model.A0(0)**(-1/model.n(0)))
+model.init_mask(0.0)                           # all grounded ice
+model.init_beta(beta)                          # friction
+model.init_b(model.A0(0)**(-1/model.n(0)))     # constant rate factor
+model.init_E(1.0)                              # no enhancement factor
 
-nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-                              'relative_tolerance'       : 1e-8,
-                              'relaxation_parameter'     : 1.0,
-                              'maximum_iterations'       : 25,
-                              'error_on_nonconvergence'  : False}}
-m_params  = {'solver'      : nparams}
-
-mom = MomentumDukowiczStokes(model, m_params, isothermal=True)
+#mom = MomentumBP(model, isothermal=True)
+mom = MomentumDukowiczBP(model, isothermal=True)
+#mom = MomentumDukowiczStokesReduced(model, isothermal=True)
+#mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=True)
 mom.solve(annotate=False)
 
 u,v,w = model.U3.split(True)
@@ -64,70 +56,50 @@ model.assign_variable(v, v_ob)
 
 model.init_U_ob(u, v)
 
-model.save_pvd(model.U3,   'U_true')
-model.save_pvd(model.U_ob, 'U_ob')
-model.save_pvd(model.beta, 'beta_true')
+model.save_xdmf(model.U3,   'U_true')
+model.save_xdmf(model.U_ob, 'U_ob')
+model.save_xdmf(model.beta, 'beta_true')
 
 model.init_beta(30.0**2)
 #model.init_beta_SIA()
-#model.save_pvd(model.beta, 'beta_SIA')
+#model.save_xdmf(model.beta, 'beta_SIA')
 
-mom = MomentumDukowiczStokes(model, m_params, linear=True, isothermal=True)
-mom.solve(annotate=True)
-
-model.set_out_dir(out_dir = out_dir + 'inverted/')
-  
-J = mom.form_obj_ftn(integral=model.dSrf, kind='log_L2_hybrid', 
-                     g1=0.01, g2=1000)
-R = mom.form_reg_ftn(model.beta, integral=model.dBed, kind='Tikhonov', 
-                     alpha=10000.0)
-I = J# + R
-
-controls = File(out_dir + "beta_control.pvd")
-beta_viz = Function(model.Q, name="beta_control")
-  
-def eval_cb(I, beta):
-  #       commented out because the model variables are not updated by 
-  #       dolfin-adjoint (yet) :
-  #mom.print_eval_ftns()
-  #print_min_max(mom.U, 'U')
-  print_min_max(I,    'I')
-  print_min_max(beta, 'beta')
+model.set_out_dir(out_dir + 'inversion/')
 
 def deriv_cb(I, dI, beta):
-  print_min_max(I,     'I')
-  print_min_max(dI,    'dI/dbeta')
-  print_min_max(beta,  'beta')
-  beta_viz.assign(beta)
-  controls << beta_viz
+  model.save_xdmf(model.beta, 'beta_control')
 
-def hessian_cb(I, ddI, beta):
-  print_min_max(ddI, 'd/db dI/db')
+# post-adjoint-iteration callback function :
+def adj_post_cb_ftn():
+  mom.solve_params['solve_vert_velocity'] = True
+  mom.solve(annotate=False)
 
-m = FunctionControl('beta')
-F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-                      derivative_cb_post = deriv_cb,
-                      hessian_cb = hessian_cb)
+  # save the optimal velocity and beta fields for viewing with paraview :
+  model.save_xdmf(model.U3,   'U_opt')
+  model.save_xdmf(model.beta, 'beta_opt')
 
-#m_opt = minimize(F, method="L-BFGS-B", tol=2e-8, bounds=(0, 4000),
-#                 options={"disp"    : True,
-#                          "maxiter" : 200})
-  
-problem = MinimizationProblem(F, bounds=(0, 4000))
-parameters = {"acceptable_tol"     : 1.0e-200,
-              "maximum_iterations" : 200,
-              "linear_solver"      : "ma97"}
+# after every completed adjoining, save the state of these functions :
+adj_save_vars = [model.beta, model.U3]
 
-solver = IPOPTSolver(problem, parameters=parameters)
-b_opt = solver.solve()
-print_min_max(b_opt, 'b_opt')
+# form the cost functional :
+mom.form_obj_ftn(integral=model.GAMMA_U_GND, kind='log_L2_hybrid', 
+                 g1=0.01, g2=5000)
 
-model.assign_variable(model.beta, b_opt)
-mom.solve(annotate=False)
-mom.print_eval_ftns()
+# form the regularization functional :
+mom.form_reg_ftn(model.beta, integral=model.GAMMA_B_GND, kind='TV', 
+                 alpha=1.0)
 
-model.save_pvd(model.beta, 'beta_opt')
-model.save_pvd(model.U3,   'U_opt')
+# solving the incomplete adjoint is more efficient :
+mom.linearize_viscosity()
+
+# optimize for beta :
+mom.optimize_U_ob(control           = model.beta,
+                  bounds            = (1e-5, 1e7),
+                  method            = 'ipopt',
+                  max_iter          = 20,
+                  adj_save_vars     = adj_save_vars,
+                  adj_callback      = deriv_cb,
+                  post_adj_callback = adj_post_cb_ftn)
 
 
 

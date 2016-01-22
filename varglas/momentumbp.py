@@ -26,11 +26,6 @@ class MomentumBP(Momentum):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
     
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
-
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'U')
     wf     = Function(model.Q,  name = 'w')
@@ -334,7 +329,7 @@ class MomentumBP(Momentum):
     self.assz.assign(model.w, self.wf, annotate=annotate)
     print_min_max(self.wf, 'w', cls=self)
     
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """ 
     Perform the Newton solve of the first order equations 
     """
@@ -386,11 +381,6 @@ class MomentumDukowiczBP(Momentum):
       s = ">>> MomentumDukowiczBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
-    
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
     
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'G')
@@ -693,7 +683,7 @@ class MomentumDukowiczBP(Momentum):
     self.assz.assign(model.w, self.w, annotate=annotate)
     print_min_max(self.w, 'w', cls=self)
     
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """ 
     Perform the Newton solve of the first order equations 
     """

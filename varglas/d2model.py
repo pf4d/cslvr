@@ -336,7 +336,6 @@ class D2Model(Model):
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
-    self.dx      = self.dx(1) + self.dx(0)   # internal
     self.dBed_g  = self.ds(3)                # grounded bed
     self.dBed_f  = self.ds(5)                # floating bed
     self.dBed    = self.ds(3) + self.ds(5)   # bed
@@ -373,7 +372,7 @@ class D2Model(Model):
     CellFunction self.cf, and accumulation FacetFunction self.ff_acc from
     MeshFunctions saved in an .h5 file <f>.
     """
-    s = "::: setting 3D subdomains :::"
+    s = "::: setting 2D subdomains :::"
     print_text(s, cls=self)
 
     self.ff     = MeshFunction('size_t', self.mesh)
@@ -388,7 +387,6 @@ class D2Model(Model):
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
-    self.dx      = self.dx(1) + self.dx(0)   # internal
     self.dBed_g  = self.ds(3)                # grounded bed
     self.dBed_f  = self.ds(5)                # floating bed
     self.dBed    = self.ds(3) + self.ds(5)   # bed

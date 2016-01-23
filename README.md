@@ -1,7 +1,7 @@
 cslvr : [c]ryospheric problem [s]o[lv]e[r]
 =======
 
-Evolution of the [Var]iational [Gl]acier [S]imulator (VarGlaS) codes:
+Originally a fork of the [Var]iational [Gl]acier [S]imulator (VarGlaS) codes:
 
 https://github.com/douglas-brinkerhoff/VarGlaS
 

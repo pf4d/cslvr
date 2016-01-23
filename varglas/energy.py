@@ -926,7 +926,8 @@ class Enthalpy(Energy):
     #model.T.assign(T_n, annotate=annotate)
     ##model.assign_variable(T,  T_n, cls=self, annotate=annotate)
 
-  def optimize_water_flux(self, max_iter, method='ipopt', adj_callback=None):
+  def optimize_water_flux(self, max_iter, bounds, method='ipopt',
+                          adj_callback=None):
     """
     determine the correct basal-water flux.
     """
@@ -1019,7 +1020,7 @@ class Enthalpy(Energy):
 
     # optimize with scipy's fmin_l_bfgs_b :
     if method == 'l_bfgs_b': 
-      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,50),
+      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
                      options={"disp"    : True,
                               "maxiter" : max_iter,
                               "gtol"    : 1e-5})
@@ -1034,7 +1035,7 @@ class Enthalpy(Energy):
                     When compiling IPOPT, make sure to link against HSL,
                     as it is a necessity for practical problems.""")
         raise
-      problem = MinimizationProblem(F, bounds=(0,1))
+      problem = MinimizationProblem(F, bounds=bounds)
       parameters = {"tol"                : 1e-8,
                     "acceptable_tol"     : 1e-6,
                     "maximum_iterations" : max_iter,

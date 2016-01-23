@@ -412,6 +412,7 @@ mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #                  kind='Tikhonov', alpha=1e-6)
 
 wop_kwargs = {'max_iter'            : 150, 
+              'bounds'              : (0.0, 50.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     

@@ -8,6 +8,7 @@ import numpy                    as np
 import matplotlib.pyplot        as plt
 import sys
 import os
+import json
 
 
 class Momentum(Physics):
@@ -26,19 +27,26 @@ class Momentum(Physics):
                linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     """
+    s = "::: INITIALIZING MOMENTUM :::"
+    print_text(s, self.color())
+
     # save the starting values, as other algorithms might change the 
     # values to suit their requirements :
     if isinstance(solve_params, dict):
-      self.solve_params    = solve_params
+      pass
     elif solve_params == None:
-      self.solve_params    = self.default_solve_params()
+      solve_params    = self.default_solve_params()
+      s = "::: using default paramters :::"
+      print_text(s, self.color())
+      s = json.dumps(solve_params, sort_keys=True, indent=2)
+      print_text(s, '230')
     else:
-      s = ">>> FirnDensity REQUIRES A 'dict' INSTANCE OF SOLVER " + \
+      s = ">>> Momentum REQUIRES A 'dict' INSTANCE OF SOLVER " + \
           "PARAMETERS, NOT %s <<<"
       print_text(s % type(solve_params) , 'red', 1)
       sys.exit(1)
     
-    self.solve_params_s    = deepcopy(self.solve_params)
+    self.solve_params_s    = deepcopy(solve_params)
     self.isothermal_s      = isothermal
     self.linear_s          = linear
     self.use_lat_bcs_s     = use_lat_bcs
@@ -62,6 +70,11 @@ class Momentum(Physics):
     """
     s = "::: RE-INITIALIZING MOMENTUM PHYSICS :::"
     print_text(s, self.color())
+
+    s = "::: restoring desired Newton solver paramters :::"
+    print_text(s, self.color())
+    s = json.dumps(self.solve_params_s, sort_keys=True, indent=2)
+    print_text(s, '230')
     
     self.initialize(self.model, solve_params=self.solve_params_s,
                     isothermal=self.isothermal_s, linear=self.linear_s,
@@ -90,6 +103,11 @@ class Momentum(Physics):
     new_params['relaxation_parameter']    = 1.0
     new_params['maximum_iterations']      = 3
     new_params['error_on_nonconvergence'] = False
+
+    s = "::: altering solver paramters for optimal convergence :::"
+    print_text(s, self.color())
+    s = json.dumps(mom_params, sort_keys=True, indent=2)
+    print_text(s, '230')
 
     self.initialize(self.model, solve_params=mom_params,
                     isothermal=self.isothermal_s, linear=True,

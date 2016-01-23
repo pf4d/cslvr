@@ -27,6 +27,9 @@ class MomentumHybrid(Momentum):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
+    # save the solver parameters :
+    self.solve_params = solve_params
+
     self.assx  = FunctionAssigner(model.u_s.function_space(), model.Q)
     self.assy  = FunctionAssigner(model.v_s.function_space(), model.Q)
     self.assz  = FunctionAssigner(model.w_s.function_space(), model.Q)

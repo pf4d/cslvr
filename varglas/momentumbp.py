@@ -25,6 +25,9 @@ class MomentumBP(Momentum):
       s = ">>> MomentumBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
+
+    # save the solver parameters :
+    self.solve_params = solve_params
     
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'U')
@@ -256,7 +259,7 @@ class MomentumBP(Momentum):
                 'linear_solver'            : 'cg',
                 'preconditioner'           : 'hypre_amg',
                 'relative_tolerance'       : 1e-8,
-                'relaxation_parameter'     : 1.0,
+                'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
                 'krylov_solver'            :
@@ -274,7 +277,7 @@ class MomentumBP(Momentum):
                  'vert_solve_method'    : 'mumps'}
     return m_params
 
-  def solve_pressure(self, annotate=annotate):
+  def solve_pressure(self, annotate=False):
     """
     Solve for the BP pressure 'p'.
     """
@@ -381,6 +384,9 @@ class MomentumDukowiczBP(Momentum):
       s = ">>> MomentumDukowiczBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
+
+    # save the solver parameters :
+    self.solve_params = solve_params
     
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'G')
@@ -608,7 +614,7 @@ class MomentumDukowiczBP(Momentum):
                 'linear_solver'            : 'cg',
                 'preconditioner'           : 'hypre_amg',
                 'relative_tolerance'       : 1e-8,
-                'relaxation_parameter'     : 1.0,
+                'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
                 'krylov_solver'            :
@@ -626,7 +632,7 @@ class MomentumDukowiczBP(Momentum):
                  'vert_solve_method'    : 'mumps'}
     return m_params
 
-  def solve_pressure(self, annotate=True):
+  def solve_pressure(self, annotate=False):
     """
     Solve for the Dukowicz BP pressure to model.p.
     """
@@ -659,8 +665,9 @@ class MomentumDukowiczBP(Momentum):
     p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
     model.assign_variable(p, p_v, cls=self)
 
-  def solve_vert_velocity(self, annotate=True):
-    """ 
+  def solve_vert_velocity(self, annotate=False):
+    """on.dumps(x, sort_keys=True, indent=2)
+
     Perform the Newton solve of the first order equations 
     """
     model  = self.model

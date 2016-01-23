@@ -21,6 +21,9 @@ class MomentumFirn(Momentum):
       s = ">>> FirnDensity REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
+
+    # save the solver parameters :
+    self.solve_params = solve_params
     
     mesh    = model.mesh
     Q       = model.Q

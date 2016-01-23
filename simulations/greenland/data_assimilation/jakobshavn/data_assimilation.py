@@ -153,33 +153,11 @@ d3model.init_beta_SIA()
 #bedmodel.init_beta_SIA()
 #bedmodel.init_T(bedmodel.T_surface)
 
-#nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-#                              'preconditioner'           : 'hypre_amg',
-#                              'relative_tolerance'       : 1e-9,
-#                              'relaxation_parameter'     : 1.0,
-#                              'maximum_iterations'       : 3,
-#                              'error_on_nonconvergence'  : False}}
-nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                              'preconditioner'           : 'hypre_amg',
-                              'relative_tolerance'       : 1e-9,
-                              'relaxation_parameter'     : 0.7,
-                              'maximum_iterations'       : 30,
-                              'error_on_nonconvergence'  : False}}
-#nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-#                              'relative_tolerance'       : 1e-9,
-#                              'relaxation_parameter'     : 0.7,
-#                              'maximum_iterations'       : 30,
-#                              'error_on_nonconvergence'  : False}}
-m_params  = {'solver'               : nparams,
-             'solve_vert_velocity'  : True,
-             'solve_pressure'       : False,
-             'vert_solve_method'    : 'mumps'}
-
-#mom = MomentumDukowiczStokes(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczBrinkerhoffStokes(d3model, m_params, isothermal=False)
-#mom = MomentumDukowiczStokesReduced(d3model, m_params, isothermal=False)
-mom = MomentumDukowiczBP(d3model, m_params, linear=False, isothermal=False)
-#mom = MomentumBP(d3model, m_params, isothermal=False)
+#mom = MomentumDukowiczStokes(d3model, isothermal=False)
+#mom = MomentumDukowiczBrinkerhoffStokes(d3model, isothermal=False)
+#mom = MomentumDukowiczStokesReduced(d3model, isothermal=False)
+mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
+#mom = MomentumBP(d3model, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
@@ -399,9 +377,8 @@ def deriv_cb(I, dI, beta):
 
 # post-adjoint-iteration callback function :
 def adj_post_cb_ftn():
-  # re-solve the momentum equations with vertical velocity and optimal beta :
-  m_params['solve_vert_velocity'] = True
-  mom.solve(annotate=False)
+  # solve for optimal vertical velocity :
+  mom.solve_vert_velocity(annotate=False)
 
   # save the optimal velocity and beta fields for viewing with paraview :
   d3model.save_xdmf(d3model.U3,   'U_opt')

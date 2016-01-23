@@ -20,6 +20,9 @@ class MomentumStokes(Momentum):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
+    # save the solver parameters :
+    self.solve_params = solve_params
+
     s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
     
@@ -315,6 +318,9 @@ class MomentumDukowiczStokesReduced(Momentum):
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
+
+    # save the solver parameters :
+    self.solve_params = solve_params
 
     s = "::: INITIALIZING DUKOWICZ REDUCED FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
@@ -716,6 +722,9 @@ class MomentumDukowiczStokes(Momentum):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
+    # save the solver parameters :
+    self.solve_params = solve_params
+
     # momenturm and adjoint :
     U      = Function(model.Q5, name = 'G')
     Lam    = Function(model.Q5, name = 'Lam')
@@ -1044,6 +1053,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
+
+    # save the solver parameters :
+    self.solve_params = solve_params
 
     # momenturm and adjoint :
     U      = Function(model.Q4, name = 'G')

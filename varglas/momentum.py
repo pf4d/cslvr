@@ -29,9 +29,16 @@ class Momentum(Physics):
     # save the starting values, as other algorithms might change the 
     # values to suit their requirements :
     if isinstance(solve_params, dict):
-      self.solve_params_s  = deepcopy(solve_params)
+      self.solve_params    = solve_params
+    elif solve_params == None:
+      self.solve_params    = self.default_solve_params()
     else:
-      self.solve_params_s  = solve_params
+      s = ">>> FirnDensity REQUIRES A 'dict' INSTANCE OF SOLVER " + \
+          "PARAMETERS, NOT %s <<<"
+      print_text(s % type(solve_params) , 'red', 1)
+      sys.exit(1)
+    
+    self.solve_params_s    = deepcopy(self.solve_params)
     self.isothermal_s      = isothermal
     self.linear_s          = linear
     self.use_lat_bcs_s     = use_lat_bcs
@@ -208,7 +215,12 @@ class Momentum(Physics):
     # to this function is required :
     U        = self.get_U()
 
-    dGamma   = model.ds(integral)
+    # differentiate between objective over cells or facets :
+    if integral in [model.OMEGA_GND, model.OMEGA_FLT]:
+      dJ = model.dx(integral)
+    else:
+      dJ = model.ds(integral)
+
     u_ob     = model.u_ob
     v_ob     = model.v_ob
     adot     = model.adot
@@ -220,19 +232,19 @@ class Momentum(Physics):
 
     if kind == 'log':
       J  = 0.5 * ln(  (sqrt(U[0]**2 + U[1]**2) + 0.01) \
-                        / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
+                        / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ 
       Jp = 0.5 * ln(  (sqrt(um**2 + vm**2) + 0.01) \
-                    / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma 
+                    / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ 
       s   = "::: forming log objective functional :::"
     
     elif kind == 'kinematic':
-      J  = 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dGamma
-      Jp = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dGamma
+      J  = 0.5 * (U[0]*S.dx(0) + U[1]*S.dx(1) - (U[2] + adot))**2 * dJ
+      Jp = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dJ
       s   = "::: forming kinematic objective functional :::"
 
     elif kind == 'L2':
-      J  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
-      Jp = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
+      J  = 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dJ
+      Jp = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
       s   = "::: forming L2 objective functional :::"
 
     elif kind == 'ratio':
@@ -241,21 +253,21 @@ class Momentum(Physics):
       U_m   = sqrt(um**2   + vm**2   + DOLFIN_EPS)
       Uob_n = sqrt(u_ob**2 + v_ob**2 + DOLFIN_EPS)
       #J     = 0.5 * (+ (1 - (U[0] + 1e-4)/(u_ob + 1e-4))
-      #               + (1 - (U[1] + 1e-4)/(v_ob + 1e-4)) ) * Uob_n/U_n * dGamma
-      J     = 0.5 * (1 -  (U_n + 0.01) / (Uob_n + 0.01))**2 * dGamma
-      Jp    = 0.5 * (1 -  (U_m + 0.01) / (Uob_n + 0.01))**2 * dGamma
+      #               + (1 - (U[1] + 1e-4)/(v_ob + 1e-4)) ) * Uob_n/U_n * dJ
+      J     = 0.5 * (1 -  (U_n + 0.01) / (Uob_n + 0.01))**2 * dJ
+      Jp    = 0.5 * (1 -  (U_m + 0.01) / (Uob_n + 0.01))**2 * dJ
       s     = "::: forming ratio objective functional :::"
     
     elif kind == 'log_L2_hybrid':
-      J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dGamma
+      J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dJ
       J2  = g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
-                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
-      self.J1  = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
+                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
+      self.J1  = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
       self.J2  = 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
-                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
-      self.J1p = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dGamma
+                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
+      self.J1p = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
       self.J2p = g2 * 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
-                                / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dGamma
+                                / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
       J  = J1 + J2
       Jp = self.J1p + self.J2p
       s   = "::: forming log/L2 hybrid objective with gamma_1 = " \
@@ -287,9 +299,19 @@ class Momentum(Physics):
 
     model    = self.model
     integral = self.integral
-    u,v,w    = model.U3.split(True)
-    u_ob     = model.u_ob
-    v_ob     = model.v_ob
+    #um,vm,wm = model.U3.split(True)
+    #u_ob     = model.u_ob
+    #v_ob     = model.v_ob
+
+    # FIXME: bug in FEniCS (issue #405) requires me to do this junk :
+    u        = Function(model.Q)
+    v        = Function(model.Q)
+    assign(u, model.U3.sub(0))
+    assign(v, model.U3.sub(1))
+    u_ob     = Function(model.Q)
+    v_ob     = Function(model.Q)
+    assign(u_ob, model.u_ob)
+    assign(v_ob, model.v_ob)
     
     # convert everything for low-level manipulations :
     u_v    = u.vector().array()
@@ -311,13 +333,21 @@ class Momentum(Physics):
     D_y.vector().set_local(D_y_v)
     D_y.vector().apply('insert')
 
-    # convert to vector and set up essential B.C. :
+    # convert to vector :
     D      = as_vector([D_x, D_y])
-    bc_D   = DirichletBC(model.Q2, D, model.ff, integral)
     
-    # apply the difference only over the surface we need :
-    D_s    = Function(model.Q2)
-    bc_D.apply(D_s.vector())
+    # differentiate between objective over cells or facets :
+    if integral in [model.OMEGA_GND, model.OMEGA_FLT]:
+      D_s    = Function(model.Q2)
+      assign(D_s.sub(0), D_x)
+      assign(D_s.sub(1), D_y)
+    else:
+      # set up essential B.C. :
+      bc_D   = DirichletBC(model.Q2, D, model.ff, integral)
+    
+      # apply the difference only over the surface we need :
+      D_s    = Function(model.Q2)
+      bc_D.apply(D_s.vector())
 
     # calculate L_inf vector norm :
     D      = MPI.max(mpi_comm_world(), D_s.vector().max())

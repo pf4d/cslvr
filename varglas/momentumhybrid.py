@@ -1,7 +1,7 @@
 from fenics              import *
 from dolfin_adjoint      import *
 from varglas.io          import print_text, print_min_max
-from varglas.d2model     import D2Model
+from varglas.hybridmodel import HybridModel
 from varglas.physics     import Physics
 from varglas.momentum    import Momentum
 from varglas.helper      import VerticalBasis, VerticalFDBasis, \
@@ -22,19 +22,14 @@ class MomentumHybrid(Momentum):
     s = "::: INITIALIZING HYBRID MOMENTUM PHYSICS :::"
     print_text(s, self.color())
     
-    if type(model) != D2Model:
-      s = ">>> MomentumHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
+    if type(model) != HybridModel:
+      s = ">>> MomentumHybrid REQUIRES A 'HybridModel' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
-    
-    self.assx  = FunctionAssigner(model.u.function_space(), model.Q)
-    self.assy  = FunctionAssigner(model.v.function_space(), model.Q)
-    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
+    self.assx  = FunctionAssigner(model.u_s.function_space(), model.Q)
+    self.assy  = FunctionAssigner(model.v_s.function_space(), model.Q)
+    self.assz  = FunctionAssigner(model.w_s.function_space(), model.Q)
     
     # CONSTANTS
     year    = model.spy
@@ -106,12 +101,21 @@ class MomentumHybrid(Momentum):
         return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
     
     def epsilon_dot(s):
-      return ( + (u.dx(s,0) + u.ds(s)*dsdx(s))**2 \
-               + (v.dx(s,1) + v.ds(s)*dsdy(s))**2 \
-               + (u.dx(s,0) + u.ds(s)*dsdx(s))*(v.dx(s,1) + v.ds(s)*dsdy(s)) \
-               + 0.25*((u.ds(s)*dsdz(s))**2 + (v.ds(s)*dsdz(s))**2 \
-               + (+ (u.dx(s,1) + u.ds(s)*dsdy(s)) \
-                  + (v.dx(s,0) + v.ds(s)*dsdx(s)))**2) \
+      # linearize the viscosity :
+      if linear:
+        ue    = model.u
+        ve    = model.v
+      # nonlinear viscosity :
+      else:
+        ue    = u
+        ve    = v
+      return ( + (ue.dx(s,0) + ue.ds(s)*dsdx(s))**2 \
+               + (ve.dx(s,1) + ve.ds(s)*dsdy(s))**2 \
+               +   (ue.dx(s,0) + ue.ds(s)*dsdx(s)) \
+                 * (ve.dx(s,1) + ve.ds(s)*dsdy(s)) \
+               + 0.25*((ue.ds(s)*dsdz(s))**2 + (ve.ds(s)*dsdz(s))**2 \
+               + (+ (ue.dx(s,1) + ue.ds(s)*dsdy(s)) \
+                  + (ve.dx(s,0) + ve.ds(s)*dsdx(s)))**2) \
                + eps_reg)
     
     def eta_v(s):
@@ -190,6 +194,89 @@ class MomentumHybrid(Momentum):
                 form_compiler_parameters=self.solve_params['ffc_params'])
     self.solver = NonlinearVariationalSolver(problem)
     self.solver.parameters.update(self.solve_params['solver'])
+
+  def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
+    """
+    Forms and returns an objective functional for use with adjoint.
+    Saves to self.J.
+    """
+    #NOTE: this overides base class momentum.form_obj_ftn() due to the
+    #      extra complexity of evaluating U on the surface.
+    self.obj_ftn_type = kind     # need to save this for printing values.
+    self.integral     = integral # this too.
+    
+    model    = self.model
+    
+    # differentiate between objective over cells or facets :
+    if integral in [model.OMEGA_GND, model.OMEGA_FLT]:
+      dJ = model.dx(integral)
+    else:
+      dJ = model.ds(integral)
+
+    adot     = model.adot
+    S        = model.S
+    u_ob     = model.u_ob
+    v_ob     = model.v_ob
+    um       = model.u(0.0)   # surface u
+    vm       = model.v(0.0)   # surface v
+    u        = self.u(0.0)
+    v        = self.v(0.0)
+    w        = self.w(0.0)
+
+    if kind == 'log':
+      J  = 0.5 * ln(  (sqrt(u**2    + v**2   ) + 0.01) \
+                    / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ 
+      Jp = 0.5 * ln(  (sqrt(um**2   + vm**2  ) + 0.01) \
+                    / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ 
+      s   = "::: forming log objective functional :::"
+    
+    elif kind == 'kinematic':
+      #FIXME: no wm (yet), so this don't work.
+      J  = 0.5 * (u*S.dx(0) + v*S.dx(1) - (w + adot))**2 * dJ
+      Jp = 0.5 * (um*S.dx(0) + vm*S.dx(1) - (wm + adot))**2 * dJ
+      s   = "::: forming kinematic objective functional :::"
+
+    elif kind == 'L2':
+      J  = 0.5 * ((u  - u_ob)**2 + (v  - v_ob)**2) * dJ
+      Jp = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
+      s   = "::: forming L2 objective functional :::"
+
+    elif kind == 'ratio':
+      #NOTE: experimental
+      U_n   = sqrt(u**2    + v**2    + DOLFIN_EPS)
+      U_m   = sqrt(um**2   + vm**2   + DOLFIN_EPS)
+      Uob_n = sqrt(u_ob**2 + v_ob**2 + DOLFIN_EPS)
+      #J     = 0.5 * (+ (1 - (u + 1e-4)/(u_ob + 1e-4))
+      #               + (1 - (v + 1e-4)/(v_ob + 1e-4)) ) * Uob_n/U_n * dJ
+      J     = 0.5 * (1 -  (U_n + 0.01) / (Uob_n + 0.01))**2 * dJ
+      Jp    = 0.5 * (1 -  (U_m + 0.01) / (Uob_n + 0.01))**2 * dJ
+      s     = "::: forming ratio objective functional :::"
+    
+    elif kind == 'log_L2_hybrid':
+      J1  = g1 * 0.5 * ((u - u_ob)**2 + (v - v_ob)**2) * dJ
+      J2  = g2 * 0.5 * ln(   (sqrt(u**2    + v**2)    + 0.01) \
+                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
+      self.J1  = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
+      self.J2  = 0.5 * ln(   (sqrt(um**2   + vm**2)   + 0.01) \
+                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
+      self.J1p = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
+      self.J2p = g2 * 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
+                                / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
+      J  = J1 + J2
+      Jp = self.J1p + self.J2p
+      s   = "::: forming log/L2 hybrid objective with gamma_1 = " \
+            "%.1e and gamma_2 = %.1e :::" % (g1, g2)
+
+    else:
+      s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'L2', " + \
+          "'log', 'kinematic', OR 'log_L2_hybrid', NOT '%s' <<<" % kind
+      print_text(s, 'red', 1)
+      sys.exit(1)
+    print_text(s, self.color())
+    s = "    - integrated over %s -" % model.boundaries[integral]
+    print_text(s, self.color())
+    self.J  = J
+    self.Jp = Jp
     
   def get_residual(self):
     """
@@ -241,20 +328,30 @@ class MomentumHybrid(Momentum):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    #nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-    #                              'preconditioner'           : 'hypre_amg',
-    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
-                                  'relaxation_parameter'     : 1.0,
-                                  'relative_tolerance'       : 1e-5,
-                                  'absolute_tolerance'       : 1e7,
-                                  'maximum_iterations'       : 20,
-                                  'error_on_nonconvergence'  : False,
-                                  'report'                   : True}}
-    m_params  = {'solver'      : nparams,
-                 'ffc_params'  : self.default_ffc_options()}
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'cg',
+                'preconditioner'           : 'hypre_amg',
+                'relative_tolerance'       : 1e-10,
+                'relaxation_parameter'     : 1.0,
+                'absolute_tolerance'       : 1.0,
+                'maximum_iterations'       : 20,
+                'error_on_nonconvergence'  : False,
+                'krylov_solver'            :
+                {
+                  'monitor_convergence'   : False,
+                  #'preconditioner' :
+                  #{
+                  #  'structure' : 'same'
+                  #}
+                }
+              }}
+    m_params  = {'solver'           : nparams,
+                 'ffc_params'       : self.default_ffc_options(),
+                 'project_boundary' : False}
     return m_params
   
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """
     Solves for hybrid velocity.
     """
@@ -273,23 +370,29 @@ class MomentumHybrid(Momentum):
     #s = solve(self.mom_F == 0, self.U, J = self.mom_Jac,
     #      annotate = annotate, solver_parameters = params['solver'],
     #      form_compiler_parameters = params['ffc_params'])
-    out = self.solver.solve()
+    out = self.solver.solve(annotate=annotate)
     print_min_max(self.U, 'U', self.color())
 
-    model.UHV.assign(self.U)
-    print_min_max(model.UHV, 'UHV', self.color())
+    model.U3.assign(self.U, annotate=annotate)
 
-    self.assx.assign(model.u,   project(self.u(0.0), model.Q, annotate=False))
-    self.assy.assign(model.v,   project(self.v(0.0), model.Q, annotate=False))
-    self.assz.assign(model.w,   project(self.w(0.0), model.Q, annotate=False))
+    if params['project_boundary']:
+      self.assx.assign(model.u_s, project(self.u(0.0), model.Q,
+                       annotate=annotate), annotate=annotate)
+      self.assy.assign(model.v_s, project(self.v(0.0), model.Q,
+                       annotate=annotate), annotate=annotate)
+      self.assz.assign(model.w_s, project(self.w(0.0), model.Q,
+                       annotate=annotate), annotate=annotate)
 
-    print_min_max(model.U3, 'U3', self.color())
-    
-    self.assx.assign(model.u_b, project(self.u(1.0), model.Q, annotate=False))
-    self.assy.assign(model.v_b, project(self.v(1.0), model.Q, annotate=False))
-    self.assz.assign(model.w_b, project(self.w(1.0), model.Q, annotate=False))
+      print_min_max(model.U3_s, 'U3_S', self.color())
 
-    print_min_max(model.U3_b, 'U3_B', self.color())
+      self.assx.assign(model.u_b, project(self.u(1.0), model.Q,
+                       annotate=annotate), annotate=annotate)
+      self.assy.assign(model.v_b, project(self.v(1.0), model.Q,
+                       annotate=annotate), annotate=annotate)
+      self.assz.assign(model.w_b, project(self.w(1.0), model.Q,
+                       annotate=annotate), annotate=annotate)
+
+      print_min_max(model.U3_b, 'U3_B', self.color())
 
     return out
 

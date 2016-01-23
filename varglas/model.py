@@ -15,6 +15,8 @@ class Model(object):
   types.
   """
 
+  OMEGA_GND   = 0   # internal cells over bedrock
+  OMEGA_FLT   = 1   # internal cells over water
   GAMMA_S_GND = 2   # grounded upper surface
   GAMMA_B_GND = 3   # grounded lower surface (bedrock)
   GAMMA_S_FLT = 6   # shelf upper surface
@@ -25,7 +27,9 @@ class Model(object):
   GAMMA_U_GND = 8   # grounded surface with U observations
   GAMMA_U_FLT = 9   # shelf surface with U observations
 
-  boundaries = {GAMMA_S_GND : 'grounded upper surface',
+  boundaries = {OMEGA_GND   : 'internal cells laying over bedrock',
+                OMEGA_FLT   : 'internal cells laying over water',
+                GAMMA_S_GND : 'grounded upper surface',
                 GAMMA_B_GND : 'grounded lower surface (bedrock)',
                 GAMMA_S_FLT : 'shelf upper surface',
                 GAMMA_B_FLT : 'shelf lower surface',

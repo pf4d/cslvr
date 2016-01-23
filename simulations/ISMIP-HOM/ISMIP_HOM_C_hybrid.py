@@ -1,4 +1,4 @@
-from varglas  import D2Model, MomentumHybrid
+from varglas  import HybridModel, MomentumHybrid
 from fenics   import Point, RectangleMesh, Expression, sqrt, pi
 
 alpha = 0.1 * pi / 180 
@@ -8,8 +8,9 @@ p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)
 mesh  = RectangleMesh(p1, p2, 25, 25)
 
-model = D2Model(mesh, out_dir = './results_hybrid/')
+model = HybridModel(mesh, out_dir = './ISMIP_HOM_C_hybrid_results/')
 model.generate_function_spaces(use_periodic = True)
+model.calculate_boundaries()
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())

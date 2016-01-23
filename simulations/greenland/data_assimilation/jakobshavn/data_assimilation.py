@@ -188,8 +188,6 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.set_out_dir(out_dir + 'u_inversion/')
 #
 #def deriv_cb(I, dI, beta):
-#  # calculate the L_inf norm of misfit :
-#  mom.calc_misfit(d3model.GAMMA_U_GND)
 #  d3model.assign_submesh_variable(beta_b, beta)
 #  d3model.save_xdmf(beta_b, 'beta_control')
 #

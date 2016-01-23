@@ -376,7 +376,8 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
 
-d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10/')
+#d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10/')
+d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/')
 
 # post-thermo-solve callback function :
 def tmc_cb_ftn():

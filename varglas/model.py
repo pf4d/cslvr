@@ -1798,7 +1798,7 @@ class Model(object):
       #ax.set_yscale('log')
       ax.set_ylabel(r'$\Vert \theta_n \Vert$')
       ax.set_xlabel(r'iteration')
-      ax.plot(np.array(err_a), 'k-', lw=2.0)
+      ax.plot(np.array(tht_a), 'k-', lw=2.0)
       plt.grid()
       plt.savefig(d + 'theta_norm.pdf')
       plt.close(fig)

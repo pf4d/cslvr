@@ -1019,7 +1019,7 @@ class Enthalpy(Energy):
 
     # optimize with scipy's fmin_l_bfgs_b :
     if method == 'l_bfgs_b': 
-      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,1),
+      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=(0,50),
                      options={"disp"    : True,
                               "maxiter" : max_iter,
                               "gtol"    : 1e-5})

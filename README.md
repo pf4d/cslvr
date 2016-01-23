@@ -1,7 +1,7 @@
-VarGlaS
+cslvr : [c]ryospheric problem [s]o[lv]e[r]
 =======
 
-Forked from the source code repository for the Variational Glacier Simulator (VarGlaS) code:
+Evolution of the [Var]iational [Gl]acier [S]imulator (VarGlaS) codes:
 
 https://github.com/douglas-brinkerhoff/VarGlaS
 

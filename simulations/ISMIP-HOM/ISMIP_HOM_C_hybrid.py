@@ -1,4 +1,4 @@
-from varglas  import HybridModel, MomentumHybrid
+from cslvr    import HybridModel, MomentumHybrid
 from fenics   import Point, RectangleMesh, Expression, sqrt, pi
 
 alpha = 0.1 * pi / 180 

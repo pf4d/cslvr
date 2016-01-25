@@ -1,4 +1,4 @@
-from varglas  import *
+from cslvr    import *
 from fenics   import Point, BoxMesh, Expression, sqrt, pi
 
 alpha = 0.1 * pi / 180 

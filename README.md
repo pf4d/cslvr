@@ -33,7 +33,7 @@ sudo apt-get dist-upgrade;
 ```
 
 
-After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html), but utilizing my varglas-modified fork located [here](https://github.com/pf4d/dolfin-adjoint).
+After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html), but utilizing my cslvr-modified fork located [here](https://github.com/pf4d/dolfin-adjoint).
 
 also ```Gmsh_dynamic``` and ```GmshPy``` from
 
@@ -92,7 +92,7 @@ Please note that this is old and some descriptions may have changed for my fork 
 Test your installation py entering in an ``ipython`` terminal
 
 ```python
-from varglas import *
+from cslvr import *
 ```
 
 Data download :

@@ -79,16 +79,6 @@ Install the program by editing your .bashrc file with
 export PYTHONPATH="<PATH TO VARGLAS>:$PYTHONPATH"
 ```
 
-Somewhat dated documentation and install directions may be found at
-
-http://qssi.cs.umt.edu/wiki/index.php/Main_Page
-
-Even older documentation is located here:
-
-http://cas.umt.edu/feismd/
-
-Please note that this is old and some descriptions may have changed for my fork of VarGlaS (previously called UM-FEISM).
-
 Test your installation py entering in an ``ipython`` terminal
 
 ```python

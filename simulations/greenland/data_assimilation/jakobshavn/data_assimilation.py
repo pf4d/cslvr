@@ -40,8 +40,8 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 
-fUin = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'r')
-d3model.init_U(fUin)
+#fUin = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'r')
+#d3model.init_U(fUin)
 
 #===============================================================================
 ## create 2D model for lateral energy solution :
@@ -355,6 +355,19 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10/')
 d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/')
 
+fini = HDF5File(mpi_comm_world(),
+                d3model.out_dir + 'initialization/hdf5/thermo_ini.h5', 'r')
+d3model.init_T(fini)
+d3model.init_W(fini)
+d3model.init_Wb_flux(fini)
+d3model.init_Mb(fini)
+d3model.init_alpha(fini)
+d3model.init_PE(fini)
+d3model.init_W_int(fini)
+d3model.init_U(fini)
+d3model.init_beta(fini)
+d3model.init_theta(fini)
+
 # post-thermo-solve callback function :
 def tmc_cb_ftn():
   nrg.solve_basal_melt_rate()
@@ -428,10 +441,12 @@ uop_kwargs = {'control'             : d3model.beta,
 ass_kwargs = {'iterations'          : 10,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
+              'initialize'          : False,
               'incomplete'          : True,
               'ini_save_vars'       : ini_save_vars,
               'post_iter_save_vars' : adj_save_vars,
-              'post_ini_callback'   : None}
+              'post_ini_callback'   : None,
+              'starting_i'          : 1}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

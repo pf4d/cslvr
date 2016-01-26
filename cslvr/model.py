@@ -1824,10 +1824,12 @@ class Model(object):
       plt.close(fig)
 
   def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,
+                      initialize          = True,
                       incomplete          = True,
                       ini_save_vars       = None,
                       post_iter_save_vars = None,
-                      post_ini_callback   = None):
+                      post_ini_callback   = None,
+                      starting_i          = 1):
     """
     """
     s    = '::: performing assimilation process with %i iterations :::'
@@ -1846,35 +1848,47 @@ class Model(object):
     # starting time :
     t0   = time()
 
-    # number of iterations :
-    counter = 1
+    # number of iterations, from a starting point (useful for restarts) :
+    if starting_i <= 1:
+      counter = 1
+    else:
+      counter = starting_i
 
-    # initialization step :
-    # set the initialization output directory :
-    out_dir_n = 'initialization/'
-    self.set_out_dir(out_dir_i + out_dir_n)
+    # perform initialization step if desired :
+    if initialize:
+      s    = '    - performing initialization step -'
+      print_text(s % iterations, cls=self.this)
+
+      # set the initialization output directory :
+      out_dir_n = 'initialization/'
+      self.set_out_dir(out_dir_i + out_dir_n)
+      
+      # thermo-mechanical couple :
+      self.thermo_solve(**tmc_kwargs)
+
+      # call the post function if set :
+      if post_ini_callback is not None:
+        s    = '::: calling post-initialization assimilate_U_ob ' + \
+               'callback function :::'
+        print_text(s, cls=self.this)
+        post_ini_callback()
+
+      # save state to numbered hdf5 file :
+      if isinstance(ini_save_vars, list):
+        s    = '::: saving initialized variables in dict arg ini_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'hdf5/thermo_ini.h5'
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        
+        for var in ini_save_vars:
+          self.save_hdf5(var, f=foutput)
+        
+        foutput.close()
     
-    # thermo-mechanical couple :
-    self.thermo_solve(**tmc_kwargs)
-
-    # call the post function if set :
-    if post_ini_callback is not None:
-      s    = '::: calling post-initialization assimilate_U_ob ' + \
-             'callback function :::'
-      print_text(s, cls=self.this)
-      post_ini_callback()
-
-    # save state to numbered hdf5 file :
-    if isinstance(ini_save_vars, list):
-      s    = '::: saving initialized variables in dict arg ini_save_vars :::'
-      print_text(s, cls=self.this)
-      out_file = self.out_dir + 'hdf5/thermo_ini.h5'
-      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-      
-      for var in ini_save_vars:
-        self.save_hdf5(var, f=foutput)
-      
-      foutput.close()
+    # otherwise, tell us that we are not initializing :
+    else:
+      s    = '    - skipping initialization step -'
+      print_text(s % iterations, cls=self.this)
 
     # assimilate the data : 
     while counter <= iterations:

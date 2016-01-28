@@ -352,11 +352,18 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
 
-#d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10/')
-d3model.set_out_dir(out_dir + 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/')
+#base_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/'
+base_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/'
 
+#d3model.set_out_dir(out_dir + base_dir)
+#d3model.set_out_dir(out_dir + base_dir)
+d3model.set_out_dir(out_dir + base_dir + 'rstrt/')
+
+#fini = HDF5File(mpi_comm_world(),
+#                d3model.out_dir + 'initialization/hdf5/thermo_ini.h5', 'r')
 fini = HDF5File(mpi_comm_world(),
-                d3model.out_dir + 'initialization/hdf5/thermo_ini.h5', 'r')
+                d3model.out_dir + '01/hdf5/inverted_01.h5', 'r')
+
 d3model.init_T(fini)
 d3model.init_W(fini)
 d3model.init_Wb_flux(fini)
@@ -428,7 +435,7 @@ tmc_kwargs = {'momentum'            : mom,
               'callback'            : tmc_cb_ftn, 
               'atol'                : 1e2,
               'rtol'                : 1e0,
-              'max_iter'            : 50}
+              'max_iter'            : 8}
                                     
 uop_kwargs = {'control'             : d3model.beta,
               'bounds'              : (1e-5, 1e7),
@@ -449,7 +456,11 @@ ass_kwargs = {'iterations'          : 10,
               'starting_i'          : 1}
 
 # assimilate ! :
-d3model.assimilate_U_ob(**ass_kwargs) 
+#d3model.assimilate_U_ob(**ass_kwargs) 
+
+# or restart and thermo_solve :
+d3model.thermo_solve(**tmc_kwargs)
+
 
 
  

@@ -1888,7 +1888,7 @@ class Model(object):
     # otherwise, tell us that we are not initializing :
     else:
       s    = '    - skipping initialization step -'
-      print_text(s % iterations, cls=self.this)
+      print_text(s, cls=self.this)
 
     # assimilate the data : 
     while counter <= iterations:

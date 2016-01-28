@@ -352,17 +352,17 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
 
-#base_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/'
-base_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/'
+#new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/'
+new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/'
 
-#d3model.set_out_dir(out_dir + base_dir)
-#d3model.set_out_dir(out_dir + base_dir)
-d3model.set_out_dir(out_dir + base_dir + 'rstrt/')
+#d3model.set_out_dir(out_dir + new_dir)
+#d3model.set_out_dir(out_dir + new_dir)
+d3model.set_out_dir(out_dir + new_dir + 'rstrt/')
 
 #fini = HDF5File(mpi_comm_world(),
-#                d3model.out_dir + 'initialization/hdf5/thermo_ini.h5', 'r')
-fini = HDF5File(mpi_comm_world(),
-                d3model.out_dir + '01/hdf5/inverted_01.h5', 'r')
+#                out_dir + new_dir + 'initialization/hdf5/thermo_ini.h5', 'r')
+fini = HDF5File(mpi_comm_world(), 
+                out_dir + new_dir + '01/hdf5/inverted_01.h5', 'r')
 
 d3model.init_T(fini)
 d3model.init_W(fini)

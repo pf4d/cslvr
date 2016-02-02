@@ -1,9 +1,13 @@
 cslvr : [c]ryospheric problem [s]o[lv]e[r]
 =======
 
-Originally a fork of the [Var]iational [Gl]acier [S]imulator (VarGlaS) codes:
+Built from elements of the [Var]iational [Gl]acier [S]imulator (VarGlaS) codes:
 
 https://github.com/douglas-brinkerhoff/VarGlaS
+
+and the [U] of [M] [F]irn [D]ensification [M]odel (UM-FDM):
+
+https://github.com/pf4d/um-fdm
 
 utilizing the FEniCS project:
 

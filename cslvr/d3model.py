@@ -205,11 +205,10 @@ class D3Model(Model):
     If <kind> == 'mini', use enriched mini elements.
     If <kind> == 'th',   use Taylor-Hood elements.
     """
-    s = "::: generating Stokes function spaces :::"
-    print_text(s, cls=self)
-        
     # mini elements :
     if kind == 'mini':
+      s = "::: generating 'mini' Stokes function spaces :::"
+        
       self.Bub    = FunctionSpace(self.mesh, "B", 4, 
                                   constrained_domain=self.pBC)
       self.MQ     = self.Q + self.Bub
@@ -219,6 +218,7 @@ class D3Model(Model):
 
     # Taylor-Hood elements :
     elif kind == 'th':
+      s = "::: generating 'Taylor-Hood' Stokes function spaces :::"
       V           = VectorFunctionSpace(self.mesh, "CG", 2,
                                         constrained_domain=self.pBC)
       self.Q4     = V * self.Q
@@ -230,7 +230,6 @@ class D3Model(Model):
       print_text(s, 'red', 1)
       sys.exit(1)
 
-    s = "    - Stokes function spaces created - "
     print_text(s, cls=self)
     
   def calculate_boundaries(self, mask=None, lat_mask=None, adot=None,
@@ -551,7 +550,7 @@ class D3Model(Model):
       print_text(s % self.out_dir, cls=self)
       self.state.write(self.mesh, 'mesh')
 
-  def get_surface_mesh(self):
+  def get_srf_mesh(self):
     """
     Returns the surface of the mesh for this model instance.
     """

@@ -1664,7 +1664,7 @@ class Model(object):
     self.tau_jj        = Function(self.Q, name='tau_jj')
 
   def thermo_solve(self, momentum, energy, wop_kwargs, callback=None, 
-                   atol=1e2, rtol=1e0, max_iter=50):
+                   atol=1e2, rtol=1e0, max_iter=50, post_tmc_save_vars=None):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
@@ -1781,6 +1781,16 @@ class Model(object):
     
     # reset the base directory ! :
     self.set_out_dir(out_dir_i)
+      
+    # save state to unique hdf5 file :
+    if isinstance(post_tmc_save_vars, list):
+      s    = '::: saving variables in list arg post_tmc_save_vars :::'
+      print_text(s, cls=self.this)
+      out_file = self.out_dir + 'tmc.h5'
+      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+      for var in post_tmc_save_vars:
+        self.save_hdf5(var, f=foutput)
+      foutput.close()
 
     # calculate total time to compute
     tf = time()
@@ -1877,7 +1887,7 @@ class Model(object):
       if isinstance(ini_save_vars, list):
         s    = '::: saving initialized variables in dict arg ini_save_vars :::'
         print_text(s, cls=self.this)
-        out_file = self.out_dir + 'hdf5/thermo_ini.h5'
+        out_file = self.out_dir + 'hdf5/init.h5'
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
         
         for var in ini_save_vars:
@@ -1928,7 +1938,7 @@ class Model(object):
       if isinstance(post_iter_save_vars, list):
         s    = '::: saving variables in list arg post_iter_save_vars :::'
         print_text(s, cls=self.this)
-        out_file = self.out_dir + 'hdf5/inverted_%0*d.h5' % (n_i, counter)
+        out_file = self.out_dir + 'inverted_%0*d.h5' % (n_i, counter)
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
         for var in post_iter_save_vars:
           self.save_hdf5(var, f=foutput)

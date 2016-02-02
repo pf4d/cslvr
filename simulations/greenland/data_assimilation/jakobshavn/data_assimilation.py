@@ -352,28 +352,28 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #d3model.save_xdmf(d3model.T,         'T_ini')
 #d3model.save_xdmf(d3model.W,         'W_ini')
 
-#new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/'
-new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/'
+new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/04/hdf5/'
+#new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10_a_var/'
 
 #d3model.set_out_dir(out_dir + new_dir)
-#d3model.set_out_dir(out_dir + new_dir)
-d3model.set_out_dir(out_dir + new_dir + 'rstrt/')
+#d3model.set_out_dir(out_dir + 'rstrt_disc_kappa/')
+d3model.set_out_dir(out_dir + 'rstrt_alpha_regularized/')
 
-#fini = HDF5File(mpi_comm_world(),
-#                out_dir + new_dir + 'initialization/hdf5/thermo_ini.h5', 'r')
-fini = HDF5File(mpi_comm_world(), 
-                out_dir + new_dir + '01/hdf5/inverted_01.h5', 'r')
+fini = HDF5File(mpi_comm_world(),
+                out_dir + new_dir + 'inverted_04.h5', 'r')
+#fini = HDF5File(mpi_comm_world(), 
+#                out_dir + new_dir + '01/hdf5/inverted_01.h5', 'r')
 
 d3model.init_T(fini)
 d3model.init_W(fini)
 d3model.init_Wb_flux(fini)
 d3model.init_Mb(fini)
 d3model.init_alpha(fini)
-d3model.init_PE(fini)
-d3model.init_W_int(fini)
-d3model.init_U(fini)
+#d3model.init_PE(fini)
+#d3model.init_W_int(fini)
+#d3model.init_U(fini)
 d3model.init_beta(fini)
-d3model.init_theta(fini)
+#d3model.init_theta(fini)
 
 # post-thermo-solve callback function :
 def tmc_cb_ftn():
@@ -414,6 +414,10 @@ ini_save_vars = adj_save_vars + [d3model.Ubar, d3model.U_ob]
 # form the objective functional for water-flux optimization :
 nrg.form_obj_ftn(kind='L2')
 
+# form regularization for water-flux :
+nrg.form_reg_ftn(d3model.alpha, integral=d3model.GAMMA_B_GND,
+                 kind='TV', alpha=2.5e7)
+
 # form the cost functional :
 mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 
                  g1=0.01, g2=5000)
@@ -424,8 +428,8 @@ mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #                  kind='Tikhonov', alpha=1e-6)
 
-wop_kwargs = {'max_iter'            : 100, 
-              'bounds'              : (0.0, 100.0),
+wop_kwargs = {'max_iter'            : 500, 
+              'bounds'              : (0.0, 100),
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     
@@ -435,7 +439,8 @@ tmc_kwargs = {'momentum'            : mom,
               'callback'            : tmc_cb_ftn, 
               'atol'                : 1e2,
               'rtol'                : 1e0,
-              'max_iter'            : 8}
+              'max_iter'            : 10,
+              'post_tmc_save_vars'  : ini_save_vars}
                                     
 uop_kwargs = {'control'             : d3model.beta,
               'bounds'              : (1e-5, 1e7),
@@ -445,7 +450,7 @@ uop_kwargs = {'control'             : d3model.beta,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
                                     
-ass_kwargs = {'iterations'          : 10,
+ass_kwargs = {'iterations'          : 4,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
               'initialize'          : False,
@@ -453,7 +458,7 @@ ass_kwargs = {'iterations'          : 10,
               'ini_save_vars'       : ini_save_vars,
               'post_iter_save_vars' : adj_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 1}
+              'starting_i'          : 2}
 
 # assimilate ! :
 #d3model.assimilate_U_ob(**ass_kwargs) 

@@ -237,7 +237,10 @@ class Energy(Physics):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
-    R = assemble(self.Rp, annotate=False)
+    try:
+      R = assemble(self.Rp, annotate=False)
+    except AttributeError:
+      R = 0.0
     J = assemble(self.Jp, annotate=False)
     print_min_max(R, 'R', cls=self)
     print_min_max(J, 'J', cls=self)
@@ -327,7 +330,7 @@ class Energy(Physics):
     
     # functional lists to be populated :
     global Rs, Js, Ds
-    #Rs = []
+    Rs = []
     Js = []
     Ds = []
     
@@ -367,14 +370,12 @@ class Energy(Physics):
 
       # print functional values :
       model.alpha.assign(alpha, annotate=False)
-      #ftnls = self.calc_functionals()
-      J     = self.calc_obj()
+      ftnls = self.calc_functionals()
       D     = self.calc_misfit()
 
       # functional lists to be populated :
-      #Rs.append(ftnls[0])
-      #Js.append(ftnls[1])
-      Js.append(J)
+      Rs.append(ftnls[0])
+      Js.append(ftnls[1])
       Ds.append(D)
 
       # call that callback, if you want :
@@ -456,7 +457,7 @@ class Energy(Physics):
       if not os.path.exists(d):
         os.makedirs(d)
       np.savetxt(d + 'time.txt', np.array([tf - t0]))
-      #np.savetxt(d + 'Rs.txt',   np.array(Rs))
+      np.savetxt(d + 'Rs.txt',   np.array(Rs))
       np.savetxt(d + 'Js.txt',   np.array(Js))
       np.savetxt(d + 'Ds.txt',   np.array(Ds))
 
@@ -470,15 +471,15 @@ class Energy(Physics):
       plt.savefig(d + 'J.png', dpi=200)
       plt.close(fig)
 
-      #fig = plt.figure()
-      #ax  = fig.add_subplot(111)
-      #ax.set_yscale('log')
-      #ax.set_ylabel(r'$\mathscr{R}\left(\alpha\right)$')
-      #ax.set_xlabel(r'iteration')
-      #ax.plot(np.array(Rs), 'r-', lw=2.0)
-      #plt.grid()
-      #plt.savefig(d + 'R.png', dpi=200)
-      #plt.close(fig)
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      ax.set_yscale('log')
+      ax.set_ylabel(r'$\mathscr{R}\left(\alpha\right)$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(np.array(Rs), 'r-', lw=2.0)
+      plt.grid()
+      plt.savefig(d + 'R.png', dpi=200)
+      plt.close(fig)
 
       fig = plt.figure()
       ax  = fig.add_subplot(111)
@@ -707,9 +708,7 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    Wmax = Constant(1.0)
-    #mdot = W_c * (W_w + DOLFIN_EPS) / (Wmax + DOLFIN_EPS) * Mb * rho * L
-    mdot = Mb * rho * L
+    mdot = (q_geo + q_fric - k * dot(grad(T_m), N))
     g_b  = q_geo + q_fric - alpha * mdot
 
     # configure the module to run in steady state :
@@ -826,7 +825,6 @@ class Enthalpy(Energy):
     self.q_fric  = q_fric
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
-    self.Wmax    = Wmax
   
   def default_strain_rate_tensor(self, U):
     """

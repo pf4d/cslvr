@@ -80,7 +80,7 @@ sudo python setup.py install;
 
 Install the program by editing your .bashrc file with
 ```bash
-export PYTHONPATH="<PATH TO VARGLAS>:$PYTHONPATH"
+export PYTHONPATH="<PATH TO CSLVR>:$PYTHONPATH"
 ```
 
 Test your installation py entering in an ``ipython`` terminal

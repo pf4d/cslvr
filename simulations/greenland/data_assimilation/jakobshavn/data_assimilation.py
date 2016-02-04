@@ -357,7 +357,7 @@ new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/04/hdf5/'
 
 #d3model.set_out_dir(out_dir + new_dir)
 #d3model.set_out_dir(out_dir + 'rstrt_disc_kappa/')
-d3model.set_out_dir(out_dir + 'rstrt_alpha_regularized/')
+d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized/')
 
 fini = HDF5File(mpi_comm_world(),
                 out_dir + new_dir + 'inverted_04.h5', 'r')
@@ -416,7 +416,7 @@ nrg.form_obj_ftn(kind='L2')
 
 # form regularization for water-flux :
 nrg.form_reg_ftn(d3model.alpha, integral=d3model.GAMMA_B_GND,
-                 kind='TV', alpha=2.5e7)
+                 kind='TV', alpha=1e8)
 
 # form the cost functional :
 mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 

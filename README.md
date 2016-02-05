@@ -23,7 +23,6 @@ installation (verified with ubuntu 15.04) :
 Latest Python packages and misc. dependencies:
 
 ```bash
-sudo apt-get install python-pip python-vtk python-dev build-essential libatlas-base-dev gfortran libfreetype6-dev;
 sudo pip install numpy shapely matplotlib scipy colored termcolor ipython sympy netcdf ply mpi4py pyproj --upgrade;
 ```
 
@@ -32,7 +31,7 @@ FEniCS 1.6 :
 ```bash
 sudo add-apt-repository ppa:fenics-packages/fenics;
 sudo apt-get update;
-sudo apt-get install blt dolfin-bin dolfin-doc dvipng fonts-lyx  libblacs-mpi-dev libblacs-mpi1 libboost-serialization-dev libdolfin-dev libdolfin1.6 libfftw3-mpi-dev libfftw3-mpi3 libhdf5-mpi-dev libmshr-dev libmshr1.6 libmumps-4.10.0 libmumps-dev libpetsc3.4.2 libpetsc3.4.2-dev libscalapack-mpi-dev libscalapack-mpi1 libslepc3.4.2 libslepc3.4.2-dev libspooles-dev libspooles2.2 libwebpmux1 mshr-demos pyro python-dateutil python-decorator python-dolfin python-ffc python-fiat python-gnuplot python-imaging python-instant python-matplotlib-data python-mshr python-petsc4py python-pexpect python-pil python-pmw python-pyparsing python-pyx python-scitools python-simplegeneric python-tz python-gdal;
+sudo apt-get install fenics;
 sudo apt-get dist-upgrade;
 ```
 
@@ -50,7 +49,7 @@ For a generic install (of gmsh-dynamic 2.10.1) to ``/usr/local``, use
 ```bash
 wget http://geuz.org/gmsh/bin/Linux/gmsh-svn-Linux64-dynamic.tgz;
 tar -xzvf gmsh-svn-Linux64-dynamic.tgz;
-cd gmsh-2.10.1-dynamic-svn-Linux;
+cd gmsh-2.11.0-dynamic-svn-Linux;
 sudo cp -r bin/ /usr/local/;
 sudo cp -r include/ /usr/local/;
 sudo cp -r lib/ /usr/local/;

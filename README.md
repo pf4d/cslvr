@@ -20,12 +20,6 @@ http://dolfin-adjoint-doc.readthedocs.org/en/latest/
 installation (verified with ubuntu 15.04) :
 -------------------------------------------
 
-Latest Python packages and misc. dependencies:
-
-```bash
-sudo pip install numpy shapely matplotlib scipy colored termcolor ipython sympy netcdf ply mpi4py pyproj --upgrade;
-```
-
 FEniCS 1.6 :
 
 ```bash
@@ -35,8 +29,13 @@ sudo apt-get install fenics;
 sudo apt-get dist-upgrade;
 ```
 
-
 After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html), but utilizing my cslvr-modified fork located [here](https://github.com/pf4d/dolfin-adjoint).
+
+Latest Python packages and misc. dependencies:
+
+```bash
+sudo pip install shapely colored termcolor pyproj;
+```
 
 also ```Gmsh_dynamic``` and ```GmshPy``` from
 
@@ -57,7 +56,6 @@ sudo cp -r share/ /usr/local/;
 cd gmshpy;
 sudo python setup.py install;
 sudo ldconfig;
-
 ```
 
 And basemap:

@@ -6,7 +6,6 @@ from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
                                gradient
 from scipy.io           import loadmat, netcdf_file
 from scipy.interpolate  import griddata
-from osgeo              import gdal
 from pyproj             import Proj, transform
 from cslvr.io           import print_text
 

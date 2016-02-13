@@ -154,9 +154,9 @@ d3model.init_beta_SIA()
 #bedmodel.init_T(bedmodel.T_surface)
 
 #mom = MomentumDukowiczStokes(d3model, isothermal=False)
-#mom = MomentumDukowiczBrinkerhoffStokes(d3model, isothermal=False)
+mom = MomentumDukowiczBrinkerhoffStokes(d3model, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, isothermal=False)
-mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
+#mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
 #mom = MomentumBP(d3model, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
@@ -357,7 +357,7 @@ new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/04/hdf5/'
 
 #d3model.set_out_dir(out_dir + new_dir)
 #d3model.set_out_dir(out_dir + 'rstrt_disc_kappa/')
-d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized/')
+d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/')
 
 fini = HDF5File(mpi_comm_world(),
                 out_dir + new_dir + 'inverted_04.h5', 'r')
@@ -429,7 +429,7 @@ mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #                  kind='Tikhonov', alpha=1e-6)
 
 wop_kwargs = {'max_iter'            : 500, 
-              'bounds'              : (0.0, 100),
+              'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     

@@ -102,6 +102,7 @@ class MomentumStokes(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
+      Tp      = model.T + model.gamma * p
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
@@ -109,8 +110,8 @@ class MomentumStokes(Momentum):
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
       W_T     = conditional( lt(W, 0.01),   W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     
     eta_shf   = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
     eta_gnd   = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
@@ -397,6 +398,7 @@ class MomentumDukowiczStokesReduced(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
+      Tp      = model.T + model.gamma * model.p
       #theta   = model.theta
       W       = model.W
       R       = model.R
@@ -410,8 +412,8 @@ class MomentumDukowiczStokesReduced(Momentum):
       a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
       W_T     = conditional( lt(W, 0.01), W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:
@@ -792,6 +794,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
+      Tp      = model.T + model.gamma * p
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
@@ -799,8 +802,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
       W_T     = conditional( lt(W, 0.01),   W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:
@@ -833,8 +836,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     # 5) inpenetrability constraint :
     sig_f  = self.stress_tensor(as_vector([u,v,w]), p, eta_shf)
     sig_g  = self.stress_tensor(as_vector([u,v,w]), p, eta_gnd)
-    lam_f  = dot(N, dot(sig_f, N))
-    lam_g  = dot(N, dot(sig_g, N))
+    lam_f  = -p#dot(N, dot(sig_f, N))
+    lam_g  = -p#dot(N, dot(sig_g, N))
     Nc_g   = lam_g * (u*N[0] + v*N[1] + w*N[2])
     Nc_f   = lam_f * (u*N[0] + v*N[1] + w*N[2])
     #Nc     = - p * (u*N[0] + v*N[1] + w*N[2])

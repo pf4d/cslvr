@@ -91,6 +91,7 @@ class MomentumBP(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
+      Tp      = model.T + model.gamma * model.p
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
@@ -98,8 +99,8 @@ class MomentumBP(Momentum):
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
       W_T     = conditional( lt(W, 0.01),   W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     
     eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
     eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
@@ -458,6 +459,7 @@ class MomentumDukowiczBP(Momentum):
       s   = "    - using energy-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
+      Tp      = model.T + model.gamma * model.p
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
@@ -465,8 +467,8 @@ class MomentumDukowiczBP(Momentum):
       a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
       Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
       W_T     = conditional( lt(W, 0.01),   W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:

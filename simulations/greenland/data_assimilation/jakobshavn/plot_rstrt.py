@@ -6,7 +6,8 @@ import sys
 #base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized/'
 #base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_a_0_1/'
 #base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_a_0_1/'
-base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/'
+#base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/'
+base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 
@@ -76,68 +77,71 @@ zoom_box_kwargs = {'zoom'             : 6,      # ammount to zoom
                    'scale_loc'        : 1,      # 1=top, 2=bottom
                    'plot_grid'        : True}   # plot the triangles
 
+zoom_box_kwargs_2 = zoom_box_kwargs.copy()
+zoom_box_kwargs_2['scale_font_color'] = 'w'
+
 #===============================================================================
 # plot :
 
-plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
-        title='$T_B$', cmap=cmap,  scale='lin',
-        umin=265, umax=None, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
-        title=r'$W_B$', cmap=cmap,  scale='lin',
-        umin=None, umax=0.1, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+#plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
+#        title='$T_B$', cmap=cmap,  scale='lin',
+#        umin=265, umax=None, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+#
+#plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
+#        title=r'$W_B$', cmap=cmap,  scale='lin',
+#        umin=None, umax=0.1, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_2)
 
 plotIce(drg, bedmodel.Wb_flux, name='Wb_flux', direc=out_dir, 
-        title=r'$W_b$', cmap=cmap,  scale='log',
-        umin=1e-2, umax=5, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
+        title=r'$W_b$', cmap='RdGy',  scale='lin',
+        umin=-1, umax=1, numLvls=13, tp=False, tpAlpha=0.5,
+        basin='jakobshavn', extend='both', show=False, ext='.pdf', res=200,
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-        title=r'$M_b$', cmap=cmap,  scale='log',
-        umin=1e-2, umax=5, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
-        title=r'$\alpha$', cmap=cmap,  scale='lin',
-        umin=0, umax=1, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
-        title=r'$P_e$', cmap=cmap,  scale='log',
-        umin=1e3, umax=1e5, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
-        title=r'$W_i$', cmap=cmap,  scale='log',
-        umin=1e-1, umax=20, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
-        title=r'$\Vert \mathbf{u}_S \Vert$', cmap=cmap,  scale='log',
-        umin=5e1, umax=1e4, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
-        title=r'$\beta$', cmap=cmap,  scale='log',
-        umin=2e-4, umax=2e4, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
-        title=r'$\theta_B$', cmap=cmap,  scale='lin',
-        umin=3e5, umax=None, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+#
+#plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
+#        title=r'$M_b$', cmap='RdGy',  scale='lin',
+#        umin=-1, umax=1, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='both', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+#
+#plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
+#        title=r'$\alpha$', cmap=cmap,  scale='lin',
+#        umin=0, umax=10, numLvls=10, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='max', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_2)
+#
+#plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
+#        title=r'$P_e$', cmap=cmap,  scale='log',
+#        umin=1e3, umax=1e5, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_2)
+#
+#plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
+#        title=r'$W_i$', cmap=cmap,  scale='log',
+#        umin=1e-1, umax=20, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_2)
+#
+#plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
+#        title=r'$\Vert \mathbf{u}_S \Vert$', cmap=cmap,  scale='log',
+#        umin=5e1, umax=1e4, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_2)
+#
+#plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
+#        title=r'$\beta$', cmap=cmap,  scale='log',
+#        umin=2e-4, umax=2e4, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+#
+#plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
+#        title=r'$\theta_B$', cmap=cmap,  scale='lin',
+#        umin=3e5, umax=None, numLvls=13, tp=False, tpAlpha=0.5,
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf', res=200,
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_2)
 
 
 

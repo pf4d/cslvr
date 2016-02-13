@@ -102,24 +102,25 @@ bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
 bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
 
-# solve the balance velocity :
-bv = BalanceVelocity(bedmodel, kappa=5.0)
-bv.solve(annotate=False)
-
-# assign the balance velocity to the 3D model's bed :
-d3model.assign_submesh_variable(d3model.d_x,  bedmodel.d_x)
-d3model.assign_submesh_variable(d3model.d_y,  bedmodel.d_y)
-d3model.assign_submesh_variable(d3model.Ubar, bedmodel.Ubar)
-
-# extrude the bed values up the column : 
-d_x_e  = d3model.vert_extrude(d3model.d_x,  d='up')
-d_y_e  = d3model.vert_extrude(d3model.d_y,  d='up')
-Ubar_e = d3model.vert_extrude(d3model.Ubar, d='up')
-
-# set the appropriate variable to be the function extruded :
-d3model.init_d_x(d_x_e)
-d3model.init_d_y(d_y_e)
-d3model.init_Ubar(Ubar_e)
+#NOTE FIX THIS
+## solve the balance velocity :
+#bv = BalanceVelocity(bedmodel, kappa=5.0)
+#bv.solve(annotate=False)
+#
+## assign the balance velocity to the 3D model's bed :
+#d3model.assign_submesh_variable(d3model.d_x,  bedmodel.d_x)
+#d3model.assign_submesh_variable(d3model.d_y,  bedmodel.d_y)
+#d3model.assign_submesh_variable(d3model.Ubar, bedmodel.Ubar)
+#
+## extrude the bed values up the column : 
+#d_x_e  = d3model.vert_extrude(d3model.d_x,  d='up')
+#d_y_e  = d3model.vert_extrude(d3model.d_y,  d='up')
+#Ubar_e = d3model.vert_extrude(d3model.Ubar, d='up')
+#
+## set the appropriate variable to be the function extruded :
+#d3model.init_d_x(d_x_e)
+#d3model.init_d_y(d_y_e)
+#d3model.init_Ubar(Ubar_e)
 
 #===============================================================================
 # create boundary function spaces for saving variables :
@@ -162,8 +163,8 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
                epsdot_ftn=mom.strain_rate_tensor)
 
 fin = HDF5File(mpi_comm_world(),
-               out_dir + 'rstrt_alpha_1e8_regularized/tmc.h5', 'r')
-#               out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/tmc.h5', 'r')
+               out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/tmc.h5', 'r')
+#               out_dir + 'rstrt_alpha_1e8_regularized/tmc.h5', 'r')
 
 d3model.init_T(fin)
 d3model.init_beta(fin)
@@ -177,7 +178,8 @@ bedmodel.assign_submesh_variable(bedmodel.Wb_flux,  d3model.Wb_flux)
 
 # collect the raw data :
 drg  = DataFactory.get_rignot()
-cmap = 'viridis'
+#cmap = 'viridis'
+cmap = 'RdGy'
   
 zoom_box_kwargs = {'zoom'             : 6,      # ammount to zoom 
                    'loc'              : 1,      # location of box
@@ -193,15 +195,15 @@ zoom_box_kwargs = {'zoom'             : 6,      # ammount to zoom
                    'plot_grid'        : True}   # plot the triangles
 
 plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-        title=r'$M_b$', cmap=cmap,  scale='log',
-        umin=1e-2, umax=5, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
+        title=r'$M_b$', cmap='RdGy',  scale='lin',
+        umin=-5e-1, umax=5e-1, numLvls=13, tp=False, tpAlpha=0.5,
+        basin='jakobshavn', extend='both', show=False, ext='.pdf', res=200,
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
 
 plotIce(drg, bedmodel.Wb_flux, name='Wb_flux', direc=out_dir, 
-        title=r'$W_b$', cmap=cmap,  scale='log',
-        umin=1e-2, umax=5, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
+        title=r'$W_b$', cmap=cmap,  scale='lin',
+        umin=-5e-1, umax=5e-1, numLvls=13, tp=False, tpAlpha=0.5,
+        basin='jakobshavn', extend='both', show=False, ext='.pdf', res=200,
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
 
 sys.exit(0)

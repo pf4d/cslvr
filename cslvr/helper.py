@@ -816,6 +816,9 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       boolean determins plotting of triangle overlay
     tpAlpha :
       alpha level of triangles 0.0 (transparent) - 1.0 (opaque)
+    extends :
+      for the colorbar, extend upper range and may be ["neither", "both", "min", "max"]
+      default is "neither".
   # for plotting the zoom-box, make <zoom_box> = True and supply dict
   <zoom_box_kwargs> = {'zoom'             : int     # ammount to zoom 
                        'loc'              : int     # location of box
@@ -1036,16 +1039,17 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     m = Basemap(ax=axins, width=w, height=h, resolution='h', 
                 projection='stere', lat_ts=lat_0, 
                 lon_0=lon_0, lat_0=lat_0)
-    
+
     m.drawmapscale(slon, slat, slon, slat, scale_length, 
                    yoffset  = 0.025 * 2.0 * dy,
                    barstyle = 'fancy', fontcolor=scale_font_color)
-
+    
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
 
-    plt.xticks(visible=False)
-    plt.yticks(visible=False)
+    axins.xaxis.set_ticks_position('none')
+    axins.yaxis.set_ticks_position('none')
+
 
   if isinstance(u, str):
     #cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)

@@ -8,7 +8,15 @@ mpl.rcParams['legend.fontsize']      = 'medium'
 mpl.rcParams['text.usetex']          = True
 mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
-in_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized/tmc/'
+#base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized/'
+#base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_a_0_1/'
+#base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_a_0_1/'
+base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/'
+in_dir   = base_dir + 'tmc/'
+out_dir  = base_dir + 'plot/'
+  
+if not os.path.exists(out_dir):
+  os.makedirs(out_dir)
 
 abs_err = loadtxt(in_dir + 'convergence_history/abs_err.txt')
 tht_nrm = loadtxt(in_dir + 'convergence_history/theta_norm.txt')
@@ -109,6 +117,7 @@ ax4.yaxis.get_offset_text().set_color('r')
 ax4.yaxis.label.set_color('r')
 
 plt.tight_layout()
+plt.savefig(out_dir + 'convergence_plot.pdf')
 plt.show()
 
 

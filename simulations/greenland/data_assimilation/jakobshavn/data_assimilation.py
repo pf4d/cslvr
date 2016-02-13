@@ -163,48 +163,43 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
                epsdot_ftn=mom.strain_rate_tensor)
 
 fin = HDF5File(mpi_comm_world(),
-               out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/tmc.h5', 'r')
+               out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/tmc.h5', 'r')
 #               out_dir + 'rstrt_alpha_1e8_regularized/tmc.h5', 'r')
 
 d3model.init_T(fin)
+d3model.init_W(fin)
+d3model.init_theta(fin)
 d3model.init_beta(fin)
 d3model.init_alpha(fin)
 d3model.init_U(fin)
+d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/')
+
+adj_save_vars = [d3model.T,
+                 d3model.W,
+                 d3model.Wb_flux,
+                 d3model.Mb,
+                 d3model.alpha,
+                 d3model.PE,
+                 d3model.W_int,
+                 d3model.U3,
+                 d3model.p,
+                 d3model.beta,
+                 d3model.theta]
+
+mom.solve(annotate = False)
+nrg.calc_T_melt(annotate=False)
 nrg.solve_basal_melt_rate()
 nrg.solve_basal_water_flux()
+nrg.calc_PE()
+nrg.calc_internal_water()
+        
+out_file = d3model.out_dir + 'hdf5/tmc_new.h5'
+foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
 
-bedmodel.assign_submesh_variable(bedmodel.Mb,       d3model.Mb)
-bedmodel.assign_submesh_variable(bedmodel.Wb_flux,  d3model.Wb_flux)
+for var in adj_save_vars:
+  d3model.save_hdf5(var, f=foutput)
 
-# collect the raw data :
-drg  = DataFactory.get_rignot()
-#cmap = 'viridis'
-cmap = 'RdGy'
-  
-zoom_box_kwargs = {'zoom'             : 6,      # ammount to zoom 
-                   'loc'              : 1,      # location of box
-                   'loc1'             : 2,      # loc of first line
-                   'loc2'             : 3,      # loc of second line
-                   'x1'               : 51000,  # first x-coord
-                   'y1'               : 80000,  # first y-coord
-                   'x2'               : 88500,  # second x-coord
-                   'y2'               : 102000, # second y-coord
-                   'scale_font_color' : 'k',    # scale font color
-                   'scale_length'     : 25,     # scale length in km
-                   'scale_loc'        : 1,      # 1=top, 2=bottom
-                   'plot_grid'        : True}   # plot the triangles
-
-plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-        title=r'$M_b$', cmap='RdGy',  scale='lin',
-        umin=-5e-1, umax=5e-1, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='both', show=False, ext='.pdf', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.Wb_flux, name='Wb_flux', direc=out_dir, 
-        title=r'$W_b$', cmap=cmap,  scale='lin',
-        umin=-5e-1, umax=5e-1, numLvls=13, tp=False, tpAlpha=0.5,
-        basin='jakobshavn', extend='both', show=False, ext='.pdf', res=200,
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+foutput.close()
 
 sys.exit(0)
 

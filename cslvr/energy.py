@@ -1142,12 +1142,12 @@ class Enthalpy(Energy):
     a_n  = du * phi * dBed_g
     L_n  = (q_geo + q_fric - dTdn) / (L*rho) * phi * dBed_g
    
-    A_n  = assemble(a_n, keep_diagonal=True, annotate=annotate)
-    B_n  = assemble(L_n, annotate=annotate)
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
     A_n.ident_zeros()
    
     Mb   = Function(model.Q)
-    solve(A_n, Mb.vector(), B_n, 'cg', 'amg', annotate=annotate)
+    solve(A_n, Mb.vector(), B_n, 'cg', 'amg', annotate=False)
     
     Mb_v     = Mb.vector().array()
     T_melt_v = T_melt.vector().array()

@@ -1887,7 +1887,7 @@ class Model(object):
       if isinstance(ini_save_vars, list):
         s    = '::: saving initialized variables in dict arg ini_save_vars :::'
         print_text(s, cls=self.this)
-        out_file = self.out_dir + 'hdf5/init.h5'
+        out_file = self.out_dir + 'init.h5'
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
         
         for var in ini_save_vars:

@@ -161,6 +161,51 @@ mom = MomentumDukowiczBrinkerhoffStokes(d3model, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
+fin = HDF5File(mpi_comm_world(),
+               out_dir + 'rstrt_alpha_1e8_regularized/tmc.h5', 'r')
+#               out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/tmc.h5', 'r')
+
+d3model.init_T(fin)
+d3model.init_beta(fin)
+d3model.init_alpha(fin)
+d3model.init_U(fin)
+nrg.solve_basal_melt_rate()
+nrg.solve_basal_water_flux()
+
+bedmodel.assign_submesh_variable(bedmodel.Mb,       d3model.Mb)
+bedmodel.assign_submesh_variable(bedmodel.Wb_flux,  d3model.Wb_flux)
+
+# collect the raw data :
+drg  = DataFactory.get_rignot()
+cmap = 'viridis'
+  
+zoom_box_kwargs = {'zoom'             : 6,      # ammount to zoom 
+                   'loc'              : 1,      # location of box
+                   'loc1'             : 2,      # loc of first line
+                   'loc2'             : 3,      # loc of second line
+                   'x1'               : 51000,  # first x-coord
+                   'y1'               : 80000,  # first y-coord
+                   'x2'               : 88500,  # second x-coord
+                   'y2'               : 102000, # second y-coord
+                   'scale_font_color' : 'k',    # scale font color
+                   'scale_length'     : 25,     # scale length in km
+                   'scale_loc'        : 1,      # 1=top, 2=bottom
+                   'plot_grid'        : True}   # plot the triangles
+
+plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
+        title=r'$M_b$', cmap=cmap,  scale='log',
+        umin=1e-2, umax=5, numLvls=13, tp=False, tpAlpha=0.5,
+        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+
+plotIce(drg, bedmodel.Wb_flux, name='Wb_flux', direc=out_dir, 
+        title=r'$W_b$', cmap=cmap,  scale='log',
+        umin=1e-2, umax=5, numLvls=13, tp=False, tpAlpha=0.5,
+        basin='jakobshavn', extend='neither', show=False, ext='.png', res=200,
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
+
+sys.exit(0)
+
 #===============================================================================
 ## derivative of objective function callback function : 
 #d3model.set_out_dir(out_dir + 'u_inversion/')

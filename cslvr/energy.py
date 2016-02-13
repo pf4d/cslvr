@@ -496,7 +496,7 @@ class Energy(Physics):
     Solve for the basal-water flux stored in model.Wb_flux.
     """ 
     # calculate melt-rate : 
-    s = "::: solving for basal-water flux :::"
+    s = "::: solving basal-water-flux :::"
     print_text(s, cls=self)
     
     model    = self.model
@@ -1121,29 +1121,40 @@ class Enthalpy(Energy):
     Solve for the basal melt rate stored in model.Mb.
     """ 
     # calculate melt-rate : 
-    s = "::: solving for basal-melt rate :::"
+    s = "::: solving basal-melt-rate :::"
     print_text(s, cls=self)
     
     model    = self.model
-    B        = model.B
-    T        = model.T
     T_melt   = model.T_melt
+    T        = model.T
     L        = model.L
     q_geo    = model.q_geo
+    N        = model.N
+    dBed_g   = model.dBed_g
     rho      = self.rho
     k        = self.k
     q_fric   = self.q_fric
 
-    gradB = as_vector([B.dx(0), B.dx(1), -1])
-    dTdn  = k * dot(grad(T), gradB)
-    nMb   = project((q_geo + q_fric - dTdn) / (L*rho), model.Q,
-                    annotate=False)
-    nMb_v    = nMb.vector().array()
+    # Mb is only valid on basal surface, needs extra matrix care :
+    phi  = TestFunction(model.Q)
+    du   = TrialFunction(model.Q)
+    dTdn = k * dot(grad(T_melt), N)
+    a_n  = du * phi * dBed_g
+    L_n  = (q_geo + q_fric - dTdn) / (L*rho) * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=annotate)
+    B_n  = assemble(L_n, annotate=annotate)
+    A_n.ident_zeros()
+   
+    Mb   = Function(model.Q)
+    solve(A_n, Mb.vector(), B_n, 'cg', 'amg', annotate=annotate)
+    
+    Mb_v     = Mb.vector().array()
     T_melt_v = T_melt.vector().array()
     T_v      = T.vector().array()
-    nMb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
-    nMb_v[model.shf_dofs] = 0.0    # does apply over floating regions
-    model.assign_variable(model.Mb, nMb_v, cls=self)
+    Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
+    #Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
+    model.assign_variable(model.Mb, Mb_v, cls=self)
   
   def solve(self, annotate=False):
     """ 

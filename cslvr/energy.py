@@ -503,8 +503,10 @@ class Energy(Physics):
     alpha    = model.alpha
     Mb       = model.Mb
 
-    wb_f = project( alpha * Mb, annotate=False)
-    model.init_Wb_flux(wb_f, cls=self)
+    Mb_v     = Mb.vector().array()
+    alpha_v  = alpha.vector().array()
+    wb_v     = alpha_v * Mb_v
+    model.init_Wb_flux(wb_v, cls=self)
 
   def solve_critical_alpha(self):
     """

@@ -1,41 +1,3 @@
-r"""
-This module handles the refinements to the tetrehedral mesh as well as providing
-functions to set nonlinear solver defaults, extract boundaries, generate
-expressions from data, and write mesh files.
-
-The mesh refinements are determined by calculating the anisotropic error metric
-
-:Equation:
-   .. math::
-      e\left(c\right)\propto max_{i\in T} \ \textbf{x}^{T}_{i}\textbf{Mx}_{i}
-
-+-----------------------------------------+---------------------------------+
-|Term                                     |Description                      |
-+=========================================+=================================+
-|.. math::                                |Cellwise error estimate          |
-|   e\left(c\right)                       |                                 |
-+-----------------------------------------+---------------------------------+
-|.. math::                                |A given mesh cell                |
-|   T                                     |                                 |
-+-----------------------------------------+---------------------------------+
-|.. math::                                |An edge in T                     |
-|   \textbf{x}_i                          |                                 |
-+-----------------------------------------+---------------------------------+
-|.. math::                                |Metric tensor                    |
-|   \textbf{M} = \textbf{V}^T|\Lambda|    |                                 |
-|   \textbf{V}                            |                                 |
-+-----------------------------------------+---------------------------------+
-|.. math::                                |Eigenvalues of the Hessian       |
-|   \textbf{V}                            |matrix we are attempting to      |
-|                                         |equidistribute over              |
-|.. math::                                |                                 |
-|   \Lambda                               |                                 |
-+-----------------------------------------+---------------------------------+
-
-The Hessian of the velocity norm is used in calculating error metrics of the 
-meshes used in the simulations.
-"""
-
 import inspect
 import pylab                 as pl
 import numpy                 as np
@@ -45,6 +7,7 @@ from dolfin_adjoint          import *
 from termcolor               import colored, cprint
 from mpl_toolkits.basemap    import Basemap
 from matplotlib              import colors, ticker
+from matplotlib.ticker       import LogFormatter, ScalarFormatter
 from pyproj                  import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable, inset_locator
 from cslvr.io                import print_text
@@ -792,8 +755,9 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
-            umin=None, umax=None, numLvls=12, tp=False, tpAlpha=0.5,
-            basin=None, extend='neither', show=True, ext='.png', res=150,
+            umin=None, umax=None, numLvls=12, levels=None, tp=False,
+             tpAlpha=0.5, basin=None, extend='neither',
+             show=True, ext='.png', res=150,
             zoom_box=False, zoom_box_kwargs=None):
   """
   INPUTS :
@@ -812,6 +776,8 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       scale to plot, either 'log', 'lin', or 'bool'
     numLvls :
       number of levels for field values
+    levels :
+      manual levels, if desired.
     tp :
       boolean determins plotting of triangle overlay
     tpAlpha :
@@ -870,8 +836,6 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
           "STORED AS KEY 'continent' <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
-      
-
   
   # the width/height numbers were calculated from vertices from a mesh :
   #w = 1.05 * (vx.max() - vx.min())
@@ -967,12 +931,16 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
 
   #=============================================================================
   # plotting :
-  if umin != None:
+  if umin != None and levels is None:
     vmin = umin
+  elif levels is not None:
+    vmin = levels.min()
   else:
     vmin = v.min()
-  if umax != None:
+  if umax != None and levels is None:
     vmax = umax
+  elif levels is not None:
+    vmax = levels.max()
   else:
     vmax = v.max()
   
@@ -983,26 +951,44 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   
   # countour levels :
   if scale == 'log':
-    v[v < vmin] = vmin + 1e-12
-    v[v > vmax] = vmax - 1e-12
-    from matplotlib.ticker import LogFormatter
-    levels      = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
+    if levels is None:
+      levels    = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
+    v[v < vmin] = vmin + 2e-16
+    v[v > vmax] = vmax - 2e-16
     formatter   = LogFormatter(10, labelOnlyBase=False)
     norm        = colors.LogNorm()
   
+  # countour levels :
+  elif scale == 'sym_log':
+    if levels is None:
+      levels  = np.linspace(vmin, vmax, numLvls)
+    v[v < vmin] = vmin + 2e-16
+    v[v > vmax] = vmax - 2e-16
+    formatter   = LogFormatter(10, labelOnlyBase=False)
+    norm        = colors.SymLogNorm(vmin=vmin, vmax=vmax,
+                                    linscale=0.04, linthresh=0.04)
+  
   elif scale == 'lin':
-    from matplotlib.ticker import ScalarFormatter
-    v[v < vmin] = vmin + 1e-12
-    v[v > vmax] = vmax - 1e-12
-    levels    = np.linspace(vmin, vmax, numLvls)
+    if levels is None:
+      levels  = np.linspace(vmin, vmax, numLvls)
+    v[v < vmin] = vmin + 2e-16
+    v[v > vmax] = vmax - 2e-16
+    #formatter = LogFormatter(10, labelOnlyBase=False)
     formatter = ScalarFormatter()
     norm      = None
   
+  elif scale == 'pow':
+    if levels is None:
+      levels  = np.linspace(vmin, vmax, numLvls)
+    v[v < vmin] = vmin + 1e-12
+    v[v > vmax] = vmax - 1e-12
+    formatter = LogFormatter(10, labelOnlyBase=False)
+    norm      = colors.PowerNorm(gamma=1/2.0)
+  
   elif scale == 'bool':
-    from matplotlib.ticker import ScalarFormatter
     v[v < 0.0] = 0.0
     levels    = [0, 1, 2]
-    formatter = ScalarFormatter()
+    formatter = LogFormatter(10, labelOnlyBase=False)
     norm      = None
   
   # please do zoom in! 
@@ -1036,13 +1022,13 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     slon, slat = m(xmid, ymid, inverse=True)
 
     # new projection :
-    m = Basemap(ax=axins, width=w, height=h, resolution='h', 
-                projection='stere', lat_ts=lat_0, 
-                lon_0=lon_0, lat_0=lat_0)
+    mn = Basemap(ax=axins, width=w, height=h, resolution='h', 
+                 projection='stere', lat_ts=lat_0, 
+                 lon_0=lon_0, lat_0=lat_0)
 
-    m.drawmapscale(slon, slat, slon, slat, scale_length, 
-                   yoffset  = 0.025 * 2.0 * dy,
-                   barstyle = 'fancy', fontcolor=scale_font_color)
+    mn.drawmapscale(slon, slat, slon, slat, scale_length, 
+                    yoffset  = 0.025 * 2.0 * dy,
+                    barstyle = 'fancy', fontcolor=scale_font_color)
     
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
@@ -1080,12 +1066,18 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm, extend=extend)
+        #x_w = 63550
+        #y_w = 89748
+        #axins.plot(x_w, y_w, 'ro')
     else:
       cs = ax.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)
+        #x_w = 63550
+        #y_w = 89748
+        #axins.plot(x_w, y_w, 'ro')
   
   # plot triangles :
   if tp == True:
@@ -1097,8 +1089,8 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   if scale != 'bool':
     divider = make_axes_locatable(ax)#plt.gca())
     cax  = divider.append_axes("right", "5%", pad="3%")
-    cbar = plt.colorbar(cs, cax=cax, format=formatter, 
-                        ticks=levels) 
+    cbar = fig.colorbar(cs, cax=cax, format=formatter, 
+                        ticks=levels)#, format='%.0e') 
     #cbar = plt.colorbar(cs, cax=cax, format=formatter, 
     #                    ticks=np.around(levels,decimals=1)) 
   
@@ -1114,6 +1106,8 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   if show:
     plt.show()
   plt.close(fig)
+
+  return m
 
 
 # VERTICAL BASIS REPLACES A NORMAL FUNCTION, SUCH THAT VERTICAL DERIVATIVES

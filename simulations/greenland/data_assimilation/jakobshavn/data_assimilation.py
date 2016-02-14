@@ -102,7 +102,7 @@ bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
 bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
 
-#NOTE FIX THIS
+#NOTE un-comment this if initializing basal traction using SIA :
 ## solve the balance velocity :
 #bv = BalanceVelocity(bedmodel, kappa=5.0)
 #bv.solve(annotate=False)
@@ -161,47 +161,6 @@ mom = MomentumDukowiczBrinkerhoffStokes(d3model, isothermal=False)
 #mom = MomentumBP(d3model, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
-
-fin = HDF5File(mpi_comm_world(),
-               out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/tmc.h5', 'r')
-#               out_dir + 'rstrt_alpha_1e8_regularized/tmc.h5', 'r')
-
-d3model.init_T(fin)
-d3model.init_W(fin)
-d3model.init_theta(fin)
-d3model.init_beta(fin)
-d3model.init_alpha(fin)
-d3model.init_U(fin)
-d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/')
-
-adj_save_vars = [d3model.T,
-                 d3model.W,
-                 d3model.Wb_flux,
-                 d3model.Mb,
-                 d3model.alpha,
-                 d3model.PE,
-                 d3model.W_int,
-                 d3model.U3,
-                 d3model.p,
-                 d3model.beta,
-                 d3model.theta]
-
-mom.solve(annotate = False)
-nrg.calc_T_melt(annotate=False)
-nrg.solve_basal_melt_rate()
-nrg.solve_basal_water_flux()
-nrg.calc_PE()
-nrg.calc_internal_water()
-        
-out_file = d3model.out_dir + 'hdf5/tmc_new.h5'
-foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-
-for var in adj_save_vars:
-  d3model.save_hdf5(var, f=foutput)
-
-foutput.close()
-
-sys.exit(0)
 
 #===============================================================================
 ## derivative of objective function callback function : 
@@ -399,7 +358,7 @@ new_dir = 'tmc_inversion_cont_kappa_TV_beta_reg_10/04/hdf5/'
 
 #d3model.set_out_dir(out_dir + new_dir)
 #d3model.set_out_dir(out_dir + 'rstrt_disc_kappa/')
-d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/')
+d3model.set_out_dir(out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_100_disc_kappa/')
 
 fini = HDF5File(mpi_comm_world(),
                 out_dir + new_dir + 'inverted_04.h5', 'r')
@@ -447,6 +406,7 @@ adj_save_vars = [d3model.T,
                  d3model.PE,
                  d3model.W_int,
                  d3model.U3,
+                 d3model.p,
                  d3model.beta,
                  d3model.theta]
 
@@ -481,7 +441,7 @@ tmc_kwargs = {'momentum'            : mom,
               'callback'            : tmc_cb_ftn, 
               'atol'                : 1e2,
               'rtol'                : 1e0,
-              'max_iter'            : 10,
+              'max_iter'            : 50,
               'post_tmc_save_vars'  : ini_save_vars}
                                     
 uop_kwargs = {'control'             : d3model.beta,

@@ -704,8 +704,8 @@ class Enthalpy(Energy):
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    #k     =  spy * k_c * k           # convert to J/(a*m*K)
-    k     =  spy * k                 # convert to J/(a*m*K)
+    k     =  spy * k_c * k           # convert to J/(a*m*K)
+    #k     =  spy * k                 # convert to J/(a*m*K)
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :

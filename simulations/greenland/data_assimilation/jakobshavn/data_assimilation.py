@@ -154,7 +154,6 @@ d3model.init_beta_SIA()
 #bedmodel.init_beta_SIA()
 #bedmodel.init_T(bedmodel.T_surface)
 
-#mom = MomentumDukowiczStokes(d3model, isothermal=False)
 mom = MomentumDukowiczBrinkerhoffStokes(d3model, isothermal=False)
 #mom = MomentumDukowiczStokesReduced(d3model, isothermal=False)
 #mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
@@ -442,6 +441,7 @@ tmc_kwargs = {'momentum'            : mom,
               'atol'                : 1e2,
               'rtol'                : 1e0,
               'max_iter'            : 50,
+              'itr_tmc_save_vars'   : adj_save_vars,
               'post_tmc_save_vars'  : ini_save_vars}
                                     
 uop_kwargs = {'control'             : d3model.beta,

@@ -1663,8 +1663,9 @@ class Model(object):
     self.tau_ji        = Function(self.Q, name='tau_ji')
     self.tau_jj        = Function(self.Q, name='tau_jj')
 
-  def thermo_solve(self, momentum, energy, wop_kwargs, callback=None, 
-                   atol=1e2, rtol=1e0, max_iter=50, post_tmc_save_vars=None):
+  def thermo_solve(self, momentum, energy, wop_kwargs,
+                   callback=None, atol=1e2, rtol=1e0, max_iter=50,
+                   itr_tmc_save_vars=None, post_tmc_save_vars=None):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
@@ -1695,6 +1696,11 @@ class Model(object):
     # retain base install directory :
     out_dir_i = self.out_dir
 
+    # directory for saving convergence history :
+    d_hist   = self.out_dir + 'tmc/convergence_history/'
+    if not os.path.exists(d_hist) and self.MPI_rank == 0:
+      os.makedirs(d_hist)
+
     # number of digits for saving variables :
     n_i  = len(str(max_iter))
     
@@ -1718,9 +1724,7 @@ class Model(object):
     # L_2 erro norm between iterations :
     abs_error = np.inf
     rel_error = np.inf
-    err_a     = []
-    tht_a     = []
-   
+      
     # number of iterations
     counter   = 1
    
@@ -1734,7 +1738,7 @@ class Model(object):
       # set a new unique output directory :
       out_dir_n = 'tmc/%0*d/' % (n_i, counter)
       self.set_out_dir(out_dir_i + out_dir_n)
-     
+      
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
                            cls=self.this)
@@ -1746,17 +1750,30 @@ class Model(object):
       energy.optimize_water_flux(**wop_kwargs)
       energy.partition_energy()
 
-      # calculate L_infinity norm, increment counter :
+      # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
-      err_a.append(abs_error_n)
-      tht_a.append(norm(self.theta.vector(), 'l2'))
+      tht_nrm      = norm(self.theta.vector(), 'l2')
+
+      # save convergence history :
       if counter == 1:
         rel_error  = abs_error_n
+        if self.MPI_rank == 0:
+          err_a = np.array([abs_error_n])
+          nrm_a = np.array([tht_nrm])
+          np.savetxt(d_hist + 'abs_err.txt',    err_a)
+          np.savetxt(d_hist + 'theta_norm.txt', nrm_a)
       else:
-        rel_error  = abs(abs_error - abs_error_n)
-      abs_error = abs_error_n
-      U_prev     = self.theta.copy(True)
-      if self.MPI_rank==0:
+        rel_error = abs(abs_error - abs_error_n)
+        if self.MPI_rank == 0:
+          err_n = np.loadtxt(d_hist + 'abs_err.txt')
+          nrm_n = np.loadtxt(d_hist + 'theta_norm.txt')
+          err_a = np.append(err_n, np.array([abs_error_n]))
+          nrm_a = np.append(nrm_n, np.array([tht_nrm]))
+          np.savetxt(d_hist + 'abs_err.txt',     err_a)
+          np.savetxt(d_hist + 'theta_norm.txt',  nrm_a)
+
+      # print info to screen :
+      if self.MPI_rank == 0:
         s0    = '>>> '
         s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
         s2    = 'r (abs) = %.2e ' % abs_error
@@ -1772,12 +1789,27 @@ class Model(object):
         text5 = get_text(s5, 'red')
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
-      counter    += 1
+      
+      # update error stuff and increment iteration counter :
+      abs_error    = abs_error_n
+      U_prev       = self.theta.copy(True)
+      counter     += 1
 
+      # call callback function if set :
       if callback != None:
         s    = '::: calling thermo-couple-callback function :::'
         print_text(s, cls=self.this)
         callback()
+    
+      # save state to unique hdf5 file :
+      if isinstance(itr_tmc_save_vars, list):
+        s    = '::: saving variables in list arg itr_tmc_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'tmc.h5'
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        for var in itr_tmc_save_vars:
+          self.save_hdf5(var, f=foutput)
+        foutput.close()
     
     # reset the base directory ! :
     self.set_out_dir(out_dir_i)
@@ -1802,35 +1834,33 @@ class Model(object):
     text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
        
-    # save the convergence history : 
-    d    = self.out_dir + 'tmc/convergence_history/'
-    s    = "::: saving convergence info to \'%s\' :::"
-    print_text(s % d, cls=self.this)
-    if self.MPI_rank==0:
-      if not os.path.exists(d):
-        os.makedirs(d)
-      np.savetxt(d + 'time.txt',        np.array([tf - t0]))
-      np.savetxt(d + 'abs_err.txt',     np.array(err_a))
-      np.savetxt(d + 'theta_norm.txt',  np.array(tht_a))
-      
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      #ax.set_yscale('log')
+    # plot the convergence history : 
+    s    = "::: convergence info saved to \'%s\' :::"
+    print_text(s % d_hist, cls=self.this)
+    if self.MPI_rank == 0:
+      np.savetxt(d_hist + 'time.txt', np.array([tf - t0]))
+
+      err_a = np.loadtxt(d_hist + 'abs_err.txt')
+      nrm_a = np.loadtxt(d_hist + 'theta_norm.txt')
+     
+      # plot iteration error : 
+      fig   = plt.figure()
+      ax    = fig.add_subplot(111)
       ax.set_ylabel(r'$\Vert \theta_{n-1} - \theta_n \Vert$')
       ax.set_xlabel(r'iteration')
-      ax.plot(np.array(err_a), 'k-', lw=2.0)
+      ax.plot(err_a, 'k-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'abs_err.pdf')
+      plt.savefig(d_hist + 'abs_err.pdf')
       plt.close(fig)
       
+      # plot theta norm :
       fig = plt.figure()
       ax  = fig.add_subplot(111)
-      #ax.set_yscale('log')
       ax.set_ylabel(r'$\Vert \theta_n \Vert$')
       ax.set_xlabel(r'iteration')
-      ax.plot(np.array(tht_a), 'k-', lw=2.0)
+      ax.plot(nrm_a, 'k-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'theta_norm.pdf')
+      plt.savefig(d_hist + 'theta_norm.pdf')
       plt.close(fig)
 
   def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,

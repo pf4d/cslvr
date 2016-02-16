@@ -12,10 +12,6 @@ from pyproj                  import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable, inset_locator
 from cslvr.io                import print_text
 
-pl.mpl.rcParams['font.family']     = 'serif'
-pl.mpl.rcParams['legend.fontsize'] = 'medium'
-
-
 def raiseNotDefined():
   fileName = inspect.stack()[1][1]
   line     = inspect.stack()[1][2]
@@ -756,8 +752,8 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, levels=None, tp=False,
-             tpAlpha=0.5, basin=None, extend='neither',
-             show=True, ext='.png', res=150,
+            tpAlpha=0.5, basin=None, extend='neither',
+            show=True, ext='.png', res=150,
             zoom_box=False, zoom_box_kwargs=None):
   """
   INPUTS :
@@ -964,32 +960,19 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       levels  = np.linspace(vmin, vmax, numLvls)
     v[v < vmin] = vmin + 2e-16
     v[v > vmax] = vmax - 2e-16
-    formatter   = LogFormatter(10, labelOnlyBase=False)
+    formatter   = LogFormatter(e, labelOnlyBase=False)
     norm        = colors.SymLogNorm(vmin=vmin, vmax=vmax,
-                                    linscale=0.04, linthresh=0.04)
+                                    linscale=0.001, linthresh=0.001)
   
   elif scale == 'lin':
     if levels is None:
       levels  = np.linspace(vmin, vmax, numLvls)
-    v[v < vmin] = vmin + 2e-16
-    v[v > vmax] = vmax - 2e-16
-    #formatter = LogFormatter(10, labelOnlyBase=False)
-    formatter = ScalarFormatter()
-    norm      = None
-  
-  elif scale == 'pow':
-    if levels is None:
-      levels  = np.linspace(vmin, vmax, numLvls)
-    v[v < vmin] = vmin + 1e-12
-    v[v > vmax] = vmax - 1e-12
-    formatter = LogFormatter(10, labelOnlyBase=False)
-    norm      = colors.PowerNorm(gamma=1/2.0)
+    norm = colors.BoundaryNorm(levels, cmap.N)
   
   elif scale == 'bool':
     v[v < 0.0] = 0.0
-    levels    = [0, 1, 2]
-    formatter = LogFormatter(10, labelOnlyBase=False)
-    norm      = None
+    levels  = [0, 1, 2]
+    norm    = colors.BoundaryNorm(levels, cmap.N)
   
   # please do zoom in! 
   if zoom_box: 
@@ -1040,8 +1023,6 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   if isinstance(u, str):
     #cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
     if scale != 'log':
-      #cs = ax.contourf(x, y, v, levels=levels, 
-      #                 cmap=cmap, norm=norm, extend=extend)
       cs = ax.contourf(x, y, v, levels=levels, 
                         cmap=cmap, norm=norm, extend=extend)
       if zoom_box:
@@ -1059,8 +1040,6 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     #cs = ax.tripcolor(x, y, fi, v, shading='gouraud', 
     #                  cmap=get_cmap(cmap), norm=norm)
     if scale != 'log':
-      #cs = ax.tricontourf(x, y, fi, v, levels=levels, 
-      #                    cmap=cmap, norm=norm, extend=extend)
       cs = ax.tricontourf(x, y, fi, v, levels=levels, 
                          cmap=cmap, norm=norm, extend=extend)
       if zoom_box:
@@ -1075,9 +1054,6 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)
-        #x_w = 63550
-        #y_w = 89748
-        #axins.plot(x_w, y_w, 'ro')
   
   # plot triangles :
   if tp == True:
@@ -1089,8 +1065,8 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   if scale != 'bool':
     divider = make_axes_locatable(ax)#plt.gca())
     cax  = divider.append_axes("right", "5%", pad="3%")
-    cbar = fig.colorbar(cs, cax=cax, format=formatter, 
-                        ticks=levels)#, format='%.0e') 
+    cbar = fig.colorbar(cs, cax=cax, #format=formatter, 
+                        ticks=levels, format='%.1e') 
     #cbar = plt.colorbar(cs, cax=cax, format=formatter, 
     #                    ticks=np.around(levels,decimals=1)) 
   

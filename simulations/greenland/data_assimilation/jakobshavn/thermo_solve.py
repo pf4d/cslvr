@@ -1,95 +1,108 @@
-from varglas          import *
+from cslvr            import *
 from scipy            import random
 from fenics           import *
 from dolfin_adjoint   import *
 import sys
 
-#set_log_active(False)
-#set_log_level(PROGRESS)
+# set the relavent directories :
+old_dir     = 'dump/jakob_small/' + \
+              'tmc_inversion_cont_kappa_TV_beta_reg_10/04/hdf5/'
+old_var_dir = 'dump/vars_jakobshavn_small/'
+new_var_dir = 'dump/vars_jakobshavn_small_refined/'
+out_dir     = 'dump/jakob_small_refined/'
+new_dir     = out_dir + 'rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/'
 
-# get the input args :
-i       = 0
-dir_b   = 'dump/jakob_da_ipopt_SIA0_SR/0'     # directory to save
+# create HDF5 files for saving and loading data :
+old_fmeshes = HDF5File(mpi_comm_world(), old_var_dir + 'submeshes.h5', 'r')
+old_fdata   = HDF5File(mpi_comm_world(), old_var_dir + 'state.h5',     'r')
 
-# set the output directory :
-out_dir = dir_b + str(i)
-var_dir = 'dump/vars_jakobshavn/'
-ts_dir  = dir_b + str(i-1) + '/thermo_solve/xml/'
-in_dir  = dir_b + str(i-1) + '/inverted/xml/'
+new_fmeshes = HDF5File(mpi_comm_world(), new_var_dir + 'submeshes.h5', 'r')
+new_fdata   = HDF5File(mpi_comm_world(), new_var_dir + 'state.h5',     'r')
 
-fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
-fmesh = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
+# create 3D model for stokes solves :
+oldModel = D3Model(old_fdata, old_dir)
+newModel = D3Model(new_fdata, new_dir)
 
-state = HDF5File(mpi_comm_world(), out_dir + '/thermo_solve/hdf5/state.h5', 'w')
-model = D3Model(f, out_dir + '/thermo_solve/', save_state=True, state=state)
-model.set_subdomains(fdata)
-model.set_srf_mesh(fmesh)
+# init subdomains and boundary meshes :
+newModel.set_subdomains(new_fdata)
+#newModel.set_srf_mesh(new_fmeshes)
+#newModel.set_bed_mesh(new_fmeshes)
+#newModel.set_dvd_mesh(new_fmeshes)
 
-model.init_S(fdata)
-model.init_B(fdata)
-model.init_mask(fdata)
-model.init_q_geo(model.ghf)
-model.init_T_surface(fdata)
-model.init_adot(fdata)
-model.init_U_ob(fdata, fdata)
-model.init_U_mask(fdata)
-model.init_E(1.0)
+# initialize the 3D model vars :
+newModel.init_S(new_fdata)
+newModel.init_B(new_fdata)
+newModel.init_mask(new_fdata)
+newModel.init_q_geo(newModel.ghf)
+newModel.init_T_surface(new_fdata)
+newModel.init_adot(new_fdata)
+newModel.init_U_ob(new_fdata, new_fdata)
+newModel.init_U_mask(new_fdata)
+newModel.init_time_step(1e-6)
+newModel.init_E(1.0)
 
-# use T0 and beta0 from the previous run :
-if i > 0:
-  model.init_T(ts_dir + 'T.xml')          # temp
-  model.init_W(ts_dir + 'W.xml')          # water
-  model.init_beta(in_dir + 'beta.xml')    # friction
-else:
-  model.init_T(model.T_surface)
-  #model.init_beta(1e4)
-  model.init_beta_SIA()
+#===============================================================================
+# generate initial traction field :
+newModel.init_T(newModel.T_surface)
 
-nparams = {'newton_solver' : {'linear_solver'            : 'cg',
-                              'preconditioner'           : 'hypre_amg',
-                              'relative_tolerance'       : 1e-9,
-                              'relaxation_parameter'     : 0.7,
-                              'maximum_iterations'       : 30,
-                              'error_on_nonconvergence'  : False}}
-m_params  = {'solver'               : nparams,
-             'solve_vert_velocity'  : True,
-             'solve_pressure'       : False,
-             'vert_solve_method'    : 'mumps'}
+mom = MomentumDukowiczBrinkerhoffStokes(newModel, isothermal=False)
+nrg = Enthalpy(newModel, transient=False, use_lat_bc=True, 
+               epsdot_ftn=mom.strain_rate_tensor)
 
-e_params  = {'solver'               : 'mumps',
-             'use_surface_climate'  : False}
+fini = HDF5File(mpi_comm_world(), old_dir + 'inverted_04.h5', 'r')
 
-mom = MomentumDukowiczStokesReduced(model, m_params, isothermal=False)
-#mom = MomentumBP(model, m_params, isothermal=False)
-nrg = Enthalpy(model, e_params)
+oldModel.init_beta(fini)
+newModel.assign_submesh_variable(newModel.beta, oldModel.beta)
 
-model.save_pvd(model.beta, 'beta0')
-model.save_pvd(model.U_ob, 'U_ob')
-
-def cb_ftn():
+# post-thermo-solve callback function :
+def tmc_cb_ftn():
   nrg.solve_basal_melt_rate()
-  #nrg.calc_bulk_density()
-  model.save_pvd(model.U3,    'U3')
-  #model.save_pvd(model.p,     'p')
-  model.save_pvd(model.theta, 'theta')
-  model.save_pvd(model.T,     'T')
-  model.save_pvd(model.W,     'W')
-  model.save_pvd(model.Mb,    'Mb')
-  #model.save_pvd(model.rho_b, 'rho_b')
-    
-  gradB = as_vector([model.B.dx(0), model.B.dx(1), -1])
-  dTdn  = project(dot(grad(model.T), gradB))
-  model.save_pvd(dTdn, 'dTdn')
+  nrg.solve_basal_water_flux()
+  nrg.calc_PE()#avg=True)
+  nrg.calc_internal_water()
 
-model.thermo_solve(mom, nrg, callback=cb_ftn, rtol=1e-6, max_iter=15)
+# post-adjoint-iteration callback function :
+def adj_post_cb_ftn():
+  mom.solve_vert_velocity(annotate=False)
 
-model.save_xml(model.T,                       'T')
-model.save_xml(model.W,                       'W')
-model.save_xml(interpolate(model.u, model.Q), 'u')
-model.save_xml(interpolate(model.v, model.Q), 'v')
-model.save_xml(interpolate(model.w, model.Q), 'w')
-model.save_xml(model.beta,                    'beta')
-model.save_xml(model.Mb,                      'Mb')
+# after every completed adjoining, save the state of these functions :
+tmc_save_vars = [newModel.T,
+                 newModel.W,
+                 newModel.Wb_flux,
+                 newModel.Mb,
+                 newModel.alpha,
+                 newModel.PE,
+                 newModel.W_int,
+                 newModel.U3,
+                 newModel.p,
+                 newModel.beta,
+                 newModel.theta]
+
+# form the objective functional for water-flux optimization :
+nrg.form_obj_ftn(kind='L2')
+
+# form regularization for water-flux :
+nrg.form_reg_ftn(newModel.alpha, integral=newModel.GAMMA_B_GND,
+                 kind='TV', alpha=1e8)
+
+wop_kwargs = {'max_iter'            : 500, 
+              'bounds'              : (0.0, 100.0),
+              'method'              : 'ipopt',
+              'adj_callback'        : None}
+                                    
+tmc_kwargs = {'momentum'            : mom,
+              'energy'              : nrg,
+              'wop_kwargs'          : wop_kwargs,
+              'callback'            : tmc_cb_ftn, 
+              'atol'                : 1e2,
+              'rtol'                : 1e0,
+              'max_iter'            : 10,
+              'itr_tmc_save_vars'   : tmc_save_vars,
+              'post_tmc_save_vars'  : tmc_save_vars}
+                                    
+# or restart and thermo_solve :
+newModel.thermo_solve(**tmc_kwargs)
 
 
 
+ 

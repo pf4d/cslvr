@@ -590,7 +590,7 @@ class D3Model(Model):
       self.state.write(submesh, 'bedmesh')
     return submesh
 
-  def get_lateral_mesh(self):
+  def get_lat_mesh(self):
     """
     Returns the sides of the mesh for this model instance.
     """
@@ -610,7 +610,7 @@ class D3Model(Model):
       self.state.write(submesh, 'latmesh')
     return submesh
 
-  def get_divide_mesh(self):
+  def get_dvd_mesh(self):
     """
     Returns the divide sides of the mesh for this model instance.
     """

@@ -933,6 +933,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     vmin = levels.min()
   else:
     vmin = v.min()
+
   if umax != None and levels is None:
     vmax = umax
   elif levels is not None:
@@ -1045,9 +1046,9 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm, extend=extend)
-        #x_w = 63550
-        #y_w = 89748
-        #axins.plot(x_w, y_w, 'ro')
+        x_w = 63550
+        y_w = 89748
+        axins.plot(x_w, y_w, 'co')
     else:
       cs = ax.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)

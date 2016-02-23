@@ -508,23 +508,6 @@ class Energy(Physics):
     wb_v     = alpha_v * Mb_v
     model.init_Wb_flux(wb_v, cls=self)
 
-  def solve_critical_alpha(self):
-    """
-    """ 
-    # calculate melt-rate : 
-    s = "::: solving for critical alpha :::"
-    print_text(s, cls=self)
-    
-    model    = self.model
-    q_geo    = model.q_geo
-    Mb       = model.Mb
-    L        = model.L
-    rho      = self.rho
-    q_fric   = self.q_fric
-
-    alpha_crit = project( (q_geo + q_fric) / (Mb*L*rho), annotate=False)
-    model.init_alpha_crit(alpha_crit, cls=self)
-
   def calc_bulk_density(self):
     """
     Calculate the bulk density stored in model.rho_b.
@@ -600,6 +583,7 @@ class Enthalpy(Energy):
     beta          = model.beta
     rhoi          = model.rhoi
     rhow          = model.rhow
+    k_0           = model.k_0
     kw            = model.kw
     cw            = model.cw
     L             = model.L
@@ -637,8 +621,8 @@ class Enthalpy(Energy):
 
     # initialize the boundary conditions, if we have not already :
     if not reset:
-      # pressure melting point, never annotate for initial guess :
-      #model.solve_hydrostatic_pressure(annotate=False, cls=self)
+      # initialize the pressure-melting point to hydrostaic : 
+      model.solve_hydrostatic_pressure(annotate=False, cls=self)
       self.calc_T_melt(annotate=False)
 
       T_s_v   = T_surface.vector().array()
@@ -692,7 +676,7 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
     
     # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(T, T_m), 1.0, 1e-3)
+    k_c   = conditional( lt(T, T_m), 1.0, k_0)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = 9.828 * exp(-0.0057*T)
@@ -703,7 +687,6 @@ class Enthalpy(Energy):
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
     k     =  spy * k_c * k           # convert to J/(a*m*K)
-    #k     =  spy * k                 # convert to J/(a*m*K)
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :
@@ -828,6 +811,7 @@ class Enthalpy(Energy):
     self.q_fric  = q_fric
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
+    self.Mb      = Mb
   
   def default_strain_rate_tensor(self, U):
     """
@@ -887,26 +871,29 @@ class Enthalpy(Energy):
     model   = self.model
     W       = model.W
 
-    # internal water content unknown :
-    W_i    = Function(model.Q)
+    ## internal water content unknown :
+    #W_i    = Function(model.Q)
 
-    # calculate L_inf norm :
-    W_v   = W.vector().array()
-    W_i.vector().set_local(W_v)
-    W_i.vector().apply('insert')
+    ## calculate L_inf norm :
+    #W_v   = W.vector().array()
+    #W_i.vector().set_local(W_v)
+    #W_i.vector().apply('insert')
  
-    # eliminate any water content on the boundaries :
-    for domain in model.ext_boundaries:
-      bc_i = DirichletBC(model.Q, 0.0, model.ff, domain)
-      bc_i.apply(W_i.vector())
+    ## eliminate any water content on the boundaries :
+    #for domain in model.ext_boundaries:
+    #  bc_i = DirichletBC(model.Q, 0.0, model.ff, domain)
+    #  bc_i.apply(W_i.vector())
 
-    # calculate downward vertical integral :
-    W_int = model.vert_integrate(W_i, d='down')
+    ## calculate downward vertical integral :
+    #W_int = model.vert_integrate(W_i, d='down')
+    W_int = model.vert_integrate(W, d='down')
     model.init_W_int(W_int, cls=self)
 
   def calc_T_melt(self, annotate=True):
     """
-    Calculates pressure-melting point in model.T_melt.
+    Calculates temperature melting point model.T_melt and energy melting point
+    model.theta_melt.
+    
     """
     s    = "::: calculating pressure-melting temperature :::"
     print_text(s, cls=self)
@@ -917,12 +904,12 @@ class Enthalpy(Energy):
     T_w   = model.T_w
     p     = model.p
 
-    Tm = project(T_w - gamma * p, annotate=annotate)
-    model.assign_variable(model.T_melt, Tm, cls=self)
-
-    Tm_v    = Tm.vector().array()
-    theta_m = 146.3*Tm_v + 7.253/2.0*Tm_v**2
-    model.assign_variable(model.theta_melt, theta_m, cls=self)
+    p_v   = p.vector().array()
+    Tm    = T_w(0) - gamma(0)*p_v
+    tht_m = 146.3*Tm + 7.253/2.0*Tm**2
+    
+    model.assign_variable(model.T_melt,     Tm,    annotate=annotate, cls=self)
+    model.assign_variable(model.theta_melt, tht_m, annotate=annotate, cls=self)
 
   def solve_divide(self, init=False, annotate=False):
     """
@@ -1125,31 +1112,25 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
     
     model    = self.model
+    dBed_g   = model.dBed_g
     T_melt   = model.T_melt
     T        = model.T
-    L        = model.L
-    q_geo    = model.q_geo
-    N        = model.N
-    dBed_g   = model.dBed_g
-    rho      = self.rho
-    k        = self.k
-    q_fric   = self.q_fric
+    Mb       = self.Mb
 
     # Mb is only valid on basal surface, needs extra matrix care :
     phi  = TestFunction(model.Q)
     du   = TrialFunction(model.Q)
-    dTdn = k * dot(grad(T_melt), N)
     a_n  = du * phi * dBed_g
-    L_n  = (q_geo + q_fric - dTdn) / (L*rho) * phi * dBed_g
+    L_n  = Mb * phi * dBed_g
    
     A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
     B_n  = assemble(L_n, annotate=False)
     A_n.ident_zeros()
    
-    Mb   = Function(model.Q)
-    solve(A_n, Mb.vector(), B_n, 'cg', 'amg', annotate=False)
+    Mb_n  = Function(model.Q)
+    solve(A_n, Mb_n.vector(), B_n, 'cg', 'amg', annotate=False)
     
-    Mb_v     = Mb.vector().array()
+    Mb_v     = Mb_n.vector().array()
     T_melt_v = T_melt.vector().array()
     T_v      = T.vector().array()
     Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt

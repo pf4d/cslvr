@@ -820,6 +820,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.n_f, n, cls=cls)
 
+  def init_k_0(self, k_0, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing non-advective flux coefficient k_0 :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.k_0, k_0, cls=cls)
+
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -1633,6 +1642,8 @@ class Model(object):
     self.Wb_flux       = Function(self.Q, name='Wb_flux')
     self.PE            = Function(self.Q, name='PE')
     self.W_int         = Function(self.Q, name='W_int')
+    self.k_0           = Constant(1.0,    name='k_0')
+    self.k_0.rename('k_0', 'k_0')
     
     # adjoint model :
     self.adj_f         = 0.0              # objective function value at end
@@ -1745,6 +1756,9 @@ class Model(object):
      
       # solve velocity :
       momentum.solve(annotate=False)
+
+      # update pressure-melting point :
+      energy.calc_T_melt(annotate=False)
 
       # solve energy (temperature, water content) :
       energy.optimize_water_flux(**wop_kwargs)

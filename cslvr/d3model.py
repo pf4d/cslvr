@@ -661,9 +661,6 @@ class D3Model(Model):
     print_text(s, cls=cls)
     rhoi   = self.rhoi
     g      = self.g
-    #S      = self.S
-    #z      = self.x[2]
-    #p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
     p      = self.vert_integrate(rhoi*g, d='down')
     pv     = p.vector()
     pv[pv < 0] = 0.0

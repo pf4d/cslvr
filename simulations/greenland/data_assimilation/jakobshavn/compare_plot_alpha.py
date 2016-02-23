@@ -5,8 +5,8 @@ import numpy as np
 import sys
 
 # set the relavent directories :
-base_dir_1 = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/'
-base_dir_2 = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100' + \
+base_dir_1 = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/'
+base_dir_2 = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1' + \
              '_disc_kappa/tmc/10/'
 in_dir_1 = base_dir_1
 in_dir_2 = base_dir_2
@@ -91,7 +91,7 @@ a_d_lvls  = np.array([-4, -0.5, -1e-1, -1e-2, 1e-2, 1e-1, 0.5, 4])
 #cmap = 'magma'
 cmap = 'gist_yarg'
   
-plotIce(drg, a_d, name='delta_alpha', direc=out_dir, 
+plotIce(drg, a_d, name='delta_alpha_0_1', direc=out_dir, 
         title=r'$\alpha_d - \alpha_c$', cmap='RdGy',  scale='lin',
         levels=a_d_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',

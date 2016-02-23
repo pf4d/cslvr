@@ -1055,6 +1055,9 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)
+        x_w = 63550
+        y_w = 89748
+        axins.plot(x_w, y_w, 'co')
   
   # plot triangles :
   if tp == True:

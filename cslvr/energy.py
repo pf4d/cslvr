@@ -638,7 +638,7 @@ class Enthalpy(Energy):
     # initialize the boundary conditions, if we have not already :
     if not reset:
       # pressure melting point, never annotate for initial guess :
-      model.solve_hydrostatic_pressure(annotate=False, cls=self)
+      #model.solve_hydrostatic_pressure(annotate=False, cls=self)
       self.calc_T_melt(annotate=False)
 
       T_s_v   = T_surface.vector().array()
@@ -664,8 +664,6 @@ class Enthalpy(Energy):
     #theta_w = 0.01*L + theta_m
     W_w     = (theta - theta_m)/L
     T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
-    self.T  = conditional( lt(T, T_m), T_w, T_m)
-    self.W  = conditional( lt(T, T_m), 0.0, W_w)
       
     # discontinuous properties :
     #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)

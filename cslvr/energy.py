@@ -621,23 +621,21 @@ class Enthalpy(Energy):
 
     # initialize the boundary conditions, if we have not already :
     if not reset:
-      # initialize the pressure-melting point to hydrostaic : 
-      model.solve_hydrostatic_pressure(annotate=False, cls=self)
       self.calc_T_melt(annotate=False)
 
       T_s_v   = T_surface.vector().array()
       T_m_v   = T_m.vector().array()
       theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
       theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
-     
-      # Surface boundary condition :
-      s = "::: calculating energy boundary conditions :::"
-      print_text(s, cls=self)
+    
+    # Surface boundary condition :
+    s = "::: calculating energy boundary conditions :::"
+    print_text(s, cls=self)
 
-      # initialize the boundary conditions :
-      model.init_theta_surface(theta_s, cls=self)
-      model.init_theta_app(theta_s,     cls=self)
-      model.init_theta_float(theta_f,   cls=self)
+    # initialize the boundary conditions :
+    model.init_theta_surface(theta_s, cls=self)
+    model.init_theta_app(theta_s,     cls=self)
+    model.init_theta_float(theta_f,   cls=self)
       
     # strain-rate :
     epsdot  = self.effective_strain_rate(U) + eps_reg

@@ -323,9 +323,6 @@ class Model(object):
     s = "::: initializing temperature :::"
     print_text(s, cls=cls)
     self.assign_variable(self.T, T, cls=cls)
-    T_v = self.T.vector().array()
-    theta_v = 146.3*T_v + 7.253/2.0*T_v**2
-    self.init_theta(theta_v)
   
   def init_W(self, W, cls=None):
     """
@@ -1553,7 +1550,7 @@ class Model(object):
       print_text(s, 'green')#cls=self.this)
       File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
   
-  def solve_hydrostatic_pressure(self, annotate=True, cls=None):
+  def solve_hydrostatic_pressure(self, annotate=False, cls=None):
     """
     Solve for the hydrostatic pressure 'p'.
     """
@@ -1676,7 +1673,8 @@ class Model(object):
 
   def thermo_solve(self, momentum, energy, wop_kwargs,
                    callback=None, atol=1e2, rtol=1e0, max_iter=50,
-                   itr_tmc_save_vars=None, post_tmc_save_vars=None):
+                   itr_tmc_save_vars=None, post_tmc_save_vars=None,
+                   starting_i=1):
     """ 
     Perform thermo-mechanical coupling between momentum and energy.
     """
@@ -1736,8 +1734,11 @@ class Model(object):
     abs_error = np.inf
     rel_error = np.inf
       
-    # number of iterations
-    counter   = 1
+    # number of iterations, from a starting point (useful for restarts) :
+    if starting_i <= 1:
+      counter = 1
+    else:
+      counter = starting_i
    
     # previous velocity for norm calculation
     U_prev    = self.theta.copy(True)

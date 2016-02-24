@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
+out_dir  = 'dump/jakob_small/rstrt_FS_a_0_1_disc/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -38,6 +38,15 @@ model.init_T(fini)
 model.init_W(fini)
 #model.init_T(model.T_surface)
 model.init_k_0(1e-3)
+model.solve_hydrostatic_pressure()
+
+#frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/08/tmc.h5', 'r')
+#model.init_alpha(frstrt)
+#model.init_U(frstrt)
+#model.init_T(frstrt)
+#model.init_W(frstrt)
+#model.init_theta(frstrt)
+#model.init_p(frstrt)
 
 # initialize the physics :
 mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
@@ -76,7 +85,7 @@ nrg.form_reg_ftn(model.alpha, integral=model.GAMMA_B_GND,
                  kind='TV', alpha=1e8)
 
 wop_kwargs = {'max_iter'            : 500, 
-              'bounds'              : (0.0, 100.0),
+              'bounds'              : (0.0, 1.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     
@@ -88,7 +97,8 @@ tmc_kwargs = {'momentum'            : mom,
               'rtol'                : 1e0,
               'max_iter'            : 10,
               'itr_tmc_save_vars'   : tmc_save_vars,
-              'post_tmc_save_vars'  : tmc_save_vars}
+              'post_tmc_save_vars'  : tmc_save_vars,
+              'starting_i'          : 9}
                                     
 # or restart and thermo_solve :
 model.thermo_solve(**tmc_kwargs)

@@ -98,7 +98,7 @@ tmc_kwargs = {'momentum'            : mom,
               'max_iter'            : 10,
               'itr_tmc_save_vars'   : tmc_save_vars,
               'post_tmc_save_vars'  : tmc_save_vars,
-              'starting_i'          : 9}
+              'starting_i'          : 1}
                                     
 # or restart and thermo_solve :
 model.thermo_solve(**tmc_kwargs)

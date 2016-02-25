@@ -852,7 +852,7 @@ class Enthalpy(Energy):
     h = model.h
 
     Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-    PE     = Unorm*h/(2*kappa)
+    PE     = (Unorm*h + DOLFIN_EPS)/(2*kappa)
     if avg:
       PE = model.calc_vert_average(PE)
     else:
@@ -869,22 +869,21 @@ class Enthalpy(Energy):
     model   = self.model
     W       = model.W
 
-    ## internal water content unknown :
-    #W_i    = Function(model.Q)
+    # internal water content unknown :
+    W_i    = Function(model.Q)
 
-    ## calculate L_inf norm :
-    #W_v   = W.vector().array()
-    #W_i.vector().set_local(W_v)
-    #W_i.vector().apply('insert')
+    # calculate L_inf norm :
+    W_v   = W.vector().array()
+    W_i.vector().set_local(W_v)
+    W_i.vector().apply('insert')
  
-    ## eliminate any water content on the boundaries :
-    #for domain in model.ext_boundaries:
-    #  bc_i = DirichletBC(model.Q, 0.0, model.ff, domain)
-    #  bc_i.apply(W_i.vector())
+    # eliminate any water content on the boundaries :
+    for domain in model.ext_boundaries:
+      bc_i = DirichletBC(model.Q, 0.0, model.ff, domain)
+      bc_i.apply(W_i.vector())
 
-    ## calculate downward vertical integral :
-    #W_int = model.vert_integrate(W_i, d='down')
-    W_int = model.vert_integrate(W, d='down')
+    # calculate downward vertical integral :
+    W_int = model.vert_integrate(W_i, d='down')
     model.init_W_int(W_int, cls=self)
 
   def calc_T_melt(self, annotate=True):

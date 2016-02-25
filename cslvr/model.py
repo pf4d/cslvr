@@ -1,6 +1,7 @@
 from fenics               import *
 from dolfin_adjoint       import *
 from cslvr.io             import print_text, get_text, print_min_max
+from copy                 import copy
 import numpy              as np
 import matplotlib.pyplot  as plt
 import sys
@@ -816,6 +817,34 @@ class Model(object):
     s = "::: initializing outward-normal-vector function n_f :::"
     print_text(s, cls=cls)
     self.assign_variable(self.n_f, n, cls=cls)
+
+  def init_alpha_bounds(self, alpha_min, alpha_max, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing bounds for water-optimizing alpha:::"
+    print_text(s, cls=cls)
+    self.init_alpha_min(alpha_min, cls)
+    self.init_alpha_max(alpha_max, cls)
+
+  def init_alpha_min(self, alpha_min, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing lower bound for water-optimizing alpha:::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.alpha_min, alpha_min, cls=cls)
+
+  def init_alpha_max(self, alpha_max, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing upper bound for water-optimizing alpha :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.alpha_max, alpha_max, cls=cls)
 
   def init_k_0(self, k_0, cls=None):
     """
@@ -1639,6 +1668,8 @@ class Model(object):
     self.Wb_flux       = Function(self.Q, name='Wb_flux')
     self.PE            = Function(self.Q, name='PE')
     self.W_int         = Function(self.Q, name='W_int')
+    self.alpha_min     = Function(self.Q, name='alpha_min')
+    self.alpha_max     = Function(self.Q, name='alpha_max')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
     
@@ -1730,6 +1761,10 @@ class Model(object):
     ## convert to pseudo-timestepping for smooth convergence : 
     #energy.make_transient(time_step = 25.0)
 
+    # get the bounds, the max will be updated based on areas of refreeze :
+    bounds = wop_kwargs['bounds']
+    self.init_alpha_min(bounds[0], cls=self.this)
+
     # L_2 erro norm between iterations :
     abs_error = np.inf
     rel_error = np.inf
@@ -1758,8 +1793,19 @@ class Model(object):
       # solve velocity :
       momentum.solve(annotate=False)
 
-      # update pressure-melting point :
+      # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
+      energy.solve_basal_melt_rate()
+
+      # update bounds to constrain areas of refreeze :
+      Mb_v     = self.Mb.vector().array()
+      am       = self.alpha_max.vector().array()
+      rfrz     = Mb_v <= 0.0
+      melt     = Mb_v > 0.0
+      am[rfrz] = 1.0
+      am[melt] = bounds[1]
+      self.init_alpha_max(am, cls=self.this)
+      wop_kwargs['bounds'] = (self.alpha_min, self.alpha_max)
 
       # solve energy (temperature, water content) :
       energy.optimize_water_flux(**wop_kwargs)

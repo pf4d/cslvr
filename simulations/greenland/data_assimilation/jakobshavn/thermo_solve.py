@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/rstrt_FS_a_0_1_disc/'
+out_dir  = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -55,7 +55,6 @@ nrg = Enthalpy(model, transient=False, use_lat_bc=True,
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
-  nrg.solve_basal_melt_rate()
   nrg.solve_basal_water_flux()
   nrg.calc_PE()#avg=True)
   nrg.calc_internal_water()
@@ -85,7 +84,7 @@ nrg.form_reg_ftn(model.alpha, integral=model.GAMMA_B_GND,
                  kind='TV', alpha=1e8)
 
 wop_kwargs = {'max_iter'            : 500, 
-              'bounds'              : (0.0, 1.0),
+              'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     

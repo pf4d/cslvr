@@ -10,7 +10,7 @@ from matplotlib              import colors, ticker
 from matplotlib.ticker       import LogFormatter, ScalarFormatter
 from pyproj                  import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable, inset_locator
-from cslvr.io                import print_text
+from cslvr.io                import print_text, DataInput
 
 def raiseNotDefined():
   fileName = inspect.stack()[1][1]
@@ -800,17 +800,12 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     A sigle <direcc><name>.pdf in the source directory.
   
   """
-  #=============================================================================
-  # data gathering :
-  
   # get the original projection coordinates and data :
   if isinstance(u, str):
     s = "::: plotting %s's \"%s\" field data directly :::" % (di.name, u)
     print_text(s, '242')
     vx,vy   = np.meshgrid(di.x, di.y)
     v       = di.data[u]
-    lon,lat = di.proj(vx, vy, inverse=True)
-    cont    = di.cont
 
   elif isinstance(u, Function) \
     or isinstance(u, dolfin.functions.function.Function):
@@ -822,27 +817,28 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     v     = u.compute_vertex_values(mesh)
     vx    = coord[:,0]
     vy    = coord[:,1]
-    if isinstance(di, dict) and 'pyproj_Proj' in di.keys() \
-       and 'continent' in di.keys():
-      lon,lat = di['pyproj_Proj'](vx, vy, inverse=True)
-      cont    = di['continent']
-    else:
-      s = ">>> plotIce REQUIRES A 'DataFactory' DICTIONARY FOR " + \
-          "PROJECTION STORED AS KEY 'pyproj_Proj' AND THE CONTINENT TYPE " + \
-          "STORED AS KEY 'continent' <<<"
-      print_text(s, 'red', 1)
-      sys.exit(1)
-  
-  # the width/height numbers were calculated from vertices from a mesh :
-  #w = 1.05 * (vx.max() - vx.min())
-  #h = 1.05 * (vy.max() - vy.min())
 
+  # get the projection info :  
+  if isinstance(di, dict) and 'pyproj_Proj' in di.keys() \
+     and 'continent' in di.keys():
+    lon,lat = di['pyproj_Proj'](vx, vy, inverse=True)
+    cont    = di['continent']
+  elif isinstance(di, DataInput):
+    lon,lat = di.proj(vx, vy, inverse=True)
+    cont    = di.cont
+  else:
+    s = ">>> plotIce REQUIRES A 'DataFactory' DICTIONARY FOR " + \
+        "PROJECTION STORED AS KEY 'pyproj_Proj' AND THE CONTINENT TYPE " + \
+        "STORED AS KEY 'continent' <<<"
+    print_text(s, 'red', 1)
+    sys.exit(1)
+  
   # Antarctica :
   if cont == 'antarctica':
     w   = 5513335.22665
     h   = 4602848.6605
     fig = plt.figure(figsize=(14,10))
-    ax  = fig.add_axes()
+    ax  = fig.add_subplot(111)
     
     # new projection :
     m = Basemap(ax=ax, width=w, height=h, resolution='h', 
@@ -895,7 +891,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       w   = 1532453.49654
       h   = 2644074.78236
       fig = plt.figure(figsize=(8,11.5))
-      ax    = fig.add_subplot(111)
+      ax  = fig.add_subplot(111)
       
       # new projection :
       m = Basemap(ax=ax, width=w, height=h, resolution='h', 

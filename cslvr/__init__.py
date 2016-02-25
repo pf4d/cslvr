@@ -24,20 +24,26 @@ for loader, name, is_pkg in pkgutil.walk_packages(__path__):
     globals()[name] = value
     __all__.append(name)
 
-#from age                import Age
-#from balancevelocity    import BalanceVelocity 
-#from d2model            import D2Model
-#from d3model            import D3Model
-#from energy             import Energy, Enthalpy, EnergyHybrid
-#from helper             import plotIce, plot_variable 
-#from io                 import DataInput, DataOutput, print_min_max, \
-#                               print_text, get_text
-#from mass               import FreeSurface
-#from meshing            import MeshGenerator, MeshRefiner, GetBasin 
-#from momentumbp         import MomentumBP
-#from momentumhybrid     import MomentumHybrid
-#from momentumstokes     import MomentumStokes, MomentumDukowiczStokesReduced, \
-#                               MomentumDukowiczStokes
-#from physics            import Physics
-#from stressbalance      import SSA_Balance, BP_Balance
-#from surfacemassbalance import SurfaceMassBalance
+from age                 import *
+from balancevelocity     import *
+from d1model             import *
+from d2model             import *
+from d3model             import *
+from datafactory         import *
+from energy              import *
+from helper              import *
+from hybridmodel         import *
+from io                  import *
+from mass                import *
+from meshing             import *
+from model               import *
+from momentumbp          import *
+from momentumfirn        import *
+from momentumhybrid      import *
+from momentumplanestrain import *
+from momentumstokes      import *
+from momentum            import *
+from monolithic          import *
+from physics             import *
+from stressbalance       import *
+from surfacemassbalance  import *

@@ -7,10 +7,12 @@ import sys
 # set the relavent directories :
 #base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/'
 #base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/'
-base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100' + \
-           '_disc_kappa/tmc/10/'
+#base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100' + \
+#           '_disc_kappa/tmc/10/'
 #base_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1' + \
 #           '_disc_kappa/tmc/10/'
+#base_dir  = 'dump/jakob_small/rstrt_FS_Tp_a_0_100_disc_new/tmc/01/'
+base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -116,7 +118,7 @@ Pmin  = bedmodel.PE.vector().min()
 Tmax  = bedmodel.T.vector().max()
 Tmin  = bedmodel.T.vector().min()
 
-a_lvls  = np.array([0.0, 1e-3, 1e-1, 1e0, 2, 3, 10, amax])
+a_lvls  = np.array([0.0, 1e-3, 1e-1, 1e0, 2, 3, amax])
 #a_lvls  = np.array([0.0, 1e-3, 1e-1, 3e-1, 9.9e-1, 1.0])
 Mb_lvls = np.array([-Mbmax, -0.5, -1e-1, -1e-2, -1e-5,
                     1e-5, 1e-2, 1e-1, 0.5, Mbmax])
@@ -183,6 +185,9 @@ for z_w in z_a:
   z_n.append(z_i)
 z_n = array(z_n)
 
+if not os.path.exists(base_dir + 'profile_data'):
+  os.makedirs(base_dir + 'profile_data')
+
 np.savetxt(base_dir + 'profile_data/T.txt', T_z)
 np.savetxt(base_dir + 'profile_data/W.txt', W_z)
 np.savetxt(base_dir + 'profile_data/z.txt', z_n)
@@ -225,17 +230,17 @@ plt.close(fig)
 #cmap = 'magma'
 cmap = 'gist_yarg'
   
-#plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
-#        title='$T_B$', cmap=cmap,  scale='lin',
-#        levels=T_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
-#        title=r'$W_B$', cmap=cmap,  scale='lin',
-#        levels=W_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
+plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
+        title='$T_B$', cmap=cmap,  scale='lin',
+        levels=T_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
+
+plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
+        title=r'$W_B$', cmap=cmap,  scale='lin',
+        levels=W_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
 plotIce(drg, bedmodel.Wb_flux, name='Wb_flux', direc=out_dir, 
         title=r'$W_b$', cmap='RdGy',  scale='lin',
@@ -249,143 +254,41 @@ plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-#plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
-#        title=r'$\alpha$', cmap=cmap,  scale='lin',
-#        levels=a_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
-#        title=r'$P_e$', cmap=cmap,  scale='lin',
-#        levels=Pe_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
-#        title=r'$W_i$', cmap=cmap,  scale='lin',
-#        levels=Wi_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
-#        title=r'$\Vert \mathbf{u}_S \Vert$', cmap=cmap,  scale='lin',
-#        levels=U_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
-#        title=r'$\beta$', cmap=cmap,  scale='lin',
-#        levels=b_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
-#        title=r'$\theta_B$', cmap=cmap,  scale='lin',
-#        tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
+plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
+        title=r'$\alpha$', cmap=cmap,  scale='lin',
+        levels=a_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-sys.exit(0)
+plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
+        title=r'$P_e$', cmap=cmap,  scale='lin',
+        levels=Pe_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-#===============================================================================
-# plot convergence :
-abs_err = loadtxt(in_dir + 'tmc/convergence_history/abs_err.txt')
-tht_nrm = loadtxt(in_dir + 'tmc/convergence_history/theta_norm.txt')
+plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
+        title=r'$W_i$', cmap=cmap,  scale='lin',
+        levels=Wi_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-Ds = []
-Js = []
-Rs = []
-Is = []
-ns = []
+plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
+        title=r'$\Vert \mathbf{u}_S \Vert$', cmap=cmap,  scale='lin',
+        levels=U_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-for d in next(os.walk(in_dir + 'tmc/'))[1]:
-  try:
-    i = int(d)
-    dn = in_dir + 'tmc/' + d + '/objective_ftnls_history/'
-    Is.append(i)
-    Ds.append(loadtxt(dn + 'Ds.txt'))
-    Js.append(loadtxt(dn + 'Js.txt'))
-    Rs.append(loadtxt(dn + 'Rs.txt'))
-    ns.append(len(Js[-1]))
-  except ValueError:
-    pass
+plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
+        title=r'$\beta$', cmap=cmap,  scale='lin',
+        levels=b_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-Ds = array(Ds)
-Js = array(Js)
-Rs = array(Rs)
-Is = array(Is)
-ns = array(ns)
+plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
+        title=r'$\theta_B$', cmap=cmap,  scale='lin',
+        tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-idx = argsort(Is)
-Ds  = Ds[idx]
-Js  = Js[idx]
-Rs  = Rs[idx]
-ns  = ns[idx]
-
-xn  = cumsum(ns - 1)
-
-Rmax = Rs.max()
-Jmax = Js.max()
-amax = abs_err.max()
-tmax = tht_nrm.max()
-
-fig = plt.figure(figsize=(8,5))
-ax1 = fig.add_subplot(211)
-ax2 = ax1.twinx()
-ax3 = fig.add_subplot(212)
-ax4 = ax3.twinx()
-
-k = 0
-
-ax3.plot(xn, abs_err - amax, 'ko-', lw=2.0)
-ax4.plot(xn, tht_nrm - tmax, 'ro-', lw=2.0)
-
-for i in range(len(Is)):
-  xi = arange(k, k + ns[i])
-  ax1.plot(xi, Js[i] - Jmax, 'k-', lw=2.0)
-  ax2.plot(xi, Rs[i] - Rmax, 'r-', lw=2.0)
-
-  k += ns[i] - 1
-
-ax1.grid()
-ax2.grid()
-ax3.grid()
-ax4.grid()
-
-ax3.set_xlim([0, xn.max()])
-ax4.set_xlim([0, xn.max()])
-
-ax1.set_xlabel('iteration')
-ax3.set_xlabel('iteration')
-ax1.set_ylabel(r'$\mathscr{J}$')
-ax2.set_ylabel(r'$\mathscr{R}$')
-ax3.set_ylabel(r'$\Vert \theta - \theta_n \Vert$')
-ax4.set_ylabel(r'$\Vert \theta \Vert$')
-
-ax1.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useOffset=False)
-ax2.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useOffset=False)
-ax3.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useOffset=False)
-ax4.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useOffset=False)
-ax2.tick_params(axis='y', colors='r')
-ax4.tick_params(axis='y', colors='r')
-
-yloc1 = plt.MaxNLocator(4)
-yloc2 = plt.MaxNLocator(4)
-yloc3 = plt.MaxNLocator(4)
-yloc4 = plt.MaxNLocator(4)
-ax1.yaxis.set_major_locator(yloc1)
-ax2.yaxis.set_major_locator(yloc2)
-ax3.yaxis.set_major_locator(yloc3)
-ax4.yaxis.set_major_locator(yloc4)
-
-#ax2.set_yscale('log')
-ax2.yaxis.get_offset_text().set_color('r')
-ax2.yaxis.label.set_color('r')
-ax4.yaxis.get_offset_text().set_color('r')
-ax4.yaxis.label.set_color('r')
-
-plt.tight_layout()
-plt.savefig(out_dir + 'convergence_plot.pdf')
-plt.close(fig)
 
 

@@ -5,10 +5,7 @@ from dolfin_adjoint   import *
 import sys
 
 # set the relavent directories :
-#in_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_1/'
-#in_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100/'
-in_dir = 'dump/jakob_small/rstrt_alpha_1e8_regularized_FS_Tp_a_0_100' + \
-         '_disc_kappa/tmc/10/'
+in_dir   = 'dump/jakob_small/rstrt_FS_a_0_100_disc_amax/'
 var_dir  = 'dump/vars_jakobshavn_small/'
 out_dir  = in_dir
 
@@ -34,6 +31,11 @@ model.init_U(fini)
 model.init_p(fini)
 model.init_beta(fini)
 model.init_theta(fini)
+model.init_k_0(1.0)
+
+p_v = model.p.vector().array()
+p_v[p_v < 0.0] = 0.0
+model.init_p(p_v)
 
 # create enthalpy instance :
 nrg = Enthalpy(model, transient=False, use_lat_bc=True)
@@ -42,20 +44,12 @@ nrg.solve_basal_melt_rate()
 nrg.solve_basal_water_flux()
 
 # after every completed adjoining, save the state of these functions :
-tmc_save_vars = [model.T,
-                 model.W,
-                 model.Wb_flux,
+tmc_save_vars = [model.Wb_flux,
                  model.Mb,
-                 model.alpha,
-                 model.PE,
-                 model.W_int,
-                 model.U3,
-                 model.p,
-                 model.beta,
-                 model.theta]
+                 model.PE]
 
 # save state to unique hdf5 file :
-out_file = out_dir + 'tmc_new.h5'
+out_file = out_dir + 'Mb.h5'
 foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
 for var in tmc_save_vars:
   model.save_hdf5(var, f=foutput)

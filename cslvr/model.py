@@ -1800,8 +1800,8 @@ class Model(object):
       # update bounds to constrain areas of refreeze :
       Mb_v     = self.Mb.vector().array()
       am       = self.alpha_max.vector().array()
-      rfrz     = Mb_v <= 0.0
-      melt     = Mb_v > 0.0
+      rfrz     = Mb_v <  0.0
+      melt     = Mb_v >= 0.0
       am[rfrz] = 1.0
       am[melt] = bounds[1]
       self.init_alpha_max(am, cls=self.this)

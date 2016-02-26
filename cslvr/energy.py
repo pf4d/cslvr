@@ -673,26 +673,26 @@ class Enthalpy(Energy):
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
     
-    # coefficient for diffusion of ice-water mixture -- no water diffusion :
-    k_c   = conditional( lt(T, T_m), 1.0, k_0)
+    # coefficient for non-advective water flux :
+    k_c   = conditional( le(W, 0.0), 1.0, k_0)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
-    ki    = 9.828 * exp(-0.0057*T)
+    ki    = spy * 9.828 * exp(-0.0057*T)  # converted to J/(a*m*K)
     ci    = 146.3 + 7.253*T
     
     # bulk properties :
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    k     =  spy * k_c * k           # convert to J/(a*m*K)
+    k     =  k_c * k                 # discontinuous with water
     kappa =  k / (rho*c)             # bulk thermal diffusivity
 
     # frictional heating :
     q_fric = beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
-    Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    mdot = (q_geo + q_fric - k * dot(grad(T_m), N))
+    Mb   = (q_geo + q_fric - ki * dot(grad(T_m), N)) / (rho * L)
+    mdot = (q_geo + q_fric - ki * dot(grad(T_m), N))
     g_b  = q_geo + q_fric - alpha * mdot
 
     # configure the module to run in steady state :
@@ -716,8 +716,9 @@ class Enthalpy(Energy):
       #
       ## galerkin formulation :
       #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
-      #         + rho * kappa * dot(grad(psi), grad(dtheta)) * dx \
-      #         - (q_geo + q_fric) * psi * dBed_g \
+      #         - dot(grad(k/c), grad(dtheta)) * psi * dx \
+      #         + k/c * dot(grad(psi), grad(dtheta)) * dx \
+      #         - g_b * psi * dBed_g \
       #         - Q_s_gnd * psi * dx_g \
       #         - Q_s_shf * psi * dx_f \
       #         + delta
@@ -907,6 +908,99 @@ class Enthalpy(Energy):
     
     model.assign_variable(model.T_melt,     Tm,    annotate=annotate, cls=self)
     model.assign_variable(model.theta_melt, tht_m, annotate=annotate, cls=self)
+  
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
+
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    params  = {'solver' : {'linear_solver'       : 'gmres',
+                           'preconditioner'      : 'amg'},
+               'use_surface_climate' : False}
+    return params
+
+  def solve_basal_melt_rate(self):
+    """
+    Solve for the basal melt rate stored in model.Mb.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving basal-melt-rate :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    dBed_g   = model.dBed_g
+    T_melt   = model.T_melt
+    T        = model.T
+    Mb       = self.Mb
+
+    # Mb is only valid on basal surface, needs extra matrix care :
+    phi  = TestFunction(model.Q)
+    du   = TrialFunction(model.Q)
+    a_n  = du * phi * dBed_g
+    L_n  = Mb * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
+    A_n.ident_zeros()
+   
+    Mb_n  = Function(model.Q)
+    solve(A_n, Mb_n.vector(), B_n, 'cg', 'amg', annotate=False)
+    
+    Mb_v     = Mb_n.vector().array()
+    T_melt_v = T_melt.vector().array()
+    T_v      = T.vector().array()
+    Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
+    #Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
+    model.assign_variable(model.Mb, Mb_v, cls=self)
+  
+  def solve(self, annotate=False):
+    """ 
+    Solve the energy equations, saving enthalpy to model.theta, temperature 
+    to model.T, and water content to model.W.
+    """
+    model = self.model
+    
+    # update the surface climate if desired :
+    if self.solve_params['use_surface_climate']:
+      self.solve_surface_climate()
+    
+    # solve the energy equation :
+    s    = "::: solving energy :::"
+    print_text(s, cls=self)
+
+    #aw        = assemble(self.theta_a, annotate=annotate)
+    #Lw        = assemble(self.theta_L, annotate=annotate)
+    #for bc in self.theta_bc:
+    #  bc.apply(aw, Lw, annotate=annotate)
+    #theta_solver = KrylovSolver(self.solve_params['solver'])
+    #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
+    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
+          solver_parameters = self.solve_params['solver'], annotate=annotate)
+
+    #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+    #                              'preconditioner'           : 'amg',
+    #                              'relative_tolerance'       : 1e-9,
+    #                              'relaxation_parameter'     : 1.0,
+    #                              'maximum_iterations'       : 10,
+    #                              'error_on_nonconvergence'  : False}}
+    #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
+    #      annotate=annotate, solver_parameters=nparams)
+    
+    # update the model variable :
+    model.assign_variable(model.theta, self.theta, annotate=annotate, cls=self)
+
+    # update the previous energy if solving the transient equation :
+    if self.transient:
+      model.assign_variable(self.theta0, self.theta, cls=self,
+                            annotate=annotate)
+
+    # update the temperature and water content for other physics :
+    self.partition_energy(annotate=annotate)
 
   def solve_divide(self, init=False, annotate=False):
     """
@@ -1084,99 +1178,6 @@ class Enthalpy(Energy):
       W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
       model.assign_variable(model.W0, W_v, cls=self, save=False)
       model.assign_variable(model.W,  W_v, cls=self)
-
-  def get_solve_params(self):
-    """
-    Returns the solve parameters.
-    """
-    return self.solve_params
-
-  def default_solve_params(self):
-    """ 
-    Returns a set of default solver parameters that yield good performance
-    """
-    params  = {'solver' : {'linear_solver'       : 'gmres',
-                           'preconditioner'      : 'amg'},
-               'use_surface_climate' : False}
-    return params
-
-  def solve_basal_melt_rate(self):
-    """
-    Solve for the basal melt rate stored in model.Mb.
-    """ 
-    # calculate melt-rate : 
-    s = "::: solving basal-melt-rate :::"
-    print_text(s, cls=self)
-    
-    model    = self.model
-    dBed_g   = model.dBed_g
-    T_melt   = model.T_melt
-    T        = model.T
-    Mb       = self.Mb
-
-    # Mb is only valid on basal surface, needs extra matrix care :
-    phi  = TestFunction(model.Q)
-    du   = TrialFunction(model.Q)
-    a_n  = du * phi * dBed_g
-    L_n  = Mb * phi * dBed_g
-   
-    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    B_n  = assemble(L_n, annotate=False)
-    A_n.ident_zeros()
-   
-    Mb_n  = Function(model.Q)
-    solve(A_n, Mb_n.vector(), B_n, 'cg', 'amg', annotate=False)
-    
-    Mb_v     = Mb_n.vector().array()
-    T_melt_v = T_melt.vector().array()
-    T_v      = T.vector().array()
-    Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
-    #Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
-    model.assign_variable(model.Mb, Mb_v, cls=self)
-  
-  def solve(self, annotate=False):
-    """ 
-    Solve the energy equations, saving enthalpy to model.theta, temperature 
-    to model.T, and water content to model.W.
-    """
-    model = self.model
-    
-    # update the surface climate if desired :
-    if self.solve_params['use_surface_climate']:
-      self.solve_surface_climate()
-    
-    # solve the energy equation :
-    s    = "::: solving energy :::"
-    print_text(s, cls=self)
-
-    #aw        = assemble(self.theta_a, annotate=annotate)
-    #Lw        = assemble(self.theta_L, annotate=annotate)
-    #for bc in self.theta_bc:
-    #  bc.apply(aw, Lw, annotate=annotate)
-    #theta_solver = KrylovSolver(self.solve_params['solver'])
-    #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
-    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
-          solver_parameters = self.solve_params['solver'], annotate=annotate)
-
-    #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
-    #                              'preconditioner'           : 'amg',
-    #                              'relative_tolerance'       : 1e-9,
-    #                              'relaxation_parameter'     : 1.0,
-    #                              'maximum_iterations'       : 10,
-    #                              'error_on_nonconvergence'  : False}}
-    #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
-    #      annotate=annotate, solver_parameters=nparams)
-    
-    # update the model variable :
-    model.assign_variable(model.theta, self.theta, annotate=annotate, cls=self)
-
-    # update the previous energy if solving the transient equation :
-    if self.transient:
-      model.assign_variable(self.theta0, self.theta, cls=self,
-                            annotate=annotate)
-
-    # update the temperature and water content for other physics :
-    self.partition_energy(annotate=annotate)
 
 
 class EnergyHybrid(Energy):

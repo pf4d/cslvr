@@ -13,7 +13,8 @@ import sys
 #           '_disc_kappa/tmc/10/'
 #base_dir  = 'dump/jakob_small/rstrt_FS_Tp_a_0_100_disc_new/tmc/01/'
 #base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
-base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc_amax/'
+base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_cont/'
+#base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc_amax/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'

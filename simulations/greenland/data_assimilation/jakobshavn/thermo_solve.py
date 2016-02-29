@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
+out_dir  = 'dump/jakob_small/rstrt_FS_a_0_1_cont/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -36,11 +36,10 @@ model.init_E(1.0)
 model.init_beta(fini)
 model.init_T(fini)
 model.init_W(fini)
-#model.init_T(model.T_surface)
-model.init_k_0(1e-3)
+model.init_k_0(1.0)
 model.solve_hydrostatic_pressure()
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/08/tmc.h5', 'r')
+#frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/07/tmc.h5', 'r')
 #model.init_alpha(frstrt)
 #model.init_U(frstrt)
 #model.init_T(frstrt)
@@ -84,7 +83,7 @@ nrg.form_reg_ftn(model.alpha, integral=model.GAMMA_B_GND,
                  kind='TV', alpha=1e8)
 
 wop_kwargs = {'max_iter'            : 500, 
-              'bounds'              : (0.0, 100.0),
+              'bounds'              : (0.0, 1.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     

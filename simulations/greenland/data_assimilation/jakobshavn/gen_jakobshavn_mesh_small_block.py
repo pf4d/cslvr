@@ -1,4 +1,4 @@
-from varglas           import *
+from cslvr             import *
 from pylab             import *
 from scipy.interpolate import RectBivariateSpline
 

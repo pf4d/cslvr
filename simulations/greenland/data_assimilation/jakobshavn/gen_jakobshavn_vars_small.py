@@ -2,7 +2,7 @@ from cslvr   import *
 from fenics  import *
 from pylab   import *
 
-out_dir  = 'dump/vars_jakobshavn_small_refined/'
+out_dir  = 'dump/vars_jakobshavn_small/'
 
 # collect the raw data :
 searise  = DataFactory.get_searise()
@@ -10,7 +10,7 @@ bamber   = DataFactory.get_bamber(1.0)
 rignot   = DataFactory.get_rignot()
 
 # define the mesh :
-mesh = Mesh('dump/meshes/jakobshavn_3D_small_block_refined.xml.gz')
+mesh = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')
 
 # create data objects to use with varglas :
 dsr     = DataInput(searise,  mesh=mesh)
@@ -49,8 +49,10 @@ lst = [model.S,
        model.q_geo,
        model.T_surface,
        model.adot,
-       model.U_ob,
-       model.U_mask]
+       model.u_ob,
+       model.v_ob,
+       model.U_mask,
+       model.lat_mask]
 
 f = HDF5File(mpi_comm_world(), out_dir + 'state.h5', 'w')
 

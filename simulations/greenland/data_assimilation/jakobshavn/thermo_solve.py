@@ -34,6 +34,7 @@ model.init_U_mask(fdata)
 model.init_time_step(1e-6)
 model.init_E(1.0)
 model.init_beta(fini)
+model.init_theta(fini)
 model.init_T(fini)
 model.init_W(fini)
 model.init_k_0(1.0)
@@ -65,7 +66,7 @@ def adj_post_cb_ftn():
 # after every completed adjoining, save the state of these functions :
 tmc_save_vars = [model.T,
                  model.W,
-                 model.Wb_flux,
+                 model.Fb,
                  model.Mb,
                  model.alpha,
                  model.PE,

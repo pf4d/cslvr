@@ -497,23 +497,6 @@ class Energy(Physics):
       plt.savefig(d + 'D.png', dpi=200)
       plt.close(fig)
 
-  def solve_basal_water_flux(self):
-    """
-    Solve for the basal-water flux stored in model.Wb_flux.
-    """ 
-    # calculate melt-rate : 
-    s = "::: solving basal-water-flux :::"
-    print_text(s, cls=self)
-    
-    model    = self.model
-    alpha    = model.alpha
-    Mb       = model.Mb
-
-    Mb_v     = Mb.vector().array()
-    alpha_v  = alpha.vector().array()
-    wb_v     = alpha_v * Mb_v
-    model.init_Wb_flux(wb_v, cls=self)
-
   def calc_bulk_density(self):
     """
     Calculate the bulk density stored in model.rho_b.
@@ -698,8 +681,9 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - ki * dot(grad(T_m), N)) / (rho * L)
-    mdot = (q_geo + q_fric - ki * dot(grad(T_m), N))
-    g_b  = q_geo + q_fric - alpha * mdot
+    #mdot = (q_geo + q_fric - ki * dot(grad(T_m), N))
+    g    = q_geo + q_fric
+    g_b  = q_geo + q_fric - alpha*g
 
     # configure the module to run in steady state :
     if not transient:
@@ -808,12 +792,12 @@ class Enthalpy(Energy):
 
     self.theta   = theta
     self.theta0  = theta0
-    self.mdot    = mdot
     self.c       = c
     self.k       = k
     self.rho     = rho
     self.kappa   = kappa
     self.q_fric  = q_fric
+    self.g       = g
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
     self.Mb      = Mb
@@ -963,6 +947,41 @@ class Enthalpy(Energy):
     Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
     #Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
     model.assign_variable(model.Mb, Mb_v, cls=self)
+
+  def solve_basal_water_flux(self):
+    """
+    Solve for the basal-water flux stored in model.Wb_flux.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving basal-water-flux :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    alpha    = model.alpha
+    dBed_g   = model.dBed_g
+    g        = self.g
+
+    # Mb is only valid on basal surface, needs extra matrix care :
+    phi  = TestFunction(model.Q)
+    du   = TrialFunction(model.Q)
+    a_n  = du * phi * dBed_g
+    L_n  = alpha*g * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
+    A_n.ident_zeros()
+   
+    Fb_n  = Function(model.Q)
+    solve(A_n, Fb_n.vector(), B_n, 'cg', 'amg', annotate=False)
+    
+    model.assign_variable(model.Fb, Fb_n, cls=self)
+
+    #Mb       = model.Mb
+
+    #Mb_v     = Mb.vector().array()
+    #alpha_v  = alpha.vector().array()
+    #wb_v     = alpha_v * Mb_v
+    #model.init_Wb_flux(wb_v, cls=self)
   
   def solve(self, annotate=False):
     """ 
@@ -1107,8 +1126,8 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    mdot = Mb * rho * L
-    g_b  = q_geo + q_fric - alpha * mdot
+    g    = q_geo + q_fric
+    g_b  = q_geo + q_fric - alpha*g
       
     # SUPG :
     Unorm  = sqrt(dot(U_t, U_t) + 1e-15)

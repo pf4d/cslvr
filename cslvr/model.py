@@ -274,6 +274,28 @@ class Model(object):
     s = "::: initializing internal energy :::"
     print_text(s, cls=cls)
     self.assign_variable(self.theta, theta, cls=cls)
+    
+    theta_v  = self.theta.vector().array()
+    T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
+    T_v      = T_n_v.copy()
+    Tp_v     = T_n_v.copy()
+
+    # create pressure-adjusted temperature for rate-factor :
+    Tp_v[Tp_v > self.T_w(0)] = self.T_w(0)
+    self.init_Tp(Tp_v, cls=cls)
+    
+    # correct for the pressure-melting point :
+    T_melt_v     = self.T_melt.vector().array()
+    theta_melt_v = self.theta_melt.vector().array()
+    warm         = theta_v >= theta_melt_v
+    cold         = theta_v <  theta_melt_v
+    T_v[warm]    = T_melt_v[warm]
+    self.init_T(T_v, cls=cls)
+    
+    # water content solved diagnostically :
+    W_v             = (theta_v - theta_melt_v) / self.L(0)
+    W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
+    self.init_W(W_v, cls=cls)
   
   def init_theta_app(self, theta_app, cls=None):
     """
@@ -777,14 +799,14 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.alpha_crit, alpha_crit, cls=cls)
 
-  def init_Wb_flux(self, Wb_flux, cls=None):
+  def init_Fb(self, Fb, cls=None):
     """
     """
     if cls is None:
       cls = self.this
     s = "::: initializing basal-water flux :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.Wb_flux, Wb_flux, cls=cls)
+    self.assign_variable(self.Fb, Fb, cls=cls)
 
   def init_W_int(self, W_int, cls=None):
     """
@@ -1671,7 +1693,7 @@ class Model(object):
     self.T_surface     = Function(self.Q, name='T_surface')
     self.alpha         = Function(self.Q, name='alpha')
     self.alpha_crit    = Function(self.Q, name='alpha_crit')
-    self.Wb_flux       = Function(self.Q, name='Wb_flux')
+    self.Fb            = Function(self.Q, name='Fb')
     self.PE            = Function(self.Q, name='PE')
     self.W_int         = Function(self.Q, name='W_int')
     self.alpha_min     = Function(self.Q, name='alpha_min')

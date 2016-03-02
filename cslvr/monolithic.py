@@ -45,6 +45,7 @@ class Monolithic(Physics):
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
+    Tp            = model.Tp
     T_melt        = model.T_melt
     Mb            = model.Mb
     L             = model.L
@@ -143,8 +144,8 @@ class Monolithic(Physics):
       #a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
       #Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
       #W_T     = conditional( lt(W, 0.01), W,            0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
     # 1) Viscous dissipation
     if linear:
@@ -340,6 +341,7 @@ class Monolithic(Physics):
     Q          = model.Q
     T_melt     = model.T_melt
     T          = model.T
+    T_w        = model.T_w
     W          = model.W
     W0         = model.W0
     L          = model.L
@@ -379,6 +381,11 @@ class Monolithic(Physics):
     theta_v  = theta.vector().array()
     T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
+    Tp_v     = T_n_v.copy()
+
+    # create pressure-adjusted temperature for rate-factor :
+    Tp_v[Tp_v > T_w(0)] = T_w(0)
+    model.init_Tp(Tp_v, cls=self)
     
     # update temperature for wet/dry areas :
     T_melt_v     = T_melt.vector().array()
@@ -397,7 +404,7 @@ class Monolithic(Physics):
     #W_v[cold]       = 0.0   # no water where frozen 
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
     #W_v[W_v > 1.0]  = 1.0    # capped at 100% water, i.e., no hot water.
-    model.assign_variable(W0, W, cls=self, save=False)
+    model.assign_variable(W0, W, cls=self)
     model.assign_variable(W,  W_v, cls=self)
 
   def solve_vert_velocity(self, annotate=annotate):

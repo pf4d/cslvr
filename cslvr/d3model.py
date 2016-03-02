@@ -9,15 +9,15 @@ class D3Model(Model):
   """ 
   """
 
-  def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               state=None, use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', 
+               use_periodic=False):
     """
     Create and instance of a 3D model.
     """
     s = "::: INITIALIZING 3D MODEL :::"
     print_text(s, cls=self)
     
-    Model.__init__(self, mesh, out_dir, save_state, state, use_periodic)
+    Model.__init__(self, mesh, out_dir, use_periodic)
   
   def color(self):
     return '130'
@@ -378,19 +378,6 @@ class D3Model(Model):
     self.dLat    =   self.ds(4) + self.ds(7) \
                    + self.ds(10)             # lateral
 
-    if self.save_state:
-      s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.ff,     'ff')
-
-      s = "::: writing 'ff_acc' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.ff_acc, 'ff_acc')
-
-      s = "::: writing 'cf' CellFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.cf,     'cf')
-    
   def calculate_flat_mesh_boundaries(self, mask=None, adot=None,
                                      mark_divide=False):
     """
@@ -544,15 +531,10 @@ class D3Model(Model):
       x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
     print_text(s, cls=self)
-    
-    if self.save_state:
-      s = "::: writing 'mesh' to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.mesh, 'mesh')
 
-  def get_srf_mesh(self):
+  def form_srf_mesh(self):
     """
-    Returns the surface of the mesh for this model instance.
+    sets self.srfmesh, the surface boundary mesh for this model instance.
     """
     s = "::: extracting surface mesh :::"
     print_text(s, cls=self)
@@ -564,15 +546,11 @@ class D3Model(Model):
       if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
-    if self.save_state:
-      s = "::: writing 'srfmesh' mesh to self.state file :::"
-      print_text(s, cls=self)
-      self.state.write(submesh, 'srfmesh')
-    return submesh
+    self.srfmesh = submesh
 
-  def get_bed_mesh(self):
+  def form_bed_mesh(self):
     """
-    Returns the bed of the mesh for this model instance.
+    sets self.bedmesh, the basal boundary mesh for this model instance.
     """
     s = "::: extracting bed mesh :::"
     print_text(s, cls=self)
@@ -584,15 +562,11 @@ class D3Model(Model):
       if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
-    if self.save_state:
-      s = "::: writing 'bedmesh' mesh to self.state file :::"
-      print_text(s, cls=self)
-      self.state.write(submesh, 'bedmesh')
-    return submesh
+    self.bedmesh = submesh
 
-  def get_lat_mesh(self):
+  def form_lat_mesh(self):
     """
-    Returns the sides of the mesh for this model instance.
+    sets self.latmesh, the lateral boundary mesh for this model instance.
     """
     s = "::: extracting lateral mesh :::"
     print_text(s, cls=self)
@@ -604,15 +578,11 @@ class D3Model(Model):
       if abs(Facet(self.mesh, cellmap[c.index()]).normal().z()) < 1e-3:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
-    if self.save_state:
-      s = "::: writing 'latmesh' mesh to self.state file :::"
-      print_text(s, cls=self)
-      self.state.write(submesh, 'latmesh')
-    return submesh
+    self.latmesh = submesh
 
-  def get_dvd_mesh(self):
+  def form_dvd_mesh(self):
     """
-    Returns the divide sides of the mesh for this model instance.
+    sets self.dvdmesh, the lateral divide boundary mesh for this model instance.
     """
     s = "::: extracting lateral divide mesh :::"
     print_text(s, cls=self)
@@ -630,11 +600,7 @@ class D3Model(Model):
       if abs(n.z()) < 1e-3 and self.lat_mask(x_m, y_m, z_m) <= 0:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
-    if self.save_state:
-      s = "::: writing 'dvdmesh' mesh to self.state file :::"
-      print_text(s, cls=self)
-      self.state.write(submesh, 'dvdmesh')
-    return submesh
+    self.dvdmesh = submesh
       
   def calc_thickness(self):
     """
@@ -819,7 +785,55 @@ class D3Model(Model):
     taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
                     + tu_xy**2 + tu_xz**2 + tu_yz**2
     return taudot
-  
+
+  def save_bed_mesh(self, h5File): 
+    """
+    save the basal boundary mesh to hdf5 file <h5File>.
+    """
+    s = "::: writing 'bedmesh' to supplied hdf5 file :::"
+    print_text(s, cls=self.this)
+    h5File.write(self.bedmesh, 'bedmesh')
+
+  def save_srf_mesh(self, h5File): 
+    """
+    save the surface boundary mesh to hdf5 file <h5File>.
+    """
+    s = "::: writing 'srfmesh' to supplied hdf5 file :::"
+    print_text(s, cls=self.this)
+    h5File.write(self.srfmesh, 'srfmesh')
+
+  def save_lat_mesh(self, h5File): 
+    """
+    save the lateral boundary mesh to hdf5 file <h5File>.
+    """
+    s = "::: writing 'latmesh' to supplied hdf5 file :::"
+    print_text(s, cls=self.this)
+    h5File.write(self.latmesh, 'latmesh')
+
+  def save_dvd_mesh(self, h5File): 
+    """
+    save the divide boundary mesh to hdf5 file <h5File>.
+    """
+    s = "::: writing 'dvdmesh' to supplied hdf5 file :::"
+    print_text(s, cls=self.this)
+    h5File.write(self.dvdmesh, 'dvdmesh')
+
+  def save_subdomain_data(self, h5File):
+    """
+    save all the subdomain data to hd5f file <h5File>.
+    """
+    s = "::: writing 'ff' FacetFunction to supplied hdf5 file :::"
+    print_text(s, cls=self)
+    h5File.write(self.ff,     'ff')
+
+    s = "::: writing 'ff_acc' FacetFunction to supplied hdf5 file :::"
+    print_text(s, cls=self)
+    h5File.write(self.ff_acc, 'ff_acc')
+
+    s = "::: writing 'cf' CellFunction to supplied hdf5 file :::"
+    print_text(s, cls=self)
+    h5File.write(self.cf,     'cf')
+
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set

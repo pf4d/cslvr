@@ -46,8 +46,8 @@ class Model(object):
   # union :
   boundaries = dict(ext_boundaries, **int_boundaries)
   
-  def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               state=None, use_periodic=False, **gfs_kwargs):
+  def __init__(self, mesh, out_dir='./results/',
+               use_periodic=False, **gfs_kwargs):
     """
     Create and instance of the model.
     """
@@ -63,7 +63,6 @@ class Model(object):
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
     self.out_dir     = out_dir
-    self.save_state  = save_state
     self.MPI_rank    = MPI.rank(mpi_comm_world())
     self.use_periodic_boundaries = use_periodic
     
@@ -71,13 +70,6 @@ class Model(object):
     self.set_mesh(mesh)
     self.generate_function_spaces(use_periodic, **gfs_kwargs)
     self.initialize_variables()
-
-    # create a new state called "state.h5" :
-    if save_state and state == None:
-      self.state = HDF5File(self.mesh.mpi_comm(),
-                            out_dir + 'state.h5', 'w')
-    else:
-      self.state = state
 
   def color(self):
     return '148'
@@ -182,12 +174,6 @@ class Model(object):
 
     self.T_w     = Constant(273.15)
     self.T_w.rename('T_w', 'Triple point of water')
-
-  def init_state(self, fn):
-    """
-    set the self.state .h5 file for saving variables to <f>.h5 in self.out_dir.
-    """
-    self.state = HDF5File(mpi_comm_world(), self.out_dir + fn + '.h5', 'w')
 
   def generate_pbc(self):
     """
@@ -321,9 +307,18 @@ class Model(object):
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing temperature :::"
+    s = "::: initializing absolute temperature :::"
     print_text(s, cls=cls)
     self.assign_variable(self.T, T, cls=cls)
+  
+  def init_Tp(self, Tp, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing pressure-adjusted temperature :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.Tp, Tp, cls=cls)
   
   def init_W(self, W, cls=None):
     """
@@ -490,7 +485,7 @@ class Model(object):
     s = "::: initializing x-component of velocity :::"
     print_text(s, cls=cls)
     u_t = Function(self.Q, name='u_t')
-    self.assign_variable(u_t, u, save=False, cls=cls)
+    self.assign_variable(u_t, u, cls=cls)
     self.assx.assign(self.u, u_t, annotate=False)
   
   def init_v(self, v, cls=None):
@@ -501,7 +496,7 @@ class Model(object):
     s = "::: initializing y-component of velocity :::"
     print_text(s, cls=cls)
     v_t = Function(self.Q, name='v_t')
-    self.assign_variable(v_t, v, save=False, cls=cls)
+    self.assign_variable(v_t, v, cls=cls)
     self.assx.assign(self.v, v_t, annotate=False)
   
   def init_w(self, w, cls=None):
@@ -512,7 +507,7 @@ class Model(object):
     s = "::: initializing z-component of velocity :::"
     print_text(s, cls=cls)
     w_t = Function(self.Q, name='w_t')
-    self.assign_variable(w_t, w, save=False, cls=cls)
+    self.assign_variable(w_t, w, cls=cls)
     self.assx.assign(self.w, w_t, annotate=False)
   
   def init_vbar(self, vbar, cls=None):
@@ -880,7 +875,7 @@ class Model(object):
     else:
       U_v = U_mag.vector().array()
     U_v[U_v < eps] = eps
-    self.assign_variable(U_s, U_v, save=False, cls=self.this)
+    self.assign_variable(U_s, U_v, cls=self.this)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project((rhoi*g*H*S_mag) / U_s, Q, annotate=False)
     beta_0_v = beta_0.vector().array()
@@ -889,7 +884,7 @@ class Model(object):
     self.assign_variable(self.betaSIA, beta_0_v, cls=self.this)
     
     if self.dim == 3:
-      self.assign_variable(self.beta, DOLFIN_EPS, save=False, cls=self.this)
+      self.assign_variable(self.beta, DOLFIN_EPS, cls=self.this)
       bc_beta = DirichletBC(self.Q, self.betaSIA, self.ff, self.GAMMA_B_GND)
       bc_beta.apply(self.beta.vector())
       #self.assign_variable(self.beta, self.betaSIA, cls=self.this)
@@ -1475,7 +1470,7 @@ class Model(object):
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
 
-  def assign_variable(self, u, var, cls=None, annotate=False, save=True):
+  def assign_variable(self, u, var, cls=None, annotate=False):
     """
     Manually assign the values from <var> to Function <u>.  <var> may be an
     array, float, Expression, or Function.
@@ -1523,30 +1518,17 @@ class Model(object):
       u = var
     print_min_max(u, u.name(), cls=cls)
 
-    if self.save_state and save:
-      if    isinstance(u, GenericVector) or isinstance(u, Function) \
-         or isinstance(u, dolfin.functions.function.Function):
-        s = "::: writing '%s' variable to '%sstate.h5' :::"
-        print_text(s % (u.name(), self.out_dir), cls=cls)
-        self.state.write(u, u.name())
-        print_text("    - done -", cls=cls)
-
-  def save_hdf5(self, u, f=None, name=None):
+  def save_hdf5(self, u, f, name=None):
     """
-    Save a FEniCS Function <u> to this model's self.state h5 file to the 
-    hdf5 subdirectory of self.out_dir or to hdf5 file <f> if set.
+    Save a FEniCS Function <u> to <f> h5 file to the hdf5 subdirectory of 
+    self.out_dir.
     If <name>=None, this will save the flie under <u>.name().
     """
     if name == None:
       name = u.name()
-    if f == None:
-      s = "::: writing '%s' variable to self.state file :::" % name
-      print_text(s, 'green')#cls=self.this)
-      self.state.write(u, name)
-    else:
-      s = "::: writing '%s' variable to hdf5 file :::" % name
-      print_text(s, 'green')#cls=self.this)
-      f.write(u, name)
+    s = "::: writing '%s' variable to hdf5 file :::" % name
+    print_text(s, 'green')#cls=self.this)
+    f.write(u, name)
     print_text("    - done -", 'green')#cls=self.this)
 
   def save_pvd(self, var, name, f_file=None):
@@ -1578,6 +1560,29 @@ class Model(object):
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
       print_text(s, 'green')#cls=self.this)
       File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
+    
+  def save_list_to_hdf5(self, lst, h5File):
+    """
+    save a list of functions or coefficients <lst> to hdf5 file <h5File>.
+    """
+    s    = '::: saving variables in list arg post_tmc_save_vars :::'
+    print_text(s, cls=self.this)
+    for var in lst:
+      self.save_hdf5(var, f=h5File)
+
+  def save_subdomain_data(self, h5File):
+    """
+    save all the subdomain data to hd5f file <h5File>.
+    """
+    raiseNotDefined()
+
+  def save_mesh(self, h5File): 
+    """
+    save the mesh to hdf5 file <h5File>.
+    """
+    s = "::: writing 'mesh' to supplied hdf5 file :::"
+    print_text(s, cls=self.this)
+    h5File.write(self.mesh, 'mesh')
   
   def solve_hydrostatic_pressure(self, annotate=False, cls=None):
     """
@@ -1655,6 +1660,7 @@ class Model(object):
     
     # energy model :
     self.T             = Function(self.Q, name='T')
+    self.Tp            = Function(self.Q, name='Tp')
     self.q_geo         = Function(self.Q, name='q_geo')
     self.theta         = Function(self.Q, name='theta')
     self.W             = Function(self.Q, name='W')
@@ -1763,7 +1769,8 @@ class Model(object):
 
     # get the bounds, the max will be updated based on areas of refreeze :
     bounds = wop_kwargs['bounds']
-    self.init_alpha_min(bounds[0], cls=self.this)
+    if bounds[1] > 1.0:
+      self.init_alpha_min(bounds[0], cls=self.this)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1787,8 +1794,7 @@ class Model(object):
       self.set_out_dir(out_dir_i + out_dir_n)
       
       # need zero initial guess for Newton solve to converge : 
-      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, save=False,
-                           cls=self.this)
+      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, cls=self.this)
      
       # solve velocity :
       momentum.solve(annotate=False)
@@ -1798,14 +1804,17 @@ class Model(object):
       energy.solve_basal_melt_rate()
 
       # update bounds to constrain areas of refreeze :
-      Mb_v     = self.Mb.vector().array()
-      am       = self.alpha_max.vector().array()
-      rfrz     = Mb_v <  0.0
-      melt     = Mb_v >= 0.0
-      am[rfrz] = 1.0
-      am[melt] = bounds[1]
-      self.init_alpha_max(am, cls=self.this)
-      wop_kwargs['bounds'] = (self.alpha_min, self.alpha_max)
+      if bounds[1] > 1.0:
+        s    = '::: resetting max bound on alpha from Mb :::'
+        print_text(s, cls=self.this)
+        Mb_v     = self.Mb.vector().array()
+        am       = self.alpha_max.vector().array()
+        rfrz     = Mb_v <  0.0
+        melt     = Mb_v >= 0.0
+        am[rfrz] = 1.0
+        am[melt] = bounds[1]
+        self.init_alpha_max(am, cls=self.this)
+        wop_kwargs['bounds'] = (self.alpha_min, self.alpha_max)
 
       # solve energy (temperature, water content) :
       energy.optimize_water_flux(**wop_kwargs)

@@ -9,15 +9,14 @@ class D2Model(Model):
   """ 
   """
 
-  def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               state=None, use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
     """
     Create and instance of a 2D model.
     """
     s = "::: INITIALIZING 2D MODEL :::"
     print_text(s, cls=self)
     
-    Model.__init__(self, mesh, out_dir, save_state, state, use_periodic)
+    Model.__init__(self, mesh, out_dir, use_periodic)
   
   def color(self):
     return '150'
@@ -352,19 +351,6 @@ class D2Model(Model):
     self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
     self.dLat    =   self.ds(4) + self.ds(7) \
                    + self.ds(10)             # lateral
-
-    if self.save_state:
-      s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.ff,     'ff')
-
-      s = "::: writing 'ff_acc' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.ff_acc, 'ff_acc')
-
-      s = "::: writing 'cf' CellFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.cf,     'cf')
     
   def set_subdomains(self, f):
     """
@@ -432,11 +418,6 @@ class D2Model(Model):
     s = "    - done - "
     print_text(s, cls=self)
     
-    if self.save_state:
-      s = "::: writing 'mesh' to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.mesh, 'mesh')
-
   def calc_thickness(self):
     """
     Calculate the continuous thickness field which increases from 0 at the 
@@ -623,6 +604,22 @@ class D2Model(Model):
     taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
                     + tu_xy**2 + tu_xz**2 + tu_yz**2
     return taudot
+
+  def save_subdomain_data(self, h5File):
+    """
+    save all the subdomain data to hd5f file <h5File>.
+    """
+    s = "::: writing 'ff' FacetFunction to supplied hdf5 file :::"
+    print_text(s, cls=self)
+    h5File.write(self.ff,     'ff')
+
+    s = "::: writing 'ff_acc' FacetFunction to supplied hdf5 file :::"
+    print_text(s, cls=self)
+    h5File.write(self.ff_acc, 'ff_acc')
+
+    s = "::: writing 'cf' CellFunction to supplied hdf5 file :::"
+    print_text(s, cls=self)
+    h5File.write(self.cf,     'cf')
   
   def initialize_variables(self):
     """

@@ -269,6 +269,7 @@ class Energy(Physics):
     theta      = model.theta
     theta_melt = model.theta_melt
     T_melt     = model.T_melt
+    T_w        = model.T_w
     L          = model.L
     c          = self.c
     
@@ -276,6 +277,11 @@ class Energy(Physics):
     theta_v  = theta.vector().array()
     T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
+    Tp_v     = T_n_v.copy()
+
+    # create pressure-adjusted temperature for rate-factor :
+    Tp_v[Tp_v > T_w(0)] = T_w(0)
+    model.init_Tp(Tp_v, cls=self)
     
     # correct for the pressure-melting point :
     T_melt_v     = T_melt.vector().array()
@@ -283,7 +289,7 @@ class Energy(Physics):
     warm         = theta_v >= theta_melt_v
     cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
-    model.assign_variable(T, T_v, cls=self)
+    model.init_T(T_v, cls=self)
     
     # water content solved diagnostically :
     s = "::: calculating water content :::"
@@ -292,11 +298,11 @@ class Energy(Physics):
     
     # update water content :
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
-    model.assign_variable(W0,  W,    cls=self, save=False) # never save
-    model.assign_variable(W,   W_v,  cls=self)
+    model.assign_variable(W0,  W,  cls=self)
+    model.init_W(W_v, cls=self)
    
     # NOTE: to get annotation to work, something similar to this must be done,
-    #       right now, this doesn't work : 
+    #       array manipulation cannot be annotated. right now, this doesn't work
     #W_w     = (self.theta - theta_melt)/L
     #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*self.theta)) / 7.253
     #T_n  = conditional( lt(T, T_melt), T_w, T_melt)
@@ -304,7 +310,7 @@ class Energy(Physics):
 
     #W_n = project(W_n, annotate=annotate)
     #model.W.assign(W_n, annotate=annotate)
-    ##model.assign_variable(W0, W,   cls=self, annotate=annotate, save=False)
+    ##model.assign_variable(W0, W,   cls=self, annotate=annotate)
     ##model.assign_variable(W,  W_n, cls=self, annotate=annotate)
 
     #T_n = project(T_n, annotate=annotate)
@@ -1176,7 +1182,7 @@ class Enthalpy(Energy):
       
       # update water content :
       W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-      model.assign_variable(model.W0, W_v, cls=self, save=False)
+      model.assign_variable(model.W0, W_v, cls=self)
       model.assign_variable(model.W,  W_v, cls=self)
 
 

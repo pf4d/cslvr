@@ -621,7 +621,7 @@ class Momentum(Physics):
 
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, save=False, cls=self)
+    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
     
     # call the post-adjoint callback function if set :
     if post_adj_callback is not None:

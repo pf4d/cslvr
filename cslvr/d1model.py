@@ -12,8 +12,7 @@ class D1Model(Model):
   """
   Data structure to hold firn model state data.
   """
-  def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               state=None, use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
     """
     Create and instance of a 1D model.
     """
@@ -22,7 +21,7 @@ class D1Model(Model):
     s = "::: INITIALIZING 1D MODEL :::"
     print_text(s, self.D1Model_color)
     
-    Model.__init__(self, mesh, out_dir, save_state, state, use_periodic)
+    Model.__init__(self, mesh, out_dir, use_periodic)
 
   def set_mesh(self, mesh):
     """

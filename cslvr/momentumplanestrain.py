@@ -96,7 +96,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      Tp      = model.T + model.gamma * model.p
+      Tp      = model.Tp
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf

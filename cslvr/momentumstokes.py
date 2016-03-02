@@ -102,7 +102,7 @@ class MomentumStokes(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      Tp      = model.T + model.gamma * p
+      Tp      = model.Tp
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
@@ -398,7 +398,7 @@ class MomentumDukowiczStokesReduced(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      Tp      = model.T + model.gamma * model.p
+      Tp      = model.Tp
       #theta   = model.theta
       W       = model.W
       R       = model.R
@@ -794,7 +794,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       s   = "    - using temperature-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      Tp      = model.T + model.gamma * p
+      Tp      = model.Tp
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf

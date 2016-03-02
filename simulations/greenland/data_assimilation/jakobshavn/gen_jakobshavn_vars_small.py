@@ -34,7 +34,7 @@ u_ob  = drg.get_expression('vx',       near=False)
 v_ob  = drg.get_expression('vy',       near=False)
 U_msk = drg.get_expression('mask',     near=True)
 
-model = D3Model(mesh=mesh, out_dir=out_dir, save_state=True)
+model = D3Model(mesh=mesh, out_dir=out_dir)
 model.deform_mesh_to_geometry(S, B)
 model.calculate_boundaries(mask=M, lat_mask=L, U_mask=U_msk, adot=adot, 
                            mark_divide=True)
@@ -43,8 +43,22 @@ model.init_T_surface(T_s)
 model.init_q_geo(q_geo)
 model.init_U_ob(u_ob, v_ob)
 
-model.save_xdmf(model.U_ob, 'U_ob')
+lst = [model.S,
+       model.B,
+       model.mask,
+       model.q_geo,
+       model.T_surface,
+       model.adot,
+       model.U_ob,
+       model.U_mask]
 
-model.state.close()
+f = HDF5File(mpi_comm_world(), out_dir + 'state.h5', 'w')
+
+model.save_list_to_hdf5(lst, f)
+model.save_subdomain_data(f)
+model.save_mesh(f)
+
+f.close()
+
 
 

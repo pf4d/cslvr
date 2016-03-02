@@ -284,19 +284,6 @@ class Model(object):
     Tp_v[Tp_v > self.T_w(0)] = self.T_w(0)
     self.init_Tp(Tp_v, cls=cls)
     
-    # correct for the pressure-melting point :
-    T_melt_v     = self.T_melt.vector().array()
-    theta_melt_v = self.theta_melt.vector().array()
-    warm         = theta_v >= theta_melt_v
-    cold         = theta_v <  theta_melt_v
-    T_v[warm]    = T_melt_v[warm]
-    self.init_T(T_v, cls=cls)
-    
-    # water content solved diagnostically :
-    W_v             = (theta_v - theta_melt_v) / self.L(0)
-    W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
-    self.init_W(W_v, cls=cls)
-  
   def init_theta_app(self, theta_app, cls=None):
     """
     """

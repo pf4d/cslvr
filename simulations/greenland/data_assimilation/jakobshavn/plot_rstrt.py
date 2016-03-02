@@ -13,8 +13,8 @@ import sys
 #           '_disc_kappa/tmc/10/'
 #base_dir  = 'dump/jakob_small/rstrt_FS_Tp_a_0_100_disc_new/tmc/01/'
 #base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
-base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_cont/'
-#base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc_amax/'
+#base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_cont/'
+base_dir = 'dump/jakob_small/rstrt_FS_a_0_1_cont/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -27,12 +27,12 @@ d3model = D3Model(mesh, out_dir)
 
 #===============================================================================
 # retrieve the bed mesh :
-bedmesh = d3model.get_bed_mesh()
-srfmesh = d3model.get_srf_mesh()
+d3model.form_bed_mesh()
+d3model.form_srf_mesh()
 
 # create 2D model for balance velocity :
-bedmodel = D2Model(bedmesh, out_dir)
-srfmodel = D2Model(srfmesh, out_dir)
+bedmodel = D2Model(d3model.bedmesh, out_dir)
+srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
@@ -44,7 +44,7 @@ d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_T(f)
 d3model.init_W(f)
-d3model.init_Wb_flux(f)
+d3model.init_Fb(f)
 d3model.init_Mb(f)
 d3model.init_alpha(f)
 d3model.init_PE(f)
@@ -57,7 +57,7 @@ d3model.init_theta(f)
 # 2D model gets balance-velocity appropriate variables initialized :
 bedmodel.assign_submesh_variable(bedmodel.T,         d3model.T)
 bedmodel.assign_submesh_variable(bedmodel.W,         d3model.W)
-bedmodel.assign_submesh_variable(bedmodel.Wb_flux,   d3model.Wb_flux)
+bedmodel.assign_submesh_variable(bedmodel.Fb,        d3model.Fb)
 bedmodel.assign_submesh_variable(bedmodel.Mb,        d3model.Mb)
 bedmodel.assign_submesh_variable(bedmodel.alpha,     d3model.alpha)
 bedmodel.assign_submesh_variable(bedmodel.PE,        d3model.PE)
@@ -66,10 +66,6 @@ srfmodel.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
 bedmodel.assign_submesh_variable(bedmodel.beta,      d3model.beta)
 bedmodel.assign_submesh_variable(bedmodel.theta,     d3model.theta)
 
-Mb_v     = bedmodel.Mb.vector().array()
-alpha_v  = bedmodel.alpha.vector().array()
-wb_v     = alpha_v * Mb_v
-bedmodel.init_Wb_flux(wb_v)
 
 #===============================================================================
 drg  = DataFactory.get_rignot()
@@ -99,8 +95,8 @@ amin  = bedmodel.alpha.vector().min()
 Mbmax = bedmodel.Mb.vector().max()
 Mbmin = bedmodel.Mb.vector().min()
 
-Wbmax = bedmodel.Wb_flux.vector().max()
-Wbmin = bedmodel.Wb_flux.vector().min()
+Fbmax = bedmodel.Fb.vector().max()
+Fbmin = bedmodel.Fb.vector().min()
 
 Wmax  = bedmodel.W.vector().max()
 Wmin  = bedmodel.W.vector().min()
@@ -120,18 +116,22 @@ Pmin  = bedmodel.PE.vector().min()
 Tmax  = bedmodel.T.vector().max()
 Tmin  = bedmodel.T.vector().min()
 
-a_lvls  = np.array([0.0, 1e-3, 1e-1, 1e0, 2, 3, amax])
-#a_lvls  = np.array([0.0, 1e-3, 1e-1, 3e-1, 9.9e-1, 1.0])
-Mb_lvls = np.array([-Mbmax, -0.5, -1e-1, -1e-2, -1e-5,
+Wimax = 1.5e1
+Wmax  = 1.9e-1
+
+a_lvls  = np.array([0.0, 1e-3, 1e-2, 1e-1, 5e-1, 9.9e-1, 1.0])
+#a_lvls  = np.array([0.0, 1e-3, 1e-1, 1e0, 2, 3, amax])
+Mb_lvls = np.array([Mbmin, -0.5, -1e-1, -1e-2, -1e-5,
                     1e-5, 1e-2, 1e-1, 0.5, Mbmax])
-Wb_lvls = np.array([-Wbmax, -0.5, -1e-1, -1e-2, -1e-5,
-                    1e-5, 1e-2, 1e-1, 0.5, Wbmax])
+#Fb_lvls = np.array([Fbmin, -0.5, -1e-1, -1e-2, -1e-5,
+#                    1e-5, 1e-2, 1e-1, 0.5, Fbmax])
+Fb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Fbmax])
 b_lvls  = np.array([bmin, 1e-3, 1e-2, 1, 1e2, 1e3, 2.5e3, 5e3, bmax])
-W_lvls  = np.array([0.0, 1e-2, 3e-2, 4e-2, 5e-2, 1e-1, 2e-1])
+W_lvls  = np.array([0.0, 1e-2, 3e-2, 4e-2, 5e-2, 1e-1, Wmax])
 U_lvls  = np.array([50, 100, 250, 500, 1e3, 2.5e3, 5e3, Umax])
 Pe_lvls = np.array([1e2, 1e3, 5e3, 1e4, 2.5e4, 5e4, Pmax])
 T_lvls  = np.array([Tmin, 268, 271.5, 272, 272.5, Tmax])
-Wi_lvls = np.array([0.0, 1e-1, 1.0, 5.0, 10])
+Wi_lvls = np.array([0.0, 1e-1, 1.0, 5.0, Wimax])
 
 m = plotIce(drg, bedmodel.W_int, name='crap_to_delete', direc=out_dir, 
             levels=Wi_lvls, tp=False, tpAlpha=0.2,
@@ -244,9 +244,9 @@ plotIce(drg, bedmodel.W, name='W', direc=out_dir,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-plotIce(drg, bedmodel.Wb_flux, name='Wb_flux', direc=out_dir, 
-        title=r'$W_b$', cmap='RdGy',  scale='lin',
-        levels=Wb_lvls, tp=False, tpAlpha=0.2,
+plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+        title=r'$F_b$', cmap='RdGy',  scale='lin',
+        levels=Fb_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 

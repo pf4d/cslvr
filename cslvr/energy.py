@@ -549,6 +549,7 @@ class Enthalpy(Energy):
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
+    Tp            = model.Tp
     W             = model.W
     T_m           = model.T_melt
     Mb            = model.Mb
@@ -648,7 +649,6 @@ class Enthalpy(Energy):
     #W_T     = conditional( lt(W_t, 0.00), 0.0,        W_t)
 
     # viscosity and strain-heating :
-    Tp       = T + gamma*p
     #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
@@ -959,13 +959,17 @@ class Enthalpy(Energy):
     model    = self.model
     alpha    = model.alpha
     dBed_g   = model.dBed_g
+    L        = model.L
+    T_melt   = model.T_melt
+    T        = model.T
     g        = self.g
+    rho      = self.rho
 
     # Mb is only valid on basal surface, needs extra matrix care :
     phi  = TestFunction(model.Q)
     du   = TrialFunction(model.Q)
     a_n  = du * phi * dBed_g
-    L_n  = alpha*g * phi * dBed_g
+    L_n  = alpha*g/(L*rho) * phi * dBed_g
    
     A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
     B_n  = assemble(L_n, annotate=False)
@@ -973,16 +977,14 @@ class Enthalpy(Energy):
    
     Fb_n  = Function(model.Q)
     solve(A_n, Fb_n.vector(), B_n, 'cg', 'amg', annotate=False)
-    
+   
+    # remove areas with positive water flux where there is no melt : 
+    Fb_v                 = Fb_n.vector().array()
+    T_melt_v             = T_melt.vector().array()
+    T_v                  = T.vector().array()
+    Fb_v[T_v < T_melt_v] = 0.0
     model.assign_variable(model.Fb, Fb_n, cls=self)
 
-    #Mb       = model.Mb
-
-    #Mb_v     = Mb.vector().array()
-    #alpha_v  = alpha.vector().array()
-    #wb_v     = alpha_v * Mb_v
-    #model.init_Wb_flux(wb_v, cls=self)
-  
   def solve(self, annotate=False):
     """ 
     Solve the energy equations, saving enthalpy to model.theta, temperature 

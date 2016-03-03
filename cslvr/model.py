@@ -1776,10 +1776,10 @@ class Model(object):
     ## convert to pseudo-timestepping for smooth convergence : 
     #energy.make_transient(time_step = 25.0)
 
-    # get the bounds, the max will be updated based on areas of refreeze :
-    bounds = wop_kwargs['bounds']
-    if bounds[1] > 1.0:
-      self.init_alpha_min(bounds[0], cls=self.this)
+    ## get the bounds, the max will be updated based on areas of refreeze :
+    #bounds = wop_kwargs['bounds']
+    #if bounds[1] > 1.0:
+    #  self.init_alpha_min(bounds[0], cls=self.this)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1812,18 +1812,18 @@ class Model(object):
       energy.calc_T_melt(annotate=False)
       energy.solve_basal_melt_rate()
 
-      # update bounds to constrain areas of refreeze :
-      if bounds[1] > 1.0:
-        s    = '::: resetting max bound on alpha from Mb :::'
-        print_text(s, cls=self.this)
-        Mb_v     = self.Mb.vector().array()
-        am       = self.alpha_max.vector().array()
-        rfrz     = Mb_v <  0.0
-        melt     = Mb_v >= 0.0
-        am[rfrz] = 1.0
-        am[melt] = bounds[1]
-        self.init_alpha_max(am, cls=self.this)
-        wop_kwargs['bounds'] = (self.alpha_min, self.alpha_max)
+      ## update bounds to constrain areas of refreeze :
+      #if bounds[1] > 1.0:
+      #  s    = '::: resetting max bound on alpha from Mb :::'
+      #  print_text(s, cls=self.this)
+      #  Mb_v     = self.Mb.vector().array()
+      #  am       = self.alpha_max.vector().array()
+      #  rfrz     = Mb_v <  0.0
+      #  melt     = Mb_v >= 0.0
+      #  am[rfrz] = 1.0
+      #  am[melt] = bounds[1]
+      #  self.init_alpha_max(am, cls=self.this)
+      #  wop_kwargs['bounds'] = (self.alpha_min, self.alpha_max)
 
       # solve energy (temperature, water content) :
       energy.optimize_water_flux(**wop_kwargs)

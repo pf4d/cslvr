@@ -165,9 +165,9 @@ class Energy(Physics):
 
     model.init_adot(adot, cls=self)
   
-  def form_obj_ftn(self, kind='abs'):
+  def form_cost_ftn(self, kind='abs'):
     """
-    Forms and returns an objective functional for use with adjoint.
+    Forms and returns a cost functional for use with adjoint.
     Saves to self.J.
     """
     s   = "::: forming water-optimization cost functional :::"
@@ -184,15 +184,15 @@ class Energy(Physics):
     if kind == 'TV': 
       self.J   = sqrt((theta  - theta_c)**2 + 1e-15) * dGnd
       self.Jp  = sqrt((thetam - theta_c)**2 + 1e-15) * dGnd
-      s   = "::: forming TV objective functional :::"
+      s   = "    - using TV cost functional :::"
     elif kind == 'L2': 
       self.J   = 0.5 * (theta  - theta_c)**2 * dGnd
       self.Jp  = 0.5 * (thetam - theta_c)**2 * dGnd
-      s   = "::: forming L2 objective functional :::"
+      s   = "    - using L2 cost functional :::"
     elif kind == 'abs': 
       self.J   = abs(theta  - theta_c) * dGnd
       self.Jp  = abs(thetam - theta_c) * dGnd
-      s   = "::: forming absolute value objective functional :::"
+      s   = "    - using absolute value objective functional :::"
     else:
       s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'TV', 'L2' " + \
           "or 'abs', NOT '%s' <<<" % kind
@@ -549,7 +549,6 @@ class Enthalpy(Energy):
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
-    Tp            = model.Tp
     W             = model.W
     T_m           = model.T_melt
     Mb            = model.Mb
@@ -618,14 +617,14 @@ class Enthalpy(Energy):
       theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
       theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
     
-    # Surface boundary condition :
-    s = "::: calculating energy boundary conditions :::"
-    print_text(s, cls=self)
+      # Surface boundary condition :
+      s = "::: calculating energy boundary conditions :::"
+      print_text(s, cls=self)
 
-    # initialize the boundary conditions :
-    model.init_theta_surface(theta_s, cls=self)
-    model.init_theta_app(theta_s,     cls=self)
-    model.init_theta_float(theta_f,   cls=self)
+      # initialize the boundary conditions :
+      model.init_theta_surface(theta_s, cls=self)
+      model.init_theta_app(theta_s,     cls=self)
+      model.init_theta_float(theta_f,   cls=self)
       
     # strain-rate :
     epsdot  = self.effective_strain_rate(U) + eps_reg
@@ -655,6 +654,7 @@ class Enthalpy(Energy):
     #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     #Q_s_gnd = 4 * eta_gnd * epsdot
     #Q_s_shf = 4 * eta_shf * epsdot
+    Tp      = T + gamma*p
     b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))

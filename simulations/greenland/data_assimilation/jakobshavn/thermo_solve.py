@@ -49,8 +49,8 @@ model.solve_hydrostatic_pressure()
 #model.init_p(frstrt)
 
 # initialize the physics :
-#mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
-mom  = MomentumDukowiczBP(model, isothermal=False)
+mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
+#mom  = MomentumDukowiczBP(model, isothermal=False)
 nrg = Enthalpy(model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 
@@ -78,13 +78,13 @@ tmc_save_vars = [model.T,
                  model.theta]
 
 # form the objective functional for water-flux optimization :
-nrg.form_obj_ftn(kind='L2')
+nrg.form_cost_ftn(kind='L2')
 
 # form regularization for water-flux :
 nrg.form_reg_ftn(model.alpha, integral=model.GAMMA_B_GND,
-                 kind='TV', alpha=1e8)
+                 kind='TV', alpha=1e5)
 
-wop_kwargs = {'max_iter'            : 2, 
+wop_kwargs = {'max_iter'            : 500, 
               'bounds'              : (0.0, 1.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
@@ -95,7 +95,7 @@ tmc_kwargs = {'momentum'            : mom,
               'callback'            : tmc_cb_ftn, 
               'atol'                : 1e2,
               'rtol'                : 1e0,
-              'max_iter'            : 2,
+              'max_iter'            : 10,
               'itr_tmc_save_vars'   : tmc_save_vars,
               'post_tmc_save_vars'  : tmc_save_vars,
               'starting_i'          : 1}

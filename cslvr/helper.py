@@ -753,7 +753,7 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, levels=None, tp=False,
             tpAlpha=0.5, basin=None, extend='neither',
-            show=True, ext='.png', res=150,
+            show=True, ext='.png', res=150, cb_format='%.1e',
             zoom_box=False, zoom_box_kwargs=None):
   """
   INPUTS :
@@ -1066,7 +1066,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     divider = make_axes_locatable(ax)#plt.gca())
     cax  = divider.append_axes("right", "5%", pad="3%")
     cbar = fig.colorbar(cs, cax=cax, #format=formatter, 
-                        ticks=levels, format='%.1e') 
+                        ticks=levels, format=cb_format) 
     #cbar = plt.colorbar(cs, cax=cax, format=formatter, 
     #                    ticks=np.around(levels,decimals=1)) 
   

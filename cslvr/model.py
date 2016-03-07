@@ -1812,19 +1812,6 @@ class Model(object):
       energy.calc_T_melt(annotate=False)
       energy.solve_basal_melt_rate()
 
-      ## update bounds to constrain areas of refreeze :
-      #if bounds[1] > 1.0:
-      #  s    = '::: resetting max bound on alpha from Mb :::'
-      #  print_text(s, cls=self.this)
-      #  Mb_v     = self.Mb.vector().array()
-      #  am       = self.alpha_max.vector().array()
-      #  rfrz     = Mb_v <  0.0
-      #  melt     = Mb_v >= 0.0
-      #  am[rfrz] = 1.0
-      #  am[melt] = bounds[1]
-      #  self.init_alpha_max(am, cls=self.this)
-      #  wop_kwargs['bounds'] = (self.alpha_min, self.alpha_max)
-
       # solve energy (temperature, water content) :
       energy.optimize_water_flux(**wop_kwargs)
       energy.partition_energy()
@@ -2066,7 +2053,8 @@ class Model(object):
     print_text(text % (h,m,s) , 'red', 1)
 
   def L_curve(self, alphas, physics, control, int_domain, adj_ftn, adj_kwargs,
-              reg_kind='Tikhonov', pre_callback=None, post_callback=None):
+              reg_kind='Tikhonov', pre_callback=None, post_callback=None,
+              itr_save_vars=None):
     """
     """
     s    = '::: starting L-curve procedure :::'
@@ -2123,6 +2111,16 @@ class Model(object):
         s    = '::: calling L_curve() post-adjoint post_callback() :::'
         print_text(s, cls=self.this)
         post_callback()
+      
+      # save state to unique hdf5 file :
+      if isinstance(itr_save_vars, list):
+        s    = '::: saving variables in list arg itr_save_vars :::'
+        print_text(s, cls=self.this)
+        out_file = self.out_dir + 'lcurve.h5'
+        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+        for var in itr_save_vars:
+          self.save_hdf5(var, f=foutput)
+        foutput.close()
     
     s    = '::: L-curve procedure complete :::'
     print_text(s, cls=self.this)

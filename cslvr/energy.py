@@ -477,15 +477,19 @@ class Energy(Physics):
       plt.savefig(d + 'J.png', dpi=200)
       plt.close(fig)
 
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      ax.set_yscale('log')
-      ax.set_ylabel(r'$\mathscr{R}\left(\alpha\right)$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(np.array(Rs), 'r-', lw=2.0)
-      plt.grid()
-      plt.savefig(d + 'R.png', dpi=200)
-      plt.close(fig)
+      try:
+        R = self.R
+        fig = plt.figure()
+        ax  = fig.add_subplot(111)
+        ax.set_yscale('log')
+        ax.set_ylabel(r'$\mathscr{R}\left(\alpha\right)$')
+        ax.set_xlabel(r'iteration')
+        ax.plot(np.array(Rs), 'r-', lw=2.0)
+        plt.grid()
+        plt.savefig(d + 'R.png', dpi=200)
+        plt.close(fig)
+      except AttributeError:
+        pass
 
       fig = plt.figure()
       ax  = fig.add_subplot(111)
@@ -801,6 +805,7 @@ class Enthalpy(Energy):
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
     self.Mb      = Mb
+    self.ki      = ki
   
   def default_strain_rate_tensor(self, U):
     """
@@ -926,27 +931,43 @@ class Enthalpy(Energy):
     dBed_g   = model.dBed_g
     T_melt   = model.T_melt
     T        = model.T
-    Mb       = self.Mb
+    N        = model.N
+    L        = model.L(0)
+    rhoi     = model.rhoi(0)
+    rhow     = model.rhow(0)
+    ki       = self.ki
+    u,v,w    = model.U3.split(True)
 
     # Mb is only valid on basal surface, needs extra matrix care :
     phi  = TestFunction(model.Q)
     du   = TrialFunction(model.Q)
     a_n  = du * phi * dBed_g
-    L_n  = Mb * phi * dBed_g
+    L_n  = ki * dot((grad(T_melt)), N) * phi * dBed_g
    
     A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
     B_n  = assemble(L_n, annotate=False)
     A_n.ident_zeros()
    
-    Mb_n  = Function(model.Q)
-    solve(A_n, Mb_n.vector(), B_n, 'cg', 'amg', annotate=False)
+    grad_n  = Function(model.Q)
+    solve(A_n, grad_n.vector(), B_n, 'cg', 'amg', annotate=False)
     
-    Mb_v     = Mb_n.vector().array()
+    W_v      = model.W.vector().array()
+    beta_v   = model.beta.vector().array()
+    u_v      = u.vector().array()
+    v_v      = v.vector().array()
+    w_v      = w.vector().array()
+    q_geo_v  = model.q_geo.vector().array()
+    grad_n_v = grad_n.vector().array()
+
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
+    rho_v    = W_v*rhow + (1 - W_v)*rhoi
+    Mb_v     = (q_geo_v + q_fric_v - grad_n_v) / (L * rho_v)
+    
+    T_v      = model.T.vector().array()
     T_melt_v = T_melt.vector().array()
-    T_v      = T.vector().array()
     Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
     #Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
-    model.assign_variable(model.Mb, Mb_v, cls=self)
+    model.init_Mb(Mb_v, cls=self)
 
   def solve_basal_water_flux(self):
     """
@@ -957,33 +978,28 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
     
     model    = self.model
-    alpha    = model.alpha
-    dBed_g   = model.dBed_g
-    L        = model.L
-    T_melt   = model.T_melt
-    T        = model.T
-    g        = self.g
-    rho      = self.rho
+    rhoi     = model.rhoi(0)
+    rhow     = model.rhow(0)
+    L        = model.L(0)
+    u,v,w    = model.U3.split(True)
 
-    # Mb is only valid on basal surface, needs extra matrix care :
-    phi  = TestFunction(model.Q)
-    du   = TrialFunction(model.Q)
-    a_n  = du * phi * dBed_g
-    L_n  = alpha*g/(L*rho) * phi * dBed_g
-   
-    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    B_n  = assemble(L_n, annotate=False)
-    A_n.ident_zeros()
-   
-    Fb_n  = Function(model.Q)
-    solve(A_n, Fb_n.vector(), B_n, 'cg', 'amg', annotate=False)
+    W_v      = model.W.vector().array()
+    beta_v   = model.beta.vector().array()
+    alpha_v  = model.alpha.vector().array()
+    u_v      = u.vector().array()
+    v_v      = v.vector().array()
+    w_v      = w.vector().array()
+    q_geo_v  = model.q_geo.vector().array()
+
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
+    rho_v    = W_v*rhow + (1 - W_v)*rhoi
+    Fb_v     = alpha_v * (q_geo_v + q_fric_v) / (L * rho_v)
    
     # remove areas with positive water flux where there is no melt : 
-    Fb_v                 = Fb_n.vector().array()
-    T_melt_v             = T_melt.vector().array()
-    T_v                  = T.vector().array()
+    T_melt_v             = model.T_melt.vector().array()
+    T_v                  = model.T.vector().array()
     Fb_v[T_v < T_melt_v] = 0.0
-    model.assign_variable(model.Fb, Fb_n, cls=self)
+    model.init_Fb(Fb_v, cls=self)
 
   def solve(self, annotate=False):
     """ 

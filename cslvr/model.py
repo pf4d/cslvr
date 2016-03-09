@@ -1963,7 +1963,7 @@ class Model(object):
     # perform initialization step if desired :
     if initialize:
       s    = '    - performing initialization step -'
-      print_text(s % iterations, cls=self.this)
+      print_text(s, cls=self.this)
 
       # set the initialization output directory :
       out_dir_n = 'initialization/'

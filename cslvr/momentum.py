@@ -101,7 +101,7 @@ class Momentum(Physics):
 
     # the linear momentum systems solve much faster :
     new_params['relaxation_parameter']    = 1.0
-    new_params['maximum_iterations']      = 3
+    new_params['maximum_iterations']      = 2
     new_params['error_on_nonconvergence'] = False
 
     s = "::: altering solver parameters for optimal convergence :::"

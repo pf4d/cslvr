@@ -859,6 +859,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.k_0, k_0, cls=cls)
 
+  def init_k_c(self, k_c, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing enthalpy-gradient conductivity :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.k_c, k_c, cls=cls)
+
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -1685,6 +1694,7 @@ class Model(object):
     self.W_int         = Function(self.Q, name='W_int')
     self.alpha_min     = Function(self.Q, name='alpha_min')
     self.alpha_max     = Function(self.Q, name='alpha_max')
+    self.k_c           = Function(self.Q, name='k_c')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
     
@@ -1811,7 +1821,7 @@ class Model(object):
       # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
       energy.solve(annotate=False)
-      #energy.solve_basal_melt_rate()
+      energy.solve_basal_melt_rate()
 
       ## solve energy (temperature, water content) :
       #energy.optimize_water_flux(**wop_kwargs)

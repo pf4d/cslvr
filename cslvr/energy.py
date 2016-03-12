@@ -615,6 +615,7 @@ class Enthalpy(Energy):
     # initialize the boundary conditions, if we have not already :
     if not reset:
       self.calc_T_melt(annotate=False)
+      self.adjust_enthalpy_grad_kappa()
 
       T_s_v   = T_surface.vector().array()
       T_m_v   = T_m.vector().array()
@@ -667,7 +668,7 @@ class Enthalpy(Energy):
     Q_s_shf = 4 * eta_shf * epsdot
     
     # coefficient for non-advective water flux :
-    k_c   = conditional( le(W, 0.0), 1.0, k_0)
+    k_c   = model.k_c#conditional( gt(W, 0), k_0, 1.0)
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = spy * 9.828 * exp(-0.0057*T)  # converted to J/(a*m*K)
@@ -918,6 +919,24 @@ class Enthalpy(Energy):
                'use_surface_climate' : False}
     return params
 
+  def adjust_enthalpy_grad_kappa(self):
+    """
+    adjust enthalpy-gradient thermal conductivity model.kappa.
+    """ 
+    # calculate melt-rate : 
+    s = "::: adjusting enthalpy-gradient thermal conductivity :::"
+    print_text(s, cls=self)
+    
+    model = self.model
+
+    W_v   = model.W.vector().array()
+    k_c_v = model.k_c.vector().array()
+
+    k_c_v[:]       = 1.0
+    k_c_v[W_v > 0] = model.k_0(0)
+    model.init_k_c(k_c_v, cls=self)
+
+    
   def mark_temperate_zone(self):
     """
     mark basal regions with overlying temperate layer to model.alpha.
@@ -931,11 +950,25 @@ class Enthalpy(Energy):
     T_melt   = model.T_melt
     T        = model.T
     N        = model.N
-
-    # only valid on basal surface, needs extra matrix care :
     phi      = TestFunction(model.Q)
     du       = TrialFunction(model.Q)
     grad_Tm  = Function(model.Q)
+    grad_T   = Function(model.Q)
+    grad_B   = as_vector([model.B.dx(0), model.B.dx(1), -1])
+    
+    #a_n      = du * phi * dx
+    #L_n      = dot((grad(T_melt)), grad_B) * phi * dx
+    #
+    #A_n  = assemble(a_n, annotate=False)
+    #B_n  = assemble(L_n, annotate=False)
+    #solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
+    #print_min_max(grad_Tm, 'grad_Tm')
+
+    #L_n      = dot((grad(T)), grad_B) * phi * dx
+    #solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
+    #print_min_max(grad_T, 'grad_T')
+
+    # only valid on basal surface, needs extra matrix care :
     a_n      = du * phi * dBed_g
     L_n      = dot((grad(T_melt)), N) * phi * dBed_g
    
@@ -943,27 +976,24 @@ class Enthalpy(Energy):
     B_n  = assemble(L_n, annotate=False)
     A_n.ident_zeros()
     solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
+    print_min_max(grad_Tm, 'grad_Tm')
 
     # only valid on basal surface, needs extra matrix care :
-    phi      = TestFunction(model.Q)
-    du       = TrialFunction(model.Q)
-    grad_T   = Function(model.Q)
-    a_n      = du * phi * dBed_g
     L_n      = dot((grad(T)), N) * phi * dBed_g
    
-    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
     B_n  = assemble(L_n, annotate=False)
-    A_n.ident_zeros()
     solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
+    print_min_max(grad_T, 'grad_T')
     
     # where the gradients are equal, a basal temperate layer exists :
     alpha_v   = model.alpha.vector().array()
     grad_Tm_v = grad_Tm.vector().array()
     grad_T_v  = grad_T.vector().array()
 
-    dg                       = np.abs(grad_Tm_v - grad_T_v)
-    alpha_v[:]               = 0.0
-    alpha_v[dg > DOLFIN_EPS] = 1.0
+    dg                  = np.abs(grad_Tm_v - grad_T_v)
+    print_min_max(dg, 'dg')
+    alpha_v[:]          = 0.0
+    alpha_v[dg < 1e-2] = 1.0
     model.init_alpha(alpha_v, cls=self)
 
   def solve_basal_melt_rate(self):
@@ -982,14 +1012,14 @@ class Enthalpy(Energy):
     L        = model.L(0)
     rhoi     = model.rhoi(0)
     rhow     = model.rhow(0)
-    ki       = self.ki
+    k        = self.k
     u,v,w    = model.U3.split(True)
 
     # Mb is only valid on basal surface, needs extra matrix care :
     phi  = TestFunction(model.Q)
     du   = TrialFunction(model.Q)
     a_n  = du * phi * dBed_g
-    L_n  = ki * dot((grad(T_melt)), N) * phi * dBed_g
+    L_n  = k * dot((grad(T)), N) * phi * dBed_g
    
     A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
     B_n  = assemble(L_n, annotate=False)
@@ -1032,7 +1062,6 @@ class Enthalpy(Energy):
 
     W_v      = model.W.vector().array()
     beta_v   = model.beta.vector().array()
-    alpha_v  = model.alpha.vector().array()
     u_v      = u.vector().array()
     v_v      = v.vector().array()
     w_v      = w.vector().array()
@@ -1040,7 +1069,7 @@ class Enthalpy(Energy):
 
     q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
     rho_v    = W_v*rhow + (1 - W_v)*rhoi
-    Fb_v     = alpha_v * (q_geo_v + q_fric_v) / (L * rho_v)
+    Fb_v     = (q_geo_v + q_fric_v) / (L * rho_v)
    
     # remove areas with positive water flux where there is no melt : 
     T_melt_v             = model.T_melt.vector().array()
@@ -1064,7 +1093,7 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
     
     # previous theta for norm calculation
-    U_prev    = model.theta.copy(True)
+    U_prev  = model.theta.copy(True)
 
     # iteration counter :
     counter = 1
@@ -1140,6 +1169,9 @@ class Enthalpy(Energy):
 
       # update the temperature and water content for other physics :
       self.partition_energy(annotate=annotate)
+      
+      # update enthalpy-gradient conductivity :
+      self.adjust_enthalpy_grad_kappa()
 
       # mark appropriately basal regions with an overlying temperate layer :
       self.mark_temperate_zone()

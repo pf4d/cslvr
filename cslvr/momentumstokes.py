@@ -777,7 +777,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     
     #===========================================================================
     # define variational problem :
-    phi, psi, xsi, kappa = Phi
+    phi, psi, xi,  kappa = Phi
     du,  dv,  dw,  dP    = dU
     u,   v,   w,   p     = U
     
@@ -833,13 +833,13 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     # 4) incompressibility constraint :
     Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2)) 
     
-    # 5) inpenetrability constraint :
+    # 5) impenetrability constraint :
     sig_f  = self.stress_tensor(as_vector([u,v,w]), p, eta_shf)
     sig_g  = self.stress_tensor(as_vector([u,v,w]), p, eta_gnd)
-    lam_f  = -p#dot(N, dot(sig_f, N))
-    lam_g  = -p#dot(N, dot(sig_g, N))
-    Nc_g   = lam_g * (u*N[0] + v*N[1] + w*N[2])
-    Nc_f   = lam_f * (u*N[0] + v*N[1] + w*N[2])
+    lam_f  = p#-dot(N, dot(sig_f, N))
+    lam_g  = p#-dot(N, dot(sig_g, N))
+    Nc_g   = -lam_g * (u*N[0] + v*N[1] + w*N[2])
+    Nc_f   = -lam_f * (u*N[0] + v*N[1] + w*N[2])
     #Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary :
@@ -989,7 +989,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     nparams = {'newton_solver' :
               {
                 'linear_solver'            : 'mumps',
-                'relative_tolerance'       : 1e-8,
+                'relative_tolerance'       : 1e-6,
                 'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,

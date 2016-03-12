@@ -684,9 +684,9 @@ class Enthalpy(Energy):
     q_fric = beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
-    Mb   = (q_geo + q_fric - ki * dot(grad(T_m), N)) / (rho * L)
+    Mb   = (q_geo + q_fric - k * dot(grad(T), N)) / (rho * L)
     #mdot = (q_geo + q_fric - ki * dot(grad(T_m), N))
-    g    = q_geo + q_fric
+    g    = k * dot(grad(T), N)
     g_b  = q_geo + q_fric - alpha*g
 
     # configure the module to run in steady state :
@@ -801,7 +801,6 @@ class Enthalpy(Energy):
     self.rho     = rho
     self.kappa   = kappa
     self.q_fric  = q_fric
-    self.g       = g
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
     self.Mb      = Mb
@@ -919,6 +918,54 @@ class Enthalpy(Energy):
                'use_surface_climate' : False}
     return params
 
+  def mark_temperate_zone(self):
+    """
+    mark basal regions with overlying temperate layer to model.alpha.
+    """ 
+    # calculate melt-rate : 
+    s = "::: marking basal regions with an overlying temperate layer :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    dBed_g   = model.dBed_g
+    T_melt   = model.T_melt
+    T        = model.T
+    N        = model.N
+
+    # only valid on basal surface, needs extra matrix care :
+    phi      = TestFunction(model.Q)
+    du       = TrialFunction(model.Q)
+    grad_Tm  = Function(model.Q)
+    a_n      = du * phi * dBed_g
+    L_n      = dot((grad(T_melt)), N) * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
+    A_n.ident_zeros()
+    solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
+
+    # only valid on basal surface, needs extra matrix care :
+    phi      = TestFunction(model.Q)
+    du       = TrialFunction(model.Q)
+    grad_T   = Function(model.Q)
+    a_n      = du * phi * dBed_g
+    L_n      = dot((grad(T)), N) * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
+    A_n.ident_zeros()
+    solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
+    
+    # where the gradients are equal, a basal temperate layer exists :
+    alpha_v   = model.alpha.vector().array()
+    grad_Tm_v = grad_Tm.vector().array()
+    grad_T_v  = grad_T.vector().array()
+
+    dg                       = np.abs(grad_Tm_v - grad_T_v)
+    alpha_v[:]               = 0.0
+    alpha_v[dg > DOLFIN_EPS] = 1.0
+    model.init_alpha(alpha_v, cls=self)
+
   def solve_basal_melt_rate(self):
     """
     Solve for the basal melt rate stored in model.Mb.
@@ -1015,35 +1062,93 @@ class Enthalpy(Energy):
     # solve the energy equation :
     s    = "::: solving energy :::"
     print_text(s, cls=self)
-
-    #aw        = assemble(self.theta_a, annotate=annotate)
-    #Lw        = assemble(self.theta_L, annotate=annotate)
-    #for bc in self.theta_bc:
-    #  bc.apply(aw, Lw, annotate=annotate)
-    #theta_solver = KrylovSolver(self.solve_params['solver'])
-    #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
-    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
-          solver_parameters = self.solve_params['solver'], annotate=annotate)
-
-    #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
-    #                              'preconditioner'           : 'amg',
-    #                              'relative_tolerance'       : 1e-9,
-    #                              'relaxation_parameter'     : 1.0,
-    #                              'maximum_iterations'       : 10,
-    #                              'error_on_nonconvergence'  : False}}
-    #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
-    #      annotate=annotate, solver_parameters=nparams)
     
-    # update the model variable :
-    model.assign_variable(model.theta, self.theta, annotate=annotate, cls=self)
+    # previous theta for norm calculation
+    U_prev    = model.theta.copy(True)
+
+    # iteration counter :
+    counter = 1
+
+    # maximum number of iterations :
+    max_iter = 100
+
+    # L_2 erro norm between iterations :
+    abs_error = np.inf
+    rel_error = np.inf
+
+    # tolerances for stopping criteria :
+    atol = 1e2
+    rtol = 1e0
+
+    # perform a fixed-point iteration until the L_2 norm of error 
+    # is less than tolerance :
+    while abs_error > atol and rel_error > rtol and counter <= max_iter:
+
+      #aw        = assemble(self.theta_a, annotate=annotate)
+      #Lw        = assemble(self.theta_L, annotate=annotate)
+      #for bc in self.theta_bc:
+      #  bc.apply(aw, Lw, annotate=annotate)
+      #theta_solver = KrylovSolver(self.solve_params['solver'])
+      #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
+      solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
+            solver_parameters = self.solve_params['solver'], annotate=annotate)
+
+      #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+      #                              'preconditioner'           : 'amg',
+      #                              'relative_tolerance'       : 1e-9,
+      #                              'relaxation_parameter'     : 1.0,
+      #                              'maximum_iterations'       : 10,
+      #                              'error_on_nonconvergence'  : False}}
+      #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
+      #      annotate=annotate, solver_parameters=nparams)
+      
+      # calculate L_2 norms :
+      abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+      tht_nrm      = norm(self.theta.vector(), 'l2')
+
+      # save convergence history :
+      if counter == 1:
+        rel_error  = abs_error_n
+      else:
+        rel_error = abs(abs_error - abs_error_n)
+
+      # print info to screen :
+      if model.MPI_rank == 0:
+        s0    = '>>> '
+        s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
+        s2    = 'r (abs) = %.2e ' % abs_error
+        s3    = '(tol %.2e), '    % atol
+        s4    = 'r (rel) = %.2e ' % rel_error
+        s5    = '(tol %.2e)'      % rtol
+        s6    = ' <<<'
+        text0 = get_text(s0, self.color(), 1)
+        text1 = get_text(s1, self.color())
+        text2 = get_text(s2, self.color(), 1)
+        text3 = get_text(s3, self.color())
+        text4 = get_text(s4, self.color(), 1)
+        text5 = get_text(s5, self.color())
+        text6 = get_text(s6, self.color(), 1)
+        print text0 + text1 + text2 + text3 + text4 + text5 + text6
+      
+      # update error stuff and increment iteration counter :
+      abs_error    = abs_error_n
+      U_prev       = self.theta.copy(True)
+      counter     += 1
+      
+      # update the model variable :
+      model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+
+      # update the temperature and water content for other physics :
+      self.partition_energy(annotate=annotate)
+
+      # mark appropriately basal regions with an overlying temperate layer :
+      self.mark_temperate_zone()
 
     # update the previous energy if solving the transient equation :
     if self.transient:
       model.assign_variable(self.theta0, self.theta, cls=self,
                             annotate=annotate)
 
-    # update the temperature and water content for other physics :
-    self.partition_energy(annotate=annotate)
 
   def solve_divide(self, init=False, annotate=False):
     """

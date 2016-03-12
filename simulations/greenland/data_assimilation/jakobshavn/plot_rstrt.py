@@ -14,7 +14,7 @@ import sys
 #base_dir  = 'dump/jakob_small/rstrt_FS_Tp_a_0_100_disc_new/tmc/01/'
 #base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_disc/'
 #base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_cont/'
-base_dir = 'dump/jakob_small/rstrt_FS_a_0_1_cont/'
+base_dir = 'dump/jakob_small/rstrt_FS_a_0_100_cont_pi_2.5e7/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -119,14 +119,14 @@ Tmin  = bedmodel.T.vector().min()
 Wimax = 1.5e1
 Wmax  = 1.9e-1
 
-#a_lvls  = np.array([0.0, 1e-3, 1e-2, 1e-1, 5e-1, 9.9e-1, 1.0])
-a_lvls  = np.array([0.0, 1e-8, 1e-6, 1e-4, 9.99e-1, amax])
-#a_lvls  = np.array([0.0, 1e-3, 1e-1, 1e0, 2, 3, amax])
-Mb_lvls = np.array([Mbmin, -0.5, -1e-1, -1e-2, -1e-5,
-                    1e-5, 1e-2, 1e-1, 0.5, Mbmax])
-Fb_lvls = np.array([Fbmin, -0.5, -1e-1, -1e-2, -1e-5,
-                    1e-5, 1e-2, 1e-1, 0.5, Fbmax])
-#Fb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Fbmax])
+#a_lvls  = np.array([0.0, 1e-8, 1e-6, 1e-4, 9.99e-1, amax])
+a_lvls  = np.array([0.0, 1e-8, 1e-6, 1e-4, 1.0, 2.0, 3.0, amax])
+#Mb_lvls = np.array([Mbmin, -0.5, -1e-1, -1e-2, -1e-5,
+#                    1e-5, 1e-2, 1e-1, 0.5, Mbmax])
+Mb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Mbmax])
+#Fb_lvls = np.array([Fbmin, -0.5, -1e-1, -1e-2, -1e-5,
+#                    1e-5, 1e-2, 1e-1, 0.5, Fbmax])
+Fb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Fbmax])
 b_lvls  = np.array([bmin, 1e-3, 1e-2, 1, 1e2, 1e3, 2.5e3, 5e3, bmax])
 W_lvls  = np.array([0.0, 1e-2, 3e-2, 4e-2, 5e-2, 1e-1, Wmax])
 U_lvls  = np.array([50, 100, 250, 500, 1e3, 2.5e3, 5e3, Umax])
@@ -244,25 +244,25 @@ cmap = 'gist_yarg'
 #        levels=W_lvls, tp=False, tpAlpha=0.2,
 #        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
 #        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
-#        title=r'$F_b$', cmap='RdGy',  scale='lin',
-#        levels=Fb_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
-#
-#plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-#        title=r'$M_b$', cmap='RdGy',  scale='lin',
-#        levels=Mb_lvls, tp=False, tpAlpha=0.2,
-#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
-        title=r'$\alpha$', cmap=cmap,  scale='lin',
-        levels=a_lvls, tp=False, tpAlpha=0.2, cb_format='%.2e',
+plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+        title=r'$F_b$', cmap=cmap,  scale='lin',
+        levels=Fb_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
+plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
+        title=r'$M_b$', cmap=cmap,  scale='lin',
+        levels=Mb_lvls, tp=False, tpAlpha=0.2,
+        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
+
+#plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
+#        title=r'$\alpha$', cmap=cmap,  scale='lin',
+#        levels=a_lvls, tp=False, tpAlpha=0.2, cb_format='%.2e',
+#        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
+#        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
+#
 #plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
 #        title=r'$P_e$', cmap=cmap,  scale='lin',
 #        levels=Pe_lvls, tp=False, tpAlpha=0.2,

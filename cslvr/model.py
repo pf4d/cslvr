@@ -1810,11 +1810,12 @@ class Model(object):
 
       # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
-      energy.solve_basal_melt_rate()
+      energy.solve(annotate=False)
+      #energy.solve_basal_melt_rate()
 
-      # solve energy (temperature, water content) :
-      energy.optimize_water_flux(**wop_kwargs)
-      energy.partition_energy()
+      ## solve energy (temperature, water content) :
+      #energy.optimize_water_flux(**wop_kwargs)
+      #energy.partition_energy()
 
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

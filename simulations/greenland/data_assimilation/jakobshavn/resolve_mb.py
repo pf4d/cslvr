@@ -5,7 +5,7 @@ from dolfin_adjoint   import *
 import sys
 
 # set the relavent directories :
-in_dir   = 'dump/jakob_small/rstrt_FS_a_0_1_cont/'
+in_dir   = 'dump/jakob_small/rstrt_FS_a_0_1_cont_crap/'
 var_dir  = 'dump/vars_jakobshavn_small/'
 out_dir  = in_dir
 

@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/rstrt_FS_a_0_100_cont_pi_2.5e7/'
+out_dir  = 'dump/jakob_small/new_system_test/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -37,6 +37,7 @@ model.init_beta(fini)
 model.init_theta(fini)
 model.init_T(fini)
 model.init_W(fini)
+model.init_U(fini)
 model.init_k_0(1.0)
 model.solve_hydrostatic_pressure()
 
@@ -49,8 +50,8 @@ model.solve_hydrostatic_pressure()
 #model.init_p(frstrt)
 
 # initialize the physics :
-mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
-#mom  = MomentumDukowiczBP(model, isothermal=False)
+#mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
+mom = MomentumDukowiczBP(model, isothermal=False)
 nrg = Enthalpy(model, transient=False, use_lat_bc=True, 
                epsdot_ftn=mom.strain_rate_tensor)
 

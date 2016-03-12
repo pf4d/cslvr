@@ -29,11 +29,12 @@ model.init_E(1.0)
 #mom = MomentumBP(model, isothermal=True)
 #mom = MomentumDukowiczBP(model, isothermal=True)
 #mom = MomentumDukowiczStokesReduced(model, isothermal=True)
-mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=True)
+mom = MomentumDukowiczBPModified(model, isothermal=True)
+#mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=True)
 mom.solve()
 
-model.save_pvd(model.p,  'p')
-model.save_pvd(model.U3, 'U')
+model.save_xdmf(model.p,  'p')
+model.save_xdmf(model.U3, 'U')
 
 
 

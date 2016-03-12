@@ -6,7 +6,7 @@ L     = 40000
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
-mesh  = BoxMesh(p1, p2, 10, 10, 4)
+mesh  = BoxMesh(p1, p2, 25, 25, 10)
 
 model = D3Model(mesh, out_dir = './ISMIP_HOM_A_results/')
 model.generate_function_spaces(use_periodic = True)
@@ -28,11 +28,15 @@ model.init_E(1.0)
 #mom = MomentumBP(model, isothermal=True)
 #mom = MomentumDukowiczBP(model, isothermal=True)
 #mom = MomentumDukowiczStokesReduced(model, isothermal=True)
+#mom = MomentumDukowiczBPModified(model, isothermal=True)
 mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=True)
 mom.solve()
 
-model.save_pvd(model.p,  'p')
-model.save_pvd(model.U3, 'U')
+divU = project(div(model.U3))
+
+model.save_xdmf(model.p,  'p')
+model.save_xdmf(model.U3, 'U')
+model.save_xdmf(divU,     'divU')
 
 
 

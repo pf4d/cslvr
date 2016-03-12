@@ -1077,8 +1077,8 @@ class Enthalpy(Energy):
     rel_error = np.inf
 
     # tolerances for stopping criteria :
-    atol = 1e2
-    rtol = 1e0
+    atol = 10.0
+    rtol = 1e-3
 
     # perform a fixed-point iteration until the L_2 norm of error 
     # is less than tolerance :

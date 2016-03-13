@@ -121,7 +121,7 @@ class Model(object):
     self.A0      = Constant(1e-16)
     self.A0.rename('A0', 'flow rate factor')
 
-    self.rhoi    = Constant(917.0)
+    self.rhoi    = Constant(910.0)
     self.rhoi.rename('rhoi', 'ice density')
 
     self.rhow    = Constant(1000.0)
@@ -773,18 +773,9 @@ class Model(object):
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing mdot coefficient :::"
+    s = "::: initializing temperate-zone marking coefficient :::"
     print_text(s, cls=cls)
     self.assign_variable(self.alpha, alpha, cls=cls)
-
-  def init_alpha_crit(self, alpha_crit, cls=None):
-    """
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing crit-value of mdot coefficient :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.alpha_crit, alpha_crit, cls=cls)
 
   def init_Fb(self, Fb, cls=None):
     """
@@ -822,33 +813,33 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.n_f, n, cls=cls)
 
-  def init_alpha_bounds(self, alpha_min, alpha_max, cls=None):
+  def init_Fb_bounds(self, Fb_min, Fb_max, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing bounds for water-optimizing alpha:::"
+    s = "::: initializing bounds for basal water flux Fb :::"
     print_text(s, cls=cls)
-    self.init_alpha_min(alpha_min, cls)
-    self.init_alpha_max(alpha_max, cls)
+    self.init_Fb_min(Fb_min, cls)
+    self.init_Fb_max(Fb_max, cls)
 
-  def init_alpha_min(self, alpha_min, cls=None):
+  def init_Fb_min(self, Fb_min, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing lower bound for water-optimizing alpha:::"
+    s = "::: initializing lower bound for basal water flux Fb :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.alpha_min, alpha_min, cls=cls)
+    self.assign_variable(self.Fb_min, Fb_min, cls=cls)
 
-  def init_alpha_max(self, alpha_max, cls=None):
+  def init_Fb_max(self, Fb_max, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing upper bound for water-optimizing alpha :::"
+    s = "::: initializing upper bound for basal water flux Fb :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.alpha_max, alpha_max, cls=cls)
+    self.assign_variable(self.Fb_max, Fb_max, cls=cls)
 
   def init_k_0(self, k_0, cls=None):
     """
@@ -1688,12 +1679,11 @@ class Model(object):
     self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
     self.alpha         = Function(self.Q, name='alpha')
-    self.alpha_crit    = Function(self.Q, name='alpha_crit')
     self.Fb            = Function(self.Q, name='Fb')
     self.PE            = Function(self.Q, name='PE')
     self.W_int         = Function(self.Q, name='W_int')
-    self.alpha_min     = Function(self.Q, name='alpha_min')
-    self.alpha_max     = Function(self.Q, name='alpha_max')
+    self.Fb_min        = Function(self.Q, name='Fb_min')
+    self.Fb_max        = Function(self.Q, name='Fb_max')
     self.k_c           = Function(self.Q, name='k_c')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
@@ -1786,10 +1776,11 @@ class Model(object):
     ## convert to pseudo-timestepping for smooth convergence : 
     #energy.make_transient(time_step = 25.0)
 
-    ## get the bounds, the max will be updated based on areas of refreeze :
-    #bounds = wop_kwargs['bounds']
-    #if bounds[1] > 1.0:
-    #  self.init_alpha_min(bounds[0], cls=self.this)
+    ## get the bounds, the max will be updated based on temperate zones :
+    #bounds = copy(wop_kwargs['bounds'])
+    #self.init_Fb_min(bounds[0], cls=self.this)
+    #self.init_Fb_max(bounds[1], cls=self.this)
+    #wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1820,12 +1811,25 @@ class Model(object):
 
       # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
-      energy.solve(annotate=False)
+
+      # solve energy steady-state equations to derive temperate zone :
+      energy.derive_temperate_zone(annotate=False)
+
+      ## update bounds based on temperate zone :
+      #Fb_m_v                 = self.Fb_max.vector().array()
+      #alpha_v                = self.alpha.vector().array()
+      #Fb_m_v[:]              = DOLFIN_EPS
+      #Fb_m_v[alpha_v == 1.0] = bounds[1]
+      #self.init_Fb_max(Fb_m_v, cls=self.this)
+
+      # calculate the basal melt rate :
       energy.solve_basal_melt_rate()
 
-      ## solve energy (temperature, water content) :
-      #energy.optimize_water_flux(**wop_kwargs)
-      #energy.partition_energy()
+      # optimize the flux of water to remove abnormally high water :
+      energy.optimize_water_flux(**wop_kwargs)
+
+      # derive T and W from theta :
+      energy.partition_energy()
 
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

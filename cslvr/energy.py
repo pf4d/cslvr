@@ -333,25 +333,25 @@ class Energy(Physics):
     # need this for the derivative callback :
     global counter
     counter = 0 
-    
+ 
     # functional lists to be populated :
     global Rs, Js, Ds
     Rs = []
     Js = []
     Ds = []
-    
+
     # now solve the control optimization problem : 
     s    = "::: starting adjoint-control optimization with method '%s' :::"
     print_text(s % method, cls=self)
-    
-    def eval_cb(I, alpha):
+
+    def eval_cb(I, Fb):
       s    = '::: adjoint objective eval post callback function :::'
       print_text(s, cls=self)
-      print_min_max(I,     'I',     cls=self)
-      print_min_max(alpha, 'alpha', cls=self)
+      print_min_max(I,  'I',  cls=self)
+      print_min_max(Fb, 'Fb', cls=self)
     
     # objective gradient callback function :
-    def deriv_cb(I, dI, alpha):
+    def deriv_cb(I, dI, Fb):
       global counter, Rs, Js
       if method == 'ipopt':
         s0    = '>>> '
@@ -365,7 +365,7 @@ class Energy(Physics):
         counter += 1
       s    = '::: adjoint obj. gradient post callback function :::'
       print_text(s, cls=self)
-      print_min_max(dI,    'dI/dalpha', cls=self)
+      print_min_max(dI,    'dI/Fb', cls=self)
       
       # update the DA current velocity to the model for evaluation 
       # purposes only; the model.assign_variable function is 
@@ -375,7 +375,7 @@ class Energy(Physics):
       model.init_theta(theta_opt, cls=self)
 
       # print functional values :
-      model.alpha.assign(alpha, annotate=False)
+      model.Fb.assign(Fb, annotate=False)
       ftnls = self.calc_functionals()
       D     = self.calc_misfit()
 
@@ -386,7 +386,7 @@ class Energy(Physics):
 
       # call that callback, if you want :
       if adj_callback is not None:
-        adj_callback(I, dI, alpha)
+        adj_callback(I, dI, Fb)
     
     # solve the momentum equations with annotation enabled :
     s    = '::: solving forward problem for dolfin-adjoint annotatation :::'
@@ -401,7 +401,7 @@ class Energy(Physics):
       print_text('    - not using regularization -', cls=self)
 
     # define the control variable :    
-    m = Control(model.alpha, value=model.alpha)
+    m = Control(model.Fb, value=model.Fb)
 
     # state the minimization problem :
     F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
@@ -413,7 +413,7 @@ class Energy(Physics):
                      options={"disp"    : True,
                               "maxiter" : max_iter,
                               "gtol"    : 1e-5})
-      a_opt = out[0]
+      Fb_opt = out[0]
     
     # or optimize with IPOpt (preferred) :
     elif method == 'ipopt':
@@ -433,14 +433,14 @@ class Energy(Physics):
                     "ma86_order"         : "metis",
                     "linear_solver"      : "ma57"}
       solver = IPOPTSolver(problem, parameters=parameters)
-      a_opt  = solver.solve()
+      Fb_opt  = solver.solve()
     
     # let's see it :
-    print_min_max(a_opt, 'a_opt')
+    print_min_max(Fb_opt, 'Fb_opt')
 
     # make the optimal control variable available :
-    model.init_alpha(a_opt, cls=self)
-    #Control(model.alpha).update(a_opt)  # FIXME: does this work?
+    model.init_Fb(Fb_opt, cls=self)
+    #Control(model.Fb).update(Fb_opt)  # FIXME: does this work?
 
     # reset entire dolfin-adjoint state :
     adj_reset()
@@ -574,6 +574,7 @@ class Enthalpy(Energy):
     g             = model.g
     alpha         = model.alpha
     beta          = model.beta
+    Fb            = model.Fb
     rhoi          = model.rhoi
     rhow          = model.rhow
     k_0           = model.k_0
@@ -620,7 +621,7 @@ class Enthalpy(Energy):
       T_s_v   = T_surface.vector().array()
       T_m_v   = T_m.vector().array()
       theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
-      theta_f = 146.3*T_m_v + 7.253/2.0*T_m_v**2
+      theta_f = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
     
       # Surface boundary condition :
       s = "::: calculating energy boundary conditions :::"
@@ -630,6 +631,9 @@ class Enthalpy(Energy):
       model.init_theta_surface(theta_s, cls=self)
       model.init_theta_app(theta_s,     cls=self)
       model.init_theta_float(theta_f,   cls=self)
+
+      # initialize water flux to zero :
+      model.init_Fb(0.0, cls=self)
       
     # strain-rate :
     epsdot  = self.effective_strain_rate(U) + eps_reg
@@ -667,8 +671,8 @@ class Enthalpy(Energy):
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
     
-    # coefficient for non-advective water flux :
-    k_c   = model.k_c#conditional( gt(W, 0), k_0, 1.0)
+    # coefficient for non-advective water flux (enthalpy-gradient) :
+    k_c   = model.k_c
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = spy * 9.828 * exp(-0.0057*T)  # converted to J/(a*m*K)
@@ -678,17 +682,16 @@ class Enthalpy(Energy):
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    k     =  k_c * k                 # discontinuous with water
-    kappa =  k / (rho*c)             # bulk thermal diffusivity
+    kappa =  k_c * k                 # discontinuous with water
+    Xi    =  kappa / (rho*c)         # bulk enthalpy-gradient diffusivity
 
     # frictional heating :
     q_fric = beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T), N)) / (rho * L)
-    #mdot = (q_geo + q_fric - ki * dot(grad(T_m), N))
     g    = k * dot(grad(T), N)
-    g_b  = q_geo + q_fric - alpha*g
+    g_b  = q_geo + q_fric - alpha*(g + rhow*L*Fb)
 
     # configure the module to run in steady state :
     if not transient:
@@ -696,7 +699,7 @@ class Enthalpy(Energy):
       print_text(s, cls=self)
       # skewed test function in areas with high velocity :
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*kappa)
+      PE     = Unorm*h/(2*Xi)
       tau    = 1/tanh(PE) - 1/PE
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       
@@ -705,14 +708,14 @@ class Enthalpy(Energy):
       #
       ## residual :
       #delta  = + rho * dot(U, grad(dtheta)) * psihat * dx \
-      #         - div(rho * kappa * grad(dtheta)) * psihat * dx \
+      #         - div(rho * Xi * grad(dtheta)) * psihat * dx \
       #         - Q_s_gnd * psihat * dx_g \
       #         - Q_s_shf * psihat * dx_f \
       #
       ## galerkin formulation :
       #F      = + rho * dot(U, grad(dtheta)) * psi * dx \
-      #         - dot(grad(k/c), grad(dtheta)) * psi * dx \
-      #         + k/c * dot(grad(psi), grad(dtheta)) * dx \
+      #         - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
+      #         + kappa/c * dot(grad(psi), grad(dtheta)) * dx \
       #         - g_b * psi * dBed_g \
       #         - Q_s_gnd * psi * dx_g \
       #         - Q_s_shf * psi * dx_f \
@@ -723,8 +726,8 @@ class Enthalpy(Energy):
 
       # galerkin formulation :
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
-                - dot(grad(k/c), grad(dtheta)) * psi * dx \
-                + k/c * dot(grad(psi), grad(dtheta)) * dx \
+                - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
+                + kappa/c * dot(grad(psi), grad(dtheta)) * dx \
       
       theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
@@ -747,7 +750,7 @@ class Enthalpy(Energy):
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*kappa)
+      PE     = Unorm*h/(2*Xi)
       tau    = 1/tanh(PE) - 1/PE
       psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
 
@@ -758,8 +761,8 @@ class Enthalpy(Energy):
       # implicit system (linearized) for energy at time theta_{n+1}
       theta_a = + rho * (dtheta - theta0) / dt * psi * dx \
                 + rho * dot(U, grad(thetamid)) * psihat * dx \
-                - dot(grad(k/c), grad(thetamid)) * psi * dx \
-                + k/c * dot(grad(psi), grad(thetamid)) * dx \
+                - dot(grad(kappa/c), grad(thetamid)) * psi * dx \
+                + kappa/c * dot(grad(psi), grad(thetamid)) * dx \
       
       theta_L = + g_b * psi * dBed_g \
                 + Q_s_gnd * psi * dx_g \
@@ -801,11 +804,11 @@ class Enthalpy(Energy):
     self.k       = k
     self.rho     = rho
     self.kappa   = kappa
+    self.Xi      = Xi
     self.q_fric  = q_fric
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
     self.Mb      = Mb
-    self.ki      = ki
   
   def default_strain_rate_tensor(self, U):
     """
@@ -842,13 +845,13 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
 
     model = self.model
-    kappa = self.kappa
+    Xi    = self.Xi
 
     U = model.U3
     h = model.h
 
     Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
-    PE     = (Unorm*h + DOLFIN_EPS)/(2*kappa)
+    PE     = Unorm*h / (2*Xi)
     if avg:
       PE = model.calc_vert_average(PE)
     else:
@@ -936,7 +939,6 @@ class Enthalpy(Energy):
     k_c_v[W_v > 0] = model.k_0(0)
     model.init_k_c(k_c_v, cls=self)
 
-    
   def mark_temperate_zone(self):
     """
     mark basal regions with overlying temperate layer to model.alpha.
@@ -954,33 +956,20 @@ class Enthalpy(Energy):
     du       = TrialFunction(model.Q)
     grad_Tm  = Function(model.Q)
     grad_T   = Function(model.Q)
-    grad_B   = as_vector([model.B.dx(0), model.B.dx(1), -1])
     
-    #a_n      = du * phi * dx
-    #L_n      = dot((grad(T_melt)), grad_B) * phi * dx
-    #
-    #A_n  = assemble(a_n, annotate=False)
-    #B_n  = assemble(L_n, annotate=False)
-    #solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
-    #print_min_max(grad_Tm, 'grad_Tm')
-
-    #L_n      = dot((grad(T)), grad_B) * phi * dx
-    #solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
-    #print_min_max(grad_T, 'grad_T')
-
     # only valid on basal surface, needs extra matrix care :
     a_n      = du * phi * dBed_g
     L_n      = dot((grad(T_melt)), N) * phi * dBed_g
    
+    # solve for temperature-melting gradient :
     A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
     B_n  = assemble(L_n, annotate=False)
     A_n.ident_zeros()
     solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
     print_min_max(grad_Tm, 'grad_Tm')
 
-    # only valid on basal surface, needs extra matrix care :
-    L_n      = dot((grad(T)), N) * phi * dBed_g
-   
+    # solve for temperature gradient :
+    L_n  = dot((grad(T)), N) * phi * dBed_g
     B_n  = assemble(L_n, annotate=False)
     solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
     print_min_max(grad_T, 'grad_T')
@@ -990,9 +979,9 @@ class Enthalpy(Energy):
     grad_Tm_v = grad_Tm.vector().array()
     grad_T_v  = grad_T.vector().array()
 
-    dg                  = np.abs(grad_Tm_v - grad_T_v)
+    dg                 = np.abs(grad_Tm_v - grad_T_v)
     print_min_max(dg, 'dg')
-    alpha_v[:]          = 0.0
+    alpha_v[:]         = 0.0
     alpha_v[dg < 1e-2] = 1.0
     model.init_alpha(alpha_v, cls=self)
 
@@ -1046,37 +1035,6 @@ class Enthalpy(Energy):
     #Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
     model.init_Mb(Mb_v, cls=self)
 
-  def solve_basal_water_flux(self):
-    """
-    Solve for the basal-water flux stored in model.Wb_flux.
-    """ 
-    # calculate melt-rate : 
-    s = "::: solving basal-water-flux :::"
-    print_text(s, cls=self)
-    
-    model    = self.model
-    rhoi     = model.rhoi(0)
-    rhow     = model.rhow(0)
-    L        = model.L(0)
-    u,v,w    = model.U3.split(True)
-
-    W_v      = model.W.vector().array()
-    beta_v   = model.beta.vector().array()
-    u_v      = u.vector().array()
-    v_v      = v.vector().array()
-    w_v      = w.vector().array()
-    q_geo_v  = model.q_geo.vector().array()
-
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
-    rho_v    = W_v*rhow + (1 - W_v)*rhoi
-    Fb_v     = (q_geo_v + q_fric_v) / (L * rho_v)
-   
-    # remove areas with positive water flux where there is no melt : 
-    T_melt_v             = model.T_melt.vector().array()
-    T_v                  = model.T.vector().array()
-    Fb_v[T_v < T_melt_v] = 0.0
-    model.init_Fb(Fb_v, cls=self)
-
   def solve(self, annotate=False):
     """ 
     Solve the energy equations, saving enthalpy to model.theta, temperature 
@@ -1091,6 +1049,57 @@ class Enthalpy(Energy):
     # solve the energy equation :
     s    = "::: solving energy :::"
     print_text(s, cls=self)
+    
+    #aw        = assemble(self.theta_a, annotate=annotate)
+    #Lw        = assemble(self.theta_L, annotate=annotate)
+    #for bc in self.theta_bc:
+    #  bc.apply(aw, Lw, annotate=annotate)
+    #theta_solver = KrylovSolver(self.solve_params['solver'])
+    #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
+    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
+          solver_parameters = self.solve_params['solver'], annotate=annotate)
+
+    #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
+    #                              'preconditioner'           : 'amg',
+    #                              'relative_tolerance'       : 1e-9,
+    #                              'relaxation_parameter'     : 1.0,
+    #                              'maximum_iterations'       : 10,
+    #                              'error_on_nonconvergence'  : False}}
+    #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
+    #      annotate=annotate, solver_parameters=nparams)
+    
+    # update the model variable :
+    model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+
+    # update the temperature and water content for other physics :
+    self.partition_energy(annotate=annotate)
+    
+    # update the previous energy if solving the transient equation :
+    if self.transient:
+      model.assign_variable(self.theta0, self.theta, cls=self,
+                            annotate=annotate)
+
+  def derive_temperate_zone(self, annotate=False):
+    """ 
+    Solve the steady-state energy equation, saving enthalpy to model.theta, 
+    temperature to model.T, and water content to model.W such that the 
+    regions with overlying temperate ice are properly marked by model.alpha.
+    """
+    model = self.model
+    
+    # update the surface climate if desired :
+    if self.solve_params['use_surface_climate']:
+      self.solve_surface_climate()
+    
+    # solve the energy equation :
+    s    = "::: solving for temperate zone locations :::"
+    print_text(s, cls=self)
+
+    # ensure that the boundary-marking process is done in steady state :
+    transient = False
+    if self.transient:
+      self.make_steady_state()
+      transient = True
     
     # previous theta for norm calculation
     U_prev  = model.theta.copy(True)
@@ -1113,24 +1122,10 @@ class Enthalpy(Energy):
     # is less than tolerance :
     while abs_error > atol and rel_error > rtol and counter <= max_iter:
 
-      #aw        = assemble(self.theta_a, annotate=annotate)
-      #Lw        = assemble(self.theta_L, annotate=annotate)
-      #for bc in self.theta_bc:
-      #  bc.apply(aw, Lw, annotate=annotate)
-      #theta_solver = KrylovSolver(self.solve_params['solver'])
-      #theta_solver.solve(aw, self.theta.vector(), Lw, annotate=annotate)
+      # solve the linear system :
       solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
             solver_parameters = self.solve_params['solver'], annotate=annotate)
 
-      #nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
-      #                              'preconditioner'           : 'amg',
-      #                              'relative_tolerance'       : 1e-9,
-      #                              'relaxation_parameter'     : 1.0,
-      #                              'maximum_iterations'       : 10,
-      #                              'error_on_nonconvergence'  : False}}
-      #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
-      #      annotate=annotate, solver_parameters=nparams)
-      
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
       tht_nrm      = norm(self.theta.vector(), 'l2')
@@ -1175,12 +1170,10 @@ class Enthalpy(Energy):
 
       # mark appropriately basal regions with an overlying temperate layer :
       self.mark_temperate_zone()
-
-    # update the previous energy if solving the transient equation :
-    if self.transient:
-      model.assign_variable(self.theta0, self.theta, cls=self,
-                            annotate=annotate)
-
+    
+    # convert back to transient if necessary : 
+    if transient:
+      energy.make_transient(time_step = model.time_step)
 
   def solve_divide(self, init=False, annotate=False):
     """
@@ -1195,6 +1188,7 @@ class Enthalpy(Energy):
     k       = self.k
     rho     = self.rho
     kappa   = self.kappa
+    Xi      = self.Xi
     q_fric  = self.q_fric
     Q_s_gnd = self.Q_s_gnd
     Q_s_shf = self.Q_s_shf
@@ -1210,6 +1204,8 @@ class Enthalpy(Energy):
     T_m     = model.T_melt
     T       = model.T
     W       = model.W
+    gamma   = model.gamma
+    p       = model.p
     dx      = model.dx
     dBed_g  = model.dBed_g
     dLat_d  = model.dLat_d
@@ -1269,8 +1265,9 @@ class Enthalpy(Energy):
     #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     #Q_s_gnd = 4 * eta_gnd * epsdot
     #Q_s_shf = 4 * eta_shf * epsdot
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    Tp      = T + gamma*p
+    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     Q_s_gnd = 4 * eta_gnd * epsdot
@@ -1280,20 +1277,19 @@ class Enthalpy(Energy):
     q_fric = beta * inner(U_t, U_t)
 
     # basal heat-flux natural boundary condition :
-    Mb   = (q_geo + q_fric - k * dot(grad(T_m), N)) / (rho * L)
-    g    = q_geo + q_fric
+    g    = k * dot(grad(T), N)
     g_b  = q_geo + q_fric - alpha*g
       
     # SUPG :
     Unorm  = sqrt(dot(U_t, U_t) + 1e-15)
-    PE     = Unorm*h/(2*kappa)
+    PE     = Unorm*h / (2*Xi)
     tau    = 1/tanh(PE) - 1/PE
     psihat = psi + h*tau/(2*Unorm) * dot(U_t, grad(psi))
     
     # galerkin formulation :
     theta_a = + rho * dot(U_t, grad(dtheta)) * psihat * dx \
-              - dot(grad(k/c), grad(dtheta)) * psi * dx \
-              + k/c * dot(grad(psi), grad(dtheta)) * dx \
+              - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
+              + kappa/c * dot(grad(psi), grad(dtheta)) * dx \
     
     theta_L = + g_b * psi * dBed_g \
               + Q_s_gnd * psi * dx_g \

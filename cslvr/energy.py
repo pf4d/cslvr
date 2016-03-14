@@ -690,7 +690,7 @@ class Enthalpy(Energy):
 
     # basal heat-flux natural boundary condition :
     Mb   = (q_geo + q_fric - k * dot(grad(T), N)) / (rho * L)
-    g    = k * dot(grad(T), N)
+    g    = k * dot(grad(T_m), N)
     g_b  = q_geo + q_fric - alpha*(g + rhow*L*Fb)
 
     # configure the module to run in steady state :
@@ -957,32 +957,38 @@ class Enthalpy(Energy):
     grad_Tm  = Function(model.Q)
     grad_T   = Function(model.Q)
     
-    # only valid on basal surface, needs extra matrix care :
-    a_n      = du * phi * dBed_g
-    L_n      = dot((grad(T_melt)), N) * phi * dBed_g
+    ## only valid on basal surface, needs extra matrix care :
+    #a_n      = du * phi * dBed_g
+    #L_n      = dot((grad(T_melt)), N) * phi * dBed_g
    
-    # solve for temperature-melting gradient :
-    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    B_n  = assemble(L_n, annotate=False)
-    A_n.ident_zeros()
-    solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
-    print_min_max(grad_Tm, 'grad_Tm')
+    ## solve for temperature-melting gradient :
+    #A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    #B_n  = assemble(L_n, annotate=False)
+    #A_n.ident_zeros()
+    #solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
+    #print_min_max(grad_Tm, 'grad_Tm')
 
-    # solve for temperature gradient :
-    L_n  = dot((grad(T)), N) * phi * dBed_g
-    B_n  = assemble(L_n, annotate=False)
-    solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
-    print_min_max(grad_T, 'grad_T')
-    
-    # where the gradients are equal, a basal temperate layer exists :
-    alpha_v   = model.alpha.vector().array()
-    grad_Tm_v = grad_Tm.vector().array()
-    grad_T_v  = grad_T.vector().array()
+    ## solve for temperature gradient :
+    #L_n  = dot((grad(T)), N) * phi * dBed_g
+    #B_n  = assemble(L_n, annotate=False)
+    #solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
+    #print_min_max(grad_T, 'grad_T')
+    #
+    ## where the gradients are equal, a basal temperate layer exists :
+    #alpha_v   = model.alpha.vector().array()
+    #grad_Tm_v = grad_Tm.vector().array()
+    #grad_T_v  = grad_T.vector().array()
 
-    dg                 = np.abs(grad_Tm_v - grad_T_v)
-    print_min_max(dg, 'dg')
-    alpha_v[:]         = 0.0
-    alpha_v[dg < 1e-2] = 1.0
+    #dg                 = np.abs(grad_Tm_v - grad_T_v)
+    #print_min_max(dg, 'dg')
+    #alpha_v[:]         = 0.0
+    #alpha_v[dg < 1e-2] = 1.0
+    #model.init_alpha(alpha_v, cls=self)
+
+    W_v              = model.W.vector().array()
+    alpha_v          = model.alpha.vector().array()
+    alpha_v[:]       = 0
+    alpha_v[W_v > 0] = 1
     model.init_alpha(alpha_v, cls=self)
 
   def solve_basal_melt_rate(self):

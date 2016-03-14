@@ -1776,11 +1776,11 @@ class Model(object):
     ## convert to pseudo-timestepping for smooth convergence : 
     #energy.make_transient(time_step = 25.0)
 
-    ## get the bounds, the max will be updated based on temperate zones :
-    #bounds = copy(wop_kwargs['bounds'])
-    #self.init_Fb_min(bounds[0], cls=self.this)
-    #self.init_Fb_max(bounds[1], cls=self.this)
-    #wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
+    # get the bounds, the max will be updated based on temperate zones :
+    bounds = copy(wop_kwargs['bounds'])
+    self.init_Fb_min(bounds[0], cls=self.this)
+    self.init_Fb_max(bounds[1], cls=self.this)
+    wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1815,12 +1815,12 @@ class Model(object):
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
 
-      ## update bounds based on temperate zone :
-      #Fb_m_v                 = self.Fb_max.vector().array()
-      #alpha_v                = self.alpha.vector().array()
-      #Fb_m_v[:]              = DOLFIN_EPS
-      #Fb_m_v[alpha_v == 1.0] = bounds[1]
-      #self.init_Fb_max(Fb_m_v, cls=self.this)
+      # update bounds based on temperate zone :
+      Fb_m_v                 = self.Fb_max.vector().array()
+      alpha_v                = self.alpha.vector().array()
+      Fb_m_v[:]              = DOLFIN_EPS
+      Fb_m_v[alpha_v == 1.0] = bounds[1]
+      self.init_Fb_max(Fb_m_v, cls=self.this)
 
       # calculate the basal melt rate :
       energy.solve_basal_melt_rate()

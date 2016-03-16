@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/tmc_k_1/'
+out_dir  = 'dump/jakob_small/tmc_k_1e-3/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -38,7 +38,7 @@ model.init_theta(fini)
 model.init_T(fini)
 model.init_W(fini)
 #model.init_U(fini)
-model.init_k_0(1.0)
+model.init_k_0(1e-3)
 model.solve_hydrostatic_pressure()
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/08/tmc.h5', 'r')
@@ -95,7 +95,7 @@ tmc_kwargs = {'momentum'            : mom,
               'callback'            : tmc_cb_ftn, 
               'atol'                : 1e2,
               'rtol'                : 1e0,
-              'max_iter'            : 100,
+              'max_iter'            : 15,
               'itr_tmc_save_vars'   : tmc_save_vars,
               'post_tmc_save_vars'  : tmc_save_vars,
               'starting_i'          : 1}

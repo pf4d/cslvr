@@ -84,7 +84,7 @@ nrg.form_cost_ftn(kind='L2')
 #nrg.form_reg_ftn(model.Fb, integral=model.GAMMA_B_GND,
 #                 kind='TV', alpha=2.5e7)
 
-wop_kwargs = {'max_iter'            : 250, 
+wop_kwargs = {'max_iter'            : 200, 
               'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}

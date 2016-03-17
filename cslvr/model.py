@@ -1812,6 +1812,9 @@ class Model(object):
       # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
 
+      # reset the basal water flux to zero :
+      self.init_Fb(0.0, cls=self.this)
+
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
 
@@ -1822,14 +1825,14 @@ class Model(object):
       Fb_m_v[alpha_v == 1.0] = bounds[1]
       self.init_Fb_max(Fb_m_v, cls=self.this)
 
-      # calculate the basal melt rate :
-      energy.solve_basal_melt_rate()
-
       # optimize the flux of water to remove abnormally high water :
       energy.optimize_water_flux(**wop_kwargs)
 
       # derive T and W from theta :
       energy.partition_energy()
+
+      # calculate the basal melt rate :
+      energy.solve_basal_melt_rate()
 
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

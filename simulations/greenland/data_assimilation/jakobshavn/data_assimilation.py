@@ -35,49 +35,53 @@ d3model.init_E(1.0)
 d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
 
-# NOTE: un-comment this for initializing beta to beta_SIA :
-# create a 2D model for balance-velocity :
-bedmodel = D2Model(d3model.bedmesh, out_dir)
-
-bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
-bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
-bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
-
-# solve the balance velocity :
-bv = BalanceVelocity(bedmodel, kappa=5.0)
-bv.solve(annotate=False)
-
-# assign the balance velocity to the 3D model's bed :
-d3model.assign_submesh_variable(d3model.d_x,  bedmodel.d_x)
-d3model.assign_submesh_variable(d3model.d_y,  bedmodel.d_y)
-d3model.assign_submesh_variable(d3model.Ubar, bedmodel.Ubar)
-
-# extrude the bed values up the column : 
-d_x_e  = d3model.vert_extrude(d3model.d_x,  d='up')
-d_y_e  = d3model.vert_extrude(d3model.d_y,  d='up')
-Ubar_e = d3model.vert_extrude(d3model.Ubar, d='up')
-
-# set the appropriate variable to be the function extruded :
-d3model.init_d_x(d_x_e)
-d3model.init_d_y(d_y_e)
-d3model.init_Ubar(Ubar_e)
-
-# generate initial traction field :
-d3model.init_T(d3model.T_surface)
-d3model.init_beta_SIA()
+## NOTE: un-comment this for initializing beta to beta_SIA :
+## create a 2D model for balance-velocity :
+#bedmodel = D2Model(d3model.bedmesh, out_dir)
+#
+#bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
+#bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
+#bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
+#
+## solve the balance velocity :
+#bv = BalanceVelocity(bedmodel, kappa=5.0)
+#bv.solve(annotate=False)
+#
+## assign the balance velocity to the 3D model's bed :
+#d3model.assign_submesh_variable(d3model.d_x,  bedmodel.d_x)
+#d3model.assign_submesh_variable(d3model.d_y,  bedmodel.d_y)
+#d3model.assign_submesh_variable(d3model.Ubar, bedmodel.Ubar)
+#
+## extrude the bed values up the column : 
+#d_x_e  = d3model.vert_extrude(d3model.d_x,  d='up')
+#d_y_e  = d3model.vert_extrude(d3model.d_y,  d='up')
+#Ubar_e = d3model.vert_extrude(d3model.Ubar, d='up')
+#
+## set the appropriate variable to be the function extruded :
+#d3model.init_d_x(d_x_e)
+#d3model.init_d_y(d_y_e)
+#d3model.init_Ubar(Ubar_e)
+#
+## generate initial traction field :
+#d3model.init_T(d3model.T_surface)
+#d3model.init_beta_SIA()
 
 mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True)
 #               epsdot_ftn=mom.strain_rate_tensor)
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '03/tmc.h5', 'r')
-#d3model.init_alpha(frstrt)
-#d3model.init_U(frstrt)
-#d3model.init_T(frstrt)
-#d3model.init_W(frstrt)
-#d3model.init_theta(frstrt)
-#d3model.init_beta(frstrt)
-#d3model.init_p(frstrt)
+frstrt = HDF5File(mpi_comm_world(), out_dir + '01/tmc.h5', 'r')
+d3model.init_T(frstrt)
+d3model.init_W(frstrt)
+d3model.init_Fb(frstrt)
+d3model.init_Mb(frstrt)
+d3model.init_alpha(frstrt)
+d3model.init_PE(frstrt)
+d3model.init_W_int(frstrt)
+d3model.init_U(frstrt)
+d3model.init_p(frstrt)
+d3model.init_beta(frstrt)
+d3model.init_theta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
@@ -148,10 +152,9 @@ ass_kwargs = {'iterations'          : 10,
               'uop_kwargs'          : uop_kwargs,
               'initialize'          : False,
               'incomplete'          : True,
-              'ini_save_vars'       : tmc_save_vars,
               'post_iter_save_vars' : tmc_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 1}
+              'starting_i'          : 2}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

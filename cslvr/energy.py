@@ -1106,6 +1106,9 @@ class Enthalpy(Energy):
     if self.transient:
       self.make_steady_state()
       transient = True
+
+    # in order to derive the temperate zone, basal water flux must be zero :
+    model.init_Fb(0.0, cls=self)
     
     # previous theta for norm calculation
     U_prev  = model.theta.copy(True)

@@ -1776,7 +1776,7 @@ class Model(object):
     ## convert to pseudo-timestepping for smooth convergence : 
     #energy.make_transient(time_step = 25.0)
 
-    # get the bounds, the max will be updated based on temperate zones :
+    # get the bounds of Fb, the max will be updated based on temperate zones :
     bounds = copy(wop_kwargs['bounds'])
     self.init_Fb_min(bounds[0], cls=self.this)
     self.init_Fb_max(bounds[1], cls=self.this)
@@ -1894,6 +1894,9 @@ class Model(object):
     
     # reset the base directory ! :
     self.set_out_dir(out_dir_i)
+    
+    # reset the bounds on Fb :
+    wop_kwargs['bounds']  = bounds
       
     # save state to unique hdf5 file :
     if isinstance(post_tmc_save_vars, list):
@@ -1947,7 +1950,6 @@ class Model(object):
   def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,
                       initialize          = True,
                       incomplete          = True,
-                      ini_save_vars       = None,
                       post_iter_save_vars = None,
                       post_ini_callback   = None,
                       starting_i          = 1):
@@ -1994,22 +1996,13 @@ class Model(object):
         print_text(s, cls=self.this)
         post_ini_callback()
 
-      # save state to numbered hdf5 file :
-      if isinstance(ini_save_vars, list):
-        s    = '::: saving initialized variables in dict arg ini_save_vars :::'
-        print_text(s, cls=self.this)
-        out_file = self.out_dir + 'init.h5'
-        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        
-        for var in ini_save_vars:
-          self.save_hdf5(var, f=foutput)
-        
-        foutput.close()
-    
     # otherwise, tell us that we are not initializing :
     else:
       s    = '    - skipping initialization step -'
       print_text(s, cls=self.this)
+    
+    # save the w_opt bounds on Fb :
+    bounds = copy(tmc_kwargs['wop_kwargs']['bounds'])
 
     # assimilate the data : 
     while counter <= iterations:

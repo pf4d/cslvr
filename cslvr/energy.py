@@ -28,7 +28,7 @@ class Energy(Physics):
     return instance
   
   def __init__(self, model, solve_params=None, transient=False,
-               use_lat_bc=False, epsdot_ftn=None, zero_energy_flux=False):
+               use_lat_bc=False, epsdot_ftn=None, energy_flux_mode='Fb'):
     """
     """
     # save the starting values, as other algorithms might change the 
@@ -51,17 +51,17 @@ class Energy(Physics):
     self.transient_s         = transient
     self.use_lat_bc_s        = use_lat_bc
     self.epsdot_ftn_s        = epsdot_ftn
-    self.zero_energy_flux_s  = zero_energy_flux
+    self.energy_flux_mode_s  = energy_flux_mode
 
     self.T_ini     = self.model.T.copy(True)
     self.W_ini     = self.model.W.copy(True)
     
     self.initialize(model, solve_params, transient,
-                    use_lat_bc, epsdot_ftn, zero_energy_flux)
+                    use_lat_bc, epsdot_ftn, energy_flux_mode)
   
   def initialize(self, model, solve_params=None, transient=False,
                  use_lat_bc=False, epsdot_ftn=None, 
-                 zero_energy_flux=False, reset=False):
+                 energy_flux_mode='Fb', reset=False):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.  Note that any Energy object *must*
@@ -83,7 +83,7 @@ class Energy(Physics):
                     transient        = True,
                     use_lat_bc       = self.use_lat_bc_s,
                     epsdot_ftn       = self.epsdot_ftn_s,
-                    zero_energy_flux = self.zero_energy_flux_s,
+                    energy_flux_mode = self.energy_flux_mode_s,
                     reset            = True)
   
   def make_steady_state(self):
@@ -98,15 +98,15 @@ class Energy(Physics):
                     transient        = False,
                     use_lat_bc       = self.use_lat_bc_s,
                     epsdot_ftn       = self.epsdot_ftn_s,
-                    zero_energy_flux = self.zero_energy_flux_s,
+                    energy_flux_mode = self.energy_flux_mode_s,
                     reset            = True)
   
-  def use_zero_energy_flux(self):
+  def set_basal_flux_mode(self, mode):
     """
     reset the energy system to use zero energy basal flux.
     """
-    s = "::: RE-INITIALIZING ENERGY PHYSICS WITH HOMOGENEOUS NEUMANN " + \
-        "BASAL BC :::"
+    s = "::: RE-INITIALIZING ENERGY PHYSICS NEUMANN BASAL BC TO " + \
+        "\'%s\' :::" % mode
     print_text(s, self.color())
     
     self.initialize(model            = self.model,
@@ -114,25 +114,9 @@ class Energy(Physics):
                     transient        = self.transient_s,
                     use_lat_bc       = self.use_lat_bc_s,
                     epsdot_ftn       = self.epsdot_ftn_s,
-                    zero_energy_flux = True,
+                    energy_flux_mode = mode,
                     reset            = True)
   
-  def use_nonzero_energy_flux(self):
-    """
-    reset the energy system to use non-zero energy basal flux.
-    """
-    s = "::: RE-INITIALIZING ENERGY PHYSICS WITH GENERAL NEUMANN " + \
-        "BASAL BC :::"
-    print_text(s, self.color())
-    
-    self.initialize(model            = self.model,
-                    solve_params     = self.solve_params_s,
-                    transient        = self.transient_s,
-                    use_lat_bc       = self.use_lat_bc_s,
-                    epsdot_ftn       = self.epsdot_ftn_s,
-                    zero_energy_flux = False,
-                    reset            = True)
- 
   def reset(self):
     """
     reset the energy system to the original configuration.
@@ -564,7 +548,7 @@ class Enthalpy(Energy):
   """ 
   def initialize(self, model, solve_params=None, transient=False,
                  use_lat_bc=False, epsdot_ftn=None,
-                 zero_energy_flux=False, reset=False):
+                 energy_flux_mode='Fb', reset=False):
     """ 
     Set up energy equation residual. 
     """
@@ -582,7 +566,7 @@ class Enthalpy(Energy):
     self.solve_params = solve_params
 
     # save the state of basal boundary flux :
-    self.zero_energy_flux = zero_energy_flux
+    self.energy_flux_mode = energy_flux_mode
     
     # set the function that returns the strain-rate tensor, default is full :
     if epsdot_ftn == None:
@@ -735,10 +719,17 @@ class Enthalpy(Energy):
     # basal heat-flux natural boundary condition :
     g_w  = k * dot(grad(T_m), N) + rhow*L*Fb
     g_n  = q_geo + q_fric
-    if zero_energy_flux:
+    if energy_flux_mode == 'zero_energy':
       g_b  = g_n - alpha*g_n
-    else:
+    elif energy_flux_mode == 'Fb':
       g_b  = g_n - alpha*g_w
+    elif energy_flux_mode == 'temperate_zone_mark':
+      g_b  = g_n
+    else:
+      s = ">>> PARAMETER 'energy_flux_mode' MAY BE 'zero_energy', 'Fb', " + \
+          "or 'temperate_zone_mark', NOT '%s' <<<"
+      print_text(s % energy_flux_mode , 'red', 1)
+      sys.exit(1)
 
     # configure the module to run in steady state :
     if not transient:
@@ -1153,10 +1144,11 @@ class Enthalpy(Energy):
       self.make_steady_state()
       transient = True
 
-    ## in order to derive the temperate zone, basal energy flux must be zero :
-    #if not self.zero_energy_flux:
-    #  zef = True
-    #  self.use_zero_energy_flux()
+    # put the physics in temperate zone marking mode :
+    if self.energy_flux_mode != 'temperate_zone_mark':
+      zef  = True
+      mode = self.energy_flux_mode
+      self.set_basal_flux_mode('temperate_zone_mark')
     
     # previous theta for norm calculation
     U_prev  = model.theta.copy(True)
@@ -1228,9 +1220,9 @@ class Enthalpy(Energy):
       # mark appropriately basal regions with an overlying temperate layer :
       self.mark_temperate_zone()
 
-    ## reset to non-zero energy flux, if necessary :
-    #if zef:
-    #  self.use_nonzero_energy_flux()
+    # reset to previous energy flux mode, if necessary :
+    if zef:
+      self.set_basal_flux_mode(mode)
     
     # convert back to transient if necessary : 
     if transient:

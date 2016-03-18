@@ -1153,10 +1153,10 @@ class Enthalpy(Energy):
       self.make_steady_state()
       transient = True
 
-    # in order to derive the temperate zone, basal energy flux must be zero :
-    if not self.zero_energy_flux:
-      zef = True
-      self.use_zero_energy_flux()
+    ## in order to derive the temperate zone, basal energy flux must be zero :
+    #if not self.zero_energy_flux:
+    #  zef = True
+    #  self.use_zero_energy_flux()
     
     # previous theta for norm calculation
     U_prev  = model.theta.copy(True)
@@ -1228,9 +1228,9 @@ class Enthalpy(Energy):
       # mark appropriately basal regions with an overlying temperate layer :
       self.mark_temperate_zone()
 
-    # reset to non-zero energy flux, if necessary :
-    if zef:
-      self.use_nonzero_energy_flux()
+    ## reset to non-zero energy flux, if necessary :
+    #if zef:
+    #  self.use_nonzero_energy_flux()
     
     # convert back to transient if necessary : 
     if transient:

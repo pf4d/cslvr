@@ -1812,8 +1812,9 @@ class Model(object):
       # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
 
-      # reset the basal water flux to zero :
-      self.init_Fb(0.0, cls=self.this)
+      # reset the basal water flux and temperate-zone coeff. to zero :
+      self.init_Fb(0.0,    cls=self.this)
+      self.init_alpha(0.0, cls=self.this)
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)

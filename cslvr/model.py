@@ -1685,6 +1685,9 @@ class Model(object):
     self.Fb_min        = Function(self.Q, name='Fb_min')
     self.Fb_max        = Function(self.Q, name='Fb_max')
     self.k_c           = Function(self.Q, name='k_c')
+    self.a_T           = Function(self.Q, name='a_T')
+    self.Q_T           = Function(self.Q, name='Q_T')
+    self.W_T           = Function(self.Q, name='W_T')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
     

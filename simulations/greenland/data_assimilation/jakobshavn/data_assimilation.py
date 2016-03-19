@@ -32,6 +32,7 @@ d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
+d3model.init_W(0.0)
 d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
 

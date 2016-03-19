@@ -325,21 +325,6 @@ class Energy(Physics):
     model.assign_variable(W0,  W,  cls=self)
     model.init_W(W_v, cls=self)
     
-    # update discontinuous properties :
-    T_c               = 263.15
-    W_c               = 0.01
-    a_T_v             = model.a_T.vector().array()
-    Q_T_v             = model.Q_T.vector().array()
-    W_T_v             = model.W_T.vector().array()
-    a_T_v[T_v <  T_c] = 1.1384496e-5
-    a_T_v[T_v >= T_c] = 5.45e10
-    Q_T_v[T_v <  T_c] = 6e4
-    Q_T_v[T_v >= T_c] = 13.9e4
-    W_T_v[W_v >= W_c] = W_c
-    model.assign_variable(model.a_T, a_T_v, cls=self)
-    model.assign_variable(model.Q_T, Q_T_v, cls=self)
-    model.assign_variable(model.W_T, W_T_v, cls=self)
-   
     # NOTE: to get annotation to work, something similar to this must be done,
     #       array manipulation cannot be annotated. right now, this doesn't work
     #W_w     = (self.theta - theta_melt)/L

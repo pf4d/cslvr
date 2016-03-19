@@ -319,6 +319,16 @@ class Model(object):
     s = "::: initializing absolute temperature :::"
     print_text(s, cls=cls)
     self.assign_variable(self.T, T, cls=cls)
+    a_T_v             = self.a_T.vector().array()
+    Q_T_v             = self.Q_T.vector().array()
+    T_v               = self.T.vector().array()
+    T_c               = 263.15
+    a_T_v[T_v <  T_c] = 1.1384496e-5
+    a_T_v[T_v >= T_c] = 5.45e10
+    Q_T_v[T_v <  T_c] = 6e4
+    Q_T_v[T_v >= T_c] = 13.9e4
+    self.assign_variable(self.a_T, a_T_v, cls=cls)
+    self.assign_variable(self.Q_T, Q_T_v, cls=cls)
   
   def init_Tp(self, Tp, cls=None):
     """
@@ -337,6 +347,12 @@ class Model(object):
     s = "::: initializing water content :::"
     print_text(s, cls=cls)
     self.assign_variable(self.W, W, cls=cls)
+    W_v               = self.W.vector().array()
+    W_T_v             = self.W_T.vector().array()
+    W_c               = 0.01
+    W_T_v[W_v <  W_c] = W_v[W_v < W_c]
+    W_T_v[W_v >= W_c] = W_c
+    self.assign_variable(self.W_T, W_T_v, cls=cls)
   
   def init_Mb(self, Mb, cls=None):
     """

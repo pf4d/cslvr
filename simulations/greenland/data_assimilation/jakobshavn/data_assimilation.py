@@ -33,6 +33,7 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 d3model.init_W(0.0)
+d3model.init_T(d3model.T_surface)
 d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
 
@@ -64,14 +65,13 @@ d3model.init_d_y(d_y_e)
 d3model.init_Ubar(Ubar_e)
 
 # generate initial traction field :
-d3model.init_T(d3model.T_surface)
 d3model.init_beta_SIA()
 
 mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True)
 #               epsdot_ftn=mom.strain_rate_tensor)
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '01/tmc.h5', 'r')
+#frstrt = HDF5File(mpi_comm_world(), out_dir + '02/inverted_02.h5', 'r')
 #d3model.init_T(frstrt)
 #d3model.init_W(frstrt)
 #d3model.init_Fb(frstrt)
@@ -124,7 +124,7 @@ nrg.form_cost_ftn(kind='L2')
 #nrg.form_reg_ftn(d3model.alpha, integral=d3model.GAMMA_B_GND,
 #                 kind='TV', alpha=1e7)
 
-wop_kwargs = {'max_iter'            : 200, 
+wop_kwargs = {'max_iter'            : 250, 
               'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
@@ -132,7 +132,7 @@ wop_kwargs = {'max_iter'            : 200,
 tmc_kwargs = {'momentum'            : mom,
               'energy'              : nrg,
               'wop_kwargs'          : wop_kwargs,
-              'callback'            : tmc_cb_ftn, 
+              'callback'            : tmc_cb_ftn,
               'atol'                : 1e2,
               'rtol'                : 1e0,
               'max_iter'            : 5,
@@ -153,7 +153,7 @@ ass_kwargs = {'iterations'          : 10,
               'uop_kwargs'          : uop_kwargs,
               'initialize'          : True,
               'incomplete'          : True,
-              'post_iter_save_vars' : tmc_save_vars,
+              'post_iter_save_vars' : None,#tmc_save_vars,
               'post_ini_callback'   : None,
               'starting_i'          : 1}
 

@@ -720,10 +720,16 @@ class Enthalpy(Energy):
     g_w  = k * dot(grad(T_m), N) + rhow*L*Fb
     g_n  = q_geo + q_fric
     if energy_flux_mode == 'zero_energy':
+      s = "    - using zero energy flux boundary condition -"
+      print_text(s, cls=self)
       g_b  = g_n - alpha*g_n
     elif energy_flux_mode == 'Fb':
+      s = "    - using non-zero energy flux boundary condition -"
+      print_text(s, cls=self)
       g_b  = g_n - alpha*g_w
     elif energy_flux_mode == 'temperate_zone_mark':
+      s = "    - using temperate-zone mark energy flux boundary condition -"
+      print_text(s, cls=self)
       g_b  = g_n
     else:
       s = ">>> PARAMETER 'energy_flux_mode' MAY BE 'zero_energy', 'Fb', " + \

@@ -1127,7 +1127,7 @@ class Enthalpy(Energy):
     if self.transient:
       model.assign_variable(self.theta0, self.theta, cls=self,
                             annotate=annotate)
-
+  
   def derive_temperate_zone(self, annotate=False):
     """ 
     Solve the steady-state energy equation, saving enthalpy to model.theta, 
@@ -1135,10 +1135,6 @@ class Enthalpy(Energy):
     regions with overlying temperate ice are properly marked by model.alpha.
     """
     model = self.model
-    
-    # update the surface climate if desired :
-    if self.solve_params['use_surface_climate']:
-      self.solve_surface_climate()
     
     # solve the energy equation :
     s    = "::: solving for temperate zone locations :::"
@@ -1156,6 +1152,46 @@ class Enthalpy(Energy):
       mode = self.energy_flux_mode
       self.set_basal_flux_mode('temperate_zone_mark')
     
+    # solve the linear system :
+    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
+          solver_parameters = self.solve_params['solver'], annotate=annotate)
+
+    # calculate water content :
+    theta_v         = self.theta.vector().array()
+    theta_melt_v    = model.theta_melt.vector().array()
+    W_v             = (theta_v - theta_melt_v) / model.L(0)
+    W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
+    
+    # mark appropriately basal regions with an overlying temperate layer :
+    alpha_v          = model.alpha.vector().array()
+    alpha_v[:]       = 0
+    alpha_v[W_v > 0] = 1
+    model.init_alpha(alpha_v, cls=self)
+
+    # reset to previous energy flux mode, if necessary :
+    if zef:
+      self.set_basal_flux_mode(mode)
+    
+    # convert back to transient if necessary : 
+    if transient:
+      energy.make_transient(time_step = model.time_step)
+  
+  def update_thermal_parameters(self, annotate=False):
+    """ 
+    fixed-point iterations to make all linearized thermal parameters consistent.
+    """
+    model = self.model
+    
+    # solve the energy equation :
+    s    = "::: updating thermal parameters :::"
+    print_text(s, cls=self)
+
+    # ensure that we have steady state :
+    transient = False
+    if self.transient:
+      self.make_steady_state()
+      transient = True
+
     # previous theta for norm calculation
     U_prev  = model.theta.copy(True)
 
@@ -1223,16 +1259,116 @@ class Enthalpy(Energy):
       # update enthalpy-gradient conductivity :
       self.adjust_enthalpy_grad_kappa()
 
-      # mark appropriately basal regions with an overlying temperate layer :
-      self.mark_temperate_zone()
-
-    # reset to previous energy flux mode, if necessary :
-    if zef:
-      self.set_basal_flux_mode(mode)
-    
     # convert back to transient if necessary : 
     if transient:
       energy.make_transient(time_step = model.time_step)
+
+  #def derive_temperate_zone(self, annotate=False):
+  #  """ 
+  #  Solve the steady-state energy equation, saving enthalpy to model.theta, 
+  #  temperature to model.T, and water content to model.W such that the 
+  #  regions with overlying temperate ice are properly marked by model.alpha.
+  #  """
+  #  model = self.model
+  #  
+  #  # update the surface climate if desired :
+  #  if self.solve_params['use_surface_climate']:
+  #    self.solve_surface_climate()
+  #  
+  #  # solve the energy equation :
+  #  s    = "::: solving for temperate zone locations :::"
+  #  print_text(s, cls=self)
+
+  #  # ensure that the boundary-marking process is done in steady state :
+  #  transient = False
+  #  if self.transient:
+  #    self.make_steady_state()
+  #    transient = True
+
+  #  # put the physics in temperate zone marking mode :
+  #  if self.energy_flux_mode != 'temperate_zone_mark':
+  #    zef  = True
+  #    mode = self.energy_flux_mode
+  #    self.set_basal_flux_mode('temperate_zone_mark')
+  #  
+  #  # previous theta for norm calculation
+  #  U_prev  = model.theta.copy(True)
+
+  #  # iteration counter :
+  #  counter = 1
+
+  #  # maximum number of iterations :
+  #  max_iter = 100
+
+  #  # L_2 erro norm between iterations :
+  #  abs_error = np.inf
+  #  rel_error = np.inf
+
+  #  # tolerances for stopping criteria :
+  #  atol = 1e-1
+  #  rtol = 1e-4
+
+  #  # perform a fixed-point iteration until the L_2 norm of error 
+  #  # is less than tolerance :
+  #  while abs_error > atol and rel_error > rtol and counter <= max_iter:
+
+  #    # solve the linear system :
+  #    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
+  #          solver_parameters = self.solve_params['solver'], annotate=annotate)
+
+  #    # calculate L_2 norms :
+  #    abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+  #    tht_nrm      = norm(self.theta.vector(), 'l2')
+
+  #    # save convergence history :
+  #    if counter == 1:
+  #      rel_error  = abs_error_n
+  #    else:
+  #      rel_error = abs(abs_error - abs_error_n)
+
+  #    # print info to screen :
+  #    if model.MPI_rank == 0:
+  #      s0    = '>>> '
+  #      s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
+  #      s2    = 'r (abs) = %.2e ' % abs_error
+  #      s3    = '(tol %.2e), '    % atol
+  #      s4    = 'r (rel) = %.2e ' % rel_error
+  #      s5    = '(tol %.2e)'      % rtol
+  #      s6    = ' <<<'
+  #      text0 = get_text(s0, self.color(), 1)
+  #      text1 = get_text(s1, self.color())
+  #      text2 = get_text(s2, self.color(), 1)
+  #      text3 = get_text(s3, self.color())
+  #      text4 = get_text(s4, self.color(), 1)
+  #      text5 = get_text(s5, self.color())
+  #      text6 = get_text(s6, self.color(), 1)
+  #      print text0 + text1 + text2 + text3 + text4 + text5 + text6
+  #    
+  #    # update error stuff and increment iteration counter :
+  #    abs_error    = abs_error_n
+  #    U_prev       = self.theta.copy(True)
+  #    counter     += 1
+  #    
+  #    # update the model variable :
+  #    model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+
+  #    # update the temperature and water content for other physics :
+  #    self.partition_energy(annotate=annotate)
+  #    
+  #    # update enthalpy-gradient conductivity :
+  #    self.adjust_enthalpy_grad_kappa()
+
+  #    # mark appropriately basal regions with an overlying temperate layer :
+  #    if counter == 1:
+  #      self.mark_temperate_zone()
+
+  #  # reset to previous energy flux mode, if necessary :
+  #  if zef:
+  #    self.set_basal_flux_mode(mode)
+  #  
+  #  # convert back to transient if necessary : 
+  #  if transient:
+  #    energy.make_transient(time_step = model.time_step)
 
   def solve_divide(self, init=False, annotate=False):
     """

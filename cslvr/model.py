@@ -1974,7 +1974,7 @@ class Model(object):
       plt.savefig(d_hist + 'theta_norm.pdf')
       plt.close(fig)
 
-  def assimilate_U_ob(self, iterations, tmc_kwargs, uop_kwargs,
+  def assimilate_U_ob(self, beta_i, iterations, tmc_kwargs, uop_kwargs,
                       initialize          = True,
                       incomplete          = True,
                       post_iter_save_vars = None,
@@ -2003,6 +2003,9 @@ class Model(object):
       counter = 1
     else:
       counter = starting_i
+
+    # initialize friction field :
+    self.init_beta(beta_i, cls=self.this)
 
     # perform initialization step if desired :
     if initialize:
@@ -2046,6 +2049,9 @@ class Model(object):
       
       # the incomplete adjoint means the viscosity is linear :
       if incomplete: momentum.linearize_viscosity()
+    
+      # re-initialize friction field :
+      if counter > starting_i: self.init_beta(beta_i, cls=self.this)
 
       # optimize the velocity : 
       momentum.optimize_U_ob(**uop_kwargs)

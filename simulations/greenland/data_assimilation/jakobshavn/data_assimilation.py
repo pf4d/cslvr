@@ -71,18 +71,17 @@ mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
 nrg = Enthalpy(d3model, transient=False, use_lat_bc=True)
 #               epsdot_ftn=mom.strain_rate_tensor)
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '02/inverted_02.h5', 'r')
-#d3model.init_T(frstrt)
-#d3model.init_W(frstrt)
-#d3model.init_Fb(frstrt)
-#d3model.init_Mb(frstrt)
-#d3model.init_alpha(frstrt)
-#d3model.init_PE(frstrt)
-#d3model.init_W_int(frstrt)
-#d3model.init_U(frstrt)
-#d3model.init_p(frstrt)
-#d3model.init_beta(frstrt)
-#d3model.init_theta(frstrt)
+frstrt = HDF5File(mpi_comm_world(), out_dir + '01/tmc.h5', 'r')
+d3model.init_T(frstrt)
+d3model.init_W(frstrt)
+d3model.init_Fb(frstrt)
+d3model.init_Mb(frstrt)
+d3model.init_alpha(frstrt)
+d3model.init_PE(frstrt)
+d3model.init_W_int(frstrt)
+d3model.init_U(frstrt)
+d3model.init_p(frstrt)
+d3model.init_theta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
@@ -124,7 +123,7 @@ nrg.form_cost_ftn(kind='L2')
 #nrg.form_reg_ftn(d3model.alpha, integral=d3model.GAMMA_B_GND,
 #                 kind='TV', alpha=1e7)
 
-wop_kwargs = {'max_iter'            : 250, 
+wop_kwargs = {'max_iter'            : 350, 
               'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
@@ -136,7 +135,7 @@ tmc_kwargs = {'momentum'            : mom,
               'atol'                : 1e2,
               'rtol'                : 1e0,
               'max_iter'            : 5,
-              'itr_tmc_save_vars'   : tmc_save_vars,
+              'itr_tmc_save_vars'   : None,#tmc_save_vars,
               'post_tmc_save_vars'  : tmc_save_vars,
               'starting_i'          : 1}
 
@@ -148,14 +147,15 @@ uop_kwargs = {'control'             : d3model.beta,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
                                     
-ass_kwargs = {'iterations'          : 10,
+ass_kwargs = {'beta_i'              : d3model.beta.copy(True),
+              'iterations'          : 10,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
-              'initialize'          : True,
+              'initialize'          : False,
               'incomplete'          : True,
               'post_iter_save_vars' : None,#tmc_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 1}
+              'starting_i'          : 2}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

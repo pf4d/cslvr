@@ -286,30 +286,22 @@ class Energy(Physics):
     s = "::: calculating temperature :::"
     print_text(s, cls=self)
     
-    model      = self.model
-    T          = model.T
-    W          = model.W
-    W0         = model.W0
-    theta      = model.theta
-    theta_melt = model.theta_melt
-    T_melt     = model.T_melt
-    T_w        = model.T_w
-    L          = model.L
-    c          = self.c
+    model    = self.model
+    T_w      = model.T_w(0)
     
     # temperature is a quadradic function of energy :
-    theta_v  = theta.vector().array()
+    theta_v  = model.theta.vector().array()
     T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
     Tp_v     = T_n_v.copy()
 
     # create pressure-adjusted temperature for rate-factor :
-    Tp_v[Tp_v > T_w(0)] = T_w(0)
+    Tp_v[Tp_v > T_w] = T_w
     model.init_Tp(Tp_v, cls=self)
     
     # correct for the pressure-melting point :
-    T_melt_v     = T_melt.vector().array()
-    theta_melt_v = theta_melt.vector().array()
+    T_melt_v     = model.T_melt.vector().array()
+    theta_melt_v = model.theta_melt.vector().array()
     warm         = theta_v >= theta_melt_v
     cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
@@ -318,28 +310,60 @@ class Energy(Physics):
     # water content solved diagnostically :
     s = "::: calculating water content :::"
     print_text(s, cls=self)
-    W_v  = (theta_v - theta_melt_v) / L(0)
+    W_v  = (theta_v - theta_melt_v) / model.L(0)
     
     # update water content :
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
-    model.assign_variable(W0,  W,  cls=self)
+    model.assign_variable(model.W0,  model.W,  cls=self)
     model.init_W(W_v, cls=self)
     
-    # NOTE: to get annotation to work, something similar to this must be done,
-    #       array manipulation cannot be annotated. right now, this doesn't work
-    #W_w     = (self.theta - theta_melt)/L
-    #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*self.theta)) / 7.253
-    #T_n  = conditional( lt(T, T_melt), T_w, T_melt)
-    #W_n  = conditional( lt(T, T_melt), 0.0, W_w)
+  def adjust_discontinuous_properties(self, annotate=False):
+    """
+    update discontinuous thermal properties a_T, Q_T, W_T, and k_c
+    """
+    model    = self.model
+    
+    theta_v  = model.theta.vector().array()
+    Tp_v     = model.Tp.vector().array()
+    W_v      = model.W.vector().array()
+    a_T_v    = model.a_T.vector().array()
+    Q_T_v    = model.Q_T.vector().array()
+    W_T_v    = model.W_T.vector().array()
+    
+    # adjust discontinuous thermal properties : 
+    T_c                = 263.15
+    a_T_v[Tp_v <= T_c] = 3.985e-13 * model.spy(0)
+    a_T_v[Tp_v >  T_c] = 1.916e3 * model.spy(0)
+    Q_T_v[Tp_v <= T_c] = 6e4
+    Q_T_v[Tp_v >  T_c] = 13.9e4
+    model.assign_variable(model.a_T, a_T_v, cls=self)
+    model.assign_variable(model.Q_T, Q_T_v, cls=self)
+   
+    # adjust water-content flow enhancement : 
+    W_c               = 0.01
+    W_T_v[W_v <  W_c] = W_v[W_v < W_c]
+    W_T_v[W_v >= W_c] = W_c
+    model.assign_variable(model.W_T, W_T_v, cls=self)
+   
+    # update enthalpy-gradient diffusivity : 
+    self.adjust_enthalpy_grad_kappa()
+    
+  def adjust_enthalpy_grad_kappa(self):
+    """
+    adjust enthalpy-gradient thermal conductivity model.kappa.
+    """ 
+    # calculate melt-rate : 
+    s = "::: adjusting enthalpy-gradient thermal conductivity :::"
+    print_text(s, cls=self)
+    
+    model = self.model
 
-    #W_n = project(W_n, annotate=annotate)
-    #model.W.assign(W_n, annotate=annotate)
-    ##model.assign_variable(W0, W,   cls=self, annotate=annotate)
-    ##model.assign_variable(W,  W_n, cls=self, annotate=annotate)
+    W_v   = model.W.vector().array()
+    k_c_v = model.k_c.vector().array()
 
-    #T_n = project(T_n, annotate=annotate)
-    #model.T.assign(T_n, annotate=annotate)
-    ##model.assign_variable(T,  T_n, cls=self, annotate=annotate)
+    k_c_v[:]       = 1.0
+    k_c_v[W_v > 0] = model.k_0(0)
+    model.init_k_c(k_c_v, cls=self)
 
   def optimize_water_flux(self, max_iter, bounds, method='ipopt',
                           adj_callback=None):
@@ -641,15 +665,19 @@ class Enthalpy(Energy):
     theta  = Function(Q, name='energy.theta')
     theta0 = Function(Q, name='energy.theta0')
 
-    # initialize the boundary conditions, if we have not already :
+    # initialize the boundary conditions and thermal properties, if 
+    # we have not done so already :
     if not reset:
+      # calculate energy and temperature melting point :
       self.calc_T_melt(annotate=False)
-      self.adjust_enthalpy_grad_kappa()
 
+      T_v     = T.vector().array()
+      W_v     = W.vector().array()
       T_s_v   = T_surface.vector().array()
       T_m_v   = T_m.vector().array()
       theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
       theta_f = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
+      theta_i = 146.3*T_v + 7.253/2.0*T_v**2 + W_v * L(0)
     
       # Surface boundary condition :
       s = "::: calculating energy boundary conditions :::"
@@ -659,6 +687,12 @@ class Enthalpy(Energy):
       model.init_theta_surface(theta_s, cls=self)
       model.init_theta_app(theta_s,     cls=self)
       model.init_theta_float(theta_f,   cls=self)
+
+      # initialize energy from W and T :
+      model.init_theta(theta_i,         cls=self)
+      
+      # calculate k_c, a_T, Q_T, and W_T from theta :
+      self.adjust_discontinuous_properties(annotate=False)
 
       # initialize water flux to zero :
       model.init_Fb(0.0, cls=self)
@@ -965,23 +999,6 @@ class Enthalpy(Energy):
                'use_surface_climate' : False}
     return params
 
-  def adjust_enthalpy_grad_kappa(self):
-    """
-    adjust enthalpy-gradient thermal conductivity model.kappa.
-    """ 
-    # calculate melt-rate : 
-    s = "::: adjusting enthalpy-gradient thermal conductivity :::"
-    print_text(s, cls=self)
-    
-    model = self.model
-
-    W_v   = model.W.vector().array()
-    k_c_v = model.k_c.vector().array()
-
-    k_c_v[:]       = 1.0
-    k_c_v[W_v > 0] = model.k_0(0)
-    model.init_k_c(k_c_v, cls=self)
-
   def mark_temperate_zone(self):
     """
     mark basal regions with overlying temperate layer to model.alpha.
@@ -991,15 +1008,14 @@ class Enthalpy(Energy):
     print_text(s, cls=self)
     
     model    = self.model
-    dBed_g   = model.dBed_g
-    T_melt   = model.T_melt
-    T        = model.T
-    N        = model.N
-    phi      = TestFunction(model.Q)
-    du       = TrialFunction(model.Q)
-    grad_Tm  = Function(model.Q)
-    grad_T   = Function(model.Q)
-    
+    #T_melt   = model.T_melt
+    #T        = model.T
+    #N        = model.N
+    #phi      = TestFunction(model.Q)
+    #du       = TrialFunction(model.Q)
+    #grad_Tm  = Function(model.Q)
+    #grad_T   = Function(model.Q)
+
     ## only valid on basal surface, needs extra matrix care :
     #a_n      = du * phi * dBed_g
     #L_n      = dot((grad(T_melt)), N) * phi * dBed_g
@@ -1255,120 +1271,13 @@ class Enthalpy(Energy):
 
       # update the temperature and water content for other physics :
       self.partition_energy(annotate=annotate)
+  
+      # update discontinuous thermal parameters :
+      self.adjust_discontinuous_properties(annotate=False)
       
-      # update enthalpy-gradient conductivity :
-      self.adjust_enthalpy_grad_kappa()
-
     # convert back to transient if necessary : 
     if transient:
       energy.make_transient(time_step = model.time_step)
-
-  #def derive_temperate_zone(self, annotate=False):
-  #  """ 
-  #  Solve the steady-state energy equation, saving enthalpy to model.theta, 
-  #  temperature to model.T, and water content to model.W such that the 
-  #  regions with overlying temperate ice are properly marked by model.alpha.
-  #  """
-  #  model = self.model
-  #  
-  #  # update the surface climate if desired :
-  #  if self.solve_params['use_surface_climate']:
-  #    self.solve_surface_climate()
-  #  
-  #  # solve the energy equation :
-  #  s    = "::: solving for temperate zone locations :::"
-  #  print_text(s, cls=self)
-
-  #  # ensure that the boundary-marking process is done in steady state :
-  #  transient = False
-  #  if self.transient:
-  #    self.make_steady_state()
-  #    transient = True
-
-  #  # put the physics in temperate zone marking mode :
-  #  if self.energy_flux_mode != 'temperate_zone_mark':
-  #    zef  = True
-  #    mode = self.energy_flux_mode
-  #    self.set_basal_flux_mode('temperate_zone_mark')
-  #  
-  #  # previous theta for norm calculation
-  #  U_prev  = model.theta.copy(True)
-
-  #  # iteration counter :
-  #  counter = 1
-
-  #  # maximum number of iterations :
-  #  max_iter = 100
-
-  #  # L_2 erro norm between iterations :
-  #  abs_error = np.inf
-  #  rel_error = np.inf
-
-  #  # tolerances for stopping criteria :
-  #  atol = 1e-1
-  #  rtol = 1e-4
-
-  #  # perform a fixed-point iteration until the L_2 norm of error 
-  #  # is less than tolerance :
-  #  while abs_error > atol and rel_error > rtol and counter <= max_iter:
-
-  #    # solve the linear system :
-  #    solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
-  #          solver_parameters = self.solve_params['solver'], annotate=annotate)
-
-  #    # calculate L_2 norms :
-  #    abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
-  #    tht_nrm      = norm(self.theta.vector(), 'l2')
-
-  #    # save convergence history :
-  #    if counter == 1:
-  #      rel_error  = abs_error_n
-  #    else:
-  #      rel_error = abs(abs_error - abs_error_n)
-
-  #    # print info to screen :
-  #    if model.MPI_rank == 0:
-  #      s0    = '>>> '
-  #      s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
-  #      s2    = 'r (abs) = %.2e ' % abs_error
-  #      s3    = '(tol %.2e), '    % atol
-  #      s4    = 'r (rel) = %.2e ' % rel_error
-  #      s5    = '(tol %.2e)'      % rtol
-  #      s6    = ' <<<'
-  #      text0 = get_text(s0, self.color(), 1)
-  #      text1 = get_text(s1, self.color())
-  #      text2 = get_text(s2, self.color(), 1)
-  #      text3 = get_text(s3, self.color())
-  #      text4 = get_text(s4, self.color(), 1)
-  #      text5 = get_text(s5, self.color())
-  #      text6 = get_text(s6, self.color(), 1)
-  #      print text0 + text1 + text2 + text3 + text4 + text5 + text6
-  #    
-  #    # update error stuff and increment iteration counter :
-  #    abs_error    = abs_error_n
-  #    U_prev       = self.theta.copy(True)
-  #    counter     += 1
-  #    
-  #    # update the model variable :
-  #    model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
-
-  #    # update the temperature and water content for other physics :
-  #    self.partition_energy(annotate=annotate)
-  #    
-  #    # update enthalpy-gradient conductivity :
-  #    self.adjust_enthalpy_grad_kappa()
-
-  #    # mark appropriately basal regions with an overlying temperate layer :
-  #    if counter == 1:
-  #      self.mark_temperate_zone()
-
-  #  # reset to previous energy flux mode, if necessary :
-  #  if zef:
-  #    self.set_basal_flux_mode(mode)
-  #  
-  #  # convert back to transient if necessary : 
-  #  if transient:
-  #    energy.make_transient(time_step = model.time_step)
 
   def solve_divide(self, init=False, annotate=False):
     """

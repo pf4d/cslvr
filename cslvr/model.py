@@ -274,16 +274,7 @@ class Model(object):
     s = "::: initializing internal energy :::"
     print_text(s, cls=cls)
     self.assign_variable(self.theta, theta, cls=cls)
-    
-    theta_v  = self.theta.vector().array()
-    T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
-    T_v      = T_n_v.copy()
-    Tp_v     = T_n_v.copy()
-
-    # create pressure-adjusted temperature for rate-factor :
-    Tp_v[Tp_v > self.T_w(0)] = self.T_w(0)
-    self.init_Tp(Tp_v, cls=cls)
-    
+  
   def init_theta_app(self, theta_app, cls=None):
     """
     """
@@ -319,16 +310,6 @@ class Model(object):
     s = "::: initializing absolute temperature :::"
     print_text(s, cls=cls)
     self.assign_variable(self.T, T, cls=cls)
-    a_T_v             = self.a_T.vector().array()
-    Q_T_v             = self.Q_T.vector().array()
-    T_v               = self.T.vector().array()
-    T_c               = 263.15
-    a_T_v[T_v <  T_c] = 1.1384496e-5
-    a_T_v[T_v >= T_c] = 5.45e10
-    Q_T_v[T_v <  T_c] = 6e4
-    Q_T_v[T_v >= T_c] = 13.9e4
-    self.assign_variable(self.a_T, a_T_v, cls=cls)
-    self.assign_variable(self.Q_T, Q_T_v, cls=cls)
   
   def init_Tp(self, Tp, cls=None):
     """
@@ -347,12 +328,6 @@ class Model(object):
     s = "::: initializing water content :::"
     print_text(s, cls=cls)
     self.assign_variable(self.W, W, cls=cls)
-    W_v               = self.W.vector().array()
-    W_T_v             = self.W_T.vector().array()
-    W_c               = 0.01
-    W_T_v[W_v <  W_c] = W_v[W_v < W_c]
-    W_T_v[W_v >= W_c] = W_c
-    self.assign_variable(self.W_T, W_T_v, cls=cls)
   
   def init_Mb(self, Mb, cls=None):
     """
@@ -1831,10 +1806,6 @@ class Model(object):
       # first update pressure-melting point :
       energy.calc_T_melt(annotate=False)
 
-      ## reset the basal water flux and temperate-zone coeff. to zero :
-      #self.init_Fb(0.0,    cls=self.this)
-      #self.init_alpha(0.0, cls=self.this)
-
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
   
@@ -1852,8 +1823,11 @@ class Model(object):
       # optimize the flux of water to remove abnormally high water :
       energy.optimize_water_flux(**wop_kwargs)
 
-      # calculate T, W from theta :
+      # calculate T, Tp, and W from theta :
       energy.partition_energy(annotate=False)
+      
+      # calculate k_c, a_T, Q_T, and W_T from T, Tp, and W :
+      energy.adjust_discontinuous_properties(annotate=False)
 
       # calculate the basal melt rate :
       energy.solve_basal_melt_rate()

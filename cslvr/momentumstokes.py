@@ -862,7 +862,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
         and not use_lat_bcs and use_pressure_bc):
       s = "    - using cliff-pressure boundary condition -"
       print_text(s, self.color())
-      A -= Pb_w*dLat_t - Pb_l*dLat_to - Pb_l*dLat_d
+      A -= Pb_w*dLat_t - Pb_l*dLat_d
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function

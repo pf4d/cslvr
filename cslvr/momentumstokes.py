@@ -107,9 +107,9 @@ class MomentumStokes(Momentum):
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
-      a_T     = model.a_T#conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = model.Q_T#conditional( lt(T, 263.15), 6e4,          13.9e4)
-      W_T     = model.W_T#conditional( lt(W, 0.01),   W,            0.01)
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     
@@ -405,13 +405,9 @@ class MomentumDukowiczStokesReduced(Momentum):
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
       T_c     = 263.15
-      #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
-      #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
-      #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-      #W_T     = conditional( lt(W,     0.01),    W,            0.01)
-      a_T     = model.a_T#conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
-      Q_T     = model.Q_T#conditional( lt(T, T_c),  6e4,          13.9e4)
-      W_T     = model.W_T#conditional( lt(W, 0.01), W,            0.01)
+      a_T     = conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, T_c),  6e4,          13.9e4)
+      W_T     = conditional( lt(W, 0.01), W,            0.01)
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
@@ -799,9 +795,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
-      a_T     = model.a_T#conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = model.Q_T#conditional( lt(T, 263.15), 6e4,          13.9e4)
-      W_T     = model.W_T#conditional( lt(W, 0.01),   W,            0.01)
+      a_T     = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(T, 263.15), 6e4,          13.9e4)
+      W_T     = conditional( lt(W, 0.01),   W,            0.01)
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    

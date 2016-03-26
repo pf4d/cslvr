@@ -274,6 +274,11 @@ class Model(object):
     s = "::: initializing internal energy :::"
     print_text(s, cls=cls)
     self.assign_variable(self.theta, theta, cls=cls)
+    # init pressure-melting temperature thing :
+    theta_v = self.theta.vector().array()
+    T_v     = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
+    T_v[T_v > self.T_w(0)] = self.T_w(0)
+    self.init_Tp(T_v, cls=cls)
   
   def init_theta_app(self, theta_app, cls=None):
     """

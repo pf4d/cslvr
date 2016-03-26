@@ -96,9 +96,12 @@ class MomentumBP(Momentum):
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
-      a_T     = model.a_T#conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = model.Q_T#conditional( lt(T, 263.15), 6e4,          13.9e4)
-      W_T     = model.W_T#conditional( lt(W, 0.01),   W,            0.01)
+      #a_T     = model.a_T
+      #Q_T     = model.Q_T
+      #W_T     = model.W_T
+      W_T     = conditional( lt(W, 0.01),    W,            0.01)
+      a_T     = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     
@@ -459,14 +462,18 @@ class MomentumDukowiczBP(Momentum):
       s   = "    - using energy-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      Tp      = model.T + model.gamma * model.p
+      #Tp      = model.T + model.gamma * model.p
+      Tp      = model.Tp
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
-      a_T     = model.a_T#conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = model.Q_T#conditional( lt(T, 263.15), 6e4,          13.9e4)
-      W_T     = model.W_T#conditional( lt(W, 0.01),   W,            0.01)
+      #a_T     = model.a_T
+      #Q_T     = model.Q_T
+      #W_T     = model.W_T
+      W_T     = conditional( lt(W, 0.01),    W,            0.01)
+      a_T     = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
@@ -810,14 +817,17 @@ class MomentumDukowiczBPModified(Momentum):
       s   = "    - using energy-dependent rate-factor -"
       print_text(s, self.color())
       T       = model.T
-      Tp      = model.T + model.gamma * model.p
+      Tp      = model.Tp
       W       = model.W
       R       = model.R
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
-      a_T     = model.a_T#conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = model.Q_T#conditional( lt(T, 263.15), 6e4,          13.9e4)
-      W_T     = model.W_T#conditional( lt(W, 0.01),   W,            0.01)
+      #a_T     = model.a_T
+      #Q_T     = model.Q_T
+      #W_T     = model.W_T
+      W_T     = conditional( lt(W, 0.01),    W,            0.01)
+      a_T     = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
+      Q_T     = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    

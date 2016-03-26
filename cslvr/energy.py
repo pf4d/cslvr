@@ -671,25 +671,26 @@ class Enthalpy(Energy):
       # calculate energy and temperature melting point :
       self.calc_T_melt(annotate=False)
 
-      T_v     = T.vector().array()
-      W_v     = W.vector().array()
-      T_s_v   = T_surface.vector().array()
-      T_m_v   = T_m.vector().array()
-      theta_s = 146.3*T_s_v + 7.253/2.0*T_s_v**2
-      theta_f = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
-      theta_i = 146.3*T_v + 7.253/2.0*T_v**2 + W_v * L(0)
+      T_v        = T.vector().array()
+      W_v        = W.vector().array()
+      T_s_v      = T_surface.vector().array()
+      T_m_v      = T_m.vector().array()
+      Tp_v       = T_v.copy()
+      theta_s_v  = 146.3*T_s_v + 7.253/2.0*T_s_v**2
+      theta_f_v  = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
+      theta_i_v  = 146.3*T_v + 7.253/2.0*T_v**2 + W_v * L(0)
     
       # Surface boundary condition :
       s = "::: calculating energy boundary conditions :::"
       print_text(s, cls=self)
 
       # initialize the boundary conditions :
-      model.init_theta_surface(theta_s, cls=self)
-      model.init_theta_app(theta_s,     cls=self)
-      model.init_theta_float(theta_f,   cls=self)
+      model.init_theta_surface(theta_s_v, cls=self)
+      model.init_theta_app(theta_s_v,     cls=self)
+      model.init_theta_float(theta_f_v,   cls=self)
 
       # initialize energy from W and T :
-      model.init_theta(theta_i,         cls=self)
+      model.init_theta(theta_i_v,         cls=self)
       
       # calculate k_c, a_T, Q_T, and W_T from theta :
       self.adjust_discontinuous_properties(annotate=False)
@@ -704,8 +705,8 @@ class Enthalpy(Energy):
     T_c     = 263.15
     #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
     #theta_w = 0.01*L + theta_m
-    W_w     = (theta - theta_m)/L
-    T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
+    #W_w     = (theta - theta_m)/L
+    #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
       
     # discontinuous properties :
     #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
@@ -725,7 +726,8 @@ class Enthalpy(Energy):
     #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     #Q_s_gnd = 4 * eta_gnd * epsdot
     #Q_s_shf = 4 * eta_shf * epsdot
-    Tp      = T + gamma*p
+    #Tp      = T + gamma*p
+    Tp      = model.Tp
     b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
@@ -1273,7 +1275,7 @@ class Enthalpy(Energy):
       self.partition_energy(annotate=annotate)
   
       # update discontinuous thermal parameters :
-      self.adjust_discontinuous_properties(annotate=False)
+      self.adjust_discontinuous_properties(annotate=annotate)
       
     # convert back to transient if necessary : 
     if transient:

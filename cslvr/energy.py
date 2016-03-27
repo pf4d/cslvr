@@ -321,6 +321,9 @@ class Energy(Physics):
     """
     update discontinuous thermal properties a_T, Q_T, W_T, and k_c
     """
+    s = "::: updating discontinuous thermal properties :::"
+    print_text(s, cls=self)
+
     model    = self.model
     
     theta_v  = model.theta.vector().array()

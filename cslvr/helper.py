@@ -782,7 +782,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       for the colorbar, extend upper range and may be ["neither", "both", "min", "max"]
       default is "neither".
   # for plotting the zoom-box, make <zoom_box> = True and supply dict
-  <zoom_box_kwargs> = {'zoom'             : int     # ammount to zoom 
+  <zoom_box_kwargs> =  'zoom'             : int     # ammount to zoom 
                        'loc'              : int     # location of box
                        'loc1'             : int     # loc of first line
                        'loc2'             : int     # loc of second line
@@ -794,6 +794,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
                        'scale_length'     : int     # scale length in km
                        'scale_loc'        : int     # 1=top, 2=bottom
                        'plot_grid'        : bool    # plot the triangles
+                       'axes_color'       : str     # color of axes
   
   OUTPUT :
  
@@ -864,7 +865,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     if basin == 'jakobshavn':
       w     = 350000
       h     = 200000
-      lon_0 = -46.6
+      lon_0 = -46.3
       lat_0 = 69.25
       fig   = plt.figure(figsize=(14,7))
       ax    = fig.add_subplot(111)
@@ -985,10 +986,14 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     scale_length      = zoom_box_kwargs['scale_length']
     scale_loc         = zoom_box_kwargs['scale_loc']
     plot_grid         = zoom_box_kwargs['plot_grid']
+    axes_color        = zoom_box_kwargs['axes_color']
 
     axins = inset_locator.zoomed_inset_axes(ax, zoom, loc=loc)
     inset_locator.mark_inset(ax, axins, loc1=loc1, loc2=loc2,
-                             fc="none", ec="0.5")
+                             fc="none", ec=axes_color)
+    for axis in ['top','bottom','left','right']:
+      axins.spines[axis].set_color(axes_color)
+      #axins.spines[axis].set_linewidth(2)
 
     if scale_loc == 1:
       fact = 1.8

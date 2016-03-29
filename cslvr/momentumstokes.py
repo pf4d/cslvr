@@ -22,6 +22,7 @@ class MomentumStokes(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
 
     s = "::: INITIALIZING FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
@@ -322,6 +323,7 @@ class MomentumDukowiczStokesReduced(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
 
     s = "::: INITIALIZING DUKOWICZ REDUCED FULL-STOKES PHYSICS :::"
     print_text(s, self.color())
@@ -722,6 +724,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
 
     # momenturm and adjoint :
     U      = Function(model.Q4, name = 'G')

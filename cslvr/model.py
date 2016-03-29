@@ -1953,7 +1953,8 @@ class Model(object):
       plt.savefig(d_hist + 'theta_norm.pdf')
       plt.close(fig)
 
-  def assimilate_U_ob(self, beta_i, iterations, tmc_kwargs, uop_kwargs,
+  def assimilate_U_ob(self, momentum, beta_i, iterations, 
+                      tmc_kwargs, uop_kwargs,
                       initialize          = True,
                       incomplete          = True,
                       post_iter_save_vars = None,
@@ -1963,10 +1964,6 @@ class Model(object):
     """
     s    = '::: performing assimilation process with %i iterations :::'
     print_text(s % iterations, cls=self.this)
-
-    # need the physics instances :
-    momentum = tmc_kwargs['momentum']
-    energy   = tmc_kwargs['energy']
 
     # retain base install directory :
     out_dir_i = self.out_dir
@@ -2027,7 +2024,7 @@ class Model(object):
       print_text(s, cls=self.this)
       
       # the incomplete adjoint means the viscosity is linear :
-      if incomplete: momentum.linearize_viscosity()
+      if incomplete and not momentum.linear: momentum.linearize_viscosity()
     
       # re-initialize friction field :
       if counter > starting_i: self.init_beta(beta_i, cls=self.this)
@@ -2036,7 +2033,7 @@ class Model(object):
       momentum.optimize_U_ob(**uop_kwargs)
 
       # reset the momentum to the original configuration : 
-      if incomplete: momentum.reset()
+      if not momentum.linear_s and momentum.linear: momentum.reset()
 
       # thermo-mechanically couple :
       self.thermo_solve(**tmc_kwargs)

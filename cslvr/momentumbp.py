@@ -28,6 +28,7 @@ class MomentumBP(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
     
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'U')
@@ -391,6 +392,7 @@ class MomentumDukowiczBP(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
     
     # momenturm and adjoint :
     U      = Function(model.Q2, name = 'G')
@@ -751,6 +753,7 @@ class MomentumDukowiczBPModified(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
     
     # momenturm and adjoint :
     U      = Function(model.Q3, name = 'G')

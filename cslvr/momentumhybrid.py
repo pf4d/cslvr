@@ -29,6 +29,7 @@ class MomentumHybrid(Momentum):
 
     # save the solver parameters :
     self.solve_params = solve_params
+    self.linear       = linear
 
     self.assx  = FunctionAssigner(model.u_s.function_space(), model.Q)
     self.assy  = FunctionAssigner(model.v_s.function_space(), model.Q)

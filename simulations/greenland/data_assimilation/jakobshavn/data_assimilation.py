@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_small/inversion/'
+out_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -67,21 +67,23 @@ d3model.init_Ubar(Ubar_e)
 # generate initial traction field :
 d3model.init_beta_SIA()
 
-mom = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
-nrg = Enthalpy(d3model, transient=False, use_lat_bc=True)
-#               epsdot_ftn=mom.strain_rate_tensor)
+mom    = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
+momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False,
+                                           isothermal=False)
+nrg    = Enthalpy(d3model, transient=False, use_lat_bc=True)
+#                  epsdot_ftn=mom.strain_rate_tensor)
 
-frstrt = HDF5File(mpi_comm_world(), out_dir + '01/tmc.h5', 'r')
-d3model.init_T(frstrt)
-d3model.init_W(frstrt)
-d3model.init_Fb(frstrt)
-d3model.init_Mb(frstrt)
-d3model.init_alpha(frstrt)
-d3model.init_PE(frstrt)
-d3model.init_W_int(frstrt)
-d3model.init_U(frstrt)
-d3model.init_p(frstrt)
-d3model.init_theta(frstrt)
+#frstrt = HDF5File(mpi_comm_world(), out_dir + '02/tmc.h5', 'r')
+#d3model.init_T(frstrt)
+#d3model.init_W(frstrt)
+#d3model.init_Fb(frstrt)
+#d3model.init_Mb(frstrt)
+#d3model.init_alpha(frstrt)
+#d3model.init_PE(frstrt)
+#d3model.init_W_int(frstrt)
+#d3model.init_U(frstrt)
+#d3model.init_p(frstrt)
+#d3model.init_theta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
@@ -128,7 +130,7 @@ wop_kwargs = {'max_iter'            : 350,
               'method'              : 'ipopt',
               'adj_callback'        : None}
                                     
-tmc_kwargs = {'momentum'            : mom,
+tmc_kwargs = {'momentum'            : momTMC,
               'energy'              : nrg,
               'wop_kwargs'          : wop_kwargs,
               'callback'            : tmc_cb_ftn,
@@ -147,15 +149,16 @@ uop_kwargs = {'control'             : d3model.beta,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
                                     
-ass_kwargs = {'beta_i'              : d3model.beta.copy(True),
+ass_kwargs = {'momentum'            : mom,
+              'beta_i'              : d3model.beta.copy(True),
               'iterations'          : 10,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
-              'initialize'          : False,
+              'initialize'          : True,
               'incomplete'          : True,
               'post_iter_save_vars' : None,#tmc_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 2}
+              'starting_i'          : 1}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

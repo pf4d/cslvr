@@ -25,10 +25,8 @@ class MomentumDukowiczPlaneStrain(Momentum):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
-    if solve_params == None:
-      self.solve_params = self.default_solve_params()
-    else:
-      self.solve_params = solve_params
+    self.solve_params = solve_params
+    self.linear       = linear
 
     # momenturm and adjoint :
     U      = Function(model.Q3, name = 'G')

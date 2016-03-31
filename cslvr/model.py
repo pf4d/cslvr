@@ -791,86 +791,86 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.tau_kk, tau_kk, cls=cls)
   
-  def init_sig_ii(self, sig_ii, cls=None):
+  def init_N_ii(self, N_ii, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_ii :::"
+    s = "::: initializing N_ii :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_ii, sig_ii, cls=cls)
+    self.assign_variable(self.N_ii, N_ii, cls=cls)
   
-  def init_sig_ij(self, sig_ij, cls=None):
+  def init_N_ij(self, N_ij, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_ij :::"
+    s = "::: initializing N_ij :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_ij, sig_ij, cls=cls)
+    self.assign_variable(self.N_ij, N_ij, cls=cls)
   
-  def init_sig_ik(self, sig_ik, cls=None):
+  def init_N_ik(self, N_ik, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_ik :::"
+    s = "::: initializing N_ik :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_ik, sig_ik, cls=cls)
+    self.assign_variable(self.N_ik, N_ik, cls=cls)
   
-  def init_sig_ji(self, sig_ji, cls=None):
+  def init_N_ji(self, N_ji, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_ji :::"
+    s = "::: initializing N_ji :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_ji, sig_ji, cls=cls)
+    self.assign_variable(self.N_ji, N_ji, cls=cls)
   
-  def init_sig_jj(self, sig_jj, cls=None):
+  def init_N_jj(self, N_jj, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_jj :::"
+    s = "::: initializing N_jj :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_jj, sig_jj, cls=cls)
+    self.assign_variable(self.N_jj, N_jj, cls=cls)
   
-  def init_sig_jk(self, sig_jk, cls=None):
+  def init_N_jk(self, N_jk, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_jk :::"
+    s = "::: initializing N_jk :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_jk, sig_jk, cls=cls)
+    self.assign_variable(self.N_jk, N_jk, cls=cls)
   
-  def init_sig_ki(self, sig_ki, cls=None):
+  def init_N_ki(self, N_ki, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_ki :::"
+    s = "::: initializing N_ki :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_ki, sig_ki, cls=cls)
+    self.assign_variable(self.N_ki, N_ki, cls=cls)
   
-  def init_sig_kj(self, sig_kj, cls=None):
+  def init_N_kj(self, N_kj, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_kj :::"
+    s = "::: initializing N_kj :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_kj, sig_kj, cls=cls)
+    self.assign_variable(self.N_kj, N_kj, cls=cls)
   
-  def init_sig_kk(self, sig_kk, cls=None):
+  def init_N_kk(self, N_kk, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing sig_kk :::"
+    s = "::: initializing N_kk :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.sig_kk, sig_kk, cls=cls)
+    self.assign_variable(self.N_kk, N_kk, cls=cls)
 
   def init_alpha(self, alpha, cls=None):
     """
@@ -898,6 +898,15 @@ class Model(object):
     s = "::: initializing integral of internal water content :::"
     print_text(s, cls=cls)
     self.assign_variable(self.W_int, W_int, cls=cls)
+
+  def init_Q_int(self, Q_int, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing integral of strain-heat :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.Q_int, Q_int, cls=cls)
 
   def init_PE(self, PE, cls=None):
     """
@@ -1508,7 +1517,7 @@ class Model(object):
     
     self.init_n_f(n, cls=cls)
 
-  def get_x_velocity_angle(self):
+  def get_xy_velocity_angle(self):
     """
     Returns the angle in radians of the horizontal velocity vector from 
     the x-axis.
@@ -1517,46 +1526,58 @@ class Model(object):
     u_v     = u.vector().array()
     v_v     = v.vector().array()
     theta_v = np.arctan2(u_v, v_v)
-    theta   = Function(self.Q, name='theta_x_U_angle')
+    theta   = Function(self.Q, name='theta_xy_U_angle')
     self.assign_variable(theta, theta_v, cls=self.this)
     return theta
 
-  def get_z_velocity_angle(self):
+  def get_xz_velocity_angle(self):
     """
-    Returns the angle in radians of the horizontal velocity vector from 
-    the z-axis.
+    Returns the angle in radians of the vertical velocity vector from 
+    the x-axis.
     """
     u,v,w   = self.U3.split(True)
     u_v     = u.vector().array()
-    w_v     = v.vector().array()
-    theta_v = np.arctan2(w_v, u_v)
-    theta   = Function(self.Q, name='theta_z_U_angle')
+    w_v     = w.vector().array()
+    theta_v = np.arctan2(u_v, w_v)
+    theta   = Function(self.Q, name='theta_xz_U_angle')
     self.assign_variable(theta, theta_v, cls=self.this)
     return theta
 
-  def rotate_z(self, M, theta):
+  def z_rotation_matrix(self, theta):
     """
-    rotate the tensor <M> about the z axes by angle <theta>.
+    get rotation matrix about the z axes by angle <theta>.
     """
     c  = cos(theta)
     s  = sin(theta)
     Rz = as_matrix([[c, -s, 0],
                     [s,  c, 0],
                     [0,  0, 1]])
-    R  = dot(Rz, dot(M, Rz.T))
-    return R
+    return Rz
 
-  def rotate_y(self, M, theta):
+  def y_rotation_matrix(self, theta):
     """
-    rotate the tensor <M> about the y axes by angle <theta>.
+    get rotation matrix about the y axes by angle <theta>.
     """
     c  = cos(theta)
     s  = sin(theta)
     Ry = as_matrix([[ c, 0, s],
                     [ 0, 1, 0],
                     [-s, 0, c]])
-    R  = dot(Ry, dot(M, Ry.T))
-    return R
+    return Ry
+
+  def rotate_tensor(self, M, R):
+    """
+    rotate the tnesor <M> by the rotation matrix <R>.
+    """
+    if M.rank() == 2:
+      Mr = dot(R, dot(M, R.T))
+    elif M.rank() == 1:
+      Mr = dot(R, M)
+    else:
+      s   = ">>> METHOD 'rotate_tensor' REQUIRES RANK 2 OR 1 TENSOR <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
+    return Mr
 
   def get_norm(self, U, type='l2'):
     """
@@ -1582,6 +1603,9 @@ class Model(object):
     """
     Create a normalized vector of the UFL vector <U>.
     """
+    s   = "::: normalizing vector :::"
+    print_text(s, cls=self.this)
+
     if type(Q) != FunctionSpace:
       Q = self.Q
 
@@ -1819,6 +1843,7 @@ class Model(object):
     self.a_T           = Function(self.Q, name='a_T')
     self.Q_T           = Function(self.Q, name='Q_T')
     self.W_T           = Function(self.Q, name='W_T')
+    self.Q_int         = Function(self.Q, name='Q_int')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
     
@@ -1855,15 +1880,15 @@ class Model(object):
     self.tau_ki        = Function(self.Q, name='tau_ki')
     self.tau_kj        = Function(self.Q, name='tau_kj')
     self.tau_kk        = Function(self.Q, name='tau_kk')
-    self.sig_ii        = Function(self.Q, name='sig_ii')
-    self.sig_ij        = Function(self.Q, name='sig_ij')
-    self.sig_ik        = Function(self.Q, name='sig_ik')
-    self.sig_ji        = Function(self.Q, name='sig_ji')
-    self.sig_jj        = Function(self.Q, name='sig_jj')
-    self.sig_jk        = Function(self.Q, name='sig_jk')
-    self.sig_ki        = Function(self.Q, name='sig_ki')
-    self.sig_kj        = Function(self.Q, name='sig_kj')
-    self.sig_kk        = Function(self.Q, name='sig_kk')
+    self.N_ii          = Function(self.Q, name='N_ii')
+    self.N_ij          = Function(self.Q, name='N_ij')
+    self.N_ik          = Function(self.Q, name='N_ik')
+    self.N_ji          = Function(self.Q, name='N_ji')
+    self.N_jj          = Function(self.Q, name='N_jj')
+    self.N_jk          = Function(self.Q, name='N_jk')
+    self.N_ki          = Function(self.Q, name='N_ki')
+    self.N_kj          = Function(self.Q, name='N_kj')
+    self.N_kk          = Function(self.Q, name='N_kk')
 
   def thermo_solve(self, momentum, energy, wop_kwargs,
                    callback=None, atol=1e2, rtol=1e0, max_iter=50,

@@ -503,8 +503,9 @@ class FS_Balance(Physics):
     sig   = momentum.deviatoric_stress_tensor(model.U3, model.eta)
 
     # rotate about the z-axis : 
-    rad   = model.get_x_velocity_angle() 
-    sig_r = model.rotate_z(sig, rad)
+    rad_xy = model.get_xy_velocity_angle() 
+    Rz     = model.z_rotation_matrix(rad_xy)
+    sig_r  = model.rotate_tensor(sig, Rz)
     
     # get surface stress :
     sig_ii_S = model.vert_extrude(sig_r[0,0], d='down')
@@ -540,15 +541,15 @@ class FS_Balance(Physics):
     N_kk = model.vert_integrate(sig_r[2,2], d='down')
 
     # save the vertically integrated deviatoric stress :
-    model.init_sig_ii(N_ii, cls=self)
-    model.init_sig_ij(N_ij, cls=self)
-    model.init_sig_ik(N_ik, cls=self)
-    model.init_sig_ji(N_ji, cls=self)
-    model.init_sig_jj(N_jj, cls=self)
-    model.init_sig_jk(N_jk, cls=self)
-    model.init_sig_ki(N_ki, cls=self)
-    model.init_sig_kj(N_kj, cls=self)
-    model.init_sig_kk(N_kk, cls=self)
+    model.init_N_ii(N_ii, cls=self)
+    model.init_N_ij(N_ij, cls=self)
+    model.init_N_ik(N_ik, cls=self)
+    model.init_N_ji(N_ji, cls=self)
+    model.init_N_jj(N_jj, cls=self)
+    model.init_N_jk(N_jk, cls=self)
+    model.init_N_ki(N_ki, cls=self)
+    model.init_N_kj(N_kj, cls=self)
+    model.init_N_kk(N_kk, cls=self)
     
     # get the components of horizontal velocity :
     u,v,w    = model.U3.split(True)

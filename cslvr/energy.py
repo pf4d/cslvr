@@ -967,6 +967,26 @@ class Enthalpy(Energy):
     W_int = model.vert_integrate(W_i, d='down')
     model.init_W_int(W_int, cls=self)
 
+  def calc_integrated_strain_heat(self):
+    """
+    calculates integrated strain-heating. 
+    """
+    s   = "::: calculating vertical integral of strain heat :::"
+    print_text(s, cls=self)
+
+    model   = self.model
+    
+    # calculate strain rate and viscosity :
+    epsdot  = self.effective_strain_rate(model.U3)
+    model.calc_eta(self.effective_strain_rate)
+   
+    # strain heating : 
+    Q  = 4 * model.eta * epsdot
+
+    # calculate downward vertical integral :
+    Q_int = model.vert_integrate(Q, d='down')
+    model.init_Q_int(Q_int, cls=self)
+
   def calc_T_melt(self, annotate=True):
     """
     Calculates temperature melting point model.T_melt and energy melting point

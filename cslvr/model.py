@@ -728,14 +728,14 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.tau_ij, tau_ij, cls=cls)
   
-  def init_tau_iz(self, tau_iz, cls=None):
+  def init_tau_ik(self, tau_ik, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_iz :::"
+    s = "::: initializing tau_ik :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_iz, tau_iz, cls=cls)
+    self.assign_variable(self.tau_ik, tau_ik, cls=cls)
   
   def init_tau_ji(self, tau_ji, cls=None):
     """
@@ -755,14 +755,122 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.tau_jj, tau_jj, cls=cls)
   
-  def init_tau_jz(self, tau_jz, cls=None):
+  def init_tau_jk(self, tau_jk, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_jz :::"
+    s = "::: initializing tau_jk :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_jz, tau_jz, cls=cls)
+    self.assign_variable(self.tau_jk, tau_jk, cls=cls)
+  
+  def init_tau_ki(self, tau_ki, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_ki :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_ki, tau_ki, cls=cls)
+  
+  def init_tau_kj(self, tau_kj, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_kj :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_kj, tau_kj, cls=cls)
+  
+  def init_tau_kk(self, tau_kk, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing tau_kk :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.tau_kk, tau_kk, cls=cls)
+  
+  def init_sig_ii(self, sig_ii, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_ii :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_ii, sig_ii, cls=cls)
+  
+  def init_sig_ij(self, sig_ij, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_ij :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_ij, sig_ij, cls=cls)
+  
+  def init_sig_ik(self, sig_ik, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_ik :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_ik, sig_ik, cls=cls)
+  
+  def init_sig_ji(self, sig_ji, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_ji :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_ji, sig_ji, cls=cls)
+  
+  def init_sig_jj(self, sig_jj, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_jj :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_jj, sig_jj, cls=cls)
+  
+  def init_sig_jk(self, sig_jk, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_jk :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_jk, sig_jk, cls=cls)
+  
+  def init_sig_ki(self, sig_ki, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_ki :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_ki, sig_ki, cls=cls)
+  
+  def init_sig_kj(self, sig_kj, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_kj :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_kj, sig_kj, cls=cls)
+  
+  def init_sig_kk(self, sig_kk, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing sig_kk :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.sig_kk, sig_kk, cls=cls)
 
   def init_alpha(self, alpha, cls=None):
     """
@@ -1320,7 +1428,7 @@ class Model(object):
     print_text(s, cls=self.this)
     Q       = self.Q
     R       = self.R
-    T       = self.T
+    Tp      = self.Tp
     W       = self.W
     n       = self.n
     eps_reg = self.eps_reg
@@ -1332,8 +1440,9 @@ class Model(object):
     epsdot  = epsdot_ftn(self.U3)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
-    a_T    = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T    = conditional( lt(T, 263.15), 6e4,          13.9e4)
+    a_T    = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T    = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
+    W_T    = conditional( lt(W, 0.01),    W,            0.01)
     #a_T     = Function(Q, name='a_T')
     #Q_T     = Function(Q, name='Q_T')
     #T_v     = T.vector().array()
@@ -1356,7 +1465,7 @@ class Model(object):
     #self.assign_variable(E, E_v, cls=self.this)
 
     # calculate viscosity :
-    b       = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    b       = ( E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
     eta     = project(eta, Q, annotate=False)
     self.init_eta(eta)
@@ -1399,19 +1508,33 @@ class Model(object):
     
     self.init_n_f(n, cls=cls)
 
-  def get_theta(self):
+  def get_x_velocity_angle(self):
     """
     Returns the angle in radians of the horizontal velocity vector from 
     the x-axis.
     """
-    u_v     = self.u.vector().array()
-    v_v     = self.v.vector().array()
+    u,v,w   = self.U3.split(True)
+    u_v     = u.vector().array()
+    v_v     = v.vector().array()
     theta_v = np.arctan2(u_v, v_v)
-    theta   = Function(self.Q, name='theta_U_angle')
+    theta   = Function(self.Q, name='theta_x_U_angle')
     self.assign_variable(theta, theta_v, cls=self.this)
     return theta
 
-  def rotate(self, M, theta):
+  def get_z_velocity_angle(self):
+    """
+    Returns the angle in radians of the horizontal velocity vector from 
+    the z-axis.
+    """
+    u,v,w   = self.U3.split(True)
+    u_v     = u.vector().array()
+    w_v     = v.vector().array()
+    theta_v = np.arctan2(w_v, u_v)
+    theta   = Function(self.Q, name='theta_z_U_angle')
+    self.assign_variable(theta, theta_v, cls=self.this)
+    return theta
+
+  def rotate_z(self, M, theta):
     """
     rotate the tensor <M> about the z axes by angle <theta>.
     """
@@ -1421,6 +1544,18 @@ class Model(object):
                     [s,  c, 0],
                     [0,  0, 1]])
     R  = dot(Rz, dot(M, Rz.T))
+    return R
+
+  def rotate_y(self, M, theta):
+    """
+    rotate the tensor <M> about the y axes by angle <theta>.
+    """
+    c  = cos(theta)
+    s  = sin(theta)
+    Ry = as_matrix([[ c, 0, s],
+                    [ 0, 1, 0],
+                    [-s, 0, c]])
+    R  = dot(Ry, dot(M, Ry.T))
     return R
 
   def get_norm(self, U, type='l2'):
@@ -1713,8 +1848,22 @@ class Model(object):
     self.tau_jp        = Function(self.Q, name='tau_jp')
     self.tau_ii        = Function(self.Q, name='tau_ii')
     self.tau_ij        = Function(self.Q, name='tau_ij')
+    self.tau_ik        = Function(self.Q, name='tau_ik')
     self.tau_ji        = Function(self.Q, name='tau_ji')
     self.tau_jj        = Function(self.Q, name='tau_jj')
+    self.tau_jk        = Function(self.Q, name='tau_jk')
+    self.tau_ki        = Function(self.Q, name='tau_ki')
+    self.tau_kj        = Function(self.Q, name='tau_kj')
+    self.tau_kk        = Function(self.Q, name='tau_kk')
+    self.sig_ii        = Function(self.Q, name='sig_ii')
+    self.sig_ij        = Function(self.Q, name='sig_ij')
+    self.sig_ik        = Function(self.Q, name='sig_ik')
+    self.sig_ji        = Function(self.Q, name='sig_ji')
+    self.sig_jj        = Function(self.Q, name='sig_jj')
+    self.sig_jk        = Function(self.Q, name='sig_jk')
+    self.sig_ki        = Function(self.Q, name='sig_ki')
+    self.sig_kj        = Function(self.Q, name='sig_kj')
+    self.sig_kk        = Function(self.Q, name='sig_kk')
 
   def thermo_solve(self, momentum, energy, wop_kwargs,
                    callback=None, atol=1e2, rtol=1e0, max_iter=50,

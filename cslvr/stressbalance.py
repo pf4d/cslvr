@@ -177,7 +177,7 @@ class SSA_Balance(Physics):
     print_min_max(model.tau_ji, 'tau_ji')
     solve(M, model.tau_jj.vector(), assemble(tau_jj_s))
     print_min_max(model.tau_jj, 'tau_jj')
-   
+
 
 class BP_Balance(Physics):
 
@@ -204,9 +204,9 @@ class BP_Balance(Physics):
     x        = model.x
     N        = model.N
     D        = model.D
-    eta      = model.eta
     R        = model.R
     T        = model.T
+    Tp       = model.Tp
     W        = model.W
     n        = model.n
     eps_reg  = model.eps_reg
@@ -223,9 +223,10 @@ class BP_Balance(Physics):
     
     # calculate viscosity :
     epsdot   = momentum.effective_strain_rate(model.U3)
-    a_T      = conditional( lt(T, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T      = conditional( lt(T, 263.15), 6e4,          13.9e4)
-    b        = ( E*a_T*(1 + 181.25*W)*exp(-Q_T/(R*T)) )**(-1/n)
+    a_T      = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
+    Q_T      = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
+    W_T      = conditional( lt(W, 0.01),    W,            0.01)
+    b        = ( E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     eta      = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
    
     # pressure boundary : 
@@ -484,6 +485,133 @@ class BP_Balance(Physics):
       model.assign_variable(model.tau_ji, tau_ji, cls=self)
       model.assign_variable(model.tau_jj, tau_jj, cls=self)
       model.assign_variable(model.tau_jz, tau_jz, cls=self)
+
+
+class FS_Balance(Physics):
+
+  def __init__(self, model, momentum):
+    """
+    """
+    s    = "::: INITIALIZING FS-BALANCE PHYSICS :::"
+    print_text(s, self.color())
+    
+    # calculate viscosity in model.eta :
+    model.calc_eta(momentum.effective_strain_rate)
+    
+    # stress tensor :
+    #sig   = momentum.stress_tensor(model.U3, model.p, model.eta)
+    sig   = momentum.deviatoric_stress_tensor(model.U3, model.eta)
+
+    # rotate about the z-axis : 
+    rad   = model.get_x_velocity_angle() 
+    sig_r = model.rotate_z(sig, rad)
+    
+    # get surface stress :
+    sig_ii_S = model.vert_extrude(sig_r[0,0], d='down')
+    sig_ij_S = model.vert_extrude(sig_r[0,1], d='down')
+    sig_ik_S = model.vert_extrude(sig_r[0,2], d='down')
+    sig_ji_S = model.vert_extrude(sig_r[1,0], d='down')
+    sig_jj_S = model.vert_extrude(sig_r[1,1], d='down')
+    sig_jk_S = model.vert_extrude(sig_r[1,2], d='down')
+    sig_ki_S = model.vert_extrude(sig_r[2,0], d='down')
+    sig_kj_S = model.vert_extrude(sig_r[2,1], d='down')
+    sig_kk_S = model.vert_extrude(sig_r[2,2], d='down')
+    
+    # get basal stress :
+    sig_ii_B = model.vert_extrude(sig_r[0,0], d='up')
+    sig_ij_B = model.vert_extrude(sig_r[0,1], d='up')
+    sig_ik_B = model.vert_extrude(sig_r[0,2], d='up')
+    sig_ji_B = model.vert_extrude(sig_r[1,0], d='up')
+    sig_jj_B = model.vert_extrude(sig_r[1,1], d='up')
+    sig_jk_B = model.vert_extrude(sig_r[1,2], d='up')
+    sig_ki_B = model.vert_extrude(sig_r[2,0], d='up')
+    sig_kj_B = model.vert_extrude(sig_r[2,1], d='up')
+    sig_kk_B = model.vert_extrude(sig_r[2,2], d='up')
+    
+    # vertically integrate stress :
+    N_ii = model.vert_integrate(sig_r[0,0], d='down')
+    N_ij = model.vert_integrate(sig_r[0,1], d='down')
+    N_ik = model.vert_integrate(sig_r[0,2], d='down')
+    N_ji = model.vert_integrate(sig_r[1,0], d='down')
+    N_jj = model.vert_integrate(sig_r[1,1], d='down')
+    N_jk = model.vert_integrate(sig_r[1,2], d='down')
+    N_ki = model.vert_integrate(sig_r[2,0], d='down')
+    N_kj = model.vert_integrate(sig_r[2,1], d='down')
+    N_kk = model.vert_integrate(sig_r[2,2], d='down')
+
+    # save the vertically integrated deviatoric stress :
+    model.init_sig_ii(N_ii, cls=self)
+    model.init_sig_ij(N_ij, cls=self)
+    model.init_sig_ik(N_ik, cls=self)
+    model.init_sig_ji(N_ji, cls=self)
+    model.init_sig_jj(N_jj, cls=self)
+    model.init_sig_jk(N_jk, cls=self)
+    model.init_sig_ki(N_ki, cls=self)
+    model.init_sig_kj(N_kj, cls=self)
+    model.init_sig_kk(N_kk, cls=self)
+    
+    # get the components of horizontal velocity :
+    u,v,w    = model.U3.split(True)
+    U        = as_vector([u, v])
+    U_hat    = model.normalize_vector(U)
+    U_n      = as_vector([U_hat[0],  U_hat[1], 0.0])#U_hat[2]])
+    U_t      = as_vector([U_hat[1], -U_hat[0], 0.0])#U_hat[2]])
+    S        = model.S
+    B        = model.B
+
+    # directional derivative in direction of flow :
+    def d_di(u):
+      return dot(grad(u), U_n)
+
+    # directional derivative in direction of across flow :
+    def d_dj(u):
+      return dot(grad(u), U_t)
+
+    # form components :
+    phi      = TestFunction(model.Q)
+    dtau     = TrialFunction(model.Q)
+    
+    # mass matrix :
+    self.M = assemble(phi*dtau*dx)
+
+    # integrated stress-balance :
+    self.tau_ii = (d_di(N_ii) + sig_ii_S*d_di(S) - sig_ii_B*d_di(B)) * phi * dx
+    self.tau_ij = (d_dj(N_ij) + sig_ij_S*d_dj(S) - sig_ij_B*d_dj(B)) * phi * dx
+    self.tau_ik = (sig_ik_S - sig_ik_B) * phi * dx
+    self.tau_ji = (d_di(N_ji) + sig_ji_S*d_di(S) - sig_ji_B*d_di(B)) * phi * dx
+    self.tau_jj = (d_dj(N_jj) + sig_jj_S*d_dj(S) - sig_jj_B*d_dj(B)) * phi * dx
+    self.tau_jk = (sig_jk_S - sig_jk_B) * phi * dx
+    self.tau_ki = (d_di(N_ki) + sig_ki_S*d_di(S) - sig_ki_B*d_di(B)) * phi * dx
+    self.tau_kj = (d_dj(N_kj) + sig_kj_S*d_dj(S) - sig_kj_B*d_dj(B)) * phi * dx
+    self.tau_kk = (sig_kk_S - sig_kk_B) * phi * dx
+
+  def solve(self):
+    """
+    """
+    s    = "::: solving 'FS_Balance' :::"
+    print_text(s, self.color())
+    
+    model = self.model
+
+    # solve the linear system :
+    solve(self.M, model.tau_ii.vector(), assemble(self.tau_ii))
+    print_min_max(model.tau_ii, 'tau_ii')
+    solve(self.M, model.tau_ij.vector(), assemble(self.tau_ij))
+    print_min_max(model.tau_ij, 'tau_ij')
+    solve(self.M, model.tau_ik.vector(), assemble(self.tau_ik))
+    print_min_max(model.tau_ik, 'tau_ik')
+    solve(self.M, model.tau_ji.vector(), assemble(self.tau_ji))
+    print_min_max(model.tau_ji, 'tau_ji')
+    solve(self.M, model.tau_jj.vector(), assemble(self.tau_jj))
+    print_min_max(model.tau_jj, 'tau_jj')
+    solve(self.M, model.tau_jk.vector(), assemble(self.tau_jk))
+    print_min_max(model.tau_jk, 'tau_jk')
+    solve(self.M, model.tau_ki.vector(), assemble(self.tau_ki))
+    print_min_max(model.tau_ki, 'tau_ki')
+    solve(self.M, model.tau_kj.vector(), assemble(self.tau_kj))
+    print_min_max(model.tau_kj, 'tau_kj')
+    solve(self.M, model.tau_kk.vector(), assemble(self.tau_kk))
+    print_min_max(model.tau_kk, 'tau_kk')
 
 
 

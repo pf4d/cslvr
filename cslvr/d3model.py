@@ -666,10 +666,12 @@ class D3Model(Model):
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
       bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
-    name = '%s extruded %s' % (u.name(), d)
+    try:
+      name = '%s extruded %s' % (u.name(), d)
+    except AttributeError:
+      name = 'extruded'
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'function to be extruded', cls=self)
     print_min_max(v, 'extruded function', cls=self)
     return v
   

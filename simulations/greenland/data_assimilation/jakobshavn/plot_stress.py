@@ -8,7 +8,6 @@ import sys
 base_dir = 'dump/jakob_small/02/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
-var_dir  = 'dump/vars_jakobshavn_small/'
 
 # not deformed mesh :
 mesh    = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')
@@ -27,35 +26,27 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
-f     = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5', 'r')
-fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
+f     = HDF5File(mpi_comm_world(), in_dir  + 'stress.h5', 'r')
 
 # initialize the variables :
-d3model.init_S(fdata)
-d3model.init_B(fdata)
-d3model.init_T(f)
-d3model.init_W(f)
-d3model.init_Fb(f)
-d3model.init_Mb(f)
-d3model.init_alpha(f)
-d3model.init_PE(f)
-d3model.init_W_int(f)
-d3model.init_U(f)
-d3model.init_p(f)
-d3model.init_beta(f)
-d3model.init_theta(f)
+d3model.init_tau_id(f)
+d3model.init_tau_jd(f)
+d3model.init_tau_ii(f)
+d3model.init_tau_ij(f)
+d3model.init_tau_iz(f)
+d3model.init_tau_ji(f)
+d3model.init_tau_jj(f)
+d3model.init_tau_jz(f)
 
 # 2D model gets balance-velocity appropriate variables initialized :
-bedmodel.assign_submesh_variable(bedmodel.T,         d3model.T)
-bedmodel.assign_submesh_variable(bedmodel.W,         d3model.W)
-bedmodel.assign_submesh_variable(bedmodel.Fb,        d3model.Fb)
-bedmodel.assign_submesh_variable(bedmodel.Mb,        d3model.Mb)
-bedmodel.assign_submesh_variable(bedmodel.alpha,     d3model.alpha)
-bedmodel.assign_submesh_variable(bedmodel.PE,        d3model.PE)
-bedmodel.assign_submesh_variable(bedmodel.W_int,     d3model.W_int)
-srfmodel.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
-bedmodel.assign_submesh_variable(bedmodel.beta,      d3model.beta)
-bedmodel.assign_submesh_variable(bedmodel.theta,     d3model.theta)
+bedmodel.assign_submesh_variable(bedmodel.tau_id, d3model.tau_id)
+bedmodel.assign_submesh_variable(bedmodel.tau_jd, d3model.tau_jd)
+bedmodel.assign_submesh_variable(bedmodel.tau_ii, d3model.tau_ii)
+bedmodel.assign_submesh_variable(bedmodel.tau_ij, d3model.tau_ij)
+bedmodel.assign_submesh_variable(bedmodel.tau_iz, d3model.tau_iz)
+bedmodel.assign_submesh_variable(bedmodel.tau_ji, d3model.tau_ji)
+bedmodel.assign_submesh_variable(bedmodel.tau_jj, d3model.tau_jj)
+bedmodel.assign_submesh_variable(bedmodel.tau_jz, d3model.tau_jz)
 
 
 #===============================================================================
@@ -75,53 +66,26 @@ zoom_box_kwargs = {'zoom'             : 5.8,    # ammount to zoom
                    'plot_grid'        : True,   # plot the triangles
                    'axes_color'       : 'r'}    # color of axes
 
-amax  = bedmodel.alpha.vector().max()
-amin  = bedmodel.alpha.vector().min()
+tau_ij_min = bedmodel.tau_ij.vector().min()
+tau_ij_max = bedmodel.tau_ij.vector().max()
 
-Mbmax = bedmodel.Mb.vector().max()
-Mbmin = bedmodel.Mb.vector().min()
+tau_ii_min = bedmodel.tau_ii.vector().min()
+tau_ii_max = bedmodel.tau_ii.vector().max()
 
-Fbmax = bedmodel.Fb.vector().max()
-Fbmin = bedmodel.Fb.vector().min()
+tau_iz_min = bedmodel.tau_iz.vector().min()
+tau_iz_max = bedmodel.tau_iz.vector().max()
 
-Wmax  = bedmodel.W.vector().max()
-Wmin  = bedmodel.W.vector().min()
+tau_id_min = bedmodel.tau_id.vector().min()
+tau_id_max = bedmodel.tau_id.vector().max()
 
-Wimax  = bedmodel.W_int.vector().max()
-Wimin  = bedmodel.W_int.vector().min()
-
-bmax  = bedmodel.beta.vector().max()
-bmin  = bedmodel.beta.vector().min()
-
-Umax  = srfmodel.U_mag.vector().max()
-Umin  = srfmodel.U_mag.vector().min()
-
-Pmax  = bedmodel.PE.vector().max()
-Pmin  = bedmodel.PE.vector().min()
-
-Tmax  = bedmodel.T.vector().max()
-Tmin  = bedmodel.T.vector().min()
-
-#Wimax = 1.5e1
-#Wmax  = 1.9e-1
-
-a_lvls  = np.array([0.0, 1e-2, 1e-1, 0.5, amax])
-Mb_lvls = np.array([Mbmin, -1e-2, -5e-3, -1e-3, -1e-4, -1e-5,
-                    1e-5, 1e-2, 1e-1, 2e-1, 0.5, Mbmax])
-#Mb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Mbmax])
-Fb_lvls = np.array([0.0, 1e-4, 1e-3, 1e-1, 0.25, 1.0, Fbmax])
-
-#b_lvls  = np.array([bmin, 1, 1e2, 1e3, 2.5e3, 5e3, bmax])
-b_lvls  = np.array([bmin, 1e-3, 1, 1e2, 2.5e2, 5e2, 1e3, bmax])
-
-#W_lvls  = np.array([0.0, 1e-2, 3e-2, 4e-2, 5e-2, 1e-1, 2e-1, Wmax])
-W_lvls  = np.array([0.0, 1e-2, 3e-2, 4e-2, 5e-2, Wmax])
-U_lvls  = np.array([50, 100, 250, 500, 1e3, 2.5e3, 5e3, Umax])
-Pe_lvls = np.array([1e2, 1e3, 5e3, 1e4, 2.5e4, 5e4, Pmax])
-T_lvls  = np.array([Tmin, 268, 271.5, 272, 272.5, Tmax])
-
-#Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.0, Wimax])
-Wi_lvls = np.array([0.0, 1e-1, 1.0, 5.0, 10.0, 15.0, Wimax])
+tau_ij_lvls = np.array([tau_ij_min, -2.5e5, -1e5, -1e4, -5e3, 
+                        5e3, 1e4, 5e4, 1e5, tau_ij_max])
+tau_ii_lvls = np.array([tau_ii_min, -2.5e5, -1e5, -1e4, -5e3, 
+                        5e3, 1e4, 5e4, 1e5, tau_ii_max])
+tau_iz_lvls = np.array([tau_iz_min, -2.5e5, -1e5, -1e4, -5e3, 
+                        5e3, 1e4, 5e4, 1e5, tau_iz_max])
+tau_id_lvls = np.array([tau_id_min, -2.5e5, -1e5, -1e4, -5e3, 
+                        5e3, 1e4, 5e4, 1e5, tau_id_max])
 
 #m = plotIce(drg, bedmodel.W_int, name='crap_to_delete', direc=out_dir, 
 #            levels=Wi_lvls, tp=False, tpAlpha=0.2,
@@ -222,63 +186,27 @@ Wi_lvls = np.array([0.0, 1e-1, 1.0, 5.0, 10.0, 15.0, Wimax])
 #cmap = 'magma'
 cmap = 'gist_yarg'
   
-plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
-        title='$T_B$', cmap=cmap,  scale='lin',
-        levels=T_lvls, tp=False, tpAlpha=0.2,
+plotIce(drg, bedmodel.tau_ii, name='tau_ii', direc=out_dir,
+        title=r'$\tau_{ii}$', cmap='RdGy',  scale='lin',
+        levels=tau_ii_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
 
-plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
-        title=r'$W_B$', cmap=cmap,  scale='lin',
-        levels=W_lvls, tp=False, tpAlpha=0.2,
+plotIce(drg, bedmodel.tau_ij, name='tau_ij', direc=out_dir,
+        title=r'$\tau_{ij}$', cmap='RdGy',  scale='lin',
+        levels=tau_ij_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
 
-plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
-        title=r'$F_b$', cmap=cmap,  scale='lin',
-        levels=Fb_lvls, tp=False, tpAlpha=0.2,
+plotIce(drg, bedmodel.tau_iz, name='tau_iz', direc=out_dir,
+        title=r'$\tau_{iz}$', cmap='RdGy',  scale='lin',
+        levels=tau_iz_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
 
-plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-        title=r'$M_b$', cmap='RdGy',  scale='lin',
-        levels=Mb_lvls, tp=False, tpAlpha=0.2,
-        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
-        title=r'$\alpha$', cmap=cmap,  scale='lin',
-        levels=a_lvls, tp=False, tpAlpha=0.2, cb_format='%.2e',
-        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
-        title=r'$P_e$', cmap=cmap,  scale='lin',
-        levels=Pe_lvls, tp=False, tpAlpha=0.2,
-        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
-        title=r'$W_i$', cmap=cmap,  scale='lin',
-        levels=Wi_lvls, tp=False, tpAlpha=0.2,
-        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
-        title=r'$\Vert \mathbf{u}_S \Vert$', cmap=cmap,  scale='lin',
-        levels=U_lvls, tp=False, tpAlpha=0.2,
-        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
-        title=r'$\theta_B$', cmap=cmap,  scale='lin',
-        tp=False, tpAlpha=0.2,
-        basin='jakobshavn', extend='neither', show=False, ext='.pdf',
-        zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
-
-plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
-        title=r'$\beta$', cmap=cmap,  scale='lin',
-        levels=b_lvls, tp=False, tpAlpha=0.2,
+plotIce(drg, bedmodel.tau_id, name='tau_id', direc=out_dir,
+        title=r'$\tau_{id}$', cmap='RdGy',  scale='lin',
+        levels=tau_id_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs)
 

@@ -491,6 +491,24 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.q_fric, q_fric, cls=cls)
   
+  def init_gradT_B(self, gradT_B, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing basal temperature flux :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.gradT_B, gradT_B, cls=cls)
+  
+  def init_gradTm_B(self, gradTm_B, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing basal temperature-melting flux :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.gradTm_B, gradTm_B, cls=cls)
+  
   def init_u(self, u, cls=None):
     """
     """
@@ -1836,6 +1854,8 @@ class Model(object):
     self.Tp            = Function(self.Q, name='Tp')
     self.q_geo         = Function(self.Q, name='q_geo')
     self.q_fric        = Function(self.Q, name='q_fric')
+    self.gradT_B       = Function(self.Q, name='gradT_B')
+    self.gradTm_B      = Function(self.Q, name='gradTm_B')
     self.theta         = Function(self.Q, name='theta')
     self.W             = Function(self.Q, name='W')
     self.Mb            = Function(self.Q, name='Mb')

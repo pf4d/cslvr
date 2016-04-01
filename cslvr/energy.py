@@ -667,39 +667,6 @@ class Enthalpy(Energy):
     dtheta = TrialFunction(Q)
     theta  = Function(Q, name='energy.theta')
     theta0 = Function(Q, name='energy.theta0')
-
-    # initialize the boundary conditions and thermal properties, if 
-    # we have not done so already :
-    if not reset:
-      # calculate energy and temperature melting point :
-      self.calc_T_melt(annotate=False)
-
-      T_v        = T.vector().array()
-      W_v        = W.vector().array()
-      T_s_v      = T_surface.vector().array()
-      T_m_v      = T_m.vector().array()
-      Tp_v       = T_v.copy()
-      theta_s_v  = 146.3*T_s_v + 7.253/2.0*T_s_v**2
-      theta_f_v  = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
-      theta_i_v  = 146.3*T_v + 7.253/2.0*T_v**2 + W_v * L(0)
-    
-      # Surface boundary condition :
-      s = "::: calculating energy boundary conditions :::"
-      print_text(s, cls=self)
-
-      # initialize the boundary conditions :
-      model.init_theta_surface(theta_s_v, cls=self)
-      model.init_theta_app(theta_s_v,     cls=self)
-      model.init_theta_float(theta_f_v,   cls=self)
-
-      # initialize energy from W and T :
-      model.init_theta(theta_i_v,         cls=self)
-      
-      # calculate k_c, a_T, Q_T, and W_T from theta :
-      self.adjust_discontinuous_properties(annotate=False)
-
-      # initialize water flux to zero :
-      model.init_Fb(0.0, cls=self)
       
     # strain-rate :
     epsdot  = self.effective_strain_rate(U) + eps_reg
@@ -753,10 +720,11 @@ class Enthalpy(Energy):
     Xi    =  kappa / (rho*c)         # bulk enthalpy-gradient diffusivity
 
     # frictional heating :
-    q_fric = model.q_fric#beta * inner(U,U)
+    q_fric = model.q_fric            # beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
-    g_w  = k * dot(grad(T_m), N) + rhow*L*Fb
+    #g_w  = k * dot(grad(T_m), N) + rhow*L*Fb
+    g_w  = model.gradTm_B + rhow*L*Fb
     g_n  = q_geo + q_fric
     if energy_flux_mode == 'zero_energy':
       s = "    - using zero energy flux boundary condition -"
@@ -881,6 +849,7 @@ class Enthalpy(Energy):
     # Jacobian : 
     self.nrg_Jac = derivative(self.nrg_F, theta, dtheta)
 
+    # make properties available :
     self.theta   = theta
     self.theta0  = theta0
     self.c       = c
@@ -888,9 +857,45 @@ class Enthalpy(Energy):
     self.rho     = rho
     self.kappa   = kappa
     self.Xi      = Xi
-    self.q_fric  = q_fric
     self.Q_s_gnd = Q_s_gnd
     self.Q_s_shf = Q_s_shf
+
+    # initialize the boundary conditions and thermal properties, if 
+    # we have not done so already :
+    if not reset:
+      # calculate energy and temperature melting point :
+      self.calc_T_melt(annotate=False)
+
+      T_v        = T.vector().array()
+      W_v        = W.vector().array()
+      T_s_v      = T_surface.vector().array()
+      T_m_v      = T_m.vector().array()
+      Tp_v       = T_v.copy()
+      theta_s_v  = 146.3*T_s_v + 7.253/2.0*T_s_v**2
+      theta_f_v  = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
+      theta_i_v  = 146.3*T_v + 7.253/2.0*T_v**2 + W_v * L(0)
+    
+      # Surface boundary condition :
+      s = "::: calculating energy boundary conditions :::"
+      print_text(s, cls=self)
+
+      # initialize the boundary conditions :
+      model.init_theta_surface(theta_s_v, cls=self)
+      model.init_theta_app(theta_s_v,     cls=self)
+      model.init_theta_float(theta_f_v,   cls=self)
+
+      # initialize energy from W and T :
+      model.init_theta(theta_i_v,         cls=self)
+      
+      # calculate k_c, a_T, Q_T, and W_T from theta :
+      self.adjust_discontinuous_properties(annotate=False)
+      
+      # derive temperature and temperature-melting flux :
+      self.calc_basal_temperature_flux()
+      self.calc_basal_temperature_melting_flux()
+
+      # initialize water flux to zero :
+      model.init_Fb(0.0, cls=self)
   
   def default_strain_rate_tensor(self, U):
     """
@@ -1036,32 +1041,13 @@ class Enthalpy(Energy):
     #T_melt   = model.T_melt
     #T        = model.T
     #N        = model.N
-    #phi      = TestFunction(model.Q)
-    #du       = TrialFunction(model.Q)
-    #grad_Tm  = Function(model.Q)
-    #grad_T   = Function(model.Q)
+    #gradT_B  = model.gradT_B
+    #gradTm_B = model.gradTm_B
 
-    ## only valid on basal surface, needs extra matrix care :
-    #a_n      = du * phi * dBed_g
-    #L_n      = dot((grad(T_melt)), N) * phi * dBed_g
-   
-    ## solve for temperature-melting gradient :
-    #A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    #B_n  = assemble(L_n, annotate=False)
-    #A_n.ident_zeros()
-    #solve(A_n, grad_Tm.vector(), B_n, 'cg', 'amg', annotate=False)
-    #print_min_max(grad_Tm, 'grad_Tm')
-
-    ## solve for temperature gradient :
-    #L_n  = dot((grad(T)), N) * phi * dBed_g
-    #B_n  = assemble(L_n, annotate=False)
-    #solve(A_n, grad_T.vector(), B_n, 'cg', 'amg', annotate=False)
-    #print_min_max(grad_T, 'grad_T')
-    #
     ## where the gradients are equal, a basal temperate layer exists :
     #alpha_v   = model.alpha.vector().array()
-    #grad_Tm_v = grad_Tm.vector().array()
-    #grad_T_v  = grad_T.vector().array()
+    #grad_Tm_v = gradTm_B.vector().array()
+    #grad_T_v  = gradT_B.vector().array()
 
     #dg                 = np.abs(grad_Tm_v - grad_T_v)
     #print_min_max(dg, 'dg')
@@ -1096,6 +1082,60 @@ class Enthalpy(Energy):
     q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
     
     model.init_q_fric(q_fric_v, cls=self)
+
+  def calc_basal_temperature_flux(self):
+    """
+    Solve for the basal temperature flux stored in model.gradT_B.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving basal temperature flux k \\nabla T \\cdot n :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    dBed_g   = model.dBed_g
+    T        = model.T
+    N        = model.N
+    k        = self.k
+
+    # Mb is only valid on basal surface, needs extra matrix care :
+    phi  = TestFunction(model.Q)
+    du   = TrialFunction(model.Q)
+    a_n  = du * phi * dBed_g
+    L_n  = k * dot((grad(T)), N) * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
+    A_n.ident_zeros()
+   
+    solve(A_n, model.gradT_B.vector(), B_n, 'cg', 'amg', annotate=False)
+    print_min_max(model.gradT_B, 'gradT_B', cls=self)
+
+  def calc_basal_temperature_melting_flux(self):
+    """
+    Solve for the basal temperature flux stored in model.gradT_B.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving basal temperature flux k \\nabla T_m \\cdot n :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    dBed_g   = model.dBed_g
+    Tm       = model.T_melt
+    N        = model.N
+    k        = self.k
+
+    # Mb is only valid on basal surface, needs extra matrix care :
+    phi  = TestFunction(model.Q)
+    du   = TrialFunction(model.Q)
+    a_n  = du * phi * dBed_g
+    L_n  = k * dot((grad(Tm)), N) * phi * dBed_g
+   
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
+    B_n  = assemble(L_n, annotate=False)
+    A_n.ident_zeros()
+   
+    solve(A_n, model.gradTm_B.vector(), B_n, 'cg', 'amg', annotate=False)
+    print_min_max(model.gradTm_B, 'gradTm_B', cls=self)
 
   def solve_basal_melt_rate(self):
     """
@@ -1319,6 +1359,10 @@ class Enthalpy(Energy):
       # update the temperature and water content for other physics :
       self.partition_energy(annotate=annotate)
   
+      # derive temperature and temperature-melting flux terms :
+      self.calc_basal_temperature_flux()
+      self.calc_basal_temperature_melting_flux()
+  
       # update discontinuous thermal parameters :
       self.adjust_discontinuous_properties(annotate=annotate)
       
@@ -1340,7 +1384,6 @@ class Enthalpy(Energy):
     rho     = self.rho
     kappa   = self.kappa
     Xi      = self.Xi
-    q_fric  = self.q_fric
     Q_s_gnd = self.Q_s_gnd
     Q_s_shf = self.Q_s_shf
 
@@ -1368,6 +1411,7 @@ class Enthalpy(Energy):
     v       = model.v
     w       = model.w
     q_geo   = model.q_geo
+    q_fric  = model.q_fric
     beta    = model.beta
     alpha   = model.alpha
     h       = model.h
@@ -1428,7 +1472,7 @@ class Enthalpy(Energy):
     q_fric = beta * inner(U_t, U_t)
 
     # basal heat-flux natural boundary condition :
-    g    = k * dot(grad(T), N)
+    g    = model.gradTm_B #k * dot(grad(Tm), N)
     g_b  = q_geo + q_fric - alpha*g
       
     # SUPG :

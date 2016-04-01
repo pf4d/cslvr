@@ -753,7 +753,7 @@ class Enthalpy(Energy):
     Xi    =  kappa / (rho*c)         # bulk enthalpy-gradient diffusivity
 
     # frictional heating :
-    q_fric = beta * inner(U,U)
+    q_fric = model.q_fric#beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
     g_w  = k * dot(grad(T_m), N) + rhow*L*Fb
@@ -1074,6 +1074,28 @@ class Enthalpy(Energy):
     alpha_v[:]       = 0
     alpha_v[W_v > 0] = 1
     model.init_alpha(alpha_v, cls=self)
+
+  def calc_q_fric(self):
+    """
+    Solve for the friction heat term stored in model.q_fric.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving basal friction heat :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    dBed_g   = model.dBed_g
+    N        = model.N
+    u,v,w    = model.U3.split(True)
+
+    beta_v   = model.beta.vector().array()
+    u_v      = u.vector().array()
+    v_v      = v.vector().array()
+    w_v      = w.vector().array()
+
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
+    
+    model.init_q_fric(q_fric_v, cls=self)
 
   def solve_basal_melt_rate(self):
     """

@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/tmc_k_1e-1/'
+out_dir  = 'dump/jakob_small/tmc_k_1e-3_new_q_fric/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -40,7 +40,7 @@ model.init_beta(fini)
 model.init_T(fini)
 model.init_W(fini)
 #model.init_U(fini)
-model.init_k_0(1e-1)
+model.init_k_0(1e-3)
 model.solve_hydrostatic_pressure()
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/08/tmc.h5', 'r')
@@ -61,6 +61,9 @@ nrg = Enthalpy(model, transient=False, use_lat_bc=True,
 def tmc_cb_ftn():
   nrg.calc_PE()#avg=True)
   nrg.calc_internal_water()
+  nrg.calc_integrated_strain_heat()
+  nrg.solve_basal_melt_rate()
+
 
 # post-adjoint-iteration callback function :
 def adj_post_cb_ftn():
@@ -71,9 +74,11 @@ tmc_save_vars = [model.T,
                  model.W,
                  model.Fb,
                  model.Mb,
+                 model.q_fric,
                  model.alpha,
                  model.PE,
                  model.W_int,
+                 model.Q_int,
                  model.U3,
                  model.p,
                  model.beta,

@@ -482,6 +482,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.q_geo, q_geo, cls=cls)
   
+  def init_q_fric(self, q_fric, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing basal friction heat flux :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.q_fric, q_fric, cls=cls)
+  
   def init_u(self, u, cls=None):
     """
     """
@@ -1826,6 +1835,7 @@ class Model(object):
     self.T             = Function(self.Q, name='T')
     self.Tp            = Function(self.Q, name='Tp')
     self.q_geo         = Function(self.Q, name='q_geo')
+    self.q_fric        = Function(self.Q, name='q_fric')
     self.theta         = Function(self.Q, name='theta')
     self.W             = Function(self.Q, name='W')
     self.Mb            = Function(self.Q, name='Mb')
@@ -1982,8 +1992,11 @@ class Model(object):
       # solve velocity :
       momentum.solve(annotate=False)
 
-      # first update pressure-melting point :
+      # update pressure-melting point :
       energy.calc_T_melt(annotate=False)
+
+      # calculate basal friction heat flux :
+      energy.calc_q_fric()
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
@@ -2007,9 +2020,6 @@ class Model(object):
       
       # calculate k_c, a_T, Q_T, and W_T from T, Tp, and W :
       energy.adjust_discontinuous_properties(annotate=False)
-
-      # calculate the basal melt rate :
-      energy.solve_basal_melt_rate()
 
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

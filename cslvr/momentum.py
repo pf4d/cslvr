@@ -220,6 +220,8 @@ class Momentum(Physics):
 
   def form_rate_factor(self, isothermal):
     """
+    formulates the rate factor A.  If <isothermal> == True, form from 
+    model.b_shf and model.b_gnd.  Otherwise, use the temperature-dependent term.
     """
     model   = self.model
     if isothermal:
@@ -230,15 +232,13 @@ class Momentum(Physics):
     else:
       s       = "    - using energy-dependent rate-factor -"
       Tp      = model.Tp
-      W       = model.W
       R       = model.R
       n       = model.n
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
-      T_c     = 263.15
-      a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
-      Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
-      W_T     = conditional( lt(W, 0.01),  W,           0.01)
+      a_T     = conditional( lt(Tp, 263.15),  model.a_T_l, model.a_T_u)
+      Q_T     = conditional( lt(Tp, 263.15),  model.Q_T_l, model.Q_T_u)
+      W_T     = conditional( lt(W,  0.01),     model.W,     0.01)
       #a_T     = model.a_T
       #Q_T     = model.Q_T
       #W_T     = model.W_T
@@ -250,6 +250,9 @@ class Momentum(Physics):
 
   def form_viscosity(self, U, linear):
     """
+    calculates the viscosity saved to self.eta_shf and self.eta_gnd, for
+    floating and grounded ice, respectively.  Uses velocity vector <U> with
+    components u,v,w.  If <linear> == True, form viscosity from model.U3.
     """
     model   = self.model
     n       = model.n

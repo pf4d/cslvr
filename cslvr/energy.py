@@ -335,10 +335,10 @@ class Energy(Physics):
     
     # adjust discontinuous thermal properties : 
     T_c                = 263.15
-    a_T_v[Tp_v <= T_c] = 3.985e-13 * model.spy(0)
-    a_T_v[Tp_v >  T_c] = 1.916e3 * model.spy(0)
-    Q_T_v[Tp_v <= T_c] = 6e4
-    Q_T_v[Tp_v >  T_c] = 13.9e4
+    a_T_v[Tp_v <= T_c] = model.a_T_l(0)
+    a_T_v[Tp_v >  T_c] = model.a_T_u(0)
+    Q_T_v[Tp_v <= T_c] = model.Q_T_l(0)
+    Q_T_v[Tp_v >  T_c] = model.Q_T_u(0)
     model.assign_variable(model.a_T, a_T_v, cls=self)
     model.assign_variable(model.Q_T, Q_T_v, cls=self)
    

@@ -2,7 +2,7 @@ from cslvr   import *
 from fenics  import *
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/02/'
+base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
 in_dir   = base_dir
 out_dir  = base_dir + 'stress_balance/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -34,15 +34,10 @@ model.init_W(fin)
 model.init_theta(fin)
 model.init_E(1.0)
 
-nrg = Enthalpy(model)
-nrg.calc_integrated_strain_heat()
-
 mom = MomentumDukowiczBrinkerhoffStokes(model)
 F   = FS_Balance(model, momentum=mom)
 F.solve()
 
-
-model.save_hdf5(model.Q_int, f=fout)
 
 model.save_hdf5(model.N_ii, f=fout)
 model.save_hdf5(model.N_ij, f=fout)

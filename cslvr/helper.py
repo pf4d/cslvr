@@ -752,9 +752,9 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, levels=None, tp=False,
-            tpAlpha=0.5, basin=None, extend='neither',
+            tpAlpha=0.5, params=None, extend='neither',
             show=True, ext='.png', res=150, cb_format='%.1e',
-            zoom_box=False, zoom_box_kwargs=None):
+            zoom_box=False, zoom_box_kwargs=None, plot_pts=None):
   """
   INPUTS :
     di :
@@ -795,6 +795,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
                        'scale_loc'        : int     # 1=top, 2=bottom
                        'plot_grid'        : bool    # plot the triangles
                        'axes_color'       : str     # color of axes
+                       'plot_points'      : dict    # dict of points to plot
   
   OUTPUT :
  
@@ -835,60 +836,34 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     sys.exit(1)
   
   # Antarctica :
-  if cont == 'antarctica':
-    w   = 5513335.22665
-    h   = 4602848.6605
-    fig = plt.figure(figsize=(14,10))
-    ax  = fig.add_subplot(111)
-    
-    # new projection :
-    m = Basemap(ax=ax, width=w, height=h, resolution='h', 
-                projection='stere', lat_ts=-71, 
-                lon_0=0, lat_0=-90)
-
-    offset = 0.015 * (m.ymax - m.ymin)
-   
-    # draw lat/lon grid lines every 5 degrees.
-    # labels = [left,right,top,bottom]
-    m.drawmeridians(np.arange(0, 360, 20.0),
-                    color = 'black',
-                    labels = [True, False, True, True])
-    m.drawparallels(np.arange(-90, 90, 5.0), 
-                    color = 'black', 
-                    labels = [True, False, True, True])
-    m.drawmapscale(-130, -68, 0, -90, 400, 
-                   yoffset  = offset, 
-                   barstyle = 'fancy')
- 
-  # Greenland : 
-  elif cont == 'greenland':
-    if basin == 'jakobshavn':
-      w     = 350000
-      h     = 200000
-      lon_0 = -46.3
-      lat_0 = 69.25
-      fig   = plt.figure(figsize=(14,7))
-      ax    = fig.add_subplot(111)
+  if params is None:
+    if cont is 'antarctica':
+      w   = 5513335.22665
+      h   = 4602848.6605
+      fig = plt.figure(figsize=(14,10))
+      ax  = fig.add_subplot(111)
       
       # new projection :
       m = Basemap(ax=ax, width=w, height=h, resolution='h', 
-                  projection='stere', lat_ts=lat_0, 
-                  lon_0=lon_0, lat_0=lat_0)
+                  projection='stere', lat_ts=-71, 
+                  lon_0=0, lat_0=-90)
 
       offset = 0.015 * (m.ymax - m.ymin)
-      
-      # draw lat/lon grid lines every degree.
+     
+      # draw lat/lon grid lines every 5 degrees.
       # labels = [left,right,top,bottom]
-      m.drawmeridians(np.arange(0, 360, 2.0),
+      m.drawmeridians(np.arange(0, 360, 20.0),
                       color = 'black',
-                      labels = [False, False, False, True])
-      m.drawparallels(np.arange(65, 71, 0.5), 
+                      labels = [True, False, True, True])
+      m.drawparallels(np.arange(-90, 90, 5.0), 
                       color = 'black', 
-                      labels = [True, False, True, False])
-      m.drawmapscale(-44.5, 68.5, lon_0, lat_0, 100, 
+                      labels = [True, False, True, True])
+      m.drawmapscale(-130, -68, 0, -90, 400, 
                      yoffset  = offset, 
                      barstyle = 'fancy')
-    else:
+ 
+    # Greenland : 
+    elif cont is 'greenland':
       w   = 1532453.49654
       h   = 2644074.78236
       fig = plt.figure(figsize=(8,11.5))
@@ -912,6 +887,66 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       m.drawmapscale(-34, 60.5, -41.5, 71, 400, 
                      yoffset  = offset, 
                      barstyle = 'fancy')
+    
+  elif type(params) is dict:
+    llcrnrlat      = params['llcrnrlat']
+    urcrnrlat      = params['urcrnrlat']
+    llcrnrlon      = params['llcrnrlon']
+    urcrnrlon      = params['urcrnrlon']
+    scale_color    = params['scale_color']
+    scale_length   = params['scale_length']
+    scale_loc      = params['scale_loc']
+    figsize        = params['figsize']
+    lat_interval   = params['lat_interval']
+    lon_interval   = params['lon_interval']
+    plot_grid      = params['plot_grid']
+    plot_scale     = params['plot_scale']
+
+
+    dlon = (urcrnrlon - llcrnrlon) / 2.0
+    dlat = (urcrnrlat - llcrnrlat) / 2.0
+    lon_0 = llcrnrlon + dlon
+    lat_0 = llcrnrlat + dlat
+
+    fig   = plt.figure(figsize=figsize)
+    ax    = fig.add_subplot(111)
+    
+    # new projection :
+    m = Basemap(ax=ax, llcrnrlat=llcrnrlat, urcrnrlat=urcrnrlat,
+                llcrnrlon=llcrnrlon, urcrnrlon=urcrnrlon, resolution='h', 
+                projection='stere', lon_0=lon_0, lat_0=lat_0)
+
+    offset = 0.015 * (m.ymax - m.ymin)
+    
+    # draw lat/lon grid lines every degree.
+    # labels = [left,right,top,bottom]
+    if plot_grid:
+      m.drawmeridians(np.arange(0, 360, lon_interval),
+                      color = 'black',
+                      labels = [False, False, False, True])
+      m.drawparallels(np.arange(-90, 90, lat_interval), 
+                      color = 'black', 
+                      labels = [True, False, False, False])
+
+    if scale_loc == 1:
+      fact = 1.8
+    elif scale_loc == 2:
+      fact = 0.2
+
+    if plot_scale :
+      dx         = (m.xmax - m.xmin)/2.0 
+      dy         = (m.ymax - m.ymin)/2.0 
+      xmid       = m.xmin + dx
+      ymid       = m.ymin + fact*dy
+      slon, slat = m(xmid, ymid, inverse=True)
+      m.drawmapscale(slon, slat, slon, slat, scale_length, 
+                     barstyle = 'fancy', fontcolor=scale_color)
+      
+  else:
+    s = ">>> plotIce REQUIRES A 'dict' OF SPECIFIC PARAMETERS FOR 'custom' <<<"
+    print_text(s, 'red', 1)
+    sys.exit(1)
+
 
   # convert to new projection coordinates from lon,lat :
   x, y  = m(lon, lat)
@@ -987,6 +1022,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     scale_loc         = zoom_box_kwargs['scale_loc']
     plot_grid         = zoom_box_kwargs['plot_grid']
     axes_color        = zoom_box_kwargs['axes_color']
+    zb_plot_pts       = zoom_box_kwargs['plot_points']
 
     axins = inset_locator.zoomed_inset_axes(ax, zoom, loc=loc)
     inset_locator.mark_inset(ax, axins, loc1=loc1, loc2=loc2,
@@ -1047,18 +1083,30 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm, extend=extend)
-        x_w = 63550
-        y_w = 89748
-        axins.plot(x_w, y_w, 'co')
     else:
       cs = ax.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm)
-        x_w = 63550
-        y_w = 89748
-        axins.plot(x_w, y_w, 'co')
+  if plot_pts is not None:
+    lat_a = plot_pts['lat']
+    lon_a = plot_pts['lon']
+    sty_a = plot_pts['style']
+    clr_a = plot_pts['color']
+    for lat_i, lon_i, sty_i, clr_i in zip(lat_a, lon_a, sty_a, clr_a):
+      x_i, y_i = m(lon_i, lat_i)
+      ax.plot(x_i, y_i, color=clr_i, marker=sty_i)
+
+  if zoom_box:
+    if zb_plot_pts is not None:
+      lat_a = zb_plot_pts['lat']
+      lon_a = zb_plot_pts['lon']
+      sty_a = zb_plot_pts['style']
+      clr_a = zb_plot_pts['color']
+      for lat_i, lon_i, sty_i, clr_i in zip(lat_a, lon_a, sty_a, clr_a):
+        x_i, y_i = m(lon_i, lat_i)
+        axins.plot(x_i, y_i, color=clr_i, marker=sty_i)
   
   # plot triangles :
   if tp == True:

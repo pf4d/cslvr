@@ -9,7 +9,7 @@ mpl.rcParams['text.usetex']          = True
 mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
 # set the relavent directories :
-in_dir  = 'dump/jakob_small/inversion/'
+in_dir  = 'dump/jakob_small/inversion_k_1e-3_FSTMC/'
 out_dir = in_dir + 'plot/'
 
 if not os.path.exists(out_dir):

@@ -71,43 +71,6 @@ class MomentumBP(Momentum):
     
     gradS      = grad(S)
     gradB      = grad(B)
-
-    if linear:
-      s   = "    - using linear form of momentum using model.U3 in epsdot -"
-      print_text(s, self.color())
-      epsdot = self.effective_strain_rate(model.U3.copy(True))
-    else:
-      s   = "    - using nonlinear form of momentum -"
-      print_text(s, self.color())
-      U_t      = as_vector([U[0], U[1], 0])
-      epsdot   = self.effective_strain_rate(U_t)
-    
-    if isothermal:
-      s   = "    - using isothermal rate-factor -"
-      print_text(s, self.color())
-      b_shf = model.E_shf * model.b_shf
-      b_gnd = model.E_gnd * model.b_gnd
-
-    else:
-      s   = "    - using temperature-dependent rate-factor -"
-      print_text(s, self.color())
-      T       = model.T
-      Tp      = model.Tp
-      W       = model.W
-      R       = model.R
-      E_shf   = model.E_shf
-      E_gnd   = model.E_gnd
-      #a_T     = model.a_T
-      #Q_T     = model.Q_T
-      #W_T     = model.W_T
-      W_T     = conditional( lt(W, 0.01),    W,            0.01)
-      a_T     = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    
-    eta_shf    = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd    = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
      
     # new constants :
     p0     = 101325
@@ -123,6 +86,12 @@ class MomentumBP(Momentum):
     # horizontal velocity :
     u, v      = U
     phi, psi  = Phi
+
+    # viscosity :
+    self.form_rate_factor(isothermal)
+    self.form_viscosity(as_vector([u,v,0]) , linear)
+    eta_shf = self.eta_shf
+    eta_gnd = self.eta_gnd
     
     # vertical velocity :
     dw        = TrialFunction(Q)
@@ -189,9 +158,6 @@ class MomentumBP(Momentum):
     self.dU      = dU
     self.Phi     = Phi
     self.Lam     = Lam
-    self.epsdot  = epsdot
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
  
   def get_residual(self):
     """
@@ -453,50 +419,12 @@ class MomentumDukowiczBP(Momentum):
 
     eps_reg  = model.eps_reg
     n        = model.n
-    
-    if isothermal:
-      s   = "    - using isothermal rate-factor -"
-      print_text(s, self.color())
-      b_shf = model.E_shf * model.b_shf
-      b_gnd = model.E_gnd * model.b_gnd
-
-    else:
-      s   = "    - using energy-dependent rate-factor -"
-      print_text(s, self.color())
-      T       = model.T
-      #Tp      = model.T + model.gamma * model.p
-      Tp      = model.Tp
-      W       = model.W
-      R       = model.R
-      E_shf   = model.E_shf
-      E_gnd   = model.E_gnd
-      #a_T     = model.a_T
-      #Q_T     = model.Q_T
-      #W_T     = model.W_T
-      W_T     = conditional( lt(W, 0.01),    W,            0.01)
-      a_T     = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
    
     # 1) Viscous dissipation
-    if linear:
-      s   = "    - using linear form of momentum using model.U3 in epsdot -"
-      print_text(s, self.color())
-      epsdot_l  = self.effective_strain_rate(model.U3.copy(True))
-      epsdot    = self.effective_strain_rate(as_vector([u,v,0]))
-      eta_shf   = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      eta_gnd   = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      Vd_shf    = 2 * eta_shf * epsdot
-      Vd_gnd    = 2 * eta_gnd * epsdot
-    else:
-      s   = "    - using nonlinear form of momentum -"
-      print_text(s, self.color())
-      epsdot  = self.effective_strain_rate(as_vector([u,v,0]))
-      eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+    self.form_rate_factor(isothermal)
+    self.form_viscosity(as_vector([u,v,0]), linear)
+    Vd_shf = self.Vd_shf
+    Vd_gnd = self.Vd_gnd
       
     # 2) Potential energy
     Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
@@ -539,17 +467,12 @@ class MomentumDukowiczBP(Momentum):
     self.w_F = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
                (u*N[0] + v*N[1] + dw*N[2])*chi*dBed
    
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
-    self.b_shf   = b_shf
-    self.b_gnd   = b_gnd
     self.A       = A
     self.U       = U 
     self.w       = w  
     self.dU      = dU
     self.Phi     = Phi
     self.Lam     = Lam
-    self.epsdot  = epsdot
  
   def get_residual(self):
     """
@@ -810,48 +733,13 @@ class MomentumDukowiczBPModified(Momentum):
     eps_reg  = model.eps_reg
     n        = model.n
     
-    if isothermal:
-      s   = "    - using isothermal rate-factor -"
-      print_text(s, self.color())
-      b_shf = model.E_shf * model.b_shf
-      b_gnd = model.E_gnd * model.b_gnd
-
-    else:
-      s   = "    - using energy-dependent rate-factor -"
-      print_text(s, self.color())
-      T       = model.T
-      Tp      = model.Tp
-      W       = model.W
-      R       = model.R
-      E_shf   = model.E_shf
-      E_gnd   = model.E_gnd
-      #a_T     = model.a_T
-      #Q_T     = model.Q_T
-      #W_T     = model.W_T
-      W_T     = conditional( lt(W, 0.01),    W,            0.01)
-      a_T     = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
-      Q_T     = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-   
     # 1) Viscous dissipation
-    if linear:
-      s   = "    - using linear form of momentum using model.U3 in epsdot -"
-      print_text(s, self.color())
-      epsdot_l  = self.effective_strain_rate(model.U3.copy(True))
-      epsdot    = self.effective_strain_rate(U)
-      eta_shf   = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      eta_gnd   = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      Vd_shf    = 2 * eta_shf * epsdot
-      Vd_gnd    = 2 * eta_gnd * epsdot
-    else:
-      s   = "    - using nonlinear form of momentum -"
-      print_text(s, self.color())
-      epsdot  = self.effective_strain_rate(U)
-      eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+    self.form_rate_factor(isothermal)
+    self.form_viscosity(U, linear)
+    Vd_shf  = self.Vd_shf
+    Vd_gnd  = self.Vd_gnd
+    eta_shf = self.eta_shf
+    eta_gnd = self.eta_gnd
       
     # 2) Potential energy
     Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
@@ -905,16 +793,11 @@ class MomentumDukowiczBPModified(Momentum):
       self.mom_bcs.append(DirichletBC(model.Q3.sub(2),
                           model.w_lat, model.ff, model.GAMMA_L_DVD))
    
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
-    self.b_shf   = b_shf
-    self.b_gnd   = b_gnd
     self.A       = A
     self.U       = U 
     self.dU      = dU
     self.Phi     = Phi
     self.Lam     = Lam
-    self.epsdot  = epsdot
  
   def get_residual(self):
     """

@@ -608,6 +608,7 @@ class Enthalpy(Energy):
     n             = model.n
     eps_reg       = model.eps_reg
     T             = model.T
+    Tp            = model.Tp
     W             = model.W
     T_m           = model.T_melt
     Mb            = model.Mb
@@ -684,10 +685,12 @@ class Enthalpy(Energy):
     #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
     #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
     #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
-    a_T     = model.a_T#conditional( lt(T, T_c),  1.1384496e-5, 5.45e10)
-    Q_T     = model.Q_T#conditional( lt(T, T_c),  6e4,          13.9e4)
-    W_T     = model.W_T#conditional( lt(W, 0.01), W,            0.01)
-    #W_T     = conditional( lt(W_t, 0.00), 0.0,        W_t)
+    a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
+    Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
+    W_T     = conditional( lt(W, 0.01),  W,           0.01)
+    #a_T     = model.a_T
+    #Q_T     = model.Q_T
+    #W_T     = model.W_T
 
     # viscosity and strain-heating :
     #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
@@ -697,7 +700,6 @@ class Enthalpy(Energy):
     #Q_s_gnd = 4 * eta_gnd * epsdot
     #Q_s_shf = 4 * eta_shf * epsdot
     #Tp      = T + gamma*p
-    Tp      = model.Tp
     b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))

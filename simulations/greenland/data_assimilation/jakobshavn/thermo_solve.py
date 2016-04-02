@@ -6,12 +6,12 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/tmc_k_1e-3_new_nabla_Tm/'
+out_dir  = 'dump/jakob_small/tmc/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
-fini    = HDF5File(mpi_comm_world(), var_dir + 'inv.h5',       'r')
+fini    = HDF5File(mpi_comm_world(), var_dir + 'inv_new.h5',   'r')
 
 # create 3D model for stokes solves :
 model   = D3Model(fdata, out_dir)

@@ -73,17 +73,17 @@ momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False,
 nrg    = Enthalpy(d3model, transient=False, use_lat_bc=True)
 #                  epsdot_ftn=mom.strain_rate_tensor)
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '02/tmc.h5', 'r')
-#d3model.init_T(frstrt)
-#d3model.init_W(frstrt)
-#d3model.init_Fb(frstrt)
-#d3model.init_Mb(frstrt)
-#d3model.init_alpha(frstrt)
-#d3model.init_PE(frstrt)
-#d3model.init_W_int(frstrt)
-#d3model.init_U(frstrt)
-#d3model.init_p(frstrt)
-#d3model.init_theta(frstrt)
+frstrt = HDF5File(mpi_comm_world(), out_dir + '09/tmc.h5', 'r')
+d3model.init_T(frstrt)
+d3model.init_W(frstrt)
+d3model.init_Fb(frstrt)
+d3model.init_Mb(frstrt)
+d3model.init_alpha(frstrt)
+d3model.init_PE(frstrt)
+d3model.init_W_int(frstrt)
+d3model.init_U(frstrt)
+d3model.init_p(frstrt)
+d3model.init_theta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
@@ -154,11 +154,11 @@ ass_kwargs = {'momentum'            : mom,
               'iterations'          : 10,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
-              'initialize'          : True,
+              'initialize'          : False,
               'incomplete'          : True,
               'post_iter_save_vars' : None,#tmc_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 1}
+              'starting_i'          : 10}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

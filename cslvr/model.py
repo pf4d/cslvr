@@ -94,7 +94,7 @@ class Model(object):
     self.kg      = Constant(1.3e-7)
     self.kg.rename('kg', 'grain growth coefficient')
 
-    self.Ec      = Constant(60e3)
+    self.Ec      = Constant(6e4)
     self.Ec.rename('Ec', 'act. energy for water in ice')
 
     self.Eg      = Constant(42.4e3)
@@ -174,6 +174,19 @@ class Model(object):
 
     self.T_w     = Constant(273.15)
     self.T_w.rename('T_w', 'Triple point of water')
+
+    self.a_T_l   = Constant(3.985e-13*spy)
+    self.a_T_l.rename('a_T_l', 'lower bound of flow-rate constant')
+
+    self.a_T_u   = Constant(1.916e3*spy)
+    self.a_T_u.rename('a_T_u', 'upper bound of flow-rate constant')
+
+    self.Q_T_l   = Constant(6e4)
+    self.Q_T_l.rename('Q_T_l', 'lower bound of ice activation energy')
+
+    self.Q_T_u   = Constant(13.9e4)
+    self.Q_T_u.rename('Q_T_u', 'upper bound of ice activation energy')
+
 
   def generate_pbc(self):
     """

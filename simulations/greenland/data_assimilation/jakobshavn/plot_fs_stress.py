@@ -180,26 +180,27 @@ N_kk_max = bedmodel.N_kk.vector().max()
 
 
 
-tau_ii_lvls = np.array([tau_ii_min, -1e5, -5e4, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_ii_max])
-tau_ij_lvls = np.array([tau_ij_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_ij_max])
-tau_ik_lvls = np.array([tau_ik_min, -1e5, -5e4, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_ik_max])
+tau_ii_lvls = np.array([tau_ii_min, -8e4, -4e4, -2e4, -5e3, 
+                        5e3, 2e4, 4e4, 8e4, tau_ii_max])
+tau_ij_lvls = np.array([tau_ij_min, -1.5e5, -5e4, -2.5e4, -5e3, 
+                        5e3, 2.5e4, 5e4, 1.5e5, tau_ij_max])
+tau_ik_lvls = np.array([tau_ik_min, -8e4, -4e4, -2e4, -5e3, 
+                        5e3, 2e4, 4e4, 8e4, tau_ik_max])
 
-tau_ji_lvls = np.array([tau_ji_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_ji_max])
-tau_jj_lvls = np.array([tau_jj_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_jj_max])
-tau_jk_lvls = np.array([tau_jk_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_jk_max])
+tau_ji_lvls = np.array([tau_ji_min, -8e4, -4e4, -2e4, -5e3, 
+                        5e3, 2e4, 4e4, 8e4, tau_ji_max])
+tau_jj_lvls = np.array([tau_jj_min, -1.5e5, -5e4, -2.5e4, -5e3, 
+                        5e3, 2.5e4, 5e4, 1.5e5, tau_jj_max])
+tau_jk_lvls = np.array([tau_jk_min, -2e5, -1e5, -5e4, -5e3, 
+                        5e3, 5e4, 1e5, 2e5, tau_jk_max])
 
-tau_ki_lvls = np.array([tau_ki_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_ki_max])
-tau_kj_lvls = np.array([tau_kj_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_kj_max])
-tau_kk_lvls = np.array([tau_kk_min, -2.5e5, -1e5, -1e4, -5e3, 
-                        5e3, 1e4, 5e4, 1e5, tau_kk_max])
+tau_ki_lvls = np.array([tau_ki_min, -8e4, -4e4, -2e4, -5e3, 
+                        5e3, 2e4, 4e4, 8e4, tau_ki_max])
+tau_kj_lvls = np.array([tau_kj_min, -1.5e5, -4e4, -2e4, -5e3, 
+                        5e3, 2e4, 4e4, 8e4, tau_kj_max])
+tau_kk_lvls = np.array([tau_kk_min, -2e5, -1e5, -5e4, -5e3, 
+                        5e3, 5e4, 1e5, 2e5, tau_kk_max])
+
 
 
 N_ii_lvls = np.array([N_ii_min, -2e8, -1e8, -5e7, -1e7, 
@@ -281,21 +282,21 @@ plotIce(drg, bedmodel.tau_jk, name='tau_jk', direc=out_dir,
   
 plotIce(drg, bedmodel.tau_ki, name='tau_ki', direc=out_dir,
         title=r'$\tau_{ki}$', cmap='RdGy',  scale='lin',
-        levels=tau_ii_lvls, tp=True, tpAlpha=0.2,
+        levels=tau_ki_lvls, tp=True, tpAlpha=0.2,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
         params=params, plot_pts=plot_pts)
 
 plotIce(drg, bedmodel.tau_kj, name='tau_kj', direc=out_dir,
         title=r'$\tau_{kj}$', cmap='RdGy',  scale='lin',
-        levels=tau_ij_lvls, tp=True, tpAlpha=0.2,
+        levels=tau_kj_lvls, tp=True, tpAlpha=0.2,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
         params=params, plot_pts=plot_pts)
 
 plotIce(drg, bedmodel.tau_kk, name='tau_kk', direc=out_dir,
         title=r'$\tau_{kk}$', cmap='RdGy',  scale='lin',
-        levels=tau_ik_lvls, tp=True, tpAlpha=0.2,
+        levels=tau_kk_lvls, tp=True, tpAlpha=0.2,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
         params=params, plot_pts=plot_pts)

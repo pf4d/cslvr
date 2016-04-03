@@ -180,11 +180,11 @@ N_kk_max = bedmodel.N_kk.vector().max()
 
 
 
-tau_ii_lvls = np.array([tau_ii_min, -2.5e5, -1e5, -1e4, -5e3, 
+tau_ii_lvls = np.array([tau_ii_min, -1e5, -5e4, -1e4, -5e3, 
                         5e3, 1e4, 5e4, 1e5, tau_ii_max])
 tau_ij_lvls = np.array([tau_ij_min, -2.5e5, -1e5, -1e4, -5e3, 
                         5e3, 1e4, 5e4, 1e5, tau_ij_max])
-tau_ik_lvls = np.array([tau_ik_min, -2.5e5, -1e5, -1e4, -5e3, 
+tau_ik_lvls = np.array([tau_ik_min, -1e5, -5e4, -1e4, -5e3, 
                         5e3, 1e4, 5e4, 1e5, tau_ik_max])
 
 tau_ji_lvls = np.array([tau_ji_min, -2.5e5, -1e5, -1e4, -5e3, 

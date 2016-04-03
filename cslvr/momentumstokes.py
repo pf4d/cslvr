@@ -716,8 +716,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     # 1) Viscous dissipation
     self.form_rate_factor(isothermal)
     self.form_viscosity(as_vector([u,v,w]), linear)
-    Vd_shf = self.Vd_shf
-    Vd_gnd = self.Vd_gnd
+    Vd_shf  = self.Vd_shf
+    Vd_gnd  = self.Vd_gnd
+    b_shf   = self.b_shf
+    b_gnd   = self.b_gnd
     eta_shf = self.eta_shf
     eta_gnd = self.eta_gnd
    

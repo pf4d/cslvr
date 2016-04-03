@@ -74,19 +74,19 @@ for i in range(len(Is)):
   xi = arange(k, k + ns[i])
   
   if i == 0:
-    ax1.plot(xi, Js[i],       '-', c='k',   lw=2.0,
+    ax1.plot(xi, Js[i],       '-',  c='k',   lw=2,
              label=r'$\mathscr{I}$')
-    ax1.plot(xi, 5000*J2s[i], '-', c='0.6', lw=2.0,
+    ax1.plot(xi, 5000*J2s[i], '-',  c='0.6', lw=2,
              label=r'$\mathscr{I}_1,\ \gamma_1 = 5 \times 10^3$')
-    ax1.plot(xi, 0.01*J1s[i], '-', c='0.3', lw=2.0,
+    ax1.plot(xi, 0.01*J1s[i], '-',  c='0.4', lw=2,
              label=r'$\mathscr{I}_2,\ \gamma_2 = 10^{-2}$')
-    ax1.plot(xi, 10.0*Rs[i],  '-', c='r',   lw=2.0,
+    ax1.plot(xi, 10.0*Rs[i],  '--', c='r',   lw=2,
              label=r'$\mathscr{I}_3,\ \gamma_3 = 10$')
   else:
-    ax1.plot(xi, Js[i],       '-', c='k',   lw=2.0)
-    ax1.plot(xi, 5000*J2s[i], '-', c='0.6', lw=2.0)
-    ax1.plot(xi, 0.01*J1s[i], '-', c='0.3', lw=2.0)
-    ax1.plot(xi, 10.0*Rs[i],  '-', c='r',   lw=2.0)
+    ax1.plot(xi, Js[i],       '-',  c='k',   lw=2)
+    ax1.plot(xi, 5000*J2s[i], '-',  c='0.6', lw=2)
+    ax1.plot(xi, 0.01*J1s[i], '-',  c='0.4', lw=2)
+    ax1.plot(xi, 10.0*Rs[i],  '--', c='r',   lw=2)
 
   k += ns[i] - 1
 

@@ -3,7 +3,7 @@ from fenics  import *
 
 # set the relavent directories :
 #base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
-base_dir = 'dump/jakob_small/tmc_k_1e-3_new_nabla_Tm/'
+base_dir = 'dump/jakob_small/tmc/tmc/01/'
 in_dir   = base_dir
 out_dir  = base_dir + 'stress_balance/'
 var_dir  = 'dump/vars_jakobshavn_small/'

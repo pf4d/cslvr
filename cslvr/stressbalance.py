@@ -529,7 +529,7 @@ class FS_Balance(Physics):
     sig_kj_B = model.vert_extrude(sig_r[2,1], d='up')
     sig_kk_B = model.vert_extrude(sig_r[2,2], d='up')
     
-    # vertically integrate stress :
+    # vertically integrate deviatoric stress (membrane stress) :
     N_ii = model.vert_integrate(sig_r[0,0], d='down')
     N_ij = model.vert_integrate(sig_r[0,1], d='down')
     N_ik = model.vert_integrate(sig_r[0,2], d='down')
@@ -540,7 +540,7 @@ class FS_Balance(Physics):
     N_kj = model.vert_integrate(sig_r[2,1], d='down')
     N_kk = model.vert_integrate(sig_r[2,2], d='down')
 
-    # save the vertically integrated deviatoric stress :
+    # save the membrane stresses :
     model.init_N_ii(N_ii, cls=self)
     model.init_N_ij(N_ij, cls=self)
     model.init_N_ik(N_ik, cls=self)
@@ -555,8 +555,8 @@ class FS_Balance(Physics):
     u,v,w    = model.U3.split(True)
     U        = as_vector([u, v])
     U_hat    = model.normalize_vector(U)
-    U_n      = as_vector([U_hat[0],  U_hat[1], 0.0])#U_hat[2]])
-    U_t      = as_vector([U_hat[1], -U_hat[0], 0.0])#U_hat[2]])
+    U_n      = as_vector([U_hat[0],  U_hat[1], 0.0])
+    U_t      = as_vector([U_hat[1], -U_hat[0], 0.0])
     S        = model.S
     B        = model.B
 
@@ -575,7 +575,7 @@ class FS_Balance(Physics):
     # mass matrix :
     self.M = assemble(phi*dtau*dx)
 
-    # integrated stress-balance :
+    # integrated stress-balance using Liebniz Theorem :
     self.tau_ii = (d_di(N_ii) + sig_ii_S*d_di(S) - sig_ii_B*d_di(B)) * phi * dx
     self.tau_ij = (d_dj(N_ij) + sig_ij_S*d_dj(S) - sig_ij_B*d_dj(B)) * phi * dx
     self.tau_ik = (sig_ik_S - sig_ik_B) * phi * dx

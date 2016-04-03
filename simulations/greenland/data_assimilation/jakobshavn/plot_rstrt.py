@@ -5,8 +5,8 @@ import numpy             as np
 import sys
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
-#base_dir = 'dump/jakob_small/tmc_k_1e-3_new_nabla_Tm/'
+#base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
+base_dir = 'dump/jakob_small/tmc/tmc/01/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -171,8 +171,8 @@ U_lvls  = np.array([0.0, 500, 1e3, 1.5e3, 2e3, 4e3, 1e4, Umax])
 Pe_lvls = np.array([1e2, 1e3, 5e3, 1e4, 2.5e4, 5e4, Pmax])
 T_lvls  = np.array([Tmin, 268, 271.5, 272, 272.5, Tmax])
 
-#Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.0, Wimax])
-Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.5, 5.0, 10.0, 15.0, Wimax])
+Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.0, Wimax])
+#Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.5, 5.0, 10.0, 15.0, Wimax])
 
 Q_int_lvls  = np.array([0.0, 1e7, 5e7, 1e8, 2.5e8, 5e8, 1e9, Q_int_max])
 
@@ -219,7 +219,7 @@ for x_w, y_w in zip(x_a, y_a):
   # get z-coordinates :  
   z_z = []
   for z_w in z_s:
-    z_i = (z_w / zmax) * (S - B) - (S - B)
+    z_i = (z_w / zmax)# * (S - B) - (S - B)
     z_z.append(z_i)
   z_z = array(z_z)
   
@@ -249,7 +249,7 @@ for T_i, W_i, z_i, color_i, style_i in zip(T_a, W_a, z_a, color_a, style_a):
   ax2.plot(W_i, z_i, color=color_i, lw=3.0)
   ax2.set_yticklabels([])
 
-ax2.set_xlim([0,0.15])
+#ax2.set_xlim([0,0.15])
 
 xloc1 = plt.MaxNLocator(4)
 xloc2 = plt.MaxNLocator(4)
@@ -267,6 +267,8 @@ plt.tight_layout()
 plt.savefig(out_dir + 'profile_plot.pdf')
 plt.close(fig)
 
+sys.exit(0)
+
 
 #===============================================================================
 # plot :
@@ -278,68 +280,68 @@ plt.close(fig)
 #cmap = 'magma'
 cmap = 'gist_yarg'
   
-#plotIce(drg, bedmodel.B, name='B', direc=out_dir,
-#        title=r'$B$', cmap='RdGy',  scale='lin',
-#        levels=B_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#  
-#plotIce(drg, bedmodel.Q_int, name='Q_int', direc=out_dir,
-#        title=r'$Q_i$', cmap=cmap,  scale='lin',
-#        levels=Q_int_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#  
-#plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
-#        title='$T_B$', cmap=cmap,  scale='lin',
-#        levels=T_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
-#        title=r'$W_B$', cmap=cmap,  scale='lin',
-#        levels=W_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
-#        title=r'$F_b$', cmap=cmap,  scale='lin',
-#        levels=Fb_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-#        title=r'$M_b$', cmap='RdGy',  scale='lin',
-#        levels=Mb_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
-#        title=r'$\alpha$', cmap=cmap,  scale='lin',
-#        levels=a_lvls, tp=True, tpAlpha=0.2, cb_format='%.2e',
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
-#        title=r'$P_e$', cmap=cmap,  scale='lin',
-#        levels=Pe_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
-#        title=r'$W_i$', cmap=cmap,  scale='lin',
-#        levels=Wi_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
+plotIce(drg, bedmodel.B, name='B', direc=out_dir,
+        title=r'$B$', cmap='RdGy',  scale='lin',
+        levels=B_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+  
+plotIce(drg, bedmodel.Q_int, name='Q_int', direc=out_dir,
+        title=r'$Q_i$', cmap=cmap,  scale='lin',
+        levels=Q_int_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+  
+plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
+        title='$T_B$', cmap=cmap,  scale='lin',
+        levels=T_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
+        title=r'$W_B$', cmap=cmap,  scale='lin',
+        levels=W_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+        title=r'$F_b$', cmap=cmap,  scale='lin',
+        levels=Fb_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
+        title=r'$M_b$', cmap='RdGy',  scale='lin',
+        levels=Mb_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
+        title=r'$\alpha$', cmap=cmap,  scale='lin',
+        levels=a_lvls, tp=True, tpAlpha=0.2, cb_format='%.2e',
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
+        title=r'$P_e$', cmap=cmap,  scale='lin',
+        levels=Pe_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
+        title=r'$W_i$', cmap=cmap,  scale='lin',
+        levels=Wi_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
 
 plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
         title=r'$\Vert \mathbf{u}_S \Vert$', cmap=cmap,  scale='lin',
@@ -348,19 +350,19 @@ plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir,
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
         params=params, plot_pts=plot_pts)
 
-#plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
-#        title=r'$\theta_B$', cmap=cmap,  scale='lin',
-#        tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
-#
-#plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
-#        title=r'$\beta$', cmap=cmap,  scale='lin',
-#        levels=b_lvls, tp=True, tpAlpha=0.2,
-#        extend='neither', show=False, ext='.pdf',
-#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-#        params=params, plot_pts=plot_pts)
+plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
+        title=r'$\theta_B$', cmap=cmap,  scale='lin',
+        tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
+        title=r'$\beta$', cmap=cmap,  scale='lin',
+        levels=b_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
 
 
 

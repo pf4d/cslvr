@@ -685,12 +685,12 @@ class Enthalpy(Energy):
     #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
     #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
     #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
-    a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
-    Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
-    W_T     = conditional( lt(W, 0.01),  W,           0.01)
-    #a_T     = model.a_T
-    #Q_T     = model.Q_T
-    #W_T     = model.W_T
+    #a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
+    #Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
+    #W_T     = conditional( lt(W, 0.01),  W,           0.01)
+    a_T     = model.a_T
+    Q_T     = model.Q_T
+    W_T     = model.W_T
 
     # viscosity and strain-heating :
     #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)

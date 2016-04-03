@@ -223,22 +223,23 @@ class Momentum(Physics):
     formulates the rate factor A.  If <isothermal> == True, form from 
     model.b_shf and model.b_gnd.  Otherwise, use the temperature-dependent term.
     """
-    model   = self.model
+    model = self.model
     if isothermal:
-      s     = "    - using isothermal rate-factor -"
-      b_shf = model.E_shf * model.b_shf
-      b_gnd = model.E_gnd * model.b_gnd
+      s       = "    - using isothermal rate-factor -"
+      b_shf   = model.E_shf * model.b_shf
+      b_gnd   = model.E_gnd * model.b_gnd
 
     else:
       s       = "    - using energy-dependent rate-factor -"
       Tp      = model.Tp
+      W       = model.W
       R       = model.R
       n       = model.n
       E_shf   = model.E_shf
       E_gnd   = model.E_gnd
       a_T     = conditional( lt(Tp, 263.15),  model.a_T_l, model.a_T_u)
       Q_T     = conditional( lt(Tp, 263.15),  model.Q_T_l, model.Q_T_u)
-      W_T     = conditional( lt(W,  0.01),     model.W,     0.01)
+      W_T     = conditional( lt(W,  0.01),    W,           0.01)
       #a_T     = model.a_T
       #Q_T     = model.Q_T
       #W_T     = model.W_T
@@ -260,20 +261,20 @@ class Momentum(Physics):
     b_gnd   = self.b_gnd
     eps_reg = model.eps_reg
     if linear:
-      s   = "    - using linear form of momentum using model.U3 in epsdot -"
-      epsdot_l  = self.effective_strain_rate(model.U3.copy(True))
-      epsdot    = self.effective_strain_rate(U)
-      eta_shf   = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      eta_gnd   = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      Vd_shf    = 2 * eta_shf * epsdot
-      Vd_gnd    = 2 * eta_gnd * epsdot
+      s  = "    - using linear form of momentum using model.U3 in epsdot -"
+      epsdot_l = self.effective_strain_rate(model.U3.copy(True))
+      epsdot   = self.effective_strain_rate(U)
+      eta_shf  = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
+      eta_gnd  = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))
+      Vd_shf   = 2 * eta_shf * epsdot
+      Vd_gnd   = 2 * eta_gnd * epsdot
     else:
-      s   = "    - using nonlinear form of momentum -"
-      epsdot  = self.effective_strain_rate(U)
-      eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      Vd_shf  = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd  = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
+      s  = "    - using nonlinear form of momentum -"
+      epsdot   = self.effective_strain_rate(U)
+      eta_shf  = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
+      eta_gnd  = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
+      Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
+      Vd_gnd   = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
     self.Vd_shf  = Vd_shf

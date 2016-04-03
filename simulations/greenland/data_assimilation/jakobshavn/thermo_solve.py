@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/tmc/'
+out_dir  = 'dump/jakob_small/tmc_vector_disc_vars/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')

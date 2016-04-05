@@ -6,7 +6,7 @@ import numpy              as np
 import matplotlib.pyplot  as plt
 import sys
 import os
-    
+
 
 class Model(object):
   """ 
@@ -1003,15 +1003,6 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.k_0, k_0, cls=cls)
 
-  def init_k_c(self, k_c, cls=None):
-    """
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing enthalpy-gradient conductivity :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.k_c, k_c, cls=cls)
-
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
     Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
@@ -1489,9 +1480,10 @@ class Model(object):
     epsdot  = epsdot_ftn(self.U3)
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
-    a_T    = conditional( lt(Tp, 263.15), 1.1384496e-5, 5.45e10)
-    Q_T    = conditional( lt(Tp, 263.15), 6e4,          13.9e4)
-    W_T    = conditional( lt(W, 0.01),    W,            0.01)
+    T_c     = 263.15
+    a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
+    Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
+    W_T     = conditional( lt(W, 0.01),  W,           0.01)
     #a_T     = Function(Q, name='a_T')
     #Q_T     = Function(Q, name='Q_T')
     #T_v     = T.vector().array()
@@ -1882,10 +1874,6 @@ class Model(object):
     self.W_int         = Function(self.Q, name='W_int')
     self.Fb_min        = Function(self.Q, name='Fb_min')
     self.Fb_max        = Function(self.Q, name='Fb_max')
-    self.k_c           = Function(self.Q, name='k_c')
-    self.a_T           = Function(self.Q, name='a_T')
-    self.Q_T           = Function(self.Q, name='Q_T')
-    self.W_T           = Function(self.Q, name='W_T')
     self.Q_int         = Function(self.Q, name='Q_int')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
@@ -2051,9 +2039,6 @@ class Model(object):
       # calculate T, Tp, and W from theta :
       energy.partition_energy(annotate=False)
       
-      # calculate k_c, a_T, Q_T, and W_T from T, Tp, and W :
-      energy.adjust_discontinuous_properties(annotate=False)
-
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
       tht_nrm      = norm(self.theta.vector(), 'l2')

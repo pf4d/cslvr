@@ -46,7 +46,7 @@ class MomentumStokes(Momentum):
     r         = model.r
     S         = model.S
     B         = model.B
-    H         = S - B
+    Fb        = model.Fb
     z         = model.x[2]
     W         = model.W
     R         = model.R
@@ -318,7 +318,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     r          = model.r
     S          = model.S
     B          = model.B
-    H          = S - B
+    Fb         = model.Fb
     z          = model.x[2]
     W          = model.W
     R          = model.R
@@ -353,8 +353,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     du,  dv  = dU
     u,   v   = U
 
-    #w = u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
-    w = - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
+    #w = Fb + u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
+    w = Fb - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
     
     eps_reg    = model.eps_reg
     n          = model.n
@@ -673,7 +673,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     r          = model.r
     S          = model.S
     B          = model.B
-    H          = S - B
+    Fb         = model.Fb
     z          = model.x[2]
     W          = model.W
     R          = model.R
@@ -709,6 +709,9 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     phi, psi, xi,  kappa = Phi
     du,  dv,  dw,  dP    = dU
     u,   v,   w,   p     = U
+    
+    # water loss reduces vertical velocity :
+    w          = w - Fb
     
     eps_reg    = model.eps_reg
     n          = model.n

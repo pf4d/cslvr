@@ -51,7 +51,6 @@ class MomentumBP(Momentum):
     Q          = model.Q
     S          = model.S
     B          = model.B
-    H          = S - B
     z          = model.x[2]
     rhoi       = model.rhoi
     rhow       = model.rhow
@@ -69,9 +68,6 @@ class MomentumBP(Momentum):
     dLat_t     = model.dLat_t
     dBed       = model.dBed
     
-    gradS      = grad(S)
-    gradB      = grad(B)
-     
     # new constants :
     p0     = 101325
     T0     = 288.15
@@ -108,7 +104,7 @@ class MomentumBP(Momentum):
     f_w    = rhoi*g*(S - z) - rhow*g*D               # lateral
     p_a    = p0 * (1 - g*z/(ci*T0))**(ci*M/R)        # surface pressure
     
-    #Ne       = H + rhow/rhoi * D
+    #Ne       = (S-B) + rhow/rhoi * D
     #P        = -0.383
     #Q        = -0.349
     #Unorm    = sqrt(inner(U,U) + DOLFIN_EPS)
@@ -382,7 +378,7 @@ class MomentumDukowiczBP(Momentum):
     r          = model.r
     S          = model.S
     B          = model.B
-    H          = S - B
+    Fb         = model.Fb
     z          = model.x[2]
     W          = model.W
     R          = model.R
@@ -394,9 +390,6 @@ class MomentumDukowiczBP(Momentum):
     N          = model.N
     D          = model.D
 
-    gradS      = grad(S)
-    gradB      = grad(B)
-    
     dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
@@ -465,7 +458,7 @@ class MomentumDukowiczBP(Momentum):
                           model.v_lat, model.ff, model.GAMMA_L_DVD))
    
     self.w_F = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
-               (u*N[0] + v*N[1] + dw*N[2])*chi*dBed
+               (u*N[0] + v*N[1] + (dw - Fb)*N[2])*chi*dBed
    
     self.A       = A
     self.U       = U 
@@ -695,7 +688,7 @@ class MomentumDukowiczBPModified(Momentum):
     r          = model.r
     S          = model.S
     B          = model.B
-    H          = S - B
+    Fb         = model.Fb
     z          = model.x[2]
     W          = model.W
     R          = model.R
@@ -707,9 +700,6 @@ class MomentumDukowiczBPModified(Momentum):
     N          = model.N
     D          = model.D
 
-    gradS      = grad(S)
-    gradB      = grad(B)
-    
     dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
@@ -729,6 +719,9 @@ class MomentumDukowiczBPModified(Momentum):
     phi, psi, xi  = Phi
     du,  dv,  dw  = dU
     u,   v,   w   = U
+
+    # water mass loss reduces vertical velocity :
+    w = w - Fb
 
     eps_reg  = model.eps_reg
     n        = model.n

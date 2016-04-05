@@ -317,57 +317,6 @@ class Energy(Physics):
     model.assign_variable(model.W0,  model.W,  cls=self)
     model.init_W(W_v, cls=self)
     
-  def adjust_discontinuous_properties(self, annotate=False):
-    """
-    update discontinuous thermal properties a_T, Q_T, W_T, and k_c
-    """
-    s = "::: updating discontinuous thermal properties :::"
-    print_text(s, cls=self)
-
-    model    = self.model
-    
-    theta_v  = model.theta.vector().array()
-    Tp_v     = model.Tp.vector().array()
-    W_v      = model.W.vector().array()
-    a_T_v    = model.a_T.vector().array()
-    Q_T_v    = model.Q_T.vector().array()
-    W_T_v    = model.W_T.vector().array()
-    
-    # adjust discontinuous thermal properties : 
-    T_c                = 263.15
-    a_T_v[Tp_v <= T_c] = model.a_T_l(0)
-    a_T_v[Tp_v >  T_c] = model.a_T_u(0)
-    Q_T_v[Tp_v <= T_c] = model.Q_T_l(0)
-    Q_T_v[Tp_v >  T_c] = model.Q_T_u(0)
-    model.assign_variable(model.a_T, a_T_v, cls=self)
-    model.assign_variable(model.Q_T, Q_T_v, cls=self)
-   
-    # adjust water-content flow enhancement : 
-    W_c               = 0.01
-    W_T_v[W_v <  W_c] = W_v[W_v < W_c]
-    W_T_v[W_v >= W_c] = W_c
-    model.assign_variable(model.W_T, W_T_v, cls=self)
-   
-    # update enthalpy-gradient diffusivity : 
-    self.adjust_enthalpy_grad_kappa()
-    
-  def adjust_enthalpy_grad_kappa(self):
-    """
-    adjust enthalpy-gradient thermal conductivity model.kappa.
-    """ 
-    # calculate melt-rate : 
-    s = "::: adjusting enthalpy-gradient thermal conductivity :::"
-    print_text(s, cls=self)
-    
-    model = self.model
-
-    W_v   = model.W.vector().array()
-    k_c_v = model.k_c.vector().array()
-
-    k_c_v[:]       = 1.0
-    k_c_v[W_v > 0] = model.k_0(0)
-    model.init_k_c(k_c_v, cls=self)
-
   def optimize_water_flux(self, max_iter, bounds, method='ipopt',
                           adj_callback=None):
     """
@@ -620,10 +569,6 @@ class Enthalpy(Energy):
     H             = S - B
     x             = model.x
     R             = model.R
-    U             = model.U3
-    u             = model.u
-    v             = model.v
-    w             = model.w
     p             = model.p
     gamma         = model.gamma
     eps_reg       = model.eps_reg
@@ -663,6 +608,10 @@ class Enthalpy(Energy):
     E_gnd         = model.E_gnd
     N             = model.N
     
+    # get velocity :
+    u,v,w         = model.U3
+    w             = w - Fb
+    
     # define test and trial functions : 
     psi    = TestFunction(Q)
     dtheta = TrialFunction(Q)
@@ -670,7 +619,7 @@ class Enthalpy(Energy):
     theta0 = Function(Q, name='energy.theta0')
       
     # strain-rate :
-    epsdot  = self.effective_strain_rate(U) + eps_reg
+    epsdot  = self.effective_strain_rate(as_vector([u,v,w])) + eps_reg
 
     # thermal properties :
     T_c     = 263.15
@@ -685,12 +634,9 @@ class Enthalpy(Energy):
     #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
     #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
     #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
-    #a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
-    #Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
-    #W_T     = conditional( lt(W, 0.01),  W,           0.01)
-    a_T     = model.a_T
-    Q_T     = model.Q_T
-    W_T     = model.W_T
+    a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
+    Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
+    W_T     = conditional( lt(W, 0.01),  W,           0.01)
 
     # viscosity and strain-heating :
     #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
@@ -706,9 +652,9 @@ class Enthalpy(Energy):
     eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
-    
+
     # coefficient for non-advective water flux (enthalpy-gradient) :
-    k_c   = model.k_c
+    k_c   = conditional( gt(W, 0.0), model.k_0, 1 )
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
     ki    = spy * 9.828 * exp(-0.0057*T)  # converted to J/(a*m*K)
@@ -725,7 +671,6 @@ class Enthalpy(Energy):
     q_fric = model.q_fric            # beta * inner(U,U)
 
     # basal heat-flux natural boundary condition :
-    #g_w  = k * dot(grad(T_m), N) + rhow*L*Fb
     g_w  = model.gradTm_B + rhow*L*Fb
     g_n  = q_geo + q_fric
     if energy_flux_mode == 'zero_energy':
@@ -889,16 +834,10 @@ class Enthalpy(Energy):
       # initialize energy from W and T :
       model.init_theta(theta_i_v,         cls=self)
       
-      # calculate k_c, a_T, Q_T, and W_T from theta :
-      self.adjust_discontinuous_properties(annotate=False)
-      
       # derive temperature and temperature-melting flux :
       self.calc_basal_temperature_flux()
       self.calc_basal_temperature_melting_flux()
 
-      # initialize water flux to zero :
-      model.init_Fb(0.0, cls=self)
-  
   def default_strain_rate_tensor(self, U):
     """
     return the default unsimplified-strain-rate tensor for velocity <U>.
@@ -1365,9 +1304,6 @@ class Enthalpy(Energy):
       self.calc_basal_temperature_flux()
       self.calc_basal_temperature_melting_flux()
   
-      # update discontinuous thermal parameters :
-      self.adjust_discontinuous_properties(annotate=annotate)
-      
     # convert back to transient if necessary : 
     if transient:
       energy.make_transient(time_step = model.time_step)

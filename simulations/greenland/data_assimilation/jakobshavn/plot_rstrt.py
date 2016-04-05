@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 #base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
-base_dir = 'dump/jakob_small/tmc_cond_disc_vars/'
+base_dir = 'dump/jakob_small/tmc_test_new/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -33,7 +33,7 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 # open the hdf5 file :
 f     = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',   'r')
 fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
-fQ    = HDF5File(mpi_comm_world(), in_dir  + 'Q_int.h5', 'r')
+#fQ    = HDF5File(mpi_comm_world(), in_dir  + 'Q_int.h5', 'r')
 
 # initialize the variables :
 d3model.init_S(fdata)
@@ -49,7 +49,7 @@ d3model.init_U(f)
 d3model.init_p(f)
 d3model.init_beta(f)
 d3model.init_theta(f)
-d3model.init_Q_int(fQ)
+d3model.init_Q_int(f)
 
 # 2D model gets balance-velocity appropriate variables initialized :
 bedmodel.assign_submesh_variable(bedmodel.B,         d3model.B)
@@ -267,7 +267,6 @@ plt.tight_layout()
 plt.savefig(out_dir + 'profile_plot.pdf')
 plt.close(fig)
 
-sys.exit(0)
 
 
 #===============================================================================

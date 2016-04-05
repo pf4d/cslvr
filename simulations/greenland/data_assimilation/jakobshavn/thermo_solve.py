@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir  = 'dump/vars_jakobshavn_small/'
-out_dir  = 'dump/jakob_small/tmc_vector_disc_vars/'
+out_dir  = 'dump/jakob_small/tmc_test/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -36,12 +36,15 @@ model.init_E(1.0)
 model.init_beta(fini)
 #model.init_T(model.T_surface)
 #model.init_W(0.0)
-#model.init_theta(fini)
+model.init_theta(fini)
 model.init_T(fini)
 model.init_W(fini)
-#model.init_U(fini)
-model.init_k_0(1e-3)
-model.solve_hydrostatic_pressure()
+model.init_U(fini)
+model.init_p(fini)
+model.init_alpha(fini)
+model.init_Fb(fini)
+model.init_k_0(0.1)
+#model.solve_hydrostatic_pressure()
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/08/tmc.h5', 'r')
 #model.init_alpha(frstrt)
@@ -53,9 +56,17 @@ model.solve_hydrostatic_pressure()
 
 # initialize the physics :
 #mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
-mom = MomentumDukowiczBP(model, isothermal=False)
-nrg = Enthalpy(model, transient=False, use_lat_bc=True, 
-               epsdot_ftn=mom.strain_rate_tensor)
+#mom = MomentumDukowiczBP(model, isothermal=False)
+nrg = Enthalpy(model, transient=False, use_lat_bc=True)
+#               epsdot_ftn=mom.strain_rate_tensor)
+
+nrg.calc_q_fric()
+nrg.solve()
+fout    = HDF5File(mpi_comm_world(), out_dir + 'theta.h5',   'w')
+model.save_hdf5(model.theta, f=fout)
+model.save_xdmf(model.theta, 'theta')
+sys.exit(0)
+
 
 # thermo-solve callback function :
 def tmc_cb_ftn():

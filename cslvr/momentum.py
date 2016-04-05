@@ -240,9 +240,6 @@ class Momentum(Physics):
       a_T     = conditional( lt(Tp, 263.15),  model.a_T_l, model.a_T_u)
       Q_T     = conditional( lt(Tp, 263.15),  model.Q_T_l, model.Q_T_u)
       W_T     = conditional( lt(W,  0.01),    W,           0.01)
-      #a_T     = model.a_T
-      #Q_T     = model.Q_T
-      #W_T     = model.W_T
       b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
       b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
     self.b_shf = b_shf

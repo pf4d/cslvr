@@ -259,7 +259,10 @@ class Momentum(Physics):
     eps_reg = model.eps_reg
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
-      epsdot_l = self.effective_strain_rate(model.U3.copy(True))
+      Uc       = model.U3.copy(True)
+      u,v,w    = Uc
+      Uc       = as_vector([u,v,w-Fb])
+      epsdot_l = self.effective_strain_rate(Uc)
       epsdot   = self.effective_strain_rate(U)
       eta_shf  = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
       eta_gnd  = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))

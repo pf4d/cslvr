@@ -610,7 +610,7 @@ class Enthalpy(Energy):
     
     # get velocity :
     u,v,w         = model.U3
-    w             = w - Fb
+    U             = as_vector([u,v,w-Fb])
     
     # define test and trial functions : 
     psi    = TestFunction(Q)
@@ -619,7 +619,7 @@ class Enthalpy(Energy):
     theta0 = Function(Q, name='energy.theta0')
       
     # strain-rate :
-    epsdot  = self.effective_strain_rate(as_vector([u,v,w])) + eps_reg
+    epsdot  = self.effective_strain_rate(U) + eps_reg
 
     # thermal properties :
     T_c     = 263.15

@@ -609,8 +609,7 @@ class Enthalpy(Energy):
     N             = model.N
     
     # get velocity :
-    u,v,w         = model.U3
-    U             = as_vector([u,v,w-Fb])
+    U             = model.U3
     
     # define test and trial functions : 
     psi    = TestFunction(Q)
@@ -1019,8 +1018,9 @@ class Enthalpy(Energy):
     u_v      = u.vector().array()
     v_v      = v.vector().array()
     w_v      = w.vector().array()
+    Fb_v     = model.Fb.vector().array()
 
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v + Fb_v)**2)
     
     model.init_q_fric(q_fric_v, cls=self)
 
@@ -1115,10 +1115,11 @@ class Enthalpy(Energy):
     u_v      = u.vector().array()
     v_v      = v.vector().array()
     w_v      = w.vector().array()
+    Fb_v     = model.Fb.vector().array()
     q_geo_v  = model.q_geo.vector().array()
     grad_n_v = grad_n.vector().array()
 
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + w_v**2)
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v + Fb_v)**2)
     rho_v    = W_v*rhow + (1 - W_v)*rhoi
     Mb_v     = (q_geo_v + q_fric_v - grad_n_v) / (L * rho_v)
     

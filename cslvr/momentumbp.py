@@ -720,9 +720,6 @@ class MomentumDukowiczBPModified(Momentum):
     du,  dv,  dw  = dU
     u,   v,   w   = U
 
-    # water mass loss reduces vertical velocity :
-    w = w - Fb
-
     eps_reg  = model.eps_reg
     n        = model.n
     

@@ -58,9 +58,6 @@ class MomentumStokes(Momentum):
     N         = model.N
     D         = model.D
 
-    gradS     = grad(S)
-    gradB     = grad(B)
-    
     dx_f      = model.dx_f
     dx_g      = model.dx_g
     dx        = model.dx
@@ -330,9 +327,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     N          = model.N
     D          = model.D
 
-    gradS      = grad(S)
-    gradB      = grad(B)
-    
     dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
@@ -685,9 +679,6 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     N          = model.N
     D          = model.D
 
-    gradS      = grad(S)
-    gradB      = grad(B)
-    
     dx_f       = model.dx_f
     dx_g       = model.dx_g
     dx         = model.dx
@@ -711,14 +702,14 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     u,   v,   w,   p     = U
     
     # water loss reduces vertical velocity :
-    w          = w - Fb
+    U3         = as_vector([u,v,w-Fb])
     
     eps_reg    = model.eps_reg
     n          = model.n
     
     # 1) Viscous dissipation
     self.form_rate_factor(isothermal)
-    self.form_viscosity(as_vector([u,v,w]), linear)
+    self.form_viscosity(U3, linear)
     Vd_shf  = self.Vd_shf
     Vd_gnd  = self.Vd_gnd
     b_shf   = self.b_shf
@@ -736,8 +727,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2)) 
     
     # 5) impenetrability constraint :
-    sig_f  = self.stress_tensor(as_vector([u,v,w]), p, eta_shf)
-    sig_g  = self.stress_tensor(as_vector([u,v,w]), p, eta_gnd)
+    sig_f  = self.stress_tensor(U3, p, eta_shf)
+    sig_g  = self.stress_tensor(U3, p, eta_gnd)
     lam_f  = p#-dot(N, dot(sig_f, N))
     lam_g  = p#-dot(N, dot(sig_g, N))
     Nc_g   = -lam_g * (u*N[0] + v*N[1] + w*N[2])

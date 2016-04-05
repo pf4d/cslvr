@@ -15,6 +15,7 @@ class MomentumStokes(Momentum):
                  linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     """
+    #NOTE: experimental
     if type(model) != D3Model:
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
@@ -41,8 +42,6 @@ class MomentumStokes(Momentum):
     self.assp = FunctionAssigner(model.p.function_space(), model.MV.sub(1))
 
     mesh      = model.mesh
-    eps_reg   = model.eps_reg
-    n         = model.n
     r         = model.r
     S         = model.S
     B         = model.B
@@ -282,6 +281,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
     """
+    #NOTE: experimental
     if type(model) != D3Model:
       s = ">>> MomentumStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
@@ -349,9 +349,6 @@ class MomentumDukowiczStokesReduced(Momentum):
 
     #w = Fb + u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
     w = Fb - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
-    
-    eps_reg    = model.eps_reg
-    n          = model.n
     
     # 1) Viscous dissipation
     self.form_rate_factor(isothermal)
@@ -701,11 +698,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     du,  dv,  dw,  dP    = dU
     u,   v,   w,   p     = U
     
-    # water loss reduces vertical velocity :
-    U3         = as_vector([u,v,w-Fb])
-    
-    eps_reg    = model.eps_reg
-    n          = model.n
+    # create velocity vector :
+    U3      = as_vector([u,v,w])
     
     # 1) Viscous dissipation
     self.form_rate_factor(isothermal)
@@ -721,7 +715,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Pe     = - rhoi * g * w
 
     # 3) dissipation by sliding :
-    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w**2)
+    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + (w-Fb)**2)
 
     # 4) incompressibility constraint :
     Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2)) 
@@ -731,8 +725,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     sig_g  = self.stress_tensor(U3, p, eta_gnd)
     lam_f  = p#-dot(N, dot(sig_f, N))
     lam_g  = p#-dot(N, dot(sig_g, N))
-    Nc_g   = -lam_g * (u*N[0] + v*N[1] + w*N[2])
-    Nc_f   = -lam_f * (u*N[0] + v*N[1] + w*N[2])
+    Nc_g   = -lam_g * (u*N[0] + v*N[1] + (w+Fb)*N[2])
+    Nc_f   = -lam_f * (u*N[0] + v*N[1] + (w+Fb)*N[2])
     #Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
 
     # 6) pressure boundary :

@@ -18,6 +18,7 @@ class MomentumBP(Momentum):
     
     Initilize the residuals and Jacobian for the momentum equations.
     """
+    #NOTE: experimental
     s = "::: INITIALIZING BP VELOCITY PHYSICS :::"
     print_text(s, self.color())
 
@@ -457,8 +458,8 @@ class MomentumDukowiczBP(Momentum):
       self.mom_bcs.append(DirichletBC(model.Q2.sub(1),
                           model.v_lat, model.ff, model.GAMMA_L_DVD))
    
-    self.w_F = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx - \
-               (u*N[0] + v*N[1] + (dw - Fb)*N[2])*chi*dBed
+    self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx \
+               + (u*N[0] + v*N[1] + (dw + Fb)*N[2])*chi*dBed
    
     self.A       = A
     self.U       = U 
@@ -659,6 +660,7 @@ class MomentumDukowiczBPModified(Momentum):
     
     Initilize the residuals and Jacobian for the momentum equations.
     """
+    #NOTE: experimental
     s = "::: INITIALIZING DUKOWICZ BP VELOCITY PHYSICS :::"
     print_text(s, self.color())
 

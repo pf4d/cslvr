@@ -6,7 +6,7 @@ L     = 40000
 
 p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
-mesh  = BoxMesh(p1, p2, 25, 25, 10)
+mesh  = BoxMesh(p1, p2, 15, 15, 10)
 
 model = D3Model(mesh, out_dir = './ISMIP_HOM_A_results/')
 model.generate_function_spaces(use_periodic = True)

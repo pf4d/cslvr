@@ -1020,7 +1020,7 @@ class Enthalpy(Energy):
     w_v      = w.vector().array()
     Fb_v     = model.Fb.vector().array()
 
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v + Fb_v)**2)
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v - Fb_v)**2)
     
     model.init_q_fric(q_fric_v, cls=self)
 

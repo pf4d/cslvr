@@ -218,7 +218,7 @@ class MomentumStokes(Momentum):
               {
                 'linear_solver'            : 'tfqmr',
                 'preconditioner'           : 'petsc_amg',
-                'relative_tolerance'       : 1e-8,
+                'relative_tolerance'       : 1e-5,
                 'relaxation_parameter'     : 1.0,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
@@ -505,7 +505,7 @@ class MomentumDukowiczStokesReduced(Momentum):
               {
                 'linear_solver'            : 'cg',
                 'preconditioner'           : 'hypre_amg',
-                'relative_tolerance'       : 1e-8,
+                'relative_tolerance'       : 1e-5,
                 'relaxation_parameter'     : 1.0,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
@@ -873,7 +873,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     nparams = {'newton_solver' :
               {
                 'linear_solver'            : 'mumps',
-                'relative_tolerance'       : 1e-6,
+                'relative_tolerance'       : 1e-5,
                 'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,

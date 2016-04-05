@@ -33,6 +33,7 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 d3model.init_W(0.0)
+d3model.init_Wc(0.03)
 d3model.init_T(d3model.T_surface)
 d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
@@ -87,6 +88,8 @@ nrg    = Enthalpy(d3model, transient=False, use_lat_bc=True)
 def tmc_cb_ftn():
   nrg.calc_PE()#avg=True)
   nrg.calc_internal_water()
+  nrg.calc_integrated_strain_heat()
+  nrg.solve_basal_melt_rate()
 
 # post-adjoint-iteration callback function :
 def adj_post_cb_ftn():
@@ -101,6 +104,7 @@ tmc_save_vars = [d3model.T,
                  d3model.alpha,
                  d3model.PE,
                  d3model.W_int,
+                 d3model.Q_int,
                  d3model.U3,
                  d3model.p,
                  d3model.beta,
@@ -123,7 +127,7 @@ nrg.form_cost_ftn(kind='L2')
 #nrg.form_reg_ftn(d3model.alpha, integral=d3model.GAMMA_B_GND,
 #                 kind='TV', alpha=1e7)
 
-wop_kwargs = {'max_iter'            : 350, 
+wop_kwargs = {'max_iter'            : 200, 
               'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
@@ -149,9 +153,11 @@ uop_kwargs = {'control'             : d3model.beta,
                                     
 ass_kwargs = {'momentum'            : mom,
               'beta_i'              : d3model.beta.copy(True),
-              'iterations'          : 10,
+              'max_iter'            : 10,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
+              'atol'                : 1.0,
+              'rtol'                : 1e-4,
               'initialize'          : True,
               'incomplete'          : True,
               'post_iter_save_vars' : None,#tmc_save_vars,

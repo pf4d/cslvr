@@ -257,6 +257,7 @@ class Momentum(Physics):
     b_shf   = self.b_shf
     b_gnd   = self.b_gnd
     eps_reg = model.eps_reg
+    epsdot  = self.effective_strain_rate(U)
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
       epsdot_l = self.effective_strain_rate(model.U3.copy(True))
@@ -266,7 +267,6 @@ class Momentum(Physics):
       Vd_gnd   = 2 * eta_gnd * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
-      epsdot   = self.effective_strain_rate(U)
       eta_shf  = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
       eta_gnd  = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
       Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
@@ -364,13 +364,12 @@ class Momentum(Physics):
 
   def calc_misfit(self):
     """
-    Calculates the misfit of model and observations, 
+    Calculates and returns the misfit of model and observations, 
 
       D = ||U - U_ob||
 
     over shelves or grounded depending on the paramter <integral> sent to
     the self.form_obj_ftn().
-    Updates model.misfit with D for plotting.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over %s :::"
     print_text(s % self.model.boundaries[self.integral], cls=self)
@@ -432,7 +431,7 @@ class Momentum(Physics):
 
     s    = "||U - U_ob|| : %.3E" % D
     print_text(s, '208', 1)
-    model.misfit = D
+    return D
   
   def calc_functionals(self):
     """
@@ -564,6 +563,9 @@ class Momentum(Physics):
     print_text(s % control.name(), cls=self)
 
     model = self.model
+
+    # reset entire dolfin-adjoint state :
+    adj_reset()
 
     # starting time :
     t0   = time()
@@ -701,9 +703,6 @@ class Momentum(Physics):
       
       foutput.close()
 
-    # reset entire dolfin-adjoint state :
-    adj_reset()
-
     # calculate total time to compute
     tf = time()
     s  = tf - t0
@@ -724,6 +723,7 @@ class Momentum(Physics):
       np.savetxt(d + 'time.txt', np.array([tf - t0]))
       np.savetxt(d + 'Rs.txt',   np.array(Rs))
       np.savetxt(d + 'Js.txt',   np.array(Js))
+      np.savetxt(d + 'Ds.txt',   np.array(Ds))
       if self.obj_ftn_type == 'log_L2_hybrid':
         np.savetxt(d + 'J1s.txt',  np.array(J1s))
         np.savetxt(d + 'J2s.txt',  np.array(J2s))
@@ -735,7 +735,7 @@ class Momentum(Physics):
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Js), 'r-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'J.pdf')
+      plt.savefig(d + 'J.png', dpi=100)
       plt.close(fig)
 
       fig = plt.figure()
@@ -745,7 +745,7 @@ class Momentum(Physics):
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Rs), 'r-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'R.pdf')
+      plt.savefig(d + 'R.png', dpi=100)
       plt.close(fig)
 
       fig = plt.figure()
@@ -755,7 +755,7 @@ class Momentum(Physics):
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Ds), 'r-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'D.pdf')
+      plt.savefig(d + 'D.png', dpi=100)
       plt.close(fig)
       
       if self.obj_ftn_type == 'log_L2_hybrid':
@@ -767,7 +767,7 @@ class Momentum(Physics):
         ax.set_xlabel(r'iteration')
         ax.plot(np.array(J1s), 'r-', lw=2.0)
         plt.grid()
-        plt.savefig(d + 'J1.pdf')
+        plt.savefig(d + 'J1.png', dpi=100)
         plt.close(fig)
  
         fig = plt.figure()
@@ -777,7 +777,7 @@ class Momentum(Physics):
         ax.set_xlabel(r'iteration')
         ax.plot(np.array(J2s), 'r-', lw=2.0)
         plt.grid()
-        plt.savefig(d + 'J2.pdf')
+        plt.savefig(d + 'J2.png', dpi=100)
         plt.close(fig)
 
 

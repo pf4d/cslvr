@@ -347,6 +347,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.W, W, cls=cls)
   
+  def init_Wc(self, Wc, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing maximum water content :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.Wc, Wc, cls=cls)
+  
   def init_Mb(self, Mb, cls=None):
     """
     """
@@ -1481,9 +1490,9 @@ class Model(object):
 
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
     T_c     = 263.15
-    a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
-    Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
-    W_T     = conditional( lt(W, 0.01),  W,           0.01)
+    a_T     = conditional( lt(Tp, T_c),  self.a_T_l, self.a_T_u)
+    Q_T     = conditional( lt(Tp, T_c),  self.Q_T_l, self.Q_T_u)
+    W_T     = conditional( lt(W, 0.01),  W,          0.01)
     #a_T     = Function(Q, name='a_T')
     #Q_T     = Function(Q, name='Q_T')
     #T_v     = T.vector().array()
@@ -1863,6 +1872,7 @@ class Model(object):
     self.gradTm_B      = Function(self.Q, name='gradTm_B')
     self.theta         = Function(self.Q, name='theta')
     self.W             = Function(self.Q, name='W')
+    self.Wc            = Function(self.Q, name='Wc')
     self.Mb            = Function(self.Q, name='Mb')
     self.rhob          = Function(self.Q, name='rhob')
     self.T_melt        = Function(self.Q, name='T_melt')     # pressure-melting
@@ -1879,8 +1889,6 @@ class Model(object):
     self.k_0.rename('k_0', 'k_0')
     
     # adjoint model :
-    self.adj_f         = 0.0              # objective function value at end
-    self.misfit        = 0.0              # ||U - U_ob||
     self.control_opt   = Function(self.Q, name='control_opt')
 
     # balance Velocity model :
@@ -2064,7 +2072,8 @@ class Model(object):
       # print info to screen :
       if self.MPI_rank == 0:
         s0    = '>>> '
-        s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
+        s1    = 'TMC fixed-point iteration %i (max %i) done: ' \
+                 % (counter, max_iter)
         s2    = 'r (abs) = %.2e ' % abs_error
         s3    = '(tol %.2e), '    % atol
         s4    = 'r (rel) = %.2e ' % rel_error
@@ -2142,7 +2151,7 @@ class Model(object):
       ax.set_xlabel(r'iteration')
       ax.plot(err_a, 'k-', lw=2.0)
       plt.grid()
-      plt.savefig(d_hist + 'abs_err.pdf')
+      plt.savefig(d_hist + 'abs_err.png', dpi=100)
       plt.close(fig)
       
       # plot theta norm :
@@ -2152,11 +2161,13 @@ class Model(object):
       ax.set_xlabel(r'iteration')
       ax.plot(nrm_a, 'k-', lw=2.0)
       plt.grid()
-      plt.savefig(d_hist + 'theta_norm.pdf')
+      plt.savefig(d_hist + 'theta_norm.png', dpi=100)
       plt.close(fig)
 
-  def assimilate_U_ob(self, momentum, beta_i, iterations, 
+  def assimilate_U_ob(self, momentum, beta_i, max_iter, 
                       tmc_kwargs, uop_kwargs,
+                      atol                = 1e2,
+                      rtol                = 1e0, 
                       initialize          = True,
                       incomplete          = True,
                       post_iter_save_vars = None,
@@ -2164,18 +2175,27 @@ class Model(object):
                       starting_i          = 1):
     """
     """
-    s    = '::: performing assimilation process with %i iterations :::'
-    print_text(s % iterations, cls=self.this)
+    s    = '::: performing assimilation process with %i max iterations :::'
+    print_text(s % max_iter, cls=self.this)
 
     # retain base install directory :
     out_dir_i = self.out_dir
+    
+    # directory for saving convergence history :
+    d_hist   = self.out_dir + 'convergence_history/'
+    if not os.path.exists(d_hist) and self.MPI_rank == 0:
+      os.makedirs(d_hist)
 
     # number of digits for saving variables :
-    n_i  = len(str(iterations))
+    n_i  = len(str(max_iter))
     
     # starting time :
     t0   = time()
-
+    
+    # L_2 erro norm between iterations :
+    abs_error = np.inf
+    rel_error = np.inf
+      
     # number of iterations, from a starting point (useful for restarts) :
     if starting_i <= 1:
       counter = 1
@@ -2184,6 +2204,9 @@ class Model(object):
 
     # initialize friction field :
     self.init_beta(beta_i, cls=self.this)
+   
+    # previous friction for norm calculation :
+    beta_prev    = self.beta.copy(True)
 
     # perform initialization step if desired :
     if initialize:
@@ -2213,9 +2236,9 @@ class Model(object):
     bounds = copy(tmc_kwargs['wop_kwargs']['bounds'])
 
     # assimilate the data : 
-    while counter <= iterations:
+    while abs_error > atol and rel_error > rtol and counter <= max_iter:
       s    = '::: entering iterate %i of %i of assimilation process :::'
-      print_text(s % (counter, iterations), cls=self.this)
+      print_text(s % (counter, max_iter), cls=self.this)
        
       # set a new unique output directory :
       out_dir_n = '%0*d/' % (n_i, counter)
@@ -2240,15 +2263,47 @@ class Model(object):
       # thermo-mechanically couple :
       self.thermo_solve(**tmc_kwargs)
       
-      if self.MPI_rank==0:
+      # calculate L_2 norms :
+      abs_error_n  = norm(beta_prev.vector() - self.beta.vector(), 'l2')
+      beta_nrm     = norm(self.beta.vector(), 'l2')
+
+      # save convergence history :
+      if counter == 1:
+        rel_error  = abs_error_n
+        if self.MPI_rank == 0:
+          err_a = np.array([abs_error_n])
+          nrm_a = np.array([beta_nrm])
+          np.savetxt(d_hist + 'abs_err.txt',   err_a)
+          np.savetxt(d_hist + 'beta_norm.txt', nrm_a)
+      else:
+        rel_error = abs(abs_error - abs_error_n)
+        if self.MPI_rank == 0:
+          err_n = np.loadtxt(d_hist + 'abs_err.txt')
+          nrm_n = np.loadtxt(d_hist + 'beta_norm.txt')
+          err_a = np.append(err_n, np.array([abs_error_n]))
+          nrm_a = np.append(nrm_n, np.array([beta_nrm]))
+          np.savetxt(d_hist + 'abs_err.txt',    err_a)
+          np.savetxt(d_hist + 'beta_norm.txt',  nrm_a)
+
+      # print info to screen :
+      if self.MPI_rank == 0:
         s0    = '>>> '
-        s1    = 'U_ob assimilation iteration %i (max %i) done'
-        s2    = ' <<<'
-        text0 = get_text(s0,                         'red', 1)
-        text1 = get_text(s1 % (counter, iterations), 'red')
-        text2 = get_text(s2,                         'red', 1)
-        print text0 + text1 + text2
-       
+        s1    = 'U_ob assimilation iteration %i (max %i) done: ' \
+                % (counter, max_iter)
+        s2    = 'r (abs) = %.2e ' % abs_error
+        s3    = '(tol %.2e), '    % atol
+        s4    = 'r (rel) = %.2e ' % rel_error
+        s5    = '(tol %.2e)'      % rtol
+        s6    = ' <<<'
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1, 'red')
+        text2 = get_text(s2, 'red', 1)
+        text3 = get_text(s3, 'red')
+        text4 = get_text(s4, 'red', 1)
+        text5 = get_text(s5, 'red')
+        text6 = get_text(s6, 'red', 1)
+        print text0 + text1 + text2 + text3 + text4 + text5 + text6
+      
       # save state to unique hdf5 file :
       if isinstance(post_iter_save_vars, list):
         s    = '::: saving variables in list arg post_iter_save_vars :::'
@@ -2259,17 +2314,49 @@ class Model(object):
           self.save_hdf5(var, f=foutput)
         foutput.close()
       
-      # increment the counter and move on :
-      counter += 1
+      # update error stuff and increment iteration counter :
+      abs_error    = abs_error_n
+      beta_prev    = self.beta.copy(True)
+      counter     += 1
 
     # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
+    tf = time()
+    s  = tf - t0
+    m  = s / 60.0
+    h  = m / 60.0
+    s  = s % 60
+    m  = m % 60
     text = "time to compute TMC optimized ||u - u_ob||: %02d:%02d:%02d"
     print_text(text % (h,m,s) , 'red', 1)
+       
+    # plot the convergence history : 
+    s    = "::: convergence info saved to \'%s\' :::"
+    print_text(s % d_hist, cls=self.this)
+    if self.MPI_rank == 0:
+      np.savetxt(d_hist + 'time.txt', np.array([tf - t0]))
+
+      err_a = np.loadtxt(d_hist + 'abs_err.txt')
+      nrm_a = np.loadtxt(d_hist + 'beta_norm.txt')
+     
+      # plot iteration error : 
+      fig   = plt.figure()
+      ax    = fig.add_subplot(111)
+      ax.set_ylabel(r'$\Vert \beta_{n-1} - \beta_n \Vert$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(err_a, 'k-', lw=2.0)
+      plt.grid()
+      plt.savefig(d_hist + 'abs_err.png', dpi=100)
+      plt.close(fig)
+      
+      # plot theta norm :
+      fig = plt.figure()
+      ax  = fig.add_subplot(111)
+      ax.set_ylabel(r'$\Vert \beta_n \Vert$')
+      ax.set_xlabel(r'iteration')
+      ax.plot(nrm_a, 'k-', lw=2.0)
+      plt.grid()
+      plt.savefig(d_hist + 'beta_norm.png', dpi=100)
+      plt.close(fig)
 
   def L_curve(self, alphas, physics, control, int_domain, adj_ftn, adj_kwargs,
               reg_kind='Tikhonov', pre_callback=None, post_callback=None,

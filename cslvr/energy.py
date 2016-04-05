@@ -201,9 +201,7 @@ class Energy(Physics):
     theta    = self.theta
     thetam   = model.theta
     dGnd     = model.dBed_g
-    theta_m  = model.theta_melt
-    L        = model.L
-    theta_c  = theta_m + 0.03*L
+    theta_c  = model.theta_melt + model.Wc*model.L
    
     if kind == 'TV': 
       self.J   = sqrt((theta  - theta_c)**2 + 1e-15) * dGnd
@@ -232,17 +230,16 @@ class Energy(Physics):
     print_text(s, cls=self)
 
     model   = self.model
-    theta   = model.theta
-    theta_m = model.theta_melt
-    L       = model.L(0)
 
     # set up functions for surface (s) and current objective (o) :
     theta_s = Function(model.Q)
     theta_o = Function(model.Q)
 
     # calculate L_inf norm :
-    theta_v   = theta.vector().array()
-    theta_c_v = theta_m.vector().array() + 0.03 * L
+    theta_v   = model.theta.vector().array()
+    theta_m_v = model.theta_melt.vector().array()
+    Wc_v      = model.Wc.vector().array()
+    theta_c_v = theta_m_v + Wc_v * model.L(0)
     theta_o.vector().set_local(np.abs(theta_v - theta_c_v))
     theta_o.vector().apply('insert')
  
@@ -326,6 +323,9 @@ class Energy(Physics):
     print_text(s % max_iter, cls=self)
 
     model = self.model
+
+    # reset entire dolfin-adjoint state :
+    adj_reset()
 
     # starting time :
     t0   = time()
@@ -438,12 +438,10 @@ class Energy(Physics):
     # let's see it :
     print_min_max(Fb_opt, 'Fb_opt')
 
-    # make the optimal control variable available :
-    model.init_Fb(Fb_opt, cls=self)
-    #Control(model.Fb).update(Fb_opt)  # FIXME: does this work?
-
-    # reset entire dolfin-adjoint state :
-    adj_reset()
+    # extrude the flux up and make the optimal control variable available :
+    Fb_ext = model.vert_extrude(Fb_opt, d='up')
+    model.init_Fb(Fb_ext, cls=self)
+    #Control(model.Fb).update(Fb_ext)  # FIXME: does this work?
 
     # calculate total time to compute
     tf = time()
@@ -474,7 +472,7 @@ class Energy(Physics):
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Js), 'r-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'J.png', dpi=200)
+      plt.savefig(d + 'J.png', dpi=100)
       plt.close(fig)
 
       try:
@@ -486,7 +484,7 @@ class Energy(Physics):
         ax.set_xlabel(r'iteration')
         ax.plot(np.array(Rs), 'r-', lw=2.0)
         plt.grid()
-        plt.savefig(d + 'R.png', dpi=200)
+        plt.savefig(d + 'R.png', dpi=100)
         plt.close(fig)
       except AttributeError:
         pass
@@ -498,7 +496,7 @@ class Energy(Physics):
       ax.set_xlabel(r'iteration')
       ax.plot(np.array(Ds), 'r-', lw=2.0)
       plt.grid()
-      plt.savefig(d + 'D.png', dpi=200)
+      plt.savefig(d + 'D.png', dpi=100)
       plt.close(fig)
 
   def calc_bulk_density(self):
@@ -1251,8 +1249,8 @@ class Enthalpy(Energy):
     rel_error = np.inf
 
     # tolerances for stopping criteria :
-    atol = 1e-1
-    rtol = 1e-4
+    atol = 1e-6
+    rtol = 1e-8
 
     # perform a fixed-point iteration until the L_2 norm of error 
     # is less than tolerance :
@@ -1275,19 +1273,20 @@ class Enthalpy(Energy):
       # print info to screen :
       if model.MPI_rank == 0:
         s0    = '>>> '
-        s1    = 'fixed-point iteration %i (max %i) done: ' % (counter, max_iter)
+        s1    = 'thermal parameter update iteration %i (max %i) done: ' \
+                % (counter, max_iter)
         s2    = 'r (abs) = %.2e ' % abs_error
         s3    = '(tol %.2e), '    % atol
         s4    = 'r (rel) = %.2e ' % rel_error
         s5    = '(tol %.2e)'      % rtol
         s6    = ' <<<'
-        text0 = get_text(s0, self.color(), 1)
-        text1 = get_text(s1, self.color())
-        text2 = get_text(s2, self.color(), 1)
-        text3 = get_text(s3, self.color())
-        text4 = get_text(s4, self.color(), 1)
-        text5 = get_text(s5, self.color())
-        text6 = get_text(s6, self.color(), 1)
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1, 'red')
+        text2 = get_text(s2, 'red', 1)
+        text3 = get_text(s3, 'red')
+        text4 = get_text(s4, 'red', 1)
+        text5 = get_text(s5, 'red')
+        text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
       
       # update error stuff and increment iteration counter :

@@ -27,8 +27,8 @@ class Energy(Physics):
     instance = Physics.__new__(self, model)
     return instance
   
-  def __init__(self, model, solve_params=None, transient=False,
-               use_lat_bc=False, epsdot_ftn=None, energy_flux_mode='Fb'):
+  def __init__(self, model, momentum, solve_params=None, transient=False,
+               use_lat_bc=False, energy_flux_mode='Fb'):
     """
     """
     # save the starting values, as other algorithms might change the 
@@ -47,21 +47,20 @@ class Energy(Physics):
       print_text(s % type(solve_params) , 'red', 1)
       sys.exit(1)
     
+    self.momentum_s          = momentum
     self.solve_params_s      = deepcopy(solve_params)
     self.transient_s         = transient
     self.use_lat_bc_s        = use_lat_bc
-    self.epsdot_ftn_s        = epsdot_ftn
     self.energy_flux_mode_s  = energy_flux_mode
 
     self.T_ini     = self.model.T.copy(True)
     self.W_ini     = self.model.W.copy(True)
     
-    self.initialize(model, solve_params, transient,
-                    use_lat_bc, epsdot_ftn, energy_flux_mode)
+    self.initialize(model, momentum, solve_params, transient,
+                    use_lat_bc, energy_flux_mode)
   
-  def initialize(self, model, solve_params=None, transient=False,
-                 use_lat_bc=False, epsdot_ftn=None, 
-                 energy_flux_mode='Fb', reset=False):
+  def initialize(self, model, momentum, solve_params=None, transient=False,
+                 use_lat_bc=False, energy_flux_mode='Fb', reset=False):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.  Note that any Energy object *must*
@@ -79,10 +78,10 @@ class Energy(Physics):
     self.model.init_time_step(time_step, cls=self)
     
     self.initialize(model            = self.model,
+                    momentum         = self.momentum_s,
                     solve_params     = self.solve_params_s,
                     transient        = True,
                     use_lat_bc       = self.use_lat_bc_s,
-                    epsdot_ftn       = self.epsdot_ftn_s,
                     energy_flux_mode = self.energy_flux_mode_s,
                     reset            = True)
   
@@ -94,10 +93,10 @@ class Energy(Physics):
     print_text(s, self.color())
     
     self.initialize(model            = self.model,
+                    momentum         = self.momentum_s,
                     solve_params     = self.solve_params_s,
                     transient        = False,
                     use_lat_bc       = self.use_lat_bc_s,
-                    epsdot_ftn       = self.epsdot_ftn_s,
                     energy_flux_mode = self.energy_flux_mode_s,
                     reset            = True)
   
@@ -110,10 +109,10 @@ class Energy(Physics):
     print_text(s, self.color())
     
     self.initialize(model            = self.model,
+                    momentum         = self.momentum_s,
                     solve_params     = self.solve_params_s,
                     transient        = self.transient_s,
                     use_lat_bc       = self.use_lat_bc_s,
-                    epsdot_ftn       = self.epsdot_ftn_s,
                     energy_flux_mode = mode,
                     reset            = True)
   
@@ -128,10 +127,10 @@ class Energy(Physics):
     self.model.init_W(self.W_ini)
     
     self.initialize(model            = self.model,
+                    momentum         = self.momentum_s,
                     solve_params     = self.solve_params_s,
                     transient        = self.transient_s,
                     use_lat_bc       = self.use_lat_bc_s,
-                    epsdot_ftn       = self.epsdot_ftn_s,
                     zero_energy_flux = self.zero_energy_flux_s,
                     reset            = True)
 
@@ -367,12 +366,12 @@ class Energy(Physics):
       print_text(s, cls=self)
       print_min_max(dI,    'dI/Fb', cls=self)
       
-      # update the DA current velocity to the model for evaluation 
-      # purposes only; the model.assign_variable function is 
-      # annotated for purposes of linking physics models to the adjoint
-      # process :
-      theta_opt = DolfinAdjointVariable(model.theta).tape_value()
-      model.init_theta(theta_opt, cls=self)
+      ## update the DA current velocity to the model for evaluation 
+      ## purposes only; the model.assign_variable function is 
+      ## annotated for purposes of linking physics models to the adjoint
+      ## process :
+      #theta_opt = DolfinAdjointVariable(model.theta).tape_value()
+      #model.init_theta(theta_opt, cls=self)
 
       # print functional values :
       model.Fb.assign(Fb, annotate=False)
@@ -510,7 +509,7 @@ class Energy(Physics):
     rho_b       = project(self.rho, annotate=False)
     model.assign_variable(model.rhob, rho_b, cls=self)
 
-  def solve(self, annotate=True, params=None):
+  def solve(self, annotate=False, params=None):
     """ 
     Perform the Newton solve of the energy equation.
     """
@@ -520,9 +519,8 @@ class Energy(Physics):
 class Enthalpy(Energy):
   """
   """ 
-  def initialize(self, model, solve_params=None, transient=False,
-                 use_lat_bc=False, epsdot_ftn=None,
-                 energy_flux_mode='Fb', reset=False):
+  def initialize(self, model, momentum, solve_params=None, transient=False,
+                 use_lat_bc=False, energy_flux_mode='Fb', reset=False):
     """ 
     Set up energy equation residual. 
     """
@@ -542,55 +540,25 @@ class Enthalpy(Energy):
     # save the state of basal boundary flux :
     self.energy_flux_mode = energy_flux_mode
     
-    # set the function that returns the strain-rate tensor, default is full :
-    if epsdot_ftn == None:
-      self.strain_rate_tensor = self.default_strain_rate_tensor
-    else:
-      self.strain_rate_tensor = epsdot_ftn
-
     r             = model.r
     mesh          = model.mesh
-    V             = model.Q3
     Q             = model.Q
-    n             = model.n
-    eps_reg       = model.eps_reg
     T             = model.T
-    Tp            = model.Tp
     W             = model.W
     T_m           = model.T_melt
-    Mb            = model.Mb
     L             = model.L
-    T_w           = model.T_w
-    gamma         = model.gamma
-    S             = model.S
-    B             = model.B
-    H             = S - B
-    x             = model.x
-    R             = model.R
-    p             = model.p
-    gamma         = model.gamma
-    eps_reg       = model.eps_reg
-    g             = model.g
     alpha         = model.alpha
-    beta          = model.beta
     Fb            = model.Fb
     rhoi          = model.rhoi
     rhow          = model.rhow
     k_0           = model.k_0
     kw            = model.kw
     cw            = model.cw
-    L             = model.L
     T_surface     = model.T_surface
     theta_surface = model.theta_surface
     theta_float   = model.theta_float
     theta_app     = model.theta_app
-    theta_m       = model.theta_melt
     q_geo         = model.q_geo
-    thetahat      = model.thetahat
-    uhat          = model.uhat
-    vhat          = model.vhat
-    what          = model.what
-    mhat          = model.mhat
     spy           = model.spy
     h             = model.h
     ds            = model.ds
@@ -602,12 +570,6 @@ class Enthalpy(Energy):
     dx            = model.dx
     dx_f          = model.dx_f
     dx_g          = model.dx_g
-    E_shf         = model.E_shf
-    E_gnd         = model.E_gnd
-    N             = model.N
-    
-    # get velocity :
-    U             = model.U3
     
     # define test and trial functions : 
     psi    = TestFunction(Q)
@@ -615,38 +577,12 @@ class Enthalpy(Energy):
     theta  = Function(Q, name='energy.theta')
     theta0 = Function(Q, name='energy.theta0')
       
-    # strain-rate :
-    epsdot  = self.effective_strain_rate(U) + eps_reg
+    # momentum-dependent properties :
+    U                = momentum.velocity()
+    epsdot           = momentum.effective_strain_rate(U) + model.eps_reg
+    eta_shf, eta_gnd = momentum.viscosity(U)
 
-    # thermal properties :
-    T_c     = 263.15
-    #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
-    #theta_w = 0.01*L + theta_m
-    #W_w     = (theta - theta_m)/L
-    #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
-      
-    # discontinuous properties :
-    #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
-    #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-    #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
-    #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
-    #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
-    a_T     = conditional( lt(Tp, T_c),  model.a_T_l, model.a_T_u)
-    Q_T     = conditional( lt(Tp, T_c),  model.Q_T_l, model.Q_T_u)
-    W_T     = conditional( lt(W, 0.01),  W,           0.01)
-
-    # viscosity and strain-heating :
-    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
-    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
-    #Q_s_gnd = 4 * eta_gnd * epsdot
-    #Q_s_shf = 4 * eta_shf * epsdot
-    #Tp      = T + gamma*p
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
-    eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    # internal friction (strain heat) :
     Q_s_gnd = 4 * eta_gnd * epsdot
     Q_s_shf = 4 * eta_shf * epsdot
 
@@ -835,31 +771,6 @@ class Enthalpy(Energy):
       self.calc_basal_temperature_flux()
       self.calc_basal_temperature_melting_flux()
 
-  def default_strain_rate_tensor(self, U):
-    """
-    return the default unsimplified-strain-rate tensor for velocity <U>.
-    """
-    u,v,w  = U
-    epi    = 0.5 * (grad(U) + grad(U).T)
-    return epi
-  
-  def effective_strain_rate(self, U):
-    """
-    return the effective strain rate squared.
-    """
-    epi    = self.strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                    + ep_xy**2 + ep_xz**2 + ep_yz**2
-    return epsdot
-
   def calc_PE(self, avg=False):
     """
     calculates the grid P\'{e}clet number to self.model.PE.
@@ -930,7 +841,7 @@ class Enthalpy(Energy):
     Q_int = model.vert_integrate(Q, d='down')
     model.init_Q_int(Q_int, cls=self)
 
-  def calc_T_melt(self, annotate=True):
+  def calc_T_melt(self, annotate=False):
     """
     Calculates temperature melting point model.T_melt and energy melting point
     model.theta_melt.
@@ -998,29 +909,6 @@ class Enthalpy(Energy):
     alpha_v[:]       = 0
     alpha_v[W_v > 0] = 1
     model.init_alpha(alpha_v, cls=self)
-
-  def calc_q_fric(self):
-    """
-    Solve for the friction heat term stored in model.q_fric.
-    """ 
-    # calculate melt-rate : 
-    s = "::: solving basal friction heat :::"
-    print_text(s, cls=self)
-    
-    model    = self.model
-    dBed_g   = model.dBed_g
-    N        = model.N
-    u,v,w    = model.U3.split(True)
-
-    beta_v   = model.beta.vector().array()
-    u_v      = u.vector().array()
-    v_v      = v.vector().array()
-    w_v      = w.vector().array()
-    Fb_v     = model.Fb.vector().array()
-
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v - Fb_v)**2)
-    
-    model.init_q_fric(q_fric_v, cls=self)
 
   def calc_basal_temperature_flux(self):
     """
@@ -1161,10 +1049,10 @@ class Enthalpy(Energy):
     #      annotate=annotate, solver_parameters=nparams)
     
     # update the model variable :
-    model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+    model.assign_variable(model.theta,self.theta,annotate=False,cls=self)
 
     # update the temperature and water content for other physics :
-    self.partition_energy(annotate=annotate)
+    self.partition_energy(annotate=False)
     
     # update the previous energy if solving the transient equation :
     if self.transient:
@@ -1681,7 +1569,7 @@ class EnergyHybrid(Energy):
                  'ffc_params'  : self.default_ffc_options()}
     return m_params
 
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """
     Solves for hybrid energy.
     """
@@ -1711,7 +1599,7 @@ class EnergyHybrid(Energy):
     model.assign_variable(model.Ts, out_T[0],  cls=self)
     model.assign_variable(model.Tb, out_T[-1], cls=self) 
 
-  def calc_T_melt(self, annotate=True):
+  def calc_T_melt(self, annotate=False):
     """
     Calculates pressure-melting point in model.T_melt.
     """
@@ -1857,7 +1745,7 @@ class EnergyFirn(Energy):
     m_params  = {'solver' : params}
     return m_params
 
-  def solve(self, annotate=True):
+  def solve(self, annotate=False):
     """
     """
     s    = "::: solving FirnEnergy :::"

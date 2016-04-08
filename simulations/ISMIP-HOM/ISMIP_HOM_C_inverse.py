@@ -14,8 +14,7 @@ p1    = Point(0.0, 0.0, 0.0)
 p2    = Point(L,   L,   1)
 mesh  = BoxMesh(p1, p2, 15, 15, 4)
 
-model = D3Model(mesh, out_dir = out_dir + 'true/')
-model.generate_function_spaces(use_periodic = True)
+model = D3Model(mesh, out_dir = out_dir + 'true/', use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                      element=model.Q.ufl_element())
@@ -29,13 +28,13 @@ model.deform_mesh_to_geometry(surface, bed)
 
 model.init_mask(0.0)                           # all grounded ice
 model.init_beta(beta)                          # friction
-model.init_b(model.A0(0)**(-1/model.n(0)))     # constant rate factor
 model.init_E(1.0)                              # no enhancement factor
+model.init_A(1e-16)
 
-#mom = MomentumBP(model, isothermal=True)
-mom = MomentumDukowiczBP(model, isothermal=True)
-#mom = MomentumDukowiczStokesReduced(model, isothermal=True)
-#mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=True)
+#mom = MomentumBP(model)
+mom = MomentumDukowiczBP(model)
+#mom = MomentumDukowiczStokesReduced(model)
+#mom = MomentumDukowiczBrinkerhoffStokes(model)
 mom.solve(annotate=False)
 
 u,v,w = model.U3.split(True)
@@ -51,10 +50,7 @@ v_error = U_e * random.randn(n)
 u_ob    = u_o + u_error
 v_ob    = v_o + v_error
 
-model.assign_variable(u, u_ob)
-model.assign_variable(v, v_ob)
-
-model.init_U_ob(u, v)
+model.init_U_ob(u_ob, v_ob)
 
 model.save_xdmf(model.U3,   'U_true')
 model.save_xdmf(model.U_ob, 'U_ob')

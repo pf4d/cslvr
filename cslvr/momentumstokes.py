@@ -11,7 +11,7 @@ import sys
 class MomentumStokes(Momentum):
   """  
   """
-  def initialize(self, model, solve_params=None, isothermal=True,
+  def initialize(self, model, solve_params=None,
                  linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     """
@@ -53,6 +53,8 @@ class MomentumStokes(Momentum):
     rhosw     = model.rhosw
     g         = model.g
     beta      = model.beta
+    A_shf     = model.A_shf
+    A_gnd     = model.A_gnd
     h         = model.h
     N         = model.N
     D         = model.D
@@ -80,10 +82,13 @@ class MomentumStokes(Momentum):
     phi, psi, chi = Phi
    
     # 1) Viscous dissipation
-    self.form_rate_factor(isothermal)
-    self.form_viscosity(U, linear)
-    eta_shf = self.eta_shf
-    eta_gnd = self.eta_gnd
+    epsdot  = self.effective_strain_rate(U2)
+    if linear:
+      s  = "    - using linear form of momentum using model.U3 in epsdot -"
+      eta_shf, eta_gnd = self.viscosity(model.U3.copy(True))
+    else:
+      s  = "    - using nonlinear form of momentum -"
+      eta_shf, eta_gnd = self.viscosity(U)
     
     # gravity vector :
     gv        = as_vector([0, 0, -g])
@@ -164,9 +169,15 @@ class MomentumStokes(Momentum):
 
   def get_U(self):
     """
-    Return the velocity Function.
+    Return the unknown Function.
     """
     return self.U
+
+  def velocity(self):
+    """
+    return the velocity.
+    """
+    return model.U3
 
   def get_solve_params(self):
     """
@@ -219,7 +230,7 @@ class MomentumStokes(Momentum):
                 'linear_solver'            : 'tfqmr',
                 'preconditioner'           : 'petsc_amg',
                 'relative_tolerance'       : 1e-5,
-                'relaxation_parameter'     : 1.0,
+                'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
                 'krylov_solver'            :
@@ -275,7 +286,7 @@ class MomentumStokes(Momentum):
 class MomentumDukowiczStokesReduced(Momentum):
   """  
   """
-  def initialize(self, model, solve_params=None, isothermal=True,
+  def initialize(self, model, solve_params=None,
                  linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
@@ -323,6 +334,10 @@ class MomentumDukowiczStokesReduced(Momentum):
     rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
+    A_shf      = model.A_shf
+    A_gnd      = model.A_gnd
+    n          = model.n
+    eps_reg    = model.eps_reg
     h          = model.h
     N          = model.N
     D          = model.D
@@ -346,23 +361,39 @@ class MomentumDukowiczStokesReduced(Momentum):
     phi, psi = Phi
     du,  dv  = dU
     u,   v   = U
+    
+    # vertical velocity :
+    dw     = TrialFunction(model.Q)
+    chi    = TestFunction(model.Q)
+    w      = Function(model.Q, name='w_f')
 
-    #w = Fb + u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
-    w = Fb - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
+    ##w = Fb + u*B.dx(0) + v*B.dx(1) - (u.dx(0) + v.dx(1))*(z - B)
+    #w = Fb - u.dx(0)*(z - B) + u*B.dx(0) - v.dx(1)*(z - B) + v*B.dx(1)
+      
+    self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx \
+               + (u*N[0] + v*N[1] + (dw + Fb)*N[2])*chi*dBed
     
     # 1) Viscous dissipation
-    self.form_rate_factor(isothermal)
-    self.form_viscosity(as_vector([u,v,w]), linear)
-    Vd_shf = self.Vd_shf
-    Vd_gnd = self.Vd_gnd
-    eta_shf = self.eta_shf
-    eta_gnd = self.eta_gnd
-      
+    U3      = as_vector([u,v,model.w])
+    epsdot  = self.effective_strain_rate(U3)
+    if linear:
+      s  = "    - using linear form of momentum using model.U3 in epsdot -"
+      eta_shf, eta_gnd = self.viscosity(model.U3.copy(True))
+      Vd_shf   = 2 * eta_shf * epsdot
+      Vd_gnd   = 2 * eta_gnd * epsdot
+    else:
+      s  = "    - using nonlinear form of momentum -"
+      eta_shf, eta_gnd = self.viscosity(U3)
+      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+    print_text(s, self.color())
+
     # 2) Potential energy
     Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
 
     # 3) Dissipation by sliding
-    Sl_gnd = - 0.5 * beta * (u**2 + v**2)
+    w_b    = - Fb - (u*N[0] + u*N[1]) / N[2]
+    Sl_gnd = - 0.5 * beta * (u**2 + v**2 + w_b**2)
 
     # 4) pressure boundary
     Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
@@ -371,12 +402,23 @@ class MomentumDukowiczStokesReduced(Momentum):
     A      = + Vd_shf*dx_f + Vd_gnd*dx_g - Pe*dx \
              - Sl_gnd*dBed_g - Pb*dBed_f
     
-    if (not model.use_periodic_boundaries 
-        and not use_lat_bcs and use_pressure_bc):
-      s = "    - using calving-front-pressure-boundary condition -"
+    if (not model.use_periodic_boundaries and use_pressure_bc):
+      s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
-      A -= Pb*dLat_t
-
+      A -= Pb_w*dLat_t
+    
+    # add lateral boundary conditions :
+    # FIXME: need correct BP treatment here
+    if use_lat_bcs:
+      s = "    - using internal divide lateral stress natural boundary" + \
+          " conditions -"
+      print_text(s, self.color())
+      U3_c                 = model.U3.copy(True)
+      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
+      sig_g_l    = self.stress_tensor(U3_c, model.p, eta_gnd_l)
+      #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
+      A -= dot(dot(sig_g_l, N), U3) * dLat_d
+    
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
     self.mom_F = derivative(A, U, Phi)
@@ -386,16 +428,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     self.mom_Jac = derivative(self.mom_F, U, dU)
     
     self.mom_bcs = []
-      
-    # add lateral boundary conditions :  
-    if use_lat_bcs:
-      s = "    - using divide-lateral boundary conditions -"
-      print_text(s, self.color())
-      self.mom_bcs.append(DirichletBC(model.Q2.sub(0),
-                          model.u_lat, model.ff, model.GAMMA_L_DVD))
-      self.mom_bcs.append(DirichletBC(model.Q2.sub(1),
-                          model.v_lat, model.ff, model.GAMMA_L_DVD))
-    
     self.A       = A
     self.U       = U 
     self.w       = w
@@ -411,9 +443,15 @@ class MomentumDukowiczStokesReduced(Momentum):
 
   def get_U(self):
     """
-    Return the velocity Function.
+    Return the unknown Function.
     """
     return self.U
+
+  def velocity(self):
+    """
+    return the velocity.
+    """
+    return model.U3
 
   def get_solve_params(self):
     """
@@ -506,7 +544,7 @@ class MomentumDukowiczStokesReduced(Momentum):
                 'linear_solver'            : 'cg',
                 'preconditioner'           : 'hypre_amg',
                 'relative_tolerance'       : 1e-5,
-                'relaxation_parameter'     : 1.0,
+                'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
                 'krylov_solver'            :
@@ -520,10 +558,11 @@ class MomentumDukowiczStokesReduced(Momentum):
               }}
     m_params  = {'solver'               : nparams,
                  'solve_vert_velocity'  : True,
-                 'solve_pressure'       : True}
+                 'solve_pressure'       : True,
+                 'vert_solve_method'    : 'mumps'}
     return m_params
   
-  #def solve_pressure(self, annotate=True):
+  #def solve_pressure(self, annotate=False):
   #  """
   #  Solve for pressure model.p.
   #  """
@@ -582,13 +621,24 @@ class MomentumDukowiczStokesReduced(Momentum):
     """ 
     Solve for vertical velocity w.
     """
-    model  = self.model
-    
     s    = "::: solving Dukowicz reduced vertical velocity :::"
     print_text(s, self.color())
-    w = project(self.w, model.Q, annotate=annotate)
-
-    self.assz.assign(model.w, w, annotate=False)
+    
+    model    = self.model
+    aw       = assemble(lhs(self.w_F))
+    Lw       = assemble(rhs(self.w_F))
+    #if self.bc_w != None:
+    #  self.bc_w.apply(aw, Lw)
+    w_solver = LUSolver(self.solve_params['vert_solve_method'])
+    w_solver.solve(aw, self.w.vector(), Lw, annotate=annotate)
+    #solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
+    #      solver_parameters = {"linear_solver" : sm})#,
+    #                           "symmetric" : True},
+    #                           annotate=False)
+    
+    self.assz.assign(model.w, self.w, annotate=annotate)
+    #w = project(self.w, model.Q, annotate=annotate)
+    print_min_max(self.w, 'w', cls=self)
 
   def solve(self, annotate=False):
     """ 
@@ -598,16 +648,27 @@ class MomentumDukowiczStokesReduced(Momentum):
     params = self.solve_params
     
     # solve nonlinear system :
-    rtol   = params['solver']['newton_solver']['relative_tolerance']
-    maxit  = params['solver']['newton_solver']['maximum_iterations']
-    alpha  = params['solver']['newton_solver']['relaxation_parameter']
+    rtol     = params['solver']['newton_solver']['relative_tolerance']
+    maxit    = params['solver']['newton_solver']['maximum_iterations']
+    alpha    = params['solver']['newton_solver']['relaxation_parameter']
+    lin_slv  = params['solver']['newton_solver']['linear_solver']
+    precon   = params['solver']['newton_solver']['preconditioner']
+    err_conv = params['solver']['newton_solver']['error_on_nonconvergence']
     s    = "::: solving Dukowicz full-Stokes reduced equations with %i max" + \
              " iterations and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
+
+    def cb_ftn():
+      self.solve_vert_velocity(annotate)
     
     # compute solution :
-    solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
-          annotate = annotate, solver_parameters = params['solver'])
+    #solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
+    #      annotate = annotate, solver_parameters = params['solver'])
+    model.home_rolled_newton_method(self.mom_F, self.U, self.mom_Jac, 
+                                    self.mom_bcs, atol=1e-6, rtol=rtol,
+                                    relaxation_param=alpha, max_iter=maxit,
+                                    method=lin_slv, preconditioner=precon,
+                                    cb_ftn=cb_ftn)
     u, v = self.U.split()
   
     self.assx.assign(model.u, u, annotate=False)
@@ -629,7 +690,7 @@ class MomentumDukowiczStokesReduced(Momentum):
 class MomentumDukowiczBrinkerhoffStokes(Momentum):
   """  
   """
-  def initialize(self, model, solve_params=None, isothermal=True,
+  def initialize(self, model, solve_params=None,
                  linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
@@ -672,6 +733,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
+    A_shf      = model.A_shf
+    A_gnd      = model.A_gnd
+    n          = model.n
+    eps_reg    = model.eps_reg
     h          = model.h
     N          = model.N
     D          = model.D
@@ -702,14 +767,18 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     U3      = as_vector([u,v,w])
     
     # 1) Viscous dissipation
-    self.form_rate_factor(isothermal)
-    self.form_viscosity(U3, linear)
-    Vd_shf  = self.Vd_shf
-    Vd_gnd  = self.Vd_gnd
-    b_shf   = self.b_shf
-    b_gnd   = self.b_gnd
-    eta_shf = self.eta_shf
-    eta_gnd = self.eta_gnd
+    epsdot  = self.effective_strain_rate(U3)
+    if linear:
+      s  = "    - using linear form of momentum using model.U3 in epsdot -"
+      eta_shf, eta_gnd = self.viscosity(model.U3.copy(True))
+      Vd_shf   = 2 * eta_shf * epsdot
+      Vd_gnd   = 2 * eta_gnd * epsdot
+    else:
+      s  = "    - using nonlinear form of momentum -"
+      eta_shf, eta_gnd = self.viscosity(U3)
+      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+    print_text(s, self.color())
    
     # 2) potential energy :
     Pe     = - rhoi * g * w
@@ -721,8 +790,8 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     Pc     = p * (u.dx(0) + v.dx(1) + w.dx(2)) 
     
     # 5) impenetrability constraint :
-    sig_f  = self.stress_tensor(U3, p, eta_shf)
-    sig_g  = self.stress_tensor(U3, p, eta_gnd)
+    #sig_f  = self.stress_tensor(U3, p, eta_shf)
+    #sig_g  = self.stress_tensor(U3, p, eta_gnd)
     lam_f  = p#-dot(N, dot(sig_f, N))
     lam_g  = p#-dot(N, dot(sig_g, N))
     Nc_g   = -lam_g * (u*N[0] + v*N[1] + (w+Fb)*N[2])
@@ -731,29 +800,41 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
 
     # 6) pressure boundary :
     Pb_w   = - rhosw*g*D * (u*N[0] + v*N[1] + w*N[2])
-    Pb_l   =   rhoi*g*(S - z) * (u*N[0] + v*N[1] + w*N[2])
+    Pb_l   = - rhoi*g*(S - z) * (u*N[0] + v*N[1] + w*N[2])
 
     # 7) stabilization :
     f       = rhoi * Constant((0.0, 0.0, -g))
-    tau_shf = h**2 / (12 * b_shf * rhoi**2)
-    tau_gnd = h**2 / (12 * b_gnd * rhoi**2)
+    tau_shf = h**2 / (12 * A_shf**(-1/n) * rhoi**2)
+    tau_gnd = h**2 / (12 * A_gnd**(-1/n) * rhoi**2)
     #tau_shf = h**2 / (12 * eta_shf)
     #tau_gnd = h**2 / (12 * eta_gnd)
     Lsq_shf = tau_shf * dot( (grad(p) - f), (grad(p) - f) )
     Lsq_gnd = tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
     
     # Variational principle
-    #A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
-    #         - (Pe + Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb_w*dBed_f
     A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
-             - (Pe + Pc)*dx - (Nc_g*dBed_g + Nc_f*dBed_f) \
-             - Sl_gnd*dBed_g - Pb_w*dBed_f
+             - (Pe + Pc)*dx - (Nc_g + Sl_gnd)*dBed_g - (Nc_f + Pb_w)*dBed_f
     
-    if (not model.use_periodic_boundaries 
-        and not use_lat_bcs and use_pressure_bc):
-      s = "    - using cliff-pressure boundary condition -"
+    if (not model.use_periodic_boundaries and use_pressure_bc):
+      s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
-      A -= Pb_w*dLat_t - Pb_l*dLat_d
+      A -= Pb_w*dLat_t
+    
+    if (not model.use_periodic_boundaries and not use_lat_bcs):
+      s = "    - using internal divide lateral pressure boundary condition -"
+      print_text(s, self.color())
+      A -= Pb_l*dLat_d
+    
+    # add lateral boundary conditions :  
+    if use_lat_bcs:
+      s = "    - using internal divide lateral stress natural boundary" + \
+          " conditions -"
+      print_text(s, self.color())
+      U3_c                 = model.U3.copy(True)
+      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
+      sig_g_l    = self.stress_tensor(U3_c, model.p, eta_gnd_l)
+      #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
+      A -= dot(dot(sig_g_l, N), U3) * dLat_d
 
     # Calculate the first variation (the action) of the variational 
     # principle in the direction of the test function
@@ -764,19 +845,6 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     self.mom_Jac = derivative(self.mom_F, U, dU)
     
     self.mom_bcs = []
-
-    # add lateral boundary conditions :  
-    if use_lat_bcs:
-      s = "    - using divide-lateral boundary conditions -"
-      print_text(s, self.color())
-
-      self.mom_bcs.append(DirichletBC(Q4.sub(0),
-                          model.u_lat, model.ff, model.GAMMA_L_DVD))
-      self.mom_bcs.append(DirichletBC(Q4.sub(1),
-                          model.v_lat, model.ff, model.GAMMA_L_DVD))
-      self.mom_bcs.append(DirichletBC(Q4.sub(2),
-                          model.w_lat, model.ff, model.GAMMA_L_DVD))
-    
     self.A       = A
     self.U       = U 
     self.dU      = dU
@@ -791,9 +859,15 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
 
   def get_U(self):
     """
-    Return the velocity Function.
+    Return the unknown Function.
     """
     return self.U
+
+  def velocity(self):
+    """
+    return the velocity.
+    """
+    return model.U3
 
   def get_solve_params(self):
     """

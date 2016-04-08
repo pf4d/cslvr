@@ -93,16 +93,9 @@ class MomentumHybrid(Momentum):
     def dsdz(s):
       return -1./H
 
-    if isothermal:
-      s = "    - using isothermal rate-factor -"
-      print_text(s, self.color())
-      def A_v(T):
-        return model.b**(-n) 
-    else:
-      s = "    - using temperature-dependent rate-factor -"
-      print_text(s, self.color())
-      def A_v(T):
-        return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
+    def A_v(T):
+      return model.A 
+      #return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
     
     def epsilon_dot(s):
       # linearize the viscosity :
@@ -352,7 +345,7 @@ class MomentumHybrid(Momentum):
               }}
     m_params  = {'solver'           : nparams,
                  'ffc_params'       : self.default_ffc_options(),
-                 'project_boundary' : False}
+                 'project_boundary' : True}
     return m_params
   
   def solve(self, annotate=False):

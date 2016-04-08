@@ -14,9 +14,7 @@ p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)
 mesh  = RectangleMesh(p1, p2, 25, 25)
 
-model = HybridModel(mesh, out_dir = out_dir + 'initial/')
-model.generate_function_spaces(use_periodic = True)
-model.calculate_boundaries()
+model = HybridModel(mesh, out_dir = out_dir + 'initial/', use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
                      element=model.Q.ufl_element())
@@ -29,15 +27,13 @@ model.init_S(surface)
 model.init_B(bed)
 model.init_mask(0.0)                           # all grounded ice
 model.init_beta(beta)                          # friction
-model.init_b(model.A0(0)**(-1/model.n(0)))     # constant rate factor
 model.init_E(1.0)                              # no enhancement factor
+model.init_A(1e-16)
 
-mom = MomentumHybrid(model, isothermal=True)
+mom = MomentumHybrid(model)
 mom.solve(annotate=False)
 
-u     = project(mom.u(0.0), annotate=False)
-v     = project(mom.v(0.0), annotate=False)
-w     = project(mom.w(0.0), annotate=False)
+u,v,w = model.U3_s.split(True)
 u_o   = u.vector().array()
 v_o   = v.vector().array()
 n     = len(u_o)
@@ -50,10 +46,7 @@ v_error = U_e * random.randn(n)
 u_ob    = u_o + u_error
 v_ob    = v_o + v_error
 
-model.assign_variable(u, u_ob, annotate=False)
-model.assign_variable(v, v_ob, annotate=False)
-
-model.init_U_ob(u, v)
+model.init_U_ob(u_ob, v_ob)
 
 model.save_xdmf(model.U3,   'U_true')
 model.save_xdmf(model.U_ob, 'U_ob')

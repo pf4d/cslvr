@@ -18,8 +18,7 @@ class HybridModel(Model):
     s = "::: INITIALIZING HYBRID MODEL :::"
     print_text(s, cls=self)
     
-    Model.__init__(self, mesh, out_dir, save_state, state, 
-                   use_periodic, **gfs_kwargs)
+    Model.__init__(self, mesh, out_dir, use_periodic)
   
   def color(self):
     return '150'

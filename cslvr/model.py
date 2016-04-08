@@ -118,9 +118,6 @@ class Model(object):
     self.spy     = Constant(spy)
     self.spy.rename('spy', 'seconds per year')
 
-    self.A0      = Constant(1e-16)
-    self.A0.rename('A0', 'flow rate factor')
-
     self.rhoi    = Constant(910.0)
     self.rhoi.rename('rhoi', 'ice density')
 
@@ -383,34 +380,34 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.beta, beta, cls=cls)
   
-  def init_b(self, b, cls=None):
+  def init_A(self, A, cls=None):
     """
     """
     if cls is None:
       cls = self.this
     s = "::: initializing rate factor over grounded and shelves :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.b, b, cls=cls)
-    self.init_b_shf(b, cls=cls)
-    self.init_b_gnd(b, cls=cls)
+    self.assign_variable(self.A, A, cls=cls)
+    self.init_A_shf(A, cls=cls)
+    self.init_A_gnd(A, cls=cls)
   
-  def init_b_shf(self, b_shf, cls=None):
+  def init_A_shf(self, A_shf, cls=None):
     """
     """
     if cls is None:
       cls = self.this
     s = "::: initializing rate factor over shelves :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.b_shf, b_shf, cls=cls)
+    self.assign_variable(self.A_shf, A_shf, cls=cls)
   
-  def init_b_gnd(self, b_gnd, cls=None):
+  def init_A_gnd(self, A_gnd, cls=None):
     """
     """
     if cls is None:
       cls = self.this
     s = "::: initializing rate factor over grounded ice :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.b_gnd, b_gnd, cls=cls)
+    self.assign_variable(self.A_gnd, A_gnd, cls=cls)
     
   def init_E(self, E, cls=None):
     """
@@ -1019,7 +1016,7 @@ class Model(object):
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
-    \beta \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    \beta \Vert U_b \Vert = \rho g H \Vert \nabla S \Vert
     
     """
     s = "::: initializing beta from SIA :::"
@@ -1061,7 +1058,7 @@ class Model(object):
     velocity and <gradS> the projected surface gradient. i.e.,
 
     .. math::
-    \beta \Vert U_b \Vert H^r = \rho g H \Vert \nabla S \Vert
+    \beta \Vert U_b \Vert = \rho g H \Vert \nabla S \Vert
     
     """
     s = "::: initializing new sliding beta from SIA :::"
@@ -1468,6 +1465,43 @@ class Model(object):
     b_f = Function(Q)
     solve(lhs(R) == rhs(R), b_f, annotate=False)
     self.assign_variable(b, b_f, cls=self.this)
+
+  def form_energy_dependent_rate_factor(self):
+    """
+    formulates energy-dependent rate factor A.
+    """
+    s = "::: formulating energy-dependent rate-factor :::"
+    print_text(s, cls=self.this)
+    #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
+    #theta_w = 0.01*L + theta_m
+    #W_w     = (theta - theta_m)/L
+    #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
+      
+    # discontinuous properties :
+    #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
+    #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
+    #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
+    #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
+    #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
+
+    # viscosity and strain-heating :
+    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
+    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
+    #Q_s_gnd = 4 * eta_gnd * epsdot
+    #Q_s_shf = 4 * eta_shf * epsdot
+    #Tp      = T + gamma*p
+    Tp          = self.Tp
+    W           = self.W
+    R           = self.R
+    E_shf       = self.E_shf
+    E_gnd       = self.E_gnd
+    a_T         = conditional( lt(Tp, 263.15),  self.a_T_l, self.a_T_u)
+    Q_T         = conditional( lt(Tp, 263.15),  self.Q_T_l, self.Q_T_u)
+    W_T         = conditional( lt(W,  0.01),    W,          0.01)
+    self.A_shf  = E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
+    self.A_gnd  = E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
  
   def calc_eta(self, epsdot_ftn):
     """
@@ -1855,9 +1889,9 @@ class Model(object):
     self.E             = Function(self.Q, name='E')
     self.E_gnd         = Function(self.Q, name='E_gnd')
     self.E_shf         = Function(self.Q, name='E_shf')
-    self.b             = Function(self.Q, name='b')
-    self.b_gnd         = Function(self.Q, name='b_gnd')
-    self.b_shf         = Function(self.Q, name='b_shf')
+    self.A             = Function(self.Q, name='A')
+    self.A_gnd         = Function(self.Q, name='A_gnd')
+    self.A_shf         = Function(self.Q, name='A_shf')
     self.u_lat         = Function(self.Q, name='u_lat')
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
@@ -1928,6 +1962,65 @@ class Model(object):
     self.N_ki          = Function(self.Q, name='N_ki')
     self.N_kj          = Function(self.Q, name='N_kj')
     self.N_kk          = Function(self.Q, name='N_kk')
+
+  def home_rolled_newton_method(self, R, U, J, bcs, atol=1e-7, rtol=1e-10,
+                                relaxation_param=1.0, max_iter=25,
+                                method='cg', preconditioner='amg',
+                                cb_ftn=None):
+    """
+    """
+    converged  = False
+    lmbda      = relaxation_param   # relaxation parameter
+    nIter      = 0                  # number of iterations
+   
+    # need to homogenize the boundary, as the residual is always zero over
+    # essential boundaries :
+    bcs_u = []
+    for bc in bcs:
+      bc = DirichletBC(bc)
+      bc.homogenize()
+      bcs_u.append(bc)
+    
+    # the direction of decent :
+    d = Function(U.function_space()) 
+    
+    while not converged and nIter < max_iter:
+      # assemble system :
+      A, b    = assemble_system(J, -R, bcs_u)
+      
+      # determine step direction :
+      solve(A, d.vector(), b, method, preconditioner, annotate=False)
+    
+      # calculate residual :
+      residual  = b.norm('l2')
+    
+      # set initial residual : 
+      if nIter == 0:
+        residual_0 = residual
+
+      # the relative residual :
+      rel_res = residual/residual_0
+
+      # check for convergence :
+      converged = residual < atol or rel_res < rtol
+      
+      # move U down the gradient :
+      U.vector()[:] += lmbda*d.vector()
+      
+      # increment counter :
+      nIter += 1
+    
+      # print info to screen :
+      if self.MPI_rank == 0:
+        string = "Newton iteration %d: r (abs) = %.3e (tol = %.3e) " \
+                 +"r (rel) = %.3e (tol = %.3e)"
+        print string % (nIter, residual, atol, rel_res, rtol)
+
+      # call the callback function, if desired :
+      if cb_ftn is not None:
+        s    = "::: calling home-rolled Newton method callback :::"
+        print_text(s, cls=self.this)
+        cb_ftn()
 
   def thermo_solve(self, momentum, energy, wop_kwargs,
                    callback=None, atol=1e2, rtol=1e0, max_iter=50,
@@ -2025,15 +2118,11 @@ class Model(object):
       energy.calc_T_melt(annotate=False)
 
       # calculate basal friction heat flux :
-      energy.calc_q_fric()
+      momentum.calc_q_fric()
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
   
-      # fixed-point interation for thermal parameters and discontinuous 
-      # properties :
-      energy.update_thermal_parameters(annotate=False)
-
       # update bounds based on temperate zone :
       Fb_m_v                 = self.Fb_max.vector().array()
       alpha_v                = self.alpha.vector().array()
@@ -2043,9 +2132,13 @@ class Model(object):
 
       # optimize the flux of water to remove abnormally high water :
       energy.optimize_water_flux(**wop_kwargs)
+      
+      # fixed-point interation for thermal parameters and discontinuous 
+      # properties :
+      energy.update_thermal_parameters(annotate=False)
 
-      # calculate T, Tp, and W from theta :
-      energy.partition_energy(annotate=False)
+      ## calculate T, Tp, and W from theta :
+      #energy.partition_energy(annotate=False)
       
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

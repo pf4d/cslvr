@@ -23,7 +23,7 @@ class Momentum(Physics):
     instance = Physics.__new__(self, model)
     return instance
   
-  def __init__(self, model, solve_params=None, isothermal=True,
+  def __init__(self, model, solve_params=None,
                linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """
     """
@@ -47,15 +47,14 @@ class Momentum(Physics):
       sys.exit(1)
     
     self.solve_params_s    = deepcopy(solve_params)
-    self.isothermal_s      = isothermal
     self.linear_s          = linear
     self.use_lat_bcs_s     = use_lat_bcs
     self.use_pressure_bc_s = use_pressure_bc
     
-    self.initialize(model, solve_params, isothermal, linear,
+    self.initialize(model, solve_params, linear,
                     use_lat_bcs, use_pressure_bc)
   
-  def initialize(self, model, solve_params=None, isothermal=True,
+  def initialize(self, model, solve_params=None,
                  linear=False, use_lat_bcs=False, use_pressure_bc=True):
     """ 
     Here we set up the problem, and do all of the differentiation and
@@ -77,7 +76,7 @@ class Momentum(Physics):
     print_text(s, '230')
     
     self.initialize(self.model, solve_params=self.solve_params_s,
-                    isothermal=self.isothermal_s, linear=self.linear_s,
+                    linear=self.linear_s,
                     use_lat_bcs=self.use_lat_bcs_s, 
                     use_pressure_bc=self.use_pressure_bc_s)
 
@@ -110,7 +109,7 @@ class Momentum(Physics):
     print_text(s, '230')
 
     self.initialize(self.model, solve_params=mom_params,
-                    isothermal=self.isothermal_s, linear=True,
+                    linear=True,
                     use_lat_bcs=self.use_lat_bcs_s, 
                     use_pressure_bc=self.use_pressure_bc_s)
   
@@ -164,13 +163,13 @@ class Momentum(Physics):
                  'solve_pressure' : True}
     return m_params
   
-  def solve_pressure(self, annotate=True):
+  def solve_pressure(self, annotate=False):
     """
     Solve for the hydrostatic pressure 'p'.
     """
     self.model.solve_hydrostatic_pressure(annotate)
   
-  def solve(self, annotate=True, params=None):
+  def solve(self, annotate=False, params=None):
     """ 
     Perform the Newton solve of the momentum equations 
     """
@@ -218,65 +217,23 @@ class Momentum(Physics):
       # unify eta to self.eta :
       model.init_eta(eta_shf.vector() + eta_gnd.vector())
 
-  def form_rate_factor(self, isothermal):
-    """
-    formulates the rate factor A.  If <isothermal> == True, form from 
-    model.b_shf and model.b_gnd.  Otherwise, use the temperature-dependent term.
-    """
-    model = self.model
-    if isothermal:
-      s       = "    - using isothermal rate-factor -"
-      b_shf   = model.E_shf * model.b_shf
-      b_gnd   = model.E_gnd * model.b_gnd
-
-    else:
-      s       = "    - using energy-dependent rate-factor -"
-      Tp      = model.Tp
-      W       = model.W
-      R       = model.R
-      n       = model.n
-      E_shf   = model.E_shf
-      E_gnd   = model.E_gnd
-      a_T     = conditional( lt(Tp, 263.15),  model.a_T_l, model.a_T_u)
-      Q_T     = conditional( lt(Tp, 263.15),  model.Q_T_l, model.Q_T_u)
-      W_T     = conditional( lt(W,  0.01),    W,           0.01)
-      b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-      b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    self.b_shf = b_shf
-    self.b_gnd = b_gnd
-    print_text(s, self.color())
-
-  def form_viscosity(self, U, linear):
+  def viscosity(self, U):
     """
     calculates the viscosity saved to self.eta_shf and self.eta_gnd, for
     floating and grounded ice, respectively.  Uses velocity vector <U> with
     components u,v,w.  If <linear> == True, form viscosity from model.U3.
     """
-    model   = self.model
-    n       = model.n
-    b_shf   = self.b_shf
-    b_gnd   = self.b_gnd
-    eps_reg = model.eps_reg
-    epsdot  = self.effective_strain_rate(U)
-    if linear:
-      s  = "    - using linear form of momentum using model.U3 in epsdot -"
-      epsdot_l = self.effective_strain_rate(model.U3.copy(True))
-      eta_shf  = 0.5 * b_shf * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      eta_gnd  = 0.5 * b_gnd * (epsdot_l + eps_reg)**((1-n)/(2*n))
-      Vd_shf   = 2 * eta_shf * epsdot
-      Vd_gnd   = 2 * eta_gnd * epsdot
-    else:
-      s  = "    - using nonlinear form of momentum -"
-      eta_shf  = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-      eta_gnd  = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-      Vd_shf   = (2*n)/(n+1) * b_shf * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (2*n)/(n+1) * b_gnd * (epsdot + eps_reg)**((n+1)/(2*n))
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
-    self.Vd_shf  = Vd_shf
-    self.Vd_gnd  = Vd_gnd
-    self.epsdot  = epsdot
+    s  = "::: forming visosity :::"
     print_text(s, self.color())
+    model    = self.model
+    n        = model.n
+    A_shf    = model.A_shf
+    A_gnd    = model.A_gnd
+    eps_reg  = model.eps_reg
+    epsdot   = self.effective_strain_rate(U)
+    eta_shf  = 0.5 * A_shf**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta_gnd  = 0.5 * A_gnd**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
+    return (eta_shf, eta_gnd)
     
   def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
     """

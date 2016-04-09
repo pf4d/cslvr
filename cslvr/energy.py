@@ -310,6 +310,7 @@ class Energy(Physics):
     
     # update water content :
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
+    W_v[W_v > 1.0]  = 1.0    # no hot water, please.
     model.assign_variable(model.W0,  model.W,  cls=self)
     model.init_W(W_v, cls=self)
     
@@ -534,15 +535,16 @@ class Enthalpy(Energy):
     #  print_text(s % type(model) , 'red', 1)
     #  sys.exit(1)
    
-    # save the solver parameters :
+    # save the solver parameters and momentum instance :
     self.solve_params = solve_params
+    self.momentum     = momentum
 
     # save the state of basal boundary flux :
     self.energy_flux_mode = energy_flux_mode
     
     r             = model.r
     mesh          = model.mesh
-    Q             = model.Q
+    Q             = model.Qp
     T             = model.T
     W             = model.W
     T_m           = model.T_melt
@@ -632,12 +634,9 @@ class Enthalpy(Energy):
       Unorm  = sqrt(dot(U, U) + DOLFIN_EPS)
       PE     = Unorm*h/(2*Xi)
       tau    = 1/tanh(PE) - 1/PE
-      psihat = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       
-      # cannonical form, same as below :
+      ## cannonical form, same as below :
       #psihat = h*tau/(2*Unorm) * dot(U, grad(psi))
-      #
-      ## residual :
       #delta  = + rho * dot(U, grad(dtheta)) * psihat * dx \
       #         - div(rho * Xi * grad(dtheta)) * psihat * dx \
       #         - Q_s_gnd * psihat * dx_g \
@@ -651,11 +650,12 @@ class Enthalpy(Energy):
       #         - Q_s_gnd * psi * dx_g \
       #         - Q_s_shf * psi * dx_f \
       #         + delta
-
+      #
       #theta_a = lhs(F)
       #theta_L = rhs(F)
 
       # galerkin formulation :
+      psihat  = psi + h*tau/(2*Unorm) * dot(U, grad(psi))
       theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
                 - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
                 + kappa/c * dot(grad(psi), grad(dtheta)) * dx \
@@ -831,8 +831,9 @@ class Enthalpy(Energy):
     model   = self.model
     
     # calculate strain rate and viscosity :
-    epsdot  = self.effective_strain_rate(model.U3)
-    model.calc_eta(self.effective_strain_rate)
+    U       = self.momentum.velocity()
+    epsdot  = self.momentum.effective_strain_rate(U)
+    model.calc_eta(epsdot)
    
     # strain heating : 
     Q  = 4 * model.eta * epsdot
@@ -1049,7 +1050,11 @@ class Enthalpy(Energy):
     #      annotate=annotate, solver_parameters=nparams)
     
     # update the model variable :
-    model.assign_variable(model.theta,self.theta,annotate=False,cls=self)
+    #model.assign_variable(model.theta,self.theta,annotate=False,cls=self)
+    #model.assign_variable(model.theta, project(self.theta, model.Q),
+    #                      annotate=False,cls=self)
+    model.theta.interpolate(self.theta, annotate=False)
+    print_min_max(model.theta, 'theta', cls=self)
 
     # update the temperature and water content for other physics :
     self.partition_energy(annotate=False)
@@ -1088,7 +1093,9 @@ class Enthalpy(Energy):
           solver_parameters = self.solve_params['solver'], annotate=annotate)
 
     # calculate water content :
-    theta_v         = self.theta.vector().array()
+    theta_t         = Function(model.Q)
+    theta_t.interpolate(self.theta)
+    theta_v         = theta_t.vector().array()
     theta_melt_v    = model.theta_melt.vector().array()
     W_v             = (theta_v - theta_melt_v) / model.L(0)
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
@@ -1124,13 +1131,13 @@ class Enthalpy(Energy):
       transient = True
 
     # previous theta for norm calculation
-    U_prev  = model.theta.copy(True)
+    U_prev  = self.theta.copy(True)
 
     # iteration counter :
     counter = 1
 
     # maximum number of iterations :
-    max_iter = 100
+    max_iter = 50
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1183,7 +1190,9 @@ class Enthalpy(Energy):
       counter     += 1
       
       # update the model variable :
-      model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+      #model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+      model.theta.interpolate(self.theta, annotate=False)
+      print_min_max(model.theta, 'theta', cls=self)
 
       # update the temperature and water content for other physics :
       self.partition_energy(annotate=annotate)

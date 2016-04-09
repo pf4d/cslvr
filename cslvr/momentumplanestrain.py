@@ -183,7 +183,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     """
     return the velocity.
     """
-    return as_vector([model.U3[0], model.U3[1]])
+    return as_vector([self.model.U3[0], self.model.U3[1]])
 
   def get_solve_params(self):
     """
@@ -276,7 +276,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     """
     nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
                                   'relative_tolerance'       : 1e-5,
-                                  'relaxation_parameter'     : 0.8,
+                                  'relaxation_parameter'     : 0.7,
                                   'maximum_iterations'       : 25,
                                   'error_on_nonconvergence'  : False}}
     m_params  = {'solver'      : nparams}

@@ -5,8 +5,7 @@ import numpy             as np
 import sys
 
 # set the relavent directories :
-#base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
-base_dir = 'dump/jakob_small/tmc_test_new/'
+base_dir = 'dump/jakob_small/inversion_Wc_0.03/initialization/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'

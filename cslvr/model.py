@@ -1503,30 +1503,18 @@ class Model(object):
     self.A_shf  = E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
     self.A_gnd  = E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
  
-  def calc_eta(self, epsdot_ftn):
+  def calc_eta(self, epsdot):
     """
     Calculates viscosity, set to model.eta.
     """
     s     = "::: calculating viscosity :::"
     print_text(s, cls=self.this)
     Q       = self.Q
-    R       = self.R
-    Tp      = self.Tp
-    W       = self.W
-    n       = self.n
     eps_reg = self.eps_reg
-    E_shf   = self.E_shf
-    E_gnd   = self.E_gnd
-    E       = self.E
-
-    # effective strain-rate squared :
-    epsdot  = epsdot_ftn(self.U3)
-
+    A       = self.A
+    n       = self.n
+    
     # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
-    T_c     = 263.15
-    a_T     = conditional( lt(Tp, T_c),  self.a_T_l, self.a_T_u)
-    Q_T     = conditional( lt(Tp, T_c),  self.Q_T_l, self.Q_T_u)
-    W_T     = conditional( lt(W, 0.01),  W,          0.01)
     #a_T     = Function(Q, name='a_T')
     #Q_T     = Function(Q, name='Q_T')
     #T_v     = T.vector().array()
@@ -1540,18 +1528,26 @@ class Model(object):
     #self.assign_variable(Q_T, Q_T_v, cls=self.this)
 
     # unify the enhancement factor over shelves and grounded ice : 
-    E                  = self.E
+    #E                  = self.E
     #E_v                = E.vector().array()
     #E_gnd_v            = E_gnd.vector().array()
     #E_shf_v            = E_shf.vector().array()
     #E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
     #E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
     #self.assign_variable(E, E_v, cls=self.this)
+    
+    Tp          = self.Tp
+    W           = self.W
+    R           = self.R
+    E           = self.E
+    a_T         = conditional( lt(Tp, 263.15),  self.a_T_l, self.a_T_u)
+    Q_T         = conditional( lt(Tp, 263.15),  self.Q_T_l, self.Q_T_u)
+    W_T         = conditional( lt(W,  0.01),    W,          0.01)
+    A           = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
 
     # calculate viscosity :
-    b       = ( E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    eta     = 0.5 * b * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta     = project(eta, Q, annotate=False)
+    eta     = 0.5 * A**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
+    eta     = project(eta, annotate=False)
     self.init_eta(eta)
 
   def calc_vert_average(self, u):
@@ -2122,6 +2118,10 @@ class Model(object):
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
+      
+      # fixed-point interation for thermal parameters and discontinuous 
+      # properties :
+      energy.update_thermal_parameters(annotate=False)
   
       # update bounds based on temperate zone :
       Fb_m_v                 = self.Fb_max.vector().array()
@@ -2133,12 +2133,8 @@ class Model(object):
       # optimize the flux of water to remove abnormally high water :
       energy.optimize_water_flux(**wop_kwargs)
       
-      # fixed-point interation for thermal parameters and discontinuous 
-      # properties :
-      energy.update_thermal_parameters(annotate=False)
-
-      ## calculate T, Tp, and W from theta :
-      #energy.partition_energy(annotate=False)
+      # calculate T, Tp, and W from theta :
+      energy.partition_energy(annotate=False)
       
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

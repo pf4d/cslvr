@@ -9,9 +9,9 @@ var_dir  = 'dump/vars_jakobshavn_small/'
 out_dir  = 'dump/jakob_small/tmc_test/'
 
 # create HDF5 files for saving and loading data :
-fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
-fini    = HDF5File(mpi_comm_world(), var_dir + 'inv_new.h5',   'r')
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5',   'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',       'r')
+fini    = HDF5File(mpi_comm_world(), var_dir + 'inv_Wc_0.01.h5', 'r')
 
 # create 3D model for stokes solves :
 model   = D3Model(fdata, out_dir)
@@ -43,8 +43,9 @@ model.init_U(fini)
 model.init_p(fini)
 model.init_alpha(fini)
 model.init_Fb(fini)
-model.init_k_0(0.1)
+model.init_k_0(1e-3)
 #model.solve_hydrostatic_pressure()
+model.form_energy_dependent_rate_factor()
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + 'tmc/08/tmc.h5', 'r')
 #model.init_alpha(frstrt)
@@ -55,12 +56,11 @@ model.init_k_0(0.1)
 #model.init_p(frstrt)
 
 # initialize the physics :
-#mom = MomentumDukowiczBrinkerhoffStokes(model, isothermal=False)
-#mom = MomentumDukowiczBP(model, isothermal=False)
-nrg = Enthalpy(model, transient=False, use_lat_bc=True)
-#               epsdot_ftn=mom.strain_rate_tensor)
+mom = MomentumDukowiczBrinkerhoffStokes(model)
+#mom = MomentumDukowiczBP(model)
+nrg = Enthalpy(model, mom, transient=False, use_lat_bc=True)
 
-nrg.calc_q_fric()
+mom.calc_q_fric()
 nrg.solve()
 fout    = HDF5File(mpi_comm_world(), out_dir + 'theta.h5',   'w')
 model.save_hdf5(model.theta, f=fout)

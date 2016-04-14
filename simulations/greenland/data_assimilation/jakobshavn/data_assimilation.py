@@ -6,7 +6,7 @@ import sys
 
 # set the relavent directories :
 var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_small/inversion_Wc_0.03/'
+out_dir = 'dump/jakob_small/inversion_Wc_0.01/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -33,10 +33,11 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 d3model.init_W(0.0)
-d3model.init_Wc(0.03)
+d3model.init_Wc(0.01)
 d3model.init_T(d3model.T_surface)
 d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
+d3model.form_energy_dependent_rate_factor()
 
 # NOTE: un-comment this for initializing beta to beta_SIA :
 # create a 2D model for balance-velocity :
@@ -68,21 +69,18 @@ d3model.init_Ubar(Ubar_e)
 # generate initial traction field :
 d3model.init_beta_SIA()
 
-mom    = MomentumDukowiczBP(d3model, linear=False, isothermal=False)
-momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False,
-                                           isothermal=False)
-nrg    = Enthalpy(d3model, transient=False, use_lat_bc=True)
-#                  epsdot_ftn=momTMC.strain_rate_tensor)
+mom    = MomentumDukowiczBP(d3model, linear=False)
+momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False)
+nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True)
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '09/tmc.h5', 'r')
-#d3model.init_T(frstrt)
-#d3model.init_W(frstrt)
-#d3model.init_Fb(frstrt)
-#d3model.init_alpha(frstrt)
-#d3model.init_W_int(frstrt)
-#d3model.init_U(frstrt)
-#d3model.init_p(frstrt)
-#d3model.init_theta(frstrt)
+frstrt = HDF5File(mpi_comm_world(), out_dir + '10/tmc.h5', 'r')
+d3model.init_T(frstrt)
+d3model.init_W(frstrt)
+d3model.init_Fb(frstrt)
+d3model.init_alpha(frstrt)
+d3model.init_U(frstrt)
+d3model.init_p(frstrt)
+d3model.init_theta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
@@ -116,7 +114,9 @@ mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid',
 
 # form the regularization functional :
 mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
-                 kind='TV', alpha=10.0)
+                 kind='TV_Tik_hybrid', alpha_tik=1e-7, alpha_tv=10.0)
+#mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
+#                 kind='TV', alpha=10.0)
 #mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #                  kind='Tikhonov', alpha=1e-6)
 
@@ -127,7 +127,7 @@ nrg.form_cost_ftn(kind='L2')
 #nrg.form_reg_ftn(d3model.alpha, integral=d3model.GAMMA_B_GND,
 #                 kind='TV', alpha=1e7)
 
-wop_kwargs = {'max_iter'            : 200, 
+wop_kwargs = {'max_iter'            : 350, 
               'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
@@ -146,23 +146,23 @@ tmc_kwargs = {'momentum'            : momTMC,
 uop_kwargs = {'control'             : d3model.beta,
               'bounds'              : (1e-5, 1e7),
               'method'              : 'ipopt',
-              'max_iter'            : 250,
+              'max_iter'            : 1000,
               'adj_save_vars'       : None,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
                                     
 ass_kwargs = {'momentum'            : mom,
               'beta_i'              : d3model.beta.copy(True),
-              'max_iter'            : 10,
+              'max_iter'            : 11,
               'tmc_kwargs'          : tmc_kwargs,
               'uop_kwargs'          : uop_kwargs,
               'atol'                : 1.0,
               'rtol'                : 1e-4,
-              'initialize'          : True,
+              'initialize'          : False,
               'incomplete'          : True,
               'post_iter_save_vars' : None,#tmc_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 1}
+              'starting_i'          : 11}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

@@ -201,7 +201,7 @@ class MomentumBP(Momentum):
     """
     return the velocity.
     """
-    return model.U3
+    return self.model.U3
 
   def get_solve_params(self):
     """
@@ -564,7 +564,7 @@ class MomentumDukowiczBP(Momentum):
     """
     return the velocity.
     """
-    return model.U3
+    return self.model.U3
 
   def get_solve_params(self):
     """

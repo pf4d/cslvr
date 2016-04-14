@@ -234,6 +234,27 @@ class Momentum(Physics):
     eta_shf  = 0.5 * A_shf**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
     eta_gnd  = 0.5 * A_gnd**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
     return (eta_shf, eta_gnd)
+
+  def calc_q_fric(self):
+    """
+    Solve for the friction heat term stored in model.q_fric.
+    """ 
+    # calculate melt-rate : 
+    s = "::: solving basal friction heat :::"
+    print_text(s, cls=self)
+    
+    model    = self.model
+    u,v,w    = model.U3.split(True)
+
+    beta_v   = model.beta.vector().array()
+    u_v      = u.vector().array()
+    v_v      = v.vector().array()
+    w_v      = w.vector().array()
+    Fb_v     = model.Fb.vector().array()
+
+    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v+Fb_v)**2)
+    
+    model.init_q_fric(q_fric_v, cls=self)
     
   def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
     """
@@ -394,19 +415,34 @@ class Momentum(Physics):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
+    ftnls = []
+
     R = assemble(self.Rp, annotate=False)
     print_min_max(R, 'R', cls=self)
+    ftnls.append(R)
     
     J = assemble(self.Jp, annotate=False)
     print_min_max(J, 'J', cls=self)
+    ftnls.append(J)
+
     if self.obj_ftn_type == 'log_L2_hybrid':
       J1 = assemble(self.J1, annotate=False)
       print_min_max(J1, 'J1', cls=self)
+      ftnls.append(J1)
       
       J2 = assemble(self.J2, annotate=False)
       print_min_max(J2, 'J2', cls=self)
-      return (R, J, J1, J2)
-    return (R, J)
+      ftnls.append(J2)
+
+    if self.reg_ftn_type == 'TV_Tik_hybrid':
+      R1 = assemble(self.R1p, annotate=False)
+      print_min_max(R1, 'R1', cls=self)
+      ftnls.append(R1)
+      
+      R2 = assemble(self.R2p, annotate=False)
+      print_min_max(R2, 'R2', cls=self)
+      ftnls.append(R2)
+    return ftnls 
     
   def Lagrangian(self):
     """
@@ -532,13 +568,16 @@ class Momentum(Physics):
     counter = 0 
     
     # functional lists to be populated :
-    global Rs, Js, Ds, J1s, J2s
+    global Rs, Js, Ds, J1s, J2s, R1s, R2s
     Rs     = []
     Js     = []
     Ds     = []
     if self.obj_ftn_type == 'log_L2_hybrid':
       J1s  = []
       J2s  = []
+    if self.reg_ftn_type == 'TV_Tik_hybrid':
+      R1s  = []
+      R2s  = []
    
     # solve the momentum equations with annotation enabled :
     s    = '::: solving momentum forward problem :::'
@@ -592,6 +631,9 @@ class Momentum(Physics):
       if self.obj_ftn_type == 'log_L2_hybrid':
         J1s.append(ftnls[2])
         J2s.append(ftnls[3])
+      if self.reg_ftn_type == 'TV_Tik_hybrid':
+        R1s.append(ftnls[4])
+        R2s.append(ftnls[5])
 
       # call that callback, if you want :
       if adj_callback is not None:
@@ -684,6 +726,9 @@ class Momentum(Physics):
       if self.obj_ftn_type == 'log_L2_hybrid':
         np.savetxt(d + 'J1s.txt',  np.array(J1s))
         np.savetxt(d + 'J2s.txt',  np.array(J2s))
+      if self.reg_ftn_type == 'TV_Tik_hybrid':
+        np.savetxt(d + 'R1s.txt',  np.array(R1s))
+        np.savetxt(d + 'R2s.txt',  np.array(R2s))
 
       fig = plt.figure()
       ax  = fig.add_subplot(111)
@@ -735,6 +780,28 @@ class Momentum(Physics):
         ax.plot(np.array(J2s), 'r-', lw=2.0)
         plt.grid()
         plt.savefig(d + 'J2.png', dpi=100)
+        plt.close(fig)
+      
+      if self.reg_ftn_type == 'TV_Tik_hybrid':
+
+        fig = plt.figure()
+        ax  = fig.add_subplot(111)
+        #ax.set_yscale('log')
+        ax.set_ylabel(r'$\mathscr{R}_{tik}\left( \beta \right)$')
+        ax.set_xlabel(r'iteration')
+        ax.plot(np.array(R1s), 'r-', lw=2.0)
+        plt.grid()
+        plt.savefig(d + 'R1.png', dpi=100)
+        plt.close(fig)
+ 
+        fig = plt.figure()
+        ax  = fig.add_subplot(111)
+        #ax.set_yscale('log')
+        ax.set_ylabel(r'$\mathscr{R}_{TV}\left( \beta \right)$')
+        ax.set_xlabel(r'iteration')
+        ax.plot(np.array(R2s), 'r-', lw=2.0)
+        plt.grid()
+        plt.savefig(d + 'R2.png', dpi=100)
         plt.close(fig)
 
 

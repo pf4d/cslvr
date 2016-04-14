@@ -177,7 +177,7 @@ class MomentumStokes(Momentum):
     """
     return the velocity.
     """
-    return model.U3
+    return self.model.U3
 
   def get_solve_params(self):
     """
@@ -451,7 +451,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     """
     return the velocity.
     """
-    return model.U3
+    return self.model.U3
 
   def get_solve_params(self):
     """
@@ -867,7 +867,7 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     """
     return the velocity.
     """
-    return model.U3
+    return self.model.U3
 
   def get_solve_params(self):
     """

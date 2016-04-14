@@ -367,12 +367,12 @@ class Energy(Physics):
       print_text(s, cls=self)
       print_min_max(dI,    'dI/Fb', cls=self)
       
-      ## update the DA current velocity to the model for evaluation 
-      ## purposes only; the model.assign_variable function is 
-      ## annotated for purposes of linking physics models to the adjoint
-      ## process :
-      #theta_opt = DolfinAdjointVariable(model.theta).tape_value()
-      #model.init_theta(theta_opt, cls=self)
+      # update the DA current velocity to the model for evaluation 
+      # purposes only; the model.assign_variable function is 
+      # annotated for purposes of linking physics models to the adjoint
+      # process :
+      theta_opt = DolfinAdjointVariable(model.theta).tape_value()
+      model.init_theta(theta_opt, cls=self)
 
       # print functional values :
       model.Fb.assign(Fb, annotate=False)
@@ -544,7 +544,7 @@ class Enthalpy(Energy):
     
     r             = model.r
     mesh          = model.mesh
-    Q             = model.Qp
+    Q             = model.Q
     T             = model.T
     W             = model.W
     T_m           = model.T_melt
@@ -998,15 +998,10 @@ class Enthalpy(Energy):
     solve(A_n, grad_n.vector(), B_n, 'cg', 'amg', annotate=False)
     
     W_v      = model.W.vector().array()
-    beta_v   = model.beta.vector().array()
-    u_v      = u.vector().array()
-    v_v      = v.vector().array()
-    w_v      = w.vector().array()
-    Fb_v     = model.Fb.vector().array()
+    q_fric_v = model.q_fric.vector().array()
     q_geo_v  = model.q_geo.vector().array()
     grad_n_v = grad_n.vector().array()
 
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v + Fb_v)**2)
     rho_v    = W_v*rhow + (1 - W_v)*rhoi
     Mb_v     = (q_geo_v + q_fric_v - grad_n_v) / (L * rho_v)
     
@@ -1050,11 +1045,9 @@ class Enthalpy(Energy):
     #      annotate=annotate, solver_parameters=nparams)
     
     # update the model variable :
-    #model.assign_variable(model.theta,self.theta,annotate=False,cls=self)
-    #model.assign_variable(model.theta, project(self.theta, model.Q),
-    #                      annotate=False,cls=self)
-    model.theta.interpolate(self.theta, annotate=False)
-    print_min_max(model.theta, 'theta', cls=self)
+    model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+    #model.theta.interpolate(self.theta, annotate=False)
+    #print_min_max(model.theta, 'theta', cls=self)
 
     # update the temperature and water content for other physics :
     self.partition_energy(annotate=False)
@@ -1093,9 +1086,10 @@ class Enthalpy(Energy):
           solver_parameters = self.solve_params['solver'], annotate=annotate)
 
     # calculate water content :
-    theta_t         = Function(model.Q)
-    theta_t.interpolate(self.theta)
-    theta_v         = theta_t.vector().array()
+    #theta_t         = Function(model.Q)
+    #theta_t.interpolate(self.theta)
+    #theta_v         = theta_t.vector().array()
+    theta_v         = self.theta.vector().array()
     theta_melt_v    = model.theta_melt.vector().array()
     W_v             = (theta_v - theta_melt_v) / model.L(0)
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
@@ -1190,9 +1184,9 @@ class Enthalpy(Energy):
       counter     += 1
       
       # update the model variable :
-      #model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
-      model.theta.interpolate(self.theta, annotate=False)
-      print_min_max(model.theta, 'theta', cls=self)
+      model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+      #model.theta.interpolate(self.theta, annotate=False)
+      #print_min_max(model.theta, 'theta', cls=self)
 
       # update the temperature and water content for other physics :
       self.partition_energy(annotate=annotate)

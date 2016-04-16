@@ -114,7 +114,7 @@ mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid',
 
 # form the regularization functional :
 mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
-                 kind='TV_Tik_hybrid', alpha_tik=1e-7, alpha_tv=10.0)
+                 kind='TV_Tik_hybrid', alpha_tik=1.0, alpha_tv=10.0)
 #mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
 #                 kind='TV', alpha=10.0)
 #mom.form_reg_ftn(d3model.beta, integral=d3model.GAMMA_B_GND,
@@ -147,7 +147,7 @@ uop_kwargs = {'control'             : d3model.beta,
               'bounds'              : (1e-5, 1e7),
               'method'              : 'ipopt',
               'max_iter'            : 1000,
-              'adj_save_vars'       : None,
+              'adj_save_vars'       : tmc_save_vars,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
                                     
@@ -166,9 +166,11 @@ ass_kwargs = {'momentum'            : mom,
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 
+
+# or assimilate only once without thermo :      
+#mom.optimize_U_ob(**uop_kwargs)
                                     
-## or restart and thermo_solve :
-#d3model.set_out_dir(out_dir + '03/')
+# or thermo_solve :
 #d3model.thermo_solve(**tmc_kwargs)
 
  

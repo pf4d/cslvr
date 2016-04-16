@@ -592,14 +592,14 @@ class Enthalpy(Energy):
     k_c   = conditional( gt(W, 0.0), model.k_0, 1 )
 
     # thermal conductivity and heat capacity (Greve and Blatter 2009) :
-    ki    = spy * 9.828 * exp(-0.0057*T)  # converted to J/(a*m*K)
+    ki    = 9.828 * exp(-0.0057*T)
     ci    = 146.3 + 7.253*T
     
     # bulk properties :
     k     =  (1 - W)*ki   + W*kw     # bulk thermal conductivity
     c     =  (1 - W)*ci   + W*cw     # bulk heat capacity
     rho   =  (1 - W)*rhoi + W*rhow   # bulk density
-    kappa =  k_c * k                 # discontinuous with water
+    kappa =  spy * k_c * k           # discontinuous with water, J/(a*m*K)
     Xi    =  kappa / (rho*c)         # bulk enthalpy-gradient diffusivity
 
     # frictional heating :

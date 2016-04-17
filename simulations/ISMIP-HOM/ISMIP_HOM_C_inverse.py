@@ -37,7 +37,10 @@ mom = MomentumDukowiczBP(model)
 #mom = MomentumDukowiczBrinkerhoffStokes(model)
 mom.solve(annotate=False)
 
-u,v,w = model.U3.split(True)
+u     = Function(model.Q)
+v     = Function(model.Q)
+assign(u, model.U3.sub(0))
+assign(v, model.U3.sub(1))
 u_o   = u.vector().array()
 v_o   = v.vector().array()
 n     = len(u_o)
@@ -92,7 +95,7 @@ mom.linearize_viscosity()
 mom.optimize_U_ob(control           = model.beta,
                   bounds            = (1e-5, 1e7),
                   method            = 'ipopt',
-                  max_iter          = 20,
+                  max_iter          = 100,
                   adj_save_vars     = adj_save_vars,
                   adj_callback      = deriv_cb,
                   post_adj_callback = adj_post_cb_ftn)

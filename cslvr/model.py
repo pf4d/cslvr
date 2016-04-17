@@ -587,7 +587,16 @@ class Model(object):
     s = "::: initializing velocity :::"
     print_text(s, cls=cls)
     self.assign_variable(self.U3, U, cls=cls)
-    u,v,w    = self.U3.split(True)
+    # fenics issue #405 bug workaround :
+    if self.use_periodic_boundaries:
+      u      = Function(self.Q)
+      v      = Function(self.Q)
+      w      = Function(self.Q)
+      assign(u, self.U3.sub(0))
+      assign(v, self.U3.sub(1))
+      assign(w, self.U3.sub(2))
+    else:
+      u,v,w  = self.U3.split(True)
     u_v      = u.vector().array()
     v_v      = v.vector().array()
     w_v      = w.vector().array()

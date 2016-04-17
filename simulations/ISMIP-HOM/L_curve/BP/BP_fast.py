@@ -48,7 +48,10 @@ m_params  = {'solver'               : nparams,
 mom = MomentumBP(model, m_params, isothermal=True)
 mom.solve(annotate=False)
 
-u,v,w = model.U3.split(True)
+u     = Function(model.Q)
+v     = Function(model.Q)
+assign(u, model.U3.sub(0))
+assign(v, model.U3.sub(1))
 u_o   = u.vector().array()
 v_o   = v.vector().array()
 n     = len(u_o)

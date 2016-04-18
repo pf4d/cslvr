@@ -5,7 +5,8 @@ import numpy             as np
 import sys
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_Wc_0.03/initialization/'
+base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
+base_dir = 'dump/jakob_small/hdf5/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -30,13 +31,14 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
-f     = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',   'r')
+f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',   'r')
 fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 #fQ    = HDF5File(mpi_comm_world(), in_dir  + 'Q_int.h5', 'r')
 
 # initialize the variables :
 d3model.init_S(fdata)
 d3model.init_B(fdata)
+d3model.init_U_ob(fdata, fdata)
 d3model.init_T(f)
 d3model.init_W(f)
 d3model.init_Fb(f)
@@ -50,7 +52,12 @@ d3model.init_beta(f)
 d3model.init_theta(f)
 d3model.init_Q_int(f)
 
+#d3model.save_xdmf(d3model.theta, 'theta')
+#d3model.save_xdmf(d3model.U3, 'U')
+#sys.exit(0)
+
 # 2D model gets balance-velocity appropriate variables initialized :
+bedmodel.assign_submesh_variable(bedmodel.S,         d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,         d3model.B)
 bedmodel.assign_submesh_variable(bedmodel.T,         d3model.T)
 bedmodel.assign_submesh_variable(bedmodel.W,         d3model.W)
@@ -60,6 +67,7 @@ bedmodel.assign_submesh_variable(bedmodel.alpha,     d3model.alpha)
 bedmodel.assign_submesh_variable(bedmodel.PE,        d3model.PE)
 bedmodel.assign_submesh_variable(bedmodel.W_int,     d3model.W_int)
 srfmodel.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
+srfmodel.assign_submesh_variable(srfmodel.U_ob,      d3model.U_ob)
 bedmodel.assign_submesh_variable(bedmodel.beta,      d3model.beta)
 bedmodel.assign_submesh_variable(bedmodel.theta,     d3model.theta)
 bedmodel.assign_submesh_variable(bedmodel.Q_int,     d3model.Q_int)
@@ -143,6 +151,9 @@ betamin  = bedmodel.beta.vector().min()
 Umax  = srfmodel.U_mag.vector().max()
 Umin  = srfmodel.U_mag.vector().min()
 
+Uobmax  = srfmodel.U_ob.vector().max()
+Uobmin  = srfmodel.U_ob.vector().min()
+
 Pmax  = bedmodel.PE.vector().max()
 Pmin  = bedmodel.PE.vector().min()
 
@@ -153,22 +164,24 @@ Q_int_max = bedmodel.Q_int.vector().max()
 Q_int_min = bedmodel.Q_int.vector().min()
 
 
-B_lvls  = np.array([Bmin, -1e3, -5e2, -1e2, -1e1, 1e1, 1e2, 2e2, 3e2, Bmax])
-
-a_lvls  = np.array([0.0, 1e-2, 1e-1, 0.5, amax])
-Mb_lvls = np.array([Mbmin, -1e-2, -5e-3, -1e-3, -1e-4, -1e-5,
+B_lvls    = np.array([Bmin, -1e3, -5e2, -1e2, -1e1, 1e1, 1e2, 2e2, 3e2, Bmax])
+          
+a_lvls    = np.array([0.0, 1e-2, 1e-1, 0.5, amax])
+Mb_lvls   = np.array([Mbmin, -1e-2, -5e-3, -1e-3, -1e-4, -1e-5,
                     1e-5, 1e-2, 1e-1, 2e-1, 0.5, Mbmax])
-#Mb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Mbmax])
-Fb_lvls = np.array([0.0, 1e-3, 1e-2, 1e-1, 0.25, 1.0, Fbmax])
+#Mb_lvls   = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Mbmax])
+Fb_lvls   = np.array([0.0, 1e-3, 1e-2, 1e-1, 2e-1, 3e-1, 6e-1, Fbmax])
 
-#b_lvls  = np.array([betamin, 1, 1e2, 1e3, 2.5e3, 5e3, betamax])
-b_lvls  = np.array([betamin, 1e-2, 1, 1e2, 2.5e2, 5e2, 1e3, betamax])
+#b_lvls    = np.array([betamin, 1, 1e2, 1e3, 2.5e3, 5e3, betamax])
+#b_lvls    = np.array([betamin, 1e-2, 1, 1e2, 2.5e2, 5e2, 1e3, betamax])
+b_lvls    = np.array([betamin, 1e-2, 1e1, 2e2, 2.5e2, 3e2, 5e2, 1e3, betamax])
 
-#W_lvls  = np.array([0.0, 1e-2, 3e-2, 4e-2, 5e-2, 1e-1, 2e-1, Wmax])
-W_lvls  = np.array([0.0, 1e-3, 2.5e-2, 3e-2, 3.5e-2, Wmax])
-U_lvls  = np.array([0.0, 500, 1e3, 1.5e3, 2e3, 4e3, 1e4, Umax])
-Pe_lvls = np.array([1e2, 1e3, 5e3, 1e4, 2.5e4, 5e4, Pmax])
-T_lvls  = np.array([Tmin, 268, 271.5, 272, 272.5, Tmax])
+#W_lvls    = np.array([0.0, 1e-3, 2.5e-2, 3e-2, 3.5e-2, Wmax])
+W_lvls    = np.array([0.0, 1e-4, 5e-3, 1e-2, 2e-2, 5e-2, Wmax])
+U_lvls    = np.array([Umin, 500, 1e3, 1.5e3, 2e3, 4e3, 1e4, Umax])
+U_ob_lvls = np.array([Uobmin, 500, 1e3, 1.5e3, 2e3, 4e3, 1e4, Uobmax])
+Pe_lvls   = np.array([1e2, 1e3, 5e3, 1e4, 2.5e4, 5e4, Pmax])
+T_lvls    = np.array([Tmin, 268, 271.5, 272, 272.5, Tmax])
 
 Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.0, Wimax])
 #Wi_lvls = np.array([0.0, 1e-1, 1.0, 2.5, 5.0, 10.0, 15.0, Wimax])
@@ -181,9 +194,9 @@ L     = d3model.L(0)
 a     = 146.3
 b     = 7.253
 
-x_w = 63550
-y_w = 89748
-    
+#===============================================================================
+# plot profiles :
+
 x_a, y_a  = drg['pyproj_Proj'](lon_a, lat_a)
 
 zmin = mesh.coordinates()[:,2].min()
@@ -266,6 +279,91 @@ plt.tight_layout()
 plt.savefig(out_dir + 'profile_plot.pdf')
 plt.close(fig)
 
+#===============================================================================
+# derive temperate zone thickness :
+
+d3model.theta.set_allow_extrapolation(True)
+d3model.p.set_allow_extrapolation(True)
+
+x_a = bedmodel.mesh.coordinates()[:,0]
+y_a = bedmodel.mesh.coordinates()[:,1]
+S_a = bedmodel.S.vector().array()
+B_a = bedmodel.B.vector().array()
+
+def line_intersection(line1, line2):
+  xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+  ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+
+  def det(a, b):
+    return a[0] * b[1] - a[1] * b[0]
+
+  div = det(xdiff, ydiff)
+  if div == 0:
+   raise Exception('lines do not intersect')
+
+  d = (det(*line1), det(*line2))
+  x = det(d, xdiff) / div
+  y = det(d, ydiff) / div
+  return x, y
+
+
+CTS = []
+for x_w, y_w, S_w, B_w in zip(x_a, y_a, S_a, B_a):
+
+  # get the energy values :
+  theta_i   = []
+  theta_m_i = []
+  for z_w in z_s:
+    theta_j   = d3model.theta(x_w, y_w, z_w)
+    p_j       = d3model.p(x_w, y_w, z_w)
+    Tm_j      = Tw - gamma*p_j
+    theta_m_j = a*Tm_j + b/2*Tm_j**2
+    theta_i.append(theta_j)
+    theta_m_i.append(theta_m_j)
+  theta_i   = array(theta_i)
+  theta_m_i = array(theta_m_i)
+  
+  # get z-coordinates :  
+  z_z = []
+  for z_w in z_s:
+    z_i = (z_w / zmax) * (S_w - B_w) + B_w
+    z_z.append(z_i)
+  z_z = array(z_z)
+
+  # get height of CTS :  
+  if sum(theta_i > theta_m_i) > 0:
+    temperate = where(theta_i > theta_m_i)[0]
+    if temperate.min() != 0:
+      CTS.append(0.0)
+    else:
+      CTS_idx_low   = temperate[-1]
+      CTS_idx_high  = CTS_idx_low + 1
+      theta_l   = ((theta_i[CTS_idx_low],    z_z[CTS_idx_low]),
+                   (theta_i[CTS_idx_high],   z_z[CTS_idx_high]))
+      theta_m_l = ((theta_m_i[CTS_idx_low],  z_z[CTS_idx_low]),
+                   (theta_m_i[CTS_idx_high], z_z[CTS_idx_high]))
+      P = line_intersection(theta_l, theta_m_l)
+      CTS.append(P[1] - B_w)
+  else:
+    CTS.append(0.0)
+CTS = array(CTS)
+
+CTS_f = Function(bedmodel.Q)
+bedmodel.assign_variable(CTS_f, CTS)
+
+CTS_max   = CTS_f.vector().max()
+CTS_min   = CTS_f.vector().min()
+CTS_lvls  = np.array([CTS_min, 1e-1, 1e0, 1e1, 1e2, CTS_max])
+
+plotIce(drg, CTS_f, name='CTS', direc=out_dir,
+        title=r'$CTS$', cmap='gist_yarg',  scale='lin',
+        levels=CTS_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+
+sys.exit(0)
 
 
 #===============================================================================
@@ -327,16 +425,23 @@ plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir,
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
         params=params, plot_pts=plot_pts)
 
-plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
-        title=r'$P_e$', cmap=cmap,  scale='lin',
-        levels=Pe_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
+#plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
+#        title=r'$P_e$', cmap=cmap,  scale='lin',
+#        levels=Pe_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
 
 plotIce(drg, bedmodel.W_int, name='W_int', direc=out_dir, 
         title=r'$W_i$', cmap=cmap,  scale='lin',
         levels=Wi_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, srfmodel.U_ob, name='U_ob', direc=out_dir, 
+        title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap=cmap,  scale='lin',
+        levels=U_ob_lvls, tp=True, tpAlpha=0.2,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
         params=params, plot_pts=plot_pts)

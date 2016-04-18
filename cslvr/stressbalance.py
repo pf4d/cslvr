@@ -496,7 +496,9 @@ class FS_Balance(Physics):
     print_text(s, self.color())
     
     # calculate viscosity in model.eta :
-    model.calc_eta(momentum.effective_strain_rate)
+    U      = momentum.velocity()
+    epsdot = momentum.effective_strain_rate(U) + model.eps_reg
+    model.calc_eta(epsdot)
     
     # stress tensor :
     #sig   = momentum.stress_tensor(model.U3, model.p, model.eta)

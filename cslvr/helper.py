@@ -752,9 +752,10 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
             umin=None, umax=None, numLvls=12, levels=None, tp=False,
-            tpAlpha=0.5, params=None, extend='neither',
-            show=True, ext='.png', res=150, cb_format='%.1e',
-            zoom_box=False, zoom_box_kwargs=None, plot_pts=None):
+            tpAlpha=0.5, contour_type='filled', params=None, extend='neither',
+            show=True, ext='.png', res=150, cb=True, cb_format='%.1e',
+            zoom_box=False, zoom_box_kwargs=None, plot_pts=None,
+            plot_continent=False, cont_plot_params=None, box_params=None):
   """
   INPUTS :
     di :
@@ -842,11 +843,14 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       h   = 4602848.6605
       fig = plt.figure(figsize=(14,10))
       ax  = fig.add_subplot(111)
+
+      lon_0 = 0
+      lat_0 = -90
       
       # new projection :
       m = Basemap(ax=ax, width=w, height=h, resolution='h', 
                   projection='stere', lat_ts=-71, 
-                  lon_0=0, lat_0=-90)
+                  lon_0=lon_0, lat_0=lat_0)
 
       offset = 0.015 * (m.ymax - m.ymin)
      
@@ -868,11 +872,14 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       h   = 2644074.78236
       fig = plt.figure(figsize=(8,11.5))
       ax  = fig.add_subplot(111)
+    
+      lon_0 = -41.5
+      lat_0 = 71
       
       # new projection :
       m = Basemap(ax=ax, width=w, height=h, resolution='h', 
                   projection='stere', lat_ts=71, 
-                  lon_0=-41.5, lat_0=71)
+                  lon_0=lon_0, lat_0=lat_0)
 
       offset = 0.015 * (m.ymax - m.ymin)
       
@@ -956,6 +963,31 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
   #m.bluemarble()
   #m.etopo()
   
+  if plot_continent:
+    if cont is 'greenland':
+      llcrnrlat  = 57
+      urcrnrlat  = 80.1
+      llcrnrlon  = -57
+      urcrnrlon  = 15
+          
+      axcont = inset_locator.inset_axes(ax, **cont_plot_params)
+      axcont.xaxis.set_ticks_position('none')
+      axcont.yaxis.set_ticks_position('none')
+    
+      # continent projection :
+      mc = Basemap(ax=axcont, llcrnrlat=llcrnrlat, urcrnrlat=urcrnrlat,
+                   llcrnrlon=llcrnrlon, urcrnrlon=urcrnrlon, resolution='c', 
+                   projection='stere', lon_0=lon_0, lat_0=lat_0)
+    
+      mc.drawcoastlines(linewidth=0.5, color='black')
+  
+      x_c, y_c  = mc(lon, lat)
+
+      v_cont = v.copy()
+      v_cont[:] = 1.0
+      
+      axcont.tricontourf(x_c, y_c, fi, v_cont, cmap=pl.get_cmap('Reds'))
+
 
   #=============================================================================
   # plotting :
@@ -1013,16 +1045,20 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     loc               = zoom_box_kwargs['loc']
     loc1              = zoom_box_kwargs['loc1']
     loc2              = zoom_box_kwargs['loc2']
-    x1                = zoom_box_kwargs['x1']
-    y1                = zoom_box_kwargs['y1']
-    x2                = zoom_box_kwargs['x2']
-    y2                = zoom_box_kwargs['y2']
+    llcrnrlat         = zoom_box_kwargs['llcrnrlat']
+    urcrnrlat         = zoom_box_kwargs['urcrnrlat']
+    llcrnrlon         = zoom_box_kwargs['llcrnrlon']
+    urcrnrlon         = zoom_box_kwargs['urcrnrlon']
+    plot_zoom_scale   = zoom_box_kwargs['plot_zoom_scale']
     scale_font_color  = zoom_box_kwargs['scale_font_color']
     scale_length      = zoom_box_kwargs['scale_length']
     scale_loc         = zoom_box_kwargs['scale_loc']
     plot_grid         = zoom_box_kwargs['plot_grid']
     axes_color        = zoom_box_kwargs['axes_color']
     zb_plot_pts       = zoom_box_kwargs['plot_points']
+    
+    x1, y1 = m(llcrnrlon, llcrnrlat)
+    x2, y2 = m(urcrnrlon, urcrnrlat)
 
     axins = inset_locator.zoomed_inset_axes(ax, zoom, loc=loc)
     inset_locator.mark_inset(ax, axins, loc1=loc1, loc2=loc2,
@@ -1047,9 +1083,12 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
                  projection='stere', lat_ts=lat_0, 
                  lon_0=lon_0, lat_0=lat_0)
 
-    mn.drawmapscale(slon, slat, slon, slat, scale_length, 
-                    yoffset  = 0.025 * 2.0 * dy,
-                    barstyle = 'fancy', fontcolor=scale_font_color)
+    if plot_zoom_scale:
+      mn.drawmapscale(slon, slat, slon, slat, scale_length, 
+                      yoffset  = 0.025 * 2.0 * dy,
+                      barstyle = 'fancy', fontcolor=scale_font_color)
+  
+    mn.drawcoastlines(linewidth=0.5, color = 'black')
     
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
@@ -1060,35 +1099,34 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
 
   if isinstance(u, str):
     #cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
-    if scale != 'log':
+    if contour_type == 'filled':
       cs = ax.contourf(x, y, v, levels=levels, 
                         cmap=cmap, norm=norm, extend=extend)
       if zoom_box:
         axins.contourf(x, y, v, levels=levels, 
                        cmap=cmap, norm=norm, extend=extend)
-    else:
-      cs = ax.contourf(x, y, v, levels=levels, 
-                       cmap=cmap, norm=norm)
+    if contour_type == 'lines':
+      cs = ax.contour(x, y, v, levels=levels, colors='k') 
+      ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
-        axins.contourf(x, y, v, levels=levels, 
-                       cmap=cmap, norm=norm)
+        axins.contour(x, y, v, levels=levels, colors='k') 
   
   elif isinstance(u, Function) \
     or isinstance(u, dolfin.functions.function.Function):
     #cs = ax.tripcolor(x, y, fi, v, shading='gouraud', 
     #                  cmap=get_cmap(cmap), norm=norm)
-    if scale != 'log':
+    if contour_type == 'filled':
       cs = ax.tricontourf(x, y, fi, v, levels=levels, 
                          cmap=cmap, norm=norm, extend=extend)
       if zoom_box:
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm, extend=extend)
-    else:
-      cs = ax.tricontourf(x, y, fi, v, levels=levels, 
-                          cmap=cmap, norm=norm)
+    elif contour_type == 'lines':
+      cs = ax.tricontour(x, y, fi, v, levels=levels, colors='k') 
       if zoom_box:
-        axins.tricontourf(x, y, fi, v, levels=levels, 
-                          cmap=cmap, norm=norm)
+        axins.tricontour(x, y, fi, v, levels=levels, colors='k')
+        axins.clabel(cs, inline=1, colors='k', fmt='%1.2f')
+
   if plot_pts is not None:
     lat_a = plot_pts['lat']
     lon_a = plot_pts['lon']
@@ -1097,6 +1135,13 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     for lat_i, lon_i, sty_i, clr_i in zip(lat_a, lon_a, sty_a, clr_a):
       x_i, y_i = m(lon_i, lat_i)
       ax.plot(x_i, y_i, color=clr_i, marker=sty_i)
+
+  if box_params is not None:
+    x1,y1   = m(box_params['llcrnrlon'], box_params['llcrnrlat'])
+    x2,y2   = m(box_params['urcrnrlon'], box_params['urcrnrlat'])
+    box_x_s = [x1,x2,x2,x1,x1]
+    box_y_s = [y1,y1,y2,y2,y1]
+    ax.plot(box_x_s, box_y_s, '-', lw=1.0, color=box_params['color'])
 
   if zoom_box:
     if zb_plot_pts is not None:
@@ -1115,7 +1160,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     tpaxins = axins.triplot(x, y, fi, 'k-', lw=0.2, alpha=tpAlpha)
 
   # include colorbar :
-  if scale != 'bool':
+  if cb and scale != 'bool':
     divider = make_axes_locatable(ax)#plt.gca())
     cax  = divider.append_axes("right", "5%", pad="3%")
     cbar = fig.colorbar(cs, cax=cax, #format=formatter, 

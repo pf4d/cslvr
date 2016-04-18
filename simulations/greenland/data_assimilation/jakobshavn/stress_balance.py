@@ -2,15 +2,15 @@ from cslvr   import *
 from fenics  import *
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_k_1e-3_FSTMC/10/'
+base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
 in_dir   = base_dir
 out_dir  = base_dir + 'stress_balance/'
 var_dir  = 'dump/vars_jakobshavn_small/'
 
 # create HDF5 files for saving and loading data :
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
-fin     = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',       'r')
-fout    = HDF5File(mpi_comm_world(), in_dir  + 'fs_stress.h5', 'w')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',  'r')
+fin     = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',    'r')
+fout    = HDF5File(mpi_comm_world(), in_dir  + 'stress.h5', 'w')
 
 ## not deformed mesh :
 #mesh    = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')

@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 import sys
 import os
 
-from varglas           import *
+from cslvr             import *
 #from fenics            import *
 from pylab             import *
 
@@ -49,7 +49,7 @@ def glm(x,y,w=1.0):
   D         = 1
   ahat      = zeros(p)   # initial parameters
   rel_res   = zeros(p)   # initial relative residual
-  maxIter   = 350
+  maxIter   = 100
 
   rel_a = []
   dev_a = []
@@ -122,9 +122,17 @@ def glm(x,y,w=1.0):
   return vara
 
 
-#===============================================================================
-# create directories and such :
 
+#===============================================================================
+# get the data from the model output on the bed :
+
+# set the relavent directories :
+base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
+in_dir   = base_dir
+out_dir  = base_dir + 'linear_model/'
+var_dir  = 'dump/vars_jakobshavn_small/'
+
+# create directories and such :
 mdl = sys.argv[1]
 typ = sys.argv[2]
 
@@ -137,31 +145,17 @@ elif typ == 'limited':
 else:
   file_n = mdl + '/normal/'
 
-print file_n
+g_fn = out_dir + file_n + 'plot/'
+d_fn = out_dir + file_n + 'dat/'
 
-g_fn = 'images/stats/' + file_n
-
-dirs = [g_fn, 'dat/' + file_n]
-
-for di in dirs:
+for di in [g_fn, d_fn]:
   if not os.path.exists(di):
     os.makedirs(di)
 
-
-#===============================================================================
-# get the data from the model output on the bed :
-
-# set the relavent directories :
-dir_b   = 'dump/jakob_small/'
-var_dir = 'dump/vars_jakobshavn_small/'       # directory from gen_vars.py
-in_dir  = dir_b + '01/hdf5/'                  # input dir
-out_dir = 'plot/01/'                          # base directory to save
-
 # create HDF5 files for saving and loading data :
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',       'r')
-fthermo = HDF5File(mpi_comm_world(), in_dir  + 'thermo_01.h5',   'r')
-finv    = HDF5File(mpi_comm_world(), in_dir  + 'inverted_01.h5', 'r')
-fstress = HDF5File(mpi_comm_world(), in_dir  + 'stress_01.h5',   'r')
+finv    = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',    'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',  'r')
+fstress = HDF5File(mpi_comm_world(), in_dir  + 'stress.h5', 'r')
 
 # not deformed mesh :
 mesh    = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')
@@ -182,27 +176,40 @@ d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_beta(finv)
 d3model.init_U(finv)
-d3model.init_T(fthermo)
-d3model.init_W(fthermo)
-d3model.init_theta(fthermo)
-d3model.init_Mb(fthermo)
-d3model.init_tau_id(fstress)
-d3model.init_tau_jd(fstress)
+d3model.init_T(finv)
+d3model.init_W(finv)
+d3model.init_theta(finv)
+d3model.init_Mb(finv)
+d3model.init_Fb(finv)
+
 d3model.init_tau_ii(fstress)
 d3model.init_tau_ij(fstress)
-d3model.init_tau_iz(fstress)
+d3model.init_tau_ik(fstress)
 d3model.init_tau_ji(fstress)
 d3model.init_tau_jj(fstress)
-d3model.init_tau_jz(fstress)
+d3model.init_tau_jk(fstress)
+d3model.init_tau_ki(fstress)
+d3model.init_tau_kj(fstress)
+d3model.init_tau_kk(fstress)
+
+d3model.init_N_ii(fstress)
+d3model.init_N_ij(fstress)
+d3model.init_N_ik(fstress)
+d3model.init_N_ji(fstress)
+d3model.init_N_jj(fstress)
+d3model.init_N_jk(fstress)
+d3model.init_N_ki(fstress)
+d3model.init_N_kj(fstress)
+d3model.init_N_kk(fstress)
 
 
 #===============================================================================
-# retrieve the bed mesh :
-bedmesh = d3model.get_bed_mesh()
-srfmesh = d3model.get_surface_mesh()
+# form surface meshes :
+d3model.form_bed_mesh()
+d3model.form_srf_mesh()
 
 # create 2D model for balance velocity :
-d2model = D2Model(bedmesh, out_dir)
+d2model = D2Model(d3model.bedmesh, out_dir)
 
 # 2D model gets balance-velocity appropriate variables initialized :
 d2model.assign_submesh_variable(d2model.S,         d3model.S)
@@ -218,17 +225,21 @@ d2model.assign_submesh_variable(d2model.U_mag,     d3model.U_mag)
 d2model.assign_submesh_variable(d2model.T,         d3model.T)
 d2model.assign_submesh_variable(d2model.W,         d3model.W)
 d2model.assign_submesh_variable(d2model.Mb,        d3model.Mb)
-d2model.assign_submesh_variable(d2model.tau_id,    d3model.tau_id)
-d2model.assign_submesh_variable(d2model.tau_jd,    d3model.tau_jd)
+d2model.assign_submesh_variable(d2model.Fb,        d3model.Fb)
 d2model.assign_submesh_variable(d2model.tau_ii,    d3model.tau_ii)
 d2model.assign_submesh_variable(d2model.tau_ij,    d3model.tau_ij)
-d2model.assign_submesh_variable(d2model.tau_iz,    d3model.tau_iz)
+d2model.assign_submesh_variable(d2model.tau_ik,    d3model.tau_ik)
 d2model.assign_submesh_variable(d2model.tau_ji,    d3model.tau_ji)
 d2model.assign_submesh_variable(d2model.tau_jj,    d3model.tau_jj)
-d2model.assign_submesh_variable(d2model.tau_jz,    d3model.tau_jz)
+d2model.assign_submesh_variable(d2model.tau_jk,    d3model.tau_jk)
+d2model.assign_submesh_variable(d2model.N_ii,      d3model.N_ii)
+d2model.assign_submesh_variable(d2model.N_ij,      d3model.N_ij)
+d2model.assign_submesh_variable(d2model.N_ik,      d3model.N_ik)
+d2model.assign_submesh_variable(d2model.N_jj,      d3model.N_jj)
+d2model.assign_submesh_variable(d2model.N_jk,      d3model.N_jk)
 
 # create a new 2D model for surface variables :
-srfmodel = D2Model(srfmesh, out_dir)
+srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 # put the velocity on it :
 d2model.assign_submesh_variable(srfmodel.U3,        d3model.U3)
@@ -268,20 +279,24 @@ adot   = d2model.adot
 qgeo   = d2model.q_geo
 beta   = d2model.beta
 Mb     = d2model.Mb
+Fb     = d2model.Fb
 Tb     = d2model.T
 Ts     = d2model.T_surface
 Ubar5  = d2model.Ubar5
 Ubar10 = d2model.Ubar10
 Ubar20 = d2model.Ubar20
 U_ob   = d2model.U_ob
-tau_id = d2model.tau_id
-tau_jd = d2model.tau_jd
 tau_ii = d2model.tau_ii
 tau_ij = d2model.tau_ij
-tau_iz = d2model.tau_iz
+tau_ik = d2model.tau_ik
 tau_ji = d2model.tau_ji
 tau_jj = d2model.tau_jj
-tau_jz = d2model.tau_jz
+tau_jk = d2model.tau_jk
+N_ii   = d2model.N_ii
+N_ij   = d2model.N_ij
+N_ik   = d2model.N_ik
+N_jj   = d2model.N_jj
+N_jk   = d2model.N_jk
 mask   = d2model.mask
 
 dSdx   = project(S.dx(0), Q)
@@ -300,6 +315,7 @@ B_v      = B.vector().array()
 adot_v   = adot.vector().array()
 qgeo_v   = qgeo.vector().array()
 Mb_v     = Mb.vector().array()
+Fb_v     = Fb.vector().array()
 Tb_v     = Tb.vector().array()
 Ts_v     = Ts.vector().array()
 u_v      = u.vector().array()
@@ -309,14 +325,17 @@ Ubar5_v  = Ubar5.vector().array()
 Ubar10_v = Ubar10.vector().array()
 Ubar20_v = Ubar20.vector().array()
 U_ob_v   = U_ob.vector().array()
-tau_id_v = tau_id.vector().array()
-tau_jd_v = tau_jd.vector().array()
 tau_ii_v = tau_ii.vector().array()
 tau_ij_v = tau_ij.vector().array()
-tau_iz_v = tau_iz.vector().array()
+tau_ik_v = tau_ik.vector().array()
 tau_ji_v = tau_ji.vector().array()
 tau_jj_v = tau_jj.vector().array()
-tau_jz_v = tau_jz.vector().array()
+tau_jk_v = tau_jk.vector().array()
+N_ii_v   = N_ii.vector().array()
+N_ij_v   = N_ij.vector().array()
+N_ik_v   = N_ik.vector().array()
+N_jj_v   = N_jj.vector().array()
+N_jk_v   = N_jk.vector().array()
 mask_v   = mask.vector().array()
 
 H_v    = S_v - B_v
@@ -404,13 +423,32 @@ valid_f_v[valid] = 1.0
 valid_f.vector().set_local(valid_f_v)
 valid_f.vector().apply('insert')
 
-drg     = DataFactory.get_rignot()
+drg  = DataFactory.get_rignot()
+
+bc   = '#880cbc'
+
+params = {'llcrnrlat'    : 68.99,
+          'urcrnrlat'    : 69.31,
+          'llcrnrlon'    : -49.8,
+          'urcrnrlon'    : -48.3,
+          'scale_color'  : bc,
+          'scale_length' : 50,
+          'scale_loc'    : 1,
+          'figsize'      : (7,4),
+          'lat_interval' : 0.05,
+          'lon_interval' : 0.25,
+          'plot_grid'    : False,
+          'plot_scale'   : False}
+
+cmap = 'gist_yarg'
 
 #===============================================================================
-#
-#plotIce(drg, valid_f, name='valid', direc=g_fn, basin='jakobshavn',
-#        cmap='gist_yarg', scale='bool', numLvls=12, tp=False,
-#        tpAlpha=0.5, show=False)
+
+#plotIce(drg, valid_f, name='valid', direc=g_fn, 
+#        title=r'', cmap=cmap,  scale='bool',
+#        levels=None, tp=True, tpAlpha=0.2, cb_format='%.2e',
+#        extend='neither', show=False, ext='.pdf',
+#        params=params)
 #
 #dBdi_f = Function(Q)
 #dBdj_f = Function(Q)
@@ -419,13 +457,28 @@ drg     = DataFactory.get_rignot()
 #dBdj_f.vector().set_local(dBdj)
 #dBdj_f.vector().apply('insert')
 #
-#plotIce(drg, dBdi_f, name='dBdi', direc=g_fn, basin='jakobshavn',
-#        title=r'$\partial_i B$', cmap='RdGy', scale='lin', extend='max',
-#        umin=-0.1, umax=0.1, numLvls=12, tp=False, tpAlpha=0.5, show=False)
+#dBdimin = dBdi_f.vector().min()
+#dBdimax = dBdi_f.vector().max()
 #
-#plotIce(drg, dBdj_f, name='dBdj', direc=g_fn, basin='jakobshavn',
-#        title=r'$\partial_j B$', cmap='RdGy', scale='lin', extend='max',
-#        umin=-0.1, umax=0.1, numLvls=12, tp=False, tpAlpha=0.5, show=False)
+#dBdjmin = dBdj_f.vector().min()
+#dBdjmax = dBdj_f.vector().max()
+#
+#dBdi_lvls = np.array([dBdimin, -2e-1, -1e-1, -5e-2, -1e-2,
+#                      1e-2, 5e-2, 1e-1, 2e-1, dBdimax])
+#dBdj_lvls = np.array([dBdjmin, -2e-1, -1e-1, -5e-2, -1e-2,
+#                      1e-2, 5e-2, 1e-1, 2e-1, dBdjmax])
+#
+#plotIce(drg, dBdi_f, name='dBdi', direc=g_fn, 
+#        title=r'$\partial_i B$', cmap='RdGy',  scale='lin',
+#        levels=dBdi_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, params=params)
+#
+#plotIce(drg, dBdj_f, name='dBdj', direc=g_fn, 
+#        title=r'$\partial_j B$', cmap='RdGy',  scale='lin',
+#        levels=dBdj_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, params=params)
 #
 #dSdi_f = Function(Q)
 #dSdj_f = Function(Q)
@@ -434,14 +487,30 @@ drg     = DataFactory.get_rignot()
 #dSdj_f.vector().set_local(dSdj)
 #dSdj_f.vector().apply('insert')
 #
-#plotIce(drg, dSdi_f, name='dSdi', direc=g_fn, basin='jakobshavn',
-#        title=r'$\partial_i S$', cmap='RdGy', scale='lin', extend='max',
-#        umin=-0.1, umax=0.1, numLvls=12, tp=False, tpAlpha=0.5, show=False)
+#dSdimin = dSdi_f.vector().min()
+#dSdimax = dSdi_f.vector().max()
 #
-#plotIce(drg, dSdj_f, name='dSdj', direc=g_fn, basin='jakobshavn',
-#        title=r'$\partial_j S$', cmap='RdGy', scale='lin', extend='max',
-#        umin=-0.1, umax=0.1, numLvls=12, tp=False, tpAlpha=0.5, show=False)
+#dSdjmin = dSdj_f.vector().min()
+#dSdjmax = dSdj_f.vector().max()
 #
+#dSdi_lvls = np.array([dSdimin, -5e-2, -3e-2, -2e-2, -1e-2,
+#                      1e-4, 1e-3, 5e-3, 1e-2, dSdimax])
+#dSdj_lvls = np.array([dSdjmin, -2e-2, -1e-2, -5e-3, -1e-3,
+#                      1e-3, 5e-3, 1e-2, 2e-2, dSdjmax])
+#
+#plotIce(drg, dSdi_f, name='dSdi', direc=g_fn, 
+#        title=r'$\partial_i S$', cmap='RdGy',  scale='lin',
+#        levels=dSdi_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, params=params)
+#
+#plotIce(drg, dSdj_f, name='dSdj', direc=g_fn, 
+#        title=r'$\partial_j S$', cmap='RdGy',  scale='lin',
+#        levels=dSdj_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, params=params)
+
+
 #===============================================================================
 # cell declustering :
 n      = len(valid)
@@ -456,25 +525,27 @@ wt     = n * h_v / A
 #beta_bar = 1.0/n * sum(beta_v[valid] * wt)
 
 #===============================================================================
-#data = [beta_v,  S_v,     B_v,    gradS,   gradB, 
-#        H_v,     adot_v,  Ts_v,   Tb_v,    Mb_v,
-#        Ubar5_v, u_v,     v_v,    w_v,     U_mag]
-#names = [r'$\beta$',
-#         r'$S$',
-#         r'$D$',
-#         r'$\Vert \nabla S \Vert$', 
-#         r'$\Vert \nabla B \Vert$', 
-#         r'$H$',
-#         r'$\dot{a}$',
-#         r'$T_S$', 
-#         r'$T_B$', 
-#         r'$M_B$', 
-#         r'$\Vert \bar{\mathbf{u}}_{bv} \Vert$',
-#         r'$u$', 
-#         r'$v$', 
-#         r'$w$', 
-#         r'$\Vert \mathbf{u}_B \Vert$']
-#
+data = [beta_v,  S_v,     B_v,      gradS,   
+        gradB,   H_v,     adot_v,   Ts_v,   
+        Tb_v,    Mb_v,    Fb_v,     Ubar5_v,
+        u_v,     v_v,     w_v,      U_mag]
+names = [r'$\beta$',
+         r'$S$',
+         r'$D$',
+         r'$\Vert \nabla S \Vert$', 
+         r'$\Vert \nabla B \Vert$', 
+         r'$H$',
+         r'$\dot{a}$',
+         r'$T_S$', 
+         r'$T_B$', 
+         r'$M_b$', 
+         r'$F_b$', 
+         r'$\Vert \bar{\mathbf{u}}_{bv} \Vert$',
+         r'$u$', 
+         r'$v$', 
+         r'$w$', 
+         r'$\Vert \mathbf{u}_B \Vert$']
+
 #fig = figure(figsize=(25,15))
 #for k,(n,d) in enumerate(zip(names, data)):
 #  ax = fig.add_subplot(4,4,k+1)
@@ -483,9 +554,9 @@ wt     = n * h_v / A
 #  ax.set_xlabel(n)
 #  ax.set_ylabel(r'$n$')
 #  ax.grid()
-#fn = 'images/data.png'
-##savefig(fn, dpi=100)
-#show()
+#savefig(g_fn + 'data.png', dpi=100)
+##show()
+#close(fig)
 
 #===============================================================================
 # data analysis :
@@ -507,30 +578,34 @@ v6   = qgeo_v
 v7   = adot_v
 v8   = Tb_v
 v9   = Mb_v
-v10  = u_v
-v11  = v_v
-v12  = w_v
-v13  = log(Ubar5_v + DOLFIN_EPS)
-v14  = log(Ubar10_v + DOLFIN_EPS)
-v15  = log(Ubar20_v + DOLFIN_EPS)
-v16  = log(U_mag + DOLFIN_EPS)
-v17  = tau_id_v
-v18  = tau_jd_v
-v19  = tau_ii_v
-v20  = tau_ij_v
-v21  = tau_iz_v
-v22  = tau_ji_v
-v23  = tau_jj_v
-v24  = tau_jz_v
-v25  = ini_i
-v26  = ini_j
-v27  = dBdi
-v28  = dBdj
-v29  = dSdi
-v30  = dSdj
-v31  = gradH
-v32  = dHdi
-v33  = dHdj
+v10  = Fb_v
+v11  = u_v
+v12  = v_v
+v13  = w_v
+v14  = log(Ubar5_v + DOLFIN_EPS)
+v15  = log(Ubar10_v + DOLFIN_EPS)
+v16  = log(Ubar20_v + DOLFIN_EPS)
+v17  = log(U_mag + DOLFIN_EPS)
+v18  = tau_ii_v
+v19  = tau_ij_v
+v20  = tau_ik_v
+v21  = tau_ji_v
+v22  = tau_jj_v
+v23  = tau_jk_v
+v22  = N_ii_v
+v23  = N_ij_v
+v24  = N_ik_v
+v25  = N_jj_v
+v26  = N_jk_v
+v27  = ini_i
+v28  = ini_j
+v29  = dBdi
+v30  = dBdj
+v31  = dSdi
+v32  = dSdj
+v33  = gradH
+v34  = dHdi
+v35  = dHdj
 
 x0   = v0[valid]
 x1   = v1[valid]
@@ -566,6 +641,8 @@ x30  = v30[valid]
 x31  = v31[valid]
 x32  = v32[valid]
 x33  = v33[valid]
+x34  = v34[valid]
+x35  = v35[valid]
 
 #===============================================================================
 # formulte design matrix and do some EDA :
@@ -578,7 +655,8 @@ names = [r'$S$',
          r'$q_{geo}$',
          r'$\dot{a}$',
          r'$T_B$', 
-         r'$M_B$', 
+         r'$M_b$', 
+         r'$F_b$', 
          r'$u$', 
          r'$v$', 
          r'$w$', 
@@ -586,14 +664,17 @@ names = [r'$S$',
          r'$\ln\left( \Vert \bar{\mathbf{u}}_{10} \Vert \right)$',
          r'$\ln\left( \Vert \bar{\mathbf{u}}_{20} \Vert \right)$',
          r'$\ln\left( \Vert \mathbf{u}_B \Vert \right)$',
-         r'$\tau_{id}$',
-         r'$\tau_{jd}$',
          r'$\tau_{ii}$',
          r'$\tau_{ij}$',
-         r'$\tau_{iz}$',
+         r'$\tau_{ik}$',
          r'$\tau_{ji}$',
          r'$\tau_{jj}$',
-         r'$\tau_{jz}$',
+         r'$\tau_{jk}$',
+         r'$N_{ii}$',
+         r'$N_{ij}$',
+         r'$N_{ik}$',
+         r'$N_{jj}$',
+         r'$N_{jk}$',
          r'ini$_i$',
          r'ini$_j$',
          r'$\partial_i B$',
@@ -605,28 +686,28 @@ names = [r'$S$',
          r'$\partial_j H$']
 
 X      = [x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,x17,x18,
-          x19,x20,x21,x22,x23,x24,x25,x26,x27,x28,x29,x30,x31,x32,x33]
+          x19,x20,x21,x22,x23,x24,x25,x26,x27,x28,x29,x30,x31,x32,x33,x34,x35]
 V      = [v0,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,v14,v15,v16,v17,v18,
-          v19,v20,v21,v22,v23,v24,v25,v26,v27,v28,v29,v30,v31,v32,v33]
+          v19,v20,v21,v22,v23,v24,v25,v26,v27,v28,v29,v30,v31,v32,v33,v34,v35]
 
 # with stress terms :
 if mdl == 'stress':
-  index  = [0,1,5,7,16,27,29,17,19,20,22,23]
+  index  = [0,1,5,7,10,17,18,19,21,22,24,25,26,27,28]
 
 # U instead of Ubar :
 elif mdl == 'U':
-  index  = [0,1,5,7,16,27,29]
+  index  = [0,1,5,7,17,26,28]
 
 elif mdl == 'U_temp':
-  index  = [0,1,5,7,8,9,16,27,29]
+  index  = [0,1,5,7,8,9,17,26,28]
 
 # independent only :
 elif mdl == 'Ubar':
-  index  = [0,1,5,7,13,27,29]
+  index  = [0,1,5,7,14,26,28]
 
 # independent only :
 elif mdl == 'Ubar_temp':
-  index  = [0,1,5,7,8,9,13,27,29]
+  index  = [0,1,5,7,8,9,14,26,28]
 
 ii     = index
 ii_int = []
@@ -683,23 +764,22 @@ ln_fit   = lognorm.fit(y)
 g_x      = linspace(y.min(), y.max(), 1000)
 ln_freq  = lognorm.pdf(g_x, *ln_fit)
 
-fig      = figure()
-ax       = fig.add_subplot(111)
-
-ax.hist(y, 300, histtype='stepfilled', color='k', alpha=0.5, normed=True,
-        label=r'$\beta$')
-ax.plot(g_x, ln_freq, lw=2.0, color='r', label=r'$\mathrm{LogNorm}$')
-#ax.set_xlim([0,200])
-##ax.set_ylim([0,0.020])
-ax.set_xlabel(r'$\beta$')
-ax.set_ylabel('Frequency')
-ax.legend(loc='upper right')
-ax.grid()
-tight_layout()
-fn = 'images/stats/' + file_n + 'beta_distribution.png'
-savefig(fn, dpi=100)
-#show()
-close(fig)
+#fig      = figure()
+#ax       = fig.add_subplot(111)
+#
+#ax.hist(y, 300, histtype='stepfilled', color='k', alpha=0.5, normed=True,
+#        label=r'$\beta$')
+#ax.plot(g_x, ln_freq, lw=2.0, color='r', label=r'$\mathrm{LogNorm}$')
+##ax.set_xlim([0,200])
+###ax.set_ylim([0,0.020])
+#ax.set_xlabel(r'$\beta$')
+#ax.set_ylabel('Frequency')
+#ax.legend(loc='upper right')
+#ax.grid()
+#tight_layout()
+#savefig(g_fn + 'beta_distribution.png', dpi=100)
+##show()
+#close(fig)
 
 #===============================================================================
 # fit the glm :
@@ -718,15 +798,27 @@ resi_f = Function(Q)
 yhat_f.vector()[valid] = yhat**mtx
 resi_f.vector()[valid] = resid
 
-cmap = 'RdGy'
+betamax  = yhat_f.vector().max()
+betamin  = yhat_f.vector().min()
 
-plotIce(drg, yhat_f, name='GLM_beta', direc=g_fn, basin='jakobshavn', 
-        title=r'$\hat{\beta}$', cmap=cmap, scale='log', extend='max',
-        umin=1e-4, umax=1e4, numLvls=12, tp=False, tpAlpha=0.5, show=False)
+rmax  = resi_f.vector().max()
+rmin  = resi_f.vector().min()
 
-plotIce(drg, resi_f, name='GLM_resid', direc=g_fn, basin='jakobshavn',
-        title=r'$d$', cmap='RdGy', scale='lin', extend='both',
-        umin=-1, umax=1, numLvls=13, tp=False, tpAlpha=0.5, show=False)
+b_lvls    = np.array([betamin, 1e-2, 1e1, 2e2, 2.5e2, 3e2, 5e2, 1e3, betamax])
+r_lvls    = np.array([rmin, -3e-1, -1e-1, -5e-2, -1e-2, 
+                      1e-2, 5e-2, 1e-1, 3e-1, rmax])
+
+plotIce(drg, yhat_f, name='GLM_beta', direc=g_fn, 
+        title=r'$\hat{\beta}$', cmap=cmap,  scale='lin',
+        levels=b_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, params=params)
+
+plotIce(drg, resi_f, name='GLM_resid', direc=g_fn, 
+        title=r'$d$', cmap='RdGy',  scale='lin',
+        levels=r_lvls, tp=True, tpAlpha=0.2,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, params=params)
 
 #===============================================================================
 # data analysis :
@@ -745,8 +837,7 @@ ax.set_ylabel('Frequency')
 ax.legend(loc='upper right')
 ax.grid()
 tight_layout()
-fn = 'images/stats/' + file_n + 'GLM_beta_distributions.png'
-savefig(fn, dpi=100)
+savefig(g_fn + 'GLM_beta_distributions.png', dpi=100)
 #show()
 close(fig)
   
@@ -786,8 +877,7 @@ ax2.set_ylim([yl, yh])
 ax2.grid()
 
 tight_layout()
-fn = 'images/stats/' + file_n + 'GLM_resid_NQ.png'
-savefig(fn, dpi=100)
+savefig(g_fn + 'GLM_resid_NQ.png', dpi=100)
 #show()
 close(fig)
 
@@ -806,9 +896,8 @@ ax.set_yscale('log')
 ax.set_xlim([0, len(out['dev_a'])-1])
 ax.grid()
 ax.legend()
-fn = 'images/stats/' + file_n + 'GLM_newton_resid.png'
 tight_layout()
-savefig(fn, dpi=100)
+savefig(g_fn + 'GLM_newton_resid.png' , dpi=100)
 #show()
 close(fig)
 
@@ -846,8 +935,7 @@ close(fig)
 #
 #tight_layout()
 #
-#fn = 'images/stats/' + file_n + 'GLM_partial_residual.png'
-#savefig(fn, dpi=100)
+#savefig(g_fn + 'GLM_partial_residual.png', dpi=100)
 #show()
 #close(fig)
 
@@ -871,7 +959,7 @@ stats_yh = [mu, med, sigma**2, fe_iqr, v_m_rat,
             out['R2'], out['F'], out['AIC'], out['sighat']]
 
 #srt = argsort(abs(ahat))[::-1]
-f   = open('dat/' + file_n + 'alpha.dat', 'wb')
+f   = open(d_fn + 'alpha.dat', 'wb')
 #for n, a, c in zip(ex_n[srt], ahat[srt], ci[srt]):
 for n, a, c in zip(ex_n, ahat, ci):
   al = a-c
@@ -888,7 +976,7 @@ f.close()
 names = ['$\mu$', 'median', '$\sigma^2$', 'IQR',   '$\sigma^2 / \mu$',
          '$R^2$', 'F',      'AIC',        '$\hat{\sigma}^2$']
 
-f = open('dat/' + file_n + 'stats.dat', 'wb')
+f = open(d_fn + 'stats.dat', 'wb')
 for n, s_yh in zip(names, stats_yh):
   strng = '%s & %g \\\\\n' % (n, s_yh)
   f.write(strng)
@@ -896,7 +984,7 @@ f.write('\n')
 f.close()
 
 #===============================================================================
-sys.exit(0)
+#sys.exit(0)
 #===============================================================================
 # reduce the model to explanitory variables with meaning :
 
@@ -932,15 +1020,29 @@ while exterminated > 0:
   resi_f = Function(Q)
   yhat_f.vector()[valid] = yhat_n
   resi_f.vector()[valid] = resid_n
+
+  betamax  = yhat_f.vector().max()
+  betamin  = yhat_f.vector().min()
   
-  plotIce(drg, yhat_f, name='GLM_beta_reduced', direc=g_fn, basin='jakobshavn', 
-          title=r'$\hat{\beta}$', cmap='gist_yarg', scale='log', 
-          umin=1.0, umax=betaMax, numLvls=12, tp=False, tpAlpha=0.5, show=False)
+  rmax  = resi_f.vector().max()
+  rmin  = resi_f.vector().min()
+  
+  b_lvls    = np.array([betamin, 1e-2, 1e1, 2e2, 2.5e2, 3e2, 5e2, 1e3, betamax])
+  r_lvls    = np.array([rmin, -3e-1, -1e-1, -5e-2, -1e-2, 
+                        1e-2, 5e-2, 1e-1, 3e-1, rmax])
+  
+  plotIce(drg, yhat_f, name='GLM_beta_reduced', direc=g_fn, 
+          title=r'$\hat{\beta}$', cmap=cmap,  scale='lin',
+          levels=b_lvls, tp=True, tpAlpha=0.2,
+          extend='neither', show=False, ext='.pdf',
+          zoom_box=False, params=params)
   
   plotIce(drg, resi_f, name='GLM_resid_reduced', direc=g_fn, 
-          title=r'$d$', cmap='RdGy', scale='lin', basin='jakobshavn', 
-          umin=-50, umax=50, numLvls=13, tp=False, tpAlpha=0.5, show=False)
-    
+          title=r'$d$', cmap='RdGy',  scale='lin',
+          levels=r_lvls, tp=True, tpAlpha=0.2,
+          extend='neither', show=False, ext='.pdf',
+          zoom_box=False, params=params)
+  
   #=============================================================================
   # data analysis :
   
@@ -958,8 +1060,7 @@ while exterminated > 0:
   ax.legend(loc='upper right')
   ax.grid()
   tight_layout()
-  fn = 'images/stats/'+file_n+'GLM_beta_distributions_reduced.png'
-  savefig(fn, dpi=100)
+  savefig(g_fn + 'GLM_beta_distributions_reduced.png', dpi=100)
   #show()
   close(fig)
     
@@ -998,8 +1099,7 @@ while exterminated > 0:
   ax2.grid()
   
   tight_layout()
-  fn = 'images/stats/'+file_n+'GLM_resid-NQ_reduced.png'
-  savefig(fn, dpi=100)
+  savefig(g_fn + 'GLM_resid-NQ_reduced.png', dpi=100)
   #show()
   close(fig)
 
@@ -1017,16 +1117,15 @@ while exterminated > 0:
   ax.set_xlim([0, len(out_n['dev_a'])-1])
   ax.grid()
   ax.legend()
-  fn = 'images/stats/' + file_n + 'GLM_newton_resid_reduced.png'
   tight_layout()
-  savefig(fn, dpi=100)
+  savefig(g_fn + 'GLM_newton_resid_reduced.png', dpi=100)
   #show()
   close(fig)
 
   #=============================================================================
   # save tables :
   #srt = argsort(abs(ahat_n))[::-1]
-  fn  = open('dat/'+file_n+'alpha_reduced.dat', 'wb')
+  fn  = open(d_fn + 'alpha_reduced.dat', 'wb')
   #for n, a, c in zip(ex_a[srt], ahat_n[srt], ci_n[srt]):
   for n, a, c in zip(ex_a, ahat_n, ci_n):
     al = a-c
@@ -1051,7 +1150,7 @@ while exterminated > 0:
   names = ['$\mu$', 'median', '$\sigma^2$', 'IQR',   '$\sigma^2 / \mu$',
            '$R^2$', 'F',      'AIC',        '$\hat{\sigma}^2$']
   
-  fn = open('dat/' + file_n + 'stats_reduced.dat', 'wb')
+  fn = open(d_fn + 'stats_reduced.dat', 'wb')
   for n, s_yh in zip(names, stats_yh):
     strng = '%s & %g \\\\\n' % (n, s_yh)
     fn.write(strng)

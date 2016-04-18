@@ -9,7 +9,7 @@ mpl.rcParams['text.usetex']          = True
 mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
 # set the relavent directories :
-in_dir  = 'dump/jakob_small/inversion_k_1e-3_FSTMC/'
+in_dir  = 'dump/jakob_small/inversion_Wc_0.01/'
 out_dir = in_dir + 'plot/'
 
 if not os.path.exists(out_dir):
@@ -58,9 +58,6 @@ out = get_data(in_dir)
 
 Is, Js, J1s, J2s, Rs, ns, xn = out
 
-Rmax = Rs.max()
-Jmax = Js.max()
-
 fig = plt.figure(figsize=(6,3))
 ax1 = fig.add_subplot(111)
 
@@ -104,7 +101,7 @@ ax1.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useOffset=False)
 
 yloc1 = plt.MaxNLocator(4)
 ax1.yaxis.set_major_locator(yloc1)
-#ax1.set_yscale('log')
+ax1.set_yscale('log')
 
 
 plt.tight_layout()

@@ -841,6 +841,18 @@ class Enthalpy(Energy):
     # calculate downward vertical integral :
     Q_int = model.vert_integrate(Q, d='down')
     model.init_Q_int(Q_int, cls=self)
+ 
+  def calc_temperate_thickness(self):
+    """
+    calculates the temperate zone thickness, saved to model.alpha_int.
+    """
+    s   = "::: calculating vertical integral of strain heat :::"
+    print_text(s, cls=self)
+   
+    model = self.model
+   
+    alpha_int = model.vert_integrate(model.alpha, d='down')
+    model.init_alpha_int(alpha_int, cls=self)
 
   def calc_T_melt(self, annotate=False):
     """

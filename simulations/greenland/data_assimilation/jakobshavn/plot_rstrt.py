@@ -31,11 +31,12 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
-f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',   'r')
-fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
-#fQ    = HDF5File(mpi_comm_world(), in_dir  + 'Q_int.h5', 'r')
+f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',  'r')
+fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
+fa    = HDF5File(mpi_comm_world(), in_dir  + 'alpha_int.h5', 'r')
 
 # initialize the variables :
+d3model.init_alpha_int(fa)
 d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_U_ob(fdata, fdata)
@@ -57,6 +58,7 @@ d3model.init_Q_int(f)
 #sys.exit(0)
 
 # 2D model gets balance-velocity appropriate variables initialized :
+bedmodel.assign_submesh_variable(bedmodel.alpha_int, d3model.alpha_int)
 bedmodel.assign_submesh_variable(bedmodel.S,         d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,         d3model.B)
 bedmodel.assign_submesh_variable(bedmodel.T,         d3model.T)
@@ -162,6 +164,12 @@ Tmin  = bedmodel.T.vector().min()
 
 Q_int_max = bedmodel.Q_int.vector().max()
 Q_int_min = bedmodel.Q_int.vector().min()
+
+a_int_max  = bedmodel.alpha_int.vector().max()
+a_int_min  = bedmodel.alpha_int.vector().min()
+
+a_int_lvls  = np.array([0, 50, 100, 150, 200, 400, 800, a_int_max])
+p_temp_lvls = np.array([0, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0])
 
 
 B_lvls    = np.array([Bmin, -1e3, -5e2, -1e2, -1e1, 1e1, 1e2, 2e2, 3e2, Bmax])
@@ -282,89 +290,99 @@ plt.close(fig)
 #===============================================================================
 # derive temperate zone thickness :
 
-d3model.theta.set_allow_extrapolation(True)
-d3model.p.set_allow_extrapolation(True)
+#d3model.theta.set_allow_extrapolation(True)
+#d3model.p.set_allow_extrapolation(True)
+#
+#x_a = bedmodel.mesh.coordinates()[:,0]
+#y_a = bedmodel.mesh.coordinates()[:,1]
+#S_a = bedmodel.S.vector().array()
+#B_a = bedmodel.B.vector().array()
+#
+#def line_intersection(line1, line2):
+#  xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+#  ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+#
+#  def det(a, b):
+#    return a[0] * b[1] - a[1] * b[0]
+#
+#  div = det(xdiff, ydiff)
+#  if div == 0:
+#   raise Exception('lines do not intersect')
+#
+#  d = (det(*line1), det(*line2))
+#  x = det(d, xdiff) / div
+#  y = det(d, ydiff) / div
+#  return x, y
+#
+#
+#CTS = []
+#for x_w, y_w, S_w, B_w in zip(x_a, y_a, S_a, B_a):
+#
+#  # get the energy values :
+#  theta_i   = []
+#  theta_m_i = []
+#  for z_w in z_s:
+#    theta_j   = d3model.theta(x_w, y_w, z_w)
+#    p_j       = d3model.p(x_w, y_w, z_w)
+#    Tm_j      = Tw - gamma*p_j
+#    theta_m_j = a*Tm_j + b/2*Tm_j**2
+#    theta_i.append(theta_j)
+#    theta_m_i.append(theta_m_j)
+#  theta_i   = array(theta_i)
+#  theta_m_i = array(theta_m_i)
+#  
+#  # get z-coordinates :  
+#  z_z = []
+#  for z_w in z_s:
+#    z_i = (z_w / zmax) * (S_w - B_w) + B_w
+#    z_z.append(z_i)
+#  z_z = array(z_z)
+#
+#  # get height of CTS :  
+#  if sum(theta_i > theta_m_i) > 0:
+#    temperate = where(theta_i > theta_m_i)[0]
+#    if temperate.min() != 0:
+#      CTS.append(0.0)
+#    else:
+#      CTS_idx_low   = temperate[-1]
+#      CTS_idx_high  = CTS_idx_low + 1
+#      theta_l   = ((theta_i[CTS_idx_low],    z_z[CTS_idx_low]),
+#                   (theta_i[CTS_idx_high],   z_z[CTS_idx_high]))
+#      theta_m_l = ((theta_m_i[CTS_idx_low],  z_z[CTS_idx_low]),
+#                   (theta_m_i[CTS_idx_high], z_z[CTS_idx_high]))
+#      P = line_intersection(theta_l, theta_m_l)
+#      CTS.append(P[1] - B_w)
+#  else:
+#    CTS.append(0.0)
+#CTS = array(CTS)
+#
+#CTS_f = Function(bedmodel.Q)
+#bedmodel.assign_variable(CTS_f, CTS)
+#
+#CTS_max   = CTS_f.vector().max()
+#CTS_min   = CTS_f.vector().min()
+#CTS_lvls  = np.array([CTS_min, 1e-1, 1e0, 1e1, 1e2, CTS_max])
+#
+#plotIce(drg, CTS_f, name='CTS', direc=out_dir,
+#        title=r'$CTS$', cmap='gist_yarg',  scale='lin',
+#        levels=CTS_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
+#
+#
+#sys.exit(0)
 
-x_a = bedmodel.mesh.coordinates()[:,0]
-y_a = bedmodel.mesh.coordinates()[:,1]
-S_a = bedmodel.S.vector().array()
-B_a = bedmodel.B.vector().array()
+S_v = bedmodel.S.vector().array()
+B_v = bedmodel.B.vector().array()
+a_v = bedmodel.alpha_int.vector().array()
+H_v = S_v - B_v + 1e-10
+p_v = a_v/H_v
+p_v[p_v > 1] = 1
 
-def line_intersection(line1, line2):
-  xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-  ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+p_temp_b = Function(bedmodel.Q)
 
-  def det(a, b):
-    return a[0] * b[1] - a[1] * b[0]
-
-  div = det(xdiff, ydiff)
-  if div == 0:
-   raise Exception('lines do not intersect')
-
-  d = (det(*line1), det(*line2))
-  x = det(d, xdiff) / div
-  y = det(d, ydiff) / div
-  return x, y
-
-
-CTS = []
-for x_w, y_w, S_w, B_w in zip(x_a, y_a, S_a, B_a):
-
-  # get the energy values :
-  theta_i   = []
-  theta_m_i = []
-  for z_w in z_s:
-    theta_j   = d3model.theta(x_w, y_w, z_w)
-    p_j       = d3model.p(x_w, y_w, z_w)
-    Tm_j      = Tw - gamma*p_j
-    theta_m_j = a*Tm_j + b/2*Tm_j**2
-    theta_i.append(theta_j)
-    theta_m_i.append(theta_m_j)
-  theta_i   = array(theta_i)
-  theta_m_i = array(theta_m_i)
-  
-  # get z-coordinates :  
-  z_z = []
-  for z_w in z_s:
-    z_i = (z_w / zmax) * (S_w - B_w) + B_w
-    z_z.append(z_i)
-  z_z = array(z_z)
-
-  # get height of CTS :  
-  if sum(theta_i > theta_m_i) > 0:
-    temperate = where(theta_i > theta_m_i)[0]
-    if temperate.min() != 0:
-      CTS.append(0.0)
-    else:
-      CTS_idx_low   = temperate[-1]
-      CTS_idx_high  = CTS_idx_low + 1
-      theta_l   = ((theta_i[CTS_idx_low],    z_z[CTS_idx_low]),
-                   (theta_i[CTS_idx_high],   z_z[CTS_idx_high]))
-      theta_m_l = ((theta_m_i[CTS_idx_low],  z_z[CTS_idx_low]),
-                   (theta_m_i[CTS_idx_high], z_z[CTS_idx_high]))
-      P = line_intersection(theta_l, theta_m_l)
-      CTS.append(P[1] - B_w)
-  else:
-    CTS.append(0.0)
-CTS = array(CTS)
-
-CTS_f = Function(bedmodel.Q)
-bedmodel.assign_variable(CTS_f, CTS)
-
-CTS_max   = CTS_f.vector().max()
-CTS_min   = CTS_f.vector().min()
-CTS_lvls  = np.array([CTS_min, 1e-1, 1e0, 1e1, 1e2, CTS_max])
-
-plotIce(drg, CTS_f, name='CTS', direc=out_dir,
-        title=r'$CTS$', cmap='gist_yarg',  scale='lin',
-        levels=CTS_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
-
-
-sys.exit(0)
-
+bedmodel.assign_variable(p_temp_b, p_v)
 
 #===============================================================================
 # plot :
@@ -375,6 +393,18 @@ sys.exit(0)
 #cmap = 'plasma'
 #cmap = 'magma'
 cmap = 'gist_yarg'
+
+plotIce(drg, bedmodel.alpha_int, name='alpha_int', direc=out_dir, 
+        title=r'$\alpha_i$', cmap='gist_yarg',  scale='lin',
+        levels=a_int_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
+        extend='neither', show=False, ext='.pdf',
+        params=params, plot_pts=plot_pts)
+
+plotIce(drg, p_temp_b, name='p_temp', direc=out_dir, 
+        title=r'$\alpha_i / H$', cmap='gist_yarg',  scale='lin',
+        levels=p_temp_lvls, tp=True, tpAlpha=0.2, cb_format='%.2f',
+        extend='neither', show=False, ext='.pdf',
+        params=params, plot_pts=plot_pts)
   
 plotIce(drg, bedmodel.B, name='B', direc=out_dir,
         title=r'$B$', cmap='RdGy',  scale='lin',

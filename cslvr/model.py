@@ -936,6 +936,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.alpha, alpha, cls=cls)
 
+  def init_alpha_int(self, alpha_int, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing temperate-zone thickness :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.alpha_int, alpha_int, cls=cls)
+
   def init_Fb(self, Fb, cls=None):
     """
     """
@@ -1918,6 +1927,7 @@ class Model(object):
     self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
     self.alpha         = Function(self.Q, name='alpha')
+    self.alpha_int     = Function(self.Q, name='alpha_int')
     self.Fb            = Function(self.Q, name='Fb')
     self.PE            = Function(self.Q, name='PE')
     self.W_int         = Function(self.Q, name='W_int')

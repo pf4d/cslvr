@@ -7,13 +7,13 @@ import os
 # get the data from the model output on the bed :
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
+base_dir = 'dump/jakob_small/inversion_Wc_0.03/01/'
 in_dir   = base_dir
 out_dir  = base_dir
 var_dir  = 'dump/vars_jakobshavn_small/'
 
 # create HDF5 files for saving and loading data :
-finv    = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',               'r')
+finv    = HDF5File(mpi_comm_world(), in_dir  + 'inverted_01.h5',       'r')
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',             'r')
 fout    = HDF5File(mpi_comm_world(), out_dir + 'linear_model_vars.h5', 'w')
 

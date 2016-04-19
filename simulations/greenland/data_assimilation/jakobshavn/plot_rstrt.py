@@ -5,8 +5,8 @@ import numpy             as np
 import sys
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
-base_dir = 'dump/jakob_small/hdf5/'
+#base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
+base_dir = 'dump/jakob_small/inversion_Wc_0.03/01/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
@@ -31,9 +31,9 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
-f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',  'r')
-fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
-fa    = HDF5File(mpi_comm_world(), in_dir  + 'alpha_int.h5', 'r')
+f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted_01.h5',  'r')
+fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',        'r')
+fa    = HDF5File(mpi_comm_world(), in_dir  + 'alpha_int.h5',    'r')
 
 # initialize the variables :
 d3model.init_alpha_int(fa)
@@ -57,6 +57,11 @@ d3model.init_Q_int(f)
 #d3model.save_xdmf(d3model.U3, 'U')
 #sys.exit(0)
 
+u3,v3,w3 = d3model.U3.split(True)
+u,v,w    = srfmodel.U3.split(True)
+srfmodel.assign_submesh_variable(u, u3)
+srfmodel.assign_submesh_variable(v, v3)
+
 # 2D model gets balance-velocity appropriate variables initialized :
 bedmodel.assign_submesh_variable(bedmodel.alpha_int, d3model.alpha_int)
 bedmodel.assign_submesh_variable(bedmodel.S,         d3model.S)
@@ -70,9 +75,32 @@ bedmodel.assign_submesh_variable(bedmodel.PE,        d3model.PE)
 bedmodel.assign_submesh_variable(bedmodel.W_int,     d3model.W_int)
 srfmodel.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
 srfmodel.assign_submesh_variable(srfmodel.U_ob,      d3model.U_ob)
+srfmodel.assign_submesh_variable(srfmodel.u_ob,      d3model.u_ob)
+srfmodel.assign_submesh_variable(srfmodel.v_ob,      d3model.v_ob)
 bedmodel.assign_submesh_variable(bedmodel.beta,      d3model.beta)
 bedmodel.assign_submesh_variable(bedmodel.theta,     d3model.theta)
 bedmodel.assign_submesh_variable(bedmodel.Q_int,     d3model.Q_int)
+
+
+#===============================================================================
+# calculate velocity misfit :
+
+R = Function(srfmodel.Q)
+
+u_v    = u.vector().array()
+v_v    = v.vector().array()
+u_ob_v = srfmodel.u_ob.vector().array()
+v_ob_v = srfmodel.v_ob.vector().array()
+
+U_v    = np.sqrt(u_v**2 + v_v**2 + DOLFIN_EPS)
+U_ob_v = srfmodel.U_ob.vector().array()
+
+#R_u = u_v - u_ob_v
+#R_v = v_v - v_ob_v
+
+R_v = U_v - U_ob_v
+
+srfmodel.assign_variable(R, R_v)
 
 
 #===============================================================================
@@ -168,16 +196,21 @@ Q_int_min = bedmodel.Q_int.vector().min()
 a_int_max  = bedmodel.alpha_int.vector().max()
 a_int_min  = bedmodel.alpha_int.vector().min()
 
+R_max = R.vector().max()
+R_min = R.vector().min()
+
+R_lvls = np.array([R_min, -750, -250, -50, -10, -1,
+                   1, 10, 50, 250, 750, R_max])
+
 a_int_lvls  = np.array([0, 50, 100, 150, 200, 400, 800, a_int_max])
 p_temp_lvls = np.array([0, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0])
-
 
 B_lvls    = np.array([Bmin, -1e3, -5e2, -1e2, -1e1, 1e1, 1e2, 2e2, 3e2, Bmax])
           
 a_lvls    = np.array([0.0, 1e-2, 1e-1, 0.5, amax])
-Mb_lvls   = np.array([Mbmin, -1e-2, -5e-3, -1e-3, -1e-4, -1e-5,
-                    1e-5, 1e-2, 1e-1, 2e-1, 0.5, Mbmax])
-#Mb_lvls   = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Mbmax])
+#Mb_lvls   = np.array([Mbmin, -1e-2, -5e-3, -1e-3, -1e-4, -1e-5,
+#                    1e-5, 1e-2, 1e-1, 2e-1, 0.5, Mbmax])
+Mb_lvls   = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Mbmax])
 Fb_lvls   = np.array([0.0, 1e-3, 1e-2, 1e-1, 2e-1, 3e-1, 6e-1, Fbmax])
 
 #b_lvls    = np.array([betamin, 1, 1e2, 1e3, 2.5e3, 5e3, betamax])
@@ -205,87 +238,87 @@ b     = 7.253
 #===============================================================================
 # plot profiles :
 
-x_a, y_a  = drg['pyproj_Proj'](lon_a, lat_a)
-
-zmin = mesh.coordinates()[:,2].min()
-zmax = mesh.coordinates()[:,2].max()
-
-z_s = linspace(zmin, zmax, 100)
-
-T_a = []
-W_a = []
-z_a = []
-
-for x_w, y_w in zip(x_a, y_a):
-  S    = d3model.S(x_w, y_w, 1.0)
-  B    = d3model.B(x_w, y_w, 1.0)
-  T_z  = []
-  W_z  = []
-  for z_w in z_s:
-    theta_i = d3model.theta(x_w, y_w, z_w)
-    p_i     = d3model.p(x_w, y_w, z_w)
-    Tm_i    = Tw - gamma*p_i
-    theta_m = a*Tm_i + b/2*Tm_i**2
-    if theta_i > theta_m:
-      W_z.append( (theta_i - theta_m)/L )
-      T_z.append( Tm_i )
-    else:
-      W_z.append( 0.0 )
-      T_z.append( (-a + np.sqrt(a**2 + 2*b*theta_i)) / b )
-  
-  T_z = array(T_z)
-  W_z = array(W_z)
-
-  # get z-coordinates :  
-  z_z = []
-  for z_w in z_s:
-    z_i = (z_w / zmax)# * (S - B) - (S - B)
-    z_z.append(z_i)
-  z_z = array(z_z)
-  
-  T_a.append(T_z)
-  W_a.append(W_z)
-  z_a.append(z_z)
-
-T_a = array(T_a)
-W_a = array(W_a)
-z_a = array(z_a)
-
-if not os.path.exists(base_dir + 'profile_data'):
-  os.makedirs(base_dir + 'profile_data')
-
-np.savetxt(base_dir + 'profile_data/T.txt', T_a)
-np.savetxt(base_dir + 'profile_data/W.txt', W_a)
-np.savetxt(base_dir + 'profile_data/z.txt', z_a)
-
-fig = figure(figsize=(4,4))
-ax1 = fig.add_subplot(121)
-ax2 = fig.add_subplot(122)
-#ax2 = ax1.twiny()
-
-for T_i, W_i, z_i, color_i, style_i in zip(T_a, W_a, z_a, color_a, style_a):
-  ax1.plot(T_i, z_i, color=color_i, lw=3.0)
-  #plt.subplots_adjust(wspace = 0.001)
-  ax2.plot(W_i, z_i, color=color_i, lw=3.0)
-  ax2.set_yticklabels([])
-
-#ax2.set_xlim([0,0.15])
-
-xloc1 = plt.MaxNLocator(4)
-xloc2 = plt.MaxNLocator(4)
-ax1.xaxis.set_major_locator(xloc1)
-ax2.xaxis.set_major_locator(xloc2)
-
-ax1.set_xlabel(r'$T$')
-ax2.set_xlabel(r'$W$')
-ax1.set_ylabel(r'depth')
-#ax2.tick_params(axis='x', colors='r')
-#ax2.xaxis.label.set_color('r')
-ax1.grid()
-ax2.grid()
-plt.tight_layout()
-plt.savefig(out_dir + 'profile_plot.pdf')
-plt.close(fig)
+#x_a, y_a  = drg['pyproj_Proj'](lon_a, lat_a)
+#
+#zmin = mesh.coordinates()[:,2].min()
+#zmax = mesh.coordinates()[:,2].max()
+#
+#z_s = linspace(zmin, zmax, 100)
+#
+#T_a = []
+#W_a = []
+#z_a = []
+#
+#for x_w, y_w in zip(x_a, y_a):
+#  S    = d3model.S(x_w, y_w, 1.0)
+#  B    = d3model.B(x_w, y_w, 1.0)
+#  T_z  = []
+#  W_z  = []
+#  for z_w in z_s:
+#    theta_i = d3model.theta(x_w, y_w, z_w)
+#    p_i     = d3model.p(x_w, y_w, z_w)
+#    Tm_i    = Tw - gamma*p_i
+#    theta_m = a*Tm_i + b/2*Tm_i**2
+#    if theta_i > theta_m:
+#      W_z.append( (theta_i - theta_m)/L )
+#      T_z.append( Tm_i )
+#    else:
+#      W_z.append( 0.0 )
+#      T_z.append( (-a + np.sqrt(a**2 + 2*b*theta_i)) / b )
+#  
+#  T_z = array(T_z)
+#  W_z = array(W_z)
+#
+#  # get z-coordinates :  
+#  z_z = []
+#  for z_w in z_s:
+#    z_i = (z_w / zmax)# * (S - B) - (S - B)
+#    z_z.append(z_i)
+#  z_z = array(z_z)
+#  
+#  T_a.append(T_z)
+#  W_a.append(W_z)
+#  z_a.append(z_z)
+#
+#T_a = array(T_a)
+#W_a = array(W_a)
+#z_a = array(z_a)
+#
+#if not os.path.exists(base_dir + 'profile_data'):
+#  os.makedirs(base_dir + 'profile_data')
+#
+#np.savetxt(base_dir + 'profile_data/T.txt', T_a)
+#np.savetxt(base_dir + 'profile_data/W.txt', W_a)
+#np.savetxt(base_dir + 'profile_data/z.txt', z_a)
+#
+#fig = figure(figsize=(4,4))
+#ax1 = fig.add_subplot(121)
+#ax2 = fig.add_subplot(122)
+##ax2 = ax1.twiny()
+#
+#for T_i, W_i, z_i, color_i, style_i in zip(T_a, W_a, z_a, color_a, style_a):
+#  ax1.plot(T_i, z_i, color=color_i, lw=3.0)
+#  #plt.subplots_adjust(wspace = 0.001)
+#  ax2.plot(W_i, z_i, color=color_i, lw=3.0)
+#  ax2.set_yticklabels([])
+#
+##ax2.set_xlim([0,0.15])
+#
+#xloc1 = plt.MaxNLocator(4)
+#xloc2 = plt.MaxNLocator(4)
+#ax1.xaxis.set_major_locator(xloc1)
+#ax2.xaxis.set_major_locator(xloc2)
+#
+#ax1.set_xlabel(r'$T$')
+#ax2.set_xlabel(r'$W$')
+#ax1.set_ylabel(r'depth')
+##ax2.tick_params(axis='x', colors='r')
+##ax2.xaxis.label.set_color('r')
+#ax1.grid()
+#ax2.grid()
+#plt.tight_layout()
+#plt.savefig(out_dir + 'profile_plot.pdf')
+#plt.close(fig)
 
 #===============================================================================
 # derive temperate zone thickness :
@@ -394,55 +427,62 @@ bedmodel.assign_variable(p_temp_b, p_v)
 #cmap = 'magma'
 cmap = 'gist_yarg'
 
-plotIce(drg, bedmodel.alpha_int, name='alpha_int', direc=out_dir, 
-        title=r'$\alpha_i$', cmap='gist_yarg',  scale='lin',
-        levels=a_int_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
-        extend='neither', show=False, ext='.pdf',
-        params=params, plot_pts=plot_pts)
-
-plotIce(drg, p_temp_b, name='p_temp', direc=out_dir, 
-        title=r'$\alpha_i / H$', cmap='gist_yarg',  scale='lin',
-        levels=p_temp_lvls, tp=True, tpAlpha=0.2, cb_format='%.2f',
-        extend='neither', show=False, ext='.pdf',
-        params=params, plot_pts=plot_pts)
-  
-plotIce(drg, bedmodel.B, name='B', direc=out_dir,
-        title=r'$B$', cmap='RdGy',  scale='lin',
-        levels=B_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
-  
-plotIce(drg, bedmodel.Q_int, name='Q_int', direc=out_dir,
-        title=r'$Q_i$', cmap=cmap,  scale='lin',
-        levels=Q_int_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
-  
-plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
-        title='$T_B$', cmap=cmap,  scale='lin',
-        levels=T_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
-
-plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
-        title=r'$W_B$', cmap=cmap,  scale='lin',
-        levels=W_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
-
-plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
-        title=r'$F_b$', cmap=cmap,  scale='lin',
-        levels=Fb_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=plot_pts)
+#plotIce(drg, R, name='misfit', direc=out_dir, 
+#        title=r'$\Vert \mathbf{u} - \mathbf{u}_{ob} \Vert$',
+#        cmap='RdGy',  scale='lin',
+#        levels=R_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
+#        extend='neither', show=False, ext='.pdf',
+#        params=params, plot_pts=plot_pts)
+#
+#plotIce(drg, bedmodel.alpha_int, name='alpha_int', direc=out_dir, 
+#        title=r'$\alpha_i$', cmap='gist_yarg',  scale='lin',
+#        levels=a_int_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
+#        extend='neither', show=False, ext='.pdf',
+#        params=params, plot_pts=plot_pts)
+#
+#plotIce(drg, p_temp_b, name='p_temp', direc=out_dir, 
+#        title=r'$\alpha_i / H$', cmap='gist_yarg',  scale='lin',
+#        levels=p_temp_lvls, tp=True, tpAlpha=0.2, cb_format='%.2f',
+#        extend='neither', show=False, ext='.pdf',
+#        params=params, plot_pts=plot_pts)
+#  
+#plotIce(drg, bedmodel.B, name='B', direc=out_dir,
+#        title=r'$B$', cmap='RdGy',  scale='lin',
+#        levels=B_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
+#  
+#plotIce(drg, bedmodel.Q_int, name='Q_int', direc=out_dir,
+#        title=r'$Q_i$', cmap=cmap,  scale='lin',
+#        levels=Q_int_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
+#  
+#plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
+#        title='$T_B$', cmap=cmap,  scale='lin',
+#        levels=T_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
+#
+#plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
+#        title=r'$W_B$', cmap=cmap,  scale='lin',
+#        levels=W_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
+#
+#plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+#        title=r'$F_b$', cmap=cmap,  scale='lin',
+#        levels=Fb_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=plot_pts)
 
 plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-        title=r'$M_b$', cmap='RdGy',  scale='lin',
+        title=r'$M_b$', cmap=cmap,  scale='lin',
         levels=Mb_lvls, tp=True, tpAlpha=0.2,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,

@@ -751,11 +751,12 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
 
 
 def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
-            umin=None, umax=None, numLvls=12, levels=None, tp=False,
-            tpAlpha=0.5, contour_type='filled', params=None, extend='neither',
-            show=True, ext='.png', res=150, cb=True, cb_format='%.1e',
-            zoom_box=False, zoom_box_kwargs=None, plot_pts=None,
-            plot_continent=False, cont_plot_params=None, box_params=None):
+            umin=None, umax=None, numLvls=12, levels=None, levels_2=None, 
+            tp=False, tpAlpha=0.5, contour_type='filled', params=None,
+            extend='neither', show=True, ext='.png', res=150, cb=True,
+            cb_format='%.1e', zoom_box=False, zoom_box_kwargs=None,
+            plot_pts=None, plot_continent=False, cont_plot_params=None,
+            box_params=None):
   """
   INPUTS :
     di :
@@ -908,6 +909,7 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
     lon_interval   = params['lon_interval']
     plot_grid      = params['plot_grid']
     plot_scale     = params['plot_scale']
+    axes_color     = params['axes_color']
 
 
     dlon = (urcrnrlon - llcrnrlon) / 2.0
@@ -948,6 +950,9 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
       slon, slat = m(xmid, ymid, inverse=True)
       m.drawmapscale(slon, slat, slon, slat, scale_length, 
                      barstyle = 'fancy', fontcolor=scale_color)
+
+    for axis in ['top','bottom','left','right']:
+      ax.spines[axis].set_color(axes_color)
       
   else:
     s = ">>> plotIce REQUIRES A 'dict' OF SPECIFIC PARAMETERS FOR 'custom' <<<"
@@ -1107,6 +1112,8 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
                        cmap=cmap, norm=norm, extend=extend)
     if contour_type == 'lines':
       cs = ax.contour(x, y, v, levels=levels, colors='k') 
+      if levels_2 is not None:
+        cs2 = ax.contour(x, y, v, levels=levels_2, colors='k') 
       ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
         axins.contour(x, y, v, levels=levels, colors='k') 
@@ -1122,7 +1129,21 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
         axins.tricontourf(x, y, fi, v, levels=levels, 
                           cmap=cmap, norm=norm, extend=extend)
     elif contour_type == 'lines':
-      cs = ax.tricontour(x, y, fi, v, levels=levels, colors='k') 
+      cs = ax.tricontour(x, y, fi, v, linewidths=2.0,
+                         levels=levels, colors='k') 
+      for line in cs.collections:
+        if line.get_linestyle() != [(None, None)]:
+          line.set_linestyle([(None, None)])
+          line.set_color('red')
+          line.set_linewidth(1.0)
+      if levels_2 is not None:
+        cs2 = ax.tricontour(x, y, fi, v, levels=levels_2, colors='0.5') 
+        for line in cs2.collections:
+          if line.get_linestyle() != [(None, None)]:
+            line.set_linestyle([(None, None)])
+            line.set_color('red')
+            line.set_linewidth(0.5)
+      ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
         axins.tricontour(x, y, fi, v, levels=levels, colors='k')
         axins.clabel(cs, inline=1, colors='k', fmt='%1.2f')

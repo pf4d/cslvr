@@ -10,10 +10,7 @@ mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
 # set the relavent directories :
 in_dir  = 'dump/jakob_small/inversion_Wc_0.01/'
-out_dir = in_dir + 'plot/'
-
-if not os.path.exists(out_dir):
-  os.makedirs(out_dir)
+out_dir = in_dir
 
 def get_data(direc):
   Js  = []
@@ -72,13 +69,13 @@ for i in range(len(Is)):
   
   if i == 0:
     ax1.plot(xi, Js[i],       '-',  c='k',   lw=2,
-             label=r'$\mathscr{I}$')
+             label=r'$\mathscr{I}(\beta, \mathbf{u})$')
     ax1.plot(xi, 5000*J2s[i], '-',  c='0.6', lw=2,
-             label=r'$\mathscr{I}_1,\ \gamma_1 = 5 \times 10^3$')
+             label=r'$\mathscr{I}_1(\mathbf{u}, \gamma_1)$')
     ax1.plot(xi, 0.01*J1s[i], '-',  c='0.4', lw=2,
-             label=r'$\mathscr{I}_2,\ \gamma_2 = 10^{-2}$')
+             label=r'$\mathscr{I}_2(\mathbf{u}, \gamma_2)$')
     ax1.plot(xi, 10.0*Rs[i],  '--', c='r',   lw=2,
-             label=r'$\mathscr{I}_3,\ \gamma_3 = 10$')
+             label=r'$\mathscr{I}_3(\beta, \gamma_3)$')
   else:
     ax1.plot(xi, Js[i],       '-',  c='k',   lw=2)
     ax1.plot(xi, 5000*J2s[i], '-',  c='0.6', lw=2)
@@ -87,12 +84,12 @@ for i in range(len(Is)):
 
   k += ns[i] - 1
 
-leg1 = ax1.legend(loc='upper right')
-leg1.get_frame().set_alpha(0.7)
+leg1 = ax1.legend(loc='upper right', ncol=4)
+leg1.get_frame().set_alpha(0.0)
 
 ax1.grid()
 
-#ax1.set_ylim([9.75e18, 9.3e18])
+ax1.set_ylim([1e11, 2e13])
 
 ax1.set_xlabel('iteration')
 ax1.set_ylabel(r'$\mathscr{I}$')

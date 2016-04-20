@@ -14,6 +14,7 @@ mpl.rcParams['font.family']          = 'serif'
 mpl.rcParams['legend.fontsize']      = 'medium'
 mpl.rcParams['text.usetex']          = True
 mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
+#mpl.rcParams['contour.negative_linestyle']   = 'solid'
 
 for loader, name, is_pkg in pkgutil.walk_packages(__path__):
   module = loader.find_module(name).load_module(name)

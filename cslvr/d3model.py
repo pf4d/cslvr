@@ -714,15 +714,21 @@ class D3Model(Model):
     :param u: Function representing the model's function space
     :rtype:   Dolfin projection and Function of the vertical average
     """
-    H    = self.S - self.B
-    uhat = self.vert_integrate(u, d='up')
     s = "::: calculating vertical average :::"
     print_text(s, cls=self)
-    ubar = project(uhat/H, self.Q, annotate=False)
-    print_min_max(ubar, 'ubar', cls=self)
-    name = "vertical average of %s" % u.name()
-    ubar.rename(name, '')
+
+    ubar = self.vert_integrate(u, d='up')
     ubar = self.vert_extrude(ubar, d='down')
+    
+    try:
+      name = 'vertical average of %s' % u.name()
+    except AttributeError:
+      name = 'vertical average'
+    ubar.rename(name, '')
+    
+    ubar_v = ubar.vector().array()
+    H_v    = self.S.vector().array() - self.B.vector().array() + DOLFIN_EPS
+    self.assign_variable(ubar, ubar_v / H_v, cls=self)
     return ubar
 
   def strain_rate_tensor(self):

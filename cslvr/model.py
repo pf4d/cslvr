@@ -954,23 +954,32 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.Fb, Fb, cls=cls)
 
-  def init_W_int(self, W_int, cls=None):
+  def init_Wbar(self, Wbar, cls=None):
     """
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing integral of internal water content :::"
+    s = "::: initializing vertically averaged water content :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.W_int, W_int, cls=cls)
+    self.assign_variable(self.Wbar, Wbar, cls=cls)
 
-  def init_Q_int(self, Q_int, cls=None):
+  def init_temp_rat(self, temp_rat, cls=None):
+    """
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing temperate zone ratio :::"
+    print_text(s, cls=cls)
+    self.assign_variable(self.temp_rat, temp_rat, cls=cls)
+
+  def init_Qbar(self, Qbar, cls=None):
     """
     """
     if cls is None:
       cls = self.this
     s = "::: initializing integral of strain-heat :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.Q_int, Q_int, cls=cls)
+    self.assign_variable(self.Qbar, Qbar, cls=cls)
 
   def init_PE(self, PE, cls=None):
     """
@@ -1930,10 +1939,11 @@ class Model(object):
     self.alpha_int     = Function(self.Q, name='alpha_int')
     self.Fb            = Function(self.Q, name='Fb')
     self.PE            = Function(self.Q, name='PE')
-    self.W_int         = Function(self.Q, name='W_int')
+    self.Wbar          = Function(self.Q, name='Wbar')
     self.Fb_min        = Function(self.Q, name='Fb_min')
     self.Fb_max        = Function(self.Q, name='Fb_max')
-    self.Q_int         = Function(self.Q, name='Q_int')
+    self.Qbar          = Function(self.Q, name='Qbar')
+    self.temp_rat      = Function(self.Q, name='temp_rat')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
     

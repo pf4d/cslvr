@@ -5,11 +5,8 @@ import numpy             as np
 import sys
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'
-base_dir = 'dump/jakob_small/hdf5/'
-in_dir   = base_dir
-out_dir  = base_dir + 'plot/'
 var_dir  = 'dump/vars_jakobshavn_small/'
+out_dir  = 'dump/jakob_small/'
 
 if not os.path.exists(out_dir):
   os.makedirs(out_dir)
@@ -29,20 +26,16 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
-f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',   'r')
 fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
-#fQ    = HDF5File(mpi_comm_world(), in_dir  + 'Q_int.h5', 'r')
 
 # initialize the variables :
 d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_U_ob(fdata, fdata)
-d3model.init_T(f)
 
 # 2D model gets balance-velocity appropriate variables initialized :
 srfmodel.assign_submesh_variable(srfmodel.S,         d3model.S)
 srfmodel.assign_submesh_variable(srfmodel.B,         d3model.B)
-srfmodel.assign_submesh_variable(srfmodel.T,         d3model.T)
 srfmodel.assign_submesh_variable(srfmodel.U_ob,      d3model.U_ob)
 
 
@@ -115,11 +108,26 @@ params = {'llcrnrlon'    : -50.8,      # first x-coord
           'lat_interval' : 0.5,
           'lon_interval' : 1.0,
           'plot_grid'    : True,
-          'plot_scale'   : True}
+          'plot_scale'   : True,
+          'axes_color'   : 'k'}
 
 cont_plot_params = {'width'  : 0.8,
                     'height' : 1.2,
                     'loc'    : 1}
+
+close_params = {'llcrnrlat'    : 68.99,
+                'urcrnrlat'    : 69.31,
+                'llcrnrlon'    : -49.8,
+                'urcrnrlon'    : -48.3,
+                'scale_color'  : bc,
+                'scale_length' : 50,
+                'scale_loc'    : 1,
+                'figsize'      : (6,4),
+                'lat_interval' : 0.05,
+                'lon_interval' : 0.25,
+                'plot_grid'    : False,
+                'plot_scale'   : False,
+                'axes_color'   : 'r'}
 
 Bmax  = srfmodel.B.vector().max()
 Bmin  = srfmodel.B.vector().min()
@@ -130,8 +138,15 @@ Smin  = srfmodel.S.vector().min()
 Uobmax  = srfmodel.U_ob.vector().max()
 Uobmin  = srfmodel.U_ob.vector().min()
 
-B_lvls    = np.array([Bmin, -1e3, -5e2, -1e2, -1e1, 1e1, 1e2, 2e2, 3e2, Bmax])
-S_lvls    = np.array([Smin, 10, 100, 500, 1000, 1500, 2000, 2500, 3000, Smax])
+B_lvls    = np.array([-1250, -1000, -750, -500, -250, 0.0, 250, 500])
+B_lvls_2  = np.array([-1300, -1200, -1150, -1100, -1050, -950, -900,
+                      -850, -800, -700, -650, -600, -550, -450, -400,
+                      -350, -300, -200, -150, -100, -50, 50, 100, 150,
+                      200, 300, 350, 400, 450])
+S_lvls    = np.array([250, 500, 750, 1000, 1250, 1500])
+S_lvls_2  = np.array([150, 200, 300, 350, 400, 450, 550, 600, 
+                      650, 700, 800, 850, 900, 950, 1050, 1100,
+                      1150, 1200, 1300, 1350, 1400])
 U_ob_lvls = np.array([Uobmin, 50, 100, 250, 500, 1000, 2500, Uobmax])
           
 #===============================================================================
@@ -156,7 +171,23 @@ cmap = 'gist_yarg'
 #        extend='neither', show=False, ext='.pdf',
 #        params=params, plot_continent=True, cont_plot_params=cont_plot_params)
 
-plotIce(drg, srfmodel.U_ob, name='U_ob', direc=out_dir,
+plotIce(drg, srfmodel.B, name='B', direc=out_dir,
+        title='', cmap='RdGy',  scale='lin',
+        levels=B_lvls, levels_2=B_lvls_2, tp=True, tpAlpha=0.4,
+        contour_type='lines', cb=False,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=close_params, plot_pts=None)
+
+plotIce(drg, srfmodel.S, name='S', direc=out_dir,
+        title='', cmap='gist_yarg',  scale='lin',
+        levels=S_lvls, levels_2=S_lvls_2, tp=True, tpAlpha=0.4,
+        contour_type='lines', cb=False,
+        extend='neither', show=False, ext='.pdf',
+        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+        params=close_params, plot_pts=None)
+
+plotIce(drg, srfmodel.U_ob, name='region', direc=out_dir,
         title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap=cmap, scale='lin',
         levels=U_ob_lvls, tp=True, tpAlpha=0.4, box_params=box_params,
         extend='neither', show=False, ext='.pdf', cb_format="%i",

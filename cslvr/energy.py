@@ -794,65 +794,67 @@ class Enthalpy(Energy):
       PE = project(PE, annotate=False)
     model.init_PE(PE, cls=self)
 
-  def calc_internal_water(self):
+  def calc_vert_avg_W(self):
     """
-    calculates the integrated sum of water content W. 
+    calculates the vertical averge water content W, saved to model.Wbar. 
     """
-    s   = "::: calculating integral of internal water content :::"
+    s   = "::: calculating vertical average internal water content :::"
     print_text(s, cls=self)
 
     model   = self.model
-    W       = model.W
 
-    # internal water content unknown :
-    W_i    = Function(model.Q)
+    Wbar = model.calc_vert_average(model.W)
+    model.init_Wbar(Wbar, cls=self)
 
-    # calculate L_inf norm :
-    W_v   = W.vector().array()
-    W_i.vector().set_local(W_v)
-    W_i.vector().apply('insert')
- 
-    # eliminate any water content on the boundaries :
-    for domain in model.ext_boundaries:
-      bc_i = DirichletBC(model.Q, 0.0, model.ff, domain)
-      bc_i.apply(W_i.vector())
-
-    # calculate downward vertical integral :
-    W_int = model.vert_integrate(W_i, d='down')
-    model.init_W_int(W_int, cls=self)
-
-  def calc_integrated_strain_heat(self):
+  def calc_vert_avg_strain_heat(self):
     """
-    calculates integrated strain-heating. 
+    calculates integrated strain-heating, saved to model.Qbar. 
     """
-    s   = "::: calculating vertical integral of strain heat :::"
+    s   = "::: calculating vertical average strain heat :::"
     print_text(s, cls=self)
 
     model   = self.model
     
-    # calculate strain rate and viscosity :
     U       = self.momentum.velocity()
     epsdot  = self.momentum.effective_strain_rate(U)
     model.calc_eta(epsdot)
-   
-    # strain heating : 
+    
     Q  = 4 * model.eta * epsdot
 
     # calculate downward vertical integral :
-    Q_int = model.vert_integrate(Q, d='down')
-    model.init_Q_int(Q_int, cls=self)
+    Qbar = model.calc_vert_average(Q)
+    model.init_Qbar(Qbar, cls=self)
  
   def calc_temperate_thickness(self):
     """
     calculates the temperate zone thickness, saved to model.alpha_int.
     """
-    s   = "::: calculating vertical integral of strain heat :::"
+    s   = "::: calculating temperate zone thickness :::"
     print_text(s, cls=self)
    
     model = self.model
    
     alpha_int = model.vert_integrate(model.alpha, d='down')
+    alpha_int = model.vert_extrude(alpha_int, d='up')
     model.init_alpha_int(alpha_int, cls=self)
+ 
+  def calc_temp_rat(self):
+    """
+    calculates the ratio of the temperate zone, saved to model.temp_rat.
+    """
+    s   = "::: calculating ratio of column that is temperate :::"
+    print_text(s, cls=self)
+
+    model   = self.model
+   
+    self.calc_temperate_thickness()
+
+    alpha_int_v = model.alpha_int.vector().array()
+    H_v    = model.S.vector().array() - model.B.vector().array() + DOLFIN_EPS
+    temp_rat_v = alpha_int_v / H_v
+    temp_rat_v[temp_rat_v < 0.0] = 0.0
+    temp_rat_v[temp_rat_v > 1.0] = 1.0
+    model.init_temp_rat(alpha_int_v / H_v, cls=self)
 
   def calc_T_melt(self, annotate=False):
     """

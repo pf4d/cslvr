@@ -750,13 +750,34 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
   plt.close(fig)
 
 
-def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
-            umin=None, umax=None, numLvls=12, levels=None, levels_2=None, 
-            tp=False, tpAlpha=0.5, contour_type='filled', params=None,
-            extend='neither', show=True, ext='.png', res=150, cb=True,
-            cb_format='%.1e', zoom_box=False, zoom_box_kwargs=None,
-            plot_pts=None, plot_continent=False, cont_plot_params=None,
-            box_params=None):
+def plotIce(di, u, name, direc, 
+            u2               = None,
+            u2_levels        = None,
+            u2_color         = 'k',
+            title            = '',
+            cmap             = 'gist_yarg',
+            scale            = 'lin',
+            umin             = None,
+            umax             = None,
+            numLvls          = 12,
+            levels           = None,
+            levels_2         = None,
+            tp               = False,
+            tpAlpha          = 0.5,
+            contour_type     = 'filled',
+            params           = None,
+            extend           = 'neither',
+            show             = True,
+            ext              = '.png',
+            res              = 150,
+            cb               = True,
+            cb_format        = '%.1e',
+            zoom_box         = False,
+            zoom_box_kwargs  = None,
+            plot_pts         = None,
+            plot_continent   = False,
+            cont_plot_params = None,
+            box_params       = None):
   """
   INPUTS :
     di :
@@ -1112,8 +1133,18 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
                        cmap=cmap, norm=norm, extend=extend)
     if contour_type == 'lines':
       cs = ax.contour(x, y, v, levels=levels, colors='k') 
+      for line in cs.collections:
+        if line.get_linestyle() != [(None, None)]:
+          line.set_linestyle([(None, None)])
+          line.set_color('red')
+          line.set_linewidth(1.5)
       if levels_2 is not None:
         cs2 = ax.contour(x, y, v, levels=levels_2, colors='k') 
+        for line in cs2.collections:
+          if line.get_linestyle() != [(None, None)]:
+            line.set_linestyle([(None, None)])
+            line.set_color('#c1000e')
+            line.set_linewidth(0.5)
       ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
         axins.contour(x, y, v, levels=levels, colors='k') 
@@ -1135,18 +1166,26 @@ def plotIce(di, u, name, direc, title='', cmap='gist_yarg',  scale='lin',
         if line.get_linestyle() != [(None, None)]:
           line.set_linestyle([(None, None)])
           line.set_color('red')
-          line.set_linewidth(1.0)
+          line.set_linewidth(1.5)
       if levels_2 is not None:
-        cs2 = ax.tricontour(x, y, fi, v, levels=levels_2, colors='0.5') 
+        cs2 = ax.tricontour(x, y, fi, v, levels=levels_2, colors='0.30') 
         for line in cs2.collections:
           if line.get_linestyle() != [(None, None)]:
             line.set_linestyle([(None, None)])
-            line.set_color('red')
+            line.set_color('#c1000e')
             line.set_linewidth(0.5)
       ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
         axins.tricontour(x, y, fi, v, levels=levels, colors='k')
         axins.clabel(cs, inline=1, colors='k', fmt='%1.2f')
+
+  if u2 is not None:
+    v2 = u2.compute_vertex_values(mesh)
+    csu2 = ax.tricontour(x, y, fi, v2, linewidths=1.5,
+                         levels=u2_levels, colors=u2_color) 
+    #for line in csu2.collections:
+    #  if line.get_linestyle() != [(None, None)]:
+    #    line.set_linestyle([(None, None)])
 
   if plot_pts is not None:
     lat_a = plot_pts['lat']

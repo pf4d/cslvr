@@ -173,7 +173,7 @@ cmap = 'gist_yarg'
 
 plotIce(drg, srfmodel.B, name='B', direc=out_dir,
         title='', cmap='RdGy',  scale='lin',
-        levels=B_lvls, levels_2=B_lvls_2, tp=True, tpAlpha=0.4,
+        levels=B_lvls, levels_2=B_lvls_2, tp=True, tpAlpha=0.3,
         contour_type='lines', cb=False,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
@@ -181,7 +181,7 @@ plotIce(drg, srfmodel.B, name='B', direc=out_dir,
 
 plotIce(drg, srfmodel.S, name='S', direc=out_dir,
         title='', cmap='gist_yarg',  scale='lin',
-        levels=S_lvls, levels_2=S_lvls_2, tp=True, tpAlpha=0.4,
+        levels=S_lvls, levels_2=S_lvls_2, tp=True, tpAlpha=0.3,
         contour_type='lines', cb=False,
         extend='neither', show=False, ext='.pdf',
         zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,

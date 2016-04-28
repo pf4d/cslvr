@@ -5,8 +5,8 @@ from dolfin_adjoint   import *
 import sys
 
 # set the relavent directories :
-var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_small/inversion_Wc_0.01/'
+var_dir = 'dump/vars_jakobshavn_crude/'  # directory from gen_vars.py
+out_dir = 'dump/jakob_crude/inversion_Wc_0.01/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -39,7 +39,6 @@ d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
 d3model.form_energy_dependent_rate_factor()
 
-# NOTE: un-comment this for initializing beta to beta_SIA :
 # create a 2D model for balance-velocity :
 bedmodel = D2Model(d3model.bedmesh, out_dir)
 
@@ -73,20 +72,21 @@ mom    = MomentumDukowiczBP(d3model, linear=False)
 momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False)
 nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True)
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '10/tmc.h5', 'r')
-#d3model.init_T(frstrt)
-#d3model.init_W(frstrt)
-#d3model.init_Fb(frstrt)
-#d3model.init_alpha(frstrt)
-#d3model.init_U(frstrt)
-#d3model.init_p(frstrt)
-#d3model.init_theta(frstrt)
+frstrt = HDF5File(mpi_comm_world(), out_dir + '03/inverted.h5', 'r')
+d3model.init_T(frstrt)
+d3model.init_W(frstrt)
+d3model.init_Fb(frstrt)
+d3model.init_alpha(frstrt)
+d3model.init_U(frstrt)
+d3model.init_p(frstrt)
+d3model.init_theta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():
   nrg.calc_PE()#avg=True)
-  nrg.calc_internal_water()
-  nrg.calc_integrated_strain_heat()
+  nrg.calc_vert_avg_strain_heat()
+  nrg.calc_vert_avg_W()
+  nrg.calc_temp_rat()
   nrg.solve_basal_melt_rate()
 
 # post-adjoint-iteration callback function :
@@ -95,18 +95,22 @@ def adj_post_cb_ftn():
   mom.solve_vert_velocity(annotate=False)
 
 # after every completed adjoining, save the state of these functions :
-tmc_save_vars = [d3model.T,
+adj_save_vars = [d3model.T,
                  d3model.W,
                  d3model.Fb,
                  d3model.Mb,
                  d3model.alpha,
+                 d3model.alpha_int,
                  d3model.PE,
-                 d3model.W_int,
-                 d3model.Q_int,
+                 d3model.Wbar,
+                 d3model.Qbar,
+                 d3model.temp_rat,
                  d3model.U3,
                  d3model.p,
                  d3model.beta,
                  d3model.theta]
+
+u_opt_save_vars = [d3model.beta, d3model.U3]
 
 # form the cost functional :
 mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 
@@ -143,7 +147,7 @@ uop_kwargs = {'control'             : d3model.beta,
               'bounds'              : (1e-5, 1e7),
               'method'              : 'ipopt',
               'max_iter'            : 1000,
-              'adj_save_vars'       : None,
+              'adj_save_vars'       : u_opt_save_vars,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
                                     
@@ -154,11 +158,11 @@ ass_kwargs = {'momentum'            : mom,
               'uop_kwargs'          : uop_kwargs,
               'atol'                : 1.0,
               'rtol'                : 1e-4,
-              'initialize'          : True,
+              'initialize'          : False,
               'incomplete'          : True,
-              'post_iter_save_vars' : tmc_save_vars,
+              'post_iter_save_vars' : adj_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 1}
+              'starting_i'          : 4}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

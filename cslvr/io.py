@@ -532,8 +532,8 @@ def print_min_max(u, title, color='97', cls=None):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  if cls is not None:
-    color = cls.color()
+  #if cls is not None:
+  #  color = cls.color()
   if isinstance(u, GenericVector):
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())

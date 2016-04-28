@@ -2426,7 +2426,7 @@ class Model(object):
       if isinstance(post_iter_save_vars, list):
         s    = '::: saving variables in list arg post_iter_save_vars :::'
         print_text(s, cls=self.this)
-        out_file = self.out_dir + 'inverted_%0*d.h5' % (n_i, counter)
+        out_file = self.out_dir + 'inverted.h5'
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
         for var in post_iter_save_vars:
           self.save_hdf5(var, f=foutput)

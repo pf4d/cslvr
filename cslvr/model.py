@@ -2137,7 +2137,7 @@ class Model(object):
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, cls=self.this)
 
       # reset the water discharge to zero :
-      self.assign_variable(model.Fb,          DOLFIN_EPS, cls=self.this)
+      self.assign_variable(self.Fb,           DOLFIN_EPS, cls=self.this)
      
       # solve velocity :
       momentum.solve(annotate=False)

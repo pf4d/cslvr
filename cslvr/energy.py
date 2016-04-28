@@ -1145,7 +1145,7 @@ class Enthalpy(Energy):
     counter = 1
 
     # maximum number of iterations :
-    max_iter = 50
+    max_iter = 100
 
     # L_2 erro norm between iterations :
     abs_error = np.inf

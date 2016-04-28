@@ -80,6 +80,9 @@ d3model.init_alpha(frstrt)
 d3model.init_U(frstrt)
 d3model.init_p(frstrt)
 d3model.init_theta(frstrt)
+#frstrt = HDF5File(mpi_comm_world(), out_dir + '04/u_opt.h5', 'r')
+#d3model.init_U(frstrt)
+#d3model.init_beta(frstrt)
 
 # thermo-solve callback function :
 def tmc_cb_ftn():

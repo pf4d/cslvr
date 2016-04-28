@@ -2135,6 +2135,9 @@ class Model(object):
       
       # need zero initial guess for Newton solve to converge : 
       self.assign_variable(momentum.get_U(),  DOLFIN_EPS, cls=self.this)
+
+      # reset the water discharge to zero :
+      self.assign_variable(model.Fb,          DOLFIN_EPS, cls=self.this)
      
       # solve velocity :
       momentum.solve(annotate=False)
@@ -2147,10 +2150,6 @@ class Model(object):
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
-      
-      # fixed-point interation for thermal parameters and discontinuous 
-      # properties :
-      energy.update_thermal_parameters(annotate=False)
   
       # update bounds based on temperate zone :
       Fb_m_v                 = self.Fb_max.vector().array()
@@ -2162,8 +2161,12 @@ class Model(object):
       # optimize the flux of water to remove abnormally high water :
       energy.optimize_water_flux(**wop_kwargs)
       
+      # fixed-point interation for thermal parameters and discontinuous 
+      # properties :
+      energy.update_thermal_parameters(annotate=False)
+      
       # calculate T, Tp, and W from theta :
-      energy.partition_energy(annotate=False)
+      #energy.partition_energy(annotate=False)
       
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')

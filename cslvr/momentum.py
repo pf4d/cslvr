@@ -415,6 +415,9 @@ class Momentum(Physics):
     """
     Used to facilitate printing the objective function in adjoint solves.
     """
+    s   = "::: calculating functionals :::"
+    print_text(s, cls=self)
+
     ftnls = []
 
     R = assemble(self.Rp, annotate=False)

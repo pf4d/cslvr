@@ -5,8 +5,8 @@ from dolfin_adjoint   import *
 import sys
 
 # set the relavent directories :
-var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_small/inversion_Wc_0.03/'
+var_dir = 'dump/vars_jakobshavn_crude/'  # directory from gen_vars.py
+out_dir = 'dump/jakob_crude/inversion_Wc_0.01/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -39,7 +39,8 @@ d3model.init_k_0(1e-3)
 #d3model.solve_hydrostatic_pressure()
 d3model.form_energy_dependent_rate_factor()
 
-frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted_01.h5', 'r')
+#frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted_01.h5', 'r')
+frstrt = HDF5File(mpi_comm_world(), out_dir + '05/inverted.h5', 'r')
 d3model.init_T(frstrt)
 d3model.init_W(frstrt)
 d3model.init_Fb(frstrt)
@@ -166,7 +167,7 @@ ass_kwargs = {'momentum'            : mom,
               'incomplete'          : True,
               'post_iter_save_vars' : adj_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 2}
+              'starting_i'          : 6}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

@@ -11,11 +11,11 @@ import os
 class Model(object):
   """ 
   The basic model from which each of these inherit :
-   * :class:`~latmodel.LatModel`
-   * :class:`~hybridmodel.HybridModel`
-   * :class:`~d1model.D1Model`
-   * :class:`~d2model.D2Model`
-   * :class:`~d3model.D3Model`
+   * :class:`~latmodel.LatModel`       - plane strain model
+   * :class:`~hybridmodel.HybridModel` - L1L2 "hybrid" model
+   * :class:`~d1model.D1Model`         - 1D firn model
+   * :class:`~d2model.D2Model`         - 2D model (SSA, SIA, balance velocity)
+   * :class:`~d3model.D3Model`         - 3D model (first-order, full-Stokes)
 
   Args:
     :mesh:         the :class:`~fenics.Mesh` instance.
@@ -295,7 +295,7 @@ class Model(object):
   
   def init_theta(self, theta, cls=None):
     r"""
-    Set internal energy :math:`\\theta` to *theta*.
+    Set internal energy :math:`\theta` to *theta*.
     """
     if cls is None:
       cls = self.this
@@ -1042,7 +1042,7 @@ class Model(object):
 
   def init_temp_rat(self, temp_rat, cls=None):
     r"""
-    Set ration of temperate ice :math:`\alpha_i / H` to *temp_rat*.
+    Set ratio of temperate ice :math:`\frac{1}{H}\int \alpha dz` to *temp_rat*.
     """
     if cls is None:
       cls = self.this

@@ -6,10 +6,55 @@ from cslvr.io          import print_text, print_min_max
 import numpy as np
 import sys
 
+
 class BalanceVelocity(Physics):
+  """
+  Balance velocity solver.
+
+  Class representing balance velocity physics.
+
+  Use like this:
+
+  >>> bv = BalanceVelocity(model, 5.0)
+  ::: INITIALIZING VELOCITY-BALANCE PHYSICS :::
+  >>> bv.solve()
+  ::: solving BalanceVelocity :::
+  ::: calculating surface gradient :::
+  Process 0: Solving linear system of size 9034 x 9034 (PETSc Krylov solver).
+  Process 0: Solving linear system of size 9034 x 9034 (PETSc Krylov solver).
+  dSdx <min, max> : <-1.107e+00, 8.311e-01>
+  dSdy <min, max> : <-7.928e-01, 1.424e+00>
+  ::: solving for smoothed x-component of driving stress with kappa = 5.0 :::
+  Process 0: Solving linear variational problem.
+  Nx <min, max> : <-1.607e+05, 3.628e+05>
+  ::: solving for smoothed y-component of driving stress :::
+  Process 0: Solving linear variational problem.
+  Ny <min, max> : <-2.394e+05, 2.504e+05>
+  ::: calculating normalized velocity direction from driving stress :::
+  d_x <min, max> : <-1.000e+00, 9.199e-01>
+  d_y <min, max> : <-9.986e-01, 1.000e+00>
+  ::: solving velocity balance magnitude :::
+  Process 0: Solving linear variational problem.
+  Ubar <min, max> : <-5.893e+03, 9.844e+03>
+  ::: removing negative values of balance velocity :::
+  Ubar <min, max> : <0.000e+00, 9.844e+03>
+
+
+  Args:
+    :model: a :class:`~d2model.D2Model` instance holding all pertinent 
+            variables.
+
+    :kappa: a floating-point value representing surface smoothing 
+            radius in units of ice thickness :math:`H = S-B`.
+
+  Returns:
+    text printed to the screen.
+
+  """ 
   
   def __init__(self, model, kappa=5.0):
     """
+    balance velocity init.
     """ 
     s    = "::: INITIALIZING VELOCITY-BALANCE PHYSICS :::"
     print_text(s, cls=self)
@@ -76,7 +121,42 @@ class BalanceVelocity(Physics):
   
   def solve(self, annotate=True):
     """
-    Solve the balance velocity.
+    Solve the balance velocity magnitude :math:`\Vert \\bar{\mathbf{u}} \Vert`.
+
+    This will be completed in four steps,
+
+    1. Calculate the surface gradient :math:`\\frac{\partial S}{\partial x}`
+       and :math:`\\frac{\partial S}{\partial y}` saved to ``model.dSdx``
+       and ``model.dSdy``.
+
+    2. Solve for the smoothed component of driving stress
+
+       .. math::
+       
+          \\tau_x = \\rho g H \\frac{\partial S}{\partial x}, \hspace{10mm}
+          \\tau_y = \\rho g H \\frac{\partial S}{\partial y}
+ 
+       saved respectively to ``model.Nx`` and ``model.Ny``. 
+    
+    3. Calculate the normalized flux directions
+       
+       .. math::
+       
+          d_x = -\\frac{\\tau_x}{\Vert \\tau_x \Vert}, \hspace{10mm}
+          d_y = -\\frac{\\tau_y}{\Vert \\tau_y \Vert},
+ 
+       saved respectively to ``model.d_x`` and ``model.d_y``. 
+    
+    4. Calculate the balance velocity magnitude 
+       :math:`\Vert \\bar{\mathbf{u}} \Vert`
+       from
+
+       .. math::
+
+          \\nabla \cdot \\left( \\bar{\mathbf{u}} H \\right) = \dot{a} - F_b
+
+       saved to ``model.Ubar``.
+
     """
     model = self.model
     
@@ -93,7 +173,7 @@ class BalanceVelocity(Physics):
     
     # update velocity direction from driving stress :
     s    = "::: solving for smoothed x-component of driving stress " + \
-           "with kappa = %f :::" % self.kappa
+           "with kappa = %g :::" % self.kappa
     print_text(s, cls=self)
     solve(self.a_dSdx == self.L_dSdx, model.Nx, annotate=annotate)
     print_min_max(model.Nx, 'Nx', cls=self)
@@ -104,7 +184,7 @@ class BalanceVelocity(Physics):
     print_min_max(model.Ny, 'Ny', cls=self)
     
     # normalize the direction vector :
-    s    =   "::: calculating normalized velocity direction" \
+    s    =   "::: calculating normalized flux direction" \
            + " from driving stress :::"
     print_text(s, cls=self)
     d_x_v = model.Nx.vector().array()

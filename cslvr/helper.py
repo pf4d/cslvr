@@ -83,9 +83,12 @@ class IsotropicMeshRefiner(object):
   """
   In this class, the cells in the mesh are isotropically refined above a 
   a certain proportion of average error.
+
+  Args:
   
-  :param m_0  : Initial unrefined mesh
-  :param U_ex : Representation of the ice sheet as a dolfin expression
+    :m_0:  Initial unrefined mesh
+    :U_ex: Representation of the ice sheet as a dolfin expression
+
   """
   def __init__(self, m_0, U_ex):
     self.mesh = m_0
@@ -95,12 +98,15 @@ class IsotropicMeshRefiner(object):
     """
     Determines which cells that are above a certain error threshold based
     on the diameter of the cells
+  
+    Args:
     
-    :param REFINE_RATIO : Long value between 0 and 1, inclusive, to select 
-                          an error value in a reverse sorted list.  
-                          (i.e. .5 selects the midpoint)
-    :param hmin         : Minimum diameter of the cells
-    :param hmax         : Maximum diameter of the cells
+      :REFINE_RATIO: Long value between 0 and 1, inclusive, to select 
+                     an error value in a reverse sorted list.  
+                     (i.e. .5 selects the midpoint)
+      :hmin:         Minimum diameter of the cells
+      :hmax:         Maximum diameter of the cells
+
     """
     print "refining %.2f%% of max error" % (REFINE_RATIO * 100)
     mesh = self.mesh
@@ -174,11 +180,14 @@ class IsotropicMeshRefiner(object):
     """
     This function writes the refinements to the mesh to msh files and
     extrudes the mesh
+
+    Args:
     
-    :param n_layers:  Number of layers in the mesh
-    :param workspace_path: Path to the location where the refined meshes
-       will be written
-    :param int n_processors: Number of processers utilized in the extrusion
+     :n_layers:       Number of layers in the mesh
+     :workspace_path: Path to the location where the refined meshes
+                      will be written
+     :n_processors:   Number of processers utilized in the extrusion
+
     """
     import os
     layers = str(n_layers + 1)
@@ -207,9 +216,12 @@ class AnisotropicMeshRefiner(object):
   account for the directional nature of the velocity field.  In order to 
   accomplish this, Gauss-Steidl iterations are used to approximately solve
   the elasticity problem with computed edge errors as 'spring constants'.
+
+  Args:
   
-  :param m_0  : Initial unrefined mesh
-  :param U_ex : Representation of the ice sheet as a Dolfin expression
+    :m_0:  Initial unrefined mesh
+    :U_ex: Representation of the ice sheet as a Dolfin expression
+
   """
   
   def __init__(self, m_0, U_ex):
@@ -219,10 +231,12 @@ class AnisotropicMeshRefiner(object):
   def weighted_smoothing(self, edge_errors, omega=0.1):
     """
     Smooths the points contained within the mesh
+
+    Args:
     
-    :param edge_errors : Dolfin edge function containing the calculated
-                         edge errors of the mesh
-    :param omega       : Weighting factor used to refine the mesh
+      :edge_errors:  Dolfin edge function containing the calculated
+                     edge errors of the mesh
+      :omega:        Weighting factor used to refine the mesh
     """
     mesh  = self.mesh
     coord = mesh.coordinates()
@@ -283,6 +297,7 @@ class AnisotropicMeshRefiner(object):
     Calculates the error estimates of the expression projected into the mesh.
     
     :rtype: Dolfin edge function containing the edge errors of the mesh
+
     """
     mesh  = self.mesh
     coord = mesh.coordinates()
@@ -428,11 +443,14 @@ class AnisotropicMeshRefiner(object):
     """
     This function writes the refinements to the mesh to msh files and
     extrudes the mesh
+
+    Args:
     
-    :param n_layers:  Number of layers in the mesh
-    :param workspace_path: Path to the location where the refined meshes
-       will be written
-    :param int n_processors: Number of processers utilized in the extrusion
+      :n_layers:       Number of layers in the mesh
+      :workspace_path: Path to the location where the refined meshes
+                       will be written
+      :n_processors:   Number of processers utilized in the extrusion
+
     """
     import os
     layers = str(n_layers + 1)
@@ -459,9 +477,12 @@ def write_gmsh(mesh,path):
   """
   This function iterates through the mesh and writes a file to the specified
   path
+
+  Args:
   
-  :param mesh: Mesh that is to be written to a file
-  :param path: Path to write the mesh file to
+    :mesh: Mesh that is to be written to a file
+    :path: Path to write the mesh file to
+
   """
   output = open(path,'w')
   
@@ -508,12 +529,18 @@ def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
   This function iterates through the cells and vertces of the mesh in order
   to find the boundaries
 
-  :param mesh: The dolfin mesh for which to find the boundaries
-  :param int marker: Cell marker to determine the surface facets
-  :param variable_list: A list of variables corrisponding to the mesh
-  :rtype: Dolfin boundary mesh containing information on the surface of the
-     mesh and a list of surface variables derived from the variable_list 
-     parameter
+  Args:
+
+    :mesh:          The dolfin mesh for which to find the boundaries
+    :marker:        Cell marker to determine the surface facets
+    :variable_list: A list of variables corrisponding to the mesh
+ 
+  Returns:
+  
+    :rtype: FEniCS boundary mesh containing information on the surface of the
+            mesh and a list of surface variables derived from the variable_list 
+            parameter.
+
   """
   from dolfin import vertices
 
@@ -598,11 +625,17 @@ def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
 def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   """
   This function creates a dolfin 2D expression from data input
+
+  Args:
   
-  :param x: List of x coordinates
-  :param y: List of y coordinates
-  :param var: List of values associated with each x and y coordinate pair
-  :rtype: A dolfin Expression object representing the data
+    :x:   List of x coordinates
+    :y:   List of y coordinates
+    :var: List of values associated with each x and y coordinate pair
+
+  Returns:
+
+    :rtype: A dolfin Expression object representing the data
+
   """
   from scipy.interpolate import RectBivariateSpline
   interpolant = RectBivariateSpline(x,y,var.T,kx=kx,ky=ky)
@@ -615,23 +648,22 @@ def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
 
 def extrude(f, b, d, ff, Q):
   r"""
-  This extrudes a function <f> defined along a boundary <b> out onto
-  the domain in the direction <d>.  It does this by formulating a 
-  variational problem:
-
-  :Conditions: 
+  This extrudes a function *u* vertically in the direction *d* = 'up' or
+  'down'.  It does this by solving a variational problem:
+  
   .. math::
-  \frac{\partial u}{\partial d} = 0
-  
-  u|_b = f
+     
+     \frac{\partial v}{\partial z} = 0 \hspace{10mm}
+     v|_b = u
 
-  and solving.  
+  Args:
   
-  :param f  : Dolfin function defined along a boundary
-  :param b  : Boundary condition
-  :param d  : Subdomain over which to perform differentiation
-  :param ff : Subdomain FacetFunction 
-  :param Q  : FunctionSpace of domain
+    :f:  Dolfin function defined along a boundary
+    :b:  Boundary condition
+    :d:  Subdomain over which to perform differentiation
+    :ff: Subdomain FacetFunction 
+    :Q:  FunctionSpace of domain
+
   """
   # define test and trial based on function space :
   phi = TestFunction(Q)
@@ -779,50 +811,43 @@ def plotIce(di, u, name, direc,
             cont_plot_params = None,
             box_params       = None):
   """
-  INPUTS :
-    di :
-      DataInput object with desired projection
-    u :
-      solution to plot; can be either a function on a 2D mesh, or a string 
-      key to matrix variable in <di>.data.
-    name :
-      title of the plot, latex accepted
-    direc :
-      directory string location to save image.
-    cmap :
-      colormap to use - see images directory for sample and name
-    scale :
-      scale to plot, either 'log', 'lin', or 'bool'
-    numLvls :
-      number of levels for field values
-    levels :
-      manual levels, if desired.
-    tp :
-      boolean determins plotting of triangle overlay
-    tpAlpha :
-      alpha level of triangles 0.0 (transparent) - 1.0 (opaque)
-    extends :
-      for the colorbar, extend upper range and may be ["neither", "both", "min", "max"]
-      default is "neither".
-  # for plotting the zoom-box, make <zoom_box> = True and supply dict
-  <zoom_box_kwargs> =  'zoom'             : int     # ammount to zoom 
-                       'loc'              : int     # location of box
-                       'loc1'             : int     # loc of first line
-                       'loc2'             : int     # loc of second line
-                       'x1'               : float   # first x-coord
-                       'y1'               : float   # first y-coord
-                       'x2'               : float   # second x-coord
-                       'y2'               : float   # second y-coord
-                       'scale_font_color' : str     # scale font color
-                       'scale_length'     : int     # scale length in km
-                       'scale_loc'        : int     # 1=top, 2=bottom
-                       'plot_grid'        : bool    # plot the triangles
-                       'axes_color'       : str     # color of axes
-                       'plot_points'      : dict    # dict of points to plot
+  Args:
+
+    :di:      DataInput object with desired projection
+    :u:       solution to plot; can be either a function on a 2D mesh, or a
+              string key to matrix variable in <di>.data.
+    :name:    title of the plot, latex accepted
+    :direc:   directory string location to save image.
+    :cmap:    colormap to use - see images directory for sample and name
+    :scale:   scale to plot, either 'log', 'lin', or 'bool'
+    :numLvls: number of levels for field values
+    :levels:  manual levels, if desired.
+    :tp:      boolean determins plotting of triangle overlay
+    :tpAlpha: alpha level of triangles 0.0 (transparent) - 1.0 (opaque)
+    :extends: for the colorbar, extend upper range and may be ["neither",
+              "both", "min", "max"]. default is "neither".
+
+    for plotting the zoom-box, make <zoom_box> = True and supply dict
+    *zoom_box_kwargs* with parameters
+    
+    :zoom:             ammount to zoom 
+    :loc:              location of box
+    :loc1:             loc of first line
+    :loc2:             loc of second line
+    :x1:               first x-coord
+    :y1:               first y-coord
+    :x2:               second x-coord
+    :y2:               second y-coord
+    :scale_font_color: scale font color
+    :scale_length:     scale length in km
+    :scale_loc:        1=top, 2=bottom
+    :plot_grid:        plot the triangles
+    :axes_color:       color of axes
+    :plot_points:      dict of points to plot
   
-  OUTPUT :
+  Returns:
  
-    A sigle <direcc><name>.pdf in the source directory.
+    A sigle *direc/name.ext* in the source directory.
   
   """
   # get the original projection coordinates and data :

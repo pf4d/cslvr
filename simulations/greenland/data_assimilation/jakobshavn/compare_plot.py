@@ -32,6 +32,7 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #===============================================================================
 # open the hdf5 file :
+fdata    = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 f_1      = HDF5File(mpi_comm_world(), in_dir_1  + 'tmc.h5', 'r')
 f_2      = HDF5File(mpi_comm_world(), in_dir_2  + 'tmc.h5', 'r')
 
@@ -77,7 +78,7 @@ a_d.vector().apply('insert')
 
 b_1_v  = beta_1_b.vector().array()
 b_2_v  = beta_2_b.vector().array()
-b_d_v  = b_1_v - b_2_v
+b_d_v  = b_1_v / (b_2_v + DOLFIN_EPS)
 b_d.vector().set_local(b_d_v)
 b_d.vector().apply('insert')
 
@@ -93,9 +94,13 @@ w_2_v = w_2.vector().array()
 
 Umag_1_v = np.sqrt(u_1_v**2 + v_1_v**2 + w_1_v**2 + DOLFIN_EPS)
 Umag_2_v = np.sqrt(u_2_v**2 + v_2_v**2 + w_2_v**2 + DOLFIN_EPS)
-u_d_v    = Umag_1_v - Umag_2_v
+u_d_v    = Umag_1_v / Umag_2_v
 u_d.vector().set_local(u_d_v)
 u_d.vector().apply('insert')
+
+#===============================================================================
+d3model.init_B(fdata)
+bedmodel.assign_submesh_variable(bedmodel.B, d3model.B)
 
 
 #===============================================================================
@@ -123,14 +128,19 @@ amin  = a_d.vector().min()
 bmax  = b_d.vector().max()
 bmin  = b_d.vector().min()
 
-umax  = int(u_d.vector().max())
-umin  = int(u_d.vector().min())
+umax  = u_d.vector().max()
+umin  = u_d.vector().min()
 
 a_d_lvls  = np.array([amin, -1e-1, -5e-2, -2.5e-2, -1e-3, 
                       1e-3, 2.5e-2, 5e-2, 1e-1, amax])
 b_d_lvls  = np.array([bmin, -200, -80, -40, -10, 
                       10, 40, 80, 200, bmax])
 u_d_lvls  = np.array([umin, -50, -25, -10, -1, 1, 10, 25, 50, umax])
+
+b_d_lvls  = np.array([0.2,  0.4,   0.6,   0.8,  0.95,
+                      1.05, 1.20,  1.5,   4.0,  6])
+u_d_lvls  = np.array([0.95,  0.97, 0.99, 0.995, 0.9975,
+                      1.0025, 1.005, 1.01, 1.03,  1.05])
 
 #===============================================================================
 # plot :
@@ -142,15 +152,16 @@ plotIce(drg, a_d, name='delta_Fb', direc=out_dir,
         params=params, plot_pts=None)
 
 plotIce(drg, b_d, name='delta_beta', direc=out_dir,
-        title=r'$\Delta \beta$', cmap='RdGy',  scale='lin',
+        title=r'$\beta_{0.01} / \beta_{0.03}$', cmap='RdGy',  scale='lin',
         levels=b_d_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        params=params, plot_pts=None, cb_format='%i')
+        extend='both', show=False, ext='.pdf',
+        params=params, plot_pts=None, cb_format='%g',
+        u2=bedmodel.B, u2_levels=[-500], u2_color=bc)
 
 plotIce(drg, u_d, name='delta_U', direc=out_dir,
-        title=r'$\Delta \Vert \mathbf{u}_S \Vert$', cmap='RdGy',  scale='lin',
+        title=r'$\Vert \mathbf{u}_S \Vert_{0.01} / \Vert \mathbf{u}_S \Vert_{0.03}$', cmap='RdGy',  scale='lin',
         levels=u_d_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
+        extend='both', show=False, ext='.pdf',
         params=params, plot_pts=None, cb_format='%g')
 
 

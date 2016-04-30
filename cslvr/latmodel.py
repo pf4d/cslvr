@@ -265,76 +265,6 @@ class LatModel(Model):
           else:
             self.ff[f] = 10
     
-    #s = "    - marking boundaries - "
-    #print_text(s, cls=self)
-
-    #class GAMMA_S_GND(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return mask(x[0], x[1]) <=  1.0 and on_boundary
-    #gamma_s_gnd = GAMMA_S_GND()
-
-    #class GAMMA_S_FLT(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return mask(x[0], x[1]) >  1.0 and on_boundary
-    #gamma_s_flt = GAMMA_S_FLT()
-
-    #class GAMMA_U_GND(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return abs(x[1] - S(x[0], x[1])) < tol \
-    #           and mask(x[0], x[1]) <= 1.0 \
-    #           and U_mask(x[0], x[1]) <= 0.0 and on_boundary
-    #gamma_u_gnd = GAMMA_U_GND()
-
-    #class GAMMA_U_FLT(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return abs(x[1] - S(x[0], x[1])) < tol \
-    #           and mask(x[0], x[1]) >  1.0 \
-    #           and U_mask(x[0], x[1]) <= 0.0 and on_boundary
-    #gamma_u_flt = GAMMA_U_FLT()
-
-    #class GAMMA_B_GND(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return abs(x[1] - B(x[0], x[1])) < tol \
-    #           and mask(x[0], x[1]) <= 1.0 and on_boundary
-    #gamma_b_gnd = GAMMA_B_GND()
-
-    #class GAMMA_B_FLT(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return abs(x[1] - B(x[0], x[1])) < tol \
-    #           and mask(x[0], x[1]) >  1.0 and on_boundary
-    #gamma_b_flt = GAMMA_B_FLT()
-
-    #class GAMMA_L_OVR(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    #return x[1] > -10 and x[1] < S(x[0], x[1]) - tol and on_boundary
-    #    return x[1] > tol and on_boundary
-    #gamma_l_ovr = GAMMA_L_OVR()
-
-    #class GAMMA_L_UDR(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    #return x[1] < 10 and x[1] < S(x[0], x[1]) - tol and on_boundary
-    #    return x[1] < tol and on_boundary
-    #gamma_l_udr = GAMMA_L_UDR()
-
-    #class GAMMA_L_TRM(SubDomain):
-    #  def inside(self, x, on_boundary):
-    #    return lat_mask(x[0], x[1]) <= 0.0
-    #gamma_l_trm = GAMMA_L_TRM()
-
-    #gamma_s_flt.mark(self.ff, self.GAMMA_S_FLT)
-    #gamma_s_gnd.mark(self.ff, self.GAMMA_S_GND)
-    #gamma_l_ovr.mark(self.ff, self.GAMMA_L_OVR)
-    #gamma_l_udr.mark(self.ff, self.GAMMA_L_UDR)
-    #gamma_b_flt.mark(self.ff, self.GAMMA_B_FLT)
-    #gamma_b_gnd.mark(self.ff, self.GAMMA_B_GND)
-    ##gamma_u_flt.mark(self.ff, self.GAMMA_U_FLT)
-    ##gamma_u_gnd.mark(self.ff, self.GAMMA_U_GND)
-    ##if mark_divide: 
-    ##  gamma_l_trm.mark(self.cf, 1)
-    #
-    #s = "    - done - "
-    #print_text(s, cls=self)
-    
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, cls=self)
     for c in cells(self.mesh):
@@ -473,17 +403,14 @@ class LatModel(Model):
   
   def vert_extrude(self, u, d='up', Q='self'):
     r"""
-    This extrudes a function <u> vertically in the direction <d> = 'up' or
-    'down'.
-    It does this by formulating a variational problem:
+    This extrudes a function *u* vertically in the direction *d* = 'up' or
+    'down'.  It does this by solving a variational problem:
   
-    :Conditions: 
     .. math::
-    \frac{\partial v}{\partial z} = 0
-    
-    v|_b = u
-  
-    and solving.  
+       
+       \frac{\partial v}{\partial z} = 0 \hspace{10mm}
+       v|_b = u
+
     """
     s = "::: extruding function %s :::" % d
     print_text(s, cls=self)

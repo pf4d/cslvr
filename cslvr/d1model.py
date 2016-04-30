@@ -27,7 +27,7 @@ class D1Model(Model):
     """
     Sets the mesh.
     
-    :param mesh : Dolfin mesh to be written
+    :mesh: :class:`~fenics.Mesh` mesh to be used.
     """
     super(D1Model, self).set_mesh(mesh)
 
@@ -53,15 +53,15 @@ class D1Model(Model):
     self.init_B_bc(zb)
   
   def refine_mesh(self, divs, i, k,  m=1):
-    """
-    splits the mesh a <divs> times.
+    r"""
+    splits ``self.mesh`` *divs* times.
   
-    INPUTS:
-      divs - number of times to split mesh
-      i    - fraction of the mesh from the surface to split
-      k    - multiple to decrease i by each step to reduce the distance from the
+    Args:
+      :divs: number of times to split mesh
+      :i:    fraction of the mesh from the surface to split
+      :k:    multiple to decrease i by each step to reduce the distance from the
              surface to split
-      m    - counter used to keep track of calls
+      :m:    counter used to keep track of calls
   
     """
     if m==1:

@@ -452,32 +452,46 @@ class MeshGenerator(object):
 
 
 class linear_attractor(object):
-  """
-  Create an attractor object which refines with min and max cell radius <l_min>,
-  <l_max> over data field <field>.  The <f_max> parameter specifies a max value
-  for which to apply the minimum cell size such that if <field>_i is less than
-  <f_max>, the cell size in this region will be <l_max>.  If <inv> = True
-  the object refines on the inverse of the data field <field>.
+  r"""
+  Create an attractor object which refines with min and max cell radius 
+  :math:`l_{min}`, :math:`l_{max}` over data field :math:`f`.  The 
+  :math:`f_{max}` parameter specifies a max value for which to apply the 
+  minimum cell size such that if :math:`f_i` is less than :math:`f_{max}`,
+  the cell size in this region will be :math:`l_{max}`.  If *inv* = ``True``
+  the object refines on the inverse of the data field :math:`f`.
 
-               {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max
-               {field_i,   otherwise
+  .. math::
+
+     h_i = \begin{cases}
+             l_{min},     & f_i > f_{max} \\
+             l_{max},     & f_i < f_{max} \\
+             f_i,         & otherwise \\
+           \end{cases}
+
+  Args:
+
+    :spline: the iterpolator which is evaluated at x- and y-coordinates
+    :f:      the :class:`~numpy.array` being interpolated
+    :f_max:  maximum value of *f* for *l_max* and *l_min*
+    :l_min:  minimum cell size
+    :l_max:  maximum cell size
+    :inv:    boolean, invert *f* for attraction
 
   """
-  def __init__(self, spline, field, f_max, l_min, l_max, inv=True):
+  def __init__(self, spline, f, f_max, l_min, l_max, inv=True):
     """
-    Refine the mesh off of data field <field> using spline <spline> with the
+    Refine the mesh off of data field <f> using spline <spline> with the
     cell radius defined as :
 
-               {l_min,     field_i > f_max
-    cell_h_i = {l_max,     field_i < f_max
-               {field_i,   otherwise
+               {l_min,     f_i > f_max
+    cell_h_i = {l_max,     f_i < f_max
+               {f_i,       otherwise
 
-    If <inv> is True, refine off of the inverse of <field> instead.
+    If <inv> is True, refine off of the inverse of <f> instead.
 
     """
     self.spline   = spline
-    self.field    = field
+    self.field    = f
     self.l_min    = l_min
     self.l_max    = l_max
     self.f_max    = f_max
@@ -485,6 +499,18 @@ class linear_attractor(object):
 
   def op(self, x, y, z, entity):
     """
+    Method which evaluates this linear attractor.
+
+    Args:
+
+      :x:      the x-coordinate
+      :y:      the y-coordinate
+      :z:      the z-coordinate (not used)
+      :entity: not used
+
+    Returns:
+    
+      :lc:     characteristic radius for a given cell at *(x,y)*
     """
     l_min = self.l_min
     l_max = self.l_max

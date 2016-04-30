@@ -453,17 +453,14 @@ class D2Model(Model):
   
   def vert_extrude(self, u, d='up', Q='self'):
     r"""
-    This extrudes a function <u> vertically in the direction <d> = 'up' or
-    'down'.
-    It does this by formulating a variational problem:
+    This extrudes a function *u* vertically in the direction *d* = 'up' or
+    'down'.  It does this by solving a variational problem:
   
-    :Conditions: 
     .. math::
-    \frac{\partial v}{\partial z} = 0
-    
-    v|_b = u
-  
-    and solving.  
+       
+       \frac{\partial v}{\partial z} = 0 \hspace{10mm}
+       v|_b = u
+
     """
     s = "::: extruding function %s :::" % d
     print_text(s, cls=self)

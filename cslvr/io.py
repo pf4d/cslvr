@@ -6,7 +6,6 @@ from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
                               File
-from dolfin_adjoint    import *
 from pyproj            import Proj, transform
 from colored           import fg, attr
 

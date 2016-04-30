@@ -10,10 +10,21 @@ import os
 
 class Model(object):
   """ 
-  Instance of a 2D flowline ice model that contains geometric and scalar 
-  parameters and supporting functions.  This class does not contain actual 
-  physics but rather the interface to use physics in different simulation 
-  types.
+  The basic model from which each of these inherit :
+   * :class:`~latmodel.LatModel`
+   * :class:`~hybridmodel.HybridModel`
+   * :class:`~d1model.D1Model`
+   * :class:`~d2model.D2Model`
+   * :class:`~d3model.D3Model`
+
+  Args:
+    :mesh:         the :class:`~fenics.Mesh` instance.
+                         
+    :out_dir:      string location for the output directory, default
+                   ``./results/``.
+
+    :use_periodic: boolean, use periodic boundaries or not, default 
+                   ``False``.
   """
 
   OMEGA_GND   = 0   # internal cells over bedrock
@@ -46,8 +57,7 @@ class Model(object):
   # union :
   boundaries = dict(ext_boundaries, **int_boundaries)
   
-  def __init__(self, mesh, out_dir='./results/',
-               use_periodic=False, **gfs_kwargs):
+  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
     """
     Create and instance of the model.
     """
@@ -68,7 +78,7 @@ class Model(object):
     
     self.generate_constants()
     self.set_mesh(mesh)
-    self.generate_function_spaces(use_periodic, **gfs_kwargs)
+    self.generate_function_spaces(use_periodic)
     self.initialize_variables()
 
   def color(self):
@@ -187,14 +197,14 @@ class Model(object):
 
   def generate_pbc(self):
     """
-    return a SubDomain of periodic lateral boundaries.
+    return a :class:`fenics.SubDomain` of periodic lateral boundaries.
     """
     raiseNotDefined()
     
   def set_mesh(self, f):
     """
-    Sets the mesh to <f>, either a dolfin.Mesh or .h5 with a mesh file 
-    saved with name 'mesh'.
+    Sets the ``mesh`` instance to *f*, either a :class:`fenics.Mesh` or  ``.h5``
+    file with a mesh saved with name ``mesh``.
     """
     s = "::: setting mesh :::"
     print_text(s, cls=self.this)
@@ -208,15 +218,15 @@ class Model(object):
 
     self.dim   = self.mesh.ufl_cell().topological_dimension()
 
-  def calculate_boundaries(self, mask=None, adot=None):
+  def calculate_boundaries(self):
     """
-    Determines the boundaries of the current model mesh
+    Determines the boundaries of the current ``self.mesh``.
     """
     raiseNotDefined()
   
   def set_out_dir(self, out_dir):
     """
-    Set the output directory to something new.
+    Set the output directory to string *out_dir*.
     """
     self.out_dir = out_dir
     s = "::: output directory changed to '%s' :::" % out_dir
@@ -224,7 +234,13 @@ class Model(object):
 
   def generate_function_spaces(self, use_periodic=False):
     """
-    Generates the finite-element function spaces used by all children of model.
+    Generates the finite-element function spaces used by all children of this
+    :class:`Model`.
+
+    Arg:
+
+      :use_periodic: boolean to use periodic boundaries along lateral boundary.
+
     """
     s = "::: generating fundamental function spaces :::"
     print_text(s, cls=self.this)
@@ -248,8 +264,8 @@ class Model(object):
     print_text(s, cls=self.this)
   
   def init_S(self, S, cls=None):
-    """
-    Set the Function for the surface <S>. 
+    r"""
+    Set surface topography :math:`S` to *S*. 
     """
     if cls is None:
       cls = self.this
@@ -258,8 +274,8 @@ class Model(object):
     self.assign_variable(self.S, S, cls=cls)
 
   def init_B(self, B, cls=None):
-    """
-    Set the Function for the bed <B>.
+    r"""
+    Set bed topography :math:`B` to *B*.
     """
     if cls is None:
       cls = self.this
@@ -268,7 +284,8 @@ class Model(object):
     self.assign_variable(self.B, B, cls=cls)
   
   def init_p(self, p, cls=None):
-    """
+    r"""
+    Set pressure :math:`p` to *p*.
     """
     if cls is None:
       cls = self.this
@@ -277,7 +294,8 @@ class Model(object):
     self.assign_variable(self.p, p, cls=cls)
   
   def init_theta(self, theta, cls=None):
-    """
+    r"""
+    Set internal energy :math:`\\theta` to *theta*.
     """
     if cls is None:
       cls = self.this
@@ -291,7 +309,8 @@ class Model(object):
     self.init_Tp(T_v, cls=cls)
   
   def init_theta_app(self, theta_app, cls=None):
-    """
+    r"""
+    Set the internal energy approximation :math:`\theta_{app}` to *theta_app*.
     """
     if cls is None:
       cls = self.this
@@ -300,7 +319,8 @@ class Model(object):
     self.assign_variable(self.theta_app, theta_app, cls=cls)
   
   def init_theta_surface(self, theta_surface, cls=None):
-    """
+    r"""
+    Set the surface internal energy :math:`\theta_S` to *theta_surface*.
     """
     if cls is None:
       cls = self.this
@@ -309,7 +329,8 @@ class Model(object):
     self.assign_variable(self.theta_surface, theta_surface, cls=cls)
   
   def init_theta_float(self, theta_float, cls=None):
-    """
+    r"""
+    Set the floating ice internal energy :math:`\theta_{sea}` to *theta_float*.
     """
     if cls is None:
       cls = self.this
@@ -318,7 +339,8 @@ class Model(object):
     self.assign_variable(self.theta_float, theta_float, cls=cls)
   
   def init_T(self, T, cls=None):
-    """
+    r"""
+    Set temperature :math:`T` to *T*.
     """
     if cls is None:
       cls = self.this
@@ -327,7 +349,8 @@ class Model(object):
     self.assign_variable(self.T, T, cls=cls)
   
   def init_Tp(self, Tp, cls=None):
-    """
+    r"""
+    Set pressure-adjusted temperature :math:`T_p = T + \gamma p` to *Tp*.
     """
     if cls is None:
       cls = self.this
@@ -336,7 +359,8 @@ class Model(object):
     self.assign_variable(self.Tp, Tp, cls=cls)
   
   def init_W(self, W, cls=None):
-    """
+    r"""
+    Set water content :math:`W` to *W*.
     """
     if cls is None:
       cls = self.this
@@ -345,7 +369,8 @@ class Model(object):
     self.assign_variable(self.W, W, cls=cls)
   
   def init_Wc(self, Wc, cls=None):
-    """
+    r"""
+    Set maximum observed water content :math:`W_c` to *Wc*.
     """
     if cls is None:
       cls = self.this
@@ -354,7 +379,8 @@ class Model(object):
     self.assign_variable(self.Wc, Wc, cls=cls)
   
   def init_Mb(self, Mb, cls=None):
-    """
+    r"""
+    Set basal melting rate :math:`M_b` to *Mb*.
     """
     if cls is None:
       cls = self.this
@@ -363,7 +389,8 @@ class Model(object):
     self.assign_variable(self.Mb, Mb, cls=cls)
   
   def init_adot(self, adot, cls=None):
-    """
+    r"""
+    Set accumulation/ablation :math:`\dot{a}` to *adot*.
     """
     if cls is None:
       cls = self.this
@@ -372,7 +399,8 @@ class Model(object):
     self.assign_variable(self.adot, adot, cls=cls)
   
   def init_beta(self, beta, cls=None):
-    """
+    r"""
+    Set basal traction :math:`\beta` to *beta*.
     """
     if cls is None:
       cls = self.this
@@ -381,7 +409,8 @@ class Model(object):
     self.assign_variable(self.beta, beta, cls=cls)
   
   def init_A(self, A, cls=None):
-    """
+    r"""
+    Set rate factor :math:`A` to *A*.
     """
     if cls is None:
       cls = self.this
@@ -392,7 +421,8 @@ class Model(object):
     self.init_A_gnd(A, cls=cls)
   
   def init_A_shf(self, A_shf, cls=None):
-    """
+    r"""
+    Set overlying shelf rate factor :math:`A |_{sea}` to *A_shf*.
     """
     if cls is None:
       cls = self.this
@@ -401,7 +431,8 @@ class Model(object):
     self.assign_variable(self.A_shf, A_shf, cls=cls)
   
   def init_A_gnd(self, A_gnd, cls=None):
-    """
+    r"""
+    Set overlying grounded rate factor :math:`A |_{gnd}` to *A_gnd*.
     """
     if cls is None:
       cls = self.this
@@ -410,7 +441,8 @@ class Model(object):
     self.assign_variable(self.A_gnd, A_gnd, cls=cls)
     
   def init_E(self, E, cls=None):
-    """
+    r"""
+    Set flow-enhancement factor :math:`E` to *E*.
     """
     if cls is None:
       cls = self.this
@@ -421,7 +453,8 @@ class Model(object):
     self.init_E_gnd(E, cls=cls)
   
   def init_E_shf(self, E_shf, cls=None):
-    """
+    r"""
+    Set overlying shelf flow-enhancement factor :math:`E |_{shf}` to *E_shf*.
     """
     if cls is None:
       cls = self.this
@@ -430,7 +463,8 @@ class Model(object):
     self.assign_variable(self.E_shf, E_shf, cls=cls)
   
   def init_E_gnd(self, E_gnd, cls=None):
-    """
+    r"""
+    Set overlying grounded flow-enhancement factor :math:`E |_{gnd}` to *E_gnd*.
     """
     if cls is None:
       cls = self.this
@@ -439,7 +473,8 @@ class Model(object):
     self.assign_variable(self.E_gnd, E_gnd, cls=cls)
   
   def init_eta(self, eta, cls=None):
-    """
+    r"""
+    Set viscosity :math:`\eta` to *eta*.
     """
     if cls is None:
       cls = self.this
@@ -448,7 +483,8 @@ class Model(object):
     self.assign_variable(self.eta, eta, cls=cls)
   
   def init_etabar(self, etabar, cls=None):
-    """
+    r"""
+    Set vertically averaged viscosity :math:`\bar{\eta}` to *etabar*.
     """
     if cls is None:
       cls = self.this
@@ -457,7 +493,8 @@ class Model(object):
     self.assign_variable(self.etabar, etabar, cls=cls)
   
   def init_ubar(self, ubar, cls=None):
-    """
+    r"""
+    Set vertically averaged x-component of velocity :math:`\bar{u}` to *ubar*.
     """
     if cls is None:
       cls = self.this
@@ -466,7 +503,8 @@ class Model(object):
     self.assign_variable(self.ubar, ubar, cls=cls)
   
   def init_vbar(self, vbar, cls=None):
-    """
+    r"""
+    Set vertically averaged y-component of velocity :math:`\bar{v}` to *vbar*.
     """
     if cls is None:
       cls = self.this
@@ -475,7 +513,8 @@ class Model(object):
     self.assign_variable(self.vbar, vbar, cls=cls)
     
   def init_wbar(self, wbar, cls=None):
-    """
+    r"""
+    Set vertically averaged z-component of velocity :math:`\bar{w}` to *wbar*.
     """
     if cls is None:
       cls = self.this
@@ -484,7 +523,8 @@ class Model(object):
     self.assign_variable(self.wbar, wbar, cls=cls)
   
   def init_T_surface(self, T_s, cls=None):
-    """
+    r"""
+    Set surface temperature :math:`T_S` to *T_s*.
     """
     if cls is None:
       cls = self.this
@@ -493,7 +533,8 @@ class Model(object):
     self.assign_variable(self.T_surface, T_s, cls=cls)
   
   def init_q_geo(self, q_geo, cls=None):
-    """
+    r"""
+    Set geothermal heat flux :math:`q_{geo}` to *q_geo*.
     """
     if cls is None:
       cls = self.this
@@ -502,7 +543,8 @@ class Model(object):
     self.assign_variable(self.q_geo, q_geo, cls=cls)
   
   def init_q_fric(self, q_fric, cls=None):
-    """
+    r"""
+    Set traction heat flux :math:`q_{fric}` to *q_fric*.
     """
     if cls is None:
       cls = self.this
@@ -511,7 +553,9 @@ class Model(object):
     self.assign_variable(self.q_fric, q_fric, cls=cls)
   
   def init_gradT_B(self, gradT_B, cls=None):
-    """
+    r"""
+    Set basal temperature gradient 
+    :math:`\left( k \nabla T \right) \cdot \mathbf{n}` to *gradT_B*.
     """
     if cls is None:
       cls = self.this
@@ -520,7 +564,9 @@ class Model(object):
     self.assign_variable(self.gradT_B, gradT_B, cls=cls)
   
   def init_gradTm_B(self, gradTm_B, cls=None):
-    """
+    r"""
+    Set basal temperature melting gradient 
+    :math:`\left( k \nabla T_m \right) \cdot \mathbf{n}` to *gradTm_B*.
     """
     if cls is None:
       cls = self.this
@@ -529,7 +575,8 @@ class Model(object):
     self.assign_variable(self.gradTm_B, gradTm_B, cls=cls)
   
   def init_u(self, u, cls=None):
-    """
+    r"""
+    Set x-component of velocity :math:`u` to *u*.
     """
     if cls is None:
       cls = self.this
@@ -540,7 +587,8 @@ class Model(object):
     self.assx.assign(self.u, u_t, annotate=False)
   
   def init_v(self, v, cls=None):
-    """
+    r"""
+    Set y-component of velocity :math:`v` to *v*.
     """
     if cls is None:
       cls = self.this
@@ -551,7 +599,8 @@ class Model(object):
     self.assx.assign(self.v, v_t, annotate=False)
   
   def init_w(self, w, cls=None):
-    """
+    r"""
+    Set z-component of velocity :math:`w` to *w*.
     """
     if cls is None:
       cls = self.this
@@ -560,27 +609,10 @@ class Model(object):
     w_t = Function(self.Q, name='w_t')
     self.assign_variable(w_t, w, cls=cls)
     self.assx.assign(self.w, w_t, annotate=False)
-  
-  def init_vbar(self, vbar, cls=None):
-    """
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing vertically averaged y-component of velocity :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.vbar, vbar, cls=cls)
-    
-  def init_wbar(self, wbar, cls=None):
-    """
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing vertically averaged z-component of velocity :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.wbar, wbar, cls=cls)
 
   def init_U(self, U, cls=None):
-    """
+    r"""
+    Set velocity vector :math:`\mathbf{u}` to *U*.
     """
     if cls is None:
       cls = self.this
@@ -604,7 +636,9 @@ class Model(object):
     self.assign_variable(self.U_mag, U_mag_v, cls=cls)
   
   def init_U_ob(self, u_ob, v_ob, cls=None):
-    """
+    r"""
+    Set horizontal velocity observation vector :math:`\mathbf{u}_{ob}`
+    to *U_ob*.
     """
     if cls is None:
       cls = self.this
@@ -618,7 +652,8 @@ class Model(object):
     self.assign_variable(self.U_ob, U_mag_v, cls=cls)
   
   def init_Ubar(self, Ubar, cls=None):
-    """
+    r"""
+    Set balance velocity :math:`\Vert \bar{\mathbf{u}} \Vert` to *Ubar*.
     """
     if cls is None:
       cls = self.this
@@ -627,7 +662,8 @@ class Model(object):
     self.assign_variable(self.Ubar, Ubar, cls=cls)
   
   def init_u_lat(self, u_lat, cls=None):
-    """
+    r"""
+    Set x-component of lateral velocity :math:`u_D` to *u_lat*.
     """
     if cls is None:
       cls = self.this
@@ -636,7 +672,8 @@ class Model(object):
     self.assign_variable(self.u_lat, u_lat, cls=cls)
   
   def init_v_lat(self, v_lat, cls=None):
-    """
+    r"""
+    Set y-component of lateral velocity :math:`v_D` to *v_lat*.
     """
     if cls is None:
       cls = self.this
@@ -645,7 +682,8 @@ class Model(object):
     self.assign_variable(self.v_lat, v_lat, cls=cls)
   
   def init_w_lat(self, w_lat, cls=None):
-    """
+    r"""
+    Set z-component of lateral velocity :math:`w_D` to *w_lat*.
     """
     if cls is None:
       cls = self.this
@@ -654,7 +692,8 @@ class Model(object):
     self.assign_variable(self.w_lat, w_lat, cls=cls)
   
   def init_mask(self, mask, cls=None):
-    """
+    r"""
+    Set shelf mask :math:`M` to *M*.
     """
     if cls is None:
       cls = self.this
@@ -665,7 +704,8 @@ class Model(object):
     self.gnd_dofs = np.where(self.mask.vector().array() == 1.0)[0]
   
   def init_U_mask(self, U_mask, cls=None):
-    """
+    r"""
+    Set velocity observation mask :math:`M_{\mathbf{u}}` to *U_mask*.
     """
     if cls is None:
       cls = self.this
@@ -676,7 +716,8 @@ class Model(object):
     self.Uob_missing_dofs = np.where(self.U_mask.vector().array() == 0.0)[0]
   
   def init_lat_mask(self, lat_mask, cls=None):
-    """
+    r"""
+    Set lateral boundary mask :math:`M_D` to *lat_mask*.
     """
     if cls is None:
       cls = self.this
@@ -685,7 +726,8 @@ class Model(object):
     self.assign_variable(self.lat_mask, lat_mask, cls=cls)
   
   def init_d_x(self, d_x, cls=None):
-    """
+    r"""
+    Set x-component of normalized driving-stress :math:`d_x` to *d_x*.
     """
     if cls is None:
       cls = self.this
@@ -694,7 +736,8 @@ class Model(object):
     self.assign_variable(self.d_x, d_x, cls=cls)
   
   def init_d_y(self, d_y, cls=None):
-    """
+    r"""
+    Set y-component of normalized driving-stress :math:`d_y` to *d_y*.
     """
     if cls is None:
       cls = self.this
@@ -703,7 +746,8 @@ class Model(object):
     self.assign_variable(self.d_y, d_y, cls=cls)
   
   def init_time_step(self, dt, cls=None):
-    """
+    r"""
+    Set time step :math:`\Delta t` to *dt*.
     """
     if cls is None:
       cls = self.this
@@ -712,7 +756,8 @@ class Model(object):
     self.assign_variable(self.time_step, dt, cls=cls)
   
   def init_lat(self, lat, cls=None):
-    """
+    r"""
+    Set grid latitude to *lat*.
     """
     if cls is None:
       cls = self.this
@@ -721,7 +766,8 @@ class Model(object):
     self.assign_variable(self.lat, lat, cls=cls)
   
   def init_lon(self, lon, cls=None):
-    """
+    r"""
+    Set grid longitude to *lon*.
     """
     if cls is None:
       cls = self.this
@@ -730,7 +776,9 @@ class Model(object):
     self.assign_variable(self.lon, lon, cls=cls)
   
   def init_tau_id(self, tau_id, cls=None):
-    """
+    r"""
+    Set component of driving stress in the direction of flow
+    :math:`\tau_{id}` to *tau_id*.
     """
     if cls is None:
       cls = self.this
@@ -739,7 +787,9 @@ class Model(object):
     self.assign_variable(self.tau_id, tau_id, cls=cls)
   
   def init_tau_jd(self, tau_jd, cls=None):
-    """
+    r"""
+    Set component of driving stress across the direction of flow
+    :math:`\tau_{jd}` to *tau_jd*.
     """
     if cls is None:
       cls = self.this
@@ -748,7 +798,9 @@ class Model(object):
     self.assign_variable(self.tau_jd, tau_jd, cls=cls)
   
   def init_tau_ib(self, tau_ib, cls=None):
-    """
+    r"""
+    Set component of basal drag in the direction of flow
+    :math:`\tau_{ib}` to *tau_ib*.
     """
     if cls is None:
       cls = self.this
@@ -757,7 +809,9 @@ class Model(object):
     self.assign_variable(self.tau_ib, tau_ib, cls=cls)
   
   def init_tau_jb(self, tau_jb, cls=None):
-    """
+    r"""
+    Set component of basal drag across the direction of flow
+    :math:`\tau_{jb}` to *tau_jb*.
     """
     if cls is None:
       cls = self.this
@@ -766,7 +820,8 @@ class Model(object):
     self.assign_variable(self.tau_jb, tau_jb, cls=cls)
   
   def init_tau_ii(self, tau_ii, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{ii}` to *tau_ii*.
     """
     if cls is None:
       cls = self.this
@@ -775,7 +830,8 @@ class Model(object):
     self.assign_variable(self.tau_ii, tau_ii, cls=cls)
   
   def init_tau_ij(self, tau_ij, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{ij}` to *tau_ij*.
     """
     if cls is None:
       cls = self.this
@@ -784,7 +840,8 @@ class Model(object):
     self.assign_variable(self.tau_ij, tau_ij, cls=cls)
   
   def init_tau_ik(self, tau_ik, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{ik}` to *tau_ik*.
     """
     if cls is None:
       cls = self.this
@@ -793,7 +850,8 @@ class Model(object):
     self.assign_variable(self.tau_ik, tau_ik, cls=cls)
   
   def init_tau_ji(self, tau_ji, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{ji}` to *tau_ji*.
     """
     if cls is None:
       cls = self.this
@@ -802,7 +860,8 @@ class Model(object):
     self.assign_variable(self.tau_ji, tau_ji, cls=cls)
   
   def init_tau_jj(self, tau_jj, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{jj}` to *tau_jj*.
     """
     if cls is None:
       cls = self.this
@@ -811,7 +870,8 @@ class Model(object):
     self.assign_variable(self.tau_jj, tau_jj, cls=cls)
   
   def init_tau_jk(self, tau_jk, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{jk}` to *tau_jk*.
     """
     if cls is None:
       cls = self.this
@@ -820,7 +880,8 @@ class Model(object):
     self.assign_variable(self.tau_jk, tau_jk, cls=cls)
   
   def init_tau_ki(self, tau_ki, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{ki}` to *tau_ki*.
     """
     if cls is None:
       cls = self.this
@@ -829,7 +890,8 @@ class Model(object):
     self.assign_variable(self.tau_ki, tau_ki, cls=cls)
   
   def init_tau_kj(self, tau_kj, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{kj}` to *tau_kj*.
     """
     if cls is None:
       cls = self.this
@@ -838,7 +900,8 @@ class Model(object):
     self.assign_variable(self.tau_kj, tau_kj, cls=cls)
   
   def init_tau_kk(self, tau_kk, cls=None):
-    """
+    r"""
+    Set :math:`\tau_{kk}` to *tau_kk*.
     """
     if cls is None:
       cls = self.this
@@ -847,7 +910,8 @@ class Model(object):
     self.assign_variable(self.tau_kk, tau_kk, cls=cls)
   
   def init_N_ii(self, N_ii, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{ii}` to *N_ii*.
     """
     if cls is None:
       cls = self.this
@@ -856,7 +920,8 @@ class Model(object):
     self.assign_variable(self.N_ii, N_ii, cls=cls)
   
   def init_N_ij(self, N_ij, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{ij}` to *N_ij*.
     """
     if cls is None:
       cls = self.this
@@ -865,7 +930,8 @@ class Model(object):
     self.assign_variable(self.N_ij, N_ij, cls=cls)
   
   def init_N_ik(self, N_ik, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{ik}` to *N_ik*.
     """
     if cls is None:
       cls = self.this
@@ -874,7 +940,8 @@ class Model(object):
     self.assign_variable(self.N_ik, N_ik, cls=cls)
   
   def init_N_ji(self, N_ji, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{ji}` to *N_ji*.
     """
     if cls is None:
       cls = self.this
@@ -883,7 +950,8 @@ class Model(object):
     self.assign_variable(self.N_ji, N_ji, cls=cls)
   
   def init_N_jj(self, N_jj, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{jj}` to *N_jj*.
     """
     if cls is None:
       cls = self.this
@@ -892,7 +960,8 @@ class Model(object):
     self.assign_variable(self.N_jj, N_jj, cls=cls)
   
   def init_N_jk(self, N_jk, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{jk}` to *N_jk*.
     """
     if cls is None:
       cls = self.this
@@ -901,7 +970,8 @@ class Model(object):
     self.assign_variable(self.N_jk, N_jk, cls=cls)
   
   def init_N_ki(self, N_ki, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{ki}` to *N_ki*.
     """
     if cls is None:
       cls = self.this
@@ -910,7 +980,8 @@ class Model(object):
     self.assign_variable(self.N_ki, N_ki, cls=cls)
   
   def init_N_kj(self, N_kj, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{kj}` to *N_kj*.
     """
     if cls is None:
       cls = self.this
@@ -919,7 +990,8 @@ class Model(object):
     self.assign_variable(self.N_kj, N_kj, cls=cls)
   
   def init_N_kk(self, N_kk, cls=None):
-    """
+    r"""
+    Set membrane stress :math:`N_{kk}` to *N_kk*.
     """
     if cls is None:
       cls = self.this
@@ -928,7 +1000,8 @@ class Model(object):
     self.assign_variable(self.N_kk, N_kk, cls=cls)
 
   def init_alpha(self, alpha, cls=None):
-    """
+    r"""
+    Set temperate-zone marking coefficient :math:`\alpha` to *alpha*.
     """
     if cls is None:
       cls = self.this
@@ -937,7 +1010,9 @@ class Model(object):
     self.assign_variable(self.alpha, alpha, cls=cls)
 
   def init_alpha_int(self, alpha_int, cls=None):
-    """
+    r"""
+    Set vertical integral of temperate zone marking coefficient 
+    :math:`\int \alpha dz` to *alpha_int*.
     """
     if cls is None:
       cls = self.this
@@ -946,7 +1021,8 @@ class Model(object):
     self.assign_variable(self.alpha_int, alpha_int, cls=cls)
 
   def init_Fb(self, Fb, cls=None):
-    """
+    r"""
+    Set basal water discharge :math:`F_b` to *Fb*.
     """
     if cls is None:
       cls = self.this
@@ -955,7 +1031,8 @@ class Model(object):
     self.assign_variable(self.Fb, Fb, cls=cls)
 
   def init_Wbar(self, Wbar, cls=None):
-    """
+    r"""
+    Set vertically-averaged water contnet :math:`\bar{W}` to *Wbar*.
     """
     if cls is None:
       cls = self.this
@@ -964,7 +1041,8 @@ class Model(object):
     self.assign_variable(self.Wbar, Wbar, cls=cls)
 
   def init_temp_rat(self, temp_rat, cls=None):
-    """
+    r"""
+    Set ration of temperate ice :math:`\alpha_i / H` to *temp_rat*.
     """
     if cls is None:
       cls = self.this
@@ -973,16 +1051,18 @@ class Model(object):
     self.assign_variable(self.temp_rat, temp_rat, cls=cls)
 
   def init_Qbar(self, Qbar, cls=None):
-    """
+    r"""
+    Set vertically-averaged strain heat :math:`\bar{Q}` to *Qbar*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing integral of strain-heat :::"
+    s = "::: initializing vertically averaged strain-heat :::"
     print_text(s, cls=cls)
     self.assign_variable(self.Qbar, Qbar, cls=cls)
 
   def init_PE(self, PE, cls=None):
-    """
+    r"""
+    Set Peclet number :math:`P_e` to *PE*.
     """
     if cls is None:
       cls = self.this
@@ -991,7 +1071,8 @@ class Model(object):
     self.assign_variable(self.PE, PE, cls=cls)
 
   def init_n_f(self, n, cls=None):
-    """
+    r"""
+    Set outward-normal vector :math:`\mathbf{n}`` to *n*.
     """
     if cls is None:
       cls = self.this
@@ -1000,7 +1081,9 @@ class Model(object):
     self.assign_variable(self.n_f, n, cls=cls)
 
   def init_Fb_bounds(self, Fb_min, Fb_max, cls=None):
-    """
+    r"""
+    Set upper and lower bounds for basal water discharge :math:`F_b^{\max}` 
+    and :math:`F_b^{\min}` to *Fb_max* and *Fb_min*.
     """
     if cls is None:
       cls = self.this
@@ -1010,7 +1093,8 @@ class Model(object):
     self.init_Fb_max(Fb_max, cls)
 
   def init_Fb_min(self, Fb_min, cls=None):
-    """
+    r"""
+    Set lowere bound of basal water discharge :math:`F_b` to *Fb_min*.
     """
     if cls is None:
       cls = self.this
@@ -1019,7 +1103,8 @@ class Model(object):
     self.assign_variable(self.Fb_min, Fb_min, cls=cls)
 
   def init_Fb_max(self, Fb_max, cls=None):
-    """
+    r"""
+    Set upper bound of basal water discharge :math:`F_b` to *Fb_max*.
     """
     if cls is None:
       cls = self.this
@@ -1028,7 +1113,8 @@ class Model(object):
     self.assign_variable(self.Fb_max, Fb_max, cls=cls)
 
   def init_k_0(self, k_0, cls=None):
-    """
+    r"""
+    Set non-advective water flux coefficient :math:`k_0` to *k_0*.
     """
     if cls is None:
       cls = self.this
@@ -1038,12 +1124,19 @@ class Model(object):
 
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
-    Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
-    using the observed surface velocity <U_mag> as approximate basal 
-    velocity and <gradS> the projected surface gradient. i.e.,
+    Init :math:`\beta` from  :math:`\tau_b = \tau_d`, the shallow ice 
+    approximation, using the observed surface velocity *U_mag* as approximate 
+    basal velocity,
 
     .. math::
-    \beta \Vert U_b \Vert = \rho g H \Vert \nabla S \Vert
+
+       \beta \Vert U_b \Vert = \rho g H \Vert \nabla S \Vert
+
+    Args:
+
+      :U_mag: basal velocity magnitude.
+
+      :eps:   minimum velocity, default is 0.5 m/a.
     
     """
     s = "::: initializing beta from SIA :::"
@@ -1080,12 +1173,19 @@ class Model(object):
       
   def init_beta_SIA_new_slide(self, U_mag=None, eps=0.5):
     r"""
-    Init beta  :`\tau_b = \tau_d`, the shallow ice approximation, 
-    using the observed surface velocity <U_mag> as approximate basal 
-    velocity and <gradS> the projected surface gradient. i.e.,
+    Init :math:`\beta` from  :math:`\tau_b = \tau_d`, the shallow ice 
+    approximation, using the observed surface velocity *U_mag* as approximate 
+    basal velocity,
 
     .. math::
-    \beta \Vert U_b \Vert = \rho g H \Vert \nabla S \Vert
+
+       \beta \Vert U_b \Vert = \rho g H \Vert \nabla S \Vert
+
+    Args:
+
+      :U_mag: basal velocity magnitude.
+
+      :eps:   minimum velocity, default is 0.5 m/a.
     
     """
     s = "::: initializing new sliding beta from SIA :::"
@@ -1993,6 +2093,21 @@ class Model(object):
                                 method='cg', preconditioner='amg',
                                 cb_ftn=None):
     """
+    Appy Newton's method.
+
+    Args:
+     
+      :R:                residual of system
+      :U:                unknown to determine
+      :J:                Jacobian
+      :bcs:              set of Dirichlet boundary conditions
+      :atol:             absolute stopping tolerance
+      :rtol:             relative stopping tolerance
+      :relaxation_param: ratio of down-gradient step to take each iteration.
+      :max_iter:         maximum number of iterations to perform
+      :method:           linear solution method
+      :preconditioner:   preconditioning method to use with ``Krylov`` solver
+      :cb_ftn:           at the end of each iteration, this is called
     """
     converged  = False
     lmbda      = relaxation_param   # relaxation parameter
@@ -2365,10 +2480,6 @@ class Model(object):
       out_dir_n = '%0*d/' % (n_i, counter)
       self.set_out_dir(out_dir_i + out_dir_n)
    
-      # let us know that we've started the adjoining process : 
-      s    = '::: beginning adjoint-based assimilation process :::'
-      print_text(s, cls=self.this)
-      
       # the incomplete adjoint means the viscosity is linear :
       if incomplete and not momentum.linear: momentum.linearize_viscosity()
     

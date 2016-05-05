@@ -380,6 +380,10 @@ class MomentumBP(Momentum):
     s      = "::: solving BP horizontal velocity with %i max iterations" + \
              " and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
+
+    # zero out self.velocity for good convergence for any subsequent solves,
+    # e.g. model.L_curve() :
+    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -732,6 +736,10 @@ class MomentumDukowiczBP(Momentum):
     s      = "::: solving Dukowicz BP horizontal velocity with %i max" + \
              " iterations and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
+    
+    # zero out self.velocity for good convergence for any subsequent solves,
+    # e.g. model.L_curve() :
+    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,

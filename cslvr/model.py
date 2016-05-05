@@ -1882,9 +1882,9 @@ class Model(object):
 
   def save_hdf5(self, u, f, name=None):
     """
-    Save a FEniCS Function <u> to <f> h5 file to the hdf5 subdirectory of 
-    self.out_dir.
-    If <name>=None, this will save the flie under <u>.name().
+    Save a :class:`~fenics.Function` *u* to *f* .h5 file in the hdf5 
+    subdirectory of ``self.out_dir``.  If *name* = ``None``, this will 
+    save the flie under ``u.name()``.
     """
     if name == None:
       name = u.name()
@@ -2164,10 +2164,29 @@ class Model(object):
 
   def thermo_solve(self, momentum, energy, wop_kwargs,
                    callback=None, atol=1e2, rtol=1e0, max_iter=50,
-                   itr_tmc_save_vars=None, post_tmc_save_vars=None,
+                   itr_save_vars=None, post_tmc_save_vars=None,
                    starting_i=1):
-    """ 
+    r""" 
     Perform thermo-mechanical coupling between momentum and energy.
+
+    Args:
+
+      :momentum:      a :class:`~momentum.Momentum` instance
+      :energy:        a :class:`~energy.Energy` instance.  Currently this only 
+                      works for :class:`~energy.Enthalpy`
+      :wop_kwargs:    a :py:class:`~dict` of arguments for water-optimization 
+                      method :func:`~energy.Energy.optimize_water_flux`
+      :callback:      a function that is called back at the end of each 
+                      iteration
+      :atol:          absolute stopping tolerance 
+                      :math:`a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert`
+      :rtol:          relative stopping tolerance
+                      :math:`r_{tol} \leq \Vert r_n - r_{n-1} \Vert`
+      :max_iter:      maximum number of iterations to perform
+      :itr_save_vars: python :py:class:`~list` containing functions to 
+                      save each iteration
+      :starting_i:    if you are restarting this process, you may start 
+                      it at a later iteration. 
     """
     s    = '::: performing thermo-mechanical coupling with atol = %.2e, ' + \
            'rtol = %.2e, and max_iter = %i :::'
@@ -2336,12 +2355,12 @@ class Model(object):
         callback()
     
       # save state to unique hdf5 file :
-      if isinstance(itr_tmc_save_vars, list):
+      if isinstance(itr_save_vars, list):
         s    = '::: saving variables in list arg itr_tmc_save_vars :::'
         print_text(s, cls=self.this)
         out_file = self.out_dir + 'tmc.h5'
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        for var in itr_tmc_save_vars:
+        for var in itr_save_vars:
           self.save_hdf5(var, f=foutput)
         foutput.close()
     

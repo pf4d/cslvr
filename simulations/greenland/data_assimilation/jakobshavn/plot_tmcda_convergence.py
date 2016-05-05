@@ -9,7 +9,7 @@ mpl.rcParams['text.usetex']          = True
 mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
 # set the relavent directories :
-in_dir  = 'dump/jakob_small_new/inversion_Wc_0.01/'
+in_dir  = 'dump/jakob_small/inversion_Wc_0.03/'
 out_dir = in_dir
 
 def get_data(direc):

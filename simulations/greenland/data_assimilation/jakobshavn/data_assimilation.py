@@ -5,8 +5,8 @@ from dolfin_adjoint   import *
 import sys
 
 # set the relavent directories :
-var_dir = 'dump/vars_jakobshavn_crude/'  # directory from gen_vars.py
-out_dir = 'dump/jakob_crude/inversion_Wc_0.01/'
+var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
+out_dir = 'dump/jakob_small/inversion_Wc_0.03/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -33,10 +33,10 @@ d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
 d3model.init_E(1.0)
 d3model.init_W(0.0)
-d3model.init_Wc(0.01)
+d3model.init_Wc(0.03)
 d3model.init_T(d3model.T_surface)
 d3model.init_k_0(1e-3)
-#d3model.solve_hydrostatic_pressure()
+d3model.solve_hydrostatic_pressure()
 d3model.form_energy_dependent_rate_factor()
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted_01.h5', 'r')
@@ -83,6 +83,7 @@ momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False)
 nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True)
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '02/u_opt.h5', 'r')
+#d3model.set_out_dir(out_dir + '02/')
 #d3model.init_U(frstrt)
 #d3model.init_beta(frstrt)
 

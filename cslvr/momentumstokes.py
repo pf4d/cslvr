@@ -265,6 +265,10 @@ class MomentumStokes(Momentum):
              " and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
     
+    # zero out self.velocity for good convergence for any subsequent solves,
+    # e.g. model.L_curve() :
+    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
+    
     # compute solution :
     solve(self.mom_F == 0, self.G, J = self.mom_Jac, bcs = self.mom_bcs,
           annotate = annotate, solver_parameters = params['solver'])
@@ -657,6 +661,10 @@ class MomentumDukowiczStokesReduced(Momentum):
     s    = "::: solving Dukowicz full-Stokes reduced equations with %i max" + \
              " iterations and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
+    
+    # zero out self.velocity for good convergence for any subsequent solves,
+    # e.g. model.L_curve() :
+    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
 
     def cb_ftn():
       self.solve_vert_velocity(annotate)
@@ -969,6 +977,10 @@ class MomentumDukowiczBrinkerhoffStokes(Momentum):
     s    = "::: solving Dukowicz-Brinkerhoff-full-Stokes equations" + \
            " with %i max iterations and step size = %.1f :::"
     print_text(s % (maxit, alpha), self.color())
+    
+    # zero out self.velocity for good convergence for any subsequent solves,
+    # e.g. model.L_curve() :
+    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,

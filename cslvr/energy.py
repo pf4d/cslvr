@@ -315,7 +315,7 @@ class Energy(Physics):
     model.init_W(W_v, cls=self)
     
   def optimize_water_flux(self, max_iter, bounds, method='ipopt',
-                          adj_callback=None):
+                          adj_save_vars=None, adj_callback=None):
     """
     determine the correct basal-water flux.
     """
@@ -442,6 +442,16 @@ class Energy(Physics):
     Fb_ext = model.vert_extrude(Fb_opt, d='up')
     model.init_Fb(Fb_ext, cls=self)
     #Control(model.Fb).update(Fb_ext)  # FIXME: does this work?
+    
+    # save state to unique hdf5 file :
+    if isinstance(adj_save_vars, list):
+      s    = '::: saving variables in list arg adj_save_vars :::'
+      print_text(s, cls=self)
+      out_file = self.out_dir + 'w_opt.h5'
+      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+      for var in adj_save_vars:
+        self.save_hdf5(var, f=foutput)
+      foutput.close()
 
     # calculate total time to compute
     tf = time()
@@ -733,7 +743,7 @@ class Enthalpy(Energy):
     self.theta   = theta
     self.theta0  = theta0
     self.c       = c
-    self.k       = k
+    self.k       = k * spy
     self.rho     = rho
     self.kappa   = kappa
     self.Xi      = Xi

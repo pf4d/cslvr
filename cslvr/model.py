@@ -2164,29 +2164,29 @@ class Model(object):
 
   def thermo_solve(self, momentum, energy, wop_kwargs,
                    callback=None, atol=1e2, rtol=1e0, max_iter=50,
-                   itr_save_vars=None, post_tmc_save_vars=None,
+                   iter_save_vars=None, post_tmc_save_vars=None,
                    starting_i=1):
     r""" 
     Perform thermo-mechanical coupling between momentum and energy.
 
     Args:
 
-      :momentum:      a :class:`~momentum.Momentum` instance
-      :energy:        a :class:`~energy.Energy` instance.  Currently this only 
-                      works for :class:`~energy.Enthalpy`
-      :wop_kwargs:    a :py:class:`~dict` of arguments for water-optimization 
-                      method :func:`~energy.Energy.optimize_water_flux`
-      :callback:      a function that is called back at the end of each 
-                      iteration
-      :atol:          absolute stopping tolerance 
-                      :math:`a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert`
-      :rtol:          relative stopping tolerance
-                      :math:`r_{tol} \leq \Vert r_n - r_{n-1} \Vert`
-      :max_iter:      maximum number of iterations to perform
-      :itr_save_vars: python :py:class:`~list` containing functions to 
-                      save each iteration
-      :starting_i:    if you are restarting this process, you may start 
-                      it at a later iteration. 
+      :momentum:       a :class:`~momentum.Momentum` instance
+      :energy:         a :class:`~energy.Energy` instance.  Currently this only 
+                       works for :class:`~energy.Enthalpy`
+      :wop_kwargs:     a :py:class:`~dict` of arguments for water-optimization 
+                       method :func:`~energy.Energy.optimize_water_flux`
+      :callback:       a function that is called back at the end of each 
+                       iteration
+      :atol:           absolute stopping tolerance 
+                       :math:`a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert`
+      :rtol:           relative stopping tolerance
+                       :math:`r_{tol} \leq \Vert r_n - r_{n-1} \Vert`
+      :max_iter:       maximum number of iterations to perform
+      :iter_save_vars: python :py:class:`~list` containing functions to 
+                       save each iteration
+      :starting_i:     if you are restarting this process, you may start 
+                       it at a later iteration. 
     """
     s    = '::: performing thermo-mechanical coupling with atol = %.2e, ' + \
            'rtol = %.2e, and max_iter = %i :::'
@@ -2267,12 +2267,6 @@ class Model(object):
       out_dir_n = 'tmc/%0*d/' % (n_i, counter)
       self.set_out_dir(out_dir_i + out_dir_n)
       
-      # need zero initial guess for Newton solve to converge : 
-      self.assign_variable(momentum.get_U(),  DOLFIN_EPS, cls=self.this)
-
-      # reset the water discharge to zero :
-      self.assign_variable(self.Fb,           DOLFIN_EPS, cls=self.this)
-     
       # solve velocity :
       momentum.solve(annotate=False)
 
@@ -2284,6 +2278,10 @@ class Model(object):
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
+      
+      # fixed-point interation for thermal parameters and discontinuous 
+      # properties :
+      energy.update_thermal_parameters(annotate=False)
   
       # update bounds based on temperate zone :
       Fb_m_v                 = self.Fb_max.vector().array()
@@ -2295,12 +2293,8 @@ class Model(object):
       # optimize the flux of water to remove abnormally high water :
       energy.optimize_water_flux(**wop_kwargs)
       
-      # fixed-point interation for thermal parameters and discontinuous 
-      # properties :
-      energy.update_thermal_parameters(annotate=False)
-      
       # calculate T, Tp, and W from theta :
-      #energy.partition_energy(annotate=False)
+      energy.partition_energy(annotate=False)
       
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
@@ -2355,12 +2349,12 @@ class Model(object):
         callback()
     
       # save state to unique hdf5 file :
-      if isinstance(itr_save_vars, list):
-        s    = '::: saving variables in list arg itr_tmc_save_vars :::'
+      if isinstance(iter_save_vars, list):
+        s    = '::: saving variables in list arg iter_save_vars :::'
         print_text(s, cls=self.this)
         out_file = self.out_dir + 'tmc.h5'
         foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        for var in itr_save_vars:
+        for var in iter_save_vars:
           self.save_hdf5(var, f=foutput)
         foutput.close()
     

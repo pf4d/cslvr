@@ -39,15 +39,14 @@ d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
 d3model.form_energy_dependent_rate_factor()
 
-#frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted_01.h5', 'r')
-frstrt = HDF5File(mpi_comm_world(), out_dir + '05/inverted.h5', 'r')
-d3model.init_T(frstrt)
-d3model.init_W(frstrt)
-d3model.init_Fb(frstrt)
-d3model.init_alpha(frstrt)
-d3model.init_U(frstrt)
-d3model.init_p(frstrt)
-d3model.init_theta(frstrt)
+#frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted.h5', 'r')
+#d3model.init_T(frstrt)
+#d3model.init_W(frstrt)
+#d3model.init_Fb(frstrt)
+#d3model.init_alpha(frstrt)
+#d3model.init_U(frstrt)
+#d3model.init_p(frstrt)
+#d3model.init_theta(frstrt)
 
 # create a 2D model for balance-velocity :
 bedmodel = D2Model(d3model.bedmesh, out_dir)
@@ -117,6 +116,7 @@ adj_save_vars = [d3model.T,
                  d3model.theta]
 
 u_opt_save_vars = [d3model.beta, d3model.U3]
+w_opt_save_vars = [d3model.Fb,   d3model.theta]
 
 # form the cost functional :
 mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 
@@ -136,6 +136,7 @@ nrg.form_cost_ftn(kind='L2')
 wop_kwargs = {'max_iter'            : 350, 
               'bounds'              : (0.0, 100.0),
               'method'              : 'ipopt',
+              'adj_save_vars'       : w_opt_save_vars,
               'adj_callback'        : None}
                                     
 tmc_kwargs = {'momentum'            : momTMC,
@@ -145,7 +146,7 @@ tmc_kwargs = {'momentum'            : momTMC,
               'atol'                : 1e2,
               'rtol'                : 1e0,
               'max_iter'            : 5,
-              'itr_tmc_save_vars'   : None,
+              'iter_save_vars'      : None,
               'post_tmc_save_vars'  : None,
               'starting_i'          : 1}
 
@@ -164,11 +165,11 @@ ass_kwargs = {'momentum'            : mom,
               'uop_kwargs'          : uop_kwargs,
               'atol'                : 1.0,
               'rtol'                : 1e-4,
-              'initialize'          : False,
+              'initialize'          : True,
               'incomplete'          : True,
               'post_iter_save_vars' : adj_save_vars,
               'post_ini_callback'   : None,
-              'starting_i'          : 6}
+              'starting_i'          : 1}
 
 # assimilate ! :
 d3model.assimilate_U_ob(**ass_kwargs) 

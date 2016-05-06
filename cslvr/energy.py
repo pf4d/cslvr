@@ -447,10 +447,10 @@ class Energy(Physics):
     if isinstance(adj_save_vars, list):
       s    = '::: saving variables in list arg adj_save_vars :::'
       print_text(s, cls=self)
-      out_file = self.out_dir + 'w_opt.h5'
+      out_file = model.out_dir + 'w_opt.h5'
       foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
       for var in adj_save_vars:
-        self.save_hdf5(var, f=foutput)
+        model.save_hdf5(var, f=foutput)
       foutput.close()
 
     # calculate total time to compute

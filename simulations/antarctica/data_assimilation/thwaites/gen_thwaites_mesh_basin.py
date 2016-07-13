@@ -1,4 +1,4 @@
-from varglas           import *
+from cslvr             import *
 from pylab             import *
 from scipy.interpolate import RectBivariateSpline
 
@@ -6,7 +6,7 @@ from scipy.interpolate import RectBivariateSpline
 #===============================================================================
 # data preparation :
 out_dir   = 'dump/meshes/'
-mesh_name = 'thwaites_3D_U_mesh_basin'
+mesh_name = 'thwaites_3D_U_mesh_basin_crude'
 
 # get the data :
 measure = DataFactory.get_ant_measures()
@@ -48,11 +48,11 @@ db2.data['mask'][L > 0.0] = 0
 
 #===============================================================================
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=1000.0, umax=100000.0, inverse=True)
+dbm.rescale_field('U_ob', 'ref', umin=10000.0, umax=500000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
-dbm.data['ref'][slp] = 2000.0
-dbm.data['ref'][shf] = 5000.0
+#dbm.data['ref'][slp] = 2000.0
+#dbm.data['ref'][shf] = 5000.0
 #dbm.data['ref'][nan] = 50000.0
 #dbm.data['ref'][msk] = 50000.0
 
@@ -78,11 +78,11 @@ gb.intersection(m.longest_cont)
 gb.plot_xycoords_buf(other=m.longest_cont)
 m.set_contour(gb.get_xy_contour())
 
-m.eliminate_intersections(dist=200)
+m.eliminate_intersections(dist=100)
 m.check_dist()
 m.write_gmsh_contour(boundary_extend=False)
 #m.plot_contour()
-m.extrude(h=100000, n_layers=10)
+m.extrude(h=100000, n_layers=5)
 m.close_file()
 
 

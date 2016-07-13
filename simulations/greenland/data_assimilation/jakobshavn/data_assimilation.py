@@ -4,6 +4,7 @@ from fenics           import *
 from dolfin_adjoint   import *
 import sys
 
+
 # set the relavent directories :
 var_dir = 'dump/vars_jakobshavn_small/'  # directory from gen_vars.py
 out_dir = 'dump/jakob_small/inversion_Wc_0.03/'

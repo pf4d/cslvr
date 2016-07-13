@@ -31,6 +31,7 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 #===============================================================================
 # open the hdf5 file :
 f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted_10.h5',  'r')
+f2    = HDF5File(mpi_comm_world(), in_dir  + 'alpha_int.h5',    'r')
 #f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',  'r')
 #f     = HDF5File(mpi_comm_world(), in_dir  + 'theta_opt.h5', 'r')
 #f     = HDF5File(mpi_comm_world(), in_dir  + 'u_opt.h5',     'r')
@@ -50,9 +51,9 @@ d3model.init_U(f)
 d3model.init_p(f)
 d3model.init_beta(f)
 d3model.init_theta(f)
-#d3model.init_alpha_int(f)
-#d3model.init_temp_rat(f)
-#d3model.init_Wbar(f)
+d3model.init_alpha_int(f2)
+d3model.init_temp_rat(f2)
+d3model.init_Wbar(f2)
 #d3model.init_Qbar(f)
 
 #d3model.save_xdmf(d3model.theta, 'theta')
@@ -206,7 +207,8 @@ R_min = R.vector().min()
 
 R_lvls        = np.array([R_min, -750, -250, -50, -10, -1,
                           1, 10, 50, 250, 750, R_max])
-Wbar_lvls     = np.array([0.0, 1e-3, 2.5e-3, 5e-3, 1e-2, Wbarmax])
+#Wbar_lvls     = np.array([0.0, 1e-3, 2.5e-3, 5e-3, 1e-2, Wbarmax])
+Wbar_lvls     = np.array([0.0, 1e-4, 1e-3, 2.5e-3, 5e-3, Wbarmax])
 a_int_lvls    = np.array([0, 50, 100, 150, 200, 400, 800, a_int_max])
 temp_rat_lvls = np.array([0, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0])
 B_lvls        = np.array([Bmin, -1e3, -5e2, -1e2, -1e1, 
@@ -234,6 +236,11 @@ Tw    = d3model.T_w(0)
 L     = d3model.L(0)
 a     = 146.3
 b     = 7.253
+
+#===============================================================================
+# correct temperate ratio :
+temp_rat_v = bedmodel.temp_rat.vector()
+temp_rat_v[temp_rat_v > 1.0] = 1.0
 
 #===============================================================================
 # plot profiles :
@@ -412,13 +419,13 @@ b     = 7.253
 u2_c    = 'r'#'#c1000e'
 u2_lvls = [-500]
 
-plotIce(drg, R, name='misfit', direc=out_dir, 
-        title=r'$\Vert \mathbf{u} - \mathbf{u}_{ob} \Vert$',
-        cmap='RdGy',  scale='lin',
-        levels=R_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
-        extend='neither', show=False, ext='.pdf',
-        params=params, plot_pts=None,
-        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=bc)
+#plotIce(drg, R, name='misfit', direc=out_dir, 
+#        title=r'$\Vert \mathbf{u} - \mathbf{u}_{ob} \Vert$',
+#        cmap='RdGy',  scale='lin',
+#        levels=R_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
+#        extend='neither', show=False, ext='.pdf',
+#        params=params, plot_pts=None,
+#        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=bc)
 #
 #plotIce(drg, bedmodel.alpha_int, name='alpha_int', direc=out_dir, 
 #        title=r'$\alpha_i$', cmap='gist_yarg',  scale='lin',
@@ -426,14 +433,14 @@ plotIce(drg, R, name='misfit', direc=out_dir,
 #        extend='neither', show=False, ext='.pdf',
 #        params=params, plot_pts=None,
 #        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-#
-#plotIce(drg, bedmodel.temp_rat, name='temp_rat', direc=out_dir, 
-#        title=r'$\alpha_i / H$', cmap='gist_yarg',  scale='lin',
-#        levels=temp_rat_lvls, tp=True, tpAlpha=0.2, cb_format='%.2f',
-#        extend='neither', show=False, ext='.pdf',
-#        params=params, plot_pts=None,
-#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-#  
+
+plotIce(drg, bedmodel.temp_rat, name='temp_rat', direc=out_dir, 
+        title=r'$\alpha_i / H$', cmap='gist_yarg',  scale='lin',
+        levels=temp_rat_lvls, tp=True, tpAlpha=0.2, cb_format='%.2f',
+        extend='neither', show=False, ext='.pdf',
+        params=params, plot_pts=None,
+        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+  
 #plotIce(drg, bedmodel.Qbar, name='Qbar', direc=out_dir,
 #        title=r'$\bar{Q}$', cmap='gist_yarg',  scale='lin',
 #        levels=Qbar_lvls, tp=True, tpAlpha=0.2,
@@ -441,7 +448,7 @@ plotIce(drg, R, name='misfit', direc=out_dir,
 #        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
 #        params=params, plot_pts=None,
 #        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-#  
+  
 #plotIce(drg, bedmodel.Wbar, name='Wbar', direc=out_dir, 
 #        title=r'$\bar{W}$', cmap='gist_yarg',  scale='lin',
 #        levels=Wbar_lvls, tp=True, tpAlpha=0.2,
@@ -450,86 +457,86 @@ plotIce(drg, R, name='misfit', direc=out_dir,
 #        params=params, plot_pts=None,
 #        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
 #
-plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
-        title=r'$W_B$', cmap='gist_yarg',  scale='lin',
-        levels=W_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
-        title='$T_B$', cmap='gist_yarg',  scale='lin',
-        levels=T_lvls, tp=True, tpAlpha=0.2, cb_format='%.1f',
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-
-plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
-        title=r'$F_b$', cmap='gist_yarg',  scale='lin',
-        levels=Fb_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
-        title=r'$M_b$', cmap='gist_yarg',  scale='lin',
-        levels=Mb_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
-        title=r'$\alpha$', cmap='gist_yarg',  scale='lin',
-        levels=a_lvls, tp=True, tpAlpha=0.2, cb_format='%.2e',
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-#plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
-#        title=r'$P_e$', cmap='gist_yarg',  scale='lin',
-#        levels=Pe_lvls, tp=True, tpAlpha=0.2,
+#plotIce(drg, bedmodel.W, name='W', direc=out_dir, 
+#        title=r'$W_B$', cmap='gist_yarg',  scale='lin',
+#        levels=W_lvls, tp=True, tpAlpha=0.2,
 #        extend='neither', show=False, ext='.pdf',
 #        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
 #        params=params, plot_pts=None,
 #        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, srfmodel.U_ob, name='U_ob', direc=out_dir, 
-        title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap='gist_yarg',  scale='lin',
-        levels=U_ob_lvls, tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf', cb_format='%i',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
-        title=r'$\Vert \mathbf{u}_S \Vert$', cmap='gist_yarg',  scale='lin',
-        levels=U_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
-        title=r'$\theta_B$', cmap='gist_yarg',  scale='lin',
-        tp=True, tpAlpha=0.2,
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
-
-plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
-        title=r'$\beta$', cmap='gist_yarg',  scale='lin',
-        levels=b_lvls, tp=True, tpAlpha=0.2, cb_format='%g',
-        extend='neither', show=False, ext='.pdf',
-        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
-        params=params, plot_pts=None,
-        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, bedmodel.T, name='T', direc=out_dir, 
+#        title='$T_B$', cmap='gist_yarg',  scale='lin',
+#        levels=T_lvls, tp=True, tpAlpha=0.2, cb_format='%.1f',
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#
+#plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+#        title=r'$F_b$', cmap='gist_yarg',  scale='lin',
+#        levels=Fb_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir, 
+#        title=r'$M_b$', cmap='gist_yarg',  scale='lin',
+#        levels=Mb_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, bedmodel.alpha, name='alpha', direc=out_dir, 
+#        title=r'$\alpha$', cmap='gist_yarg',  scale='lin',
+#        levels=a_lvls, tp=True, tpAlpha=0.2, cb_format='%.2e',
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+##plotIce(drg, bedmodel.PE, name='PE', direc=out_dir, 
+##        title=r'$P_e$', cmap='gist_yarg',  scale='lin',
+##        levels=Pe_lvls, tp=True, tpAlpha=0.2,
+##        extend='neither', show=False, ext='.pdf',
+##        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+##        params=params, plot_pts=None,
+##        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, srfmodel.U_ob, name='U_ob', direc=out_dir, 
+#        title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap='gist_yarg',  scale='lin',
+#        levels=U_ob_lvls, tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf', cb_format='%i',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
+#        title=r'$\Vert \mathbf{u}_S \Vert$', cmap='gist_yarg',  scale='lin',
+#        levels=U_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, bedmodel.theta, name='theta', direc=out_dir, 
+#        title=r'$\theta_B$', cmap='gist_yarg',  scale='lin',
+#        tp=True, tpAlpha=0.2,
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
+#
+#plotIce(drg, bedmodel.beta, name='beta', direc=out_dir, 
+#        title=r'$\beta$', cmap='gist_yarg',  scale='lin',
+#        levels=b_lvls, tp=True, tpAlpha=0.2, cb_format='%g',
+#        extend='neither', show=False, ext='.pdf',
+#        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
+#        params=params, plot_pts=None,
+#        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
 
 
 

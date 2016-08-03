@@ -7,9 +7,10 @@ from scipy.interpolate import RectBivariateSpline
 # data preparation :
 out_dir   = 'dump/meshes/'
 mesh_name = 'thwaites_3D_U_mesh_basin_crude'
+#mesh_name = 'thwaites_3D_U_mesh_block_crude'
 
 # get the data :
-measure = DataFactory.get_ant_measures()
+measure = DataFactory.get_ant_measures(res=900)
 bedmap2 = DataFactory.get_bedmap2()
 
 # process the data :
@@ -35,7 +36,7 @@ interp = interp2d(db2.x, db2.y, db2.data['mask'])
 mask   = interp(dbm.x, dbm.y)
 
 # get dofs for shelves where we restrict the element size :
-slp = gS_n >  30
+slp = gS_n >  20
 shf = mask >= 1.1
 nan = mask <  0.1
 msk = dbm.data['mask'] < 0.1
@@ -48,11 +49,11 @@ db2.data['mask'][L > 0.0] = 0
 
 #===============================================================================
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=10000.0, umax=500000.0, inverse=True)
+dbm.rescale_field('U_ob', 'ref', umin=1000.0, umax=500000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
-#dbm.data['ref'][slp] = 2000.0
-#dbm.data['ref'][shf] = 5000.0
+dbm.data['ref'][slp] = 1000.0
+dbm.data['ref'][shf] = 5000.0
 #dbm.data['ref'][nan] = 50000.0
 #dbm.data['ref'][msk] = 50000.0
 
@@ -70,7 +71,20 @@ print_min_max(dbm.data['ref'], 'ref')
 m = MeshGenerator(db2, mesh_name, out_dir)
 
 m.create_contour('mask', zero_cntr=1e-9, skip_pts=0)
+m.plot_contour()
 
+## create a box around some area :
+#x1 = -2.20497e6; y1 = 34742
+#x2 = -295154;    y2 = -1.56258e6
+#
+#new_cont = array([[x1, y1],
+#                  [x2, y1],
+#                  [x2, y2],
+#                  [x1, y2],
+#                  [x1, y1]])
+#m.intersection(new_cont)
+
+# or get the basin of thwaites :
 gb = GetBasin(db2, basin='21')
 gb.extend_boundary(1000)
 gb.check_dist(5000)

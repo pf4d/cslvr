@@ -52,6 +52,7 @@ model.save_mesh(f)
 
 f.close()
 
+model.save_xdmf(model.U_ob, 'U_ob')
 
 
 

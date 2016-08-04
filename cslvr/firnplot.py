@@ -108,12 +108,12 @@ class FirnPlot(object):
       # temperature axis :
       self.Tax   = self.fig.add_subplot(totb + i)
       self.Tax.axis([Tmin, Tmax, zMin, zMax])
-      self.Tax.set_xlabel(r'$T\ [\degree \mathrm{C}]$')
+      self.Tax.set_xlabel(r'$T\ [^{\circ}  \mathrm{C}]$')
       self.Tax.set_ylabel('Depth [m]')
       self.Tax.grid()
       
       # surface temp text :
-      self.Tsurf    = self.Tax.text(Th, Tz, r'$T_S$: %.1E $\degree$C' % Ts)
+      self.Tsurf    = self.Tax.text(Th, Tz, r'$T_S$: %.1E $^{\circ}$C' % Ts)
 
       # temperature profile :
       self.phT,     = self.Tax.plot(T - 273.15, z, '0.3', lw=1.5,
@@ -307,7 +307,7 @@ class FirnPlot(object):
     self.fig.canvas.set_window_title('Time = %.2f yr' % t)
    
     if config['enthalpy']: 
-      self.Tsurf.set_text(r'$T_S$: %.1E $\degree$C' % Ts)
+      self.Tsurf.set_text(r'$T_S$: %.1E $^{\circ}$C' % Ts)
       self.phT.set_xdata(T - T_w)
       self.phT.set_ydata(z)
       self.phTs.set_ydata(zs)
@@ -420,7 +420,7 @@ class FirnPlot(object):
     fig_text = figtext(.85,.95,'Time = 0.0 yr')
 
     Tax.set_title('Temperature')
-    Tax.set_xlabel(r'$T$ $[\degree C]$')
+    Tax.set_xlabel(r'$T$ $[^{\circ} C]$')
     Tax.set_ylabel(r'Depth $[m]$')
 
     rhoax.set_title('Density')

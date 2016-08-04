@@ -1,6 +1,6 @@
 from fenics          import *
 from dolfin_adjoint  import *
-from varglas         import *
+from cslvr           import *
 import sys
 import pylab as p
     
@@ -108,7 +108,7 @@ plot_cfg = {  'on'       : bp,
               'age'      : False  }
 
 mom = MomentumFirn(model)
-nrg = EnergyFirn(model)
+nrg = EnergyFirn(model, mom)
 plt = FirnPlot(model, plot_cfg)
 
 def cb():

@@ -1644,7 +1644,8 @@ class EnergyHybrid(Energy):
 
 class EnergyFirn(Energy):
 
-  def __init__(self, model, solve_params=None):
+  def initialize(self, model, momentum, solve_params=None, transient=False,
+                 use_lat_bc=False, energy_flux_mode='Fb', reset=False):
     """
     """
     s    = "::: INITIALIZING FIRN ENERGY PHYSICS :::"

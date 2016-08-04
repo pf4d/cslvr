@@ -283,7 +283,7 @@ class D1Model(Model):
     super(D1Model, self).initialize_variables()
     
     s = "::: initializing 1D model variables :::"
-    print_text(s, self.model_color)
+    print_text(s, self.D1Model_color)
 
     self.z     = self.mesh.coordinates()[:,0]
     self.index = np.argsort(self.z)[::-1]

@@ -31,9 +31,9 @@ Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
 dt2   = 0.1/365.0*model.spy(0) # time-step ...................... s
 t0    = 0.0                    # begin time ..................... s
-tf    = sys.argv[1]            # end-time ....................... string
-tf    = float(tf)*model.spy(0) # end-time ....................... s
-bp    = int(sys.argv[2])       # plot or not .................... bool
+tf    = 501                    # end-time ....................... a
+tf    = tf*model.spy(0)        # end-time ....................... s
+bp    = True                   # plot or not .................... bool
 tm    = 500.0 * model.spy(0)
 
 #===============================================================================

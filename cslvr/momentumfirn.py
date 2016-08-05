@@ -107,8 +107,8 @@ class MomentumFirn(Momentum):
               + drhodt * eta * dx
     
     ## Arthern equation of strain rate from 'Sorge's Law' :
-    #w_delta = + rho**2 * w_mid.dx(0) * eta * dx \
-    #          - bdot * rho.dx(0) * eta * dx
+    #w_delta = + w_mid * eta * dx \
+    #          + bdot / rho * eta * dx
 
     surface  = model.surface
     rhoBc    = DirichletBC(Q3.sub(0), model.rho_surface,   model.surface)

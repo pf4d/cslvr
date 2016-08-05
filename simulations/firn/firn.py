@@ -15,48 +15,34 @@ model = D1Model(mesh, out_dir = 'results')
 model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
 model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
 model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
-model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
-model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+#model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+#model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
 
 model.calculate_boundaries()
 
 #===============================================================================
 # model variables :
 rhos  = 360.                   # initial density at surface ..... kg/m^3
-rhoin = 717.                   # initial density at surface ..... kg/m^3
+rhoin = model.rhoi(0)          # initial density at surface ..... kg/m^3
 rin   = 0.0005                 # initial grain radius ........... m^2
-adot  = 0.1                    # accumulation rate .............. m/a
+adot  = 0.01                   # accumulation rate .............. m/a
 Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
 
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
 dt2   = 0.1/365.0*model.spy(0) # time-step ...................... s
 t0    = 0.0                    # begin time ..................... s
-tf    = 501                    # end-time ....................... a
+tf    = 1001                   # end-time ....................... a
 tf    = tf*model.spy(0)        # end-time ....................... s
 bp    = True                   # plot or not .................... bool
-tm    = 500.0 * model.spy(0)
+tm    = 1000.0 * model.spy(0)
 
 #===============================================================================
 # enthalpy BC :
-class ThetaSurface(Expression):
-  def __init__(self, Tavg, t):
-    self.Tavg = Tavg
-    self.t    = t
-  def eval(self, values, x):
-    Tavg      = self.Tavg
-    omega     = pi / model.spy(0)
-    t         = self.t
-    T_m       = min(273.15, self.Tavg)
-    c_s       = 152.5 + 7.122*T_m
-    theta_s   = c_s * (Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))
-    values[0] = theta_s
-theta_exp = ThetaSurface(Tavg, t0)
+code      = 'c*(Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))'
+theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
+                       t=t0, c=model.ci(0))
 
-T_i = theta_exp(zs) / (152.5 + 7.122*Tavg)
-
-#code      = 'c*(Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))'
-#theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
-#                       t=t0, c=model.ci(0))
+T_i = theta_exp(zs) / model.ci(0)
 
 # surface density :
 rho_exp = Expression('rhon', rhon=rhos)

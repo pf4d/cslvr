@@ -1698,7 +1698,6 @@ class EnergyFirn(Energy):
     # thermal conductivity parameter :
     #ki  = model.ki*(rho / rhoi)**2
     ki  = 9.828 * exp(-0.0057*T)
-    ci  = 152.5 + 7.122*T
     
     # water content :
     Wm    = conditional(lt(theta, ci*T_w), 0.0, (theta - ci*T_w) / L)
@@ -1710,13 +1709,9 @@ class EnergyFirn(Energy):
 
     # initialize energy :
     T_v = T.vector().array()
-    c_v = 152.5 + 7.122*T_v
-    model.assign_variable(theta,  c_v*T_v)
-    model.assign_variable(theta0, c_v*T_v)
+    model.assign_variable(theta,  ci(0)*T_v)
+    model.assign_variable(theta0, ci(0)*T_v)
     
-    # initialize heat capacity : 
-    model.assign_variable(model.cif, project(ci, annotate=False))
-   
     # boundary condition on the surface : 
     self.thetaBc = DirichletBC(Q, model.theta_surface,  model.surface)
    
@@ -1725,7 +1720,7 @@ class EnergyFirn(Energy):
     phi   = 1 - rhob/rhoi                      # porosity
     Wmi   = 0.0057 / (1 - phi) + 0.017         # irriducible water content
     Se    = (Wm - Wmi) / (1 - Wmi)             # effective saturation
-    K     = k * rhow * g / etaw                # unsaturated hydraulic cond.
+    K     = k * rhow * g / etaw                # saturated hydraulic cond.
     krw   = Se**3.0                            # relative permeability
     psi_m = p / (rhow * g)                     # matric potential head
     psi_g = z                                  # gravitational potential head
@@ -1733,7 +1728,7 @@ class EnergyFirn(Energy):
     u     = - K * krw * psi.dx(0)              # darcy water velocity
       
     # skewed test function in areas with high velocity :
-    PE     = u*h/(2*kb/(rhob*cb))
+    PE     = (u+w)*h/(2*kb/(rhob*cb))
     tau    = 1/tanh(PE) - 1/PE
     xihat  = xi + h*tau/2 * xi.dx(0)
       
@@ -1742,14 +1737,12 @@ class EnergyFirn(Energy):
     theta_mid = eta*theta + (1 - eta)*theta0
     delta     = + kb/(rhob*cb) * inner(theta_mid.dx(0), xi.dx(0)) * dx \
                 + (theta - theta0)/dt * xi * dx \
-                + w * theta_mid.dx(0) * xi * dx \
-                + u * theta_mid.dx(0) * xi * dx \
+                + (w + u) * theta_mid.dx(0) * xihat * dx \
                 - sigma * w.dx(0) / rhob * xi * dx
     
     # equation to be minimzed :
     self.J     = derivative(delta, theta, dtheta)   # jacobian
     
-    self.ci    = ci
     self.delta = delta
     self.u     = u
     self.Wm    = Wm
@@ -1788,13 +1781,12 @@ class EnergyFirn(Energy):
 
     model.assign_variable(model.W0,  model.W)
     model.assign_variable(model.W,   project(self.Wm, annotate=False))
-    model.assign_variable(model.cif, project(self.ci, annotate=False))
     
     T_w     = model.T_w(0)
     rhow    = model.rhow(0)
     rhoi    = model.rhoi(0)
     g       = model.g(0)
-    ci      = model.cif.vector().array()
+    ci      = model.ci(0)
     thetasp = ci * T_w
     L       = model.L(0)
 
@@ -1813,6 +1805,13 @@ class EnergyFirn(Energy):
     Wp0  = model.W0.vector().array()
     dW   = Wp - Wp0                 # water content change
     model.assign_variable(model.dW, dW)
+
+    # adjust the snow density if water is refrozen :
+    rho_v         = model.rho.vector().array()
+    freeze        = dW < 0
+    melt          = dW > 0
+    rho_v[freeze] = rho_v[freeze] - dW[freeze] * model.rhoi(0)
+    model.assign_variable(model.rho, rho_v)
     
     ## calculate W :
     #model.assign_variable(model.W0, model.W)

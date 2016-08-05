@@ -69,8 +69,8 @@ class FirnPlot(object):
     pp      = model.p.vector().array()
     up      = model.u.vector().array()
     Smip    = model.Smi.vector().array()
-    cp      = model.cif.vector().array()
-    Ts      = thetap[0] / cp[0]
+    cp      = model.ci(0)
+    Ts      = thetap[0] / cp
 
     # x-values :
     T      = Tp
@@ -281,8 +281,8 @@ class FirnPlot(object):
     pp     = model.p.vector().array()
     up     = model.u.vector().array()
     Smip   = model.Smi.vector().array()
-    cp     = model.cif.vector().array()
-    Ts     = thetap[0] / cp[0]
+    cp     = model.ci(0)
+    Ts     = thetap[0] / cp
     T_w    = model.T_w(0)
 
     # x-values :

@@ -325,7 +325,6 @@ class D1Model(Model):
     self.u       = Function(self.Q, name='u')
     self.ql      = Function(self.Q, name='ql')
     self.Smi     = Function(self.Q, name='Smi')
-    self.cif     = Function(self.Q, name='cif')
     self.adot    = Function(self.Q, name='adot')
 
     self.assign_variable(self.rhoCoef, self.kcHh)
@@ -343,6 +342,8 @@ class D1Model(Model):
     """
     Adjust the velocity at the surface.
     """
+    s    = '::: adjusting vertical velocity on the surface :::'
+    print_text(s, self.D1Model_color)
     self.w_surface.t    = self.t
     self.w_surface.rhos = self.rhop[0]
     bdotNew             = (self.w_surface.adot * self.rhoi(0)) / self.spy(0)
@@ -352,6 +353,8 @@ class D1Model(Model):
     """
     Adjust the density at the surface.
     """
+    s    = '::: adjusting surface density :::'
+    print_text(s, self.D1Model_color)
     #dW_s = self.dW[self.index][-1]
     #if self.Ts > self.Tw:
     #  if dW_s > 0:

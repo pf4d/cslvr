@@ -1,7 +1,7 @@
 import inspect
 import os
 import sys
-from tifffile           import TiffFile
+from tifffile.tifffile  import TiffFile
 from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
                                gradient
 from scipy.io           import loadmat, netcdf_file

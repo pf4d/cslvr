@@ -8,4 +8,4 @@ setup(  name        = 'cslvr',
         packages    = ['cslvr', 
                        'tifffile'],
         package_dir = {'cslvr'                 : 'cslvr',
-                      'tifffile'              : 'cslvr/ext_scripts'}  )
+                       'tifffile'              : 'cslvr/ext_scripts'}  )

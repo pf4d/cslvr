@@ -1,4 +1,4 @@
-__version__    = '1.6'
+__version__    = '2016.1.0'
 __author__     = 'Evan Cummings, Douglas Brinkerhoff, Jesse Johnson'
 __license__    = 'LGPL-3'
 __maintainer__ = 'Evan Cummings'
@@ -9,7 +9,7 @@ __all__ = []
 import pkgutil
 import inspect
 import matplotlib as mpl
-#mpl.use('Agg')
+mpl.use('Agg')
 mpl.rcParams['font.family']          = 'serif'
 mpl.rcParams['legend.fontsize']      = 'medium'
 mpl.rcParams['text.usetex']          = True

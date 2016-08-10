@@ -1700,7 +1700,7 @@ class EnergyFirn(Energy):
     ki  = 9.828 * exp(-0.0057*T)
     
     # water content :
-    Wm    = conditional(lt(theta, ci*T_w), 0.0, (theta - ci*T_w) / L)
+    Wm    = conditional(lt(theta, ci*T_w), 0.0, (theta - ci*T_w)/L)
 
     # bulk properties :
     kb   = kw * Wm   + (1-Wm)*ki

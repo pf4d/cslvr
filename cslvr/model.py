@@ -1921,7 +1921,8 @@ class Model(object):
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
       print_text(s, 'green')#cls=self.this)
-      File(self.out_dir + 'xdmf/' +  name + '.xdmf') << var
+      f_file = XDMFFile(self.out_dir + 'xdmf/' +  name + '.xdmf')
+      f_file.write(var)
     
   def save_list_to_hdf5(self, lst, h5File):
     """

@@ -356,8 +356,8 @@ class D3Model(Model):
     s = "    - done - "
     print_text(s, cls=self)
 
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.cf]
+    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
+    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
@@ -435,7 +435,7 @@ class D3Model(Model):
     s = "    - done - "
     print_text(s, cls=self)
     
-    self.ds_flat = Measure('ds')[self.ff_flat]
+    self.ds_flat = Measure('ds', subdomain_data=self.ff_flat)#[self.ff_flat]
   
   def set_subdomains_3(self, ff, cf, ff_acc):
     """
@@ -448,8 +448,8 @@ class D3Model(Model):
     self.ff     = ff
     self.cf     = cf
     self.ff_acc = ff_acc
-    self.ds     = Measure('ds')[self.ff]
-    self.dx     = Measure('dx')[self.cf]
+    self.ds     = Measure('ds', subdomain_data=self.ff)#[self.ff]
+    self.dx     = Measure('dx', subdomain_data=self.cf)#[self.cf]
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
@@ -482,8 +482,8 @@ class D3Model(Model):
     f.read(self.cf,     'cf')
     f.read(self.ff_acc, 'ff_acc')
     
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.cf]
+    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
+    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating

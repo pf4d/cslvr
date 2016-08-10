@@ -330,8 +330,8 @@ class D2Model(Model):
     #s = "    - done - "
     #print_text(s, cls=self)
 
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')#[self.cf]
+    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
+    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating
@@ -368,8 +368,8 @@ class D2Model(Model):
     f.read(self.cf,     'cf')
     f.read(self.ff_acc, 'ff_acc')
     
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.cf]
+    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
+    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
     
     self.dx_g    = self.dx(0)                # internal above grounded
     self.dx_f    = self.dx(1)                # internal above floating

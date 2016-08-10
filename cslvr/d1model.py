@@ -272,7 +272,7 @@ class D1Model(Model):
     B = Base()
     S.mark(self.ff, 0)
     B.mark(self.ff, 1)
-    self.ds = Measure('ds')[self.ff]
+    self.ds = Measure('ds', subdomain_data=self.ff)#[self.ff]
     self.dx = Measure('dx')(self.mesh)
 
   def initialize_variables(self):

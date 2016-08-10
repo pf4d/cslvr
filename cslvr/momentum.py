@@ -673,9 +673,9 @@ class Momentum(Physics):
       parameters = {"tol"                : 1e-8,
                     "acceptable_tol"     : 1e-6,
                     "maximum_iterations" : max_iter,
-                    "print_level"        : 1,
+                    "print_level"        : 5,
                     "ma97_order"         : "metis",
-                    "linear_solver"      : "ma97"}
+                    "linear_solver"      : "mumps"}# "ma97" for HSL
       solver = IPOPTSolver(problem, parameters=parameters)
       b_opt  = solver.solve()
 

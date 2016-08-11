@@ -658,7 +658,7 @@ class Momentum(Physics):
                      options={"disp"    : True,
                               "maxiter" : max_iter,
                               "gtol"    : 1e-5})
-      b_opt = out[0]
+      b_opt = out
     
     # or optimize with IPOpt (preferred) :
     elif method == 'ipopt':
@@ -675,7 +675,7 @@ class Momentum(Physics):
                     "maximum_iterations" : max_iter,
                     "print_level"        : 5,
                     "ma97_order"         : "metis",
-                    "linear_solver"      : "mumps"}# "ma97" for HSL
+                    "linear_solver"      : "ma97"}
       solver = IPOPTSolver(problem, parameters=parameters)
       b_opt  = solver.solve()
 

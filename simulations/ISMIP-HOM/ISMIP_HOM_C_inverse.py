@@ -94,7 +94,7 @@ mom.linearize_viscosity()
 # optimize for beta :
 mom.optimize_U_ob(control           = model.beta,
                   bounds            = (1e-5, 1e7),
-                  method            = 'ipopt',
+                  method            = 'l_bfgs_b',#'ipopt',
                   max_iter          = 100,
                   adj_save_vars     = adj_save_vars,
                   adj_callback      = deriv_cb,

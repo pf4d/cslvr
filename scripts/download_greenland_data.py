@@ -28,14 +28,14 @@ home     = os.path.dirname(os.path.abspath(filename)) + '/../data/greenland'
 fldr = 'measures'
 meas = 'ftp://n5eil01u.ecs.nsidc.org/SAN/MEASURES/NSIDC-0478.001/' + \
        '2008.12.01/greenland_vel_mosaic500_2008_2009'
-download_file(meas + '_vx.tif', home, fldr)
-download_file(meas + '_vy.tif', home, fldr)
+#download_file(meas + '_vx.tif', home, fldr)
+#download_file(meas + '_vy.tif', home, fldr)
 
-# get errors in .tif format
-errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
-          'greenland_measures_error.tar.gz?dl=1&token_hash=AAEp' +\
-          '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
-download_file(errors, home, fldr, extract=True)
+## get errors in .tif format
+#errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
+#          'greenland_measures_error.tar.gz?dl=1&token_hash=AAEp' +\
+#          '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
+#download_file(errors, home, fldr, extract=True)
 
 ## convert to searise projection via raster warp :
 #convert_measures_projection(home + '/' + fldr, 'vx')
@@ -62,13 +62,6 @@ basins_image  = 'http://icesat4.gsfc.nasa.gov/cryo_data/' + \
 fldr    = 'basins'
 download_file(basins_shape, home, fldr)
 download_file(basins_image, home, fldr)
-
-# smooth target matlab matrix :
-smooth  = 'https://dl.dropboxusercontent.com/s/e8r0x37mil03hvu/' +\
-          'smooth_target.tar.gz?dl=1&token_hash=AAGafyrXdL72vZL' +\
-          'ffoBX3_kfAcEzvFhvrw8rERNx2WQShA'
-fldr    = 'searise'
-download_file(smooth, home, fldr, extract=True)
 
 # Bamber 2013 bedrock topography dataset :
 v2      = 'https://dl.dropboxusercontent.com/s/qd02y99d1xrkdz3/' + \

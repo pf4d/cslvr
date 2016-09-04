@@ -5,21 +5,30 @@ import numpy             as np
 import sys
 
 # set the relavent directories :
-base_dir = 'dump/jakob_small/inversion_Wc_0.01/10/'
+base_dir = 'dump/jakob_crude_newest/inversion_Wc_0.03/'
 in_dir   = base_dir
 out_dir  = base_dir + 'plot/'
-var_dir  = 'dump/vars_jakobshavn_small/'
+var_dir  = 'dump/vars_jakobshavn_crude/'
 
 if not os.path.exists(out_dir):
   os.makedirs(out_dir)
 
+#===============================================================================
+# open the hdf5 file :
+f     = HDF5File(mpi_comm_world(), in_dir  + 'tmc.h5',  'r')
+#f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted_10.h5',  'r')
+#f2    = HDF5File(mpi_comm_world(), in_dir  + 'alpha_int.h5',    'r')
+#f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',  'r')
+#f     = HDF5File(mpi_comm_world(), in_dir  + 'theta_opt.h5', 'r')
+#f     = HDF5File(mpi_comm_world(), in_dir  + 'u_opt.h5',     'r')
+fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
+
 # not deformed mesh :
-mesh    = Mesh('dump/meshes/jakobshavn_3D_small_block.xml.gz')
+mesh    = Mesh('dump/meshes/jakobshavn_3D_crude.xml.gz')
 
 # create 3D model for stokes solves :
-d3model = D3Model(mesh, out_dir)
+d3model = D3Model(fdata, out_dir)
 
-#===============================================================================
 # retrieve the bed mesh :
 d3model.form_bed_mesh()
 d3model.form_srf_mesh()
@@ -27,15 +36,6 @@ d3model.form_srf_mesh()
 # create 2D model for balance velocity :
 bedmodel = D2Model(d3model.bedmesh, out_dir)
 srfmodel = D2Model(d3model.srfmesh, out_dir)
-
-#===============================================================================
-# open the hdf5 file :
-f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted_10.h5',  'r')
-f2    = HDF5File(mpi_comm_world(), in_dir  + 'alpha_int.h5',    'r')
-#f     = HDF5File(mpi_comm_world(), in_dir  + 'inverted.h5',  'r')
-#f     = HDF5File(mpi_comm_world(), in_dir  + 'theta_opt.h5', 'r')
-#f     = HDF5File(mpi_comm_world(), in_dir  + 'u_opt.h5',     'r')
-fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
 
 # initialize the variables :
 d3model.init_S(fdata)
@@ -51,15 +51,15 @@ d3model.init_U(f)
 d3model.init_p(f)
 d3model.init_beta(f)
 d3model.init_theta(f)
-d3model.init_alpha_int(f2)
-d3model.init_temp_rat(f2)
-d3model.init_Wbar(f2)
-#d3model.init_Qbar(f)
+d3model.init_alpha_int(f)
+d3model.init_temp_rat(f)
+d3model.init_Wbar(f)
+d3model.init_Qbar(f)
 
 #d3model.save_xdmf(d3model.theta, 'theta')
 #d3model.save_xdmf(d3model.W, 'W')
-#d3model.save_xdmf(d3model.U3, 'U')
-#sys.exit(0)
+d3model.save_xdmf(d3model.U3, 'U')
+sys.exit(0)
 
 u3,v3,w3 = d3model.U3.split(True)
 u,v,w    = srfmodel.U3.split(True)

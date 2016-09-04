@@ -58,6 +58,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     A_gnd      = model.A_gnd
     n          = model.n
     eps_reg    = model.eps_reg
+    Fb         = model.Fb
 
     dx_f       = model.dx_f
     dx_g       = model.dx_g
@@ -78,15 +79,15 @@ class MomentumDukowiczPlaneStrain(Momentum):
     # create velocity vector :
     U2     = as_vector([u,w])
     
-    # 1) Viscous dissipation
+    # viscous dissipation :
     epsdot  = self.effective_strain_rate(U2)
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
-      U3_c     = model.U3.copy(True)
-      U3_2     = as_vector([U3_c[0], U3_c[1]])
+      U3_c             = model.U3.copy(True)
+      U3_2             = as_vector([U3_c[0], U3_c[1]])
       eta_shf, eta_gnd = self.viscosity(U3_2)
-      Vd_shf   = 2 * eta_shf * epsdot
-      Vd_gnd   = 2 * eta_gnd * epsdot
+      Vd_shf           = 2 * eta_shf * epsdot
+      Vd_gnd           = 2 * eta_gnd * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
       eta_shf, eta_gnd = self.viscosity(U2)
@@ -94,40 +95,31 @@ class MomentumDukowiczPlaneStrain(Momentum):
       Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
 
-    # 2) potential energy :
+    # potential energy :
     Pe     = - rhoi * g * w
 
-    # 3) dissipation by sliding :
-    Sl_gnd = - 0.5 * beta * (u**2 + w**2)
+    # dissipation by sliding :
+    Ut     = U2 - dot(U2,N)*N
+    Sl_gnd = - 0.5 * beta * dot(Ut, Ut)
 
-    # 4) incompressibility constraint :
-    Pc     = p * (u.dx(0) + w.dx(1)) 
+    # incompressibility constraint :
+    Pc     = p * div(U2) 
     
-    # 5) inpenetrability constraint :
-    sig_f  = self.stress_tensor(U2, p, eta_shf)
-    sig_g  = self.stress_tensor(U2, p, eta_gnd)
+    # inpenetrability constraint :
+    #sig_f  = self.stress_tensor(U2, p, eta_shf)
+    #sig_g  = self.stress_tensor(U2, p, eta_gnd)
     lam_f  = p#-dot(N, dot(sig_f, N))
     lam_g  = p#-dot(N, dot(sig_g, N))
-    Nc_g   = -lam_g * (u*N[0] + w*N[1])
-    Nc_f   = -lam_f * (u*N[0] + w*N[1])
-    #Nc     = - p * (u*N[0] + v*N[1] + w*N[2])
+    Nc_g   = -lam_g * dot(U2,N)
+    Nc_f   = -lam_f * dot(U2,N)
 
-    # 6) pressure boundary :
-    Pb_w   = - rhosw*g*D * (u*N[0] + w*N[1])
-    Pb_l   = - rhoi*g*(S - z) * (u*N[0] + w*N[1])
+    # pressure boundary :
+    Pb_w   = - rhosw*g*D * dot(U2,N)
+    Pb_l   = - rhoi*g*(S - z) * dot(U2,N)
 
-    # 7) stabilization :
-    f       = rhoi * Constant((0.0, -g))
-    tau_shf = h**2 / (12 * A_shf**(-1/n) * rhoi**2)
-    tau_gnd = h**2 / (12 * A_gnd**(-1/n) * rhoi**2)
-    #tau_shf = h**2 / (12 * eta_shf)
-    #tau_gnd = h**2 / (12 * eta_gnd)
-    Lsq_shf = tau_shf * dot( (grad(p) - f), (grad(p) - f) )
-    Lsq_gnd = tau_gnd * dot( (grad(p) - f), (grad(p) - f) )
-    
-    # Variational principle
-    A      = + (Vd_shf - Lsq_shf)*dx_f + (Vd_gnd - Lsq_gnd)*dx_g \
-             - (Pe + Pc)*dx - (Nc_g + Sl_gnd)*dBed_g - (Nc_f + Pb_w)*dBed_f
+    # action : 
+    A      = + Vd_shf*dx_f + Vd_gnd*dx_g - (Pe + Pc)*dx \
+             - (Nc_g + Sl_gnd)*dBed_g - (Nc_f + Pb_w)*dBed_f
     
     if (not model.use_periodic_boundaries and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
@@ -151,12 +143,12 @@ class MomentumDukowiczPlaneStrain(Momentum):
       #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
       A -= dot(dot(sig_g_l, N), U2) * dLat_d
 
-    # Calculate the first variation (the action) of the variational 
-    # principle in the direction of the test function
+    # the first variation of the action in the direction of a
+    # test function ; the extremum :
     self.mom_F = derivative(A, U, Phi)
 
-    # Calculate the first variation of the action (the Jacobian) in
-    # the direction of a small perturbation in U
+    # the first variation of the extremum in the direction
+    # a tril function ; the Jacobian :
     self.mom_Jac = derivative(self.mom_F, U, dU)
     
     self.mom_bcs = []

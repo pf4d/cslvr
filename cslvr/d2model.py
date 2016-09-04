@@ -9,14 +9,14 @@ class D2Model(Model):
   """ 
   """
 
-  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
     Create and instance of a 2D model.
     """
     s = "::: INITIALIZING 2D MODEL :::"
     print_text(s, cls=self)
     
-    Model.__init__(self, mesh, out_dir, use_periodic)
+    Model.__init__(self, mesh, out_dir, order, use_periodic)
   
   def color(self):
     return '150'
@@ -90,12 +90,12 @@ class D2Model(Model):
         % (self.dim, self.num_cells, self.num_facets, self.dof)
     print_text(s, cls=self)
 
-  def generate_function_spaces(self, use_periodic=False):
+  def generate_function_spaces(self, order=1, use_periodic=False):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(D2Model, self).generate_function_spaces(use_periodic)
+    super(D2Model, self).generate_function_spaces(order, use_periodic)
 
     s = "::: generating 2D function spaces :::"
     print_text(s, cls=self)
@@ -280,34 +280,39 @@ class D2Model(Model):
 
       class GAMMA_GND(SubDomain):
         def inside(self, x, on_boundary):
-          return mask(x[0], x[1], x[2]) <= 1.0
+          return mask(x[0], x[1]) <= 1.0
       gamma_gnd = GAMMA_GND()
 
       class GAMMA_FLT(SubDomain):
         def inside(self, x, on_boundary):
-          return mask(x[0], x[1], x[2]) > 1.0
+          return mask(x[0], x[1]) > 1.0
       gamma_flt = GAMMA_FLT()
 
-      class GAMMA_L_OVR(SubDomain):
+      class GAMMA_U_GND(SubDomain):
         def inside(self, x, on_boundary):
-          return x[2] > -10 and on_boundary
-      gamma_l_ovr = GAMMA_L_OVR()
+          return     mask(x[0], x[1]) <= 1.0 and U_mask(x[0], x[1]) <= 0.0
+      gamma_u_gnd = GAMMA_U_GND()
 
-      class GAMMA_L_UDR(SubDomain):
+      class GAMMA_U_FLT(SubDomain):
         def inside(self, x, on_boundary):
-          return x[2] < 10 and on_boundary
-      gamma_l_udr = GAMMA_L_UDR()
+          return     mask(x[0], x[1]) >  1.0 and U_mask(x[0], x[1]) <= 0.0 
+      gamma_u_flt = GAMMA_U_FLT()
 
-      gamma_flt.mark(self.cf, 1)
-      gamma_gnd.mark(self.cf, 0)
-      gamma_l_ovr.mark(self.ff, self.GAMMA_L_OVR)
-      gamma_l_udr.mark(self.ff, self.GAMMA_L_UDR)
+      gamma_gnd.mark(self.cf,   self.GAMMA_S_GND) # grounded, no U obs.
+      gamma_flt.mark(self.cf,   self.GAMMA_S_FLT) # floating, no U obs.
+      gamma_u_gnd.mark(self.cf, self.GAMMA_U_GND) # grounded, with U obs.
+      gamma_u_flt.mark(self.cf, self.GAMMA_U_FLT) # floating, with U obs.
+    
+      self.N_GAMMA_S_GND = sum(self.ff.array() == self.GAMMA_S_GND)
+      self.N_GAMMA_S_FLT = sum(self.ff.array() == self.GAMMA_S_FLT)
+      self.N_GAMMA_U_GND = sum(self.ff.array() == self.GAMMA_U_GND)
+      self.N_GAMMA_U_FLT = sum(self.ff.array() == self.GAMMA_U_FLT)
     
       # mark the divide if desired :  
       if mark_divide:
         class GAMMA_L_DVD(SubDomain):
           def inside(self, x, on_boundary):
-            return lat_mask(x[0], x[1], x[2]) <= 0.0 and on_boundary
+            return lat_mask(x[0], x[1]) <= 0.0 and on_boundary
         gamma_l_dvd = GAMMA_L_DVD()
         gamma_l_dvd.mark(self.ff, self.GAMMA_L_DVD)
     
@@ -330,27 +335,7 @@ class D2Model(Model):
     #s = "    - done - "
     #print_text(s, cls=self)
 
-    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
-    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+    self.set_measures(self.ff, self.cf)
     
   def set_subdomains(self, f):
     """
@@ -367,28 +352,8 @@ class D2Model(Model):
     f.read(self.ff,     'ff')
     f.read(self.cf,     'cf')
     f.read(self.ff_acc, 'ff_acc')
-    
-    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
-    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+
+    self.set_measures(self.ff, self.cf)
 
   def deform_mesh_to_geometry(self, S, B):
     """
@@ -474,14 +439,20 @@ class D2Model(Model):
     bcs  = []
     # extrude bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
     name = '%s extruded %s' % (u.name(), d)
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
@@ -504,15 +475,21 @@ class D2Model(Model):
     bcs = []
     # integral is zero on bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
       a      = v.dx(2) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
       a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
     name   = 'value integrated %s' % d 
@@ -654,24 +631,6 @@ class D2Model(Model):
 
     # Surface climate model
     self.precip        = Function(self.Q, name='precip')
-
-    # Stokes-balance model :
-    self.u_s           = Function(self.Q, name='u_s')
-    self.u_t           = Function(self.Q, name='u_t')
-    self.F_id          = Function(self.Q, name='F_id')
-    self.F_jd          = Function(self.Q, name='F_jd')
-    self.F_ib          = Function(self.Q, name='F_ib')
-    self.F_jb          = Function(self.Q, name='F_jb')
-    self.F_ip          = Function(self.Q, name='F_ip')
-    self.F_jp          = Function(self.Q, name='F_jp')
-    self.F_ii          = Function(self.Q, name='F_ii')
-    self.F_ij          = Function(self.Q, name='F_ij')
-    self.F_iz          = Function(self.Q, name='F_iz')
-    self.F_ji          = Function(self.Q, name='F_ji')
-    self.F_jj          = Function(self.Q, name='F_jj')
-    self.F_jz          = Function(self.Q, name='F_jz')
-    self.tau_iz        = Function(self.Q, name='tau_iz')
-    self.tau_jz        = Function(self.Q, name='tau_jz')
 
 
 

@@ -9,7 +9,7 @@ class D3Model(Model):
   """ 
   """
 
-  def __init__(self, mesh, out_dir='./results/', 
+  def __init__(self, mesh, out_dir='./results/', order=1, 
                use_periodic=False):
     """
     Create and instance of a 3D model.
@@ -17,7 +17,7 @@ class D3Model(Model):
     s = "::: INITIALIZING 3D MODEL :::"
     print_text(s, cls=self)
     
-    Model.__init__(self, mesh, out_dir, use_periodic)
+    Model.__init__(self, mesh, out_dir, order, use_periodic)
   
   def color(self):
     return '130'
@@ -172,12 +172,12 @@ class D3Model(Model):
 
     self.Q_dvd = FunctionSpace(self.dvdmesh, 'CG', 1)
 
-  def generate_function_spaces(self, use_periodic=False):
+  def generate_function_spaces(self, order=1, use_periodic=False):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(D3Model, self).generate_function_spaces(use_periodic)
+    super(D3Model, self).generate_function_spaces(order, use_periodic)
 
     s = "::: generating 3D function spaces :::"
     print_text(s, cls=self)
@@ -355,28 +355,8 @@ class D3Model(Model):
     
     s = "    - done - "
     print_text(s, cls=self)
-
-    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
-    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+  
+    self.set_measures(self.ff, self.cf)
 
   def calculate_flat_mesh_boundaries(self, mask=None, adot=None,
                                      mark_divide=False):
@@ -437,35 +417,6 @@ class D3Model(Model):
     
     self.ds_flat = Measure('ds', subdomain_data=self.ff_flat)#[self.ff_flat]
   
-  def set_subdomains_3(self, ff, cf, ff_acc):
-    """
-    Set the facet subdomains to FacetFunction <ff>, and set the cell subdomains 
-    to CellFunction <cf>, and accumulation FacetFunction to <ff_acc>.
-    """
-    s = "::: setting 3D subdomains :::"
-    print_text(s, cls=self)
-
-    self.ff     = ff
-    self.cf     = cf
-    self.ff_acc = ff_acc
-    self.ds     = Measure('ds', subdomain_data=self.ff)#[self.ff]
-    self.dx     = Measure('dx', subdomain_data=self.cf)#[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_g  = self.ds(2)                # surface of grounded ice
-    self.dSrf_f  = self.ds(6)                # surface of floating ice
-    self.dSrf    = self.ds(6) + self.ds(2)   # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
-  
   def set_subdomains(self, f):
     """
     Set the facet subdomains FacetFunction self.ff, cell subdomains
@@ -482,27 +433,7 @@ class D3Model(Model):
     f.read(self.cf,     'cf')
     f.read(self.ff_acc, 'ff_acc')
     
-    self.ds      = Measure('ds', subdomain_data=self.ff)#[self.ff]
-    self.dx      = Measure('dx', subdomain_data=self.cf)#[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+    self.set_measures(self.ff, self.cf)
 
   def deform_mesh_to_geometry(self, S, B):
     """
@@ -646,7 +577,8 @@ class D3Model(Model):
     s = "::: extruding function %swards :::" % d
     print_text(s, cls=self)
     if type(Q) != FunctionSpace:
-      Q  = self.Q
+      #Q  = self.Q_non_periodic
+      Q = u.function_space()
     ff   = self.ff
     phi  = TestFunction(Q)
     v    = TrialFunction(Q)
@@ -655,14 +587,20 @@ class D3Model(Model):
     bcs  = []
     # extrude bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
     try:
       name = '%s extruded %s' % (u.name(), d)
     except AttributeError:
@@ -680,22 +618,29 @@ class D3Model(Model):
     print_text(s, cls=self)
 
     if type(Q) != FunctionSpace:
-      Q = self.Q
+      #Q  = self.Q_non_periodic
+      Q = u.function_space()
     ff  = self.ff
     phi = TestFunction(Q)
     v   = TrialFunction(Q)
     bcs = []
     # integral is zero on bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
       a      = v.dx(2) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
       a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
     name   = 'value integrated %s' % d 
@@ -706,15 +651,16 @@ class D3Model(Model):
 
   def calc_vert_average(self, u):
     """
-    Calculates the vertical average of a given function space and function.  
+    Calculates the vertical average of a given function *u*.  
     
-    :param u: Function representing the model's function space
-    :rtype:   Dolfin projection and Function of the vertical average
+    :param u: Function to avergage vertically
+    :rtype:   the vertical average of *u*
     """
     s = "::: calculating vertical average :::"
     print_text(s, cls=self)
 
-    ubar = self.vert_integrate(u, d='up')
+    # vertically integrate the function up and then extrude that down :
+    ubar = self.vert_integrate(u,  d='up')
     ubar = self.vert_extrude(ubar, d='down')
     
     try:
@@ -722,7 +668,8 @@ class D3Model(Model):
     except AttributeError:
       name = 'vertical average'
     ubar.rename(name, '')
-    
+   
+    # divide by the thickness for vertical average : 
     ubar_v = ubar.vector().array()
     H_v    = self.S.vector().array() - self.B.vector().array() + DOLFIN_EPS
     self.assign_variable(ubar, ubar_v / H_v, cls=self)

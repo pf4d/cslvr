@@ -1,7 +1,7 @@
 from cslvr import *
 
 # set the output directory :
-in_dir  = 'dump/vars_jakobshavn_small/'
+in_dir  = 'dump/vars_jakobshavn_crude/'
 out_dir = in_dir
 
 f  = HDF5File(mpi_comm_world(), in_dir + 'state.h5',     'r')

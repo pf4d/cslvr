@@ -12,7 +12,7 @@ class D1Model(Model):
   """
   Data structure to hold firn model state data.
   """
-  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
     Create and instance of a 1D model.
     """
@@ -21,7 +21,7 @@ class D1Model(Model):
     s = "::: INITIALIZING 1D MODEL :::"
     print_text(s, self.D1Model_color)
     
-    Model.__init__(self, mesh, out_dir, use_periodic)
+    Model.__init__(self, mesh, out_dir, order, use_periodic)
 
   def set_mesh(self, mesh):
     """
@@ -89,12 +89,12 @@ class D1Model(Model):
       self.generate_function_spaces(self.use_periodic_boundaries)
       self.initialize_variables()
 
-  def generate_function_spaces(self, use_periodic=False):
+  def generate_function_spaces(self, order=1, use_periodic=False):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(D1Model, self).generate_function_spaces(use_periodic)
+    super(D1Model, self).generate_function_spaces(order, use_periodic)
     
   def init_S_bc(self, S_bc):
     """

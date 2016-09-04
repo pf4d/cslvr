@@ -9,14 +9,14 @@ class LatModel(Model):
   """ 
   """
 
-  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
     Create and instance of a 2D model.
     """
     s = "::: INITIALIZING LATERAL MODEL :::"
     print_text(s, cls=self)
     
-    Model.__init__(self, mesh, out_dir, use_periodic)
+    Model.__init__(self, mesh, out_dir, order, use_periodic)
   
   def color(self):
     return '150'
@@ -90,30 +90,12 @@ class LatModel(Model):
         % (self.dim, self.num_cells, self.num_facets, self.dof)
     print_text(s, cls=self)
 
-  def generate_function_spaces(self, use_periodic=False):
+  def generate_function_spaces(self, order=1, use_periodic=False):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(LatModel, self).generate_function_spaces(use_periodic)
-
-    s = "::: generating 2D function spaces :::"
-    print_text(s, cls=self)
-    
-    ## mini elements :
-    #self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-    #                            constrained_domain=self.pBC)
-    #self.MQ     = self.Q + self.Bub
-    #M3          = MixedFunctionSpace([self.MQ]*3)
-    #self.MV     = MixedFunctionSpace([M3,self.Q])
-    
-    ## Taylor-Hood elements :
-    #V           = VectorFunctionSpace(self.mesh, "CG", 2,
-    #                                  constrained_domain=self.pBC)
-    #self.MV     = V * self.Q
-    
-    s = "    - 2D function spaces created - "
-    print_text(s, cls=self)
+    super(LatModel, self).generate_function_spaces(order, use_periodic)
 
   def generate_stokes_function_spaces(self, kind='mini'):
     """
@@ -279,28 +261,8 @@ class LatModel(Model):
 
     s = "    - done - "
     print_text(s, cls=self)
-
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.cf]
     
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+    self.set_measures(self.ff, self.cf)
     
   def set_subdomains(self, f):
     """
@@ -314,31 +276,12 @@ class LatModel(Model):
     self.ff     = MeshFunction('size_t', self.mesh)
     self.cf     = MeshFunction('size_t', self.mesh)
     self.ff_acc = MeshFunction('size_t', self.mesh)
+    
     f.read(self.ff,     'ff')
     f.read(self.cf,     'cf')
     f.read(self.ff_acc, 'ff_acc')
-    
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+
+    self.set_measures(self.ff, self.cf)
 
   def deform_mesh_to_geometry(self, S, B):
     """
@@ -424,14 +367,20 @@ class LatModel(Model):
     bcs  = []
     # extrude bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
     try:
       name = '%s extruded %s' % (u.name(), d)
     except AttributeError:
@@ -456,15 +405,21 @@ class LatModel(Model):
     bcs = []
     # integral is zero on bed (ff = 3,5) 
     if d == 'up':
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
       a      = v.dx(1) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
       a      = -v.dx(1) * phi * dx
     L      = u * phi * dx
     name   = 'value integrated %s' % d 
@@ -475,10 +430,10 @@ class LatModel(Model):
 
   def calc_vert_average(self, u):
     """
-    Calculates the vertical average of a given function space and function.  
+    Calculates the vertical average of a given function *u*.  
     
-    :param u: Function representing the model's function space
-    :rtype:   Dolfin projection and Function of the vertical average
+    :param u: Function to avergage vertically
+    :rtype:   the vertical average of *u*
     """
     H    = self.S - self.B
     uhat = self.vert_integrate(u, d='up')
@@ -486,7 +441,10 @@ class LatModel(Model):
     print_text(s, cls=self)
     ubar = project(uhat/H, self.Q, annotate=False)
     print_min_max(ubar, 'ubar', cls=self)
-    name = "vertical average of %s" % u.name()
+    try:
+      name = 'vertical average of %s' % u.name()
+    except AttributeError:
+      name = 'vertical average'
     ubar.rename(name, '')
     ubar = self.vert_extrude(ubar, d='down')
     return ubar

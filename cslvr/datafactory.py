@@ -431,9 +431,45 @@ class DataFactory(object):
     L2    = gradH[0]**2 + gradH[1]**2
     L2[L2 > 0.0] = 1.0
     L2[L2 < 1.0] = 0.0
+
+    # mark one more level in :
+    Hc[L2 > 0.0] = 0
+    
+    gradH = gradient(Hc)
+    L3    = gradH[0]**2 + gradH[1]**2
+    L3[L3 > 0.0] = 1.0
+    L3[L3 < 1.0] = 0.0
+
+    # mark one more level in :
+    Hc[L3 > 0.0] = 0
+    
+    gradH = gradient(Hc)
+    L4    = gradH[0]**2 + gradH[1]**2
+    L4[L4 > 0.0] = 1.0
+    L4[L4 < 1.0] = 0.0
+
+    # mark one more level in :
+    Hc[L4 > 0.0] = 0
+    
+    gradH = gradient(Hc)
+    L5    = gradH[0]**2 + gradH[1]**2
+    L5[L5 > 0.0] = 1.0
+    L5[L5 < 1.0] = 0.0
+
+    # mark one more level in :
+    Hc[L5 > 0.0] = 0
+    
+    gradH = gradient(Hc)
+    L6    = gradH[0]**2 + gradH[1]**2
+    L6[L6 > 0.0] = 1.0
+    L6[L6 < 1.0] = 0.0
     
     # combine them :
     L[L2 > 0.0] = 1.0
+    L[L3 > 0.0] = 1.0
+    L[L4 > 0.0] = 1.0
+    L[L5 > 0.0] = 1.0
+    L[L6 > 0.0] = 1.0
     
     vara        = dict()
      
@@ -641,9 +677,6 @@ class DataFactory(object):
     U_sar = array(data.variables['surfvelmag'][:][0])
     dhdt  = array(data.variables['dhdt'][:][0])
  
-    direc = home + "/greenland/searise/smooth_target.mat" 
-    U_ob  = loadmat(direc)['st']
-    
     H             = S - B
     S[H < thklim] = B[H < thklim] + thklim
 
@@ -680,8 +713,8 @@ class DataFactory(object):
     vara['ny']                = len(y)
  
     names = ['S', 'adot', 'B', 'T', 'q_geo','U_sar', \
-             'U_ob', 'lat', 'lon', 'Tn','dhdt']
-    ftns  = [S, adot, B, T, q_geo,U_sar, U_ob, lat, lon, Tn, dhdt]
+             'lat', 'lon', 'Tn','dhdt']
+    ftns  = [S, adot, B, T, q_geo,U_sar, lat, lon, Tn, dhdt]
 
     vara['dataset']   = 'Searise'
     vara['continent'] = 'greenland'

@@ -1,5 +1,4 @@
 from cslvr   import *
-from fenics  import *
 
 # set the relavent directories :
 base_dir = 'dump/jakob_small/inversion_Wc_0.01/11_tik_1e-1/'

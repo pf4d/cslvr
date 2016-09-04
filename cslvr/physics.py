@@ -73,10 +73,10 @@ class Physics(object):
     elif kind == 'TV_Tik_hybrid':
       self.R1  = alpha_tik * 0.5 * inner(grad(c), grad(c)) * dR
       self.R2  = alpha_tv * sqrt(inner(grad(c), grad(c)) + 1e-15) * dR 
-      self.R1p = 0.5 * inner(grad(c), grad(c)) * dR
-      self.R2p = sqrt(inner(grad(c), grad(c)) + 1e-15) * dR
-      R  = self.R1 + self.R2
-      Rp = self.R1p + self.R2p
+      R1p      = 0.5 * inner(grad(c), grad(c)) * dR
+      R2p      = sqrt(inner(grad(c), grad(c)) + 1e-15) * dR 
+      R        = self.R1 + self.R2
+      Rp       = R1p + R2p
       s   = "::: forming Tikhonov/TV hybrid regularization with alpha_tik = " \
             "%.1e and alpha_tv = %.1e :::" % (alpha_tik, alpha_tv)
     elif kind == 'square':

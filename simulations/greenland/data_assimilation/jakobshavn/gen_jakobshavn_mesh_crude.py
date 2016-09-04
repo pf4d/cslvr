@@ -25,7 +25,7 @@ drg.data['U_ob'] = U_ob
 
 #===============================================================================
 # form field from which to refine :
-drg.rescale_field('U_ob', 'ref', umin=500.0, umax=500000.0, inverse=True)
+drg.rescale_field('U_ob', 'ref', umin=1000.0, umax=500000.0, inverse=True)
 
 # eliminate just the edge of the mask so that we can properly interpolate
 # the geometry to the terminus :
@@ -54,7 +54,7 @@ m.transform_contour(rignot)
 m.check_dist()
 m.write_gmsh_contour(boundary_extend=False)
 #m.plot_contour()
-m.extrude(h=100000, n_layers=10)
+m.extrude(h=100000, n_layers=5)
 m.close_file()
 
 

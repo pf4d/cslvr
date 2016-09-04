@@ -3,6 +3,7 @@ import pylab                 as pl
 import numpy                 as np
 from pylab                   import plt
 from fenics                  import *
+from ufl                     import indexed
 from dolfin_adjoint          import *
 from termcolor               import colored, cprint
 from mpl_toolkits.basemap    import Basemap
@@ -694,14 +695,55 @@ def get_bed_mesh(mesh):
   return submesh
 
 
-def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
-                  umin=None, umax=None, tp=False, tpAlpha=0.5, show=True,
-                  hide_ax_tick_labels=False, label_axes=True, title='',
-                  use_colorbar=True, hide_axis=False, colorbar_loc='right'):
+def plot_variable(u, name, direc, 
+                  figsize             = (8,7),
+                  cmap                = 'gist_yarg',
+                  scale               = 'lin',
+                  numLvls             = 12,
+                  levels              = None,
+                  levels_2            = None,
+                  umin                = None,
+                  umax                = None,
+                  vec_scale           = None,
+                  tp                  = False,
+                  tpAlpha             = 0.5,
+                  show                = True,
+                  hide_ax_tick_labels = False,
+                  xlabel              = r'$x$',
+                  ylabel              = r'$y$',
+                  equal_axes          = True,
+                  title               = '',
+                  hide_axis           = False,
+                  colorbar_loc        = 'right',
+                  contour_type        = 'filled',
+                  extend              = 'neither',
+                  ext                 = '.pdf',
+                  res                 = 150,
+                  cb                  = True,
+                  cb_format           = '%.1e'):
   """
   """
-  mesh = u.function_space().mesh()
-  v    = u.compute_vertex_values(mesh)
+  vec  = False
+  if len(u.ufl_shape) == 1:
+    if type(u[0]) == indexed.Indexed:
+      out    = u.split(True)
+    else:
+      out    = u
+    vec      = True
+    v        = 0
+    mesh     = out[0].function_space().mesh()
+    for k in out:
+      kv  = k.compute_vertex_values(mesh)
+      v  += kv**2
+    v = np.sqrt(v + 1e-16)
+    v0       = out[0].compute_vertex_values(mesh)
+    v1       = out[1].compute_vertex_values(mesh)
+    v2_mag   = np.sqrt(v0**2 + v1**2 + 1e-16)
+    v0       = v0 / v2_mag
+    v1       = v1 / v2_mag
+  elif len(u.ufl_shape) == 0:
+    mesh     = u.function_space().mesh()
+    v        = u.compute_vertex_values(mesh)
   x    = mesh.coordinates()[:,0]
   y    = mesh.coordinates()[:,1]
   t    = mesh.cells()
@@ -709,74 +751,129 @@ def plot_variable(u, name, direc, cmap='gist_yarg', scale='lin', numLvls=12,
   d    = os.path.dirname(direc)
   if not os.path.exists(d):
     os.makedirs(d)
-
-  if umin != None:
+ 
+  #=============================================================================
+  # plotting :
+  if umin != None and levels is None:
     vmin = umin
+  elif levels is not None:
+    vmin = levels.min()
   else:
     vmin = v.min()
-  if umax != None:
+
+  if umax != None and levels is None:
     vmax = umax
+  elif levels is not None:
+    vmax = levels.max()
   else:
     vmax = v.max()
   
+  # set the extended colormap :  
+  cmap = pl.get_cmap(cmap)
+  
   # countour levels :
   if scale == 'log':
-    v[v < vmin] = vmin + 1e-12
-    v[v > vmax] = vmax - 1e-12
-    from matplotlib.ticker import LogFormatter
-    levels      = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
+    if levels is None:
+      levels    = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
+    v[v < vmin] = vmin + 2e-16
+    v[v > vmax] = vmax - 2e-16
     formatter   = LogFormatter(10, labelOnlyBase=False)
     norm        = colors.LogNorm()
   
+  # countour levels :
+  elif scale == 'sym_log':
+    if levels is None:
+      levels  = np.linspace(vmin, vmax, numLvls)
+    v[v < vmin] = vmin + 2e-16
+    v[v > vmax] = vmax - 2e-16
+    formatter   = LogFormatter(e, labelOnlyBase=False)
+    norm        = colors.SymLogNorm(vmin=vmin, vmax=vmax,
+                                    linscale=0.001, linthresh=0.001)
+  
   elif scale == 'lin':
-    v[v < vmin] = vmin + 1e-12
-    v[v > vmax] = vmax - 1e-12
-    from matplotlib.ticker import ScalarFormatter
-    levels    = np.linspace(vmin, vmax, numLvls)
-    formatter = ScalarFormatter()
-    norm      = None
+    if levels is None:
+      levels  = np.linspace(vmin, vmax, numLvls)
+    norm = colors.BoundaryNorm(levels, cmap.N)
   
   elif scale == 'bool':
-    from matplotlib.ticker import ScalarFormatter
-    levels    = [0, 1, 2]
-    formatter = ScalarFormatter()
-    norm      = None
+    v[v < 0.0] = 0.0
+    levels  = [0, 1, 2]
+    norm    = colors.BoundaryNorm(levels, cmap.N)
 
-  fig = plt.figure(figsize=(8,7))
+  fig = plt.figure(figsize=figsize)
   ax  = fig.add_subplot(111)
-
-  c = ax.tricontourf(x, y, t, v, levels=levels, norm=norm, 
-                     cmap=pl.get_cmap(cmap))
-  plt.axis('equal')
-  
-  if tp == True:
-    p = ax.triplot(x, y, t, 'k-', lw=0.25, alpha=tpAlpha)
-  ax.set_xlim([x.min(), x.max()])
-  ax.set_ylim([y.min(), y.max()])
-  if label_axes:
-    ax.set_xlabel(r'$x$')
-    ax.set_ylabel(r'$y$')
+  ax.set_xlabel(xlabel)
+  ax.set_ylabel(ylabel)
   if hide_ax_tick_labels:
     ax.set_xticklabels([])
     ax.set_yticklabels([])
   if hide_axis:
-    plt.axis('off')
-  
-  # include colorbar :
-  if scale != 'bool' and use_colorbar:
-    divider = make_axes_locatable(plt.gca())
-    cax  = divider.append_axes(colorbar_loc, "5%", pad="3%")
-    cbar = plt.colorbar(c, cax=cax, format=formatter, 
-                        ticks=levels) 
-    pl.mpl.rcParams['axes.titlesize'] = 'small'
-    tit = plt.title(title)
+    ax.axis('off')
+  if equal_axes:
+    ax.axis('equal')
+    
+  if contour_type == 'filled':
+    if scale != 'log':
+      cs = ax.tricontourf(x, y, t, v, levels=levels, 
+                         cmap=cmap, norm=norm, extend=extend)
+    else:
+      cs = ax.tricontourf(x, y, t, v, levels=levels, 
+                         cmap=cmap, norm=norm)
+  elif contour_type == 'lines':
+    cs = ax.tricontour(x, y, t, v, linewidths=2.0,
+                       levels=levels, colors='k') 
+    for line in cs.collections:
+      if line.get_linestyle() != [(None, None)]:
+        line.set_linestyle([(None, None)])
+        line.set_color('red')
+        line.set_linewidth(1.5)
+    if levels_2 is not None:
+      cs2 = ax.tricontour(x, y, t, v, levels=levels_2, colors='0.30') 
+      for line in cs2.collections:
+        if line.get_linestyle() != [(None, None)]:
+          line.set_linestyle([(None, None)])
+          line.set_color('#c1000e')
+          line.set_linewidth(0.5)
+    ax.clabel(cs, inline=1, colors='k', fmt='%i')
 
- 
-  plt.tight_layout()
+
+  if vec:
+    q  = ax.quiver(x, y, v0, v1, pivot='middle',
+                                 color='k',
+                                 scale=vec_scale,
+                                 width=0.004,
+                                 headwidth=4.0, 
+                                 headlength=4.0, 
+                                 headaxislength=4.0)
+  
+  # plot triangles :
+  if tp == True:
+    tp = ax.triplot(x, y, t, 'k-', lw=0.2, alpha=tpAlpha)
+  
+  # this enforces equal axes no matter what (yeah, a hack) : 
+  divider = make_axes_locatable(ax)
+
+  # include colorbar :
+  if cb and scale != 'bool' and contour_type != 'lines':
+    cax  = divider.append_axes("right", "5%", pad="3%")
+    cbar = fig.colorbar(cs, cax=cax, 
+                        ticks=levels, format=cb_format) 
+  
+  ax.set_xlim([x.min(), x.max()])
+  ax.set_ylim([y.min(), y.max()])
+  plt.tight_layout(rect=[0,0,1,0.95])
+  
+  #pl.mpl.rcParams['axes.titlesize'] = 'small'
+  #tit = plt.title(title)
+
+  # title :
+  tit = plt.title(title)
+  #tit.set_fontsize(40)
+
   d     = os.path.dirname(direc)
   if not os.path.exists(d):
     os.makedirs(d)
-  plt.savefig(direc + name + '.pdf')
+  plt.savefig(direc + name + ext, res=res)
   if show:
     plt.show()
   plt.close(fig)
@@ -800,7 +897,7 @@ def plotIce(di, u, name, direc,
             params           = None,
             extend           = 'neither',
             show             = True,
-            ext              = '.png',
+            ext              = '.pdf',
             res              = 150,
             cb               = True,
             cb_format        = '%.1e',
@@ -1179,11 +1276,19 @@ def plotIce(di, u, name, direc,
     #cs = ax.tripcolor(x, y, fi, v, shading='gouraud', 
     #                  cmap=get_cmap(cmap), norm=norm)
     if contour_type == 'filled':
-      cs = ax.tricontourf(x, y, fi, v, levels=levels, 
-                         cmap=cmap, norm=norm, extend=extend)
+      if scale != 'log':
+        cs = ax.tricontourf(x, y, fi, v, levels=levels, 
+                           cmap=cmap, norm=norm, extend=extend)
+      else:
+        cs = ax.tricontourf(x, y, fi, v, levels=levels, 
+                           cmap=cmap, norm=norm)
       if zoom_box:
-        axins.tricontourf(x, y, fi, v, levels=levels, 
-                          cmap=cmap, norm=norm, extend=extend)
+        if scale != 'log':
+          axins.tricontourf(x, y, fi, v, levels=levels, 
+                            cmap=cmap, norm=norm, extend=extend)
+        else:
+          axins.tricontourf(x, y, fi, v, levels=levels, 
+                            cmap=cmap, norm=norm)
     elif contour_type == 'lines':
       cs = ax.tricontour(x, y, fi, v, linewidths=2.0,
                          levels=levels, colors='k') 

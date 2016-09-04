@@ -92,8 +92,9 @@ nrg = Enthalpy(model, mom, energy_flux_mode = 'Fb')
 # thermo-solve callback function :
 def tmc_cb_ftn():
   nrg.calc_PE()#avg=True)
-  nrg.calc_internal_water()
-  nrg.calc_integrated_strain_heat()
+  nrg.calc_vert_avg_strain_heat()
+  nrg.calc_vert_avg_W()
+  nrg.calc_temp_rat()
   nrg.solve_basal_melt_rate()
 
 # after every completed adjoining, save the state of these functions :
@@ -101,11 +102,12 @@ tmc_save_vars = [model.T,
                  model.W,
                  model.Fb,
                  model.Mb,
-                 model.q_fric,
                  model.alpha,
+                 model.alpha_int,
                  model.PE,
-                 model.W_int,
-                 model.Q_int,
+                 model.Wbar,
+                 model.Qbar,
+                 model.temp_rat,
                  model.U3,
                  model.p,
                  model.beta,
@@ -122,12 +124,12 @@ wop_kwargs = {'max_iter'            : 15,
 tmc_kwargs = {'momentum'            : mom,
               'energy'              : nrg,
               'wop_kwargs'          : wop_kwargs,
-              'callback'            : tmc_cb_ftn, 
+              'callback'            : tmc_cb_ftn,
               'atol'                : 1e2,
               'rtol'                : 1e0,
-              'max_iter'            : 1,
-              'itr_tmc_save_vars'   : None,#tmc_save_vars,
-              'post_tmc_save_vars'  : tmc_save_vars,
+              'max_iter'            : 5,
+              'iter_save_vars'      : None,
+              'post_tmc_save_vars'  : None,
               'starting_i'          : 1}
                                     
 # thermo_solve :

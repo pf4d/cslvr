@@ -80,7 +80,7 @@ class Momentum(Physics):
                     use_lat_bcs=self.use_lat_bcs_s, 
                     use_pressure_bc=self.use_pressure_bc_s)
 
-  def linearize_viscosity(self):
+  def linearize_viscosity(self, reset_orig_config=True):
     """
     reset the momentum to the original configuration.
     """
@@ -107,6 +107,14 @@ class Momentum(Physics):
     print_text(s, self.color())
     s = json.dumps(mom_params, sort_keys=True, indent=2)
     print_text(s, '230')
+
+    # this is useful so that when you call reset(), the viscosity stays
+    # linear :
+    if reset_orig_config:
+      s = "::: reseting the original config to use linear viscosity :::"
+      print_text(s, self.color())
+      self.linear_s       = True
+      self.solve_params_s = mom_params
 
     self.initialize(self.model, solve_params=mom_params,
                     linear=True,
@@ -252,7 +260,18 @@ class Momentum(Physics):
     w_v      = w.vector().array()
     Fb_v     = model.Fb.vector().array()
 
-    q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v+Fb_v)**2)
+    n     = project(grad(model.B))
+    n_x_v = n[0].vector().array()
+    n_y_v = n[1].vector().array()
+    n_z_v = n[2].vector().array()
+    UdotN = u_v*n_x_v + v_v*n_y_v + w_v*n_z_v
+    ut  = u_v - UdotN*n_x
+    vt  = v_v - UdotN*n_y
+    wt  = w_v - UdotN*n_z
+    
+    q_fric_v = beta_v * (ut**2 + vt**2 + wt**2)
+
+    #q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v+Fb_v)**2)
     
     model.init_q_fric(q_fric_v, cls=self)
     
@@ -318,14 +337,11 @@ class Momentum(Physics):
       J1  = g1 * 0.5 * ((U[0] - u_ob)**2 + (U[1] - v_ob)**2) * dJ
       J2  = g2 * 0.5 * ln(   (sqrt(U[0]**2 + U[1]**2) + 0.01) \
                            / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
-      self.J1  = 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
-      self.J2  = 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
-                           / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
-      self.J1p = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
-      self.J2p = g2 * 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
+      self.J1  = g1 * 0.5 * ((um - u_ob)**2 + (vm - v_ob)**2) * dJ
+      self.J2  = g2 * 0.5 * ln(   (sqrt(um**2 + vm**2) + 0.01) \
                                 / (sqrt(u_ob**2 + v_ob**2) + 0.01))**2 * dJ
       J  = J1 + J2
-      Jp = self.J1p + self.J2p
+      Jp = self.J1 + self.J2
       s   = "::: forming log/L2 hybrid objective with gamma_1 = " \
             "%.1e and gamma_2 = %.1e :::" % (g1, g2)
 
@@ -438,11 +454,11 @@ class Momentum(Physics):
       ftnls.append(J2)
 
     if self.reg_ftn_type == 'TV_Tik_hybrid':
-      R1 = assemble(self.R1p, annotate=False)
+      R1 = assemble(self.R1, annotate=False)
       print_min_max(R1, 'R1', cls=self)
       ftnls.append(R1)
       
-      R2 = assemble(self.R2p, annotate=False)
+      R2 = assemble(self.R2, annotate=False)
       print_min_max(R2, 'R2', cls=self)
       ftnls.append(R2)
     return ftnls 

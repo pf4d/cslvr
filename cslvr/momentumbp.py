@@ -62,6 +62,7 @@ class MomentumBP(Momentum):
     A_gnd      = model.A_gnd
     N          = model.N
     D          = model.D
+    Fb         = model.Fb
     
     dx_f       = model.dx_f
     dx_g       = model.dx_g
@@ -157,7 +158,7 @@ class MomentumBP(Momentum):
       self.mom_F += dot(sig_g_l, N) * dLat_d
     
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
-               + (u*N[0] + v*N[1] + dw*N[2]) * chi * dBed \
+               + (u*N[0] + v*N[1] + dw*N[2] - Fb) * chi * dBed \
   
     # Jacobian :
     self.mom_Jac = derivative(self.mom_F, U, dU)
@@ -484,7 +485,7 @@ class MomentumDukowiczBP(Momentum):
     du,  dv  = dU
     u,   v   = U
    
-    # 1) Viscous dissipation
+    # viscous dissipation :
     U3      = as_vector([u,v,0])
     epsdot  = self.effective_strain_rate(U3)
     if linear:
@@ -500,16 +501,16 @@ class MomentumDukowiczBP(Momentum):
       Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
       
-    # 2) Potential energy
+    # potential energy :
     Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
 
-    # 3) Dissipation by sliding
+    # dissipation by sliding :
     Sl_gnd = - 0.5 * beta * (u**2 + v**2)
 
-    # 4) pressure boundary
+    # pressure boundary :
     Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
     
-    # Variational principle
+    # action :
     A      = + Vd_shf*dx_f + Vd_gnd*dx_g - Pe*dx \
              - Sl_gnd*dBed_g - Pb*dBed_f
     
@@ -529,19 +530,19 @@ class MomentumDukowiczBP(Momentum):
       sig_g_l    = self.quasi_stress_tensor(U3_c, model.p, eta_gnd_l)
       #sig_g_l    = self.stress_tensor(U3, model.p, eta_gnd)
       A -= dot(dot(sig_g_l, N), U3) * dLat_d
-    
-    # Calculate the first variation (the action) of the variational 
-    # principle in the direction of the test function
+
+    # the first variation of the action in the direction of a
+    # test function ; the extremum :
     self.mom_F = derivative(A, U, Phi)
 
-    # Calculate the first variation of the action (the Jacobian) in
-    # the direction of a small perturbation in U
+    # the first variation of the extremum in the direction
+    # a tril function ; the Jacobian :
     self.mom_Jac = derivative(self.mom_F, U, dU)
     
     self.mom_bcs = []
       
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx \
-               + (u*N[0] + v*N[1] + (dw + Fb)*N[2])*chi*dBed
+               + (u*N[0] + v*N[1] + dw*N[2] - Fb)*chi*dBed
    
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
@@ -634,6 +635,18 @@ class MomentumDukowiczBP(Momentum):
                         [tau_ij, tau_jj, tau_jk],
                         [0,      0,      0     ]])
     return 2*eta*tau
+  
+  
+  def deviatoric_stress_tensor(self, U, eta):
+    """
+    return the deviatoric part of the Cauchy stress tensor.
+    """
+    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
+    print_text(s, self.color())
+
+    epi = self.strain_rate_tensor(U)
+    tau = 2 * eta * epi
+    return tau
 
 
   def default_solve_params(self):
@@ -694,7 +707,7 @@ class MomentumDukowiczBP(Momentum):
     p_shf_v             = p_shf.vector().array()
     p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
     p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
-    model.assign_variable(p, p_v, cls=self)
+    model.assign_variable(p, p_gnd, cls=self)
 
   def solve_vert_velocity(self, annotate=False):
     """on.dumps(x, sort_keys=True, indent=2)

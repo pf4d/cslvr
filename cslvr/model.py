@@ -4,8 +4,10 @@ from cslvr.io             import print_text, get_text, print_min_max
 from copy                 import copy
 import numpy              as np
 import matplotlib.pyplot  as plt
+import matplotlib         as mpl
 import sys
 import os
+import re
 
 
 class Model(object):
@@ -57,7 +59,7 @@ class Model(object):
   # union :
   boundaries = dict(ext_boundaries, **int_boundaries)
   
-  def __init__(self, mesh, out_dir='./results/', use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
     Create and instance of the model.
     """
@@ -72,13 +74,14 @@ class Model(object):
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
+    self.order       = order
     self.out_dir     = out_dir
     self.MPI_rank    = MPI.rank(mpi_comm_world())
     self.use_periodic_boundaries = use_periodic
     
     self.generate_constants()
     self.set_mesh(mesh)
-    self.generate_function_spaces(use_periodic)
+    self.generate_function_spaces(order, use_periodic)
     self.initialize_variables()
 
   def color(self):
@@ -193,7 +196,48 @@ class Model(object):
 
     self.Q_T_u   = Constant(13.9e4)
     self.Q_T_u.rename('Q_T_u', 'upper bound of ice activation energy')
+  
+  def set_measures(self, ff, cf):
+    """
+    set the new measure space for facets (self.ds) and cells (self.dx) for
+    the boundaries marked by FacetFunction *ff* and CellFunction *cf*.
+    """
+    # calculate the number of cells and facets that are of a certain type
+    # for determining Dirichlet boundaries :
+    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
+    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
+    self.N_GAMMA_S_GND = sum(self.ff.array() == self.GAMMA_S_GND)
+    self.N_GAMMA_B_GND = sum(self.ff.array() == self.GAMMA_B_GND)
+    self.N_GAMMA_S_FLT = sum(self.ff.array() == self.GAMMA_S_FLT)
+    self.N_GAMMA_B_FLT = sum(self.ff.array() == self.GAMMA_B_FLT)
+    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
+    self.N_GAMMA_L_OVR = sum(self.ff.array() == self.GAMMA_L_OVR)
+    self.N_GAMMA_L_UDR = sum(self.ff.array() == self.GAMMA_L_UDR)
+    self.N_GAMMA_U_GND = sum(self.ff.array() == self.GAMMA_U_GND)
+    self.N_GAMMA_U_FLT = sum(self.ff.array() == self.GAMMA_U_FLT)
 
+    # create new measures of integration :
+    self.ds      = Measure('ds', subdomain_data=self.ff)
+    self.dx      = Measure('dx', subdomain_data=self.cf)
+    
+    self.dx_g    = self.dx(0)                # internal above grounded
+    self.dx_f    = self.dx(1)                # internal above floating
+    self.dBed_g  = self.ds(3)                # grounded bed
+    self.dBed_f  = self.ds(5)                # floating bed
+    self.dBed    = self.ds(3) + self.ds(5)   # bed
+    self.dSrf_gu = self.ds(8)                # grounded with U observations
+    self.dSrf_fu = self.ds(9)                # floating with U observations
+    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
+    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
+    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
+    self.dSrf    =   self.ds(6) + self.ds(2) \
+                   + self.ds(8) + self.ds(9) # surface
+    self.dLat_d  = self.ds(7)                # lateral divide
+    self.dLat_to = self.ds(4)                # lateral terminus overwater
+    self.dLat_tu = self.ds(10)               # lateral terminus underwater
+    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
+    self.dLat    =   self.ds(4) + self.ds(7) \
+                   + self.ds(10)             # lateral
 
   def generate_pbc(self):
     """
@@ -232,7 +276,7 @@ class Model(object):
     s = "::: output directory changed to '%s' :::" % out_dir
     print_text(s, cls=self.this)
 
-  def generate_function_spaces(self, use_periodic=False):
+  def generate_function_spaces(self, order=1, use_periodic=False):
     """
     Generates the finite-element function spaces used by all children of this
     :class:`Model`.
@@ -242,23 +286,31 @@ class Model(object):
       :use_periodic: boolean to use periodic boundaries along lateral boundary.
 
     """
-    s = "::: generating fundamental function spaces :::"
+    s = "::: generating fundamental function spaces of order %i :::" % order
     print_text(s, cls=self.this)
 
     if use_periodic:
       self.generate_pbc()
     else:
       self.pBC = None
-    self.Q      = FunctionSpace(self.mesh,      "CG", 1, 
+    self.Q      = FunctionSpace(self.mesh,      "CG", order, 
                                 constrained_domain=self.pBC)
-    self.Qp     = FunctionSpace(self.mesh,      "CG", 2, 
+    Qe          = FiniteElement("CG", self.mesh.ufl_cell(), order)
+    self.Q2     = FunctionSpace(self.mesh, MixedElement([Qe]*2),
                                 constrained_domain=self.pBC)
-    self.Q2     = MixedFunctionSpace([self.Q]*2)
-    self.Q3     = MixedFunctionSpace([self.Q]*3)
-    self.Q4     = MixedFunctionSpace([self.Q]*4)
-    self.Q5     = MixedFunctionSpace([self.Q]*5)
-    self.Q_non_periodic = FunctionSpace(self.mesh, "CG", 1)
-    self.V      = VectorFunctionSpace(self.mesh, "CG", 1)
+    self.Q3     = FunctionSpace(self.mesh, MixedElement([Qe]*3),
+                                constrained_domain=self.pBC)
+    self.Q4     = FunctionSpace(self.mesh, MixedElement([Qe]*4),
+                                constrained_domain=self.pBC)
+    self.Q5     = FunctionSpace(self.mesh, MixedElement([Qe]*5),
+                                constrained_domain=self.pBC)
+    #self.Q2     = MixedFunctionSpace([self.Q]*2)
+    #self.Q3     = MixedFunctionSpace([self.Q]*3)
+    #self.Q4     = MixedFunctionSpace([self.Q]*4)
+    #self.Q5     = MixedFunctionSpace([self.Q]*5)
+    self.Q_non_periodic   = FunctionSpace(self.mesh, "CG", order)
+    self.Q3_non_periodic  = FunctionSpace(self.mesh, MixedElement([Qe]*3))
+    self.V                = VectorFunctionSpace(self.mesh, "CG", order)
 
     s = "    - fundamental function spaces created - "
     print_text(s, cls=self.this)
@@ -582,7 +634,7 @@ class Model(object):
       cls = self.this
     s = "::: initializing x-component of velocity :::"
     print_text(s, cls=cls)
-    u_t = Function(self.Q, name='u_t')
+    u_t = Function(self.Q_non_periodic, name='u_t')
     self.assign_variable(u_t, u, cls=cls)
     self.assx.assign(self.u, u_t, annotate=False)
   
@@ -594,9 +646,9 @@ class Model(object):
       cls = self.this
     s = "::: initializing y-component of velocity :::"
     print_text(s, cls=cls)
-    v_t = Function(self.Q, name='v_t')
+    v_t = Function(self.Q_non_periodic, name='v_t')
     self.assign_variable(v_t, v, cls=cls)
-    self.assx.assign(self.v, v_t, annotate=False)
+    self.assy.assign(self.v, v_t, annotate=False)
   
   def init_w(self, w, cls=None):
     r"""
@@ -606,9 +658,9 @@ class Model(object):
       cls = self.this
     s = "::: initializing z-component of velocity :::"
     print_text(s, cls=cls)
-    w_t = Function(self.Q, name='w_t')
+    w_t = Function(self.Q_non_periodic, name='w_t')
     self.assign_variable(w_t, w, cls=cls)
-    self.assx.assign(self.w, w_t, annotate=False)
+    self.assz.assign(self.w, w_t, annotate=False)
 
   def init_U(self, U, cls=None):
     r"""
@@ -619,16 +671,27 @@ class Model(object):
     s = "::: initializing velocity :::"
     print_text(s, cls=cls)
     self.assign_variable(self.U3, U, cls=cls)
+    self.init_U_mag(self.U3, cls)
+
+  def init_U_mag(self, U, cls=None):
+    r"""
+    Set velocity vector magnitude :math:`\Vert \mathbf{u} \Vert` from vector
+    *U*.
+    """
+    if cls is None:
+      cls = self.this
+    s = "::: initializing velocity magnitude :::"
+    print_text(s, cls=cls)
     # fenics issue #405 bug workaround :
     if self.use_periodic_boundaries:
       u      = Function(self.Q)
       v      = Function(self.Q)
       w      = Function(self.Q)
-      assign(u, self.U3.sub(0))
-      assign(v, self.U3.sub(1))
-      assign(w, self.U3.sub(2))
+      assign(u, U.sub(0))
+      assign(v, U.sub(1))
+      assign(w, U.sub(2))
     else:
-      u,v,w  = self.U3.split(True)
+      u,v,w  = U.split(True)
     u_v      = u.vector().array()
     v_v      = v.vector().array()
     w_v      = w.vector().array()
@@ -775,139 +838,95 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.lon, lon, cls=cls)
   
-  def init_tau_id(self, tau_id, cls=None):
+  def init_M_ii(self, M_ii, cls=None):
     r"""
-    Set component of driving stress in the direction of flow
-    :math:`\tau_{id}` to *tau_id*.
+    Set :math:`M_{ii}` to *M_ii*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_id :::"
+    s = "::: initializing M_ii :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_id, tau_id, cls=cls)
+    self.assign_variable(self.M_ii, M_ii, cls=cls)
   
-  def init_tau_jd(self, tau_jd, cls=None):
+  def init_M_ij(self, M_ij, cls=None):
     r"""
-    Set component of driving stress across the direction of flow
-    :math:`\tau_{jd}` to *tau_jd*.
+    Set :math:`M_{ij}` to *M_ij*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_jd :::"
+    s = "::: initializing M_ij :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_jd, tau_jd, cls=cls)
+    self.assign_variable(self.M_ij, M_ij, cls=cls)
   
-  def init_tau_ib(self, tau_ib, cls=None):
+  def init_M_iz(self, M_iz, cls=None):
     r"""
-    Set component of basal drag in the direction of flow
-    :math:`\tau_{ib}` to *tau_ib*.
+    Set :math:`M_{iz}` to *M_iz*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_ib :::"
+    s = "::: initializing M_iz :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_ib, tau_ib, cls=cls)
+    self.assign_variable(self.M_iz, M_iz, cls=cls)
   
-  def init_tau_jb(self, tau_jb, cls=None):
+  def init_M_ji(self, M_ji, cls=None):
     r"""
-    Set component of basal drag across the direction of flow
-    :math:`\tau_{jb}` to *tau_jb*.
+    Set :math:`M_{ji}` to *M_ji*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_jb :::"
+    s = "::: initializing M_ji :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_jb, tau_jb, cls=cls)
+    self.assign_variable(self.M_ji, M_ji, cls=cls)
   
-  def init_tau_ii(self, tau_ii, cls=None):
+  def init_M_jj(self, M_jj, cls=None):
     r"""
-    Set :math:`\tau_{ii}` to *tau_ii*.
+    Set :math:`M_{jj}` to *M_jj*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_ii :::"
+    s = "::: initializing M_jj :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_ii, tau_ii, cls=cls)
+    self.assign_variable(self.M_jj, M_jj, cls=cls)
   
-  def init_tau_ij(self, tau_ij, cls=None):
+  def init_M_jz(self, M_jz, cls=None):
     r"""
-    Set :math:`\tau_{ij}` to *tau_ij*.
+    Set :math:`M_{jz}` to *M_jz*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_ij :::"
+    s = "::: initializing M_jz :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_ij, tau_ij, cls=cls)
+    self.assign_variable(self.M_jz, M_jz, cls=cls)
   
-  def init_tau_ik(self, tau_ik, cls=None):
+  def init_M_zi(self, M_zi, cls=None):
     r"""
-    Set :math:`\tau_{ik}` to *tau_ik*.
+    Set :math:`M_{zi}` to *M_zi*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_ik :::"
+    s = "::: initializing M_zi :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_ik, tau_ik, cls=cls)
+    self.assign_variable(self.M_zi, M_zi, cls=cls)
   
-  def init_tau_ji(self, tau_ji, cls=None):
+  def init_M_zj(self, M_zj, cls=None):
     r"""
-    Set :math:`\tau_{ji}` to *tau_ji*.
+    Set :math:`M_{zj}` to *M_zj*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_ji :::"
+    s = "::: initializing M_zj :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_ji, tau_ji, cls=cls)
+    self.assign_variable(self.M_zj, M_zj, cls=cls)
   
-  def init_tau_jj(self, tau_jj, cls=None):
+  def init_M_zz(self, M_zz, cls=None):
     r"""
-    Set :math:`\tau_{jj}` to *tau_jj*.
+    Set :math:`M_{zz}` to *M_zz*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing tau_jj :::"
+    s = "::: initializing M_zz :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.tau_jj, tau_jj, cls=cls)
-  
-  def init_tau_jk(self, tau_jk, cls=None):
-    r"""
-    Set :math:`\tau_{jk}` to *tau_jk*.
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing tau_jk :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.tau_jk, tau_jk, cls=cls)
-  
-  def init_tau_ki(self, tau_ki, cls=None):
-    r"""
-    Set :math:`\tau_{ki}` to *tau_ki*.
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing tau_ki :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.tau_ki, tau_ki, cls=cls)
-  
-  def init_tau_kj(self, tau_kj, cls=None):
-    r"""
-    Set :math:`\tau_{kj}` to *tau_kj*.
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing tau_kj :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.tau_kj, tau_kj, cls=cls)
-  
-  def init_tau_kk(self, tau_kk, cls=None):
-    r"""
-    Set :math:`\tau_{kk}` to *tau_kk*.
-    """
-    if cls is None:
-      cls = self.this
-    s = "::: initializing tau_kk :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.tau_kk, tau_kk, cls=cls)
+    self.assign_variable(self.M_zz, M_zz, cls=cls)
   
   def init_N_ii(self, N_ii, cls=None):
     r"""
@@ -929,15 +948,15 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.N_ij, N_ij, cls=cls)
   
-  def init_N_ik(self, N_ik, cls=None):
+  def init_N_iz(self, N_iz, cls=None):
     r"""
-    Set membrane stress :math:`N_{ik}` to *N_ik*.
+    Set membrane stress :math:`N_{iz}` to *N_iz*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing N_ik :::"
+    s = "::: initializing N_iz :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.N_ik, N_ik, cls=cls)
+    self.assign_variable(self.N_iz, N_iz, cls=cls)
   
   def init_N_ji(self, N_ji, cls=None):
     r"""
@@ -959,45 +978,45 @@ class Model(object):
     print_text(s, cls=cls)
     self.assign_variable(self.N_jj, N_jj, cls=cls)
   
-  def init_N_jk(self, N_jk, cls=None):
+  def init_N_jz(self, N_jz, cls=None):
     r"""
-    Set membrane stress :math:`N_{jk}` to *N_jk*.
+    Set membrane stress :math:`N_{jz}` to *N_jz*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing N_jk :::"
+    s = "::: initializing N_jz :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.N_jk, N_jk, cls=cls)
+    self.assign_variable(self.N_jz, N_jz, cls=cls)
   
-  def init_N_ki(self, N_ki, cls=None):
+  def init_N_zi(self, N_zi, cls=None):
     r"""
-    Set membrane stress :math:`N_{ki}` to *N_ki*.
+    Set membrane stress :math:`N_{zi}` to *N_zi*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing N_ki :::"
+    s = "::: initializing N_zi :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.N_ki, N_ki, cls=cls)
+    self.assign_variable(self.N_zi, N_zi, cls=cls)
   
-  def init_N_kj(self, N_kj, cls=None):
+  def init_N_zj(self, N_zj, cls=None):
     r"""
-    Set membrane stress :math:`N_{kj}` to *N_kj*.
+    Set membrane stress :math:`N_{zj}` to *N_zj*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing N_kj :::"
+    s = "::: initializing N_zj :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.N_kj, N_kj, cls=cls)
+    self.assign_variable(self.N_zj, N_zj, cls=cls)
   
-  def init_N_kk(self, N_kk, cls=None):
+  def init_N_zz(self, N_zz, cls=None):
     r"""
-    Set membrane stress :math:`N_{kk}` to *N_kk*.
+    Set membrane stress :math:`N_{zz}` to *N_zz*.
     """
     if cls is None:
       cls = self.this
-    s = "::: initializing N_kk :::"
+    s = "::: initializing N_zz :::"
     print_text(s, cls=cls)
-    self.assign_variable(self.N_kk, N_kk, cls=cls)
+    self.assign_variable(self.N_zz, N_zz, cls=cls)
 
   def init_alpha(self, alpha, cls=None):
     r"""
@@ -1599,29 +1618,11 @@ class Model(object):
     """
     s = "::: formulating energy-dependent rate-factor :::"
     print_text(s, cls=self.this)
-    #theta_c = 146.3*T_c + 7.253/2.0*T_c**2
-    #theta_w = 0.01*L + theta_m
-    #W_w     = (theta - theta_m)/L
-    #T_w     = (-146.3 + sqrt(146.3**2 + 2*7.253*theta)) / 7.253
-      
-    # discontinuous properties :
-    #a_T     = conditional( lt(theta, theta_c), 1.1384496e-5, 5.45e10)
-    #Q_T     = conditional( lt(theta, theta_c), 6e4,          13.9e4)
-    #W_T     = conditional( lt(theta, theta_w), W_w,          0.01)
-    #W_c     = conditional( le(theta, theta_m), 0.0,          1.0)
-    #W_a     = conditional( le(theta, theta_m), 0.0,          W_w)
-
-    # viscosity and strain-heating :
-    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
-    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
-    #Q_s_gnd = 4 * eta_gnd * epsdot
-    #Q_s_shf = 4 * eta_shf * epsdot
-    #Tp      = T + gamma*p
+    
     Tp          = self.Tp
     W           = self.W
     R           = self.R
+    E           = self.E
     E_shf       = self.E_shf
     E_gnd       = self.E_gnd
     a_T         = conditional( lt(Tp, 263.15),  self.a_T_l, self.a_T_u)
@@ -1629,40 +1630,12 @@ class Model(object):
     W_T         = conditional( lt(W,  0.01),    W,          0.01)
     self.A_shf  = E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
     self.A_gnd  = E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
- 
-  def calc_eta(self, epsdot):
-    """
-    Calculates viscosity, set to model.eta.
-    """
-    s     = "::: calculating viscosity :::"
-    print_text(s, cls=self.this)
-    Q       = self.Q
-    eps_reg = self.eps_reg
-    A       = self.A
-    n       = self.n
-    
-    # manually calculate a_T and Q_T to avoid oscillations with 'conditional' :
-    #a_T     = Function(Q, name='a_T')
-    #Q_T     = Function(Q, name='Q_T')
-    #T_v     = T.vector().array()
-    #a_T_v   = a_T.vector().array()
-    #Q_T_v   = Q_T.vector().array()
-    #a_T_v[T_v  < 263.15] = 1.1384496e-5
-    #a_T_v[T_v >= 263.15] = 5.45e10 
-    #Q_T_v[T_v  < 263.15] = 6e4
-    #Q_T_v[T_v >= 263.15] = 13.9e4 
-    #self.assign_variable(a_T, a_T_v, cls=self.this)
-    #self.assign_variable(Q_T, Q_T_v, cls=self.this)
+    self.A      = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
 
-    # unify the enhancement factor over shelves and grounded ice : 
-    #E                  = self.E
-    #E_v                = E.vector().array()
-    #E_gnd_v            = E_gnd.vector().array()
-    #E_shf_v            = E_shf.vector().array()
-    #E_v[self.gnd_dofs] = E_gnd_v[self.gnd_dofs]
-    #E_v[self.shf_dofs] = E_shf_v[self.shf_dofs]
-    #self.assign_variable(E, E_v, cls=self.this)
-    
+  def calc_A(self):
+    """
+    calculates rate-factor A, set to model.A.
+    """
     Tp          = self.Tp
     W           = self.W
     R           = self.R
@@ -1671,11 +1644,25 @@ class Model(object):
     Q_T         = conditional( lt(Tp, 263.15),  self.Q_T_l, self.Q_T_u)
     W_T         = conditional( lt(W,  0.01),    W,          0.01)
     A           = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
+    self.A      = A
+    #A           = project(A, annotate=False)
+    #self.init_A(A)
+ 
+  def calc_eta(self, epsdot):
+    """
+    Calculates viscosity, set to model.eta.
+    """
+    s     = "::: calculating viscosity :::"
+    print_text(s, cls=self.this)
+    eps_reg = self.eps_reg
+    A       = self.A
+    n       = self.n
 
     # calculate viscosity :
     eta     = 0.5 * A**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta     = project(eta, annotate=False)
-    self.init_eta(eta)
+    self.eta = eta
+    #eta     = project(eta, annotate=False)
+    #self.init_eta(eta)
 
   def calc_vert_average(self, u):
     """
@@ -1698,7 +1685,7 @@ class Model(object):
     n_trial = TrialFunction(self.V)
     n_test  = TestFunction(self.V)
 
-    a = inner(n_trial, n_test)*ds
+    a = inner(n_trial, n_test)*dx
     L = inner(n,       n_test)*ds
 
     A = assemble(a, keep_diagonal=True)
@@ -1715,16 +1702,17 @@ class Model(object):
     
     self.init_n_f(n, cls=cls)
 
-  def get_xy_velocity_angle(self):
+  def get_xy_velocity_angle(self, U):
     """
     Returns the angle in radians of the horizontal velocity vector from 
     the x-axis.
     """
-    u,v,w   = self.U3.split(True)
+    u,v,w   = U.split(True)
     u_v     = u.vector().array()
     v_v     = v.vector().array()
-    theta_v = np.arctan2(u_v, v_v)
-    theta   = Function(self.Q, name='theta_xy_U_angle')
+    theta_v = np.arctan2(v_v, u_v)
+    Q       = u.function_space()
+    theta   = Function(Q, name='theta_xy_U_angle')
     self.assign_variable(theta, theta_v, cls=self.this)
     return theta
 
@@ -1736,7 +1724,7 @@ class Model(object):
     u,v,w   = self.U3.split(True)
     u_v     = u.vector().array()
     w_v     = w.vector().array()
-    theta_v = np.arctan2(u_v, w_v)
+    theta_v = np.arctan2(w_v, u_v)
     theta   = Function(self.Q, name='theta_xz_U_angle')
     self.assign_variable(theta, theta_v, cls=self.this)
     return theta
@@ -1767,9 +1755,9 @@ class Model(object):
     """
     rotate the tnesor <M> by the rotation matrix <R>.
     """
-    if M.rank() == 2:
+    if len(M.ufl_shape) == 2:
       Mr = dot(R, dot(M, R.T))
-    elif M.rank() == 1:
+    elif len(M.ufl_shape) == 1:
       Mr = dot(R, M)
     else:
       s   = ">>> METHOD 'rotate_tensor' REQUIRES RANK 2 OR 1 TENSOR <<<"
@@ -1797,15 +1785,14 @@ class Model(object):
     
     return U_v, norm_u
 
-  def normalize_vector(self, U, Q='self'):
+  def normalize_vector(self, U):
     """
-    Create a normalized vector of the UFL vector <U>.
+    Create a normalized vector of the vector <U>.
     """
     s   = "::: normalizing vector :::"
     print_text(s, cls=self.this)
-
-    if type(Q) != FunctionSpace:
-      Q = self.Q
+    
+    Q = U[0].function_space()
 
     U_v, norm_u = self.get_norm(U)
 
@@ -1831,6 +1818,7 @@ class Model(object):
     print_text(s, cls=self.this)
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
+    print_min_max(u_to, u_to.name(), cls=self)
 
   def assign_variable(self, u, var, cls=None, annotate=False):
     """
@@ -1856,10 +1844,12 @@ class Model(object):
     
     elif isinstance(var, Expression) \
       or isinstance(var, Constant)  \
+      or isinstance(var, dolfin.functions.constant.Constant) \
       or isinstance(var, Function) \
       or isinstance(var, dolfin.functions.function.Function) \
       or isinstance(var, GenericVector):
       u.assign(var, annotate=annotate)
+      #u.interpolate(var, annotate=annotate)
 
     #elif isinstance(var, GenericVector):
     #  self.assign_variable(u, var.array(), annotate=annotate, cls=cls)
@@ -1975,6 +1965,7 @@ class Model(object):
 
     # shelf mask (2 if shelf) :
     self.mask          = Function(self.Q, name='mask')
+    self.init_mask(1.0) # default to all grounded ice 
 
     # lateral boundary mask (1 if on lateral boundary) :
     self.lat_mask      = Function(self.Q, name='lat_mask')
@@ -1991,9 +1982,9 @@ class Model(object):
     self.u_ob          = Function(self.Q, name='u_ob')
     self.v_ob          = Function(self.Q, name='v_ob')
     
-    # unified velocity :
-    self.U_mag         = Function(self.Q,  name='U_mag')
-    self.U3            = Function(self.Q3, name='U3')
+    # unified velocity (non-periodic because it is always known everywhere) :
+    self.U_mag         = Function(self.Q,               name='U_mag')
+    self.U3            = Function(self.Q3_non_periodic, name='U3')
     u,v,w              = self.U3.split()
     u.rename('u', '')
     v.rename('v', '')
@@ -2001,14 +1992,13 @@ class Model(object):
     self.u             = u
     self.v             = v
     self.w             = w
-    
-    self.assx          = FunctionAssigner(u.function_space(), self.Q)
-    self.assy          = FunctionAssigner(v.function_space(), self.Q)
-    self.assz          = FunctionAssigner(w.function_space(), self.Q)
+    self.assx  = FunctionAssigner(u.function_space(), self.Q_non_periodic)
+    self.assy  = FunctionAssigner(v.function_space(), self.Q_non_periodic)
+    self.assz  = FunctionAssigner(w.function_space(), self.Q_non_periodic)
 
     # momentum model :
     self.eta           = Function(self.Q, name='eta')
-    self.p             = Function(self.Q, name='p')
+    self.p             = Function(self.Q_non_periodic, name='p')
     self.beta          = Function(self.Q, name='beta')
     self.E             = Function(self.Q, name='E')
     self.E_gnd         = Function(self.Q, name='E_gnd')
@@ -2020,6 +2010,7 @@ class Model(object):
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
     self.lam           = Function(self.Q, name='lam')
+    self.init_E(1.0) # always use no enhancement on rate-factor A 
     
     # energy model :
     self.T             = Function(self.Q, name='T')
@@ -2053,41 +2044,31 @@ class Model(object):
 
     # balance Velocity model :
     self.adot          = Function(self.Q, name='adot')
-    self.dSdx          = Function(self.Q, name='dSdx')
-    self.dSdy          = Function(self.Q, name='dSdy')
     self.d_x           = Function(self.Q, name='d_x')
     self.d_y           = Function(self.Q, name='d_y')
     self.Ubar          = Function(self.Q, name='Ubar')
-    self.Nx            = Function(self.Q, name='Nx')
-    self.Ny            = Function(self.Q, name='Ny')
+    self.uhat          = Function(self.Q, name='uhat')
+    self.vhat          = Function(self.Q, name='vhat')
     
-    # Stokes-balance model :
-    self.u_s           = Function(self.Q, name='u_s')
-    self.u_t           = Function(self.Q, name='u_t')
-    self.tau_id        = Function(self.Q, name='tau_id')
-    self.tau_jd        = Function(self.Q, name='tau_jd')
-    self.tau_ib        = Function(self.Q, name='tau_ib')
-    self.tau_jb        = Function(self.Q, name='tau_jb')
-    self.tau_ip        = Function(self.Q, name='tau_ip')
-    self.tau_jp        = Function(self.Q, name='tau_jp')
-    self.tau_ii        = Function(self.Q, name='tau_ii')
-    self.tau_ij        = Function(self.Q, name='tau_ij')
-    self.tau_ik        = Function(self.Q, name='tau_ik')
-    self.tau_ji        = Function(self.Q, name='tau_ji')
-    self.tau_jj        = Function(self.Q, name='tau_jj')
-    self.tau_jk        = Function(self.Q, name='tau_jk')
-    self.tau_ki        = Function(self.Q, name='tau_ki')
-    self.tau_kj        = Function(self.Q, name='tau_kj')
-    self.tau_kk        = Function(self.Q, name='tau_kk')
-    self.N_ii          = Function(self.Q, name='N_ii')
-    self.N_ij          = Function(self.Q, name='N_ij')
-    self.N_ik          = Function(self.Q, name='N_ik')
-    self.N_ji          = Function(self.Q, name='N_ji')
-    self.N_jj          = Function(self.Q, name='N_jj')
-    self.N_jk          = Function(self.Q, name='N_jk')
-    self.N_ki          = Function(self.Q, name='N_ki')
-    self.N_kj          = Function(self.Q, name='N_kj')
-    self.N_kk          = Function(self.Q, name='N_kk')
+    # Stress-balance model (this is always non-periodic) :
+    self.M_ii          = Function(self.Q_non_periodic, name='M_ii')
+    self.M_ij          = Function(self.Q_non_periodic, name='M_ij')
+    self.M_iz          = Function(self.Q_non_periodic, name='M_iz')
+    self.M_ji          = Function(self.Q_non_periodic, name='M_ji')
+    self.M_jj          = Function(self.Q_non_periodic, name='M_jj')
+    self.M_jz          = Function(self.Q_non_periodic, name='M_jz')
+    self.M_zi          = Function(self.Q_non_periodic, name='M_zi')
+    self.M_zj          = Function(self.Q_non_periodic, name='M_zj')
+    self.M_zz          = Function(self.Q_non_periodic, name='M_zz')
+    self.N_ii          = Function(self.Q_non_periodic, name='N_ii')
+    self.N_ij          = Function(self.Q_non_periodic, name='N_ij')
+    self.N_iz          = Function(self.Q_non_periodic, name='N_iz')
+    self.N_ji          = Function(self.Q_non_periodic, name='N_ji')
+    self.N_jj          = Function(self.Q_non_periodic, name='N_jj')
+    self.N_jz          = Function(self.Q_non_periodic, name='N_jz')
+    self.N_zi          = Function(self.Q_non_periodic, name='N_zi')
+    self.N_zj          = Function(self.Q_non_periodic, name='N_zj')
+    self.N_zz          = Function(self.Q_non_periodic, name='N_zz')
 
   def home_rolled_newton_method(self, R, U, J, bcs, atol=1e-7, rtol=1e-10,
                                 relaxation_param=1.0, max_iter=25,
@@ -2224,28 +2205,12 @@ class Model(object):
     # number of digits for saving variables :
     n_i  = len(str(max_iter))
     
-    ## initialization step :
-    #s    = '::: performing initialization step :::'
-    #print_text(s, cls=self.this)
-
-    ## always set the initial water content to zero, so that the friction
-    ## and geothermal heat flux are applied everywhere on the bed :
-    #self.init_W(0.0, cls=self.this)
-
-    ## solve velocity :
-    #momentum.solve(annotate=False)
-
-    ## solve energy (along with temperature and water content) :
-    #energy.solve(annotate=False)
- 
-    ## convert to pseudo-timestepping for smooth convergence : 
-    #energy.make_transient(time_step = 25.0)
-
     # get the bounds of Fb, the max will be updated based on temperate zones :
-    bounds = copy(wop_kwargs['bounds'])
-    self.init_Fb_min(bounds[0], cls=self.this)
-    self.init_Fb_max(bounds[1], cls=self.this)
-    wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
+    if energy.energy_flux_mode == 'Fb':
+      bounds = copy(wop_kwargs['bounds'])
+      self.init_Fb_min(bounds[0], cls=self.this)
+      self.init_Fb_max(bounds[1], cls=self.this)
+      wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -2276,6 +2241,10 @@ class Model(object):
 
       # calculate basal friction heat flux :
       momentum.calc_q_fric()
+      
+      # derive temperature and temperature-melting flux terms :
+      energy.calc_basal_temperature_flux()
+      energy.calc_basal_temperature_melting_flux()
 
       # solve energy steady-state equations to derive temperate zone :
       energy.derive_temperate_zone(annotate=False)
@@ -2283,19 +2252,28 @@ class Model(object):
       # fixed-point interation for thermal parameters and discontinuous 
       # properties :
       energy.update_thermal_parameters(annotate=False)
+      
+      # calculate the basal-melting rate :
+      energy.solve_basal_melt_rate()
+      
+      # always initialize Fb to the zero-energy-flux bc :  
+      Fb_v = self.Mb.vector().array() * self.rhoi(0) / self.rhow(0)
+      self.init_Fb(Fb_v)
   
       # update bounds based on temperate zone :
-      Fb_m_v                 = self.Fb_max.vector().array()
-      alpha_v                = self.alpha.vector().array()
-      Fb_m_v[:]              = DOLFIN_EPS
-      Fb_m_v[alpha_v == 1.0] = bounds[1]
-      self.init_Fb_max(Fb_m_v, cls=self.this)
-
-      # optimize the flux of water to remove abnormally high water :
-      energy.optimize_water_flux(**wop_kwargs)
+      if energy.energy_flux_mode == 'Fb':
+        Fb_m_v                 = self.Fb_max.vector().array()
+        alpha_v                = self.alpha.vector().array()
+        Fb_m_v[:]              = DOLFIN_EPS
+        Fb_m_v[alpha_v == 1.0] = bounds[1]
+        self.init_Fb_max(Fb_m_v, cls=self.this)
       
-      # calculate T, Tp, and W from theta :
-      energy.partition_energy(annotate=False)
+      # optimize the flux of water to remove abnormally high water :
+      if energy.energy_flux_mode == 'Fb':
+        energy.optimize_water_flux(**wop_kwargs)
+
+      # solve the energy-balance and partition T and W from theta :
+      energy.solve(annotate=False)
       
       # calculate L_2 norms :
       abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
@@ -2363,7 +2341,7 @@ class Model(object):
     self.set_out_dir(out_dir_i)
     
     # reset the bounds on Fb :
-    wop_kwargs['bounds']  = bounds
+    if energy.energy_flux_mode == 'Fb':  wop_kwargs['bounds'] = bounds
       
     # save state to unique hdf5 file :
     if isinstance(post_tmc_save_vars, list):
@@ -2494,8 +2472,11 @@ class Model(object):
       out_dir_n = '%0*d/' % (n_i, counter)
       self.set_out_dir(out_dir_i + out_dir_n)
    
-      # the incomplete adjoint means the viscosity is linear :
-      if incomplete and not momentum.linear: momentum.linearize_viscosity()
+      # the incomplete adjoint means the viscosity is linear, and
+      # we do not want to reset the original momentum configuration, because
+      # we have more non-linear solves to do :
+      if incomplete and not momentum.linear:
+        momentum.linearize_viscosity(reset_orig_config=True)
     
       # re-initialize friction field :
       if counter > starting_i: self.init_beta(beta_i, cls=self.this)
@@ -2676,28 +2657,6 @@ class Model(object):
     
     s    = '::: L-curve procedure complete :::'
     print_text(s, cls=self.this)
-   
-    # save the resulting functional values and alphas to CSF : 
-    if self.MPI_rank==0:
-      d = out_dir_i + 'functionals/'
-      if not os.path.exists(d):
-        os.makedirs(d)
-      np.savetxt(d + 'Rs.txt',   np.array(Rs))
-      np.savetxt(d + 'Js.txt',   np.array(Js))
-      np.savetxt(d + 'as.txt',   np.array(alphas))
-
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      
-      ax.set_xscale('log')
-      ax.set_yscale('log')
-      ax.set_ylabel(r'$\mathscr{R}$')
-      ax.set_xlabel(r'$\mathscr{J}$')
-      
-      ax.plot(np.array(Js), np.array(Rs), 'ko-', lw=2.0)
-      plt.grid()
-      plt.savefig(d + 'L_curve.png', dpi=200)
-      plt.close(fig)
 
     # calculate total time to compute
     s = time() - t0
@@ -2707,7 +2666,152 @@ class Model(object):
     m = m % 60
     text = "time to complete L-curve procedure: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+   
+    # save the resulting functional values and alphas to CSF : 
+    if self.MPI_rank==0:
+      # iterate through the directiories we just created and grab the data :
+      alphas = []
+      Ds     = []
+      Js     = []
+      J1s    = []
+      J2s    = []
+      Rs     = []
+      ns     = [] 
+      for d in next(os.walk(out_dir_i))[1]:
+        m = re.search('(alpha_)(\d\W\dE\W\d+)', d)
+        if m is not None:
+          do = out_dir_i + d + '/objective_ftnls_history/'
+          alphas.append(float(m.group(2)))
+          Ds.append(np.loadtxt(do  + 'Ds.txt'))
+          Js.append(np.loadtxt(do  + 'Js.txt'))
+          J1s.append(np.loadtxt(do + 'J1s.txt'))
+          J2s.append(np.loadtxt(do + 'J2s.txt'))
+          Rs.append(np.loadtxt(do  + 'Rs.txt'))
+          ns.append(len(Js[-1]))
+      alphas = np.array(alphas) 
+      Ds     = np.array(Ds) 
+      Js     = np.array(Js) 
+      J1s    = np.array(J1s) 
+      J2s    = np.array(J2s) 
+      Rs     = np.array(Rs) 
+      ns     = np.array(ns)
+
+      # sort everything :
+      idx    = np.argsort(alphas)
+      alphas = alphas[idx]
+      Ds     = Ds[idx]
+      Js     = Js[idx]
+      J1s    = J1s[idx]
+      J2s    = J2s[idx]
+      Rs     = Rs[idx]
+      ns     = ns[idx]
+     
+      # plot the functionals : 
+      #=========================================================================
+      fig = plt.figure(figsize=(6,2.5))
+      ax  = fig.add_subplot(111)
+
+      # we want to plot the different alpha values a different shade :
+      cmap = plt.get_cmap('viridis')
+      colors = [ cmap(x) for x in np.linspace(0, 1, len(alphas)) ]
       
+      k    = 0    # counter so we can plot side-by-side
+      ints = [0]  # to modify the x-axis labels
+      for i,c in zip(range(len(alphas)), colors):
+        xi = np.arange(k, k + ns[i])
+        ints.append(xi.max())
+        # if this is the first iteration, we put a legend on it :
+        if i == 0:
+          # if we have two cost functionals, let's plot both :
+          if physics.obj_ftn_type == 'log_L2_hybrid':
+            ax.plot(xi, J1s[i], '-',  c='0.5', lw=2.0,
+                    label = r'$\mathscr{I}_1$')
+            ax.plot(xi, J2s[i], '-',  c='k',   lw=2.0,
+                    label = r'$\mathscr{I}_2$')
+          # otherwise, just the one :
+          else:
+            ax.plot(xi, Js[i], '-',   c='k',   lw=2.0,
+                    label = r'$\mathscr{I}$')
+          # always plot the regularization functional :
+          ax.plot(xi, Rs[i],   '-',   c='r',   lw=2.0,
+                  label = r'$\mathscr{R}$')
+        # otherwise, we don't need cluttered legends :
+        else:
+          # if we have two cost functionals, let's plot both :
+          if physics.obj_ftn_type == 'log_L2_hybrid':
+            ax.plot(xi, J1s[i], '-',  c='0.5', lw=2.0)
+            ax.plot(xi, J2s[i], '-',  c='k',   lw=2.0)
+          # otherwise, just the one :
+          else:  
+            ax.plot(xi, Js[i], '-',  c='k', lw=2.0)
+          # always plot the regularization functional :
+          ax.plot(xi, Rs[i],   '-',  c='r', lw=2.0)
+        k += ns[i] - 1
+      ints = np.array(ints)
+      
+      label = []
+      for i in alphas:
+        label.append(r'$\gamma = %g$' % i)
+      
+      # reset the x-label to be meaningfull :
+      ax.set_xticks(ints)
+      ax.set_xticklabels(label, size='small', ha='left')#, rotation=-45)
+      ax.set_xlabel(r'relative iteration')
+      
+      ax.grid()
+      ax.set_yscale('log')
+      
+      # plot the functional legend across the top in a row : 
+      if physics.obj_ftn_type == 'log_L2_hybrid': ncol = 3
+      else :                                      ncol = 2 
+      leg = ax.legend(loc='upper center', ncol=ncol)
+      leg.get_frame().set_alpha(0.0)
+      
+      plt.tight_layout()
+      plt.savefig(out_dir_i + 'convergence.pdf')
+      plt.close(fig)
+
+      # plot L-curve :
+      #=========================================================================
+
+      # we only want the last value of each optimization : 
+      fin_Js = Js[:,-1]
+      fin_Rs = Rs[:,-1]
+      
+      fig = plt.figure(figsize=(6,2.5))
+      ax  = fig.add_subplot(111)
+      
+      ax.plot(fin_Js, fin_Rs, 'k-', lw=2.0)
+      
+      ax.grid()
+    
+      # useful for figuring out what reg. parameter goes with what :  
+      for i,c in zip(range(len(alphas)), colors):
+        ax.plot(fin_Js[i], fin_Rs[i], 'o',  c=c, lw=2.0,
+                label = r'$\gamma = %g$' % alphas[i])
+     
+      ax.set_xlabel(r'$\mathscr{I}^*$')
+      ax.set_ylabel(r'$\mathscr{R}^*$')
+      
+      leg = ax.legend(loc='upper right', ncol=2)
+      leg.get_frame().set_alpha(0.0)
+      
+      ax.set_yscale('log')
+      #ax.set_xscale('log')
+      
+      plt.tight_layout()
+      plt.savefig(out_dir_i + 'l_curve.pdf')
+      plt.close(fig)
+
+      # save the functionals :
+      #=========================================================================
+
+      d = out_dir_i + 'functionals/'
+      if not os.path.exists(d):
+        os.makedirs(d)
+      np.savetxt(d + 'Rs.txt',   np.array(fin_Rs))
+      np.savetxt(d + 'Js.txt',   np.array(fin_Js))
+      np.savetxt(d + 'as.txt',   np.array(alphas))
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
                       adaptive=False, annotate=False, callback=None):

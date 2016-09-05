@@ -347,7 +347,7 @@ class MomentumDukowiczStokesReduced(Momentum):
   #  print_min_max(p, 'p')
   #  model.save_xdmf(p, 'p')
 
-  def solve_vert_velocity(self, annotate=annotate):
+  def solve_vert_velocity(self, annotate=False):
     """ 
     Solve for vertical velocity w.
     """

@@ -5,7 +5,7 @@ setup(  name        = 'cslvr',
         description = 'Cryospheric Problem Solver',
         author      = 'Evan Cummings, Douglas Brinkerhoff, Jesse Johnson',
         url         = 'https://github.com/pf4d/clsvr',
-        packages    = ['cslvr']
+        packages    = ['cslvr'],
         package_dir = {'cslvr' : 'cslvr'}  )
 
 

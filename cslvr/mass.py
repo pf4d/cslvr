@@ -1,5 +1,5 @@
 from cslvr.physics     import Physics 
-from cslvr.io          import print_text, print_min_max
+from cslvr.inputoutput import print_text, print_min_max
 from cslvr.d2model     import D2Model
 from cslvr.d3model     import D3Model
 from cslvr.helper      import VerticalBasis, VerticalFDBasis, \

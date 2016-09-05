@@ -1,9 +1,6 @@
-from varglas           import *
-from pylab             import *
-from scipy.interpolate import RectBivariateSpline
+from cslvr import *
 
-
-kappa = 1.0  # ice thickness to refine
+kappa = 5.0  # ice thickness to refine
 
 #===============================================================================
 # data preparation :
@@ -12,16 +9,13 @@ mesh_name = 'greenland_2D_%iH_mesh' % int(kappa)
 
 # get the data :
 bamber   = DataFactory.get_bamber()
-rignot   = DataFactory.get_rignot()
-#searise  = DataFactory.get_searise()
+#rignot   = DataFactory.get_rignot()
 
 # process the data :
 dbm      = DataInput(bamber,  gen_space=False)
 #drg      = DataInput(rignot,  gen_space=False)
-#dsr      = DataInput(searise, gen_space=False)
 
 #drg.change_projection(dbm)
-#dbm.change_projection(drg)
 
 
 #===============================================================================
@@ -29,20 +23,23 @@ dbm      = DataInput(bamber,  gen_space=False)
 dbm.data['ref'] = kappa*dbm.data['H'].copy()
 dbm.data['ref'][dbm.data['ref'] < kappa*1000.0] = kappa*1000.0
 
+## nice to plot the refinement field to check that you're doing what you want :
+#plotIce(dbm, 'ref', name='ref', direc=out_dir,
+#       title='ref', cmap='viridis',
+#       show=False, scale='lin', tp=False, cb_format='%.1e')
 
 #===============================================================================
 # generate the contour :
 m = MeshGenerator(dbm, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.99, skip_pts=0)
+m.create_contour('mask', zero_cntr=0.99, skip_pts=10)
+#m.create_contour('H', zero_cntr=200, skip_pts=5)
 
 m.eliminate_intersections(dist=200)
 #m.transform_contour(rignot)
 #m.check_dist()
-#import sys
-#sys.exit(0)
 m.write_gmsh_contour(boundary_extend=False)
-m.plot_contour()
+#m.plot_contour()
 m.close_file()
 
 

@@ -3,16 +3,57 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-[c]ryospheric problem [s]o[lv]e[r]'s documentation!
-===================================================
+Cryospheric Problem Solver
+**************************
 
 Contents:
 
+.. _data
+
 .. toctree::
    :maxdepth: 2
+   :caption: Data
 
-   code
+   data
 
+.. _meshing
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Mesh generation
+
+   meshing
+
+.. _base_classes
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Base Classes
+
+   model
+   physics
+
+.. _momentum
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Momentum
+
+   momentum
+
+.. _energy
+
+.. _stress
+
+.. _velocity
+
+.. _2D
+
+.. _3D
+
+.. _firn
+
+.. _get_started
 
 
 Indices and tables
@@ -20,5 +61,4 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`
 

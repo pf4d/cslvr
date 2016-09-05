@@ -2,54 +2,47 @@ from fenics            import *
 from dolfin_adjoint    import *
 from cslvr.physics     import Physics
 from cslvr.d2model     import D2Model
-from cslvr.io          import print_text, print_min_max
+from cslvr.inputoutput import print_text, print_min_max
 import numpy as np
 import sys
 
 
 class BalanceVelocity(Physics):
-  """
-  Balance velocity solver.
-
+  r"""
   Class representing balance velocity physics.
+
+  :model: a :class:`~d2model.D2Model` instance holding all pertinent 
+          variables, saved to ``self.model``.
+
+  :kappa: a floating-point value representing direction smoothing 
+          radius in units of ice thickness :math:`H = S-B`, where
+          :math:`H` is given by ``self.model.H``, surface height
+          :math:`S` is given by ``self.model.S`` and bed height
+          :math:`B` is given by ``self.model.B``.
+
   
   Use like this:
  
-  >>> bv = BalanceVelocity(model, 5.0)
+  >>> d = (-model.S.dx(0), -model.S.dx(1))
+  >>> bv = BalanceVelocity(model, kappa=5.0, stabilization_method='SUPG')
   ::: INITIALIZING VELOCITY-BALANCE PHYSICS :::
+      - using streamline-upwind/Petrov-Galerkin stabilization -
+  >>> bv.solve_direction_of_flow(d)
+  ::: solving for smoothed x-component of flow direction with kappa = 0 :::
+  Solving linear variational problem.
+  d_x <min, max> : <-1.127e+04, 9.275e+03>
+  ::: solving for smoothed y-component of flow direction with kappa = 0 :::
+  Solving linear variational problem.
+  d_y <min, max> : <-7.880e+03, 5.821e+03>
+  ::: calculating normalized flux direction from \nabla S:::
+  uhat <min, max> : <-1.000e+00, 1.000e+00>
+  vhat <min, max> : <-1.000e+00, 1.000e+00>
   >>> bv.solve()
-  ::: solving BalanceVelocity :::
-  ::: calculating surface gradient :::
-  Process 0: Solving linear system of size 9034 x 9034 (PETSc Krylov solver).
-  Process 0: Solving linear system of size 9034 x 9034 (PETSc Krylov solver).
-  dSdx <min, max> : <-1.107e+00, 8.311e-01>
-  dSdy <min, max> : <-7.928e-01, 1.424e+00>
-  ::: solving for smoothed x-component of driving stress with kappa = 5.0 :::
-  Process 0: Solving linear variational problem.
-  Nx <min, max> : <-1.607e+05, 3.628e+05>
-  ::: solving for smoothed y-component of driving stress :::
-  Process 0: Solving linear variational problem.
-  Ny <min, max> : <-2.394e+05, 2.504e+05>
-  ::: calculating normalized velocity direction from driving stress :::
-  d_x <min, max> : <-1.000e+00, 9.199e-01>
-  d_y <min, max> : <-9.986e-01, 1.000e+00>
   ::: solving velocity balance magnitude :::
-  Process 0: Solving linear variational problem.
-  Ubar <min, max> : <-5.893e+03, 9.844e+03>
+  Solving linear variational problem.
+  Ubar <min, max> : <-8.388e+10, 4.470e+10>
   ::: removing negative values of balance velocity :::
-  Ubar <min, max> : <0.000e+00, 9.844e+03>
-
-
-  Args:
-    :model: a :class:`~d2model.D2Model` instance holding all pertinent 
-            variables.
-
-    :kappa: a floating-point value representing surface smoothing 
-            radius in units of ice thickness :math:`H = S-B`.
-
-  Returns:
-    text printed to the screen.
-
+  Ubar <min, max> : <0.000e+00, 4.470e+10>
   """ 
   
   def __init__(self, model, kappa=5.0, stabilization_method='SUPG'):
@@ -127,23 +120,29 @@ class BalanceVelocity(Physics):
     r"""
     Solve for the direction of flow, attained in two steps :
 
-    1. Solve for the smoothed components of :d: :
+    :param d: a 2D vector of velocity direction from data 
+              :math:`\mathbf{d}^{\text{data}}`.
+
+    Solve for the unit-vector direction of flow :math:`\mathbf{d}`
+    in two parts :
+
+    1. Solve for the smoothed components of :math:`\mathbf{d}^{\text{data}}` :
 
        .. math::
        
-          \mathbf{d}_s = \big( \kappa H \big)^2 \nabla \cdot \big( \nabla \mathbf{d} \big) + \mathbf{d},
+          \mathbf{d} = \big( \kappa H \big)^2 \nabla \cdot \big( \nabla \mathbf{d} \big) + \mathbf{d}^{\text{data}},
  
        for components :math:`d_x` and :math:`d_y` saved respectively 
-       to ``model.d_x`` and ``model.d_y``. 
+       to ``self.model.d_x`` and ``self.model.d_y``. 
     
-    2. Calculate the normalized flux directions :
+    2. Calculate the normalized balance velocity direction :
        
        .. math::
        
-          \hat{u} = -\frac{d_x}{\Vert \mathbf{d} \Vert}, \hspace{10mm}
-          \hat{v} = -\frac{d_y}{\Vert \mathbf{d} \Vert},
+          \hat{u} = \frac{d_x}{\Vert \mathbf{d} \Vert}, \hspace{10mm}
+          \hat{v} = \frac{d_y}{\Vert \mathbf{d} \Vert},
  
-       saved respectively to ``model.uhat`` and ``model.vhat``. 
+       saved respectively to ``self.model.uhat`` and ``self.model.vhat``. 
     """
     model = self.model
     Q     = model.Q
@@ -191,37 +190,14 @@ class BalanceVelocity(Physics):
   
   def solve(self, annotate=False):
     r"""
-    Solve the balance velocity magnitude :math:`\Vert \bar{\mathbf{u}} \Vert`.
+    Solve the balance velocity magnitude 
+    :math:`\Vert \bar{\mathbf{u}} \Vert = \bar{u}` from
 
-    This will be completed in three steps,
+    .. math::
 
-    1. Solve for the smoothed component of surface gradient : 
+       \nabla \cdot \left( \bar{\mathbf{u}} H \right) = f,
 
-       .. math::
-       
-          d_x = \frac{\partial S}{\partial x}, \hspace{10mm}
-          d_y = \frac{\partial S}{\partial y}
- 
-       saved respectively to ``model.d_x`` and ``model.d_y``. 
-    
-    2. Calculate the normalized flux directions :
-       
-       .. math::
-       
-          \hat{u} = -\frac{d_x}{\Vert \mathbf{d} \Vert}, \hspace{10mm}
-          \hat{v} = -\frac{d_y}{\Vert \mathbf{d} \Vert},
- 
-       saved respectively to ``model.d_x`` and ``model.d_y``. 
-    
-    3. Calculate the balance velocity magnitude 
-       :math:`\Vert \bar{\mathbf{u}} \Vert`
-       from
-
-       .. math::
-
-          \nabla \cdot \left( \bar{\mathbf{u}} H \right) = f
-
-       saved to ``model.Ubar``.
+    saved to ``self.model.Ubar``.
 
     """
     model = self.model

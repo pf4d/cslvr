@@ -1,6 +1,6 @@
 from fenics               import *
 from dolfin_adjoint       import *
-from cslvr.io             import print_text, get_text, print_min_max
+from cslvr.inputoutput    import print_text, get_text, print_min_max
 from copy                 import copy
 import numpy              as np
 import matplotlib.pyplot  as plt
@@ -13,6 +13,7 @@ import re
 class Model(object):
   """ 
   The basic model from which each of these inherit :
+
    * :class:`~latmodel.LatModel`       - plane strain model
    * :class:`~hybridmodel.HybridModel` - L1L2 "hybrid" model
    * :class:`~d1model.D1Model`         - 1D firn model
@@ -20,6 +21,7 @@ class Model(object):
    * :class:`~d3model.D3Model`         - 3D model (first-order, full-Stokes)
 
   Args:
+
     :mesh:         the :class:`~fenics.Mesh` instance.
                          
     :out_dir:      string location for the output directory, default

@@ -7,7 +7,7 @@ from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
 from scipy.io           import loadmat, netcdf_file
 from scipy.interpolate  import griddata
 from pyproj             import Proj, transform
-from cslvr.io           import print_text
+from cslvr.inputoutput  import print_text
 
 class DataFactory(object):
 
@@ -32,6 +32,9 @@ class DataFactory(object):
   
   @staticmethod
   def get_ant_measures(res = 900):
+    """
+    Antarctica measures surface velocity data.
+    """
     
     s    = "::: getting Antarctica measures data from DataFactory :::"
     print_text(s, DataFactory.color)

@@ -18,7 +18,7 @@ from pylab             import array, linspace, ones, meshgrid, figure, \
                               sqrt, show
 from fenics            import Mesh, MeshEditor, Point, File
 from pyproj            import transform
-from io                import print_text, print_min_max
+from cslvr.inputoutput import print_text, print_min_max
 #from scipy.spatial     import ConvexHull
 from shapely.geometry  import Polygon
 from shapely.geometry  import Point as shapelyPoint

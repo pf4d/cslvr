@@ -1,7 +1,7 @@
-from helper         import raiseNotDefined
-from fenics         import *
-from dolfin_adjoint import *
-from cslvr.io       import print_text
+from helper            import raiseNotDefined
+from fenics            import *
+from dolfin_adjoint    import *
+from cslvr.inputoutput import print_text
 
 
 class Physics(object):

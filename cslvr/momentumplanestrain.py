@@ -1,6 +1,6 @@
 from fenics               import *
 from dolfin_adjoint       import *
-from cslvr.io             import print_text, print_min_max
+from cslvr.inputoutput    import print_text, print_min_max
 from cslvr.d2model        import D2Model
 from cslvr.latmodel       import LatModel
 from cslvr.physics        import Physics

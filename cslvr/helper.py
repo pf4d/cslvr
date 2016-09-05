@@ -11,7 +11,7 @@ from matplotlib              import colors, ticker
 from matplotlib.ticker       import LogFormatter, ScalarFormatter
 from pyproj                  import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable, inset_locator
-from cslvr.io                import print_text, DataInput
+from cslvr.inputoutput       import print_text, DataInput
 
 def raiseNotDefined():
   fileName = inspect.stack()[1][1]

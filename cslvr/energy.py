@@ -1,6 +1,6 @@
 from fenics                 import *
 from dolfin_adjoint         import *
-from cslvr.io               import get_text, print_text, print_min_max
+from cslvr.inputoutput      import get_text, print_text, print_min_max
 from cslvr.d3model          import D3Model
 from cslvr.d2model          import D2Model
 from cslvr.d1model          import D1Model

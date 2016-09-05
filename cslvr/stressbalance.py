@@ -1,6 +1,6 @@
-from cslvr.physics import Physics
-from cslvr.io      import print_text, print_min_max
-from fenics        import *
+from cslvr.physics     import Physics
+from cslvr.inputoutput import print_text, print_min_max
+from fenics            import *
 
 
 class StressBalance(Physics):

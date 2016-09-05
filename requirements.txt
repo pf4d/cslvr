@@ -1,1 +1,9 @@
 ./
+
+scipy
+numpy
+matplotlib
+colored
+termcolor
+pyproj
+tifffile

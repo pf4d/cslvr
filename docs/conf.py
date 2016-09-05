@@ -41,7 +41,10 @@ class Mock(MagicMock):
     return Mock()
 
 MOCK_MODULES = ['fenics', 
-                'Tifffile',
+                'tifffile',
+                'scipy',
+                'Image',
+                'pylab',
                 'termcolor',
                 'shapely',
                 'colored',

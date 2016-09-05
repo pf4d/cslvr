@@ -45,11 +45,12 @@ MOCK_MODULES = ['fenics',
                 'scipy',
                 'Image',
                 'pylab',
+                'numpy',
                 'termcolor',
                 'shapely',
                 'colored',
                 'pyproj',
-                'pygmsh',
+                'gmshpy',
                 'dolfin_adjoint']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 

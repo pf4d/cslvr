@@ -43,6 +43,7 @@ class Mock(MagicMock):
 MOCK_MODULES = ['fenics', 
                 'tifffile',
                 'scipy',
+                'scipy.io',
                 'Image',
                 'pylab',
                 'numpy',

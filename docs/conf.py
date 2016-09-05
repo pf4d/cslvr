@@ -31,6 +31,26 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
 #
 # needs_sphinx = '1.0'
 
+# mock out packages for autodock
+
+from mock import Mock as MagicMock
+
+class Mock(MagicMock):
+  @classmethod
+  def __getattr__(cls, name):
+    return Mock()
+
+MOCK_MODULES = ['fenics', 
+                'Tifffile',
+                'termcolor',
+                'shapely',
+                'colored',
+                'pyproj',
+                'pygmsh',
+                'dolfin_adjoint']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.

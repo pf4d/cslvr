@@ -45,6 +45,8 @@ MOCK_MODULES = ['fenics',
                 'scipy',
                 'scipy.io',
                 'scipy.interpolate',
+                'cslvr.inputoutput',
+                'cslvr.physics'
                 'Image',
                 'pylab',
                 'numpy',

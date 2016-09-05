@@ -48,7 +48,6 @@ from momentumhybrid      import *
 from momentumplanestrain import *
 from momentumstokes      import *
 from momentum            import *
-from monolithic          import *
 from physics             import *
 from stressbalance       import *
 from surfacemassbalance  import *

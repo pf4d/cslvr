@@ -76,7 +76,7 @@ MOCK_MODULES = ['fenics',
 #                'cslvr.d1model',
 #                'cslvr.hybridmodel',
 #                'cslvr.latmodel',
-#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 
 # Add any Sphinx extension module names here, as strings. They can be

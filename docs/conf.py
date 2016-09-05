@@ -36,6 +36,7 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
 from mock import Mock as MagicMock
 
 class Mock(MagicMock):
+  __all__ = []
   @classmethod
   def __getattr__(cls, name):
     return Mock()

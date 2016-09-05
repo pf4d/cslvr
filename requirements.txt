@@ -1,7 +1,6 @@
 ./
 
 scipy
-shapely
 Image
 numpy
 matplotlib

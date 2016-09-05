@@ -44,10 +44,12 @@ class Mock(MagicMock):
 MOCK_MODULES = ['fenics', 
                 'ufl',
                 'Image',
+                'shapely',
+                'shapely.geometry',
+                'shapely.ops',
                 'mpl_toolkits',
                 'mpl_toolkits.basemap',
                 'mpl_toolkits.axes_grid1',
-                'colored',
                 'gmshpy',
                 'dolfin_adjoint']
 #                'cslvr.inputoutput',

@@ -51,6 +51,7 @@ MOCK_MODULES = ['fenics',
                 'mpl_toolkits.basemap',
                 'mpl_toolkits.axes_grid1',
                 'gmshpy',
+                'tifffile',
                 'dolfin_adjoint']
 #                'cslvr.inputoutput',
 #                'cslvr',

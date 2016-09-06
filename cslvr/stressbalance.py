@@ -69,15 +69,15 @@ class StressBalance(Physics):
     N_zz = model.vert_extrude(t_zz, d='down', Q=model.Q_non_periodic)
 
     # save the membrane stresses :
-    model.init_N_ii(N_ii, cls=self)
-    model.init_N_ij(N_ij, cls=self)
-    model.init_N_iz(N_iz, cls=self)
-    model.init_N_ji(N_ji, cls=self)
-    model.init_N_jj(N_jj, cls=self)
-    model.init_N_jz(N_jz, cls=self)
-    model.init_N_zi(N_zi, cls=self)
-    model.init_N_zj(N_zj, cls=self)
-    model.init_N_zz(N_zz, cls=self)
+    model.init_N_ii(N_ii)
+    model.init_N_ij(N_ij)
+    model.init_N_iz(N_iz)
+    model.init_N_ji(N_ji)
+    model.init_N_jj(N_jj)
+    model.init_N_jz(N_jz)
+    model.init_N_zi(N_zi)
+    model.init_N_zj(N_zj)
+    model.init_N_zz(N_zz)
     
     # get the components of horizontal velocity :
     u,v,w    = U.split(True)

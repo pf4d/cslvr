@@ -322,18 +322,16 @@ class LatModel(Model):
     H          = self.vert_integrate(Constant(1.0), d='down')
     Hv         = H.vector()
     Hv[Hv < 0] = 0.0
-    print_min_max(H, 'H', cls=self)
+    print_min_max(H, 'H')
     return H
   
-  def solve_hydrostatic_pressure(self, annotate=False, cls=None):
+  def solve_hydrostatic_pressure(self, annotate=False):
     """
     Solve for the hydrostatic pressure 'p'.
     """
-    if cls is None:
-      cls = self
     # solve for vertical velocity :
     s  = "::: solving hydrostatic pressure :::"
-    print_text(s, cls=cls)
+    print_text(s, cls=self)
     rhoi   = self.rhoi
     g      = self.g
     #S      = self.S
@@ -342,7 +340,7 @@ class LatModel(Model):
     p      = self.vert_integrate(rhoi*g, d='down')
     pv     = p.vector()
     pv[pv < 0] = 0.0
-    self.assign_variable(self.p, p, cls=cls)
+    self.assign_variable(self.p, p)
   
   def vert_extrude(self, u, d='up', Q='self'):
     r"""
@@ -387,7 +385,7 @@ class LatModel(Model):
       name = 'extruded'
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(v, 'extruded function', cls=self)
+    print_min_max(v, 'extruded function')
     return v
   
   def vert_integrate(self, u, d='up', Q='self'):
@@ -425,7 +423,7 @@ class LatModel(Model):
     name   = 'value integrated %s' % d 
     v      = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(v, 'vertically integrated function', cls=self)
+    print_min_max(v, 'vertically integrated function')
     return v
 
   def calc_vert_average(self, u):
@@ -440,7 +438,7 @@ class LatModel(Model):
     s = "::: calculating vertical average :::"
     print_text(s, cls=self)
     ubar = project(uhat/H, self.Q, annotate=False)
-    print_min_max(ubar, 'ubar', cls=self)
+    print_min_max(ubar, 'ubar')
     try:
       name = 'vertical average of %s' % u.name()
     except AttributeError:
@@ -449,22 +447,6 @@ class LatModel(Model):
     ubar = self.vert_extrude(ubar, d='down')
     return ubar
 
-  def save_subdomain_data(self, h5File):
-    """
-    save all the subdomain data to hd5f file <h5File>.
-    """
-    s = "::: writing 'ff' FacetFunction to supplied hdf5 file :::"
-    print_text(s, cls=self)
-    h5File.write(self.ff,     'ff')
-
-    s = "::: writing 'ff_acc' FacetFunction to supplied hdf5 file :::"
-    print_text(s, cls=self)
-    h5File.write(self.ff_acc, 'ff_acc')
-
-    s = "::: writing 'cf' CellFunction to supplied hdf5 file :::"
-    print_text(s, cls=self)
-    h5File.write(self.cf,     'cf')
-  
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -480,27 +462,6 @@ class LatModel(Model):
       def eval(self, values, x):
         values[0] = abs(min(0, x[1]))
     self.D = Depth(element=self.Q.ufl_element())
-    
-    # Enthalpy model
-    self.theta_surface = Function(self.Q, name='theta_surface')
-    self.theta_float   = Function(self.Q, name='theta_float')
-    self.theta_app     = Function(self.Q, name='theta_app')
-    self.theta         = Function(self.Q, name='theta')
-    self.theta0        = Function(self.Q, name='theta0')
-    self.W0            = Function(self.Q, name='W0')
-    self.thetahat      = Function(self.Q, name='thetahat')
-    self.uhat          = Function(self.Q, name='uhat')
-    self.vhat          = Function(self.Q, name='vhat')
-    self.what          = Function(self.Q, name='what')
-    self.mhat          = Function(self.Q, name='mhat')
-    self.rho_b         = Function(self.Q, name='rho_b')
-
-    # Age model   
-    self.age           = Function(self.Q, name='age')
-    self.a0            = Function(self.Q, name='a0')
-
-    # Surface climate model
-    self.precip        = Function(self.Q, name='precip')
 
 
 

@@ -53,18 +53,6 @@ MOCK_MODULES = ['fenics',
                 'gmshpy',
                 'tifffile',
                 'dolfin_adjoint']
-#                'cslvr.inputoutput',
-#                'cslvr',
-#                'cslvr.physics',
-#                'cslvr.model',
-#                'cslvr.momentum',
-#                'cslvr.energy',
-#                'cslvr.helper',
-#                'cslvr.d3model',
-#                'cslvr.d2model',
-#                'cslvr.d1model',
-#                'cslvr.hybridmodel',
-#                'cslvr.latmodel',
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 

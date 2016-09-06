@@ -10,15 +10,14 @@ class HybridModel(Model):
   """ 
   """
 
-  def __init__(self, mesh, out_dir='./results/', save_state=False, 
-               state=None, use_periodic=False, **gfs_kwargs):
+  def __init__(self, mesh, out_dir='./results/', order=1, 
+               use_periodic=False):
     """
-    Create and instance of a 2D model.
+    Create and instance of a 2D 'hybrid' model.
     """
     s = "::: INITIALIZING HYBRID MODEL :::"
     print_text(s, cls=self)
-    
-    Model.__init__(self, mesh, out_dir, use_periodic)
+    Model.__init__(self, mesh, out_dir, order, use_periodic)
   
   def color(self):
     return '150'
@@ -172,48 +171,15 @@ class HybridModel(Model):
     
     s = "    - done - "
     print_text(s, cls=self)
-    
-    self.ds      = Measure('ds')[self.ff]
-    self.dx      = Measure('dx')[self.cf]
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+  
+    self.set_measures(self.ff, self.cf)
 
-    if self.save_state:
-      s = "::: writing 'ff' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.ff,     'ff')
-
-      s = "::: writing 'ff_acc' FacetFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.ff_acc, 'ff_acc')
-
-      s = "::: writing 'cf' CellFunction to '%sstate.h5' :::"
-      print_text(s % self.out_dir, cls=self)
-      self.state.write(self.cf,     'cf')
-
-  def generate_function_spaces(self, use_periodic=False, **kwargs):
+  def generate_function_spaces(self, order=1, use_periodic=False, **kwargs):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(HybridModel, self).generate_function_spaces(use_periodic)
+    super(HybridModel, self).generate_function_spaces(order, use_periodic)
    
     # default values if not provided : 
     self.poly_deg = kwargs.get('poly_deg', 2)
@@ -228,46 +194,38 @@ class HybridModel(Model):
     s = "    - 2D function spaces created - "
     print_text(s, cls=self)
   
-  def init_T_T0(self, T, cls=None):
+  def init_T_T0(self, T):
     """
     """
-    if cls is None:
-      cls = self
     s = "::: initializing temperature in model.Q space to model.Z space :::"
-    print_text(s, cls=cls)
+    print_text(s, cls=self)
     T = project(as_vector([T]*self.N_T), self.Z, annotate=False)
-    self.assign_variable(self.T_,  T, cls=cls)
-    self.assign_variable(self.T0_, T, cls=cls)
+    self.assign_variable(self.T_,  T)
+    self.assign_variable(self.T0_, T)
     
-  def init_H_H0(self, H, cls=None):
+  def init_H_H0(self, H):
     """
     """
-    if cls is None:
-      cls = self
     s = "::: initializing thickness :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.H,  H, cls=cls)
-    self.assign_variable(self.H0, H, cls=cls)
+    print_text(s, cls=self)
+    self.assign_variable(self.H,  H)
+    self.assign_variable(self.H0, H)
 
-  def init_H_bounds(self, H_min, H_max, cls=None):
+  def init_H_bounds(self, H_min, H_max):
     """
     """
-    if cls is None:
-      cls = self
     s = "::: initializing bounds on thickness :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.H_min, H_min, cls=cls)
-    self.assign_variable(self.H_max, H_max, cls=cls)
+    print_text(s, cls=self)
+    self.assign_variable(self.H_min, H_min)
+    self.assign_variable(self.H_max, H_max)
 
-  def init_U(self, U, cls=None):
+  def init_U(self, U):
     """
     """
     # NOTE: this overides model.init_U
-    if cls is None:
-      cls = self.this
     s = "::: initializing velocity :::"
-    print_text(s, cls=cls)
-    self.assign_variable(self.U3, U, cls=cls)
+    print_text(s, cls=self)
+    self.assign_variable(self.U3, U)
   
   def initialize_variables(self):
     """
@@ -324,17 +282,6 @@ class HybridModel(Model):
     self.u_s           = u_s
     self.v_s           = v_s
     self.w_s           = w_s
-    
-    # SSA-balance : 
-    self.U   = Function(self.Q2)
-    self.dU  = TrialFunction(self.Q2)
-    self.Phi = TestFunction(self.Q2)
-    self.Lam = Function(self.Q2)
-
-    # SSA stress-balance variables :
-    self.etabar        = Function(self.Q, name='etabar')
-    self.ubar          = Function(self.Q, name='ubar')
-    self.vbar          = Function(self.Q, name='vbar')
-    self.wbar          = Function(self.Q, name='wbar')
+ 
 
 

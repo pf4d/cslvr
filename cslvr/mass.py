@@ -470,8 +470,8 @@ class MassHybrid(Mass):
           form_compiler_parameters=params['ffc_params'],
           annotate=annotate)
 
-    print_min_max(model.ubar_c, 'ubar_c', cls=self)
-    print_min_max(model.vbar_c, 'vbar_c', cls=self)
+    print_min_max(model.ubar_c, 'ubar_c')
+    print_min_max(model.vbar_c, 'vbar_c')
 
     # SOLVE MASS CONSERVATION bounded by (H_max, H_min) :
     meth   = params['solver']['snes_solver']['method']
@@ -488,10 +488,10 @@ class MassHybrid(Mass):
     #s.parameters.update(params['solver'])
     out = self.solver.solve(annotate=annotate)
     
-    print_min_max(model.H, 'H', cls=self)
+    print_min_max(model.H, 'H')
     
     # update previous time step's H :
-    model.assign_variable(model.H0, model.H, cls=self)
+    model.assign_variable(model.H0, model.H)
     
     # update the surface :
     s    = "::: updating surface :::"
@@ -499,7 +499,7 @@ class MassHybrid(Mass):
     B_v = model.B.vector().array()
     H_v = model.H.vector().array()
     S_v = B_v + H_v
-    model.assign_variable(model.S, S_v, cls=self)
+    model.assign_variable(model.S, S_v)
 
     return out
 

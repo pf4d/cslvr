@@ -80,7 +80,7 @@ class Energy(Physics):
     s = "::: RE-INITIALIZING ENERGY PHYSICS WITH TRANSIENT FORM :::"
     print_text(s, self.color())
 
-    self.model.init_time_step(time_step, cls=self)
+    self.model.init_time_step(time_step)
     
     self.initialize(model                = self.model,
                     momentum             = self.momentum_s,
@@ -178,7 +178,7 @@ class Energy(Physics):
     #Tn    = 34.46 - 0.00914*S - 0.27974*lat
     
     # Apply the lapse rate to the surface boundary condition
-    model.init_T_surface(Tn, cls=self)
+    model.init_T_surface(Tn)
  
   def adjust_adot(self):
     """
@@ -196,7 +196,7 @@ class Energy(Physics):
       shf_dofs = np.where(model.mask.vector().array() == 0.0)[0]
       adot[model.shf_dofs] = -100
 
-    model.init_adot(adot, cls=self)
+    model.init_adot(adot)
   
   def form_cost_ftn(self, kind='abs'):
     """
@@ -272,8 +272,8 @@ class Energy(Physics):
     except AttributeError:
       R = 0.0
     J = assemble(self.Jp, annotate=False)
-    print_min_max(R, 'R', cls=self)
-    print_min_max(J, 'J', cls=self)
+    print_min_max(R, 'R')
+    print_min_max(J, 'J')
     return (R, J)
   
   def calc_obj(self):
@@ -281,7 +281,7 @@ class Energy(Physics):
     Used to facilitate printing the objective function in adjoint solves.
     """
     J = assemble(self.Jp, annotate=False)
-    print_min_max(J, 'J', cls=self)
+    print_min_max(J, 'J')
     return J
 
   def partition_energy(self, annotate=False):
@@ -303,7 +303,7 @@ class Energy(Physics):
 
     # create pressure-adjusted temperature for rate-factor :
     Tp_v[Tp_v > T_w] = T_w
-    model.init_Tp(Tp_v, cls=self)
+    model.init_Tp(Tp_v)
     
     # correct for the pressure-melting point :
     T_melt_v     = model.T_melt.vector().array()
@@ -311,7 +311,7 @@ class Energy(Physics):
     warm         = theta_v >= theta_melt_v
     cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
-    model.init_T(T_v, cls=self)
+    model.init_T(T_v)
     
     # water content solved diagnostically :
     s = "::: calculating water content :::"
@@ -321,8 +321,8 @@ class Energy(Physics):
     # update water content :
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
     W_v[W_v > 1.0]  = 1.0    # no hot water, please.
-    model.assign_variable(model.W0,  model.W,  cls=self)
-    model.init_W(W_v, cls=self)
+    model.assign_variable(model.W0,  model.W)
+    model.init_W(W_v)
     
   def optimize_water_flux(self, max_iter, bounds, method='ipopt',
                           adj_save_vars=None, adj_callback=None):
@@ -357,8 +357,8 @@ class Energy(Physics):
     def eval_cb(I, Fb):
       s    = '::: adjoint objective eval post callback function :::'
       print_text(s, cls=self)
-      print_min_max(I,  'I',  cls=self)
-      print_min_max(Fb, 'Fb', cls=self)
+      print_min_max(I,  'I')
+      print_min_max(Fb, 'Fb')
     
     # objective gradient callback function :
     def deriv_cb(I, dI, Fb):
@@ -375,14 +375,14 @@ class Energy(Physics):
         counter += 1
       s    = '::: adjoint obj. gradient post callback function :::'
       print_text(s, cls=self)
-      print_min_max(dI,    'dI/Fb', cls=self)
+      print_min_max(dI,    'dI/Fb')
       
       # update the DA current velocity to the model for evaluation 
       # purposes only; the model.assign_variable function is 
       # annotated for purposes of linking physics models to the adjoint
       # process :
       theta_opt = DolfinAdjointVariable(model.theta).tape_value()
-      model.init_theta(theta_opt, cls=self)
+      model.init_theta(theta_opt)
 
       # print functional values :
       model.Fb.assign(Fb, annotate=False)
@@ -450,7 +450,7 @@ class Energy(Physics):
 
     # extrude the flux up and make the optimal control variable available :
     Fb_ext = model.vert_extrude(Fb_opt, d='up')
-    model.init_Fb(Fb_ext, cls=self)
+    model.init_Fb(Fb_ext)
     #Control(model.Fb).update(Fb_ext)  # FIXME: does this work?
     
     # save state to unique hdf5 file :
@@ -528,7 +528,7 @@ class Energy(Physics):
     print_text(s, cls=self)
     model       = self.model
     rho_b       = project(self.rho, annotate=False)
-    model.assign_variable(model.rhob, rho_b, cls=self)
+    model.assign_variable(model.rhob, rho_b)
 
   def solve(self, annotate=False, params=None):
     """ 
@@ -747,7 +747,7 @@ class Enthalpy(Energy):
    
       # we need to initialize the previous time step, so I hope you've 
       # either called model.init_theta() or model.init_T() :
-      model.assign_variable(theta0, model.theta, cls=self)
+      model.assign_variable(theta0, model.theta)
 
       # Skewed test function.  Note that vertical velocity has 
       # the mesh velocity subtracted from it.
@@ -838,12 +838,12 @@ class Enthalpy(Energy):
       print_text(s, cls=self)
 
       # initialize the boundary conditions :
-      model.init_theta_surface(theta_s_v, cls=self)
-      model.init_theta_app(theta_s_v,     cls=self)
-      model.init_theta_float(theta_f_v,   cls=self)
+      model.init_theta_surface(theta_s_v)
+      model.init_theta_app(theta_s_v)
+      model.init_theta_float(theta_f_v)
 
       # initialize energy from W and T :
-      model.init_theta(theta_i_v,         cls=self)
+      model.init_theta(theta_i_v)
       
       # derive temperature and temperature-melting flux :
       self.calc_basal_temperature_flux()
@@ -870,7 +870,7 @@ class Enthalpy(Energy):
       PE = model.calc_vert_average(PE)
     else:
       PE = project(PE, annotate=False)
-    model.init_PE(PE, cls=self)
+    model.init_PE(PE)
 
   def calc_vert_avg_W(self):
     """
@@ -882,7 +882,7 @@ class Enthalpy(Energy):
     model   = self.model
 
     Wbar = model.calc_vert_average(model.W)
-    model.init_Wbar(Wbar, cls=self)
+    model.init_Wbar(Wbar)
 
   def calc_vert_avg_strain_heat(self):
     """
@@ -901,7 +901,7 @@ class Enthalpy(Energy):
 
     # calculate downward vertical integral :
     Qbar = model.calc_vert_average(Q)
-    model.init_Qbar(Qbar, cls=self)
+    model.init_Qbar(Qbar)
  
   def calc_temperate_thickness(self):
     """
@@ -914,7 +914,7 @@ class Enthalpy(Energy):
    
     alpha_int = model.vert_integrate(model.alpha, d='down')
     alpha_int = model.vert_extrude(alpha_int, d='up')
-    model.init_alpha_int(alpha_int, cls=self)
+    model.init_alpha_int(alpha_int)
  
   def calc_temp_rat(self):
     """
@@ -932,7 +932,7 @@ class Enthalpy(Energy):
     temp_rat_v = alpha_int_v / H_v
     temp_rat_v[temp_rat_v < 0.0] = 0.0
     temp_rat_v[temp_rat_v > 1.0] = 1.0
-    model.init_temp_rat(alpha_int_v / H_v, cls=self)
+    model.init_temp_rat(alpha_int_v / H_v)
 
   def calc_T_melt(self, annotate=False):
     """
@@ -953,8 +953,8 @@ class Enthalpy(Energy):
     Tm    = T_w(0) - gamma(0)*p_v
     tht_m = 146.3*Tm + 7.253/2.0*Tm**2
     
-    model.assign_variable(model.T_melt,     Tm,    annotate=annotate, cls=self)
-    model.assign_variable(model.theta_melt, tht_m, annotate=annotate, cls=self)
+    model.assign_variable(model.T_melt,     Tm,    annotate=annotate)
+    model.assign_variable(model.theta_melt, tht_m, annotate=annotate)
   
   def get_solve_params(self):
     """
@@ -1002,13 +1002,13 @@ class Enthalpy(Energy):
     #print_min_max(dg, 'dg')
     #alpha_v[:]         = 0.0
     #alpha_v[dg < 1e-2] = 1.0
-    #model.init_alpha(alpha_v, cls=self)
+    #model.init_alpha(alpha_v)
 
     W_v              = model.W.vector().array()
     alpha_v          = model.alpha.vector().array()
     alpha_v[:]       = 0
     alpha_v[W_v > 0] = 1
-    model.init_alpha(alpha_v, cls=self)
+    model.init_alpha(alpha_v)
 
   def calc_basal_temperature_flux(self):
     """
@@ -1035,7 +1035,7 @@ class Enthalpy(Energy):
     A_n.ident_zeros()
    
     solve(A_n, model.gradT_B.vector(), B_n, 'cg', 'amg', annotate=False)
-    print_min_max(model.gradT_B, 'gradT_B', cls=self)
+    print_min_max(model.gradT_B, 'gradT_B')
 
   def calc_basal_temperature_melting_flux(self):
     """
@@ -1062,7 +1062,7 @@ class Enthalpy(Energy):
     A_n.ident_zeros()
    
     solve(A_n, model.gradTm_B.vector(), B_n, 'cg', 'amg', annotate=False)
-    print_min_max(model.gradTm_B, 'gradTm_B', cls=self)
+    print_min_max(model.gradTm_B, 'gradTm_B')
 
   def solve_basal_melt_rate(self):
     """
@@ -1110,9 +1110,9 @@ class Enthalpy(Energy):
     if model.N_OMEGA_FLT > 0:
       Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
 
-    model.init_Mb(Mb_v, cls=self)
+    model.init_Mb(Mb_v)
     Mb_ext = model.vert_extrude(model.Mb, d='up')
-    model.init_Mb(Mb_ext, cls=self)
+    model.init_Mb(Mb_ext)
 
   def solve(self, annotate=False):
     """ 
@@ -1139,17 +1139,16 @@ class Enthalpy(Energy):
     #      annotate=annotate, solver_parameters=self.solve_params['nparams'])
     
     # update the model variable :
-    model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+    model.assign_variable(model.theta,self.theta,annotate=annotate)
     #model.theta.interpolate(self.theta, annotate=False)
-    #print_min_max(model.theta, 'theta', cls=self)
+    #print_min_max(model.theta, 'theta')
 
     # update the temperature and water content for other physics :
     self.partition_energy(annotate=False)
     
     # update the previous energy if solving the transient equation :
     if self.transient:
-      model.assign_variable(self.theta0, self.theta, cls=self,
-                            annotate=annotate)
+      model.assign_variable(self.theta0, self.theta, annotate=annotate)
   
   def derive_temperate_zone(self, annotate=False):
     """ 
@@ -1197,7 +1196,7 @@ class Enthalpy(Energy):
     alpha_v          = model.alpha.vector().array()
     alpha_v[:]       = 0
     alpha_v[W_v > 0] = 1
-    model.init_alpha(alpha_v, cls=self)
+    model.init_alpha(alpha_v)
 
     # reset to previous energy flux mode, if necessary :
     if zef:
@@ -1288,9 +1287,9 @@ class Enthalpy(Energy):
       counter     += 1
       
       # update the model variable :
-      model.assign_variable(model.theta,self.theta,annotate=annotate,cls=self)
+      model.assign_variable(model.theta,self.theta,annotate=annotate)
       #model.theta.interpolate(self.theta, annotate=False)
-      #print_min_max(model.theta, 'theta', cls=self)
+      #print_min_max(model.theta, 'theta')
 
       # update the temperature and water content for other physics :
       self.partition_energy(annotate=annotate)
@@ -1455,7 +1454,7 @@ class Enthalpy(Energy):
     #      annotate = annotate, solver_parameters = nparams)
     solve(theta_a == theta_L, theta, theta_bc,
           solver_parameters = self.solve_params['solver'], annotate=annotate)
-    model.assign_variable(model.theta_app, theta, cls=self)
+    model.assign_variable(model.theta_app, theta)
 
     if init:
       # temperature solved with quadradic formula, using expression for c : 
@@ -1471,7 +1470,7 @@ class Enthalpy(Energy):
       warm         = theta_v >= theta_melt_v
       cold         = theta_v <  theta_melt_v
       T_v[warm]    = T_melt_v[warm]
-      model.assign_variable(model.T, T_v, cls=self)
+      model.assign_variable(model.T, T_v)
       
       # water content solved diagnostically :
       s = "::: calculating initial water content :::"
@@ -1480,8 +1479,8 @@ class Enthalpy(Energy):
       
       # update water content :
       W_v[W_v < 0.0]  = 0.0   # no water where frozen, please.
-      model.assign_variable(model.W0, W_v, cls=self)
-      model.assign_variable(model.W,  W_v, cls=self)
+      model.assign_variable(model.W0, W_v)
+      model.assign_variable(model.W,  W_v)
 
 
 class EnergyHybrid(Energy):
@@ -1690,7 +1689,7 @@ class EnergyHybrid(Energy):
           solver_parameters=self.solve_params['solver'],
           form_compiler_parameters=self.solve_params['ffc_params'],
           annotate=annotate)
-    print_min_max(model.T_, 'T_', cls=self)
+    print_min_max(model.T_, 'T_')
 
     if self.transient:
       model.T0_.assign(model.T_)
@@ -1699,12 +1698,12 @@ class EnergyHybrid(Energy):
     T_v                 = model.T_.vector().array()
     T_melt_v            = model.Tm.vector().array()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
-    model.assign_variable(model.T_, T_v, cls=self)
+    model.assign_variable(model.T_, T_v)
     
     out_T = model.T_.split(True)            # deepcopy avoids projections
     
-    model.assign_variable(model.Ts, out_T[0],  cls=self)
-    model.assign_variable(model.Tb, out_T[-1], cls=self) 
+    model.assign_variable(model.Ts, out_T[0])
+    model.assign_variable(model.Tb, out_T[-1]) 
 
   def calc_T_melt(self, annotate=False):
     """
@@ -1718,8 +1717,8 @@ class EnergyHybrid(Energy):
     T_melt  = project(self.Tm, annotate=annotate)
     
     Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
-    model.assign_variable(model.T_melt, Tb_m,   cls=self)
-    model.assign_variable(model.Tm,     T_melt, cls=self)
+    model.assign_variable(model.T_melt, Tb_m)
+    model.assign_variable(model.Tm,     T_melt)
 
 
 class EnergyFirn(Energy):

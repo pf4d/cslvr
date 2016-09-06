@@ -7,6 +7,9 @@ from cslvr.inputoutput import print_text
 class Physics(object):
   """
   This abstract class outlines the structure of a physics calculation.
+
+  :param model: the model instance for this physics problem
+  :type model:  :class:`~model.Model`
   """
 
   def __new__(self, model, *args, **kwargs):
@@ -20,27 +23,80 @@ class Physics(object):
   def color(self):
     """
     return the default color for this class.
+
+    :rtype: string
     """
     return 'white'
   
   def default_solve_params(self):
     """ 
     Returns a set of default solver parameters that yield good performance
+
+    :rtype: dict
     """
     params  = {'solver' : 'mumps'}
     return params
 
-  def get_solve_params(self):
-    """
-    Returns the solve parameters.
-    """
-    return self.default_solve_params()
-
   def form_reg_ftn(self, c, integral, kind='TV', alpha=1.0,
                    alpha_tik=1e-7, alpha_tv=10):
-    """
-    Formulates, and returns the regularization functional for use 
-    with adjoint, saved to self.R.
+    r"""
+    Formulates the regularization functional for with regularization 
+    parameter :math:`\alpha` given by ``alpha`` for use 
+    with optimization of the control parameter :math:`c` given by ``c`` 
+    over the integral ``integral``.
+
+    The choices for ``kind`` are :
+
+    1. ``Tikhonov`` -- Tikhonov regularization
+
+    .. math::
+
+      \mathscr{R}(c) = \frac{\alpha}{2} \int_{\Gamma} \nabla c \cdot \nabla c\ d\Gamma
+
+    2. ``TV`` -- total variation regularization
+
+    .. math::
+
+      \mathscr{R}(c) = \alpha \int_{\Gamma} \left( \nabla c \cdot \nabla c + c_0 \right)^{\frac{1}{2}}\ d\Gamma,
+
+    3. ``square`` -- squared regularization
+
+    .. math::
+
+      \mathscr{R}(c) = \frac{\alpha}{2} \int_{\Gamma} c^2\ d\Gamma,
+
+    4. ``abs`` -- absolute regularization
+
+    .. math::
+    
+      \mathscr{R}(c) = \alpha \int_{\Gamma} |c|\ d\Gamma,
+
+    5. ``TV_Tik_hybrid`` -- Tikhonov/total-variation hybrid
+
+    .. math::
+
+      \mathscr{R}(c) = \frac{\alpha_{\text{tik}}}{2} \int_{\Gamma} \nabla c \cdot \nabla c\ d\Gamma + \alpha_{\text{tv}} \int_{\Gamma} \left( \nabla c \cdot \nabla c + c_0 \right)^{\frac{1}{2}}\ d\Gamma,
+
+    This saves the regularization parameter :math:`\alpha` to ``self.alpha``, 
+    ``kind`` to ``self.reg_ftn_type``, regularization function to ``self.R``, 
+    and regularization functional without multiplying by :math:`\alpha` 
+    to ``self.Rp``.
+
+    :param c:         the control variable
+    :param integral:  measure over which to integrate 
+                      (see :func:`~model.calculate_boundaries`)
+    :param kind:      kind of regularization to use
+    :param alpha:     regularization parameter
+    :param alpha_tik: Tikhonov regularization parameter (if ``kind`` is
+                      ``TV_Tik_hybrid``)
+    :param alpha_tv:  TV regularization parameter (if ``kind`` is 
+                      ``TV_Tik_hybrid``)
+    :type c:          :class:`~fenics.Function`
+    :type integral:   int 
+    :type kind:       string
+    :type alpha:      float
+    :type alpha_tik:  float
+    :type alpha_tv:   float
     """
     self.alpha = alpha   # need to save this for printing values.
     model = self.model

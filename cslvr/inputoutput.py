@@ -527,12 +527,10 @@ class DataOutput(object):
                       'projection'        : di.proj.srs})
 
 
-def print_min_max(u, title, color='97', cls=None):
+def print_min_max(u, title, color='97'):
   """
   Print the minimum and maximum values of <u>, a Vector, Function, or array.
   """
-  #if cls is not None:
-  #  color = cls.color()
   if isinstance(u, GenericVector):
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())

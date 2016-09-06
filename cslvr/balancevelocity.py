@@ -171,13 +171,13 @@ class BalanceVelocity(Physics):
            "with kappa = %g :::" % self.kappa
     print_text(s, cls=self)
     solve(a_dSdx == L_dSdx, model.d_x, annotate=annotate)
-    print_min_max(model.d_x, 'd_x', cls=self)
+    print_min_max(model.d_x, 'd_x')
     
     s    = "::: solving for smoothed y-component of flow direction " + \
            "with kappa = %g :::" % self.kappa
     print_text(s, cls=self)
     solve(a_dSdy == L_dSdy, model.d_y, annotate=annotate)
-    print_min_max(model.d_y, 'd_y', cls=self)
+    print_min_max(model.d_y, 'd_y')
     
     # normalize the direction vector :
     s    =  r"::: calculating normalized flux direction from \nabla S:::"
@@ -185,8 +185,8 @@ class BalanceVelocity(Physics):
     d_x_v = model.d_x.vector().array()
     d_y_v = model.d_y.vector().array()
     d_n_v = np.sqrt(d_x_v**2 + d_y_v**2 + 1e-16)
-    model.assign_variable(model.uhat, d_x_v / d_n_v, cls=self)
-    model.assign_variable(model.vhat, d_y_v / d_n_v, cls=self)
+    model.assign_variable(model.uhat, d_x_v / d_n_v)
+    model.assign_variable(model.vhat, d_y_v / d_n_v)
   
   def solve(self, annotate=False):
     r"""
@@ -206,14 +206,14 @@ class BalanceVelocity(Physics):
     s    = "::: solving velocity balance magnitude :::"
     print_text(s, cls=self)
     solve(self.B == self.a, model.Ubar, annotate=annotate)
-    print_min_max(model.Ubar, 'Ubar', cls=self)
+    print_min_max(model.Ubar, 'Ubar')
     
     # enforce positivity of balance-velocity :
     s    = "::: removing negative values of balance velocity :::"
     print_text(s, cls=self)
     Ubar_v = model.Ubar.vector().array()
     Ubar_v[Ubar_v < 0] = 0
-    model.assign_variable(model.Ubar, Ubar_v, cls=self)
+    model.assign_variable(model.Ubar, Ubar_v)
 
 
 

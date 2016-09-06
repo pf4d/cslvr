@@ -49,7 +49,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     self.assz = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
-    r          = model.r
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -368,7 +367,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     self.assz.assign(model.w, self.w, annotate=annotate)
     #w = project(self.w, model.Q, annotate=annotate)
-    print_min_max(self.w, 'w', cls=self)
+    print_min_max(self.w, 'w')
 
   def solve(self, annotate=False):
     """ 
@@ -390,7 +389,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
+    model.assign_variable(self.get_U(), DOLFIN_EPS)
 
     def cb_ftn():
       self.solve_vert_velocity(annotate)
@@ -414,9 +413,9 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0], 'u', cls=self)
-    print_min_max(U3[1], 'v', cls=self)
-    print_min_max(U3[2], 'w', cls=self)
+    print_min_max(U3[0], 'u')
+    print_min_max(U3[1], 'v')
+    print_min_max(U3[2], 'w')
 
 
 class MomentumDukowiczStokes(Momentum):
@@ -454,7 +453,6 @@ class MomentumDukowiczStokes(Momentum):
     self.assp  = FunctionAssigner(model.p.function_space(), model.Q4.sub(3))
 
     mesh       = model.mesh
-    r          = model.r
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -695,7 +693,7 @@ class MomentumDukowiczStokes(Momentum):
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
+    model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -709,10 +707,10 @@ class MomentumDukowiczStokes(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0],   'u', cls=self)
-    print_min_max(U3[1],   'v', cls=self)
-    print_min_max(U3[2],   'w', cls=self)
-    print_min_max(model.p, 'p', cls=self)
+    print_min_max(U3[0],   'u')
+    print_min_max(U3[1],   'v')
+    print_min_max(U3[2],   'w')
+    print_min_max(model.p, 'p')
 
 
 

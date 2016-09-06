@@ -100,57 +100,9 @@ class D2Model(Model):
     s = "::: generating 2D function spaces :::"
     print_text(s, cls=self)
     
-    ## mini elements :
-    #self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-    #                            constrained_domain=self.pBC)
-    #self.MQ     = self.Q + self.Bub
-    #M3          = MixedFunctionSpace([self.MQ]*3)
-    #self.MV     = MixedFunctionSpace([M3,self.Q])
-    
-    ## Taylor-Hood elements :
-    #V           = VectorFunctionSpace(self.mesh, "CG", 2,
-    #                                  constrained_domain=self.pBC)
-    #self.MV     = V * self.Q
-    
     s = "    - 2D function spaces created - "
     print_text(s, cls=self)
 
-  def generate_stokes_function_spaces(self, kind='mini'):
-    """
-    Generates the appropriate finite-element function spaces from parameters
-    specified in the config file for the model.
-
-    If <kind> == 'mini', use enriched mini elements.
-    If <kind> == 'th',   use Taylor-Hood elements.
-    """
-    s = "::: generating Stokes function spaces :::"
-    print_text(s, cls=self)
-        
-    # mini elements :
-    if kind == 'mini':
-      self.Bub    = FunctionSpace(self.mesh, "B", 4, 
-                                  constrained_domain=self.pBC)
-      self.MQ     = self.Q + self.Bub
-      M3          = MixedFunctionSpace([self.MQ]*3)
-      self.Q4     = MixedFunctionSpace([M3, self.Q])
-      self.Q5     = MixedFunctionSpace([M3, self.Q, self.Q])
-
-    # Taylor-Hood elements :
-    elif kind == 'th':
-      V           = VectorFunctionSpace(self.mesh, "CG", 2,
-                                        constrained_domain=self.pBC)
-      self.Q4     = V * self.Q
-      self.Q5     = V * self.Q * self.Q
-    
-    else:
-      s = ">>> METHOD generate_stokes_function_spaces <kind> FIELD <<<\n" + \
-          ">>> MAY BE 'mini' OR 'th', NOT '%s'. <<<" % kind
-      print_text(s, 'red', 1)
-      sys.exit(1)
-
-    s = "    - Stokes function spaces created - "
-    print_text(s, cls=self)
-    
   def calculate_boundaries(self, latmesh=False, mask=None, lat_mask=None,
                            adot=None, U_mask=None, mark_divide=False):
     """
@@ -397,15 +349,13 @@ class D2Model(Model):
     print_min_max(H, 'H', cls=self)
     return H
   
-  def solve_hydrostatic_pressure(self, annotate=True, cls=None):
+  def solve_hydrostatic_pressure(self, annotate=True):
     """
     Solve for the hydrostatic pressure 'p'.
     """
-    if cls is None:
-      cls = self
     # solve for vertical velocity :
     s  = "::: solving hydrostatic pressure :::"
-    print_text(s, cls=cls)
+    print_text(s, cls=self)
     rhoi   = self.rhoi
     g      = self.g
     #S      = self.S
@@ -414,7 +364,7 @@ class D2Model(Model):
     p      = self.vert_integrate(rhoi*g, d='down')
     pv     = p.vector()
     pv[pv < 0] = 0.0
-    self.assign_variable(self.p, p, cls=cls)
+    self.assign_variable(self.p, p)
   
   def vert_extrude(self, u, d='up', Q='self'):
     r"""
@@ -456,8 +406,8 @@ class D2Model(Model):
     name = '%s extruded %s' % (u.name(), d)
     v    = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'function to be extruded', cls=self)
-    print_min_max(v, 'extruded function', cls=self)
+    print_min_max(u, 'function to be extruded')
+    print_min_max(v, 'extruded function')
     return v
   
   def vert_integrate(self, u, d='up', Q='self'):
@@ -495,7 +445,7 @@ class D2Model(Model):
     name   = 'value integrated %s' % d 
     v      = Function(Q, name=name)
     solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'vertically integrated function', cls=self)
+    print_min_max(u, 'vertically integrated function')
     return v
 
   def calc_vert_average(self, u):
@@ -510,91 +460,12 @@ class D2Model(Model):
     s = "::: calculating vertical average :::"
     print_text(s, cls=self)
     ubar = project(uhat/H, self.Q, annotate=False)
-    print_min_max(ubar, 'ubar', cls=self)
+    print_min_max(ubar, 'ubar')
     name = "vertical average of %s" % u.name()
     ubar.rename(name, '')
     ubar = self.vert_extrude(ubar, d='down')
     return ubar
 
-  def strain_rate_tensor(self):
-    """
-    return the strain-rate tensor of <U>.
-    """
-    U = self.U3
-    return 0.5 * (grad(U) + grad(U).T)
-
-  def effective_strain_rate(self):
-    """
-    return the effective strain rate squared.
-    """
-    epi    = self.strain_rate_tensor()
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = 0.5 * (+ ep_xx**2 + ep_yy**2 + ep_zz**2) \
-                    + ep_xy**2 + ep_xz**2 + ep_yz**2
-    return epsdot
-    
-  def stress_tensor(self):
-    """
-    return the Cauchy stress tensor.
-    """
-    s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color)
-    epi = self.strain_rate_tensor(self.U3)
-    I   = Identity(3)
-
-    sigma = 2*self.eta*epi - self.p*I
-    return sigma
-    
-  def deviatoric_stress_tensor(self):
-    """
-    return the Cauchy stress tensor.
-    """
-    s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-    print_text(s, self.color)
-    epi = self.strain_rate_tensor()
-    tau = 2*self.eta*epi
-    return tau
-  
-  def effective_stress(self):
-    """
-    return the effective stress squared.
-    """
-    tau    = self.deviatoric_stress_tensor()
-    tu_xx  = tau[0,0]
-    tu_yy  = tau[1,1]
-    tu_zz  = tau[2,2]
-    tu_xy  = tau[0,1]
-    tu_xz  = tau[0,2]
-    tu_yz  = tau[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    taudot = 0.5 * (+ tu_xx**2 + tu_yy**2 + tu_zz**2) \
-                    + tu_xy**2 + tu_xz**2 + tu_yz**2
-    return taudot
-
-  def save_subdomain_data(self, h5File):
-    """
-    save all the subdomain data to hd5f file <h5File>.
-    """
-    s = "::: writing 'ff' FacetFunction to supplied hdf5 file :::"
-    print_text(s, cls=self)
-    h5File.write(self.ff,     'ff')
-
-    s = "::: writing 'ff_acc' FacetFunction to supplied hdf5 file :::"
-    print_text(s, cls=self)
-    h5File.write(self.ff_acc, 'ff_acc')
-
-    s = "::: writing 'cf' CellFunction to supplied hdf5 file :::"
-    print_text(s, cls=self)
-    h5File.write(self.cf,     'cf')
-  
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -612,10 +483,6 @@ class D2Model(Model):
     self.D = Depth(element=self.Q.ufl_element())
     
     # Enthalpy model
-    self.theta_surface = Function(self.Q, name='theta_surface')
-    self.theta_float   = Function(self.Q, name='theta_float')
-    self.theta_app     = Function(self.Q, name='theta_app')
-    self.theta         = Function(self.Q, name='theta')
     self.theta0        = Function(self.Q, name='theta0')
     self.W0            = Function(self.Q, name='W0')
     self.thetahat      = Function(self.Q, name='thetahat')
@@ -623,11 +490,6 @@ class D2Model(Model):
     self.vhat          = Function(self.Q, name='vhat')
     self.what          = Function(self.Q, name='what')
     self.mhat          = Function(self.Q, name='mhat')
-    self.rho_b         = Function(self.Q, name='rho_b')
-
-    # Age model   
-    self.age           = Function(self.Q, name='age')
-    self.a0            = Function(self.Q, name='a0')
 
     # Surface climate model
     self.precip        = Function(self.Q, name='precip')

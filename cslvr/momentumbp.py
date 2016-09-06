@@ -47,7 +47,6 @@ class MomentumBP(Momentum):
     mesh       = model.mesh
     eps_reg    = model.eps_reg
     n          = model.n
-    r          = model.r
     V          = model.Q2
     Q          = model.Q
     S          = model.S
@@ -340,7 +339,7 @@ class MomentumBP(Momentum):
     p_shf_v             = p_shf.vector().array()
     p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
     p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
-    model.assign_variable(p, p_v, cls=self, annotate=annotate)
+    model.assign_variable(p, p_v, annotate=annotate)
 
   def solve_vert_velocity(self, annotate=False):
     """ 
@@ -364,7 +363,7 @@ class MomentumBP(Momentum):
     #                           annotate=False)
     
     self.assz.assign(model.w, self.wf, annotate=annotate)
-    print_min_max(self.wf, 'w', cls=self)
+    print_min_max(self.wf, 'w')
     
   def solve(self, annotate=False):
     """ 
@@ -384,7 +383,7 @@ class MomentumBP(Momentum):
 
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
+    model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -396,7 +395,7 @@ class MomentumBP(Momentum):
     self.assx.assign(model.u, u, annotate=annotate)
     self.assy.assign(model.v, v, annotate=annotate)
 
-    print_min_max(self.U, 'U', cls=self)
+    print_min_max(self.U, 'U')
       
     if params['solve_vert_velocity']:
       self.solve_vert_velocity(annotate=annotate)
@@ -446,7 +445,6 @@ class MomentumDukowiczBP(Momentum):
     self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
-    r          = model.r
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -707,7 +705,7 @@ class MomentumDukowiczBP(Momentum):
     p_shf_v             = p_shf.vector().array()
     p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
     p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
-    model.assign_variable(p, p_gnd, cls=self)
+    model.assign_variable(p, p_gnd)
 
   def solve_vert_velocity(self, annotate=False):
     """on.dumps(x, sort_keys=True, indent=2)
@@ -732,7 +730,7 @@ class MomentumDukowiczBP(Momentum):
     #                           annotate=False)
     
     self.assz.assign(model.w, self.w, annotate=annotate)
-    print_min_max(self.w, 'w', cls=self)
+    print_min_max(self.w, 'w')
     
   def solve(self, annotate=False):
     """ 
@@ -752,7 +750,7 @@ class MomentumDukowiczBP(Momentum):
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
+    model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -763,8 +761,8 @@ class MomentumDukowiczBP(Momentum):
     self.assy.assign(model.v, v, annotate=annotate)
 
     u,v,w = model.U3.split(True)
-    print_min_max(u, 'u', cls=self)
-    print_min_max(v, 'v', cls=self)
+    print_min_max(u, 'u')
+    print_min_max(v, 'v')
       
     if params['solve_vert_velocity']:
       self.solve_vert_velocity(annotate)

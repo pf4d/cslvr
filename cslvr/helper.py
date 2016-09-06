@@ -25,8 +25,18 @@ def raiseNotDefined():
   
 def download_file(url, direc, folder, extract=False):
   """
-  download a file with url <url> into directory <direc>/<folder>.  If <extract>
-  is True, extract the .zip file into the directory and delete the .zip file.
+  Download a file with url string ``url`` into directory ``direc/folder``.
+  If ``extract`` is True, extract the .zip or tar.gz file into the directory 
+  and delete the .zip or tar.gz file.
+
+  :param url:     the URL of the file you want to download
+  :param direc:   the directory relative to the script where you want to save
+  :param folder:  a folder in directory ``direc`` you want to save into
+  :param extract: if the file is compressed as zip or tar.gz, extract it
+  :type url:      string
+  :type direc:    string
+  :type folder:   string
+  :type extract:  bool
   """
   import urllib2
   import sys
@@ -683,7 +693,7 @@ def extrude(f, b, d, ff, Q):
 
 def get_bed_mesh(mesh):
   """
-  Returns the bed of <mesh>.
+  Returns the bed of ``mesh``.
   """
   bmesh   = BoundaryMesh(mesh, 'exterior')
   cellmap = bmesh.entity_map(2)
@@ -912,7 +922,7 @@ def plotIce(di, u, name, direc,
 
     :di:      DataInput object with desired projection
     :u:       solution to plot; can be either a function on a 2D mesh, or a
-              string key to matrix variable in <di>.data.
+              string key to matrix variable in ``di``.data.
     :name:    title of the plot, latex accepted
     :direc:   directory string location to save image.
     :cmap:    colormap to use - see images directory for sample and name
@@ -924,7 +934,7 @@ def plotIce(di, u, name, direc,
     :extends: for the colorbar, extend upper range and may be ["neither",
               "both", "min", "max"]. default is "neither".
 
-    for plotting the zoom-box, make <zoom_box> = True and supply dict
+    for plotting the zoom-box, make ``zoom_box`` = True and supply dict
     *zoom_box_kwargs* with parameters
     
     :zoom:             ammount to zoom 

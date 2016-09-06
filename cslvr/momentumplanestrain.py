@@ -40,7 +40,6 @@ class MomentumDukowiczPlaneStrain(Momentum):
     self.assp  = FunctionAssigner(model.p.function_space(), model.Q3.sub(2))
 
     mesh       = model.mesh
-    r          = model.r
     S          = model.S
     B          = model.B
     H          = S - B
@@ -260,7 +259,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
 
     q_fric_v = beta_v * (u_v**2 + (w_v+Fb_v)**2)
     
-    model.init_q_fric(q_fric_v, cls=self)
+    model.init_q_fric(q_fric_v)
 
   def default_solve_params(self):
     """ 
@@ -291,7 +290,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, cls=self)
+    model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -304,9 +303,9 @@ class MomentumDukowiczPlaneStrain(Momentum):
     
     U3 = model.U3.split(True)
 
-    print_min_max(U3[0],   'u', cls=self)
-    print_min_max(U3[1],   'w', cls=self)
-    print_min_max(model.p, 'p', cls=self)
+    print_min_max(U3[0],   'u')
+    print_min_max(U3[1],   'w')
+    print_min_max(model.p, 'p')
 
 
 

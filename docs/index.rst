@@ -14,7 +14,8 @@ Contents:
    :maxdepth: 2
    :caption: Data
 
-   data
+   input
+   output
 
 .. _meshing
 

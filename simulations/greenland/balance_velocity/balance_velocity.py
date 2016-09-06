@@ -3,7 +3,7 @@ from cslvr import *
 mesh_H = 5
 
 # set plot directory :
-plt_dir = '../../../images/balance_velocity/greenland/d_U_ob/'
+plt_dir = '../../../images/balance_velocity/greenland/'
 
 # load the data :
 f = HDF5File(mpi_comm_world(), 'dump/vars/state.h5', 'r')
@@ -28,16 +28,16 @@ kappas  = [0,5,10]
 methods = ['SUPG', 'SSM', 'GLS']
 
 # the imposed direction of flow :
-d = (model.u_ob, model.v_ob)
-#d = (-model.S.dx(0), -model.S.dx(1))
+#d = (model.u_ob, model.v_ob)
+d = (-model.S.dx(0), -model.S.dx(1))
 
-## plot the observed surface speed :
-#U_max  = model.U_ob.vector().max()
-#U_min  = model.U_ob.vector().min()
-#U_lvls = array([U_min, 2, 10, 20, 50, 100, 200, 500, 1000, U_max])
-#plotIce(searise, model.U_ob, name='U_ob', direc=plt_dir,
-#       title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap='viridis',
-#       show=False, levels=U_lvls, tp=False, cb_format='%.1e')
+# plot the observed surface speed :
+U_max  = model.U_ob.vector().max()
+U_min  = model.U_ob.vector().min()
+U_lvls = array([U_min, 2, 10, 20, 50, 100, 200, 500, 1000, U_max])
+plotIce(searise, model.U_ob, name='U_ob', direc=plt_dir,
+       title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap='viridis',
+       show=False, levels=U_lvls, tp=False, cb_format='%.1e')
 
 for kappa in kappas:
 

@@ -271,9 +271,7 @@ class Momentum(Physics):
     
     q_fric_v = beta_v * (ut**2 + vt**2 + wt**2)
 
-    #q_fric_v = beta_v * (u_v**2 + v_v**2 + (w_v+Fb_v)**2)
-    
-    model.init_q_fric(q_fric_v, cls=self)
+    model.init_q_fric(q_fric_v)
     
   def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
     """
@@ -437,29 +435,29 @@ class Momentum(Physics):
     ftnls = []
 
     R = assemble(self.Rp, annotate=False)
-    print_min_max(R, 'R', cls=self)
+    print_min_max(R, 'R')
     ftnls.append(R)
     
     J = assemble(self.Jp, annotate=False)
-    print_min_max(J, 'J', cls=self)
+    print_min_max(J, 'J')
     ftnls.append(J)
 
     if self.obj_ftn_type == 'log_L2_hybrid':
       J1 = assemble(self.J1, annotate=False)
-      print_min_max(J1, 'J1', cls=self)
+      print_min_max(J1, 'J1')
       ftnls.append(J1)
       
       J2 = assemble(self.J2, annotate=False)
-      print_min_max(J2, 'J2', cls=self)
+      print_min_max(J2, 'J2')
       ftnls.append(J2)
 
     if self.reg_ftn_type == 'TV_Tik_hybrid':
       R1 = assemble(self.R1, annotate=False)
-      print_min_max(R1, 'R1', cls=self)
+      print_min_max(R1, 'R1')
       ftnls.append(R1)
       
       R2 = assemble(self.R2, annotate=False)
-      print_min_max(R2, 'R2', cls=self)
+      print_min_max(R2, 'R2')
       ftnls.append(R2)
     return ftnls 
     
@@ -475,45 +473,35 @@ class Momentum(Physics):
     dU  = self.get_dU()
 
     # this is the adjoint of the momentum residual, the Lagrangian :
-    return replace(R, {Phi : dU})
+    return self.J + replace(R, {Phi : dU})
 
-  def Hamiltonian(self, I):
+  def dLdc(self, L, c): 
     """
-    Returns the Hamiltonian of the momentum equations with objective function
-    <I>.
-    """
-    s  = "::: forming Hamiltonian :::"
-    print_text(s, self.color())
-    # the Hamiltonian :
-    return I + self.Lagrangian()
+    Returns the derivative of the Lagrangian consisting of adjoint-computed
+    self.Lam values w.r.t. the control variable ``c``, i.e., 
 
-  def dHdc(self, I, L, c): 
-    """
-    Returns the derivative of the Hamiltonian consisting of ajoint-computed
-    self.Lam values w.r.t. the control variable <c>, i.e., 
-
-       dH    d [                 ]
-       -- = -- [ I + L(self.Lam) ]
-       dc   dc [                 ]
+       dL    d [             ]
+       -- = -- [ L(self.Lam) ]
+       dc   dc [             ]
 
     """
-    s  = "::: forming dHdc :::"
+    s  = "::: forming dLdc :::"
     print_text(s, self.color())
     
     dU  = self.get_dU()
     Lam = self.get_Lam()
 
-    # we need to evaluate the Hamiltonian with the values of Lam computed from
-    # self.dI in order to get the derivative of the Hamiltonian w.r.t. the 
+    # we need to evaluate the Lagrangian with the values of Lam computed from
+    # self.dI in order to get the derivative of the Lagrangian w.r.t. the 
     # control variables.  Hence we need a new Lagrangian with the trial 
     # functions replaced with the computed Lam values.
     L_lam  = replace(L, {dU : Lam})
 
-    # the Hamiltonian with unknowns replaced with computed Lam :
-    H_lam  = I + L_lam
+    # the Lagrangian with unknowns replaced with computed Lam :
+    H_lam  = self.J + L_lam
 
     # the derivative of the Hamiltonian w.r.t. the control variables in the 
-    # direction of a P1 test function :
+    # direction of a test function :
     return derivative(H_lam, c, TestFunction(self.model.Q))
     
   def solve_adjoint_momentum(self, H):
@@ -524,7 +512,7 @@ class Momentum(Physics):
     Phi = self.get_Phi()
     Lam = self.get_Lam()
 
-    # we desire the derivative of the Hamiltonian w.r.t. the model state U
+    # we desire the derivative of the Lagrangian w.r.t. the model state U
     # in the direction of the test function Phi to vanish :
     dI = derivative(H, U, Phi)
     
@@ -537,29 +525,6 @@ class Momentum(Physics):
     a_solver = KrylovSolver('cg', 'hypre_amg')
     a_solver.solve(aw, Lam.vector(), Lw, annotate=False)
 
-    #lam_nx, lam_ny = model.Lam.split(True)
-    #lam_ix, lam_iy = model.Lam.split()
-
-    #if self.config['adjoint']['surface_integral'] == 'shelves':
-    #  lam_nx.vector()[model.gnd_dofs] = 0.0
-    #  lam_ny.vector()[model.gnd_dofs] = 0.0
-    #elif self.config['adjoint']['surface_integral'] == 'grounded':
-    #  lam_nx.vector()[model.shf_dofs] = 0.0
-    #  lam_ny.vector()[model.shf_dofs] = 0.0
-
-    ## function assigner translates between mixed space and P1 space :
-    #U_sp = model.U.function_space()
-    #assx = FunctionAssigner(U_sp.sub(0), lam_nx.function_space())
-    #assy = FunctionAssigner(U_sp.sub(1), lam_ny.function_space())
-
-    #assx.assign(lam_ix, lam_nx)
-    #assy.assign(lam_iy, lam_ny)
-    
-    #solve(self.aw == self.Lw, model.Lam,
-    #      solver_parameters = {"linear_solver"  : "cg",
-    #                           "preconditioner" : "hypre_amg"},
-    #      annotate=False)
-    #print_min_max(norm(model.Lam), '||Lam||')
     print_min_max(Lam, 'Lam')
 
   def optimize_U_ob(self, control, bounds,
@@ -611,8 +576,8 @@ class Momentum(Physics):
     def eval_cb(I, c):
       s    = '::: adjoint objective eval post callback function :::'
       print_text(s, cls=self)
-      print_min_max(I,    'I',         cls=self)
-      print_min_max(c,    'control',   cls=self)
+      print_min_max(I,    'I')
+      print_min_max(c,    'control')
     
     # objective gradient callback function :
     def deriv_cb(I, dI, c):
@@ -629,14 +594,14 @@ class Momentum(Physics):
         counter += 1
       s    = '::: adjoint obj. gradient post callback function :::'
       print_text(s, cls=self)
-      print_min_max(dI,    'dI/dcontrol', cls=self)
+      print_min_max(dI,    'dI/dcontrol')
       
       # update the DA current velocity to the model for evaluation 
       # purposes only; the model.assign_variable function is 
       # annotated for purposes of linking physics models to the adjoint
       # process :
       u_opt = DolfinAdjointVariable(model.U3).tape_value()
-      model.init_U(u_opt, cls=self)
+      model.init_U(u_opt)
 
       # print functional values :
       control.assign(c, annotate=False)
@@ -696,7 +661,7 @@ class Momentum(Physics):
       b_opt  = solver.solve()
 
     # make the optimal control parameter available :
-    model.assign_variable(control, b_opt, cls=self)
+    model.assign_variable(control, b_opt)
     #Control(control).update(b_opt)  # FIXME: does this work?
     
     # call the post-adjoint callback function if set :

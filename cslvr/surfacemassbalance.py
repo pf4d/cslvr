@@ -22,9 +22,6 @@ class SurfaceMassBalance(Physics):
     vbar        = model.vbar
     wbar        = model.wbar
    
-    #===========================================================================
-    # form to calculate direction of flow (down driving stress gradient) :
-
     phi  = TestFunction(Q)
     adot = TrialFunction(Q)
 
@@ -39,7 +36,6 @@ class SurfaceMassBalance(Physics):
     """
     model = self.model
 
-    # calculate balance-velocity :
     s    = "::: solving for surface mass balance :::"
     print_text(s, self.color())
     solve(self.a == self.B, model.adot)

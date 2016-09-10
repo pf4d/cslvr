@@ -10,6 +10,26 @@ from pyproj             import Proj, transform
 from cslvr.inputoutput  import print_text
 
 class DataFactory(object):
+  """
+  This class contains several static methods that fetch and return raw data
+  downloaded prevously by :func:`~helper.download_file`.  These data are 
+  located in the ``data/continent`` subdirectory of the CSLVR root directory, 
+  where ``continent`` is currently either ``antarctica`` or ``greenland``.
+    
+  Each one of the static methods defined here return a :py:class:`~dict` of 
+  parameters needed by the :class:`~inputoutput.DataInput` class for conversion
+  to the FEniCS code used by CSLVR.
+
+  * ``pyproj_Proj``        -- the geographical projection :class:`~pyproj.Proj` instance associated with this data
+  * ``map_western_edge``   -- the Western-most edge of the data in projection coordinates 
+  * ``map_eastern_edge``   -- the Eastern-most edge of the data in projection coordinates
+  * ``map_southern_edge``  -- the Southern-most edge of the data in projection coordinates
+  * ``map_northern_edge``  -- the Northern-most edge of the data in projection coordinates
+  * ``nx``                 -- the number of x divisions of the data
+  * ``ny``                 -- the number of y divisions of the data
+  * ``dataset``            -- the name of the dataset
+  * ``continent``          -- the continent of the datset
+  """
 
   color = '229'
   global home 
@@ -28,12 +48,25 @@ class DataFactory(object):
         print " Length of time: %d \n" % (len(rg.variables[i]), )
       else:
         print "\n"
-  
-  
+
+
   @staticmethod
   def get_ant_measures(res = 900):
     """
-    Antarctica measures surface velocity data.
+    Antarctica `Measures <https://nsidc.org/data/docs/measures/nsidc0484_rignot/>`_ surface velocity data.  This function creates a new data field with
+    key ``mask`` that is one where velocity measurements are present and 
+    zero where they are not.
+   
+    The keys of the dictionary returned by this function are :
+     
+    * ``vx``  -- :math:`x`-component of velocity
+    * ``vy``  -- :math:`y`-component of velocity
+    * ``v_err``  -- velocity error
+    * ``mask`` -- observation mask
+
+    :param res: resolution of the data, may be either 450 or 900
+    :type res: int
+    :rtype: dict
     """
     
     s    = "::: getting Antarctica measures data from DataFactory :::"
@@ -106,24 +139,40 @@ class DataFactory(object):
   
   @staticmethod
   def get_gre_measures():
+    """
+    Greenland `Measures <https://nsidc.org/data/NSIDC-0478/versions/2#>`_ 
+    surface velocity data.  This function creates a new data field with 
+    key ``mask`` that is one where velocity measurements are present 
+    and zero where they are not.
+   
+    The keys of the dictionary returned by this function are :
+     
+    * ``vx``  -- :math:`x`-component of velocity
+    * ``vy``  -- :math:`y`-component of velocity
+    * ``ex``  -- :math:`x`-component of velocity error
+    * ``ey``  -- :math:`y`-component of velocity error
+    * ``mask`` -- observation mask
+    
+    :rtype: dict
+    """
     
     s    = "::: getting Greenland measures data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
     
-    direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009_' 
-    files    = ['mask', 'vx', 'vy', 'ex', 'ey']
+    direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009' 
+    files    = ['mask', '_vx', '_vy', '.ex', '.ey']
     vara     = dict()
     
-    d    = TiffFile(direc + 'vx.tif')
+    d    = TiffFile(direc + '_vx.tif')
     mask = (d.asarray() != -2e9).astype('i')
     
     ftns = [mask]
     for n in files[1:]:
       data    = TiffFile(direc + n + '.tif')
       ftns.append(data.asarray())
-      print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
+      print_text('      Measures : %-*s key : "%s" '%(30,n,n[1:]), '230')
     print_text('      Measures : %-*s key : "%s"'%(30,files[0],files[0]), '230')
      
     # extents of domain :
@@ -169,6 +218,20 @@ class DataFactory(object):
   
   @staticmethod
   def get_rignot():
+    """
+    Greenland `Rignot <http://www.ess.uci.edu/group/erignot/data/ice-flow-greenland-international-polar-year-2008%E2%80%932009>`_ surface velocity data. 
+    This function creates a new data field with key ``mask`` that is one where
+    velocity measurements are present and zero where they are not.
+   
+    The keys of the dictionary returned by this function are :
+     
+    * ``vx``  -- :math:`x`-component of velocity
+    * ``vy``  -- :math:`y`-component of velocity
+    * ``v_err``  -- velocity error
+    * ``mask`` -- observation mask
+    
+    :rtype: dict
+    """
     
     s    = "::: getting Greenland Rignot data from DataFactory :::"
     print_text(s, DataFactory.color)
@@ -245,6 +308,17 @@ class DataFactory(object):
   
   @staticmethod
   def get_gre_qgeo_fox_maule():
+    """
+    Greenland `Fox Maule <http://websrv.cs.umt.edu/isis/index.php/Greenland_Basal_Heat_Flux>`_ geothermal-heat-flux data.  This function converts the 
+    geothermal-heat flux data from J s\ :sup:`-1` m\ :sup:`-2` to that used 
+    by CSLVR, J a\ :sup:`-1` m\ :sup:`-2`.
+   
+    The keys of the dictionary returned by this function are :
+     
+    * ``q_geo`` -- geothermal-heat flux
+    
+    :rtype: dict
+    """
     
     global home
  
@@ -295,6 +369,28 @@ class DataFactory(object):
 
   @staticmethod
   def get_bedmap1(thklim = 0.0):
+    """
+    Antarctica `Bedmap 1 <https://doi.pangaea.de/10.1594/PANGAEA.734145>`_
+    data.  This function converts the geothermal-heat flux data from 
+    J s\ :sup:`-1` m\ :sup:`-2` to that used by CSLVR, 
+    J a\ :sup:`-1` m\ :sup:`-2`, and the surface temperature data from 
+    degrees Celsius to degrees Kelvin.  The parameter ``thklim`` sets the 
+    minimum allowed ice thickness.
+   
+    The keys of the dictionary returned by this function are :
+     
+    * ``B``  -- basal topography
+    * ``S``  -- surface topography
+    * ``T``  -- surface temperature
+    * ``acca`` -- accumulation/ablation function "a"
+    * ``accr`` -- accumulation/ablation function "r"
+    * ``ghffm`` -- Fox-Maule geothermal-heat flux
+    * ``ghfsr`` -- Shapiro-Ritzwoller geothermal-heat flux
+    
+    :param thklim: minimum-allowed ice thickness
+    :type thklim: float
+    :rtype: dict
+    """
     
     s    = "::: getting Bedmap 1 data from DataFactory :::"
     print_text(s, DataFactory.color)
@@ -380,6 +476,30 @@ class DataFactory(object):
   
   @staticmethod
   def get_bedmap2(thklim = 0.0):
+    """
+    Antarctica `Bedmap 2 <https://www.bas.ac.uk/project/bedmap-2/>`_
+    topography data.  This class creates a new lateral boundary mask with key
+    ``lat_mask`` that is one at any lateral boundary gridpoint and zero 
+    everywhere else; this is used to mark cliff and sea-water boundaries
+    by :class:`latmodel.LatModel.calculate_boundaries` and 
+    :class:`d3model.D3Model.calculate_boundaries`.
+    
+    The keys of the dictionary returned by this function are :
+     
+    * ``B``  -- basal topography height
+    * ``S``  -- surface topography height
+    * ``H``  -- ice thickness
+    * ``mask`` -- ice shelf mask
+    * ``lat_mask`` -- lateral-boudary mask
+    * ``rock_mask`` -- rock outcrop mask
+    * ``b_uncert`` -- basal-topography uncertainty
+    * ``coverage`` -- is a binary grid showing the distribution of ice thickness data used in the grid of ice thickness
+    * ``gl04c_WGS84`` -- gives the values (as floating point) used to convert from heights relative to WGS84 datum to heights relative to EIGEN-GL04C geoid (to convert back to WGS84, add this grid)
+   
+    :param thklim: minimum-allowed ice thickness
+    :type thklim: float
+    :rtype: dict
+    """
     
     s    = "::: getting Bedmap 2 data from DataFactory :::"
     print_text(s, DataFactory.color)
@@ -526,6 +646,29 @@ class DataFactory(object):
   
   @staticmethod
   def get_bamber(thklim = 0.0):
+    """
+    Greenland `Bamber <https://nsidc.org/data/NSIDC-0092>`_ topography data.
+    This class creates a new lateral boundary mask with key
+    ``lat_mask`` that is one at any lateral boundary gridpoint and zero 
+    everywhere else; this is used to mark cliff and sea-water boundaries
+    by :class:`latmodel.LatModel.calculate_boundaries` and 
+    :class:`d3model.D3Model.calculate_boundaries`.
+    
+    The keys of the dictionary returned by this function are :
+     
+    * ``B``  -- basal topography height
+    * ``S``  -- surface topography height
+    * ``H``  -- ice thickness
+    * ``Herr``  -- ice thickness error
+    * ``lat_mask`` -- lateral-boudary mask
+    * ``Bo`` -- basal topography height before imposing ``thklim`` 
+    * ``mask`` -- ice shelf mask (1 where shelves, 0 where grounded)
+    * ``mask_orig`` -- original ice mask from the data
+    
+    :param thklim: minimum-allowed ice thickness
+    :type thklim: float
+    :rtype: dict
+    """
 
     s    = "::: getting Bamber data from DataFactory :::"
     print_text(s, DataFactory.color)
@@ -637,6 +780,25 @@ class DataFactory(object):
   
   @staticmethod
   def get_searise(thklim = 0.0):
+    """
+    Greenland `Searise <http://websrv.cs.umt.edu/isis/index.php/Present_Day_Greenland>`_ data.
+
+    This function converts the geothermal-heat flux data from J s\ :sup:`-1` m\ :sup:`-2` to that used by CSLVR, J a\ :sup:`-1` m\ :sup:`-2`, and the surface temperature data from degrees Celsius to degrees Kelvin.
+    
+    The keys of the dictionary returned by this function are :
+     
+    * ``B`` -- basal surface height
+    * ``S``  -- upper surface height
+    * ``T`` -- surface temperature
+    * ``lat`` -- grid latitude
+    * ``lon`` -- grid longitude
+    * ``adot``  -- accumulation/ablation function
+    * ``q_geo`` -- geothermal-heat flux
+    * ``dhdt`` -- suface height rate of change
+    * ``U_sar`` -- surface velocity magnitude 
+    
+    :rtype: dict
+    """
     
     s    = "::: getting Searise data from DataFactory :::"
     print_text(s, DataFactory.color)
@@ -683,8 +845,6 @@ class DataFactory(object):
     H             = S - B
     S[H < thklim] = B[H < thklim] + thklim
 
-    Tn            = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + 273
-    
     # extents of domain :
     east  = max(x)
     west  = min(x)
@@ -716,8 +876,8 @@ class DataFactory(object):
     vara['ny']                = len(y)
  
     names = ['S', 'adot', 'B', 'T', 'q_geo','U_sar', \
-             'lat', 'lon', 'Tn','dhdt']
-    ftns  = [S, adot, B, T, q_geo,U_sar, lat, lon, Tn, dhdt]
+             'lat', 'lon', 'dhdt']
+    ftns  = [S, adot, B, T, q_geo,U_sar, lat, lon, dhdt]
 
     vara['dataset']   = 'Searise'
     vara['continent'] = 'greenland'

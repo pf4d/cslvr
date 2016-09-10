@@ -25,8 +25,8 @@ sys.path.insert(0, os.path.abspath('../cslvr/'))
 intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'matplotlib': ('http://matplotlib.sourceforge.net/', None)}
-
+                       'matplotlib': ('http://matplotlib.sourceforge.net/', None),
+                       'pyproj': ('https://jswhit.github.io/pyproj/', None)}
 # If your documentation needs a minimal Sphinx version, state it here.
 #
 # needs_sphinx = '1.0'
@@ -54,6 +54,11 @@ MOCK_MODULES = ['fenics',
                 'tifffile',
                 'dolfin_adjoint']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+if os.environ.get('READTHEDOCS', None) == 'True':
+  sys.path.insert(0,'.')
+  from readthedocs import *
+  sys.path.pop(0)
 
 
 # Add any Sphinx extension module names here, as strings. They can be

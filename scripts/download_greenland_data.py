@@ -24,18 +24,14 @@ def convert_measures_projection(direc, var):
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 home     = os.path.dirname(os.path.abspath(filename)) + '/../data/greenland'
 
-# measures velocity dataset :
+## measures velocity dataset :
 fldr = 'measures'
 meas = 'ftp://n5eil01u.ecs.nsidc.org/SAN/MEASURES/NSIDC-0478.001/' + \
        '2008.12.01/greenland_vel_mosaic500_2008_2009'
-#download_file(meas + '_vx.tif', home, fldr)
-#download_file(meas + '_vy.tif', home, fldr)
-
-## get errors in .tif format
-#errors  = 'https://dl.dropboxusercontent.com/s/65q1wtc8mofotnz/' +\
-#          'greenland_measures_error.tar.gz?dl=1&token_hash=AAEp' +\
-#          '-BIqyJTzkCTmUg-1hAtfU0iZYDqlkww5Oo5qgc0mTQ'
-#download_file(errors, home, fldr, extract=True)
+download_file(meas + '_vx.tif', home, fldr)
+download_file(meas + '_vy.tif', home, fldr)
+download_file(meas + '.ex.tif', home, fldr)
+download_file(meas + '.ey.tif', home, fldr)
 
 ## convert to searise projection via raster warp :
 #convert_measures_projection(home + '/' + fldr, 'vx')

@@ -8,6 +8,14 @@ Cryospheric Problem Solver
 
 Contents:
 
+.. _install
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Installation
+
+   install
+
 .. _data
 
 .. toctree::

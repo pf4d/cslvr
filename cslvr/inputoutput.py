@@ -1,4 +1,4 @@
-from scipy.io          import loadmat, savemat
+from scipy.io          import loadmat
 from scipy.interpolate import RectBivariateSpline, interp2d
 from pylab             import array, linspace, ones, isnan, all, zeros, \
                               ndarray, e, nan, float64
@@ -371,84 +371,16 @@ class DataInput(object):
     return CslvrExpression(element = self.element)
 
 
-class DataOutput(object):
-
-  def __init__(self, directory):
-    """
-    Create object to write data to directory <directory>
-    """
-    self.directory = directory
-    self.color     = 'orange_3'
-
-  def write_dict_of_files(self, d, extension='.pvd'):
-    """
-    Looking for a dictionary <d> of data to save. The keys are the file
-    names, and the values are the data fields to be stored. Also takes an
-    optional extension to determine if it is pvd or xml output.
-    """
-    for fn in d:
-      self.write_one_file(fn, d[fn], extension)
-
-  def write_one_file(self, name, data, extension='.pvd'):
-    """
-    Save a single file of FEniCS Function <data> named <name> to the DataOutput
-    instance's directory.  Extension may be '.xml' or '.pvd'.
-    """
-    s    = "::: writing file %s :::" % (name + extension)
-    print_text(s, self.color)
-    file_handle = File(self.directory + name + extension)
-    file_handle << data
-
-  def write_matlab(self, di, f, filename, val=e):
-    """
-    Using the projections that are read in as data files, create Matlab
-    version 4 files to output the regular gridded data in a field.  Will accept
-    functions in 2D or 3D; if a 3D mesh is used, Ensure that value you want
-    projected is located at z=0, the bed.  This can be accomplished by using
-    any of the non-deformed flat meshes provided by the MeshFactory class.
-
-    INPUTS:
-      di       : a DataInput object, defined in the class above in this file.
-      f        : a FEniCS function, to be mapped onto the regular grid that is
-                 in di, established from the regular gridded data to start the
-                 simulation.
-      filename : file name to save.
-      val      : value to make values outside of mesh.  Default is 'e'.
-    OUTPUT:
-      A single file will be written with name, outfile.
-    """
-    fa   = zeros( (di.ny, di.nx) )
-    s    = "::: writing %i x %i matlab matrix file %s.mat :::"
-    text = s % (di.ny, di.nx, filename)
-    print_text(text, self.color)
-    parameters['allow_extrapolation'] = True
-    dim = f.geometric_dimension()
-    for j,x in enumerate(di.x):
-      for i,y in enumerate(di.y):
-        try:
-          if dim == 3:
-            fa[i,j] = f(x,y,0)
-          else:
-            fa[i,j] = f(x,y)
-        except:
-          fa[i,j] = val
-    print_min_max(fa, filename + 'matrix')
-    outfile = self.directory + filename + '.mat'
-    savemat(outfile, {'map_data'          : fa,
-                      'continent'         : di.cont,
-                      'nx'                : di.nx,
-                      'ny'                : di.ny,
-                      'map_eastern_edge'  : di.x_max,
-                      'map_western_edge'  : di.x_min,
-                      'map_northern_edge' : di.y_max,
-                      'map_southern_edge' : di.y_min,
-                      'map_name'          : outfile,
-                      'projection'        : di.proj.srs})
-
-
 def print_min_max(u, title, color='97'):
   """
-  Print the minimum and maximum values of <u>, a Vector, Function, or array.
+  Print the minimum and maximum values of ``u``, a Vector, Function, or array.
+
+  :param u: the variable to print the min and max of
+  :param title: the name of the function to print
+  :param color: the color of printed text
+  :type u: :class:`~fenics.GenericVector`, :class:`~numpy.ndarray`, :class:`~fenics.Function`, int, float, :class:`~fenics.Constant`
+  :type title: string
+  :type color: string
   """
   if isinstance(u, GenericVector):
     uMin = MPI.min(mpi_comm_world(), u.min())
@@ -482,7 +414,16 @@ def print_min_max(u, title, color='97'):
 
 def get_text(text, color='white', atrb=0, cls=None):
   """
-  Returns text <text> from calling class <cl> for later printing.
+  Returns text ``text`` from calling class ``cls`` for printing at a later time.
+
+  :param text: the text to print
+  :param color: the color of the text to print
+  :param atrb: attributes to send use by ``colored`` package
+  :param cls: the calling class
+  :type text: string
+  :type color: string
+  :type atrb: int
+  :type cls: object
   """
   if cls is not None:
     color = cls.color()
@@ -496,7 +437,16 @@ def get_text(text, color='white', atrb=0, cls=None):
 
 def print_text(text, color='white', atrb=0, cls=None):
   """
-  Print text <text> from calling class <cl> to the screen.
+  Print text ``text`` from calling class ``cls`` to the screen.
+
+  :param text: the text to print
+  :param color: the color of the text to print
+  :param atrb: attributes to send use by ``colored`` package
+  :param cls: the calling class
+  :type text: string
+  :type color: string
+  :type atrb: int
+  :type cls: object
   """
   if cls is not None:
     color = cls.color()

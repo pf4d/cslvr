@@ -20,7 +20,7 @@ http://dolfin-adjoint-doc.readthedocs.org/en/latest/
 installation (verified with ubuntu 15.04) :
 -------------------------------------------
 
-FEniCS 1.6 :
+FEniCS 2016.1.0 :
 
 ```bash
 sudo add-apt-repository ppa:fenics-packages/fenics;
@@ -29,7 +29,7 @@ sudo apt-get install fenics;
 sudo apt-get dist-upgrade;
 ```
 
-After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html), but utilizing my cslvr-modified fork located [here](https://github.com/pf4d/dolfin-adjoint).
+After this, install Dolfin-Adjoint as described [here](http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html)
 
 Latest Python packages and misc. dependencies:
 

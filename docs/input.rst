@@ -7,20 +7,20 @@ Downloading data
 .. automodule:: helper
    :members: download_file
 
-DataFactory class
------------------
+Accessing downloaded data : the DataFactory class
+-------------------------------------------------
 
 .. autoclass:: datafactory.DataFactory
    :members:
 
-Pre-built meshes
------------------
+Accessing pre-built meshes : the MeshFactory class
+--------------------------------------------------
 
 .. automodule:: meshfactory
    :members:
 
-Input / output functions
-------------------------
+Converting data to CSLVR format : the DataInput class
+-----------------------------------------------------
 
 .. autoclass:: inputoutput.DataInput
    :members:

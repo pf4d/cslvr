@@ -2,6 +2,7 @@ from fenics               import *
 from dolfin_adjoint       import *
 from cslvr.inputoutput    import print_text, get_text, print_min_max
 from copy                 import copy
+from scipy.io             import savemat
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
@@ -2151,6 +2152,46 @@ class Model(object):
       print_text(s, 'green')#cls=self.this)
       f = XDMFFile(self.out_dir + 'xdmf/' +  name + '.xdmf')
       f.write(u)
+
+  def save_matlab(self, u, di, filename, val=np.e):
+    """
+    Create Matlab version 4 file output of regular gridded data contained by 
+    ``f``.  Currently, this function only works for 2D :math:`x,y`-plane data.
+
+    :param u:  a :class:`~fenics.Function`, to be mapped onto the regular 
+               grid used by ``di``
+    :param di: a :class:`~inputoutput.DataInput` object
+    :param filename: filename to save as
+    :param val:      value to make values outside of mesh, default :math:`e`
+    :type u:         :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type filename:  string
+    :type val:       float
+    :rtype:          MatLab file ``<self.out_dir>/matlab/<filename>.mat``.
+    """
+    fa   = zeros( (di.ny, di.nx) )
+    s    = "::: writing %i x %i matlab matrix file %s.mat :::"
+    text = s % (di.ny, di.nx, filename)
+    print_text(text, cls=self.this)
+    parameters['allow_extrapolation'] = True
+    dim = f.geometric_dimension()
+    for j,x in enumerate(di.x):
+      for i,y in enumerate(di.y):
+        try:
+          fa[i,j] = f(x,y)
+        except:
+          fa[i,j] = val
+    print_min_max(fa, filename + 'matrix')
+    outfile = self.out_dir + 'matlab/' + filename + '.mat'
+    savemat(outfile, {'map_data'          : fa,
+                      'continent'         : di.cont,
+                      'nx'                : di.nx,
+                      'ny'                : di.ny,
+                      'map_eastern_edge'  : di.x_max,
+                      'map_western_edge'  : di.x_min,
+                      'map_northern_edge' : di.y_max,
+                      'map_southern_edge' : di.y_min,
+                      'map_name'          : outfile,
+                      'projection'        : di.proj.srs})
     
   def save_list_to_hdf5(self, lst, h5File):
     """

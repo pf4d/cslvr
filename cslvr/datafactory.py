@@ -53,9 +53,9 @@ class DataFactory(object):
   @staticmethod
   def get_ant_measures(res = 900):
     """
-    Antarctica `Measures <https://nsidc.org/data/docs/measures/nsidc0484_rignot/>`_ surface velocity data.  This function creates a new data field with
-    key ``mask`` that is one where velocity measurements are present and 
-    zero where they are not.
+    `Antarctica Measures <https://nsidc.org/data/docs/measures/nsidc0484_rignot/>`_ surface velocity data.  This function creates a new data field with
+    key ``mask`` that is 1 where velocity measurements are present and 
+    0 where they are not.
    
     The keys of the dictionary returned by this function are :
      
@@ -140,10 +140,10 @@ class DataFactory(object):
   @staticmethod
   def get_gre_measures():
     """
-    Greenland `Measures <https://nsidc.org/data/NSIDC-0478/versions/2#>`_ 
+    `Greenland Measures <https://nsidc.org/data/NSIDC-0478/versions/2#>`_ 
     surface velocity data.  This function creates a new data field with 
-    key ``mask`` that is one where velocity measurements are present 
-    and zero where they are not.
+    key ``mask`` that is 1 where velocity measurements are present 
+    and 0 where they are not.
    
     The keys of the dictionary returned by this function are :
      
@@ -220,8 +220,8 @@ class DataFactory(object):
   def get_rignot():
     """
     Greenland `Rignot <http://www.ess.uci.edu/group/erignot/data/ice-flow-greenland-international-polar-year-2008%E2%80%932009>`_ surface velocity data. 
-    This function creates a new data field with key ``mask`` that is one where
-    velocity measurements are present and zero where they are not.
+    This function creates a new data field with key ``mask`` that is 1 where
+    velocity measurements are present and 0 where they are not.
    
     The keys of the dictionary returned by this function are :
      
@@ -479,7 +479,7 @@ class DataFactory(object):
     """
     Antarctica `Bedmap 2 <https://www.bas.ac.uk/project/bedmap-2/>`_
     topography data.  This class creates a new lateral boundary mask with key
-    ``lat_mask`` that is one at any lateral boundary gridpoint and zero 
+    ``lat_mask`` that is 1 at any lateral boundary gridpoint and 0 
     everywhere else; this is used to mark cliff and sea-water boundaries
     by :class:`latmodel.LatModel.calculate_boundaries` and 
     :class:`d3model.D3Model.calculate_boundaries`.
@@ -490,7 +490,7 @@ class DataFactory(object):
     * ``S``  -- surface topography height
     * ``H``  -- ice thickness
     * ``mask`` -- ice shelf mask
-    * ``lat_mask`` -- lateral-boudary mask
+    * ``lat_mask`` -- lateral-boundary mask
     * ``rock_mask`` -- rock outcrop mask
     * ``b_uncert`` -- basal-topography uncertainty
     * ``coverage`` -- is a binary grid showing the distribution of ice thickness data used in the grid of ice thickness
@@ -649,7 +649,7 @@ class DataFactory(object):
     """
     Greenland `Bamber <https://nsidc.org/data/NSIDC-0092>`_ topography data.
     This class creates a new lateral boundary mask with key
-    ``lat_mask`` that is one at any lateral boundary gridpoint and zero 
+    ``lat_mask`` that is 1 at any lateral boundary gridpoint and 0 
     everywhere else; this is used to mark cliff and sea-water boundaries
     by :class:`latmodel.LatModel.calculate_boundaries` and 
     :class:`d3model.D3Model.calculate_boundaries`.
@@ -660,7 +660,7 @@ class DataFactory(object):
     * ``S``  -- surface topography height
     * ``H``  -- ice thickness
     * ``Herr``  -- ice thickness error
-    * ``lat_mask`` -- lateral-boudary mask
+    * ``lat_mask`` -- lateral-boundary mask
     * ``Bo`` -- basal topography height before imposing ``thklim`` 
     * ``mask`` -- ice shelf mask (1 where shelves, 0 where grounded)
     * ``mask_orig`` -- original ice mask from the data

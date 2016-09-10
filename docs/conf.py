@@ -55,10 +55,10 @@ MOCK_MODULES = ['fenics',
                 'dolfin_adjoint']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
-if os.environ.get('READTHEDOCS', None) == 'True':
-  sys.path.insert(0,'.')
-  from readthedocs import *
-  sys.path.pop(0)
+#if os.environ.get('READTHEDOCS', None) == 'True':
+#  sys.path.insert(0,'.')
+#  from readthedocs import *
+#  sys.path.pop(0)
 
 
 # Add any Sphinx extension module names here, as strings. They can be

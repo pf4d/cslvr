@@ -1,5 +1,5 @@
-#FROM quay.io/dolfinadjoint/dolfin-adjoint:latest
-FROM quay.io/fenicsproject/stable
+FROM quay.io/dolfinadjoint/dolfin-adjoint:latest
+#FROM quay.io/fenicsproject/stable
 MAINTAINER pf4d <mail@cummings.evan@gmail.com>
 
 
@@ -25,49 +25,49 @@ RUN pip install --upgrade colored \
 
 
 
-# install libadjoint :
-RUN git clone -b libadjoint-2016.1.0 https://bitbucket.org/dolfin-adjoint/libadjoint && \
-    cd libadjoint && \
-    mkdir build; cd build && \
-    cmake -DCMAKE_INSTALL_PREFIX="/usr/local" .. && \
-    make install && \
-    cd ../.. && \
-    rm -r libadjoint
-
-
-# install dolfin-adjoint :
-RUN git clone -b dolfin-adjoint-2016.1.0 https://bitbucket.org/dolfin-adjoint/dolfin-adjoint
-ENV PYTHONPATH /home/fenics/dolfin-adjoint:$PYTHONPATH
-
-
-# install ipopt with metis and mumps, still need HSL :
-RUN cd /tmp && \
-    curl -O http://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.6.tgz && \
-    tar -xvf Ipopt-3.12.6.tgz && \
-    cd Ipopt-3.12.6 && \
-    cd ThirdParty/Metis && \
-    ./get.Metis && \
-    cd ../../ && \
-    cd ThirdParty/Mumps && \
-    ./get.Mumps && \
-    cd ../../ && \
-    ./configure --with-blas="-lblas -llapack" --with-lapack="-llapack" --prefix="/usr/local" && \ 
-    make install && \
-    cd ../ && \
-    rm -r Ipopt-3.12.6
-
-#./configure --with-blas="-lblas -llapack" --with-lapack="-llapack" --with-hsl-incdir="/usr/local/include" --with-hsl-lib="/usr/local/lib" --with-mumps-incdir="/usr/include" --with-mumps-lib="/usr/lib" --prefix="/usr/local"'
-
-
-# install pyipopt :
-RUN cd /tmp && \
-    git clone https://github.com/pf4d/pyipopt.git && \
-    cd pyipopt && \
-    python setup.py build && \
-    python setup.py install && \
-    cd ../ && \
-    ldconfig && \
-    rm -r pyipopt
+## install libadjoint :
+#RUN git clone -b libadjoint-2016.1.0 https://bitbucket.org/dolfin-adjoint/libadjoint && \
+#    cd libadjoint && \
+#    mkdir build; cd build && \
+#    cmake -DCMAKE_INSTALL_PREFIX="/usr/local" .. && \
+#    make install && \
+#    cd ../.. && \
+#    rm -r libadjoint
+#
+#
+## install dolfin-adjoint :
+#RUN git clone -b dolfin-adjoint-2016.1.0 https://bitbucket.org/dolfin-adjoint/dolfin-adjoint
+#ENV PYTHONPATH /home/fenics/dolfin-adjoint:$PYTHONPATH
+#
+#
+## install ipopt with metis and mumps, still need HSL :
+#RUN cd /tmp && \
+#    curl -O http://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.6.tgz && \
+#    tar -xvf Ipopt-3.12.6.tgz && \
+#    cd Ipopt-3.12.6 && \
+#    cd ThirdParty/Metis && \
+#    ./get.Metis && \
+#    cd ../../ && \
+#    cd ThirdParty/Mumps && \
+#    ./get.Mumps && \
+#    cd ../../ && \
+#    ./configure --with-blas="-lblas -llapack" --with-lapack="-llapack" --prefix="/usr/local" && \ 
+#    make install && \
+#    cd ../ && \
+#    rm -r Ipopt-3.12.6
+#
+##./configure --with-blas="-lblas -llapack" --with-lapack="-llapack" --with-hsl-incdir="/usr/local/include" --with-hsl-lib="/usr/local/lib" --with-mumps-incdir="/usr/include" --with-mumps-lib="/usr/lib" --prefix="/usr/local"'
+#
+#
+## install pyipopt :
+#RUN cd /tmp && \
+#    git clone https://github.com/pf4d/pyipopt.git && \
+#    cd pyipopt && \
+#    python setup.py build && \
+#    python setup.py install && \
+#    cd ../ && \
+#    ldconfig && \
+#    rm -r pyipopt
 
 
 # install basemap for matplotlib :

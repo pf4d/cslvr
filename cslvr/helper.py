@@ -26,7 +26,7 @@ def raiseNotDefined():
 def download_file(url, direc, folder, extract=False):
   """
   Download a file with url string ``url`` into directory ``direc/folder``.
-  If ``extract`` is True, extract the .zip or tar.gz file into the directory 
+  If ``extract == True``, extract the .zip or tar.gz file into the directory 
   and delete the .zip or tar.gz file.
 
   :param url:     the URL of the file you want to download

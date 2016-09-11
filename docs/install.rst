@@ -1,5 +1,9 @@
+Installation
+=======================
+
+
 From source
-========================
+------------------------
 
 FEniCS 1.6::
 
@@ -51,7 +55,7 @@ Test your installation py entering in an ``ipython`` terminal::
 
 
 Using Docker
-========================
+------------------------
 
 If you have `docker <https://www.docker.com/>`_ installed, you can install CSLVR with::
 

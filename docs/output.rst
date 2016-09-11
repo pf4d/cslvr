@@ -24,6 +24,7 @@ Plot mathematical results
 -------------------------
 
 .. automodule:: helper
+   :noindex:
    :members: plot_variable
 
 

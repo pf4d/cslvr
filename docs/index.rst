@@ -8,15 +8,16 @@ Cryospheric Problem Solver
 
 Contents:
 
-.. _install
+.. _prelim:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Installation
+   :caption: Preliminaries
 
    install
+   get_started
 
-.. _data
+.. _data:
 
 .. toctree::
    :maxdepth: 2
@@ -25,7 +26,7 @@ Contents:
    input
    output
 
-.. _meshing
+.. _meshing:
 
 .. toctree::
    :maxdepth: 2
@@ -33,7 +34,7 @@ Contents:
 
    meshing
 
-.. _base_classes
+.. _base_classes:
 
 .. toctree::
    :maxdepth: 2
@@ -42,27 +43,16 @@ Contents:
    model
    physics
 
-.. _momentum
+.. _balance:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Momentum
+   :caption: Balance equations
 
    momentum
-
-.. _energy
-
-.. _stress
-
-.. _velocity
-
-.. _2D
-
-.. _3D
-
-.. _firn
-
-.. _get_started
+   energy
+   velocity
+   stress
 
 
 Indices and tables

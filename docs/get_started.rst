@@ -1,7 +1,7 @@
 Hello CSLVR
 ===========
 
-To get started with CSLVR, we begin with an example that does not require any external data; the "`Ice Sheet Model Intercomparison Project for Higher-Order Models <http://homepages.ulb.ac.be/~fpattyn/ismip/>`_".
+We begin with an example that does not require any external data; the "`Ice Sheet Model Intercomparison Project for Higher-Order Models <http://homepages.ulb.ac.be/~fpattyn/ismip/>`_".
 
 Set up the model
 ----------------
@@ -10,7 +10,7 @@ First, import CSLVR::
 
   from cslvr import *
 
-Next, we make a simple three-dimensional box mesh with 15 cells in the :math:`x` and :math:`y` directions, and 5 cells in the :math:`z` direction, and a width of 8 km::
+Next, we make a simple three-dimensional box mesh with 15 cells in the :math:`x` and :math:`y` directions, 5 cells in the :math:`z` direction, and width of 8 km::
 
   L     = 8000                          # width of domain
   p1    = Point(0.0, 0.0, 0.0)          # origin
@@ -18,7 +18,7 @@ Next, we make a simple three-dimensional box mesh with 15 cells in the :math:`x`
   mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void 
 
 
-We have a three-dimensional problem here, with periodic lateral boundaries. Thus we need to instantiate a :class:`~d3model.D3Model`, with periodic lateral boundaries::
+This problem is three-dimensional with periodic lateral boundaries. Thus we need to instantiate a :class:`~d3model.D3Model` with periodic lateral boundaries, like so::
 
   model = D3Model(mesh, out_dir = './results/', use_periodic = True)
 
@@ -26,7 +26,7 @@ We now mark the exterior facets and interior cells appropriately by calling :fun
 
   model.calculate_boundaries()
 
-The ISMIP-HOM experiment "A" geometry are created using the FEniCS class :class:`~fenics.Expression`.  This class requires the specification of the type of finite-element used by the ``model`` -- defined by the :class:`~fenics.FunctionSpace` created in the instantiation above -- accessed by ``model.Q``.  With the surface and bed functions defined, the mesh may be deformed to the desired geometry through the use of :func:`~d3model.D3Model.deform_mesh_to_geometry`::
+The ISMIP-HOM experiment "A" geometry are created using the FEniCS class :class:`~fenics.Expression`, requiring the specification of the type of finite-element used by the ``model`` -- defined by the :class:`~fenics.FunctionSpace` created in the instantiation above -- accessed by ``model.Q``.  With the surface and bed functions defined, the mesh may be deformed to the desired geometry through the use of :func:`~d3model.D3Model.deform_mesh_to_geometry`::
 
   a       = 0.5 * pi / 180     # surface slope in radians
   surface = Expression('- x[0] * tan(a)', a=a,
@@ -39,7 +39,7 @@ The ISMIP-HOM experiment "A" geometry are created using the FEniCS class :class:
 Solve the momentum balance
 --------------------------
 
-We can now set the desired isothermal flow-rate factor :math:`A` and constant basal traction coefficient :math:`\beta` through the appropriate ``init_`` method of the abstract class :class:`~model.Model`::
+We can now set the desired isothermal flow-rate factor :math:`A` and constant basal traction coefficient :math:`\beta` through the appropriate ``init_`` method of the base class :class:`~model.Model`::
 
   model.init_beta(1000)                       # really high friction
   model.init_A(1e-16)                         # cold, isothermal rate-factor
@@ -73,7 +73,7 @@ Now we can save the resulting velocity ``model.U3``, pressure ``model.p`` and ou
   model.save_xdmf(model.U3, 'U')
   model.save_xdmf(divU,     'divU')
   
-Additionally, we can plot the :class:`~fenics.Function`\ s over the surface or bed by creating surface and bed meshes associated with the 3D model::
+Additionally, we can plot the :class:`~fenics.Functions` over the surface or bed by creating surface and bed meshes associated with the 3D model::
 
   model.form_srf_mesh()
   model.form_bed_mesh()

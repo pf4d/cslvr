@@ -9,7 +9,7 @@ p2    = Point(L,   L,   1)            # x, y, z corner
 mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void 
 
 # output directiories :
-mdl_odr = 'BP'
+mdl_odr = 'FS'
 out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 
@@ -74,7 +74,8 @@ bedmodel.assign_submesh_variable(bedmodel.p,  model.p)
 # figure out some nice-looking contour levels :
 U_min  = srfmodel.U_mag.vector().min()
 U_max  = srfmodel.U_mag.vector().max()
-U_lvls = array([84, 86, 88, 90, 92, 94, 96, 98, 100])
+#U_lvls = array([84, 86, 88, 90, 92, 94, 96, 98, 100])  # momentum comparison
+U_lvls = array([U_min, 87, 88, 89, 90, 91, 92, U_max])  # full-Stokes
 
 p_min  = bedmodel.p.vector().min()
 p_max  = bedmodel.p.vector().max()
@@ -89,14 +90,18 @@ d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3,
 # vector that reside on a two-dimensional mesh (hence the D2Model
 # instantiations above.
 plot_variable(u = srfmodel.U3, name = 'U_mag', direc = plt_dir,
+              ext                 = '.png',
+              title               = r'$\mathbf{u} |_S$',
               levels              = U_lvls,
               cmap                = 'viridis',
               tp                  = True,
               show                = False,
-              extend              = 'both',#'neither',
+              extend              = 'neither',
               cb_format           = '%g')
 
 plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
+              ext                 = '.png',
+              title               = r'$p |_B$',
               levels              = p_lvls,
               cmap                = 'viridis',
               tp                  = True,
@@ -105,6 +110,8 @@ plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
               cb_format           = '%.1e')
 
 plot_variable(u = divU_b, name = 'divU', direc = plt_dir,
+              ext                 = '.png',
+              title               = r'$\nabla \cdot \mathbf{u} |_B$',
               cmap                = 'RdGy',
               levels              = d_lvls,
               tp                  = True,

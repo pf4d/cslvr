@@ -26,7 +26,7 @@ We now mark the exterior facets and interior cells appropriately by calling :fun
 
   model.calculate_boundaries()
 
-The ISMIP-HOM experiment "A" geometry are created using the FEniCS class :class:`~fenics.Expression`, requiring the specification of the type of finite-element used by the ``model`` -- defined by the :class:`~fenics.FunctionSpace` created in the instantiation above -- accessed by ``model.Q``.  With the surface and bed functions defined, the mesh may be deformed to the desired geometry through the use of :func:`~d3model.D3Model.deform_mesh_to_geometry`::
+The ISMIP-HOM experiment "A" geometry is created using the FEniCS class :class:`~fenics.Expression`, requiring the specification of the type of finite-element used by the ``model`` -- defined by the :class:`~fenics.FunctionSpace` created in the instantiation above -- accessed by ``model.Q``.  With the surface and bed functions defined, the mesh may be deformed to the desired geometry through the use of :func:`~d3model.D3Model.deform_mesh_to_geometry`::
 
   a       = 0.5 * pi / 180     # surface slope in radians
   surface = Expression('- x[0] * tan(a)', a=a,
@@ -101,7 +101,7 @@ Now we figure out some nice-looking contour levels::
 
   U_min  = srfmodel.U_mag.vector().min()
   U_max  = srfmodel.U_mag.vector().max()
-  U_lvls = array([84, 86, 88, 90, 92, 94, 96, 98, 100])
+  U_lvls = array([U_min, 87, 88, 89, 90, 91, 92, U_max])
   
   p_min  = bedmodel.p.vector().min()
   p_max  = bedmodel.p.vector().max()
@@ -112,17 +112,21 @@ Now we figure out some nice-looking contour levels::
   d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3, 
                   1e-3, 2.5e-3, 5e-3, d_max])
   
-and finally plot the variables using :func:`~helper.plot_variable`::
+and finally plot the variables as pdf's using :func:`~helper.plot_variable`::
 
   plot_variable(u = srfmodel.U3, name = 'U_mag', direc = plt_dir,
+                ext                 = '.pdf',
+                title               = r'$\mathbf{u} |_S$',
                 levels              = U_lvls,
                 cmap                = 'viridis',
                 tp                  = True,
                 show                = False,
-                extend              = 'both',#'neither',
+                extend              = 'neither',
                 cb_format           = '%g')
   
   plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
+                ext                 = '.pdf',
+                title               = r'$p |_B$',
                 levels              = p_lvls,
                 cmap                = 'viridis',
                 tp                  = True,
@@ -131,9 +135,17 @@ and finally plot the variables using :func:`~helper.plot_variable`::
                 cb_format           = '%.1e')
   
   plot_variable(u = divU_b, name = 'divU', direc = plt_dir,
+                ext                 = '.pdf',
+                title               = r'$\nabla \cdot \mathbf{u} |_B$',
                 cmap                = 'RdGy',
                 levels              = d_lvls,
                 tp                  = True,
                 show                = False,
                 extend              = 'neither',
                 cb_format           = '%.1e')
+
+.. image:: https://www.dropbox.com/s/gpny5ntyt0ybav0/U_mag.png?raw=1
+.. image:: https://www.dropbox.com/s/xjeqr824qjb5gek/p.png?raw=1
+.. image:: https://www.dropbox.com/s/gvr6lzm9whi48t2/divU.png?raw=1
+
+

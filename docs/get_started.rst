@@ -144,6 +144,8 @@ and finally plot the variables as pdf's using :func:`~helper.plot_variable`::
                 extend              = 'neither',
                 cb_format           = '%.1e')
 
+The full-Stokes solutions derived by solving :class:`~momentumstokes.MomentumDukowiczStokes` are plotted below.
+
 .. image:: https://www.dropbox.com/s/gpny5ntyt0ybav0/U_mag.png?raw=1
 .. image:: https://www.dropbox.com/s/xjeqr824qjb5gek/p.png?raw=1
 .. image:: https://www.dropbox.com/s/gvr6lzm9whi48t2/divU.png?raw=1

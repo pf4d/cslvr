@@ -44,6 +44,7 @@ And `basemap <http://matplotlib.org/basemap/users/installing.html>`_.  For a gen
   sudo make install;
   cd ..;
   sudo python setup.py install;
+  sudo ldconfig;
 
 Install the program by editing your .bashrc file with::
   

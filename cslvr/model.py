@@ -3,6 +3,7 @@ from dolfin_adjoint       import *
 from cslvr.inputoutput    import print_text, get_text, print_min_max
 from copy                 import copy
 from scipy.io             import savemat
+from ufl                  import indexed
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
@@ -30,36 +31,6 @@ class Model(object):
   :type order:         int
   :type use_periodic:  bool
   """
-
-  OMEGA_GND   = 0   # internal cells over bedrock
-  OMEGA_FLT   = 1   # internal cells over water
-  GAMMA_S_GND = 2   # grounded upper surface
-  GAMMA_B_GND = 3   # grounded lower surface (bedrock)
-  GAMMA_S_FLT = 6   # shelf upper surface
-  GAMMA_B_FLT = 5   # shelf lower surface
-  GAMMA_L_DVD = 7   # basin divides
-  GAMMA_L_OVR = 4   # terminus over water
-  GAMMA_L_UDR = 10  # terminus under water
-  GAMMA_U_GND = 8   # grounded surface with U observations
-  GAMMA_U_FLT = 9   # shelf surface with U observations
-  
-  # external boundaries :
-  ext_boundaries = {GAMMA_S_GND : 'grounded upper surface',
-                    GAMMA_B_GND : 'grounded lower surface (bedrock)',
-                    GAMMA_S_FLT : 'shelf upper surface',
-                    GAMMA_B_FLT : 'shelf lower surface',
-                    GAMMA_L_DVD : 'basin divides',
-                    GAMMA_L_OVR : 'terminus over water',
-                    GAMMA_L_UDR : 'terminus under water',
-                    GAMMA_U_GND : 'grounded upper surface with U observations',
-                    GAMMA_U_FLT : 'shelf upper surface with U observations'}
-
-  # internal boundaries :
-  int_boundaries = {OMEGA_GND   : 'internal cells located over bedrock',
-                    OMEGA_FLT   : 'internal cells located over water'}
-
-  # union :
-  boundaries = dict(ext_boundaries, **int_boundaries)
   
   def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
@@ -70,9 +41,13 @@ class Model(object):
     s = "::: INITIALIZING BASE MODEL :::"
     print_text(s, cls=self.this)
     
-    parameters['form_compiler']['quadrature_degree']  = 2
+    parameters['form_compiler']['quadrature_degree']  = order + 1
     parameters["std_out_all_processes"]               = False
+    parameters['form_compiler']['optimize']           = True
     parameters['form_compiler']['cpp_optimize']       = True
+    parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
+    parameters["form_compiler"]["representation"]     = 'uflacs'
+    parameters['plotting_backend']                    = 'matplotlib'
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
@@ -262,88 +237,23 @@ class Model(object):
     self.Q_T_u   = Constant(13.9e4)
     self.Q_T_u.rename('Q_T_u', 'upper bound of ice activation energy')
   
-  def set_measures(self, ff, cf):
+  def set_subdomains(self, f):
     """
-    set the new measure space for facets ``self.ds`` and cells ``self.dx`` for
-    the boundaries marked by FacetFunction ``ff`` and CellFunction ``cf``
-    respectively.
-
-    :param ff: the FacetFunction
-    :param cf: the CellFunction
-
-    Also, the number of facets marked by 
-    :func:`calculate_boundaries` :
-
-    * ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``  
-    * ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``  
-    * ``self.N_GAMMA_S_GND`` -- number of facets marked ``self.GAMMA_S_GND``
-    * ``self.N_GAMMA_B_GND`` -- number of facets marked ``self.GAMMA_B_GND``
-    * ``self.N_GAMMA_S_FLT`` -- number of facets marked ``self.GAMMA_S_FLT``
-    * ``self.N_GAMMA_B_FLT`` -- number of facets marked ``self.GAMMA_B_FLT``
-    * ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``
-    * ``self.N_GAMMA_L_OVR`` -- number of facets marked ``self.GAMMA_L_OVR``
-    * ``self.N_GAMMA_L_UDR`` -- number of facets marked ``self.GAMMA_L_UDR``
-    * ``self.N_GAMMA_U_GND`` -- number of facets marked ``self.GAMMA_U_GND``
-    * ``self.N_GAMMA_U_FLT`` -- number of facets marked ``self.GAMMA_U_FLT``
-
-    The subdomains corresponding to FacetFunction ``self.ff`` are :
-
-    * ``self.dBed_g``  --  grounded bed
-    * ``self.dBed_f``  --  floating bed
-    * ``self.dBed``    --  bed
-    * ``self.dSrf_gu`` --  grounded with U observations
-    * ``self.dSrf_fu`` --  floating with U observations
-    * ``self.dSrf_u``  --  surface with U observations
-    * ``self.dSrf_g``  --  surface of grounded ice
-    * ``self.dSrf_f``  --  surface of floating ice
-    * ``self.dSrf``    --  surface
-    * ``self.dLat_d``  --  lateral divide
-    * ``self.dLat_to`` --  lateral terminus overwater
-    * ``self.dLat_tu`` --  lateral terminus underwater
-    * ``self.dLat_t``  --  lateral terminus
-    * ``self.dLat``    --  lateral
-
-    The subdomains corresponding to CellFunction ``self.cf`` are :
-
-    * ``self.dx_g``    --  internal above grounded
-    * ``self.dx_f``    --  internal above floating
+    Set the facet subdomains FacetFunction self.ff, cell subdomains
+    CellFunction self.cf, and accumulation FacetFunction self.ff_acc from
+    MeshFunctions saved in an .h5 file <f>.
     """
-    # calculate the number of cells and facets that are of a certain type
-    # for determining Dirichlet boundaries :
-    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
-    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
-    self.N_GAMMA_S_GND = sum(self.ff.array() == self.GAMMA_S_GND)
-    self.N_GAMMA_B_GND = sum(self.ff.array() == self.GAMMA_B_GND)
-    self.N_GAMMA_S_FLT = sum(self.ff.array() == self.GAMMA_S_FLT)
-    self.N_GAMMA_B_FLT = sum(self.ff.array() == self.GAMMA_B_FLT)
-    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
-    self.N_GAMMA_L_OVR = sum(self.ff.array() == self.GAMMA_L_OVR)
-    self.N_GAMMA_L_UDR = sum(self.ff.array() == self.GAMMA_L_UDR)
-    self.N_GAMMA_U_GND = sum(self.ff.array() == self.GAMMA_U_GND)
-    self.N_GAMMA_U_FLT = sum(self.ff.array() == self.GAMMA_U_FLT)
+    s = "::: setting subdomains :::"
+    print_text(s, cls=self)
 
-    # create new measures of integration :
-    self.ds      = Measure('ds', subdomain_data=self.ff)
-    self.dx      = Measure('dx', subdomain_data=self.cf)
+    self.ff     = MeshFunction('size_t', self.mesh)
+    self.cf     = MeshFunction('size_t', self.mesh)
+    self.ff_acc = MeshFunction('size_t', self.mesh)
+    f.read(self.ff,     'ff')
+    f.read(self.cf,     'cf')
+    f.read(self.ff_acc, 'ff_acc')
     
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
+    self.set_measures()
 
   def generate_pbc(self):
     """
@@ -393,6 +303,51 @@ class Model(object):
     by calling :func:`set_measures`.
     """
     raiseNotDefined()
+
+  def set_measures(self):
+    """
+    set the new measure space for facets ``self.ds`` and cells ``self.dx`` for
+    the boundaries marked by FacetFunction ``self.ff`` and CellFunction 
+    ``self.cf``, respectively.
+
+    Also, the number of facets marked by 
+    :func:`calculate_boundaries` :
+
+    * ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``  
+    * ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``  
+    * ``self.N_GAMMA_S_GND`` -- number of facets marked ``self.GAMMA_S_GND``
+    * ``self.N_GAMMA_B_GND`` -- number of facets marked ``self.GAMMA_B_GND``
+    * ``self.N_GAMMA_S_FLT`` -- number of facets marked ``self.GAMMA_S_FLT``
+    * ``self.N_GAMMA_B_FLT`` -- number of facets marked ``self.GAMMA_B_FLT``
+    * ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``
+    * ``self.N_GAMMA_L_OVR`` -- number of facets marked ``self.GAMMA_L_OVR``
+    * ``self.N_GAMMA_L_UDR`` -- number of facets marked ``self.GAMMA_L_UDR``
+    * ``self.N_GAMMA_U_GND`` -- number of facets marked ``self.GAMMA_U_GND``
+    * ``self.N_GAMMA_U_FLT`` -- number of facets marked ``self.GAMMA_U_FLT``
+
+    The subdomains corresponding to FacetFunction ``self.ff`` are :
+
+    * ``self.dBed_g``  --  grounded bed
+    * ``self.dBed_f``  --  floating bed
+    * ``self.dBed``    --  bed
+    * ``self.dSrf_gu`` --  grounded with U observations
+    * ``self.dSrf_fu`` --  floating with U observations
+    * ``self.dSrf_u``  --  surface with U observations
+    * ``self.dSrf_g``  --  surface of grounded ice
+    * ``self.dSrf_f``  --  surface of floating ice
+    * ``self.dSrf``    --  surface
+    * ``self.dLat_d``  --  lateral divide
+    * ``self.dLat_to`` --  lateral terminus overwater
+    * ``self.dLat_tu`` --  lateral terminus underwater
+    * ``self.dLat_t``  --  lateral terminus
+    * ``self.dLat``    --  lateral
+
+    The subdomains corresponding to CellFunction ``self.cf`` are :
+
+    * ``self.dx_g``    --  internal above grounded
+    * ``self.dx_f``    --  internal above floating
+    """
+    raiseNotDefined()
   
   def set_out_dir(self, out_dir):
     """
@@ -436,18 +391,42 @@ class Model(object):
       self.generate_pbc()
     else:
       self.pBC = None
-    self.Q      = FunctionSpace(self.mesh,      "CG", order, 
-                                constrained_domain=self.pBC)
-    Qe          = FiniteElement("CG", self.mesh.ufl_cell(), order)
-    self.Q2     = FunctionSpace(self.mesh, MixedElement([Qe]*2),
-                                constrained_domain=self.pBC)
-    self.Q3     = FunctionSpace(self.mesh, MixedElement([Qe]*3),
-                                constrained_domain=self.pBC)
-    self.Q4     = FunctionSpace(self.mesh, MixedElement([Qe]*4),
-                                constrained_domain=self.pBC)
-    self.Q_non_periodic   = FunctionSpace(self.mesh, "CG", order)
-    self.Q3_non_periodic  = FunctionSpace(self.mesh, MixedElement([Qe]*3))
-    self.V                = VectorFunctionSpace(self.mesh, "CG", order)
+    # NOTE: these are defined for all models in order to accomodate the
+    # `constrained domain' for periodic boundaries;  once the mesh is deformed,
+    # the periodic boundaries will not work if the functionspace is re-defined
+    # by a ``Physics'' class.
+    self.Q1e              = FiniteElement("CG", self.mesh.ufl_cell(), order)
+    self.V1e              = VectorElement("CG", self.mesh.ufl_cell(), order)
+    self.Q2e              = FiniteElement("CG", self.mesh.ufl_cell(), order+1)
+    self.QM2e             = MixedElement([self.Q1e]*2)
+    self.QM3e             = MixedElement([self.Q1e]*3)
+    self.QM4e             = MixedElement([self.Q1e]*4)
+    self.QTH2e            = MixedElement([self.Q2e,self.Q2e,self.Q1e])
+    self.QTH3e            = MixedElement([self.Q2e,self.Q2e,self.Q2e,self.Q1e])
+    self.BDMe             = FiniteElement("BDM", self.mesh.ufl_cell(), 1)
+    self.DGe              = FiniteElement("DG",  self.mesh.ufl_cell(), 0)
+    self.DG1e             = FiniteElement("DG",  self.mesh.ufl_cell(), 1)
+    self.BDMMe            = MixedElement([self.BDMe, self.DGe])
+    
+    self.Q                = FunctionSpace(self.mesh, self.Q1e,
+                                          constrained_domain=self.pBC)
+    self.Q2               = FunctionSpace(self.mesh, self.QM2e,
+                                          constrained_domain=self.pBC)
+    self.Q3               = FunctionSpace(self.mesh, self.QM3e,
+                                          constrained_domain=self.pBC)
+    self.Q4               = FunctionSpace(self.mesh, self.QM4e,
+                                          constrained_domain=self.pBC)
+    self.QTH2             = FunctionSpace(self.mesh, self.QTH2e,
+                                          constrained_domain=self.pBC)
+    self.QTH3             = FunctionSpace(self.mesh, self.QTH3e,
+                                          constrained_domain=self.pBC)
+    self.BDM              = FunctionSpace(self.mesh, self.BDMMe,
+                                          constrained_domain=self.pBC)
+    self.DG1              = FunctionSpace(self.mesh, self.DG1e,
+                                          constrained_domain=self.pBC)
+    self.Q_non_periodic   = FunctionSpace(self.mesh, self.Q1e)
+    self.Q3_non_periodic  = FunctionSpace(self.mesh, MixedElement([self.Q1e]*3))
+    self.V                = FunctionSpace(self.mesh, self.V1e)
 
     s = "    - fundamental function spaces created - "
     print_text(s, cls=self.this)
@@ -473,6 +452,17 @@ class Model(object):
     s = "::: initializng basal topography :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.B, B)
+
+  def init_B_err(self, B_err):
+    r"""
+    Set basal topography uncertainty :math:`B_{\epsilon}`, ``self.B_err``,
+    by calling :func:`assign_variable`.
+    
+    :param B_err:   basal topography uncertainty
+    """
+    s = "::: initializng basal topography uncertainty :::"
+    print_text(s, cls=self.this)
+    self.assign_variable(self.B_err, B_err)
   
   def init_p(self, p):
     r"""
@@ -611,6 +601,17 @@ class Model(object):
     s = "::: initializing basal traction coefficient :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.beta, beta)
+  
+  def init_lam(self, lam):
+    r"""
+    Set basal normal stress magnitude :math:`\underline{n} \cdot \underline{\underline{\sigma}} \cdot \underline{n}`, ``self.lam``,
+    by calling :func:`assign_variable`.
+    
+    :param lam:  basal normal stress magnitude :math:`\underline{n} \cdot \underline{\underline{\sigma}} \cdot \underline{n}`
+    """
+    s = "::: initializing basal traction coefficient :::"
+    print_text(s, cls=self.this)
+    self.assign_variable(self.lam, lam)
   
   def init_A(self, A):
     r"""
@@ -907,6 +908,30 @@ class Model(object):
     print_text(s, cls=self.this)
     self.assign_variable(self.Ubar, Ubar)
   
+  def init_uhat(self, uhat):
+    r"""
+    Set normalized x-component of lateral velocity 
+    :math:`\hat{u}`, ``self.uhat``,
+    by calling :func:`assign_variable`.
+    
+    :param uhat:   normalized x-component of velocity
+    """
+    s = "::: initializing normalized x-component of velocity :::"
+    print_text(s, cls=self.this)
+    self.assign_variable(self.uhat, uhat)
+  
+  def init_vhat(self, vhat):
+    r"""
+    Set normalized y-component of lateral velocity 
+    :math:`\hat{v}`, ``self.vhat``,
+    by calling :func:`assign_variable`.
+    
+    :param vhat:   normalized y-component of velocity
+    """
+    s = "::: initializing normalized y-component of velocity :::"
+    print_text(s, cls=self.this)
+    self.assign_variable(self.vhat, vhat)
+  
   def init_u_lat(self, u_lat):
     r"""
     Set x-component of lateral velocity :math:`u_{g_D}`, ``self.u_lat``,
@@ -991,23 +1016,23 @@ class Model(object):
   
   def init_d_x(self, d_x):
     r"""
-    Set x-component of normalized flow-direction :math:`d_x`, ``self.d_x``,
+    Set x-component of flow-direction :math:`d_x`, ``self.d_x``,
     by calling :func:`assign_variable`.
     
-    :param d_x:   normalized x-component of flow direction
+    :param d_x:   x-component of flow direction
     """
-    s = "::: initializing x-component-normalized-driving-stress direction :::"
+    s = "::: initializing x-component flow direction :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.d_x, d_x)
   
   def init_d_y(self, d_y):
     r"""
-    Set y-component of normalized flow-direction :math:`d_y`, ``self.d_y``,
+    Set y-component of flow-direction :math:`d_y`, ``self.d_y``,
     by calling :func:`assign_variable`.
     
-    :param d_y:   normalized y-component of flow direction
+    :param d_y:   y-component of flow direction
     """
-    s = "::: initializing y-component-normalized-driving-stress direction :::"
+    s = "::: initializing y-component of flow direction :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.d_y, d_y)
   
@@ -1378,6 +1403,14 @@ class Model(object):
     s = "::: initializing non-advective flux coefficient k_0 :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.k_0, k_0)
+  
+  def init_lam_basal_pressure(self):
+    r"""
+    Initialize the basal normal stress ``self.lam`` to cryostatic pressure 
+    :math:`\rho g (S - B)`.
+    """
+    p = project(self.rhoi * self.g * (self.S - self.B), self.Q)
+    self.init_lam(p)
 
   def init_beta_SIA(self, U_mag=None, eps=0.5):
     r"""
@@ -1969,22 +2002,24 @@ class Model(object):
       sys.exit(1)
     return Mr
 
-  def get_norm(self, U, type='l2'):
+  def get_norm(self, U, kind='l2'):
     """
     Calculate and return the norm of and the normalized vector 
     :math:`\hat{\mathbf{u}}`, of the vector :math:`\mathbf{u}` 
     given by parameter ``U``.
-    The parameter ``type`` may be either ``l1`` for the :math:`L^2` 
+    The parameter ``kind`` may be either ``l2`` for the :math:`L^2` 
     norm or ``linf`` for the :math:`L^{\infty}` norm
 
     :param U:    :class:`~fencics.GenericVector`, list, or tuple of vector
                  components
-    :param type: string
+    :param kind: string
     :rtype:      tuple containing (:math:`\hat{\mathbf{u}}`,
                                    :math:`\Vert \mathbf{u} \Vert`)
     """
     # iterate through each component and convert to array :
     U_v = []
+    if type(U[0]) == indexed.Indexed:
+      U = U.split(True)
     for u in U:
       # convert to array and normailze the components of U :
       u_v = u.vector().array()
@@ -1992,9 +2027,9 @@ class Model(object):
     U_v = np.array(U_v)
 
     # calculate the norm :
-    if type == 'l2':
+    if kind == 'l2':
       norm_u = np.sqrt(np.sum(U_v**2,axis=0))
-    elif type == 'linf':
+    elif kind == 'linf':
       norm_u = np.amax(U_v,axis=0)
     
     return U_v, norm_u
@@ -2396,6 +2431,7 @@ class Model(object):
     # topography :
     self.S             = Function(self.Q_non_periodic, name='S')
     self.B             = Function(self.Q_non_periodic, name='B')
+    self.B_err         = Function(self.Q_non_periodic, name='B_err')
     
     # velocity observations :
     self.U_ob          = Function(self.Q, name='U_ob')
@@ -2441,12 +2477,16 @@ class Model(object):
     self.gradTm_B      = Function(self.Q, name='gradTm_B')
     self.theta         = Function(self.Q, name='theta')
     self.W             = Function(self.Q, name='W')
+    self.W0            = Function(self.Q, name='W0')
     self.Wc            = Function(self.Q, name='Wc')
     self.Mb            = Function(self.Q, name='Mb')
     self.rhob          = Function(self.Q, name='rhob')
     self.T_melt        = Function(self.Q, name='T_melt')     # pressure-melting
     self.theta_melt    = Function(self.Q, name='theta_melt') # pressure-melting
     self.T_surface     = Function(self.Q, name='T_surface')
+    self.theta_surface = Function(self.Q, name='theta_surface')
+    self.theta_float   = Function(self.Q, name='theta_float')
+    self.theta_app     = Function(self.Q, name='theta_app')
     self.alpha         = Function(self.Q, name='alpha')
     self.alpha_int     = Function(self.Q, name='alpha_int')
     self.Fb            = Function(self.Q, name='Fb')
@@ -2492,8 +2532,8 @@ class Model(object):
 
   def home_rolled_newton_method(self, R, U, J, bcs, atol=1e-7, rtol=1e-10,
                                 relaxation_param=1.0, max_iter=25,
-                                method='cg', preconditioner='amg',
-                                cb_ftn=None):
+                                method='mumps', preconditioner='default',
+                                cb_ftn=None, bp_Jac=None, bp_R=None):
     """
     Appy Newton's method.
 
@@ -2513,6 +2553,37 @@ class Model(object):
     converged  = False
     lmbda      = relaxation_param   # relaxation parameter
     nIter      = 0                  # number of iterations
+
+    ## Set PETSc solve type (conjugate gradient) and preconditioner
+    ## (algebraic multigrid)
+    #PETScOptions.set("ksp_type", "cg")
+    #PETScOptions.set("pc_type", "gamg")
+    #
+    ## Since we have a singular problem, use SVD solver on the multigrid
+    ## 'coarse grid'
+    #PETScOptions.set("mg_coarse_ksp_type", "preonly")
+    #PETScOptions.set("mg_coarse_pc_type", "svd")
+    #
+    ## Set the solver tolerance
+    #PETScOptions.set("ksp_rtol", 1.0e-8)
+    #
+    ## Print PETSc solver configuration
+    #PETScOptions.set("ksp_view")
+    #PETScOptions.set("ksp_monitor")
+    
+    #PETScOptions().set('ksp_type',                      method)
+    #PETScOptions().set('mat_type',                      'matfree')
+    #PETScOptions().set('pc_type',                       preconditioner)
+    #PETScOptions().set('pc_factor_mat_solver_package',  'mumps')
+    #PETScOptions().set('pc_fieldsplit_schur_fact_type', 'diag')
+    #PETScOptions().set('pc_fieldsplit_type',            'schur')
+    #PETScOptions().set('fieldsplit_0_ksp_type',         'preonly')
+    #PETScOptions().set('fieldsplit_0_pc_type',          'python')
+    #PETScOptions().set('fieldsplit_1_ksp_type',         'preonly')
+    #PETScOptions().set('fieldsplit_1_pc_type',          'python')
+    #PETScOptions().set('fieldsplit_1_Mp_ksp_type',      'preonly')
+    #PETScOptions().set('fieldsplit_1_Mp_pc_type',       'ilu')
+    #PETScOptions().set('assembled_pc_type',             'hypre')
    
     # need to homogenize the boundary, as the residual is always zero over
     # essential boundaries :
@@ -2526,9 +2597,26 @@ class Model(object):
     d = Function(U.function_space()) 
     
     while not converged and nIter < max_iter:
+    
       # assemble system :
       A, b    = assemble_system(J, -R, bcs_u)
-      
+    
+      ## Create Krylov solver and AMG preconditioner
+      #solver  = PETScKrylovSolver(method)#, preconditioner)
+
+      ## Assemble preconditioner system
+      #P, btmp = assemble_system(bp_Jac, -bp_R)
+
+      ### Associate operator (A) and preconditioner matrix (P)
+      ##solver.set_operators(A, P)
+      #solver.set_operator(A)
+
+      ## Set PETSc options on the solver
+      #solver.set_from_options()
+
+      ## determine step direction :
+      #solver.solve(d.vector(), b, annotate=False)
+
       # determine step direction :
       solve(A, d.vector(), b, method, preconditioner, annotate=False)
     

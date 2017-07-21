@@ -899,6 +899,7 @@ def plotIce(di, u, name, direc,
             umin             = None,
             umax             = None,
             numLvls          = 12,
+            drawGridLabels   = True,
             levels           = None,
             levels_2         = None,
             tp               = False,
@@ -995,7 +996,7 @@ def plotIce(di, u, name, direc,
     if cont is 'antarctica':
       w   = 5513335.22665
       h   = 4602848.6605
-      fig = plt.figure(figsize=(14,10))
+      fig = plt.figure(figsize=(7,5))
       ax  = fig.add_subplot(111)
 
       lon_0 = 0
@@ -1007,16 +1008,25 @@ def plotIce(di, u, name, direc,
                   lon_0=lon_0, lat_0=lat_0)
 
       offset = 0.015 * (m.ymax - m.ymin)
-     
+    
       # draw lat/lon grid lines every 5 degrees.
       # labels = [left,right,top,bottom]
+      if drawGridLabels:
+        mer_lab = [True, False, True, True] 
+        par_lab = [True, False, True, True]
+      else:
+        mer_lab = [False, False, False, False]
+        par_lab = [False, False, False, False]
+
       m.drawmeridians(np.arange(0, 360, 20.0),
                       color = 'black',
-                      labels = [True, False, True, True])
+                      linewidth = 0.5,
+                      labels = mer_lab)
       m.drawparallels(np.arange(-90, 90, 5.0), 
                       color = 'black', 
-                      labels = [True, False, True, True])
-      m.drawmapscale(-130, -68, 0, -90, 400, 
+                      linewidth = 0.5,
+                      labels = par_lab)
+      m.drawmapscale(-130, -68, 0, -90, 1000, 
                      yoffset  = offset, 
                      barstyle = 'fancy')
  
@@ -1037,14 +1047,21 @@ def plotIce(di, u, name, direc,
 
       offset = 0.015 * (m.ymax - m.ymin)
       
+      if drawGridLabels:
+        mer_lab = [False, False, False, True]
+        par_lab = [True, False, True, False]
+      else:
+        mer_lab = [False, False, False, False]
+        par_lab = [False, False, False, False]
+      
       # draw lat/lon grid lines every 5 degrees.
       # labels = [left,right,top,bottom]
       m.drawmeridians(np.arange(0, 360, 5.0),
                       color = 'black',
-                      labels = [False, False, False, True])
+                      labels = mer_lab)
       m.drawparallels(np.arange(-90, 90, 5.0), 
                       color = 'black', 
-                      labels = [True, False, True, False])
+                      labels = par_lab)
       m.drawmapscale(-34, 60.5, -41.5, 71, 400, 
                      yoffset  = offset, 
                      barstyle = 'fancy')

@@ -1,15 +1,19 @@
-from cslvr   import HybridModel, MomentumHybrid
+from cslvr   import HybridModel, MomentumHybrid, plot_variable
 from fenics  import Point, RectangleMesh, Expression, sqrt, pi
+from numpy   import array
+
+# output directiories :
+out_dir = './ISMIP_HOM_A_results/hybrid/'
+plt_dir = '../../images/momentum/ISMIP_HOM_A/hybrid/'
 
 alpha = 0.5 * pi / 180 
-L     = 10000
+L     = 8000
 
 p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)
 mesh  = RectangleMesh(p1, p2, 25, 25)
 
-model = HybridModel(mesh, out_dir = './ISMIP_HOM_A_hybrid_results/', 
-                    use_periodic = True)
+model = HybridModel(mesh, out_dir = out_dir, use_periodic = True)
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
@@ -19,14 +23,22 @@ bed     = Expression(  '- x[0] * tan(alpha) - 1000.0 + 500.0 * ' \
 
 model.init_S(surface)
 model.init_B(bed)
-model.init_mask(1.0)  # all grounded
 model.init_beta(1000)
 model.init_A(1e-16)
 
 mom = MomentumHybrid(model)
 mom.solve()
 
-model.save_xdmf(model.U3_s, 'U_S')
-
+# this function allow the plotting of an arbitrary FEniCS function or 
+# vector that reside on a two-dimensional mesh :
+plot_variable(u = model.U3_s, name = 'U_mag', direc = plt_dir,
+              ext                 = '.png',
+              title               = r'$\underline{u} |_S$',
+              levels              = None,#U_lvls,
+              cmap                = 'viridis',
+              tp                  = True,
+              show                = False,
+              extend              = 'neither',
+              cb_format           = '%g')
 
 

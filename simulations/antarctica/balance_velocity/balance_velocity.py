@@ -1,41 +1,75 @@
 from cslvr import *
 
-thklim = 10.0
+mesh_H = 10
+kappa  = 0.0
+method = 'GLS'
 
-# collect the raw data :
-bm1   = DataFactory.get_bedmap1(thklim)
-bm2   = DataFactory.get_bedmap2(thklim)
+# set plot directory :
+plt_dir = '../../../images/balance_velocity/antarctica/'
 
-# load a mesh :
-mesh  = MeshFactory.get_antarctica_2D_medium()
+# load the data :
+f = HDF5File(mpi_comm_world(), 'dump/vars/state_%iH.h5' % mesh_H, 'r')
 
-# create data objects to use with varglas :
-d1    = DataInput(bm1, mesh=mesh)
-d2    = DataInput(bm2, mesh=mesh)
+# the balance velocity uses a 2D-model :
+model = D2Model(f, out_dir = 'results/', order=1)
+    
+# set the calculated subdomains :
+model.set_subdomains(f)
 
-# get projections for use with FEniCS :
-S     = d2.get_expression("S",     near=True)
-B     = d2.get_expression("B",     near=True)
-adot  = d1.get_expression("acca",  near=True)
+# use the projection of the dataset 'bedmap1' for plotting :
+bm1  = DataFactory.get_bedmap1()
 
-model = D2Model(mesh, out_dir = 'results/')
+model.init_S(f)
+model.init_B(f)
+model.init_adot(f)
+model.init_mask(f)
+model.init_U_ob(f,f)
+model.init_U_mask(f)
 
-model.init_S(S)
-model.init_B(B)
-model.init_adot(adot)
+# the imposed direction of flow :
+d = (model.u_ob, model.v_ob)
+#d = (-model.S.dx(0), -model.S.dx(1))
 
-bv = BalanceVelocity(model, kappa=5.0)
+## plot the observed surface speed :
+#U_max  = model.U_ob.vector().max()
+#U_min  = model.U_ob.vector().min()
+#U_lvls = array([U_min, 2, 10, 20, 50, 100, 200, 500, 1000, U_max])
+#plotIce(bm1, model.U_ob, name='U_ob', direc=plt_dir, drawGridLabels=False,
+#       title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap='viridis',
+#       show=False, levels=U_lvls, tp=False, cb_format='%.1e')
+
+bv = BalanceVelocity(model, kappa=kappa, stabilization_method=method)
+bv.solve_direction_of_flow(d)
 bv.solve(annotate=False)
-
 model.save_xdmf(model.Ubar, 'Ubar')
 
-plotIce(d1, model.Ubar, name='Ubar', direc='results/',
-       title=r'$\bar{\mathbf{u}}$', cmap='gist_yarg',
-       umin=1.5, umax=4000,
-       scale='log', numLvls=12, tp=False, tpAlpha=0.5)
+U_max  = model.Ubar.vector().max()
+U_min  = model.Ubar.vector().min()
+U_lvls = array([U_min, 2, 10, 20, 50, 100, 200, 500, 1000, U_max])
 
-#do = DataOutput(out_dir)
-#do.write_matlab(bm1, model.Ubar, 'Ubar_5', val=0.0)
+name = 'Ubar_%iH_kappa_%i_%s' % (mesh_H, kappa, method)
+tit  = r'$\bar{u}_{%i}$' % kappa
+plotIce(bm1, model.Ubar, name=name, direc=plt_dir,
+       title=tit, cmap='viridis', drawGridLabels=False,
+       show=False, levels=U_lvls, tp=False, cb_format='%.1e')
+
+# calculate the misfit
+misfit = Function(model.Q)
+Ubar_v = model.Ubar.vector().array()
+U_ob_v = model.U_ob.vector().array()
+m_v    = U_ob_v - Ubar_v
+model.assign_variable(misfit, m_v)
+
+m_max  = misfit.vector().max()
+m_min  = misfit.vector().min()
+#m_lvls = array([m_min, -5e2, -1e2, -1e1, -1, 1, 1e1, 1e2, 5e2, m_max])
+m_lvls = array([m_min, -50, -10, -5, -1, 1, 5, 10, 50, m_max])
+ 
+name = 'misfit_%iH_kappa_%i_%s' % (mesh_H, kappa, method)
+tit  = r'$M_{%i}$' % kappa
+plotIce(bm1, misfit, name=name, direc=plt_dir,
+       title=tit, cmap='RdGy', drawGridLabels=False,
+       show=False, levels=m_lvls, tp=False, cb_format='%.1e')
 
 
 

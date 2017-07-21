@@ -5,6 +5,7 @@ from tifffile           import TiffFile
 from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
                                gradient
 from scipy.io           import loadmat, netcdf_file
+from netCDF4            import Dataset
 from scipy.interpolate  import griddata
 from pyproj             import Proj, transform
 from cslvr.inputoutput  import print_text
@@ -51,7 +52,7 @@ class DataFactory(object):
 
 
   @staticmethod
-  def get_ant_measures(res = 900):
+  def get_ant_measures(res = 450):
     """
     `Antarctica Measures <https://nsidc.org/data/docs/measures/nsidc0484_rignot/>`_ surface velocity data.  This function creates a new data field with
     key ``mask`` that is 1 where velocity measurements are present and 
@@ -75,24 +76,23 @@ class DataFactory(object):
     global home
  
     if res == 900:
-      direc    = home + '/antarctica/measures/antarctica_ice_velocity_900m.nc' 
+      direc = home + '/antarctica/measures/antarctica_ice_velocity_900m_v2.nc' 
     elif res == 450:
-      direc    = home + '/antarctica/measures/antarctica_ice_velocity_450m.nc' 
+      direc = home + '/antarctica/measures/antarctica_ice_velocity_450m_v2.nc' 
     else:
       print "get_ant_measures() 'res' arg must be either 900 or 450"
       exit(0)
 
-    data     = netcdf_file(direc, mode = 'r')
+    data     = Dataset(direc, mode = 'r')
     vara     = dict()
   
     # retrieve data :
-    vx   = array(data.variables['vx'][:])
-    vy   = array(data.variables['vy'][:])
-    err  = array(data.variables['err'][:])
+    vx   = array(data.variables['VX'][:])
+    vy   = array(data.variables['VY'][:])
     mask = (vx != 0.0).astype('i')
     
-    names = ['vx', 'vy', 'v_err', 'mask']
-    ftns  = [ vx,   vy,   err,     mask ]
+    names = ['vx', 'vy', 'mask']
+    ftns  = [ vx,   vy,   mask ]
     
     for n in names:
       print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
@@ -434,6 +434,9 @@ class DataFactory(object):
     H             = h - b
     h[H < thklim] = b[H < thklim] + thklim
     H[H < thklim] = thklim
+
+    adota[adota < -1000] = 0
+    adotr[adotr < -1000] = 0
     
     names = ['B','S','H','acca','accr','ghffm','ghfsr','temp']
     ftns  = [b, h, H, adota, adotr, q_geo_f, q_geo_s, srfTemp]

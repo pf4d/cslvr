@@ -86,7 +86,7 @@ RUN wget http://sourceforge.net/projects/matplotlib/files/matplotlib-toolkits/ba
 
 
 # install gmsh-dynamic 2.10.1 :
-RUN wget https://www.dropbox.com/s/hp64kx6wh790sf6/gmsh.tgz?dl=1 -O gmsh.tgz && \
+RUN wget https://www.dropbox.com/s/hp64kx6wh790sf6/gmsh.tgz && \ 
     tar -xzvf gmsh.tgz && \
     cd gmsh-2.10.1-dynamic-svn-Linux && \
     cd gmshpy && \

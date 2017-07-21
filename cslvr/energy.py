@@ -93,7 +93,7 @@ class Energy(Physics):
   
   def make_steady_state(self):
     """
-    set the energy system to steady-staet form.
+    set the energy system to steady-state form.
     """
     s = "::: RE-INITIALIZING ENERGY PHYSICS WITH STEADY-STATE FORM :::"
     print_text(s, self.color())
@@ -567,7 +567,6 @@ class Enthalpy(Energy):
     # save the state of basal boundary flux :
     self.energy_flux_mode = energy_flux_mode
     
-    r             = model.r
     mesh          = model.mesh
     Q             = model.Q
     T             = model.T
@@ -676,13 +675,18 @@ class Enthalpy(Energy):
       print_text(s, cls=self)
      
       # the Peclet number : 
-      Ut     = rho*U - grad(kappa/c)
-      Unorm  = sqrt(dot(Ut, Ut) + DOLFIN_EPS)
-      PE     = Unorm*h/(2*kappa/c)
+      Ut      = rho*U - grad(kappa/c)
+      Unorm   = sqrt(dot(Ut, Ut) + DOLFIN_EPS)
+      tnorm   = sqrt(dot(grad(theta), grad(theta)) + DOLFIN_EPS)
+      U_vert  = dot(U, grad(theta)) / tnorm * grad(theta)
+      Uvnorm  = sqrt(dot(U_vert, U_vert) + DOLFIN_EPS)
+      PE      = Unorm*h/(2*kappa/c)
+      PE_vert = Uvnorm*h/(2*kappa/c)
       
       # for linear elements :
       if model.order == 1:
-        xi     = 1/tanh(PE) - 1/PE
+        xi      = 1/tanh(PE) - 1/PE
+        xi_vert = 1/tanh(PE_vert) - 1/PE_vert
 
       # for quadradic elements :
       if model.order == 2:
@@ -691,7 +695,11 @@ class Enthalpy(Energy):
                  /  ((2 - 3*xi_1*tanh(PE))*PE**2)
       
       # intrinsic time parameter :
-      tau   = h*xi / (2 * Unorm)
+      tau      = h*xi / (2 * Unorm)
+      tau_vert = h*xi_vert / (2 * Uvnorm)
+      tau_2    = tau_vert#conditional( gt(tau_vert, tau), tau_vert - tau, 0) 
+      psihat   = psi + tau * dot(Ut, grad(psi)) \
+                #+ tau_2 * dot(U_vert, grad(psi))
       
       # the linear differential operator for this problem :
       def Lu(u):
@@ -703,6 +711,10 @@ class Enthalpy(Energy):
       # the advective part of the operator : 
       def L_adv(u):
         return dot(Ut, grad(u))
+     
+      # the advective part of the operator : 
+      def L_dis(u):
+        return dot(U_vert, grad(u))
 
       # the adjoint of the operator :
       def L_star(u):
@@ -714,7 +726,7 @@ class Enthalpy(Energy):
       # use streamline-upwind/Petrov-Galerkin stabilization : 
       if stabilization_method == 'SUPG':
         s      = "    - using streamline-upwind/Petrov-Galerkin stabilization -"
-        LL     = lambda x: + L_adv(x)
+        LL     = lambda x: + tau*L_adv(x)# + tau_2*L_dis(x)
       # use Galerkin/least-squares stabilization :
       elif stabilization_method == 'GLS':
         s      = "    - using Galerkin/least-squares stabilization -"
@@ -725,16 +737,16 @@ class Enthalpy(Energy):
         LL     = lambda x: - L_star(x)
       print_text(s, cls=self)
 
-      self.theta_a = + rho * dot(U, grad(dtheta)) * psi * dx \
+      self.theta_a = + rho * dot(U, grad(dtheta)) * psihat * dx \
                      + kappa/c * inner(grad(psi), grad(dtheta)) * dx \
                      - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
-                     + inner(LL(psi), tau*Lu(dtheta)) * dx
+                     #+ inner(LL(psi), Lu(theta)) * dx
       
       self.theta_L = + g_b * psi * dBed_g \
                      + Q_s_gnd * psi * dx_g \
                      + Q_s_shf * psi * dx_f \
-                     + inner(LL(psi), tau * Q_s_gnd) * dx_g \
-                     + inner(LL(psi), tau * Q_s_shf) * dx_f
+                     #+ inner(LL(psi), Q_s_gnd) * dx_g \
+                     #+ inner(LL(psi), Q_s_shf) * dx_f
 
       self.nrg_F   = self.theta_a - self.theta_L
       
@@ -806,6 +818,9 @@ class Enthalpy(Energy):
   
     # Jacobian : 
     self.nrg_Jac = derivative(self.nrg_F, theta, dtheta)
+
+    # mass marrix :
+    self.M = assemble(psi*dtheta*dx)
 
     # make properties available :
     self.theta   = theta
@@ -966,14 +981,14 @@ class Enthalpy(Energy):
     """ 
     Returns a set of default solver parameters that yield good performance
     """
-    nparams = {'newton_solver' : {'linear_solver'            : 'gmres',
-                                  'preconditioner'           : 'amg',
-                                  'relative_tolerance'       : 1e-5,
-                                  'relaxation_parameter'     : 0.9,
+    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                                  'preconditioner'           : 'none',
+                                  'relative_tolerance'       : 1e-13,
+                                  'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 20,
                                   'error_on_nonconvergence'  : False}}
-    params  = {'solver' : {'linear_solver'       : 'gmres',
-                           'preconditioner'      : 'amg'},
+    params  = {'solver' : {'linear_solver'       : 'mumps',
+                           'preconditioner'      : 'none'},
                'nparams'             : nparams,
                'use_surface_climate' : False}
     return params
@@ -1178,7 +1193,7 @@ class Enthalpy(Energy):
     solve(self.theta_a == self.theta_L, self.theta, self.theta_bc,
           solver_parameters = self.solve_params['solver'], annotate=annotate)
 
-    # solve the non-linear system : 
+    ## solve the non-linear system : 
     #model.assign_variable(self.theta, 0.0, annotate=annotate)
     #solve(self.nrg_F == 0, self.theta, J=self.nrg_Jac, bcs=self.theta_bc,
     #      annotate=annotate, solver_parameters=self.solve_params['nparams'])
@@ -1229,7 +1244,7 @@ class Enthalpy(Energy):
     counter = 1
 
     # maximum number of iterations :
-    max_iter = 100
+    max_iter = 50
 
     # L_2 erro norm between iterations :
     abs_error = np.inf

@@ -40,11 +40,11 @@ bm2  = "https://secure.antarctica.ac.uk/data/bedmap2/bedmap2_tiff.zip"
 fldr = "bedmap2"
 download_file(bm2, home, fldr, extract=True)
 
-# measures velocity :
-mea  = "ftp://n5eil01u.ecs.nsidc.org/SAN/MEASURES/NSIDC-0484.001/" + \
-       "1996.01.01/antarctica_ice_velocity_900m.nc"
-fldr = "measures"
-download_file(mea, home, fldr)
+# measures velocity (no longer available, download yourself v2):
+#mea  = "ftp://n5eil01u.ecs.nsidc.org/SAN/MEASURES/NSIDC-0484.001/" + \
+#       "1996.01.01/antarctica_ice_velocity_900m.nc"
+#fldr = "measures"
+#download_file(mea, home, fldr)
 
 # NASA basins dataset for Antarctica :
 basins_shape  = 'http://icesat4.gsfc.nasa.gov/cryo_data/' + \

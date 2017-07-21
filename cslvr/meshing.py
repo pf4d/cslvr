@@ -177,7 +177,7 @@ class MeshGenerator(object):
           intr       = True
 
     counter  = 0
-    new_cont = zeros((sum(flag),2))
+    new_cont = zeros((int(sum(flag)),2))
     for ii,fl in enumerate(flag):
       if fl:
         new_cont[counter,:] = lc[ii,:]

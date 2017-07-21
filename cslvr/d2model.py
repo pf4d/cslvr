@@ -8,6 +8,22 @@ import sys
 class D2Model(Model):
   """ 
   """
+  OMEGA_GND   = 0   # internal cells over bedrock
+  OMEGA_FLT   = 1   # internal cells over water
+  OMEGA_U_GND = 8   # grounded surface with U observations
+  OMEGA_U_FLT = 9   # shelf surface with U observations
+  GAMMA_L_DVD = 7   # basin divides
+  
+  # external boundaries :
+  ext_boundaries = {GAMMA_L_DVD : 'basin divides'}
+
+  # internal boundaries :
+  int_boundaries = {OMEGA_GND   : 'over bedrock',
+                    OMEGA_FLT   : 'over water',
+                    OMEGA_U_FLT : 'over water with U observations',
+                    OMEGA_U_GND : 'over bedrock with U observations'}
+  # union :
+  boundaries = dict(ext_boundaries, **int_boundaries)
 
   def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
@@ -103,7 +119,7 @@ class D2Model(Model):
     s = "    - 2D function spaces created - "
     print_text(s, cls=self)
 
-  def calculate_boundaries(self, latmesh=False, mask=None, lat_mask=None,
+  def calculate_boundaries(self, mask=None, lat_mask=None,
                            adot=None, U_mask=None, mark_divide=False):
     """
     Determines the boundaries of the current model mesh
@@ -160,113 +176,47 @@ class D2Model(Model):
     s = "    - marking boundaries - "
     print_text(s, cls=self)
 
-    if latmesh:
-      s = "    - using a lateral surface mesh - "
-      print_text(s, cls=self)
-      
-      class GAMMA_S_GND(SubDomain):
-        def inside(self, x, on_boundary):
-          return mask(x[0], x[1], x[2]) <=  1.0 and on_boundary
-      gamma_s_gnd = GAMMA_S_GND()
+    s = "    - not using a lateral surface mesh - "
+    print_text(s, cls=self)
 
-      class GAMMA_S_FLT(SubDomain):
-        def inside(self, x, on_boundary):
-          return mask(x[0], x[1], x[2]) >  1.0 and on_boundary
-      gamma_s_flt = GAMMA_S_FLT()
+    class OMEGA_GND(SubDomain):
+      def inside(self, x, on_boundary):
+        return mask(x[0], x[1]) <= 1.0
+    gamma_gnd = OMEGA_GND()
 
-      class GAMMA_U_GND(SubDomain):
-        def inside(self, x, on_boundary):
-          return abs(x[2] - S(x[0], x[1], x[2])) < tol \
-                 and mask(x[0], x[1], x[2]) <= 1.0 \
-                 and U_mask(x[0], x[1], x[2]) <= 0.0 and on_boundary
-      gamma_u_gnd = GAMMA_U_GND()
+    class OMEGA_FLT(SubDomain):
+      def inside(self, x, on_boundary):
+        return mask(x[0], x[1]) > 1.0
+    gamma_flt = OMEGA_FLT()
 
-      class GAMMA_U_FLT(SubDomain):
-        def inside(self, x, on_boundary):
-          return abs(x[2] - S(x[0], x[1], x[2])) < tol \
-                 and mask(x[0], x[1], x[2]) >  1.0 \
-                 and U_mask(x[0], x[1], x[2]) <= 0.0 and on_boundary
-      gamma_u_flt = GAMMA_U_FLT()
+    class OMEGA_U_GND(SubDomain):
+      def inside(self, x, on_boundary):
+        return     mask(x[0], x[1]) <= 1.0 and U_mask(x[0], x[1]) <= 0.0
+    gamma_u_gnd = OMEGA_U_GND()
 
-      class GAMMA_B_GND(SubDomain):
-        def inside(self, x, on_boundary):
-          return abs(x[2] - B(x[0], x[1], x[2])) < tol \
-                 and mask(x[0], x[1], x[2]) <= 1.0 and on_boundary
-      gamma_b_gnd = GAMMA_B_GND()
+    class OMEGA_U_FLT(SubDomain):
+      def inside(self, x, on_boundary):
+        return     mask(x[0], x[1]) >  1.0 and U_mask(x[0], x[1]) <= 0.0 
+    gamma_u_flt = OMEGA_U_FLT()
 
-      class GAMMA_B_FLT(SubDomain):
-        def inside(self, x, on_boundary):
-          return abs(x[2] - B(x[0], x[1], x[2])) < tol \
-                 and mask(x[0], x[1], x[2]) >  1.0 and on_boundary
-      gamma_b_flt = GAMMA_B_FLT()
-
-      class GAMMA_L_OVR(SubDomain):
-        def inside(self, x, on_boundary):
-          return x[2] > -10 and x[2] < S(x[0], x[1], x[2]) - tol and on_boundary
-      gamma_l_ovr = GAMMA_L_OVR()
-
-      class GAMMA_L_UDR(SubDomain):
-        def inside(self, x, on_boundary):
-          return x[2] < 10 and x[2] < S(x[0], x[1], x[2]) - tol and on_boundary
-      gamma_l_udr = GAMMA_L_UDR()
-
-      class GAMMA_L_TRM(SubDomain):
-        def inside(self, x, on_boundary):
-          return lat_mask(x[0], x[1], x[2]) <= 0.0
-      gamma_l_trm = GAMMA_L_TRM()
-
-      gamma_s_flt.mark(self.ff, self.GAMMA_S_FLT)
-      gamma_s_gnd.mark(self.ff, self.GAMMA_S_GND)
-      gamma_l_ovr.mark(self.ff, self.GAMMA_L_OVR)
-      gamma_l_udr.mark(self.ff, self.GAMMA_L_UDR)
-      gamma_b_flt.mark(self.ff, self.GAMMA_B_FLT)
-      gamma_b_gnd.mark(self.ff, self.GAMMA_B_GND)
-      #gamma_u_flt.mark(self.ff, self.GAMMA_U_FLT)
-      #gamma_u_gnd.mark(self.ff, self.GAMMA_U_GND)
-      #if mark_divide: 
-      #  gamma_l_trm.mark(self.cf, 1)
+    gamma_gnd.mark(self.cf,   self.OMEGA_GND) # grounded, no U obs.
+    gamma_flt.mark(self.cf,   self.OMEGA_FLT) # floating, no U obs.
+    gamma_u_gnd.mark(self.cf, self.OMEGA_U_GND) # grounded, with U obs.
+    gamma_u_flt.mark(self.cf, self.OMEGA_U_FLT) # floating, with U obs.
     
-    else :
-      s = "    - not using a lateral surface mesh - "
-      print_text(s, cls=self)
-
-      class GAMMA_GND(SubDomain):
+    # mark the divide if desired :  
+    if mark_divide:
+      class GAMMA_L_DVD(SubDomain):
         def inside(self, x, on_boundary):
-          return mask(x[0], x[1]) <= 1.0
-      gamma_gnd = GAMMA_GND()
-
-      class GAMMA_FLT(SubDomain):
-        def inside(self, x, on_boundary):
-          return mask(x[0], x[1]) > 1.0
-      gamma_flt = GAMMA_FLT()
-
-      class GAMMA_U_GND(SubDomain):
-        def inside(self, x, on_boundary):
-          return     mask(x[0], x[1]) <= 1.0 and U_mask(x[0], x[1]) <= 0.0
-      gamma_u_gnd = GAMMA_U_GND()
-
-      class GAMMA_U_FLT(SubDomain):
-        def inside(self, x, on_boundary):
-          return     mask(x[0], x[1]) >  1.0 and U_mask(x[0], x[1]) <= 0.0 
-      gamma_u_flt = GAMMA_U_FLT()
-
-      gamma_gnd.mark(self.cf,   self.GAMMA_S_GND) # grounded, no U obs.
-      gamma_flt.mark(self.cf,   self.GAMMA_S_FLT) # floating, no U obs.
-      gamma_u_gnd.mark(self.cf, self.GAMMA_U_GND) # grounded, with U obs.
-      gamma_u_flt.mark(self.cf, self.GAMMA_U_FLT) # floating, with U obs.
+          return lat_mask(x[0], x[1]) <= 0.0 and on_boundary
+      gamma_l_dvd = GAMMA_L_DVD()
+      gamma_l_dvd.mark(self.ff, self.GAMMA_L_DVD)
     
-      self.N_GAMMA_S_GND = sum(self.ff.array() == self.GAMMA_S_GND)
-      self.N_GAMMA_S_FLT = sum(self.ff.array() == self.GAMMA_S_FLT)
-      self.N_GAMMA_U_GND = sum(self.ff.array() == self.GAMMA_U_GND)
-      self.N_GAMMA_U_FLT = sum(self.ff.array() == self.GAMMA_U_FLT)
-    
-      # mark the divide if desired :  
-      if mark_divide:
-        class GAMMA_L_DVD(SubDomain):
-          def inside(self, x, on_boundary):
-            return lat_mask(x[0], x[1]) <= 0.0 and on_boundary
-        gamma_l_dvd = GAMMA_L_DVD()
-        gamma_l_dvd.mark(self.ff, self.GAMMA_L_DVD)
+    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
+    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
+    self.N_OMEGA_U_GND = sum(self.cf.array() == self.OMEGA_U_GND)
+    self.N_OMEGA_U_FLT = sum(self.cf.array() == self.OMEGA_U_FLT)
+    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
     
     s = "    - done - "
     print_text(s, cls=self)
@@ -287,185 +237,52 @@ class D2Model(Model):
     #s = "    - done - "
     #print_text(s, cls=self)
 
-    self.set_measures(self.ff, self.cf)
+    self.set_measures()
+
+  def set_measures(self):
+    """
+    set the new measure space for facets ``self.ds`` and cells ``self.dx`` for
+    the boundaries marked by FacetFunction ``self.ff`` and CellFunction 
+    ``self.cf``, respectively.
+
+    Also, the number of cells or facets marked by 
+    :func:`calculate_boundaries` :
+
+    * ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``  
+    * ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``  
+    * ``self.N_OMEGA_U_GND`` -- number of cells marked ``self.OMEGA_U_GND``
+    * ``self.N_OMEGA_U_FLT`` -- number of cells marked ``self.OMEGA_U_FLT``
+    * ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``
+
+    The subdomain corresponding to FacetFunction ``self.ff`` is :
+
+    * ``self.dLat_d``  --  lateral divide
+
+    The subdomains corresponding to CellFunction ``self.cf`` are :
+
+    * ``self.dx_g``    --  internal above grounded
+    * ``self.dx_f``    --  internal above floating
+    * ``self.dx_u_G``  --  grounded with U observations
+    * ``self.dx_u_f``  --  floating with U observations
+    """
+    # calculate the number of cells and facets that are of a certain type
+    # for determining Dirichlet boundaries :
+    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
+    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
+    self.N_OMEGA_U_GND = sum(self.cf.array() == self.OMEGA_U_GND)
+    self.N_OMEGA_U_FLT = sum(self.cf.array() == self.OMEGA_U_FLT)
+    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
+
+    # create new measures of integration :
+    self.ds      = Measure('ds', subdomain_data=self.ff)
+    self.dx      = Measure('dx', subdomain_data=self.cf)
     
-  def set_subdomains(self, f):
-    """
-    Set the facet subdomains FacetFunction self.ff, cell subdomains
-    CellFunction self.cf, and accumulation FacetFunction self.ff_acc from
-    MeshFunctions saved in an .h5 file <f>.
-    """
-    s = "::: setting 2D subdomains :::"
-    print_text(s, cls=self)
-
-    self.ff     = MeshFunction('size_t', self.mesh)
-    self.cf     = MeshFunction('size_t', self.mesh)
-    self.ff_acc = MeshFunction('size_t', self.mesh)
-    f.read(self.ff,     'ff')
-    f.read(self.cf,     'cf')
-    f.read(self.ff_acc, 'ff_acc')
-
-    self.set_measures(self.ff, self.cf)
-
-  def deform_mesh_to_geometry(self, S, B):
-    """
-    Deforms the 2D mesh to the geometry from FEniCS Expressions for the 
-    surface <S> and bed <B>.
-    """
-    s = "::: deforming mesh to geometry :::"
-    print_text(s, cls=self)
-
-    self.init_S(S)
-    self.init_B(B)
+    self.dx_g    = self.dx(self.OMEGA_GND)   # above grounded
+    self.dx_f    = self.dx(self.OMEGA_FLT)   # above floating
+    self.dx_u_g  = self.dx(self.OMEGA_U_GND) # above grounded with U
+    self.dx_u_f  = self.dx(self.OMEGA_U_FLT) # above floating with U
+    self.dLat_d  = self.ds(self.GAMMA_L_DVD) # lateral divide
     
-    # transform z :
-    # thickness = surface - base, z = thickness + base
-    # Get the height of the mesh, assumes that the base is at z=0
-    max_height  = self.mesh.coordinates()[:,2].max()
-    min_height  = self.mesh.coordinates()[:,2].min()
-    mesh_height = max_height - min_height
-    
-    s = "    - iterating through %i vertices - " % self.dof
-    print_text(s, cls=self)
-    
-    for x in self.mesh.coordinates():
-      x[2] = (x[2] / mesh_height) * ( + S(x[0],x[1],x[2]) \
-                                      - B(x[0],x[1],x[2]) )
-      x[2] = x[2] + B(x[0], x[1], x[2])
-    s = "    - done - "
-    print_text(s, cls=self)
-    
-  def calc_thickness(self):
-    """
-    Calculate the continuous thickness field which increases from 0 at the 
-    surface to the actual thickness at the bed.
-    """
-    s = "::: calculating z-varying thickness :::"
-    print_text(s, cls=self)
-    #H = project(self.S - self.x[2], self.Q, annotate=False)
-    H          = self.vert_integrate(Constant(1.0), d='down')
-    Hv         = H.vector()
-    Hv[Hv < 0] = 0.0
-    print_min_max(H, 'H', cls=self)
-    return H
-  
-  def solve_hydrostatic_pressure(self, annotate=True):
-    """
-    Solve for the hydrostatic pressure 'p'.
-    """
-    # solve for vertical velocity :
-    s  = "::: solving hydrostatic pressure :::"
-    print_text(s, cls=self)
-    rhoi   = self.rhoi
-    g      = self.g
-    #S      = self.S
-    #z      = self.x[2]
-    #p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)
-    p      = self.vert_integrate(rhoi*g, d='down')
-    pv     = p.vector()
-    pv[pv < 0] = 0.0
-    self.assign_variable(self.p, p)
-  
-  def vert_extrude(self, u, d='up', Q='self'):
-    r"""
-    This extrudes a function *u* vertically in the direction *d* = 'up' or
-    'down'.  It does this by solving a variational problem:
-  
-    .. math::
-       
-       \frac{\partial v}{\partial z} = 0 \hspace{10mm}
-       v|_b = u
-
-    """
-    s = "::: extruding function %s :::" % d
-    print_text(s, cls=self)
-    if type(Q) != FunctionSpace:
-      Q  = self.Q
-    ff   = self.ff
-    phi  = TestFunction(Q)
-    v    = TrialFunction(Q)
-    a    = v.dx(2) * phi * dx
-    L    = DOLFIN_EPS * phi * dx
-    bcs  = []
-    # extrude bed (ff = 3,5) 
-    if d == 'up':
-      if self.N_GAMMA_B_GND != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      if self.N_GAMMA_B_FLT != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
-    # extrude surface (ff = 2,6) 
-    elif d == 'down':
-      if self.N_GAMMA_S_GND != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      if self.N_GAMMA_S_FLT != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      if self.N_GAMMA_U_GND != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      if self.N_GAMMA_U_FLT != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
-    name = '%s extruded %s' % (u.name(), d)
-    v    = Function(Q, name=name)
-    solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'function to be extruded')
-    print_min_max(v, 'extruded function')
-    return v
-  
-  def vert_integrate(self, u, d='up', Q='self'):
-    """
-    Integrate <u> from the bed to the surface.
-    """
-    s = "::: vertically integrating function :::"
-    print_text(s, cls=self)
-
-    if type(Q) != FunctionSpace:
-      Q = self.Q
-    ff  = self.ff
-    phi = TestFunction(Q)
-    v   = TrialFunction(Q)
-    bcs = []
-    # integral is zero on bed (ff = 3,5) 
-    if d == 'up':
-      if self.N_GAMMA_B_GND != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      if self.N_GAMMA_B_FLT != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
-      a      = v.dx(2) * phi * dx
-    # integral is zero on surface (ff = 2,6) 
-    elif d == 'down':
-      if self.N_GAMMA_S_GND != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      if self.N_GAMMA_S_FLT != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      if self.N_GAMMA_U_GND != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      if self.N_GAMMA_U_FLT != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
-      a      = -v.dx(2) * phi * dx
-    L      = u * phi * dx
-    name   = 'value integrated %s' % d 
-    v      = Function(Q, name=name)
-    solve(a == L, v, bcs, annotate=False)
-    print_min_max(u, 'vertically integrated function')
-    return v
-
-  def calc_vert_average(self, u):
-    """
-    Calculates the vertical average of a given function space and function.  
-    
-    :param u: Function representing the model's function space
-    :rtype:   Dolfin projection and Function of the vertical average
-    """
-    H    = self.S - self.B
-    uhat = self.vert_integrate(u, d='up')
-    s = "::: calculating vertical average :::"
-    print_text(s, cls=self)
-    ubar = project(uhat/H, self.Q, annotate=False)
-    print_min_max(ubar, 'ubar')
-    name = "vertical average of %s" % u.name()
-    ubar.rename(name, '')
-    ubar = self.vert_extrude(ubar, d='down')
-    return ubar
-
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set

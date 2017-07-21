@@ -9,6 +9,9 @@ import sys
 class HybridModel(Model):
   """ 
   """
+  #FIXME:  THis class should be removed and D2Model used instead.  Also,
+  #        the hybrid model is not currently working.
+
 
   def __init__(self, mesh, out_dir='./results/', order=1, 
                use_periodic=False):
@@ -91,89 +94,6 @@ class HybridModel(Model):
         % (self.dim, self.num_cells, self.num_facets, self.dof)
     print_text(s, cls=self)
   
-  def calculate_boundaries(self, mask=None, lat_mask=None,
-                           adot=None, U_mask=None, mark_divide=False):
-    """
-    Determines the boundaries of the current model mesh
-    """
-    s = "::: calculating boundaries :::"
-    print_text(s, cls=self)
-
-    if lat_mask == None and mark_divide:
-      s = ">>> IF PARAMETER <mark_divide> OF calculate_boundaries() IS " + \
-          "TRUE, PARAMETER <lat_mask> MUST BE AN EXPRESSION FOR THE LATERAL" + \
-          " BOUNDARIES <<<"
-      print_text(s, 'red', 1)
-      sys.exit(1)
-     
-    # this function contains markers which may be applied to facets of the mesh
-    self.ff      = FacetFunction('size_t', self.mesh)
-    self.ff_acc  = FacetFunction('size_t', self.mesh)
-    self.cf      = CellFunction('size_t',  self.mesh)
-    dofmap       = self.Q.dofmap()
-
-    S = self.S
-    B = self.B
-    
-    # default to all grounded ice :
-    if mask == None:
-      mask = Expression('1.0', element=self.Q.ufl_element())
-    
-    # default to all positive accumulation :
-    if adot == None:
-      adot = Expression('1.0', element=self.Q.ufl_element())
-    
-    # default to U observations everywhere :
-    if U_mask == None:
-      U_mask = Expression('1.0', element=self.Q.ufl_element())
-
-    self.init_adot(adot)
-    self.init_mask(mask)
-    self.init_U_mask(U_mask)
-
-    if mark_divide:
-      s = "    - marking the interior facets for incomplete meshes -"
-      print_text(s, cls=self)
-      self.init_lat_mask(lat_mask)
-
-    self.S.set_allow_extrapolation(True)
-    self.B.set_allow_extrapolation(True)
-    self.mask.set_allow_extrapolation(True)
-    self.adot.set_allow_extrapolation(True)
-    self.U_mask.set_allow_extrapolation(True)
-    self.lat_mask.set_allow_extrapolation(True)
-    
-    tol = 1e-6
-    
-    s = "    - marking boundaries - "
-    print_text(s, cls=self)
-
-    class GAMMA_GND(SubDomain):
-      def inside(self, x, on_boundary):
-        return mask(x[0], x[1]) <= 1.0
-    gamma_gnd = GAMMA_GND()
-
-    class GAMMA_FLT(SubDomain):
-      def inside(self, x, on_boundary):
-        return mask(x[0], x[1]) > 1.0
-    gamma_flt = GAMMA_FLT()
-
-    gamma_flt.mark(self.cf, 1)
-    gamma_gnd.mark(self.cf, 0)
-    
-    # mark the divide if desired :  
-    if mark_divide:
-      class GAMMA_L_DVD(SubDomain):
-        def inside(self, x, on_boundary):
-          return lat_mask(x[0], x[1]) <= 0.0 and on_boundary
-      gamma_l_dvd = GAMMA_L_DVD()
-      gamma_l_dvd.mark(self.ff, self.GAMMA_L_DVD)
-    
-    s = "    - done - "
-    print_text(s, cls=self)
-  
-    self.set_measures(self.ff, self.cf)
-
   def generate_function_spaces(self, order=1, use_periodic=False, **kwargs):
     """
     Generates the appropriate finite-element function spaces from parameters
@@ -188,8 +108,11 @@ class HybridModel(Model):
     s = "::: generating 2D function spaces :::"
     print_text(s, cls=self)
     
-    self.HV     = MixedFunctionSpace([self.Q]*2*self.poly_deg) # VELOCITY
-    self.Z      = MixedFunctionSpace([self.Q]*self.N_T)        # TEMPERATURE
+    # velocity space :
+    self.HV = FunctionSpace(self.mesh, MixedElement([self.Q1e]*2*self.poly_deg))
+
+    # temperature space :
+    self.Z  = FunctionSpace(self.mesh, MixedElement([self.Q1e]*self.N_T))   
     
     s = "    - 2D function spaces created - "
     print_text(s, cls=self)

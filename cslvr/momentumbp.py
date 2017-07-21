@@ -30,24 +30,10 @@ class MomentumBP(Momentum):
     # save the solver parameters :
     self.solve_params = solve_params
     self.linear       = linear
-    
-    # momenturm and adjoint :
-    U      = Function(model.Q2, name = 'U')
-    wf     = Function(model.Q,  name = 'w')
-    Lam    = Function(model.Q2, name = 'Lam')
-    dU     = TrialFunction(model.Q2)
-    Phi    = TestFunction(model.Q2)
-   
-    # function assigner goes from the U function solve to U3 vector 
-    # function used to save :
-    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
     eps_reg    = model.eps_reg
     n          = model.n
-    V          = model.Q2
     Q          = model.Q
     S          = model.S
     B          = model.B
@@ -81,6 +67,19 @@ class MomentumBP(Momentum):
     
     #===========================================================================
     # define variational problem :
+    
+    # momenturm and adjoint :
+    U      = Function(model.Q2, name = 'U')
+    wf     = Function(model.Q,  name = 'w')
+    Lam    = Function(model.Q2, name = 'Lam')
+    dU     = TrialFunction(model.Q2)
+    Phi    = TestFunction(model.Q2)
+   
+    # function assigner goes from the U function solve to U3 vector 
+    # function used to save :
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
 
     # horizontal velocity :
     u, v      = U
@@ -171,9 +170,9 @@ class MomentumBP(Momentum):
       s = "    - using lateral boundary conditions -"
       print_text(s, self.color())
 
-      self.mom_bcs.append(DirichletBC(V.sub(0),
+      self.mom_bcs.append(DirichletBC(model.Q2.sub(0),
                           model.u_lat, model.ff, model.GAMMA_L_DVD))
-      self.mom_bcs.append(DirichletBC(V.sub(1),
+      self.mom_bcs.append(DirichletBC(model.Q2.sub(1),
                           model.v_lat, model.ff, model.GAMMA_L_DVD))
       #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_L_DVD)
     
@@ -228,16 +227,7 @@ class MomentumBP(Momentum):
     return the BP effective strain rate squared.
     """
     epi    = self.strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-             + ep_xy**2 + ep_xz**2 + ep_yz**2
+    epsdot = 0.5 * tr(dot(epi, epi))
     return epsdot
 
   def stress_tensor(self):
@@ -425,24 +415,6 @@ class MomentumDukowiczBP(Momentum):
     # save the solver parameters :
     self.solve_params = solve_params
     self.linear       = linear
-    
-    # momenturm and adjoint :
-    U      = Function(model.Q2, name = 'G')
-    Lam    = Function(model.Q2, name = 'Lam')
-    dU     = TrialFunction(model.Q2)
-    Phi    = TestFunction(model.Q2)
-    Lam    = Function(model.Q2)
-
-    # vertical velocity :
-    dw     = TrialFunction(model.Q)
-    chi    = TestFunction(model.Q)
-    w      = Function(model.Q, name='w_f')
-   
-    # function assigner goes from the U function solve to U3 vector 
-    # function used to save :
-    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
 
     mesh       = model.mesh
     S          = model.S
@@ -479,6 +451,24 @@ class MomentumDukowiczBP(Momentum):
     
     #===========================================================================
     # define variational problem :
+    
+    # momenturm and adjoint :
+    U      = Function(model.Q2, name = 'G')
+    Lam    = Function(model.Q2, name = 'Lam')
+    dU     = TrialFunction(model.Q2)
+    Phi    = TestFunction(model.Q2)
+    Lam    = Function(model.Q2)
+
+    # vertical velocity :
+    dw     = TrialFunction(model.Q)
+    chi    = TestFunction(model.Q)
+    w      = Function(model.Q, name='w_f')
+   
+    # function assigner goes from the U function solve to U3 vector 
+    # function used to save :
+    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
     phi, psi = Phi
     du,  dv  = dU
     u,   v   = U
@@ -562,13 +552,13 @@ class MomentumDukowiczBP(Momentum):
     Return the unknown Function.
     """
     return self.U
-  
+
   def velocity(self):
     """
     return the velocity.
     """
     return self.model.U3
-
+  
   def get_solve_params(self):
     """
     Returns the solve parameters.
@@ -594,16 +584,7 @@ class MomentumDukowiczBP(Momentum):
     return the Dukowicz BP effective strain rate squared.
     """
     epi    = self.strain_rate_tensor(U)
-    ep_xx  = epi[0,0]
-    ep_yy  = epi[1,1]
-    ep_zz  = epi[2,2]
-    ep_xy  = epi[0,1]
-    ep_xz  = epi[0,2]
-    ep_yz  = epi[1,2]
-    
-    # Second invariant of the strain rate tensor squared
-    epsdot = + ep_xx**2 + ep_yy**2 + ep_xx*ep_yy \
-             + ep_xy**2 + ep_xz**2 + ep_yz**2
+    epsdot = 0.5 * tr(dot(epi, epi))
     return epsdot
 
   def stress_tensor(self):

@@ -8,6 +8,37 @@ import sys
 class D3Model(Model):
   """ 
   """
+  OMEGA_GND   = 0   # internal cells over bedrock
+  OMEGA_FLT   = 1   # internal cells over water
+  GAMMA_S_GND = 2   # grounded upper surface
+  GAMMA_B_GND = 3   # grounded lower surface (bedrock)
+  GAMMA_S_FLT = 6   # shelf upper surface
+  GAMMA_B_FLT = 5   # shelf lower surface
+  GAMMA_L_DVD = 7   # basin divides
+  GAMMA_L_OVR = 4   # terminus over water
+  GAMMA_L_UDR = 10  # terminus under water
+  GAMMA_U_GND = 8   # grounded surface with U observations
+  GAMMA_U_FLT = 9   # shelf surface with U observations
+  GAMMA_ACC   = 1   # areas with positive surface accumulation
+  
+  # external boundaries :
+  ext_boundaries = {GAMMA_S_GND : 'grounded upper surface',
+                    GAMMA_B_GND : 'grounded lower surface (bedrock)',
+                    GAMMA_S_FLT : 'shelf upper surface',
+                    GAMMA_B_FLT : 'shelf lower surface',
+                    GAMMA_L_DVD : 'basin divides',
+                    GAMMA_L_OVR : 'terminus over water',
+                    GAMMA_L_UDR : 'terminus under water',
+                    GAMMA_U_GND : 'grounded upper surface with U observations',
+                    GAMMA_U_FLT : 'shelf upper surface with U observations',
+                    GAMMA_ACC   : 'upper surface with accumulation'}
+
+  # internal boundaries :
+  int_boundaries = {OMEGA_GND   : 'internal cells located over bedrock',
+                    OMEGA_FLT   : 'internal cells located over water'}
+
+  # union :
+  boundaries = dict(ext_boundaries, **int_boundaries)
 
   def __init__(self, mesh, out_dir='./results/', order=1, 
                use_periodic=False):
@@ -254,23 +285,23 @@ class D3Model(Model):
         adot_xy   = adot(x_m, y_m, z_m)
         U_mask_xy = U_mask(x_m, y_m, z_m)
         if adot_xy > 0:
-          self.ff_acc[f] = 1
+          self.ff_acc[f] = self.GAMMA_ACC
         if mask_xy > 1:
           if U_mask_xy > 0:
-            self.ff[f] = 9
+            self.ff[f] = self.GAMMA_U_FLT
           else:
-            self.ff[f] = 6
+            self.ff[f] = self.GAMMA_S_FLT
         else:
           if U_mask_xy > 0:
-            self.ff[f] = 8
+            self.ff[f] = self.GAMMA_U_GND
           else:
-            self.ff[f] = 2
+            self.ff[f] = self.GAMMA_S_GND
     
       elif n.z() <= -tol and f.exterior():
         if mask_xy > 1:
-          self.ff[f] = 5
+          self.ff[f] = self.GAMMA_B_FLT
         else:
-          self.ff[f] = 3
+          self.ff[f] = self.GAMMA_B_GND
       
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         # if we want to use a basin, we need to mark the interior facets :
@@ -278,17 +309,17 @@ class D3Model(Model):
           lat_mask_xy = lat_mask(x_m, y_m, z_m)
           if lat_mask_xy > 0:
             if z_m > 0:
-              self.ff[f] = 4
+              self.ff[f] = self.GAMMA_L_OVR
             else:
-              self.ff[f] = 10
+              self.ff[f] = self.GAMMA_L_UDR
           else:
-            self.ff[f] = 7
+            self.ff[f] = self.GAMMA_L_DVD
         # otherwise just mark for over (4) and under (10) water :
         else:
           if z_m > 0:
-            self.ff[f] = 4
+            self.ff[f] = self.GAMMA_L_OVR
           else:
-            self.ff[f] = 10
+            self.ff[f] = self.GAMMA_L_UDR
     
     s = "    - done - "
     print_text(s, cls=self)
@@ -302,91 +333,94 @@ class D3Model(Model):
       mask_xy = mask(x_m, y_m, z_m)
 
       if mask_xy > 1:
-        self.cf[c] = 1
+        self.cf[c] = self.OMEGA_FLT
       else:
-        self.cf[c] = 0
+        self.cf[c] = self.OMEGA_GND
     
     s = "    - done - "
     print_text(s, cls=self)
   
-    self.set_measures(self.ff, self.cf)
+    self.set_measures()
 
-  def calculate_flat_mesh_boundaries(self, mask=None, adot=None,
-                                     mark_divide=False):
+  def set_measures(self):
     """
-    Determines the boundaries of the current model mesh
-    """
-    s = "::: calculating flat_mesh boundaries :::"
-    print_text(s, cls=self)
+    set the new measure space for facets ``self.ds`` and cells ``self.dx`` for
+    the boundaries marked by FacetFunction ``self.ff`` and CellFunction 
+    ``self.cf``, respectively.
 
-    self.Q_flat = FunctionSpace(self.flat_mesh, "CG", 1, 
-                                constrained_domain=self.pBC)
-    
-    # this function contains markers which may be applied to facets of the mesh
-    self.ff_flat = FacetFunction('size_t', self.flat_mesh, 0)
-    
-    # default to all grounded ice :
-    if mask == None:
-      mask = Expression('1.0', element=self.Q.ufl_element())
-    
-    # default to all positive accumulation :
-    if adot == None:
-      adot = Expression('1.0', element=self.Q.ufl_element())
-    
-    tol = 1e-6
-    
-    s = "    - iterating through %i facets of flat_mesh - " % self.num_facets
-    print_text(s, cls=self)
-    for f in facets(self.flat_mesh):
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      mask_xy = mask(x_m, y_m, z_m)
-    
-      if   n.z() >=  tol and f.exterior():
-        if mask_xy > 1:
-          self.ff_flat[f] = 6
-        else:
-          self.ff_flat[f] = 2
-    
-      elif n.z() <= -tol and f.exterior():
-        if mask_xy > 1:
-          self.ff_flat[f] = 5
-        else:
-          self.ff_flat[f] = 3
-    
-      elif n.z() >  -tol and n.z() < tol and f.exterior():
-        if mark_divide:
-          if mask_xy > 1:
-            self.ff_flat[f] = 4
-          else:
-            self.ff_flat[f] = 7
-        else:
-          self.ff_flat[f] = 4
-    
-    s = "    - done - "
-    print_text(s, cls=self)
-    
-    self.ds_flat = Measure('ds', subdomain_data=self.ff_flat)#[self.ff_flat]
-  
-  def set_subdomains(self, f):
-    """
-    Set the facet subdomains FacetFunction self.ff, cell subdomains
-    CellFunction self.cf, and accumulation FacetFunction self.ff_acc from
-    MeshFunctions saved in an .h5 file <f>.
-    """
-    s = "::: setting 3D subdomains :::"
-    print_text(s, cls=self)
+    Also, the number of facets marked by 
+    :func:`calculate_boundaries` :
 
-    self.ff     = MeshFunction('size_t', self.mesh)
-    self.cf     = MeshFunction('size_t', self.mesh)
-    self.ff_acc = MeshFunction('size_t', self.mesh)
-    f.read(self.ff,     'ff')
-    f.read(self.cf,     'cf')
-    f.read(self.ff_acc, 'ff_acc')
+    * ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``  
+    * ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``  
+    * ``self.N_GAMMA_S_GND`` -- number of facets marked ``self.GAMMA_S_GND``
+    * ``self.N_GAMMA_B_GND`` -- number of facets marked ``self.GAMMA_B_GND``
+    * ``self.N_GAMMA_S_FLT`` -- number of facets marked ``self.GAMMA_S_FLT``
+    * ``self.N_GAMMA_B_FLT`` -- number of facets marked ``self.GAMMA_B_FLT``
+    * ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``
+    * ``self.N_GAMMA_L_OVR`` -- number of facets marked ``self.GAMMA_L_OVR``
+    * ``self.N_GAMMA_L_UDR`` -- number of facets marked ``self.GAMMA_L_UDR``
+    * ``self.N_GAMMA_U_GND`` -- number of facets marked ``self.GAMMA_U_GND``
+    * ``self.N_GAMMA_U_FLT`` -- number of facets marked ``self.GAMMA_U_FLT``
+
+    The subdomains corresponding to FacetFunction ``self.ff`` are :
+
+    * ``self.dBed_g``  --  grounded bed
+    * ``self.dBed_f``  --  floating bed
+    * ``self.dBed``    --  bed
+    * ``self.dSrf_gu`` --  grounded with U observations
+    * ``self.dSrf_fu`` --  floating with U observations
+    * ``self.dSrf_u``  --  surface with U observations
+    * ``self.dSrf_g``  --  surface of grounded ice
+    * ``self.dSrf_f``  --  surface of floating ice
+    * ``self.dSrf``    --  surface
+    * ``self.dLat_d``  --  lateral divide
+    * ``self.dLat_to`` --  lateral terminus overwater
+    * ``self.dLat_tu`` --  lateral terminus underwater
+    * ``self.dLat_t``  --  lateral terminus
+    * ``self.dLat``    --  lateral
+
+    The subdomains corresponding to CellFunction ``self.cf`` are :
+
+    * ``self.dx_g``    --  internal above grounded
+    * ``self.dx_f``    --  internal above floating
+    """
+    # calculate the number of cells and facets that are of a certain type
+    # for determining Dirichlet boundaries :
+    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
+    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
+    self.N_GAMMA_S_GND = sum(self.ff.array() == self.GAMMA_S_GND)
+    self.N_GAMMA_B_GND = sum(self.ff.array() == self.GAMMA_B_GND)
+    self.N_GAMMA_S_FLT = sum(self.ff.array() == self.GAMMA_S_FLT)
+    self.N_GAMMA_B_FLT = sum(self.ff.array() == self.GAMMA_B_FLT)
+    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
+    self.N_GAMMA_L_OVR = sum(self.ff.array() == self.GAMMA_L_OVR)
+    self.N_GAMMA_L_UDR = sum(self.ff.array() == self.GAMMA_L_UDR)
+    self.N_GAMMA_U_GND = sum(self.ff.array() == self.GAMMA_U_GND)
+    self.N_GAMMA_U_FLT = sum(self.ff.array() == self.GAMMA_U_FLT)
+
+    # create new measures of integration :
+    self.ds      = Measure('ds', subdomain_data=self.ff)
+    self.dx      = Measure('dx', subdomain_data=self.cf)
     
-    self.set_measures(self.ff, self.cf)
+    self.dx_g    = self.dx(0)                # internal above grounded
+    self.dx_f    = self.dx(1)                # internal above floating
+    self.dBed_g  = self.ds(3)                # grounded bed
+    self.dBed_f  = self.ds(5)                # floating bed
+    self.dBed    = self.ds(3) + self.ds(5)   # bed
+    self.dSrf_gu = self.ds(8)                # grounded with U observations
+    self.dSrf_fu = self.ds(9)                # floating with U observations
+    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
+    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
+    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
+    self.dSrf    =   self.ds(6) + self.ds(2) \
+                   + self.ds(8) + self.ds(9) # surface
+    self.dLat_d  = self.ds(7)                # lateral divide
+    self.dLat_to = self.ds(4)                # lateral terminus overwater
+    self.dLat_tu = self.ds(10)               # lateral terminus underwater
+    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
+    self.dLat    =   self.ds(4) + self.ds(7) \
+                   + self.ds(10)             # lateral
 
   def deform_mesh_to_geometry(self, S, B):
     """

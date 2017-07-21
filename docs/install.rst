@@ -16,15 +16,15 @@ After this, install `Dolfin-Adjoint <http://dolfin-adjoint-doc.readthedocs.org/e
 
 Latest Python packages and misc. dependencies::
 
-  sudo pip install shapely colored termcolor pyproj;
+  sudo pip install shapely colored termcolor pyproj tifffile;
 
 also `gmsh_dynamic and gmshpy <http://geuz.org/gmsh/>`_.
 
-**NOTE:** GMSH is required to be installed in order to use the mesh generation facilities located in ```meshing.py```.  Instructions on installing gmsh_dynamic can be found on the `QSSI wiki <http://qssi.cs.umt.edu/wiki/index.php/Setup>`_.  For a generic install (of gmsh-dynamic 2.10.1) to ``/usr/local``, use::
+**NOTE:** is required to be installed in order to use the mesh generation facilities located in ```meshing.py```.  For a generic install (of gmsh-dynamic 2.10.1) to ``/usr/local``, use::
 
-  wget http://geuz.org/gmsh/bin/Linux/gmsh-svn-Linux64-dynamic.tgz;
-  tar -xzvf gmsh-svn-Linux64-dynamic.tgz;
-  cd gmsh-2.11.0-dynamic-svn-Linux;
+  wget https://www.dropbox.com/s/hp64kx6wh790sf6/gmsh.tgz;
+  tar -xzvf gmsh.tgz;
+  cd gmsh-2.10.1-dynamic-svn-Linux;
   sudo cp -r bin/ /usr/local/;
   sudo cp -r include/ /usr/local/;
   sudo cp -r lib/ /usr/local/;
@@ -45,6 +45,8 @@ And `basemap <http://matplotlib.org/basemap/users/installing.html>`_.  For a gen
   cd ..;
   sudo python setup.py install;
   sudo ldconfig;
+
+For visualization, it is useful to have `Paraview <https://www.paraview.org/>`_.
 
 Install the program by editing your .bashrc file with::
   

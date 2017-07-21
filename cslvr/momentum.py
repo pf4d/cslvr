@@ -24,7 +24,8 @@ class Momentum(Physics):
     return instance
   
   def __init__(self, model, solve_params=None,
-               linear=False, use_lat_bcs=False, use_pressure_bc=True):
+               linear=False, use_lat_bcs=False,
+               use_pressure_bc=True, **kwargs):
     """
     """
     s = "::: INITIALIZING MOMENTUM :::"
@@ -50,12 +51,14 @@ class Momentum(Physics):
     self.linear_s          = linear
     self.use_lat_bcs_s     = use_lat_bcs
     self.use_pressure_bc_s = use_pressure_bc
+    self.kwargs            = kwargs
     
     self.initialize(model, solve_params, linear,
-                    use_lat_bcs, use_pressure_bc)
+                    use_lat_bcs, use_pressure_bc, **kwargs)
   
   def initialize(self, model, solve_params=None,
-                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
+                 linear=False, use_lat_bcs=False,
+                 use_pressure_bc=True, **kwargs):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.  Note that any Momentum object *must*
@@ -78,7 +81,8 @@ class Momentum(Physics):
     self.initialize(self.model, solve_params=self.solve_params_s,
                     linear=self.linear_s,
                     use_lat_bcs=self.use_lat_bcs_s, 
-                    use_pressure_bc=self.use_pressure_bc_s)
+                    use_pressure_bc=self.use_pressure_bc_s,
+                    **self.kwargs)
 
   def linearize_viscosity(self, reset_orig_config=True):
     """
@@ -119,7 +123,8 @@ class Momentum(Physics):
     self.initialize(self.model, solve_params=mom_params,
                     linear=True,
                     use_lat_bcs=self.use_lat_bcs_s, 
-                    use_pressure_bc=self.use_pressure_bc_s)
+                    use_pressure_bc=self.use_pressure_bc_s,
+                    **self.kwargs)
   
   def color(self):
     """
@@ -131,25 +136,29 @@ class Momentum(Physics):
     """
     Returns the momentum residual.
     """
-    raiseNotDefined()
+    #raiseNotDefined()
+    return self.mom_F
 
   def get_U(self):
     """
     Return the velocity Function.
     """
-    raiseNotDefined()
+    #raiseNotDefined()
+    return self.U
 
   def get_dU(self):
     """
     Return the trial function for U.
     """
-    raiseNotDefined()
+    #raiseNotDefined()
+    return self.dU
 
   def get_Phi(self):
     """
     Return the test function for U.
     """
-    raiseNotDefined()
+    #raiseNotDefined()
+    return self.Phi
 
   def get_Lam(self):
     """
@@ -226,10 +235,11 @@ class Momentum(Physics):
       model.init_eta(eta_shf.vector() + eta_gnd.vector())
 
   def viscosity(self, U):
-    """
-    calculates the viscosity saved to self.eta_shf and self.eta_gnd, for
-    floating and grounded ice, respectively.  Uses velocity vector <U> with
-    components u,v,w.  If <linear> == True, form viscosity from model.U3.
+    r"""
+    calculates the viscosity saved to ``self.eta_shf`` and ``self.eta_gnd``, for
+    floating and grounded ice, respectively.  Uses velocity vector ``U`` with
+    components ``u``,``v``,``w``.  
+    If ``linear == True``, form viscosity from ``model.U3``.
     """
     s  = "::: forming visosity :::"
     print_text(s, self.color())
@@ -244,8 +254,8 @@ class Momentum(Physics):
     return (eta_shf, eta_gnd)
 
   def calc_q_fric(self):
-    """
-    Solve for the friction heat term stored in model.q_fric.
+    r"""
+    Solve for the friction heat term stored in ``model.q_fric``.
     """ 
     # calculate melt-rate : 
     s = "::: solving basal friction heat :::"
@@ -272,11 +282,11 @@ class Momentum(Physics):
     q_fric_v = beta_v * (ut**2 + vt**2 + wt**2)
 
     model.init_q_fric(q_fric_v)
-    
+
   def form_obj_ftn(self, integral, kind='log', g1=0.01, g2=1000):
-    """
+    r"""
     Forms and returns an objective functional for use with adjoint.
-    Saves to self.J.
+    Saves to ``self.J``.
     """
     self.obj_ftn_type = kind     # need to save this for printing values.
     self.integral     = integral # this too.
@@ -361,7 +371,7 @@ class Momentum(Physics):
       D = ||U - U_ob||
 
     over shelves or grounded depending on the paramter <integral> sent to
-    the self.form_obj_ftn().
+    the function :func:`~momentum.Momentum.form_obj_ftn`.
     """
     s   = "::: calculating misfit L-infty norm ||U - U_ob|| over %s :::"
     print_text(s % self.model.boundaries[self.integral], cls=self)
@@ -397,7 +407,7 @@ class Momentum(Physics):
     D_x.vector().set_local(D_x_v)
     D_x.vector().apply('insert')
 
-    # apply to y-componet : 
+    # apply to y-component : 
     D_y    = Function(model.Q)
     D_y.vector().set_local(D_y_v)
     D_y.vector().apply('insert')
@@ -536,7 +546,7 @@ class Momentum(Physics):
     """
     """
     s    = "::: solving optimal control to minimize ||u - u_ob|| with " + \
-           "control parmeter '%s' :::"
+           "control parameter '%s' :::"
     print_text(s % control.name(), cls=self)
 
     model = self.model

@@ -187,8 +187,7 @@ class MomentumHybrid(Momentum):
     
     problem = NonlinearVariationalProblem(
                 self.mom_F, self.U, 
-                J=self.mom_Jac,
-                form_compiler_parameters=self.solve_params['ffc_params'])
+                J=self.mom_Jac)
     self.solver = NonlinearVariationalSolver(problem)
     self.solver.parameters.update(self.solve_params['solver'])
 

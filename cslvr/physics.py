@@ -2,6 +2,7 @@ from helper            import raiseNotDefined
 from fenics            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text
+from cslvr.d2model     import D2Model
 
 
 class Physics(object):
@@ -102,12 +103,33 @@ class Physics(object):
     model = self.model
     self.reg_ftn_type = kind     # need to save this for printing values.
 
-    # differentiate between regularization over cells or facets :
-    if integral in [model.OMEGA_GND, model.OMEGA_FLT]:
-      dR = model.dx(integral)
+    # if there are a list of integration measures, iterate through them:
+    if hasattr(integral, '__iter__'):
+      meas = []
+      for i in integral:
+        # the 2D model will have surface boundaries are in Omega :
+        if i in [model.OMEGA_GND, model.OMEGA_FLT] or type(model) == D2Model:
+          meas.append(model.dx)
+        # otherwise use surface integrals :
+        else:
+          meas.append(model.ds)
+      bndrys = model.boundaries[integral[0]]   # for printing to screen
+      dR     = meas[0](integral[0])            # reg. integration measure
+      for i,m in zip(integral[1:], meas[1:]):
+        dR     += m(i)
+        bndrys += ' and ' + model.boundaries[i]
+    # if there is only one integration measure :
     else:
-      dR = model.ds(integral)
-    
+      # the 2D model will have surface boundaries are in Omega :
+      if integral in [model.OMEGA_GND, model.OMEGA_FLT] \
+         or type(model) == D2Model:
+        dR   = model.dx(integral)
+      # otherwise use surface integrals :
+      else:
+        dR   = model.ds(integral)
+      bndrys = model.boundaries[integral]
+   
+    # the various possible regularization types : 
     kinds = ['TV', 'Tikhonov', 'TV_Tik_hybrid', 'square', 'abs']
     
     # form regularization term 'R' :
@@ -146,7 +168,7 @@ class Physics(object):
       s  = "::: forming 'abs' regularization functional with parameter" + \
            " alpha = %.2E :::" % alpha
     print_text(s, self.color())
-    s = "    - integrated over %s -" % model.boundaries[integral]
+    s = "    - integrated over %s -" % bndrys
     print_text(s, self.color())
     self.R  = R
     self.Rp = Rp  # needed for L-curve

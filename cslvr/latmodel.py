@@ -9,6 +9,38 @@ class LatModel(Model):
   """ 
   """
 
+  OMEGA_GND   = 0   # internal cells over bedrock
+  OMEGA_FLT   = 1   # internal cells over water
+  GAMMA_S_GND = 2   # grounded upper surface
+  GAMMA_B_GND = 3   # grounded lower surface (bedrock)
+  GAMMA_S_FLT = 6   # shelf upper surface
+  GAMMA_B_FLT = 5   # shelf lower surface
+  GAMMA_L_DVD = 7   # basin divides
+  GAMMA_L_OVR = 4   # terminus over water
+  GAMMA_L_UDR = 10  # terminus under water
+  GAMMA_U_GND = 8   # grounded surface with U observations
+  GAMMA_U_FLT = 9   # shelf surface with U observations
+  GAMMA_ACC   = 1   # areas with positive surface accumulation
+  
+  # external boundaries :
+  ext_boundaries = {GAMMA_S_GND : 'grounded upper surface',
+                    GAMMA_B_GND : 'grounded lower surface (bedrock)',
+                    GAMMA_S_FLT : 'shelf upper surface',
+                    GAMMA_B_FLT : 'shelf lower surface',
+                    GAMMA_L_DVD : 'basin divides',
+                    GAMMA_L_OVR : 'terminus over water',
+                    GAMMA_L_UDR : 'terminus under water',
+                    GAMMA_U_GND : 'grounded upper surface with U observations',
+                    GAMMA_U_FLT : 'shelf upper surface with U observations',
+                    GAMMA_ACC   : 'upper surface with accumulation'}
+
+  # internal boundaries :
+  int_boundaries = {OMEGA_GND   : 'internal cells located over bedrock',
+                    OMEGA_FLT   : 'internal cells located over water'}
+
+  # union :
+  boundaries = dict(ext_boundaries, **int_boundaries)
+
   def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
     """
     Create and instance of a 2D model.
@@ -211,23 +243,23 @@ class LatModel(Model):
         adot_xy   = adot(x_m, y_m)
         U_mask_xy = U_mask(x_m, y_m)
         if adot_xy > 0:
-          self.ff_acc[f] = 1
+          self.ff_acc[f] = self.GAMMA_ACC
         if mask_xy > 1:
           if U_mask_xy > 0:
-            self.ff[f] = 9
+            self.ff[f] = self.GAMMA_U_FLT
           else:
-            self.ff[f] = 6
+            self.ff[f] = self.GAMMA_S_FLT
         else:
           if U_mask_xy > 0:
-            self.ff[f] = 8
+            self.ff[f] = self.GAMMA_U_GND
           else:
-            self.ff[f] = 2
+            self.ff[f] = self.GAMMA_S_GND
     
       elif n.y() <= -tol and f.exterior():
         if mask_xy > 1:
-          self.ff[f] = 5
+          self.ff[f] = self.GAMMA_B_FLT
         else:
-          self.ff[f] = 3
+          self.ff[f] = self.GAMMA_B_GND
       
       elif n.y() >  -tol and n.y() < tol and f.exterior():
         # if we want to use a basin, we need to mark the interior facets :
@@ -235,18 +267,18 @@ class LatModel(Model):
           lat_mask_xy = lat_mask(x_m, y_m)
           if lat_mask_xy > 0:
             if y_m > 0:
-              self.ff[f] = 4
+              self.ff[f] = self.GAMMA_L_OVR
             else:
-              self.ff[f] = 10
+              self.ff[f] = self.GAMMA_L_UDR
           else:
-            self.ff[f] = 7
+            self.ff[f] = self.GAMMA_L_DVD
         # otherwise just mark for over (4) and under (10) water :
         else:
           if y_m > 0:
-            self.ff[f] = 4
+            self.ff[f] = self.GAMMA_L_OVR
           else:
-            self.ff[f] = 10
-    
+            self.ff[f] = self.GAMMA_L_UDR
+
     s = "    - iterating through %i cells - " % self.num_cells
     print_text(s, cls=self)
     for c in cells(self.mesh):
@@ -255,34 +287,15 @@ class LatModel(Model):
       mask_xy = mask(x_m, y_m)
 
       if mask_xy > 1:
-        self.cf[c] = 1
+        self.cf[c] = self.OMEGA_FLT
       else:
-        self.cf[c] = 0
+        self.cf[c] = self.OMEGA_GND
 
     s = "    - done - "
     print_text(s, cls=self)
     
-    self.set_measures(self.ff, self.cf)
+    self.set_measures()
     
-  def set_subdomains(self, f):
-    """
-    Set the facet subdomains FacetFunction self.ff, cell subdomains
-    CellFunction self.cf, and accumulation FacetFunction self.ff_acc from
-    MeshFunctions saved in an .h5 file <f>.
-    """
-    s = "::: setting 2D subdomains :::"
-    print_text(s, cls=self)
-
-    self.ff     = MeshFunction('size_t', self.mesh)
-    self.cf     = MeshFunction('size_t', self.mesh)
-    self.ff_acc = MeshFunction('size_t', self.mesh)
-    
-    f.read(self.ff,     'ff')
-    f.read(self.cf,     'cf')
-    f.read(self.ff_acc, 'ff_acc')
-
-    self.set_measures(self.ff, self.cf)
-
   def deform_mesh_to_geometry(self, S, B):
     """
     Deforms the 2D mesh to the geometry from FEniCS Expressions for the 

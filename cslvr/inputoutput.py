@@ -5,7 +5,7 @@ from pylab             import array, linspace, ones, isnan, all, zeros, \
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
-                              File, Constant
+                              File, Constant, FiniteElement
 from pyproj            import Proj, transform
 from colored           import fg, attr
 
@@ -84,7 +84,7 @@ class DataInput(object):
     if self.mesh != None:
 
       # define the finite elmenet of the problem :
-      self.element = FiniteElement("CG", self.mesh.ufl_cells(), order)
+      self.element = FiniteElement("CG", self.mesh.ufl_cell(), order)
 
       self.mesh.init(1,2)
       self.dim        = self.mesh.ufl_cell().topological_dimension()

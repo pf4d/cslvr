@@ -1,6 +1,6 @@
 from cslvr import *
 
-kappa = 100.0  # ice thickness to refine
+kappa = 1.0  # ice thickness to refine
 
 #===============================================================================
 # data preparation :
@@ -31,7 +31,7 @@ db2.data['ref'][db2.data['ref'] < kappa*1000.0] = kappa*1000.0
 # generate the contour :
 m = MeshGenerator(db2, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.99, skip_pts=20)
+m.create_contour('mask', zero_cntr=0.99, skip_pts=10)
 #m.create_contour('H', zero_cntr=200, skip_pts=5)
 
 m.eliminate_intersections(dist=200)

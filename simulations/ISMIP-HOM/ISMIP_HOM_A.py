@@ -30,8 +30,8 @@ model.calculate_boundaries()
 model.deform_mesh_to_geometry(surface, bed)
 
 # initialize all the pertinent variables :
-model.init_beta(1e8)                       # really high friction
-model.init_A(1e-16)                         # cold, isothermal rate-factor
+model.init_beta(1e16)                      # really high friction
+model.init_A(1e-16)                        # cold, isothermal rate-factor
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':

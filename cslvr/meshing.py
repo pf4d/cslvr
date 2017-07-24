@@ -10,7 +10,7 @@ Utilities file:
 import subprocess
 import inspect
 import os
-import Image
+from PIL import Image
 from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, \

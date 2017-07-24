@@ -16,7 +16,7 @@ After this, install `Dolfin-Adjoint <http://dolfin-adjoint-doc.readthedocs.org/e
 
 Latest Python packages and misc. dependencies::
 
-  sudo pip install shapely colored termcolor pyproj tifffile;
+  sudo pip install shapely colored termcolor pyproj tifffile netcdf4 image;
 
 also `gmsh_dynamic and gmshpy <http://geuz.org/gmsh/>`_.
 

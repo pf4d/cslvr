@@ -1,7 +1,7 @@
 from fenics            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, print_min_max
-from cslvr.hybridmodel import HybridModel
+from cslvr.d2model     import D2Model
 from cslvr.physics     import Physics
 from cslvr.momentum    import Momentum
 from cslvr.helper      import VerticalBasis, VerticalFDBasis, \
@@ -22,8 +22,8 @@ class MomentumHybrid(Momentum):
     s = "::: INITIALIZING HYBRID MOMENTUM PHYSICS :::"
     print_text(s, self.color())
     
-    if type(model) != HybridModel:
-      s = ">>> MomentumHybrid REQUIRES A 'HybridModel' INSTANCE, NOT %s <<<"
+    if type(model) != D2Model:
+      s = ">>> MomentumHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 

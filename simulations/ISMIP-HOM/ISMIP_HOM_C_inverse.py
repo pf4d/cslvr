@@ -2,8 +2,8 @@ from cslvr  import *
 from scipy  import random
 
 # out directories for saving data and images :
-#reg_typ = 'TV'
-reg_typ = 'Tikhonov'
+reg_typ = 'TV'
+#reg_typ = 'Tikhonov'
 #reg_typ = 'TV_Tik_hybrid'
 out_dir = './ISMIP_HOM_C_inverse_' + reg_typ + '_results/'
 plt_dir = '../../images/data_assimilation/ISMIP_HOM_C/' + reg_typ + '/'
@@ -129,7 +129,7 @@ model.set_out_dir(out_dir + 'inversion/')
 def adj_post_cb_ftn():
   """
   this is called when the optimization is done.  Here all we do is plot, but 
-  you may want to calculate other variables of interest to :
+  you may want to calculate other variables of interest too :
   """
   bedmodel.assign_submesh_variable(bedmodel.beta, model.beta)
   srfmodel.assign_submesh_variable(srfmodel.U3,   model.U3)
@@ -137,21 +137,21 @@ def adj_post_cb_ftn():
   srfmodel.init_w(Constant(0.0))
 
   # plot beta optimal :
-  beta_min  = bedmodel.beta.vector().min()
-  beta_max  = bedmodel.beta.vector().max()
-  beta_lvls = array([beta_min, 100, 200, 300, 400, 500, 600, 700, 
-                     800, 900, beta_max])
+  #beta_min  = bedmodel.beta.vector().min()
+  #beta_max  = bedmodel.beta.vector().max()
+  #beta_lvls = array([beta_min, 100, 200, 300, 400, 500, 600, 700, 
+  #                   800, 900, beta_max])
   plot_variable(u = bedmodel.beta, name = 'beta_opt', direc = plt_dir,
-                cmap = 'viridis', figsize = (6,5), levels = beta_lvls,
+                cmap = 'viridis', figsize = (6,5), levels = None,
                 tp = True, show = False, cb_format='%i',
                 hide_ax_tick_labels=True)
   
   # plot u optimal :
-  U_min  = srfmodel.U_mag.vector().min()
-  U_max  = srfmodel.U_mag.vector().max()
-  U_lvls = array([U_min, 170, 180, 200, 220, 240, 260, 280,  U_max])
+  #U_min  = srfmodel.U_mag.vector().min()
+  #U_max  = srfmodel.U_mag.vector().max()
+  #U_lvls = array([U_min, 170, 180, 200, 220, 240, 260, 280,  U_max])
   plot_variable(u = srfmodel.U3, name = 'U_opt', direc = plt_dir,
-                cmap = 'viridis', figsize = (6,5), levels = U_lvls, tp = True,
+                cmap = 'viridis', figsize = (6,5), levels = None, tp = True,
                 show = False, cb_format='%i', hide_ax_tick_labels=True)
   
   # or we could save the 3D optimized velocity and beta fields for 
@@ -162,32 +162,63 @@ def adj_post_cb_ftn():
 # after every completed adjoining, save the state of these functions :
 adj_save_vars = [model.beta, model.U3]
 
+## form the cost functional :
+#mom.form_obj_ftn(u        = mom.get_U(),
+#                 u_ob     = [model.u_ob,  model.v_ob],
+#                 integral = model.dGamma_sg,
+#                 kind     = 'log_L2_hybrid', 
+#                 g1       = 1, 
+#                 g2       = 1e5)
+
+J_measure = model.dGamma_sg
+R_measure = model.dGamma_bg
+
 # form the cost functional :
-mom.form_obj_ftn(integral=model.GAMMA_U_GND, kind='log_L2_hybrid', 
-                 g1=1, g2=1e5)
+J_log = mom.form_obj_ftn(u        = mom.get_U(),
+                         u_ob     = [model.u_ob,  model.v_ob],
+                         integral = model.dGamma_sg,
+                         kind     = 'log') 
+
+# form the cost functional :
+J_l2  = mom.form_obj_ftn(u        = mom.get_U(),
+                         u_ob     = [model.u_ob,  model.v_ob],
+                         integral = model.dGamma_sg,
+                         kind     = 'l2') 
 
 # form the regularization functional :
 if reg_typ == 'TV':
-  mom.form_reg_ftn(model.beta, integral=model.GAMMA_B_GND, kind='TV', 
-                   alpha=100.0)
+  R = mom.form_reg_ftn(model.beta, integral=model.dGamma_bg, kind='TV')
+  R = 100 * R
 elif reg_typ == 'Tikhonov':
-  mom.form_reg_ftn(model.beta, integral=model.GAMMA_B_GND, kind='Tikhonov', 
-                   alpha=500.0)
+  R = mom.form_reg_ftn(model.beta, integral=model.dGamma_bg, kind='Tikhonov')
+  R = 500 * R
 elif reg_typ == 'TV_Tik_hybrid':
-  mom.form_reg_ftn(model.beta, integral=model.GAMMA_B_GND,
-                   kind='TV_Tik_hybrid', alpha_tik=250, alpha_tv=50)
+  #mom.form_reg_ftn(model.beta, integral=model.dGamma_bg,
+  #                 kind='TV_Tik_hybrid', alpha_tik=250, alpha_tv=50)
+  R_tv  = mom.form_reg_ftn(model.beta, integral=model.dGamma_bg,
+                           kind='TV')
+  R_tik = mom.form_reg_ftn(model.beta, integral=model.dGamma_bg,
+                           kind='Tikhonov')
+  R = 50*R_tv + 250*R_tik
+
+I = 1e5*J_log + J_l2 + R
 
 # solving the incomplete adjoint is more efficient :
 mom.linearize_viscosity()
 
 # optimize for beta :
-mom.optimize_U_ob(control           = model.beta,
-                  bounds            = (1e-5, 1e7),
-                  method            = 'ipopt',
-                  max_iter          = 100,
-                  adj_save_vars     = adj_save_vars,
-                  adj_callback      = None,
-                  post_adj_callback = adj_post_cb_ftn)
+mom.optimize(u                 = mom.get_U(),
+             u_ob              = [model.u_ob, model.v_ob],
+             I                 = I,
+             control           = model.beta,
+             J_measure         = J_measure,
+             R_measure         = R_measure,
+             bounds            = (1e-5, 1e7),
+             method            = 'ipopt',
+             max_iter          = 100,
+             adj_save_vars     = adj_save_vars,
+             adj_callback      = None,
+             post_adj_callback = adj_post_cb_ftn)
 
 
 

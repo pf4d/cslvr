@@ -61,17 +61,21 @@ class BalanceVelocity(Physics):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
-    S      = model.S
-    B      = model.B
-    H      = S - B
-    h      = model.h
-    N      = model.N
-    uhat   = model.uhat
-    vhat   = model.vhat
-    adot   = model.adot
-    ubarm  = model.Ubar
-    Fb     = model.Fb
-        
+    S        = model.S
+    B        = model.B
+    H        = S - B
+    h        = model.h
+    N        = model.N
+    uhat     = model.uhat
+    vhat     = model.vhat
+    adot     = model.adot
+    ubarm    = model.Ubar
+    Fb       = model.Fb
+    dOmega_g = model.dOmega_g()
+    dOmega_w = model.dOmega_w()
+    dOmega   = model.dOmega()
+    dGamma   = model.dGamma()
+
     #===========================================================================
     # form to calculate direction of flow (down driving stress gradient) :
     if stabilization_method == 'BDM':
@@ -129,14 +133,14 @@ class BalanceVelocity(Physics):
     #def L(u):      return div(u*H*Uhat)
     #def L(u):      return + u*H*div(Uhat) \
     #                      + dot(grad(u*H), Uhat)
-    def L_adv(u):  return + H*dot(Uhat, grad(u))
-    def L_dis(u):  return + dot(self.U_vert, grad(u))
-    def L(u):      return + u*H*div(Uhat) \
-                          + u*dot(grad(H), Uhat) \
-                          + L_adv(u)
-    def L_star(u): return + u*H*div(Uhat) \
-                          + u*dot(grad(H), Uhat) \
-                          - L_adv(u)
+    def L_adv(u,H):  return + H*dot(Uhat, grad(u))
+    def L_dis(u):    return + dot(self.U_vert, grad(u))
+    def L(u,H):      return + u*H*div(Uhat) \
+                            + u*dot(grad(H), Uhat) \
+                            + L_adv(u,H)
+    def L_star(u,H): return + u*H*div(Uhat) \
+                            + u*dot(grad(H), Uhat) \
+                            - L_adv(u,H)
 
     # inverse permeability tensor :
     def B_inv():
@@ -152,10 +156,10 @@ class BalanceVelocity(Physics):
 
     if stabilization_method == 'BDM':
       s      = "    - using Brezzi-Douglas-Marini elements -"
-      self.a = + dot(j, B_inv()*phi) * dx \
-               + ubar * div(phi) * dx \
-               + psi * div(j) * dx
-      self.L = f*psi*dx
+      self.a = + dot(j, B_inv()*phi) * dOmega \
+               + ubar * div(phi) * dOmega \
+               + psi * div(j) * dOmega
+      self.L = f*psi*dOmega
 
     elif stabilization_method == 'DG':
       s      = "    - using discontinuous-Galerkin elements -"
@@ -163,47 +167,47 @@ class BalanceVelocity(Physics):
       un     = 0.5*(dot(u, N) + abs(dot(u, N)))
       h_avg  = (h('+') + h('-'))/2
       alpha  = Constant(5.0)
-      #self.a = + ubar*H * div(Uhat) * Phi * dx \
-      #         - ubar*H * dot(Uhat, grad(Phi)) * dx \
-      #         + gamma * dot(grad(ubar), grad(Phi)) * dx \
+      #self.a = + ubar*H * div(Uhat) * Phi * dOmega \
+      #         - ubar*H * dot(Uhat, grad(Phi)) * dOmega \
+      #         + gamma * dot(grad(ubar), grad(Phi)) * dOmega \
       #         + dot(jump(Phi), jump(un*ubar))*dS \
       #         + gamma*(alpha/h('+'))*dot(jump(Phi, N), jump(ubar, N))*dS \
       #         - gamma*dot(avg(grad(Phi)), jump(ubar, N))*dS \
       #         - gamma*dot(jump(Phi, N), avg(grad(ubar)))*dS \
-      #         + dot(Phi, un*ubar)*ds
-      self.a = + ubar*H*div(Uhat) * Phi * dx \
-               + ubar*dot(grad(H), Uhat) * Phi * dx  \
-               - ubar*H * dot(Uhat, grad(Phi)) * dx  \
+      #         + dot(Phi, un*ubar)*dGamma
+      self.a = + ubar*H*div(Uhat) * Phi * dOmega \
+               + ubar*dot(grad(H), Uhat) * Phi * dOmega  \
+               - ubar*H * dot(Uhat, grad(Phi)) * dOmega  \
                + dot(jump(Phi), jump(un*ubar))*dS \
-               + dot(Phi, un*ubar)*ds
-      self.L = + f * Phi * dx
+               + dot(Phi, un*ubar)*dGamma
+      self.L = + f * Phi * dOmega
 
     # use streamline-upwind/Petrov-Galerkin :
     elif stabilization_method == 'SUPG':
       s      = "    - using streamline-upwind/Petrov-Galerkin stabilization -"
-      self.a = + L(ubar) * Phi * dx \
-               + inner(L_adv(Phi), tau*L(ubar)) * dx \
-               + inner(L_dis(Phi), tau_2*L(ubar)) * dx \
-               #+ gamma * dot(grad(ubar), grad(Phi)) * dx \
-      self.L = + f * Phi * dx \
-               + inner(L_adv(Phi), tau*f) * dx \
-               + inner(L_dis(Phi), tau_2*f) * dx \
+      self.a = + L(ubar,H) * Phi * dOmega \
+               + inner(L_adv(Phi,H), tau*L(ubar,H)) * dOmega \
+               + inner(L_dis(Phi), tau_2*L(ubar,H)) * dOmega \
+               #+ gamma * dot(grad(ubar), grad(Phi)) * dOmega \
+      self.L = + f * Phi * dOmega \
+               + inner(L_adv(Phi,H), tau*f) * dOmega \
+               + inner(L_dis(Phi), tau_2*f) * dOmega \
 
     # use Galerkin/least-squares
     elif stabilization_method == 'GLS':
       s      = "    - using Galerkin/least-squares stabilization -"
-      self.a = + L(ubar) * Phi * dx \
-               + inner(L(Phi), tau*L(ubar)) * dx
-      self.L = + f * Phi * dx \
-               + inner(L(Phi), tau*f) * dx
+      self.a = + L(ubar,H) * Phi * dOmega \
+               + inner(L(Phi,H), tau*L(ubar,H)) * dOmega
+      self.L = + f * Phi * dOmega \
+               + inner(L(Phi,H), tau*f) * dOmega
 
     # use subgrid-scale-model :
     elif stabilization_method == 'SSM':
       s      = "    - using subgrid-scale-model stabilization -"
-      self.a = + L(ubar) * Phi * dx \
-               - inner(L_star(Phi), tau*L(ubar)) * dx
-      self.L = + f * Phi * dx \
-               - inner(L_star(Phi), tau*f) * dx
+      self.a = + L(ubar,H) * Phi * dOmega \
+               - inner(L_star(Phi,H), tau*L(ubar,H)) * dOmega
+      self.L = + f * Phi * dOmega \
+               - inner(L_star(Phi,H), tau*f) * dOmega
     
     print_text(s, cls=self)
 
@@ -235,27 +239,29 @@ class BalanceVelocity(Physics):
  
        saved respectively to ``self.model.uhat`` and ``self.model.vhat``. 
     """
-    model = self.model
-    Q     = model.Q
-    S     = model.S
-    B     = model.B
-    H     = S - B
-    N     = model.N
-    phi   = TestFunction(Q)
-    d_x   = TrialFunction(Q)
-    d_y   = TrialFunction(Q)
-    kappa = Constant(self.kappa)
+    model  = self.model
+    Q      = model.Q
+    S      = model.S
+    B      = model.B
+    H      = S - B
+    N      = model.N
+    phi    = TestFunction(Q)
+    d_x    = TrialFunction(Q)
+    d_y    = TrialFunction(Q)
+    kappa  = Constant(self.kappa)
+    dOmega = model.dOmega()
+    dGamma = model.dGamma()
     
     # horizontally smoothed direction of flow :
-    a_dSdx = + d_x * phi * dx \
-             + (kappa*H)**2 * dot(grad(phi), grad(d_x)) * dx \
-             - (kappa*H)**2 * dot(grad(d_x), N) * phi * ds
-    L_dSdx = d[0] * phi * dx
+    a_dSdx = + d_x * phi * dOmega \
+             + (kappa*H)**2 * dot(grad(phi), grad(d_x)) * dOmega \
+             - (kappa*H)**2 * dot(grad(d_x), N) * phi * dGamma
+    L_dSdx = d[0] * phi * dOmega
     
-    a_dSdy = + d_y * phi * dx \
-             + (kappa*H)**2 * dot(grad(phi), grad(d_y)) * dx \
-             - (kappa*H)**2 * dot(grad(d_y), N) * phi * ds
-    L_dSdy = d[1] * phi*dx
+    a_dSdy = + d_y * phi * dOmega \
+             + (kappa*H)**2 * dot(grad(phi), grad(d_y)) * dOmega \
+             - (kappa*H)**2 * dot(grad(d_y), N) * phi * dGamma
+    L_dSdy = d[1] * phi*dOmega
 
     # update velocity direction :
     s    = "::: solving for smoothed x-component of flow direction " + \
@@ -364,389 +370,389 @@ class BalanceVelocity(Physics):
     """
     return self.model.Ubar
 
-  def form_obj_ftn(self, integral, kind='log'):
-    """
-    Forms and returns an objective functional for use with adjoint.
-    Saves to ``self.J``.
-    """
-    self.obj_ftn_type = kind         # need to save this for printing values.
-    self.integral     = integral     # this too.
-    
-    # note that even if self.reset() or self.linearize_viscosity() are called,
-    # this will remain pointing to the unknown of interest :
-    Ubar     = self.get_U()
-    U_ob     = self.model.U_ob
-    
-    if type(integral) == list:
-      self.bndrys = self.model.boundaries[integral[0]]
-      dJ          = self.model.dx(integral[0])
-      for i in integral[1:]:
-        dJ          += self.model.dx(i)
-        self.bndrys += ' and ' + self.model.boundaries[i]
-    else:
-      dJ          = self.model.dx(integral)
-      self.bndrys = self.model.boundaries[integral]
+  #def form_obj_ftn(self, integral, kind='log'):
+  #  """
+  #  Forms and returns an objective functional for use with adjoint.
+  #  Saves to ``self.J``.
+  #  """
+  #  self.obj_ftn_type = kind         # need to save this for printing values.
+  #  self.integral     = integral     # this too.
+  #  
+  #  # note that even if self.reset() or self.linearize_viscosity() are called,
+  #  # this will remain pointing to the unknown of interest :
+  #  Ubar     = self.get_U()
+  #  U_ob     = self.model.U_ob
+  #  
+  #  if type(integral) == list:
+  #    self.bndrys = self.model.boundaries[integral[0]]
+  #    dJ          = self.model.dx(integral[0])
+  #    for i in integral[1:]:
+  #      dJ          += self.model.dx(i)
+  #      self.bndrys += ' and ' + self.model.boundaries[i]
+  #  else:
+  #    dJ          = self.model.dx(integral)
+  #    self.bndrys = self.model.boundaries[integral]
 
-    if kind == 'log':
-      self.J  = 0.5 * ln( (Ubar + 0.01) / (U_ob + 0.01) )**2 * dJ 
-    
-    elif kind == 'l2':
-      self.J  = 0.5 * (Ubar - U_ob)**2 * dJ
-    
-    elif kind == 'ratio':
-      self.J  = 0.5 * (1 -  (Ubar + 0.01) / (U_ob + 0.01))**2 * dJ
-    
-    elif kind == 'abs': 
-      self.J  = abs(Ubar - U_ob) * dJ
+  #  if kind == 'log':
+  #    self.J  = 0.5 * ln( (Ubar + 0.01) / (U_ob + 0.01) )**2 * dJ 
+  #  
+  #  elif kind == 'l2':
+  #    self.J  = 0.5 * (Ubar - U_ob)**2 * dJ
+  #  
+  #  elif kind == 'ratio':
+  #    self.J  = 0.5 * (1 -  (Ubar + 0.01) / (U_ob + 0.01))**2 * dJ
+  #  
+  #  elif kind == 'abs': 
+  #    self.J  = abs(Ubar - U_ob) * dJ
 
-    else:
-      s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'l2', " + \
-          "'log', 'ratio', OR 'abs', NOT '%s' <<<" % kind
-      print_text(s, 'red', 1)
-      sys.exit(1)
+  #  else:
+  #    s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'l2', " + \
+  #        "'log', 'ratio', OR 'abs', NOT '%s' <<<" % kind
+  #    print_text(s, 'red', 1)
+  #    sys.exit(1)
 
-    s  = "::: forming '%s' objective functional integrated over %s:::"
-    print_text(s % (kind, self.bndrys), self.color())
+  #  s  = "::: forming '%s' objective functional integrated over %s:::"
+  #  print_text(s % (kind, self.bndrys), self.color())
 
-  def calc_misfit(self):
-    r"""
-    Calculates and returns the misfit of model and observations, 
+  #def calc_misfit(self):
+  #  r"""
+  #  Calculates and returns the misfit of model and observations, 
 
-      D = \left\Vert \bar{u} - \Vert \underline{u}_{ob} \Vert_2 \right\Vert_{\infty}
+  #    D = \left\Vert \bar{u} - \Vert \underline{u}_{ob} \Vert_2 \right\Vert_{\infty}
 
-    over shelves or grounded depending on the paramter ``integral`` sent to
-    :func:`~balancevelocity.BalanceVelocity.form_obj_ftn`.
-    """
-    s  = "::: calculating misfit ||U - U_ob||_{oo} over %s :::"
-    print_text(s % self.bndrys, cls=self)
+  #  over shelves or grounded depending on the paramter ``integral`` sent to
+  #  :func:`~balancevelocity.BalanceVelocity.form_obj_ftn`.
+  #  """
+  #  s  = "::: calculating misfit ||U - U_ob||_{oo} over %s :::"
+  #  print_text(s % self.bndrys, cls=self)
 
-    model    = self.model
-    integral = self.integral
+  #  model    = self.model
+  #  integral = self.integral
 
-    # convert everything for low-level manipulations :
-    Ubar_v   = model.Ubar.vector().array()
-    U_ob_v   = model.U_ob.vector().array()
+  #  # convert everything for low-level manipulations :
+  #  Ubar_v   = model.Ubar.vector().array()
+  #  U_ob_v   = model.U_ob.vector().array()
 
-    # the magnitude of error :
-    D_v  = abs(Ubar_v - U_ob_v)
+  #  # the magnitude of error :
+  #  D_v  = abs(Ubar_v - U_ob_v)
 
-    # assign to a function :
-    D    = Function(model.Q)
-    D.vector().set_local(D_v)
+  #  # assign to a function :
+  #  D    = Function(model.Q)
+  #  D.vector().set_local(D_v)
 
-    # calculate L_inf vector norm :
-    D      = MPI.max(mpi_comm_world(), D.vector().max())
+  #  # calculate L_inf vector norm :
+  #  D      = MPI.max(mpi_comm_world(), D.vector().max())
 
-    s    = "||U - U_ob||_{oo} : %.3E" % D
-    print_text(s, '208', 1)
-    return D
-  
-  def calc_functionals(self):
-    """
-    Used to facilitate printing the objective function in adjoint solves.
-    """
-    s   = "::: calculating functionals :::"
-    print_text(s, cls=self)
+  #  s    = "||U - U_ob||_{oo} : %.3E" % D
+  #  print_text(s, '208', 1)
+  #  return D
+  #
+  #def calc_functionals(self):
+  #  """
+  #  Used to facilitate printing the objective function in adjoint solves.
+  #  """
+  #  s   = "::: calculating functionals :::"
+  #  print_text(s, cls=self)
 
-    ftnls = []
+  #  ftnls = []
 
-    R = assemble(self.Rp, annotate=False)
-    print_min_max(R, 'R')
-    ftnls.append(R)
-    
-    J = assemble(self.J, annotate=False)
-    print_min_max(J, 'J')
-    ftnls.append(J)
+  #  R = assemble(self.Rp, annotate=False)
+  #  print_min_max(R, 'R')
+  #  ftnls.append(R)
+  #  
+  #  J = assemble(self.J, annotate=False)
+  #  print_min_max(J, 'J')
+  #  ftnls.append(J)
 
-    if self.obj_ftn_type == 'log_L2_hybrid':
-      J1 = assemble(self.J1, annotate=False)
-      print_min_max(J1, 'J1')
-      ftnls.append(J1)
-      
-      J2 = assemble(self.J2, annotate=False)
-      print_min_max(J2, 'J2')
-      ftnls.append(J2)
+  #  if self.obj_ftn_type == 'log_L2_hybrid':
+  #    J1 = assemble(self.J1, annotate=False)
+  #    print_min_max(J1, 'J1')
+  #    ftnls.append(J1)
+  #    
+  #    J2 = assemble(self.J2, annotate=False)
+  #    print_min_max(J2, 'J2')
+  #    ftnls.append(J2)
 
-    if self.reg_ftn_type == 'TV_Tik_hybrid':
-      R1 = assemble(self.R1, annotate=False)
-      print_min_max(R1, 'R1')
-      ftnls.append(R1)
-      
-      R2 = assemble(self.R2, annotate=False)
-      print_min_max(R2, 'R2')
-      ftnls.append(R2)
-    return ftnls 
-    
-  def optimize_ubar(self, control, bounds,
-                    method            = 'ipopt',
-                    max_iter          = 100,
-                    adj_save_vars     = None,
-                    adj_callback      = None,
-                    post_adj_callback = None):
-    """
-    """
-    s    = "::: solving optimal control to minimize ||u - u_ob|| with " + \
-           "control parameter%s :::"
-    if type(control) != list:
-      control = [control]
-    tx = 's '
-    for i in control:
-      tx += "'" + i.name() + "'"
-      if i != control[-1]: tx += ' and '
-    print_text(s % tx, cls=self)
+  #  if self.reg_ftn_type == 'TV_Tik_hybrid':
+  #    R1 = assemble(self.R1, annotate=False)
+  #    print_min_max(R1, 'R1')
+  #    ftnls.append(R1)
+  #    
+  #    R2 = assemble(self.R2, annotate=False)
+  #    print_min_max(R2, 'R2')
+  #    ftnls.append(R2)
+  #  return ftnls 
+  #  
+  #def optimize_ubar(self, control, bounds,
+  #                  method            = 'ipopt',
+  #                  max_iter          = 100,
+  #                  adj_save_vars     = None,
+  #                  adj_callback      = None,
+  #                  post_adj_callback = None):
+  #  """
+  #  """
+  #  s    = "::: solving optimal control to minimize ||u - u_ob|| with " + \
+  #         "control parameter%s :::"
+  #  if type(control) != list:
+  #    control = [control]
+  #  tx = 's '
+  #  for i in control:
+  #    tx += "'" + i.name() + "'"
+  #    if i != control[-1]: tx += ' and '
+  #  print_text(s % tx, cls=self)
 
-    model = self.model
+  #  model = self.model
 
-    # reset entire dolfin-adjoint state :
-    adj_reset()
+  #  # reset entire dolfin-adjoint state :
+  #  adj_reset()
 
-    # starting time :
-    t0   = time()
+  #  # starting time :
+  #  t0   = time()
 
-    # need this for the derivative callback :
-    global counter
-    counter = 0 
-    
-    # functional lists to be populated :
-    global Rs, Js, Ds, J1s, J2s, R1s, R2s
-    Rs     = []
-    Js     = []
-    Ds     = []
-    if self.obj_ftn_type == 'log_L2_hybrid':
-      J1s  = []
-      J2s  = []
-    if self.reg_ftn_type == 'TV_Tik_hybrid':
-      R1s  = []
-      R2s  = []
-   
-    # solve the momentum equations with annotation enabled :
-    s    = '::: solving mass-conservation forward problem :::'
-    print_text(s, cls=self)
-    self.solve(annotate=True)
-    
-    # now solve the control optimization problem : 
-    s    = "::: starting adjoint-control optimization with method '%s' :::"
-    print_text(s % method, cls=self)
+  #  # need this for the derivative callback :
+  #  global counter
+  #  counter = 0 
+  #  
+  #  # functional lists to be populated :
+  #  global Rs, Js, Ds, J1s, J2s, R1s, R2s
+  #  Rs     = []
+  #  Js     = []
+  #  Ds     = []
+  #  if self.obj_ftn_type == 'log_L2_hybrid':
+  #    J1s  = []
+  #    J2s  = []
+  #  if self.reg_ftn_type == 'TV_Tik_hybrid':
+  #    R1s  = []
+  #    R2s  = []
+  # 
+  #  # solve the momentum equations with annotation enabled :
+  #  s    = '::: solving mass-conservation forward problem :::'
+  #  print_text(s, cls=self)
+  #  self.solve(annotate=True)
+  #  
+  #  # now solve the control optimization problem : 
+  #  s    = "::: starting adjoint-control optimization with method '%s' :::"
+  #  print_text(s % method, cls=self)
 
-    # objective function callback function : 
-    def eval_cb(I, c):
-      s    = '::: adjoint objective eval post callback function :::'
-      print_text(s, cls=self)
-      print_min_max(I,    'I')
-      for ci in c:
-        print_min_max(ci,    'control: ' + ci.name())
-    
-    # objective gradient callback function :
-    def deriv_cb(I, dI, c):
-      global counter, Rs, Js, J1s, J2s
-      if method == 'ipopt':
-        s0    = '>>> '
-        s1    = 'iteration %i (max %i) complete'
-        s2    = ' <<<'
-        text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1 % (counter, max_iter), 'red')
-        text2 = get_text(s2, 'red', 1)
-        if MPI.rank(mpi_comm_world())==0:
-          print text0 + text1 + text2
-        counter += 1
-      s    = '::: adjoint obj. gradient post callback function :::'
-      print_text(s, cls=self)
-      for (dIi,ci) in zip(dI,c):
-        print_min_max(dIi,    'dI/control: ' + ci.name())
-        self.model.save_xdmf(dIi, 'dI_control_' + ci.name())
-        self.model.save_xdmf(ci, 'control_' + ci.name())
-      
-      # update the DA current velocity to the model for evaluation 
-      # purposes only; the model.assign_variable function is 
-      # annotated for purposes of linking physics models to the adjoint
-      # process :
-      u_opt = DolfinAdjointVariable(model.Ubar).tape_value()
-      model.init_Ubar(u_opt)
+  #  # objective function callback function : 
+  #  def eval_cb(I, c):
+  #    s    = '::: adjoint objective eval post callback function :::'
+  #    print_text(s, cls=self)
+  #    print_min_max(I,    'I')
+  #    for ci in c:
+  #      print_min_max(ci,    'control: ' + ci.name())
+  #  
+  #  # objective gradient callback function :
+  #  def deriv_cb(I, dI, c):
+  #    global counter, Rs, Js, J1s, J2s
+  #    if method == 'ipopt':
+  #      s0    = '>>> '
+  #      s1    = 'iteration %i (max %i) complete'
+  #      s2    = ' <<<'
+  #      text0 = get_text(s0, 'red', 1)
+  #      text1 = get_text(s1 % (counter, max_iter), 'red')
+  #      text2 = get_text(s2, 'red', 1)
+  #      if MPI.rank(mpi_comm_world())==0:
+  #        print text0 + text1 + text2
+  #      counter += 1
+  #    s    = '::: adjoint obj. gradient post callback function :::'
+  #    print_text(s, cls=self)
+  #    for (dIi,ci) in zip(dI,c):
+  #      print_min_max(dIi,    'dI/control: ' + ci.name())
+  #      self.model.save_xdmf(dIi, 'dI_control_' + ci.name())
+  #      self.model.save_xdmf(ci, 'control_' + ci.name())
+  #    
+  #    # update the DA current velocity to the model for evaluation 
+  #    # purposes only; the model.assign_variable function is 
+  #    # annotated for purposes of linking physics models to the adjoint
+  #    # process :
+  #    u_opt = DolfinAdjointVariable(model.Ubar).tape_value()
+  #    model.init_Ubar(u_opt)
 
-      # print functional values :
-      for i in range(len(control)):
-        control[i].assign(c[i], annotate=False)
-      ftnls = self.calc_functionals()
-      D     = self.calc_misfit()
+  #    # print functional values :
+  #    for i in range(len(control)):
+  #      control[i].assign(c[i], annotate=False)
+  #    ftnls = self.calc_functionals()
+  #    D     = self.calc_misfit()
 
-      # functional lists to be populated :
-      Rs.append(ftnls[0])
-      Js.append(ftnls[1])
-      Ds.append(D)
-      if self.obj_ftn_type == 'log_L2_hybrid':
-        J1s.append(ftnls[2])
-        J2s.append(ftnls[3])
-      if self.reg_ftn_type == 'TV_Tik_hybrid':
-        R1s.append(ftnls[4])
-        R2s.append(ftnls[5])
+  #    # functional lists to be populated :
+  #    Rs.append(ftnls[0])
+  #    Js.append(ftnls[1])
+  #    Ds.append(D)
+  #    if self.obj_ftn_type == 'log_L2_hybrid':
+  #      J1s.append(ftnls[2])
+  #      J2s.append(ftnls[3])
+  #    if self.reg_ftn_type == 'TV_Tik_hybrid':
+  #      R1s.append(ftnls[4])
+  #      R2s.append(ftnls[5])
 
-      # call that callback, if you want :
-      if adj_callback is not None:
-        adj_callback(I, dI, c)
-   
-    # get the cost, regularization, and objective functionals :
-    I = self.J + self.R
-    
-    # define the control parameter :
-    m = []
-    for i in control:
-      m.append(Control(i, value=i))
-    
-    # create the reduced functional to minimize :
-    F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-                          derivative_cb_post=deriv_cb)
+  #    # call that callback, if you want :
+  #    if adj_callback is not None:
+  #      adj_callback(I, dI, c)
+  # 
+  #  # get the cost, regularization, and objective functionals :
+  #  I = self.J + self.R
+  #  
+  #  # define the control parameter :
+  #  m = []
+  #  for i in control:
+  #    m.append(Control(i, value=i))
+  #  
+  #  # create the reduced functional to minimize :
+  #  F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
+  #                        derivative_cb_post=deriv_cb)
 
-    # optimize with scipy's fmin_l_bfgs_b :
-    if method == 'l_bfgs_b': 
-      out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
-                     options={"disp"    : True,
-                              "maxiter" : max_iter,
-                              "gtol"    : 1e-5})
-      b_opt = out
-    
-    # or optimize with IPOpt (preferred) :
-    elif method == 'ipopt':
-      try:
-        import pyipopt
-      except ImportError:
-        info_red("""You do not have IPOPT and/or pyipopt installed.
-                    When compiling IPOPT, make sure to link against HSL,
-                    as it is a necessity for practical problems.""")
-        raise
-      problem = MinimizationProblem(F, bounds=bounds)
-      parameters = {"tol"                : 1e-8,
-                    "acceptable_tol"     : 1e-6,
-                    "maximum_iterations" : max_iter,
-                    "print_level"        : 5,
-                    "ma97_order"         : "metis",
-                    "linear_solver"      : "ma97"}
-      solver = IPOPTSolver(problem, parameters=parameters)
-      b_opt  = solver.solve()
+  #  # optimize with scipy's fmin_l_bfgs_b :
+  #  if method == 'l_bfgs_b': 
+  #    out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
+  #                   options={"disp"    : True,
+  #                            "maxiter" : max_iter,
+  #                            "gtol"    : 1e-5})
+  #    b_opt = out
+  #  
+  #  # or optimize with IPOpt (preferred) :
+  #  elif method == 'ipopt':
+  #    try:
+  #      import pyipopt
+  #    except ImportError:
+  #      info_red("""You do not have IPOPT and/or pyipopt installed.
+  #                  When compiling IPOPT, make sure to link against HSL,
+  #                  as it is a necessity for practical problems.""")
+  #      raise
+  #    problem = MinimizationProblem(F, bounds=bounds)
+  #    parameters = {"tol"                : 1e-8,
+  #                  "acceptable_tol"     : 1e-6,
+  #                  "maximum_iterations" : max_iter,
+  #                  "print_level"        : 5,
+  #                  "ma97_order"         : "metis",
+  #                  "linear_solver"      : "ma97"}
+  #    solver = IPOPTSolver(problem, parameters=parameters)
+  #    b_opt  = solver.solve()
 
-    # make the optimal control parameter available :
-    for c,b in zip(control, b_opt):
-      model.assign_variable(c, b)
-    #Control(control).update(b_opt)  # FIXME: does this work?
-    
-    # call the post-adjoint callback function if set :
-    if post_adj_callback is not None:
-      s    = '::: calling optimize_ubar() post-adjoined callback function :::'
-      print_text(s, cls=self)
-      post_adj_callback()
-    
-    # save state to unique hdf5 file :
-    if isinstance(adj_save_vars, list):
-      s    = '::: saving variables in list arg adj_save_vars :::'
-      print_text(s, cls=self)
-      out_file = model.out_dir + 'u_opt.h5'
-      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-      
-      for var in adj_save_vars:
-        model.save_hdf5(var, f=foutput)
-      
-      foutput.close()
+  #  # make the optimal control parameter available :
+  #  for c,b in zip(control, b_opt):
+  #    model.assign_variable(c, b)
+  #  #Control(control).update(b_opt)  # FIXME: does this work?
+  #  
+  #  # call the post-adjoint callback function if set :
+  #  if post_adj_callback is not None:
+  #    s    = '::: calling optimize_ubar() post-adjoined callback function :::'
+  #    print_text(s, cls=self)
+  #    post_adj_callback()
+  #  
+  #  # save state to unique hdf5 file :
+  #  if isinstance(adj_save_vars, list):
+  #    s    = '::: saving variables in list arg adj_save_vars :::'
+  #    print_text(s, cls=self)
+  #    out_file = model.out_dir + 'u_opt.h5'
+  #    foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+  #    
+  #    for var in adj_save_vars:
+  #      model.save_hdf5(var, f=foutput)
+  #    
+  #    foutput.close()
 
-    # calculate total time to compute
-    tf = time()
-    s  = tf - t0
-    m  = s / 60.0
-    h  = m / 60.0
-    s  = s % 60
-    m  = m % 60
-    text = "time to optimize ||u - u_ob||: %02d:%02d:%02d" % (h,m,s)
-    print_text(text, 'red', 1)
-    
-    # save all the objective functional values with rudimentary plot : 
-    d    = model.out_dir + 'objective_ftnls_history/'
-    s    = '::: saving objective functionals to %s :::'
-    print_text(s % d, cls=self)
-    if model.MPI_rank==0:
-      if not os.path.exists(d):
-        os.makedirs(d)
-      np.savetxt(d + 'time.txt', np.array([tf - t0]))
-      np.savetxt(d + 'Rs.txt',   np.array(Rs))
-      np.savetxt(d + 'Js.txt',   np.array(Js))
-      np.savetxt(d + 'Ds.txt',   np.array(Ds))
-      if self.obj_ftn_type == 'log_L2_hybrid':
-        np.savetxt(d + 'J1s.txt',  np.array(J1s))
-        np.savetxt(d + 'J2s.txt',  np.array(J2s))
-      if self.reg_ftn_type == 'TV_Tik_hybrid':
-        np.savetxt(d + 'R1s.txt',  np.array(R1s))
-        np.savetxt(d + 'R2s.txt',  np.array(R2s))
+  #  # calculate total time to compute
+  #  tf = time()
+  #  s  = tf - t0
+  #  m  = s / 60.0
+  #  h  = m / 60.0
+  #  s  = s % 60
+  #  m  = m % 60
+  #  text = "time to optimize ||u - u_ob||: %02d:%02d:%02d" % (h,m,s)
+  #  print_text(text, 'red', 1)
+  #  
+  #  # save all the objective functional values with rudimentary plot : 
+  #  d    = model.out_dir + 'objective_ftnls_history/'
+  #  s    = '::: saving objective functionals to %s :::'
+  #  print_text(s % d, cls=self)
+  #  if model.MPI_rank==0:
+  #    if not os.path.exists(d):
+  #      os.makedirs(d)
+  #    np.savetxt(d + 'time.txt', np.array([tf - t0]))
+  #    np.savetxt(d + 'Rs.txt',   np.array(Rs))
+  #    np.savetxt(d + 'Js.txt',   np.array(Js))
+  #    np.savetxt(d + 'Ds.txt',   np.array(Ds))
+  #    if self.obj_ftn_type == 'log_L2_hybrid':
+  #      np.savetxt(d + 'J1s.txt',  np.array(J1s))
+  #      np.savetxt(d + 'J2s.txt',  np.array(J2s))
+  #    if self.reg_ftn_type == 'TV_Tik_hybrid':
+  #      np.savetxt(d + 'R1s.txt',  np.array(R1s))
+  #      np.savetxt(d + 'R2s.txt',  np.array(R2s))
 
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      ax.set_yscale('log')
-      ax.set_ylabel(r'$\mathscr{J}\left( \mathbf{u} \right)$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(np.array(Js), 'r-', lw=2.0)
-      plt.grid()
-      plt.savefig(d + 'J.png', dpi=100)
-      plt.close(fig)
+  #    fig = plt.figure()
+  #    ax  = fig.add_subplot(111)
+  #    ax.set_yscale('log')
+  #    ax.set_ylabel(r'$\mathscr{J}\left( \mathbf{u} \right)$')
+  #    ax.set_xlabel(r'iteration')
+  #    ax.plot(np.array(Js), 'r-', lw=2.0)
+  #    plt.grid()
+  #    plt.savefig(d + 'J.png', dpi=100)
+  #    plt.close(fig)
 
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      ax.set_yscale('log')
-      ax.set_ylabel(r'$\mathscr{R}\left( \beta \right)$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(np.array(Rs), 'r-', lw=2.0)
-      plt.grid()
-      plt.savefig(d + 'R.png', dpi=100)
-      plt.close(fig)
+  #    fig = plt.figure()
+  #    ax  = fig.add_subplot(111)
+  #    ax.set_yscale('log')
+  #    ax.set_ylabel(r'$\mathscr{R}\left( \beta \right)$')
+  #    ax.set_xlabel(r'iteration')
+  #    ax.plot(np.array(Rs), 'r-', lw=2.0)
+  #    plt.grid()
+  #    plt.savefig(d + 'R.png', dpi=100)
+  #    plt.close(fig)
 
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      ax.set_yscale('log')
-      ax.set_ylabel(r'$\mathscr{D}\left( \mathbf{u} \right)$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(np.array(Ds), 'r-', lw=2.0)
-      plt.grid()
-      plt.savefig(d + 'D.png', dpi=100)
-      plt.close(fig)
-      
-      if self.obj_ftn_type == 'log_L2_hybrid':
+  #    fig = plt.figure()
+  #    ax  = fig.add_subplot(111)
+  #    ax.set_yscale('log')
+  #    ax.set_ylabel(r'$\mathscr{D}\left( \mathbf{u} \right)$')
+  #    ax.set_xlabel(r'iteration')
+  #    ax.plot(np.array(Ds), 'r-', lw=2.0)
+  #    plt.grid()
+  #    plt.savefig(d + 'D.png', dpi=100)
+  #    plt.close(fig)
+  #    
+  #    if self.obj_ftn_type == 'log_L2_hybrid':
 
-        fig = plt.figure()
-        ax  = fig.add_subplot(111)
-        #ax.set_yscale('log')
-        ax.set_ylabel(r'$\mathscr{J}_1\left( \mathbf{u} \right)$')
-        ax.set_xlabel(r'iteration')
-        ax.plot(np.array(J1s), 'r-', lw=2.0)
-        plt.grid()
-        plt.savefig(d + 'J1.png', dpi=100)
-        plt.close(fig)
+  #      fig = plt.figure()
+  #      ax  = fig.add_subplot(111)
+  #      #ax.set_yscale('log')
+  #      ax.set_ylabel(r'$\mathscr{J}_1\left( \mathbf{u} \right)$')
+  #      ax.set_xlabel(r'iteration')
+  #      ax.plot(np.array(J1s), 'r-', lw=2.0)
+  #      plt.grid()
+  #      plt.savefig(d + 'J1.png', dpi=100)
+  #      plt.close(fig)
  
-        fig = plt.figure()
-        ax  = fig.add_subplot(111)
-        #ax.set_yscale('log')
-        ax.set_ylabel(r'$\mathscr{J}_2\left( \mathbf{u} \right)$')
-        ax.set_xlabel(r'iteration')
-        ax.plot(np.array(J2s), 'r-', lw=2.0)
-        plt.grid()
-        plt.savefig(d + 'J2.png', dpi=100)
-        plt.close(fig)
-      
-      if self.reg_ftn_type == 'TV_Tik_hybrid':
+  #      fig = plt.figure()
+  #      ax  = fig.add_subplot(111)
+  #      #ax.set_yscale('log')
+  #      ax.set_ylabel(r'$\mathscr{J}_2\left( \mathbf{u} \right)$')
+  #      ax.set_xlabel(r'iteration')
+  #      ax.plot(np.array(J2s), 'r-', lw=2.0)
+  #      plt.grid()
+  #      plt.savefig(d + 'J2.png', dpi=100)
+  #      plt.close(fig)
+  #    
+  #    if self.reg_ftn_type == 'TV_Tik_hybrid':
 
-        fig = plt.figure()
-        ax  = fig.add_subplot(111)
-        #ax.set_yscale('log')
-        ax.set_ylabel(r'$\mathscr{R}_{tik}\left( \beta \right)$')
-        ax.set_xlabel(r'iteration')
-        ax.plot(np.array(R1s), 'r-', lw=2.0)
-        plt.grid()
-        plt.savefig(d + 'R1.png', dpi=100)
-        plt.close(fig)
+  #      fig = plt.figure()
+  #      ax  = fig.add_subplot(111)
+  #      #ax.set_yscale('log')
+  #      ax.set_ylabel(r'$\mathscr{R}_{tik}\left( \beta \right)$')
+  #      ax.set_xlabel(r'iteration')
+  #      ax.plot(np.array(R1s), 'r-', lw=2.0)
+  #      plt.grid()
+  #      plt.savefig(d + 'R1.png', dpi=100)
+  #      plt.close(fig)
  
-        fig = plt.figure()
-        ax  = fig.add_subplot(111)
-        #ax.set_yscale('log')
-        ax.set_ylabel(r'$\mathscr{R}_{TV}\left( \beta \right)$')
-        ax.set_xlabel(r'iteration')
-        ax.plot(np.array(R2s), 'r-', lw=2.0)
-        plt.grid()
-        plt.savefig(d + 'R2.png', dpi=100)
-        plt.close(fig)
+  #      fig = plt.figure()
+  #      ax  = fig.add_subplot(111)
+  #      #ax.set_yscale('log')
+  #      ax.set_ylabel(r'$\mathscr{R}_{TV}\left( \beta \right)$')
+  #      ax.set_xlabel(r'iteration')
+  #      ax.plot(np.array(R2s), 'r-', lw=2.0)
+  #      plt.grid()
+  #      plt.savefig(d + 'R2.png', dpi=100)
+  #      plt.close(fig)
 
 
 

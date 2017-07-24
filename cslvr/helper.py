@@ -22,6 +22,18 @@ def raiseNotDefined():
   print text % (method, line, fileName)
   sys.exit(1)
 
+class Boundary(object):
+  def __init__(self, measure, markers, description):
+    self.measure     = measure
+    self.description = description
+    self.markers     = markers
+  def __call__(self):
+    for i,m in enumerate(self.markers):
+      if i == 0:
+        meas  = self.measure(m)
+      else:
+        meas += self.measure(m)
+    return meas
   
 def download_file(url, direc, folder, extract=False):
   """

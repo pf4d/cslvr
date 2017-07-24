@@ -1,4 +1,4 @@
-from cslvr   import HybridModel, MomentumHybrid, plot_variable
+from cslvr   import D2Model, MomentumHybrid, plot_variable
 from fenics  import Point, RectangleMesh, Expression, sqrt, pi
 from numpy   import array
 
@@ -13,7 +13,7 @@ p1    = Point(0.0, 0.0)
 p2    = Point(L,   L)
 mesh  = RectangleMesh(p1, p2, 25, 25)
 
-model = HybridModel(mesh, out_dir = out_dir, use_periodic = True)
+model = D2Model(mesh, out_dir = out_dir, use_periodic = True, kind = 'hybrid')
 
 surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
@@ -40,5 +40,6 @@ plot_variable(u = model.U3_s, name = 'U_mag', direc = plt_dir,
               show                = False,
               extend              = 'neither',
               cb_format           = '%g')
+
 
 

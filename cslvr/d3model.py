@@ -2,6 +2,7 @@ from fenics            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, get_text, print_min_max
 from cslvr.model       import Model
+from cslvr.helper      import Boundary
 from pylab             import inf
 import sys
 
@@ -20,7 +21,7 @@ class D3Model(Model):
   GAMMA_U_GND = 8   # grounded surface with U observations
   GAMMA_U_FLT = 9   # shelf surface with U observations
   GAMMA_ACC   = 1   # areas with positive surface accumulation
-  
+
   # external boundaries :
   ext_boundaries = {GAMMA_S_GND : 'grounded upper surface',
                     GAMMA_B_GND : 'grounded lower surface (bedrock)',
@@ -38,7 +39,8 @@ class D3Model(Model):
                     OMEGA_FLT   : 'internal cells located over water'}
 
   # union :
-  boundaries = dict(ext_boundaries, **int_boundaries)
+  boundaries = {'OMEGA' : int_boundaries,
+                'GAMMA' : ext_boundaries}
 
   def __init__(self, mesh, out_dir='./results/', order=1, 
                use_periodic=False):
@@ -120,11 +122,11 @@ class D3Model(Model):
       print_text(s, 'red', 1)
       sys.exit(1)
     else:
-      self.num_facets = self.mesh.size_global(2)
-      self.num_cells  = self.mesh.size_global(3)
-      self.dof        = self.mesh.size_global(0)
+      self.num_facets   = self.mesh.num_facets()
+      self.num_cells    = self.mesh.num_cells()
+      self.num_vertices = self.mesh.num_vertices()
     s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
-        % (self.dim, self.num_cells, self.num_facets, self.dof)
+        % (self.dim, self.num_cells, self.num_facets, self.num_vertices)
     print_text(s, cls=self)
   
   def set_flat_mesh(self, flat_mesh):
@@ -212,6 +214,11 @@ class D3Model(Model):
 
     s = "::: generating 3D function spaces :::"
     print_text(s, cls=self)
+    
+    self.Q4               = FunctionSpace(self.mesh, self.QM4e,
+                                          constrained_domain=self.pBC)
+    self.QTH3             = FunctionSpace(self.mesh, self.QTH3e,
+                                          constrained_domain=self.pBC)
     
     s = "    - 3D function spaces created - "
     print_text(s, cls=self)
@@ -387,17 +394,18 @@ class D3Model(Model):
     """
     # calculate the number of cells and facets that are of a certain type
     # for determining Dirichlet boundaries :
-    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
-    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
-    self.N_GAMMA_S_GND = sum(self.ff.array() == self.GAMMA_S_GND)
-    self.N_GAMMA_B_GND = sum(self.ff.array() == self.GAMMA_B_GND)
-    self.N_GAMMA_S_FLT = sum(self.ff.array() == self.GAMMA_S_FLT)
-    self.N_GAMMA_B_FLT = sum(self.ff.array() == self.GAMMA_B_FLT)
-    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
-    self.N_GAMMA_L_OVR = sum(self.ff.array() == self.GAMMA_L_OVR)
-    self.N_GAMMA_L_UDR = sum(self.ff.array() == self.GAMMA_L_UDR)
-    self.N_GAMMA_U_GND = sum(self.ff.array() == self.GAMMA_U_GND)
-    self.N_GAMMA_U_FLT = sum(self.ff.array() == self.GAMMA_U_FLT)
+    self.N_OMEGA_GND   = sum(self.cf.array()     == self.OMEGA_GND)
+    self.N_OMEGA_FLT   = sum(self.cf.array()     == self.OMEGA_FLT)
+    self.N_GAMMA_S_GND = sum(self.ff.array()     == self.GAMMA_S_GND)
+    self.N_GAMMA_B_GND = sum(self.ff.array()     == self.GAMMA_B_GND)
+    self.N_GAMMA_S_FLT = sum(self.ff.array()     == self.GAMMA_S_FLT)
+    self.N_GAMMA_B_FLT = sum(self.ff.array()     == self.GAMMA_B_FLT)
+    self.N_GAMMA_L_DVD = sum(self.ff.array()     == self.GAMMA_L_DVD)
+    self.N_GAMMA_L_OVR = sum(self.ff.array()     == self.GAMMA_L_OVR)
+    self.N_GAMMA_L_UDR = sum(self.ff.array()     == self.GAMMA_L_UDR)
+    self.N_GAMMA_U_GND = sum(self.ff.array()     == self.GAMMA_U_GND)
+    self.N_GAMMA_U_FLT = sum(self.ff.array()     == self.GAMMA_U_FLT)
+    self.N_GAMMA_ACC   = sum(self.ff_acc.array() == self.GAMMA_ACC)
 
     # create new measures of integration :
     self.ds      = Measure('ds', subdomain_data=self.ff)
@@ -421,6 +429,43 @@ class D3Model(Model):
     self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
     self.dLat    =   self.ds(4) + self.ds(7) \
                    + self.ds(10)             # lateral
+    
+    self.dOmega     = Boundary(self.dx, [0,1],
+                      'entire interior')
+    self.dOmega_g   = Boundary(self.dx, [0],
+                      'interior above grounded ice')
+    self.dOmega_w   = Boundary(self.dx, [1],
+                      'interior above floating ice')
+    self.dGamma     = Boundary(self.ds, [2,3,4,5,6,7,8,9,2,8,9,10],
+                      'entire exterior')
+    self.dGamma_bg  = Boundary(self.ds, [3],
+                      'grounded basal surface')
+    self.dGamma_bw  = Boundary(self.ds, [5],
+                      'floating basal surface')
+    self.dGamma_b   = Boundary(self.ds, [3,5],
+                      'entire basal surface')
+    self.dGamma_sgu = Boundary(self.ds, [8],
+                      'upper surface with U observations above grounded ice')
+    self.dGamma_swu = Boundary(self.ds, [9],
+                      'upper surface with U observations above floating ice')
+    self.dGamma_su  = Boundary(self.ds, [8,9],
+                      'entire upper surface with U observations')
+    self.dGamma_sg  = Boundary(self.ds, [2,8],
+                      'upper surface above grounded ice')
+    self.dGamma_sw  = Boundary(self.ds, [6,9],
+                      'upper surface above floating ice')
+    self.dGamma_s   = Boundary(self.ds, [6,2,8,9],
+                      'entire upper surface')
+    self.dGamma_ld  = Boundary(self.ds, [7],
+                      'lateral interior surface')
+    self.dGamma_lto = Boundary(self.ds, [4],
+                      'exterior lateral surface above water')
+    self.dGamma_ltu = Boundary(self.ds, [10],
+                      'exterior lateral surface below= water')
+    self.dGamma_lt  = Boundary(self.ds, [4,10],
+                      'entire exterior lateral surface')
+    self.dGamma_l   = Boundary(self.ds, [4,7,10],
+                      'entire exterior and interior lateral surface')
 
   def deform_mesh_to_geometry(self, S, B):
     """
@@ -440,7 +485,7 @@ class D3Model(Model):
     min_height  = self.mesh.coordinates()[:,2].min()
     mesh_height = max_height - min_height
     
-    s = "    - iterating through %i vertices - " % self.dof
+    s = "    - iterating through %i vertices - " % self.num_vertices
     print_text(s, cls=self)
     
     for x in self.mesh.coordinates():

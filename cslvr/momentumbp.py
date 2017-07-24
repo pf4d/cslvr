@@ -137,11 +137,6 @@ class MomentumBP(Momentum):
       print_text(s, self.color())
       self.mom_F += f_w * (N[0]*phi + N[1]*psi) * dLat_t
     
-    if (not model.use_periodic_boundaries 
-        and not use_lat_bcs and use_pressure_bc):
-      s = "    - using cliff-pressure boundary condition -"
-      print_text(s, self.color())
-    
     # add lateral boundary conditions :  
     # FIXME: need correct BP treatment here
     if use_lat_bcs:
@@ -435,14 +430,23 @@ class MomentumDukowiczBP(Momentum):
     N          = model.N
     D          = model.D
 
-    dx_f       = model.dx_f
-    dx_g       = model.dx_g
-    dx         = model.dx
-    dBed_g     = model.dBed_g
-    dBed_f     = model.dBed_f
-    dLat_t     = model.dLat_t
-    dLat_d     = model.dLat_d
-    dBed       = model.dBed
+    dOmega     = model.dOmega()
+    dOmega_g   = model.dOmega_g()
+    dOmega_w   = model.dOmega_w()
+    dGamma_bg  = model.dGamma_bg()
+    dGamma_bw  = model.dGamma_bw()
+    dGamma_b   = model.dGamma_b()
+    dGamma_sgu = model.dGamma_sgu()
+    dGamma_swu = model.dGamma_swu()
+    dGamma_su  = model.dGamma_su()
+    dGamma_sg  = model.dGamma_sg()
+    dGamma_sw  = model.dGamma_sw()
+    dGamma_s   = model.dGamma_s()
+    dGamma_ld  = model.dGamma_ld()
+    dGamma_lto = model.dGamma_lto()
+    dGamma_ltu = model.dGamma_ltu()
+    dGamma_lt  = model.dGamma_lt()
+    dGamma_l   = model.dGamma_l()
      
     # new constants :
     p0         = 101325
@@ -499,13 +503,13 @@ class MomentumDukowiczBP(Momentum):
     Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
     
     # action :
-    A      = + Vd_shf*dx_f + Vd_gnd*dx_g - Pe*dx \
-             - Sl_gnd*dBed_g - Pb*dBed_f
+    A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - Pe*dOmega \
+             - Sl_gnd*dGamma_bg - Pb*dGamma_bw
     
     if (not model.use_periodic_boundaries and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
-      A -= Pb*dLat_t
+      A -= Pb*dGamma_lt
     
     # add lateral boundary conditions :  
     # FIXME: need correct BP treatment here
@@ -517,7 +521,7 @@ class MomentumDukowiczBP(Momentum):
       eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
       sig_g_l    = self.quasi_stress_tensor(U3_c, model.p, eta_gnd_l)
       #sig_g_l    = self.stress_tensor(U3, model.p, eta_gnd)
-      A -= dot(dot(sig_g_l, N), U3) * dLat_d
+      A -= dot(dot(sig_g_l, N), U3) * dGamma_ld
 
     # the first variation of the action in the direction of a
     # test function ; the extremum :
@@ -529,8 +533,8 @@ class MomentumDukowiczBP(Momentum):
     
     self.mom_bcs = []
       
-    self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx \
-               + (u*N[0] + v*N[1] + dw*N[2] - Fb)*chi*dBed
+    self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dOmega \
+               + (u*N[0] + v*N[1] + dw*N[2] - Fb)*chi*dGamma_b
    
     self.eta_shf = eta_shf
     self.eta_gnd = eta_gnd
@@ -731,22 +735,22 @@ class MomentumDukowiczBP(Momentum):
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS)
+    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=False)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
           annotate = annotate, solver_parameters = params['solver'])
     u, v = self.U.split()
 
-    self.assx.assign(model.u, u, annotate=annotate)
-    self.assy.assign(model.v, v, annotate=annotate)
+    self.assx.assign(model.u, u, annotate=False)
+    self.assy.assign(model.v, v, annotate=False)
 
     u,v,w = model.U3.split(True)
     print_min_max(u, 'u')
     print_min_max(v, 'v')
       
     if params['solve_vert_velocity']:
-      self.solve_vert_velocity(annotate)
+      self.solve_vert_velocity(annotate=False)
     if params['solve_pressure']:
       self.solve_pressure(annotate=False)
 

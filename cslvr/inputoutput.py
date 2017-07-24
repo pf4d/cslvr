@@ -89,15 +89,15 @@ class DataInput(object):
       self.mesh.init(1,2)
       self.dim        = self.mesh.ufl_cell().topological_dimension()
       if self.dim == 3:
-        self.num_facets = self.mesh.size_global(2)
-        self.num_cells  = self.mesh.size_global(3)
-        self.dof        = self.mesh.size_global(0)
+        self.num_facets   = self.mesh.num_facets()
+        self.num_cells    = self.mesh.num_cells()
+        self.num_vertices = self.mesh.num_vertices()
       elif self.dim == 2:
-        self.num_facets = self.mesh.size_global(1)
-        self.num_cells  = self.mesh.size_global(2)
-        self.dof        = self.mesh.size_global(0)
+        self.num_facets   = self.mesh.num_edges()
+        self.num_cells    = self.mesh.num_cells()
+        self.num_vertices = self.mesh.num_vertices()
       s = "    - using %iD mesh with %i cells, %i facets, %i vertices - " \
-          % (self.dim, self.num_cells, self.num_facets, self.dof)
+          % (self.dim, self.num_cells, self.num_facets, self.num_vertices)
       print_text(s, self.color)
     else:
       s = "    - not using a mesh - "

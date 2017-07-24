@@ -32,7 +32,8 @@ class Model(object):
   :type use_periodic:  bool
   """
   
-  def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', order=1,
+               use_periodic=False, **kwargs):
     """
     Create and instance of the model.
     """
@@ -58,7 +59,7 @@ class Model(object):
     
     self.generate_constants()
     self.set_mesh(mesh)
-    self.generate_function_spaces(order, use_periodic)
+    self.generate_function_spaces(order, use_periodic, **kwargs)
     self.initialize_variables()
 
   def color(self):
@@ -401,28 +402,16 @@ class Model(object):
     self.QM2e             = MixedElement([self.Q1e]*2)
     self.QM3e             = MixedElement([self.Q1e]*3)
     self.QM4e             = MixedElement([self.Q1e]*4)
-    self.QTH2e            = MixedElement([self.Q2e,self.Q2e,self.Q1e])
     self.QTH3e            = MixedElement([self.Q2e,self.Q2e,self.Q2e,self.Q1e])
     self.BDMe             = FiniteElement("BDM", self.mesh.ufl_cell(), 1)
     self.DGe              = FiniteElement("DG",  self.mesh.ufl_cell(), 0)
     self.DG1e             = FiniteElement("DG",  self.mesh.ufl_cell(), 1)
-    self.BDMMe            = MixedElement([self.BDMe, self.DGe])
     
     self.Q                = FunctionSpace(self.mesh, self.Q1e,
                                           constrained_domain=self.pBC)
     self.Q2               = FunctionSpace(self.mesh, self.QM2e,
                                           constrained_domain=self.pBC)
     self.Q3               = FunctionSpace(self.mesh, self.QM3e,
-                                          constrained_domain=self.pBC)
-    self.Q4               = FunctionSpace(self.mesh, self.QM4e,
-                                          constrained_domain=self.pBC)
-    self.QTH2             = FunctionSpace(self.mesh, self.QTH2e,
-                                          constrained_domain=self.pBC)
-    self.QTH3             = FunctionSpace(self.mesh, self.QTH3e,
-                                          constrained_domain=self.pBC)
-    self.BDM              = FunctionSpace(self.mesh, self.BDMMe,
-                                          constrained_domain=self.pBC)
-    self.DG1              = FunctionSpace(self.mesh, self.DG1e,
                                           constrained_domain=self.pBC)
     self.Q_non_periodic   = FunctionSpace(self.mesh, self.Q1e)
     self.Q3_non_periodic  = FunctionSpace(self.mesh, MixedElement([self.Q1e]*3))
@@ -3091,9 +3080,10 @@ class Model(object):
       plt.savefig(d_hist + 'beta_norm.png', dpi=100)
       plt.close(fig)
 
-  def L_curve(self, alphas, physics, control, int_domain, adj_ftn, adj_kwargs,
-              reg_kind='Tikhonov', pre_callback=None, post_callback=None,
-              itr_save_vars=None):
+  def L_curve(self, alphas, control, physics, J, R, adj_kwargs, 
+              pre_callback  = None,
+              post_callback = None,
+              itr_save_vars = None):
     """
     """
     s    = '::: starting L-curve procedure :::'
@@ -3108,10 +3098,6 @@ class Model(object):
     # retain initial control parameter for consistency :
     control_ini = control.copy(True)
 
-    # functional lists to be populated :
-    Js     = []
-    Rs     = []
-   
     # iterate through each of the regularization parameters provided : 
     for i,alpha in enumerate(alphas):
       s    = '::: performing L-curve iteration %i with alpha = %.3e :::'
@@ -3133,17 +3119,12 @@ class Model(object):
         s    = '::: calling L_curve() pre-adjoint pre_callback() :::'
         print_text(s, cls=self.this)
         pre_callback()
-     
-      # get new regularization functional : 
-      R = physics.form_reg_ftn(control, integral=int_domain,
-                               kind=reg_kind, alpha=alpha)
 
+      # form new objective functional :
+      adj_kwargs['I'] = J + alpha*R
+     
       # solve the adjoint system :
-      adj_ftn(**adj_kwargs)
-      
-      # calculate functionals of interest :
-      Rs.append(assemble(physics.Rp))
-      Js.append(assemble(physics.Jp))
+      physics.optimize(**adj_kwargs)
       
       # call the pre-adjoint callback function :
       if post_callback is not None:
@@ -3172,44 +3153,59 @@ class Model(object):
     m = m % 60
     text = "time to complete L-curve procedure: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
+
+    #===========================================================================
    
     # save the resulting functional values and alphas to CSF : 
     if self.MPI_rank==0:
+
       # iterate through the directiories we just created and grab the data :
       alphas = []
-      Ds     = []
-      Js     = []
-      J1s    = []
-      J2s    = []
-      Rs     = []
-      ns     = [] 
+      J_logs = []
+      J_l2s  = []
+      J_rats = []
+      J_abss = []
+      R_tvs  = []
+      R_tiks = []
+      R_sqs  = []
+      R_abss = []
+      ns     = []
       for d in next(os.walk(out_dir_i))[1]:
         m = re.search('(alpha_)(\d\W\dE\W\d+)', d)
         if m is not None:
           do = out_dir_i + d + '/objective_ftnls_history/'
           alphas.append(float(m.group(2)))
-          Ds.append(np.loadtxt(do  + 'Ds.txt'))
-          Js.append(np.loadtxt(do  + 'Js.txt'))
-          J1s.append(np.loadtxt(do + 'J1s.txt'))
-          J2s.append(np.loadtxt(do + 'J2s.txt'))
-          Rs.append(np.loadtxt(do  + 'Rs.txt'))
-          ns.append(len(Js[-1]))
+          J_logs.append( np.loadtxt(do  + 'J_log.txt'))
+          J_l2s.append(  np.loadtxt(do  + 'J_l2.txt'))
+          J_rats.append( np.loadtxt(do  + 'J_rat.txt'))
+          J_abss.append( np.loadtxt(do  + 'J_abs.txt'))
+          R_tvs.append(  np.loadtxt(do  + 'R_tv_%s.txt'  % control.name()))
+          R_tiks.append( np.loadtxt(do  + 'R_tik_%s.txt' % control.name()))
+          R_sqs.append(  np.loadtxt(do  + 'R_sq_%s.txt'  % control.name()))
+          R_abss.append( np.loadtxt(do  + 'R_abs_%s.txt' % control.name()))
+          ns.append(len(J_logs[-1]))
       alphas = np.array(alphas) 
-      Ds     = np.array(Ds) 
-      Js     = np.array(Js) 
-      J1s    = np.array(J1s) 
-      J2s    = np.array(J2s) 
-      Rs     = np.array(Rs) 
+      J_logs = np.array(J_logs)
+      J_l2s  = np.array(J_l2s)
+      J_rats = np.array(J_rats)
+      J_abss = np.array(J_abss)
+      R_tvs  = np.array(R_tvs)
+      R_tiks = np.array(R_tiks)
+      R_sqs  = np.array(R_sqs)
+      R_abss = np.array(R_abss)
       ns     = np.array(ns)
 
       # sort everything :
       idx    = np.argsort(alphas)
       alphas = alphas[idx]
-      Ds     = Ds[idx]
-      Js     = Js[idx]
-      J1s    = J1s[idx]
-      J2s    = J2s[idx]
-      Rs     = Rs[idx]
+      J_logs = J_logs[idx] 
+      J_l2s  = J_l2s[idx]
+      J_rats = J_rats[idx]
+      J_abss = J_abss[idx]
+      R_tvs  = R_tvs[idx]
+      R_tiks = R_tiks[idx]
+      R_sqs  = R_sqs[idx]
+      R_abss = R_abss[idx]
       ns     = ns[idx]
      
       # plot the functionals : 
@@ -3219,91 +3215,115 @@ class Model(object):
 
       # we want to plot the different alpha values a different shade :
       cmap = plt.get_cmap('viridis')
-      colors = [ cmap(x) for x in np.linspace(0, 1, len(alphas)) ]
+      colors = [ cmap(x) for x in np.linspace(0, 1, 8) ]
+    
+      # the subscripts of file names :
+      subs = ['log', 'l2',  'rat', 'abs', 'tv',  'tik', 'sq',  'abs']
+    
+      # the functional type
+      ftnl_t = ['J', 'J', 'J', 'J', 'R', 'R', 'R', 'R']
+
+      # collect the cost functionals :
+      ftnl_a = [J_logs, J_l2s,  J_rats, J_abss, R_tvs,  R_tiks, R_sqs,  R_abss]
       
       k    = 0    # counter so we can plot side-by-side
       ints = [0]  # to modify the x-axis labels
-      for i,c in zip(range(len(alphas)), colors):
+      for i in range(len(alphas)):
+        
+        # create the x-interval to plot :
         xi = np.arange(k, k + ns[i])
         ints.append(xi.max())
+
         # if this is the first iteration, we put a legend on it :
         if i == 0:
-          # if we have two cost functionals, let's plot both :
-          if physics.obj_ftn_type == 'log_L2_hybrid':
-            ax.plot(xi, J1s[i], '-',  c='0.5', lw=2.0,
-                    label = r'$\mathscr{I}_1$')
-            ax.plot(xi, J2s[i], '-',  c='k',   lw=2.0,
-                    label = r'$\mathscr{I}_2$')
-          # otherwise, just the one :
-          else:
-            ax.plot(xi, Js[i], '-',   c='k',   lw=2.0,
-                    label = r'$\mathscr{I}$')
-          # always plot the regularization functional :
-          ax.plot(xi, Rs[i],   '-',   c='r',   lw=2.0,
-                  label = r'$\mathscr{R}$')
+          for ft, nm, sub, c in zip(ftnl_a, ftnl_t, subs, colors):
+            ax.plot(xi, ft[i],  '-',  c=c,  lw=1.5, alpha=0.8,
+                    label = r'$\mathscr{%s}_{\mathrm{%s}}$' % (nm, sub))
+
         # otherwise, we don't need cluttered legends :
         else:
-          # if we have two cost functionals, let's plot both :
-          if physics.obj_ftn_type == 'log_L2_hybrid':
-            ax.plot(xi, J1s[i], '-',  c='0.5', lw=2.0)
-            ax.plot(xi, J2s[i], '-',  c='k',   lw=2.0)
-          # otherwise, just the one :
-          else:  
-            ax.plot(xi, Js[i], '-',  c='k', lw=2.0)
-          # always plot the regularization functional :
-          ax.plot(xi, Rs[i],   '-',  c='r', lw=2.0)
+          for ft, c in zip(ftnl_a, colors):
+            ax.plot(xi, ft[i],  '-',  c=c,  lw=1.5, alpha=0.8,)
+
         k += ns[i] - 1
+
       ints = np.array(ints)
       
       label = []
       for i in alphas:
         label.append(r'$\gamma = %g$' % i)
-      
+
       # reset the x-label to be meaningfull :
       ax.set_xticks(ints)
       ax.set_xticklabels(label, size='small', ha='left')#, rotation=-45)
       ax.set_xlabel(r'relative iteration')
+      ax.set_xlim([0, ints[-1]])
       
-      ax.grid()
+      ax.xaxis.grid()
       ax.set_yscale('log')
       
       # plot the functional legend across the top in a row : 
-      if physics.obj_ftn_type == 'log_L2_hybrid': ncol = 3
-      else :                                      ncol = 2 
-      leg = ax.legend(loc='upper center', ncol=ncol)
+      #leg = ax.legend(loc='upper center', ncol=4)
+      #leg = ax.legend(loc='center right')
+      leg = ax.legend(bbox_to_anchor=(1.2,0.5), loc='center right', ncol=1)
       leg.get_frame().set_alpha(0.0)
+      leg.get_frame().set_color('w')
       
-      plt.tight_layout()
+      plt.tight_layout(rect=[0.005,0.01,0.88,0.995])
       plt.savefig(out_dir_i + 'convergence.pdf')
       plt.close(fig)
 
       # plot L-curve :
       #=========================================================================
+      
+      colors    = [cmap(x) for x in np.linspace(0,1,len(alphas))]
+      fig, ax_a = plt.subplots(4,4, figsize=(10,10))
+      J_lbl     = r'$\mathscr{J}_{\mathrm{%s}}$'
+      R_lbl     = r'$\mathscr{R}_{\mathrm{%s}}$'
+      
+      for i in range(4):
+        J_i   = ftnl_a[i][:,-1]
+        for j in range(4):
+          R_j   = ftnl_a[4+j][:,-1]
+          ax_a[i,j].plot(J_i, R_j, '-', c='k', lw=1.5)
+          for k in range(len(alphas)):
+            ax_a[i,j].plot(J_i[k], R_j[k], 'o', c=colors[k], lw=2.0,
+                           label = r'$\gamma = %g$' % alphas[k])
+          tit = r'%s $\circ$ %s' % (R_lbl % subs[4+j], J_lbl % subs[i])
+          ax_a[i,j].set_title(tit)
+          #ax_a[i,j].set_xlabel(J_lbl % subs[i])
+          #ax_a[i,j].set_ylabel(R_lbl % subs[4+j])
+          #ax_a[i,j].grid()
+          ax_a[i,j].set_yscale('log')
+          ##ax_a[i,j].set_xscale('log')
+          if i == 0 and j == 0:
+            leg = ax_a[i,j].legend(loc='upper right', ncol=2)
+            leg.get_frame().set_alpha(0.0)
 
       # we only want the last value of each optimization : 
-      fin_Js = Js[:,-1]
-      fin_Rs = Rs[:,-1]
+      #fin_Js = Js[:,-1]
+      #fin_Rs = Rs[:,-1]
       
-      fig = plt.figure(figsize=(6,2.5))
-      ax  = fig.add_subplot(111)
+      #fig = plt.figure(figsize=(6,2.5))
+      #ax  = fig.add_subplot(111)
       
-      ax.plot(fin_Js, fin_Rs, 'k-', lw=2.0)
+      #ax.plot(fin_Js, fin_Rs, 'k-', lw=2.0)
       
       ax.grid()
     
-      # useful for figuring out what reg. parameter goes with what :  
-      for i,c in zip(range(len(alphas)), colors):
-        ax.plot(fin_Js[i], fin_Rs[i], 'o',  c=c, lw=2.0,
-                label = r'$\gamma = %g$' % alphas[i])
+      ## useful for figuring out what reg. parameter goes with what :  
+      #for i,c in zip(range(len(alphas)), colors):
+      #  ax.plot(fin_Js[i], fin_Rs[i], 'o',  c=c, lw=2.0,
+      #          label = r'$\gamma = %g$' % alphas[i])
      
-      ax.set_xlabel(r'$\mathscr{I}^*$')
-      ax.set_ylabel(r'$\mathscr{R}^*$')
+      #ax.set_xlabel(r'$\mathscr{I}^*$')
+      #ax.set_ylabel(r'$\mathscr{R}^*$')
       
-      leg = ax.legend(loc='upper right', ncol=2)
-      leg.get_frame().set_alpha(0.0)
+      #leg = ax.legend(loc='upper right', ncol=2)
+      #leg.get_frame().set_alpha(0.0)
       
-      ax.set_yscale('log')
-      #ax.set_xscale('log')
+      #ax.set_yscale('log')
+      ##ax.set_xscale('log')
       
       plt.tight_layout()
       plt.savefig(out_dir_i + 'l_curve.pdf')
@@ -3312,12 +3332,12 @@ class Model(object):
       # save the functionals :
       #=========================================================================
 
-      d = out_dir_i + 'functionals/'
-      if not os.path.exists(d):
-        os.makedirs(d)
-      np.savetxt(d + 'Rs.txt',   np.array(fin_Rs))
-      np.savetxt(d + 'Js.txt',   np.array(fin_Js))
-      np.savetxt(d + 'as.txt',   np.array(alphas))
+      #d = out_dir_i + 'functionals/'
+      #if not os.path.exists(d):
+      #  os.makedirs(d)
+      #np.savetxt(d + 'Rs.txt',   np.array(fin_Rs))
+      #np.savetxt(d + 'Js.txt',   np.array(fin_Js))
+      #np.savetxt(d + 'as.txt',   np.array(alphas))
 
   def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
                       adaptive=False, annotate=False, callback=None):

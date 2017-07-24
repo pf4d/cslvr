@@ -2,7 +2,9 @@ from fenics            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, get_text, print_min_max
 from cslvr.model       import Model
+from cslvr.helper      import Boundary, VerticalBasis
 from pylab             import inf
+import numpy               as np
 import sys
 
 class D2Model(Model):
@@ -10,27 +12,38 @@ class D2Model(Model):
   """
   OMEGA_GND   = 0   # internal cells over bedrock
   OMEGA_FLT   = 1   # internal cells over water
+  OMEGA_ACC   = 1   # internal cells with positive accumulation on surface
   OMEGA_U_GND = 8   # grounded surface with U observations
   OMEGA_U_FLT = 9   # shelf surface with U observations
   GAMMA_L_DVD = 7   # basin divides
+  GAMMA_L_GND = 0   # terminus not in contact with water
+  GAMMA_L_FLT = 1   # terminus in contact with water
   
   # external boundaries :
-  ext_boundaries = {GAMMA_L_DVD : 'basin divides'}
+  ext_b = {GAMMA_L_DVD : 'interior lateral suface',
+           GAMMA_L_FLT : 'exterior lateral surface in contact with water',
+           GAMMA_L_GND : 'exterior lateral surface not in contact with water'},
 
   # internal boundaries :
-  int_boundaries = {OMEGA_GND   : 'over bedrock',
-                    OMEGA_FLT   : 'over water',
-                    OMEGA_U_FLT : 'over water with U observations',
-                    OMEGA_U_GND : 'over bedrock with U observations'}
+  int_b = {OMEGA_GND   : 'interior over bedrock',
+           OMEGA_FLT   : 'interior over water',
+           OMEGA_ACC   : 'interior cells with positive accumulation',
+           OMEGA_U_FLT : 'interior over water with U observations',
+           OMEGA_U_GND : 'interior over bedrock with U observations'}
+  
   # union :
-  boundaries = dict(ext_boundaries, **int_boundaries)
+  boundaries = {'OMEGA' : int_b,
+                'GAMMA' : ext_b}
 
-  def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
+  def __init__(self, mesh, out_dir='./results/', order=1,
+               use_periodic=False, kind='balance'):
     """
     Create and instance of a 2D model.
     """
-    s = "::: INITIALIZING 2D MODEL :::"
+    s = "::: INITIALIZING 2D MODEL OF TYPE '%s' :::" % kind
     print_text(s, cls=self)
+
+    self.kind = kind
     
     Model.__init__(self, mesh, out_dir, order, use_periodic)
   
@@ -99,14 +112,14 @@ class D2Model(Model):
       print_text(s, 'red', 1)
       sys.exit(1)
     else:
-      self.num_facets = self.mesh.size_global(1)
-      self.num_cells  = self.mesh.size_global(2)
-      self.dof        = self.mesh.size_global(0)
-    s = "    - %iD mesh set, %i cells, %i facets, %i vertices - " \
-        % (self.dim, self.num_cells, self.num_facets, self.dof)
+      self.num_edges    = self.mesh.num_edges()
+      self.num_cells    = self.mesh.num_cells()
+      self.num_vertices = self.mesh.num_vertices()
+    s = "    - %iD mesh set, %i cells, %i edges, %i vertices - " \
+        % (self.dim, self.num_cells, self.num_edges, self.num_vertices)
     print_text(s, cls=self)
 
-  def generate_function_spaces(self, order=1, use_periodic=False):
+  def generate_function_spaces(self, order=1, use_periodic=False, **kwargs):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
@@ -115,6 +128,28 @@ class D2Model(Model):
 
     s = "::: generating 2D function spaces :::"
     print_text(s, cls=self)
+
+    if self.kind == 'balance':
+      self.QTH2e            = MixedElement([self.Q2e,self.Q2e,self.Q1e])
+      self.BDMMe            = MixedElement([self.BDMe, self.DGe])
+      self.QTH2             = FunctionSpace(self.mesh, self.QTH2e,
+                                            constrained_domain=self.pBC)
+      self.BDM              = FunctionSpace(self.mesh, self.BDMMe,
+                                            constrained_domain=self.pBC)
+      self.DG1              = FunctionSpace(self.mesh, self.DG1e,
+                                            constrained_domain=self.pBC)
+    elif self.kind == 'hybrid':
+      # default values if not provided : 
+      self.poly_deg = kwargs.get('poly_deg', 2)
+      self.N_T      = kwargs.get('N_T',      8)
+
+      # velocity space :
+      self.HVe  = MixedElement([self.Q1e]*2*self.poly_deg)
+      self.HV   = FunctionSpace(self.mesh, self.HVe)
+     
+      # temperature space :
+      self.Ze   = MixedElement([self.Q1e]*self.N_T)
+      self.Z    = FunctionSpace(self.mesh, self.Ze)   
     
     s = "    - 2D function spaces created - "
     print_text(s, cls=self)
@@ -127,16 +162,21 @@ class D2Model(Model):
     s = "::: calculating boundaries :::"
     print_text(s, cls=self)
 
-    if lat_mask == None and mark_divide:
+    if    (lat_mask == None and mark_divide) \
+       or (lat_mask != None and not mark_divide):
       s = ">>> IF PARAMETER <mark_divide> OF calculate_boundaries() IS " + \
           "TRUE, PARAMETER <lat_mask> MUST BE AN EXPRESSION FOR THE LATERAL" + \
           " BOUNDARIES <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
+    elif lat_mask != None and mark_divide:
+      s = "    - marking the interior facets for incomplete meshes -"
+      print_text(s, cls=self)
+      self.init_lat_mask(lat_mask)
      
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = FacetFunction('size_t', self.mesh)
-    self.ff_acc  = FacetFunction('size_t', self.mesh)
+    self.ff_acc  = CellFunction('size_t',  self.mesh)
     self.cf      = CellFunction('size_t',  self.mesh)
     dofmap       = self.Q.dofmap()
 
@@ -159,13 +199,6 @@ class D2Model(Model):
     self.init_mask(mask)
     self.init_U_mask(U_mask)
 
-    if mark_divide:
-      s = "    - marking the interior facets for incomplete meshes -"
-      print_text(s, cls=self)
-      self.init_lat_mask(lat_mask)
-
-    self.S.set_allow_extrapolation(True)
-    self.B.set_allow_extrapolation(True)
     self.mask.set_allow_extrapolation(True)
     self.adot.set_allow_extrapolation(True)
     self.U_mask.set_allow_extrapolation(True)
@@ -175,68 +208,58 @@ class D2Model(Model):
     
     s = "    - marking boundaries - "
     print_text(s, cls=self)
-
-    s = "    - not using a lateral surface mesh - "
+    
+    s = "    - iterating through %i edges - " % self.num_edges
     print_text(s, cls=self)
-
-    class OMEGA_GND(SubDomain):
-      def inside(self, x, on_boundary):
-        return mask(x[0], x[1]) <= 1.0
-    gamma_gnd = OMEGA_GND()
-
-    class OMEGA_FLT(SubDomain):
-      def inside(self, x, on_boundary):
-        return mask(x[0], x[1]) > 1.0
-    gamma_flt = OMEGA_FLT()
-
-    class OMEGA_U_GND(SubDomain):
-      def inside(self, x, on_boundary):
-        return     mask(x[0], x[1]) <= 1.0 and U_mask(x[0], x[1]) <= 0.0
-    gamma_u_gnd = OMEGA_U_GND()
-
-    class OMEGA_U_FLT(SubDomain):
-      def inside(self, x, on_boundary):
-        return     mask(x[0], x[1]) >  1.0 and U_mask(x[0], x[1]) <= 0.0 
-    gamma_u_flt = OMEGA_U_FLT()
-
-    gamma_gnd.mark(self.cf,   self.OMEGA_GND) # grounded, no U obs.
-    gamma_flt.mark(self.cf,   self.OMEGA_FLT) # floating, no U obs.
-    gamma_u_gnd.mark(self.cf, self.OMEGA_U_GND) # grounded, with U obs.
-    gamma_u_flt.mark(self.cf, self.OMEGA_U_FLT) # floating, with U obs.
-    
-    # mark the divide if desired :  
-    if mark_divide:
-      class GAMMA_L_DVD(SubDomain):
-        def inside(self, x, on_boundary):
-          return lat_mask(x[0], x[1]) <= 0.0 and on_boundary
-      gamma_l_dvd = GAMMA_L_DVD()
-      gamma_l_dvd.mark(self.ff, self.GAMMA_L_DVD)
-    
-    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
-    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
-    self.N_OMEGA_U_GND = sum(self.cf.array() == self.OMEGA_U_GND)
-    self.N_OMEGA_U_FLT = sum(self.cf.array() == self.OMEGA_U_FLT)
-    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
-    
+    for f in facets(self.mesh):
+      x_m      = f.midpoint().x()
+      y_m      = f.midpoint().y()
+      mask_xy  = mask(x_m, y_m)
+      
+      if f.exterior():
+        # if we want to use a basin, we need to mark the interior facets :
+        if mark_divide:
+          lat_mask_xy = lat_mask(x_m, y_m)
+          if lat_mask_xy > 0:
+            self.ff[f] = self.GAMMA_L_DVD
+          else:
+            if mask_xy > 1:
+              self.ff[f] = self.GAMMA_L_FLT
+            else:
+              self.ff[f] = self.GAMMA_L_GND
+        # otherwise just mark for in contact with or without water :
+        else:
+          if mask_xy > 1:
+            self.ff[f] = self.GAMMA_L_FLT
+          else:
+            self.ff[f] = self.GAMMA_L_GND
     s = "    - done - "
     print_text(s, cls=self)
     
-    #s = "    - iterating through %i cells - " % self.num_cells
-    #print_text(s, cls=self)
-    #for c in cells(self.mesh):
-    #  x_m     = c.midpoint().x()
-    #  y_m     = c.midpoint().y()
-    #  z_m     = c.midpoint().z()
-    #  mask_xy = mask(x_m, y_m, z_m)
+    s = "    - iterating through %i cells - " % self.num_cells
+    print_text(s, cls=self)
+    for c in cells(self.mesh):
+      x_m       = c.midpoint().x()
+      y_m       = c.midpoint().y()
+      mask_xy   = mask(x_m, y_m)
+      U_mask_xy = U_mask(x_m, y_m)
+      adot_xy   = adot(x_m, y_m)
 
-    #  if mask_xy > 1:
-    #    self.cf[c] = 1
-    #  else:
-    #    self.cf[c] = 0
-
-    #s = "    - done - "
-    #print_text(s, cls=self)
-
+      if adot_xy > 0:
+        self.ff_acc[c] = self.OMEGA_ACC
+      if mask_xy > 1:
+        if U_mask_xy > 0:
+          self.cf[c] = self.OMEGA_U_FLT
+        else:
+          self.cf[c] = self.OMEGA_FLT
+      else:
+        if U_mask_xy > 0:
+          self.cf[c] = self.OMEGA_U_GND
+        else:
+          self.cf[c] = self.OMEGA_GND
+    s = "    - done - "
+    print_text(s, cls=self)
+    
     self.set_measures()
 
   def set_measures(self):
@@ -272,6 +295,8 @@ class D2Model(Model):
     self.N_OMEGA_U_GND = sum(self.cf.array() == self.OMEGA_U_GND)
     self.N_OMEGA_U_FLT = sum(self.cf.array() == self.OMEGA_U_FLT)
     self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
+    self.N_GAMMA_L_GND = sum(self.ff.array() == self.GAMMA_L_GND)
+    self.N_GAMMA_L_FLT = sum(self.ff.array() == self.GAMMA_L_FLT)
 
     # create new measures of integration :
     self.ds      = Measure('ds', subdomain_data=self.ff)
@@ -283,6 +308,64 @@ class D2Model(Model):
     self.dx_u_f  = self.dx(self.OMEGA_U_FLT) # above floating with U
     self.dLat_d  = self.ds(self.GAMMA_L_DVD) # lateral divide
     
+    self.dOmega     = Boundary(self.dx,
+                      [self.OMEGA_GND,   self.OMEGA_FLT,
+                       self.OMEGA_U_GND, self.OMEGA_U_FLT],
+                      'entire interior')
+    self.dOmega_g   = Boundary(self.dx, [self.OMEGA_GND, self.OMEGA_U_GND],
+                      'interior above grounded ice')
+    self.dOmega_w   = Boundary(self.dx, [self.OMEGA_FLT, self.OMEGA_U_FLT],
+                      'interior above floating ice')
+    self.dOmega_gu  = Boundary(self.dx, [self.OMEGA_U_GND],
+                      'interior with U observations above grounded ice')
+    self.dOmega_wu  = Boundary(self.dx, [self.OMEGA_U_FLT],
+                      'interior with U observations above floating ice')
+    self.dGamma     = Boundary(self.ds,
+                      [self.GAMMA_L_DVD, self.GAMMA_L_GND, self.GAMMA_L_FLT],
+                      'entire exterior')
+    self.dGamma_dl  = Boundary(self.ds, [self.GAMMA_L_DVD],
+                      'lateral interior surface')
+    self.dGamma_wl  = Boundary(self.ds, [self.GAMMA_L_FLT],
+                      'lateral exterior surface in contact with water')
+    self.dGamma_gl  = Boundary(self.ds, [self.GAMMA_L_GND],
+                      'lateral exterior surface not in contact with water')
+
+  def init_T_T0(self, T):
+    """
+    """
+    s = "::: initializing temperature in model.Q space to model.Z space :::"
+    print_text(s, cls=self)
+    T = project(as_vector([T]*self.N_T), self.Z, annotate=False)
+    self.assign_variable(self.T_,  T)
+    self.assign_variable(self.T0_, T)
+    
+  def init_H_H0(self, H):
+    """
+    """
+    s = "::: initializing thickness :::"
+    print_text(s, cls=self)
+    self.assign_variable(self.H,  H)
+    self.assign_variable(self.H0, H)
+
+  def init_H_bounds(self, H_min, H_max):
+    """
+    """
+    s = "::: initializing bounds on thickness :::"
+    print_text(s, cls=self)
+    self.assign_variable(self.H_min, H_min)
+    self.assign_variable(self.H_max, H_max)
+
+  def init_U(self, U):
+    """
+    """
+    if self.kind == 'balance':
+      super(D2Model, self).init_U(U)
+    elif self.kind == 'hybrid':
+      # NOTE: this overides model.init_U
+      s = "::: initializing velocity :::"
+      print_text(s, cls=self)
+      self.assign_variable(self.U3, U)
+    
   def initialize_variables(self):
     """
     Initializes the class's variables to default values that are then set
@@ -293,23 +376,65 @@ class D2Model(Model):
     s = "::: initializing 2D variables :::"
     print_text(s, cls=self)
 
-    # Depth below sea level :
-    class Depth(Expression):
-      def eval(self, values, x):
-        values[0] = abs(min(0, x[2]))
-    self.D = Depth(element=self.Q.ufl_element())
+    if self.kind == 'balance':
+      # Enthalpy model
+      self.theta0        = Function(self.Q, name='theta0')
+      self.W0            = Function(self.Q, name='W0')
+      self.thetahat      = Function(self.Q, name='thetahat')
+      self.uhat          = Function(self.Q, name='uhat')
+      self.vhat          = Function(self.Q, name='vhat')
+      self.what          = Function(self.Q, name='what')
+      self.mhat          = Function(self.Q, name='mhat')
+      
+      # Surface climate model
+      self.precip        = Function(self.Q, name='precip')
     
-    # Enthalpy model
-    self.theta0        = Function(self.Q, name='theta0')
-    self.W0            = Function(self.Q, name='W0')
-    self.thetahat      = Function(self.Q, name='thetahat')
-    self.uhat          = Function(self.Q, name='uhat')
-    self.vhat          = Function(self.Q, name='vhat')
-    self.what          = Function(self.Q, name='what')
-    self.mhat          = Function(self.Q, name='mhat')
-
-    # Surface climate model
-    self.precip        = Function(self.Q, name='precip')
+    elif self.kind == 'hybrid': 
+      # hybrid mass-balance :
+      self.H             = Function(self.Q, name='H')
+      self.H0            = Function(self.Q, name='H0')
+      self.ubar_c        = Function(self.Q, name='ubar_c')
+      self.vbar_c        = Function(self.Q, name='vbar_c')
+      self.H_min         = Function(self.Q, name='H_min')
+      self.H_max         = Function(self.Q, name='H_max')
+      
+      # hybrid energy-balance :
+      self.deltax        = 1.0 / (self.N_T - 1.0)
+      self.sigmas        = np.linspace(0, 1, self.N_T, endpoint=True)
+      self.Tm            = Function(self.Z, name='Tm')
+      self.T_            = Function(self.Z, name='T_')
+      self.T0_           = Function(self.Z, name='T0_')
+      self.Ts            = Function(self.Q, name='Ts')
+      self.Tb            = Function(self.Q, name='Tb')
+      
+      # horizontal velocity :
+      self.U3            = Function(self.HV, name='U3')
+      u_                 = [self.U3[0],   self.U3[2]]
+      v_                 = [self.U3[1],   self.U3[3]]
+      coef               = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
+      dcoef              = [lambda s:0.0, lambda s:5*s**3]
+      self.u             = VerticalBasis(u_,  coef, dcoef)
+      self.v             = VerticalBasis(v_,  coef, dcoef)
+      
+      # basal velocity :
+      self.U3_b          = Function(self.Q3, name='U3_b')
+      u_b, v_b, w_b      = self.U3_b.split()
+      u_b.rename('u_b', '')
+      v_b.rename('v_b', '')
+      w_b.rename('w_b', '')
+      self.u_b           = u_b
+      self.v_b           = v_b
+      self.w_b           = w_b
+      
+      # surface velocity :
+      self.U3_s          = Function(self.Q3, name='U3_s')
+      u_s, v_s, w_s      = self.U3_s.split()
+      u_s.rename('u_b', '')
+      v_s.rename('v_b', '')
+      w_s.rename('w_b', '')
+      self.u_s           = u_s
+      self.v_s           = v_s
+      self.w_s           = w_s
 
 
 

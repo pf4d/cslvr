@@ -276,7 +276,7 @@ class MomentumBP(Momentum):
               {
                 'linear_solver'            : 'cg',
                 'preconditioner'           : 'hypre_amg',
-                'relative_tolerance'       : 1e-5,
+                'relative_tolerance'       : 1e-9,
                 'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,
@@ -640,7 +640,7 @@ class MomentumDukowiczBP(Momentum):
               {
                 'linear_solver'            : 'cg',
                 'preconditioner'           : 'hypre_amg',
-                'relative_tolerance'       : 1e-5,
+                'relative_tolerance'       : 1e-9,
                 'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 25,
                 'error_on_nonconvergence'  : False,

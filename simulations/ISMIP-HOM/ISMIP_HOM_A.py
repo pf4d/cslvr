@@ -1,15 +1,15 @@
 from cslvr import *
 
 a     = 0.5 * pi / 180     # surface slope in radians
-L     = 8000               # width of domain (also 8000, 10000, 14000)
+L     = 4000               # width of domain (also 8000, 10000, 14000)
 
 # create a genreic box mesh, we'll fit it to geometry below :
 p1    = Point(0.0, 0.0, 0.0)          # origin
 p2    = Point(L,   L,   1)            # x, y, z corner 
-mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void 
+mesh  = BoxMesh(p1, p2, 25, 25, 5)    # a box to fill the void 
 
 # output directiories :
-mdl_odr = 'FS'
+mdl_odr = 'BP'
 out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 
@@ -30,8 +30,8 @@ model.calculate_boundaries()
 model.deform_mesh_to_geometry(surface, bed)
 
 # initialize all the pertinent variables :
-model.init_beta(1e16)                      # really high friction
-model.init_A(1e-16)                        # cold, isothermal rate-factor
+model.init_beta(1e8)                      # friction coefficient
+model.init_A(1e-16)                        # isothermal flow-rate factor
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
@@ -39,7 +39,8 @@ if mdl_odr == 'BP':
 elif mdl_odr == 'RS':
   mom = MomentumDukowiczStokesReduced(model)
 elif mdl_odr == 'FS':
-  mom = MomentumDukowiczStokes(model)
+  #mom = MomentumDukowiczStokes(model)
+  mom = MomentumNitscheStokes(model)
 mom.solve()
 
 # let's investigate the velocity divergence :
@@ -63,7 +64,7 @@ srfmodel = D2Model(model.srfmesh, out_dir)
 
 # we don't have a function for this included in the `model' instance, 
 # so we have to make one ourselves :
-divU_b   = Function(bedmodel.Q)
+divU_b   = Function(bedmodel.Q, name='divU')
 
 # function allows Lagrange interpolation between different meshes :
 bedmodel.assign_submesh_variable(divU_b, divU)
@@ -91,7 +92,7 @@ d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3,
 # instantiations above.
 plot_variable(u = srfmodel.U3, name = 'U_mag', direc = plt_dir,
               ext                 = '.pdf',
-              title               = r'$\mathbf{u} |_S$',
+              title               = r'$\underline{u} |_S$',
               levels              = None,#U_lvls,
               cmap                = 'viridis',
               tp                  = True,
@@ -111,7 +112,7 @@ plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
 
 plot_variable(u = divU_b, name = 'divU', direc = plt_dir,
               ext                 = '.pdf',
-              title               = r'$\nabla \cdot \mathbf{u} |_B$',
+              title               = r'$\nabla \cdot \underline{u} |_B$',
               cmap                = 'RdGy',
               levels              = None,#d_lvls,
               tp                  = True,

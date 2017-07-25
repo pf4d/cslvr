@@ -90,7 +90,7 @@ d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3,
 # vector that reside on a two-dimensional mesh (hence the D2Model
 # instantiations above.
 plot_variable(u = srfmodel.U3, name = 'U_mag', direc = plt_dir,
-              ext                 = '.png',
+              ext                 = '.pdf',
               title               = r'$\mathbf{u} |_S$',
               levels              = None,#U_lvls,
               cmap                = 'viridis',
@@ -100,7 +100,7 @@ plot_variable(u = srfmodel.U3, name = 'U_mag', direc = plt_dir,
               cb_format           = '%g')
 
 plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
-              ext                 = '.png',
+              ext                 = '.pdf',
               title               = r'$p |_B$',
               levels              = p_lvls,
               cmap                = 'viridis',
@@ -110,7 +110,7 @@ plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
               cb_format           = '%.1e')
 
 plot_variable(u = divU_b, name = 'divU', direc = plt_dir,
-              ext                 = '.png',
+              ext                 = '.pdf',
               title               = r'$\nabla \cdot \mathbf{u} |_B$',
               cmap                = 'RdGy',
               levels              = None,#d_lvls,

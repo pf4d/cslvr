@@ -32,7 +32,7 @@ mom.solve()
 # this function allow the plotting of an arbitrary FEniCS function or 
 # vector that reside on a two-dimensional mesh :
 plot_variable(u = model.U3_s, name = 'U_mag', direc = plt_dir,
-              ext                 = '.png',
+              ext                 = '.pdf',
               title               = r'$\underline{u} |_S$',
               levels              = None,#U_lvls,
               cmap                = 'viridis',

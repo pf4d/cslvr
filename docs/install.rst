@@ -2,14 +2,28 @@ Installation
 =======================
 
 
+Using Docker
+------------------------
+
+This the the preferred way to run this program, as the FEniCS developers have already compiled a high-performance build of FEniCS and all dependencies.
+
+Once you have `docker <https://www.docker.com/>`_ installed, you can install CSLVR with::
+
+  docker pull pf4d/cslvr
+
+Then run it like this::
+
+  docker run -ti pf4d/cslvr
+
+
 From source
 ------------------------
 
-FEniCS 1.6::
+FEniCS 2017.0.1::
 
   sudo add-apt-repository ppa:fenics-packages/fenics;
   sudo apt-get update;
-  sudo apt-get install fenics;
+  sudo apt-get install --no-install-recommends fenics;
   sudo apt-get dist-upgrade;
 
 After this, install `Dolfin-Adjoint <http://dolfin-adjoint-doc.readthedocs.org/en/latest/download/index.html>`_.
@@ -55,18 +69,6 @@ Install the program by editing your .bashrc file with::
 Test your installation py entering in an ``ipython`` terminal::
 
   from cslvr import *
-
-
-Using Docker
-------------------------
-
-If you have `docker <https://www.docker.com/>`_ installed, you can install CSLVR with::
-
-  sudo docker pull pf4d/cslvr
-
-Then run it like this::
-
-  sudo docker run -ti pf4d/cslvr
 
 
 

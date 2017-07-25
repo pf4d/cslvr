@@ -1,9 +1,12 @@
 ./
 
 scipy
-Image
+image
 numpy
 matplotlib
+shapely
 colored
 termcolor
 pyproj
+tifffile
+netcdf4

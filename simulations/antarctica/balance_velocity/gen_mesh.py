@@ -1,6 +1,6 @@
 from cslvr import *
 
-kappa = 1.0  # ice thickness to refine
+kappa = 10.0  # ice thickness to refine
 
 #===============================================================================
 # data preparation :

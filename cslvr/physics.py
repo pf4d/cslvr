@@ -80,8 +80,8 @@ class Physics(object):
     :type integral:   int 
     :type kind:       string
     """
-    s  = "::: forming '%s' regularization functional for variable " + \
-         " '%s'integrated over the %s :::"
+    s  = "::: forming '%s' regularization functional for variable" + \
+         " '%s' integrated over the %s :::"
     print_text(s % (kind, c.name(), integral.description), self.color())
 
     dR = integral()
@@ -384,7 +384,7 @@ class Physics(object):
                     "acceptable_tol"     : 1e-6,
                     "maximum_iterations" : max_iter,
                     "print_level"        : 5,
-                    "ma97_order"         : "metis",
+                    #"ma97_order"         : "metis",
                     "linear_solver"      : "ma97"}
       solver = IPOPTSolver(problem, parameters=parameters)
       b_opt  = solver.solve()

@@ -62,8 +62,6 @@ class D2Model(Model):
     ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
     ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
     
-    self.use_periodic_boundaries = True
-    
     class PeriodicBoundary(SubDomain):
       
       def inside(self, x, on_boundary):
@@ -119,26 +117,24 @@ class D2Model(Model):
         % (self.dim, self.num_cells, self.num_edges, self.num_vertices)
     print_text(s, cls=self)
 
-  def generate_function_spaces(self, order=1, use_periodic=False, **kwargs):
+  def generate_function_spaces(self, **kwargs):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(D2Model, self).generate_function_spaces(order, use_periodic)
+    super(D2Model, self).generate_function_spaces()
 
     s = "::: generating 2D function spaces :::"
     print_text(s, cls=self)
 
-    if self.kind == 'balance':
-      self.QTH2e            = MixedElement([self.Q2e,self.Q2e,self.Q1e])
-      self.BDMMe            = MixedElement([self.BDMe, self.DGe])
+    if self.kind == 'balance' and self.use_periodic:
       self.QTH2             = FunctionSpace(self.mesh, self.QTH2e,
                                             constrained_domain=self.pBC)
       self.BDM              = FunctionSpace(self.mesh, self.BDMMe,
                                             constrained_domain=self.pBC)
       self.DG1              = FunctionSpace(self.mesh, self.DG1e,
                                             constrained_domain=self.pBC)
-    elif self.kind == 'hybrid':
+    elif self.kind == 'hybrid' and self.use_periodic:
       # default values if not provided : 
       self.poly_deg = kwargs.get('poly_deg', 2)
       self.N_T      = kwargs.get('N_T',      8)
@@ -320,6 +316,8 @@ class D2Model(Model):
                       'interior with U observations above grounded ice')
     self.dOmega_wu  = Boundary(self.dx, [self.OMEGA_U_FLT],
                       'interior with U observations above floating ice')
+    self.dOmega_u   = Boundary(self.dx, [self.OMEGA_U_FLT, self.OMEGA_U_GND],
+                      'entire interior with U observations')
     self.dGamma     = Boundary(self.ds,
                       [self.GAMMA_L_DVD, self.GAMMA_L_GND, self.GAMMA_L_FLT],
                       'entire exterior')

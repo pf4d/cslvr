@@ -16,6 +16,11 @@ model = D2Model(f, out_dir = 'results/', order=1)
 # set the calculated subdomains :
 model.set_subdomains(f)
 
+#model.save_xdmf(model.ff, 'ff')
+#model.save_xdmf(model.cf, 'cf')
+#import sys
+#sys.exit(0)
+
 # use the projection of the dataset 'bedmap1' for plotting :
 bm1  = DataFactory.get_bedmap1()
 
@@ -35,8 +40,8 @@ d = (model.u_ob, model.v_ob)
 #U_min  = model.U_ob.vector().min()
 #U_lvls = array([U_min, 2, 10, 20, 50, 100, 200, 500, 1000, U_max])
 #plotIce(bm1, model.U_ob, name='U_ob', direc=plt_dir, drawGridLabels=False,
-#       title=r'$\Vert \mathbf{u}_{ob} \Vert$', cmap='viridis',
-#       show=False, levels=U_lvls, tp=False, cb_format='%.1e')
+#        title=r'$\Vert \underline{u}_{ob} \Vert$', cmap='viridis',
+#        show=False, levels=U_lvls, tp=False, cb_format='%.1e')
 
 bv = BalanceVelocity(model, kappa=kappa, stabilization_method=method)
 bv.solve_direction_of_flow(d)

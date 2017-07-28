@@ -161,11 +161,12 @@ class DataFactory(object):
     
     global home
     
-    direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009' 
-    files    = ['mask', '_vx', '_vy', '.ex', '.ey']
+    #direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009' 
+    direc    = home + '/greenland/measures/greenland_vel_mosaic250' 
+    files    = ['mask', '_vx_v1', '_vy_v1', '_ex_v1', '_ey_v1']
     vara     = dict()
     
-    d    = TiffFile(direc + '_vx.tif')
+    d    = TiffFile(direc + '_vx_v1.tif')
     mask = (d.asarray() != -2e9).astype('i')
     
     ftns = [mask]
@@ -174,15 +175,6 @@ class DataFactory(object):
       ftns.append(data.asarray())
       print_text('      Measures : %-*s key : "%s" '%(30,n,n[1:]), '230')
     print_text('      Measures : %-*s key : "%s"'%(30,files[0],files[0]), '230')
-     
-    # extents of domain :
-    nx    =  3010
-    ny    =  5460
-    dx    =  500
-    west  = -645000.0
-    east  =  west  + nx*dx
-    south = -3370000.0 
-    north =  south + ny*dx
 
     #projection info :
     proj   = 'stere'
@@ -198,6 +190,15 @@ class DataFactory(object):
            + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
            + " +towgs84=0.000,0.000,0.000 +to_meter=1"
     p    = Proj(txt)
+     
+    # extents of domain :
+    # FIXME: this projection is incorrect...
+    ny,nx =  shape(d.asarray())
+    dx    =  250
+    west  = -645000.0
+    east  =  west  + nx*dx
+    south = -3370000.0 
+    north =  south + ny*dx
     
     # save the data in matlab format :
     vara['pyproj_Proj']       = p
@@ -212,7 +213,7 @@ class DataFactory(object):
     vara['dataset']   = 'measures'
     vara['continent'] = 'greenland'
     for f,n in zip(ftns, files):
-      vara[n] = f
+      vara[n] = f[::-1, :]
     return vara
  
   

@@ -1,4 +1,4 @@
-from varglas           import *
+from cslvr             import *
 from pylab             import *
 from scipy.interpolate import interp2d
 
@@ -12,8 +12,8 @@ measure = DataFactory.get_ant_measures()
 bedmap2 = DataFactory.get_bedmap2()
 
 # process the data :
-dbm = DataInput(measure, gen_space=False)
-db2 = DataInput(bedmap2, gen_space=False)
+dbm = DataInput(measure)
+db2 = DataInput(bedmap2)
 
 # get surface velocity magnitude :
 U_ob = sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16)
@@ -35,8 +35,8 @@ mask   = interp(dbm.x, dbm.y)
 
 # get dofs for shelves where we restrict the element size :
 slp = gS_n >  30
-shf = mask >= 0.9
-gnd = mask <  0.9
+shf = mask >= 1.9
+gnd = mask <  1.9
 slw = U_ob < 1e-7
 
 
@@ -51,11 +51,15 @@ dbm.data['ref'][slw] = 10000.0
 
 print_min_max(dbm.data['ref'], 'ref')
 
-## plot to check :
+# plot to check :
 #imshow(dbm.data['ref'][::-1,:])
 #colorbar()
 #tight_layout()
 #show()
+
+plotIce(dbm, 'ref', name='ref', direc='images/', title='ref',
+        cmap='viridis',  scale='lin', umin=None, umax=None,
+        numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)
 
 
 #===============================================================================

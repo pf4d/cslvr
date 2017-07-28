@@ -1287,11 +1287,19 @@ def plotIce(di, u, name, direc,
   if isinstance(u, str):
     #cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
     if contour_type == 'filled':
-      cs = ax.contourf(x, y, v, levels=levels, 
-                        cmap=cmap, norm=norm, extend=extend)
+      if scale != 'log':
+        cs = ax.contourf(x, y, v, levels=levels, 
+                         cmap=cmap, norm=norm, extend=extend)
+      else:
+        cs = ax.contourf(x, y, v, levels=levels, 
+                         cmap=cmap, norm=norm)
       if zoom_box:
-        axins.contourf(x, y, v, levels=levels, 
-                       cmap=cmap, norm=norm, extend=extend)
+        if scale != 'log':
+          axins.contourf(x, y, v, levels=levels, 
+                         cmap=cmap, norm=norm, extend=extend)
+        else:
+          axins.contourf(x, y, v, levels=levels, 
+                         cmap=cmap, norm=norm)
     if contour_type == 'lines':
       cs = ax.contour(x, y, v, levels=levels, colors='k') 
       for line in cs.collections:

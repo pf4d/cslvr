@@ -9,7 +9,7 @@ p2    = Point(L,   L,   1)            # x, y, z corner
 mesh  = BoxMesh(p1, p2, 25, 25, 5)    # a box to fill the void 
 
 # output directiories :
-mdl_odr = 'BP'
+mdl_odr = 'FS_duk'
 out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 
@@ -35,12 +35,17 @@ model.init_A(1e-16)                        # isothermal flow-rate factor
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
+  mom = MomentumBP(model)
+elif mdl_odr == 'BP_duk':
   mom = MomentumDukowiczBP(model)
 elif mdl_odr == 'RS':
   mom = MomentumDukowiczStokesReduced(model)
-elif mdl_odr == 'FS':
-  #mom = MomentumDukowiczStokes(model)
-  mom = MomentumNitscheStokes(model)
+elif mdl_odr == 'FS_duk':
+  mom = MomentumDukowiczStokes(model)
+elif mdl_odr == 'FS_stab':
+  mom = MomentumNitscheStokes(model, stabilized=True)
+elif mdl_odr == 'FS_th':
+  mom = MomentumNitscheStokes(model, stabilized=False)
 mom.solve()
 
 # let's investigate the velocity divergence :

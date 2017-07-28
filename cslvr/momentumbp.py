@@ -56,6 +56,24 @@ class MomentumBP(Momentum):
     dBed_f     = model.dBed_f
     dLat_t     = model.dLat_t
     dBed       = model.dBed
+
+    dOmega     = model.dOmega()
+    dOmega_g   = model.dOmega_g()
+    dOmega_w   = model.dOmega_w()
+    dGamma_bg  = model.dGamma_bg()
+    dGamma_bw  = model.dGamma_bw()
+    dGamma_b   = model.dGamma_b()
+    dGamma_sgu = model.dGamma_sgu()
+    dGamma_swu = model.dGamma_swu()
+    dGamma_su  = model.dGamma_su()
+    dGamma_sg  = model.dGamma_sg()
+    dGamma_sw  = model.dGamma_sw()
+    dGamma_s   = model.dGamma_s()
+    dGamma_ld  = model.dGamma_ld()
+    dGamma_lto = model.dGamma_lto()
+    dGamma_ltu = model.dGamma_ltu()
+    dGamma_lt  = model.dGamma_lt()
+    dGamma_l   = model.dGamma_l()
     
     # new constants :
     p0     = 101325
@@ -68,18 +86,25 @@ class MomentumBP(Momentum):
     #===========================================================================
     # define variational problem :
     
+    # system unknown function space is created now if periodic boundaries 
+    # are not used (see model.generate_function_space()) :
+    if model.use_periodic:
+      Q2   = model.Q2
+    else:
+      Q2   = FunctionSpace(mesh, model.QM2e)
+    
     # momenturm and adjoint :
-    U      = Function(model.Q2, name = 'U')
-    wf     = Function(model.Q,  name = 'w')
-    Lam    = Function(model.Q2, name = 'Lam')
-    dU     = TrialFunction(model.Q2)
-    Phi    = TestFunction(model.Q2)
+    U      = Function(Q2, name = 'U')
+    wf     = Function(Q,  name = 'w')
+    Lam    = Function(Q2, name = 'Lam')
+    dU     = TrialFunction(Q2)
+    Phi    = TestFunction(Q2)
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
+    self.assx  = FunctionAssigner(model.u.function_space(), Q2.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), Q2.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), Q)
 
     # horizontal velocity :
     u, v      = U
@@ -123,19 +148,19 @@ class MomentumBP(Momentum):
     #Coef     = 1/(beta * Ne**(q/p))
     
     # residual :
-    self.mom_F = + 2 * eta_shf * dot(epi_1, grad(phi)) * dx_f \
-                 + 2 * eta_shf * dot(epi_2, grad(psi)) * dx_f \
-                 + 2 * eta_gnd * dot(epi_1, grad(phi)) * dx_g \
-                 + 2 * eta_gnd * dot(epi_2, grad(psi)) * dx_g \
-                 + rhoi * g * S.dx(0) * phi * dx \
-                 + rhoi * g * S.dx(1) * psi * dx \
-                 + beta * u * phi * dBed_g \
-                 + beta * v * psi * dBed_g \
+    self.mom_F = + 2 * eta_shf * dot(epi_1, grad(phi)) * dOmega_w \
+                 + 2 * eta_shf * dot(epi_2, grad(psi)) * dOmega_w \
+                 + 2 * eta_gnd * dot(epi_1, grad(phi)) * dOmega_g \
+                 + 2 * eta_gnd * dot(epi_2, grad(psi)) * dOmega_g \
+                 + rhoi * g * S.dx(0) * phi * dOmega \
+                 + rhoi * g * S.dx(1) * psi * dOmega \
+                 + beta * u * phi * dGamma_b \
+                 + beta * v * psi * dGamma_b \
    
-    if (not model.use_periodic_boundaries and use_pressure_bc):
+    if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
-      self.mom_F += f_w * (N[0]*phi + N[1]*psi) * dLat_t
+      self.mom_F += f_w * (N[0]*phi + N[1]*psi) * dGamma_lt
     
     # add lateral boundary conditions :  
     # FIXME: need correct BP treatment here
@@ -148,10 +173,10 @@ class MomentumBP(Momentum):
       sig_g_l    = self.quasi_stress_tensor(U3_c, model.p, eta_gnd_l)
       #sig_g_l    = self.stress_tensor(U, model.p, eta_gnd)
       grad
-      self.mom_F += dot(sig_g_l, N) * dLat_d
+      self.mom_F += dot(sig_g_l, N) * dGamma_ld
     
-    self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dx \
-               + (u*N[0] + v*N[1] + dw*N[2] - Fb) * chi * dBed \
+    self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dOmega \
+               + (u*N[0] + v*N[1] + dw*N[2] - Fb) * chi * dGamma_b \
   
     # Jacobian :
     self.mom_Jac = derivative(self.mom_F, U, dU)
@@ -165,9 +190,9 @@ class MomentumBP(Momentum):
       s = "    - using lateral boundary conditions -"
       print_text(s, self.color())
 
-      self.mom_bcs.append(DirichletBC(model.Q2.sub(0),
+      self.mom_bcs.append(DirichletBC(Q2.sub(0),
                           model.u_lat, model.ff, model.GAMMA_L_DVD))
-      self.mom_bcs.append(DirichletBC(model.Q2.sub(1),
+      self.mom_bcs.append(DirichletBC(Q2.sub(1),
                           model.v_lat, model.ff, model.GAMMA_L_DVD))
       #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_L_DVD)
     
@@ -412,6 +437,7 @@ class MomentumDukowiczBP(Momentum):
     self.linear       = linear
 
     mesh       = model.mesh
+    Q          = model.Q
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -456,23 +482,30 @@ class MomentumDukowiczBP(Momentum):
     #===========================================================================
     # define variational problem :
     
+    # system unknown function space is created now if periodic boundaries 
+    # are not used (see model.generate_function_space()) :
+    if model.use_periodic:
+      Q2   = model.Q2
+    else:
+      Q2   = FunctionSpace(mesh, model.QM2e)
+    
     # momenturm and adjoint :
-    U      = Function(model.Q2, name = 'G')
-    Lam    = Function(model.Q2, name = 'Lam')
-    dU     = TrialFunction(model.Q2)
-    Phi    = TestFunction(model.Q2)
-    Lam    = Function(model.Q2)
+    U      = Function(Q2, name = 'G')
+    Lam    = Function(Q2, name = 'Lam')
+    dU     = TrialFunction(Q2)
+    Phi    = TestFunction(Q2)
+    Lam    = Function(Q2)
 
     # vertical velocity :
-    dw     = TrialFunction(model.Q)
-    chi    = TestFunction(model.Q)
-    w      = Function(model.Q, name='w_f')
+    dw     = TrialFunction(Q)
+    chi    = TestFunction(Q)
+    w      = Function(Q, name='w_f')
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
-    self.assy  = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
-    self.assz  = FunctionAssigner(model.w.function_space(), model.Q)
+    self.assx  = FunctionAssigner(model.u.function_space(), Q2.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), Q2.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), Q)
     phi, psi = Phi
     du,  dv  = dU
     u,   v   = U
@@ -506,7 +539,7 @@ class MomentumDukowiczBP(Momentum):
     A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - Pe*dOmega \
              - Sl_gnd*dGamma_bg - Pb*dGamma_bw
     
-    if (not model.use_periodic_boundaries and use_pressure_bc):
+    if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
       A -= Pb*dGamma_lt

@@ -67,8 +67,6 @@ class D3Model(Model):
     ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
     ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
     
-    self.use_periodic_boundaries = True
-    
     class PeriodicBoundary(SubDomain):
       
       def inside(self, x, on_boundary):
@@ -205,20 +203,21 @@ class D3Model(Model):
 
     self.Q_dvd = FunctionSpace(self.dvdmesh, 'CG', 1)
 
-  def generate_function_spaces(self, order=1, use_periodic=False):
+  def generate_function_spaces(self):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(D3Model, self).generate_function_spaces(order, use_periodic)
+    super(D3Model, self).generate_function_spaces()
 
     s = "::: generating 3D function spaces :::"
     print_text(s, cls=self)
     
-    self.Q4               = FunctionSpace(self.mesh, self.QM4e,
-                                          constrained_domain=self.pBC)
-    self.QTH3             = FunctionSpace(self.mesh, self.QTH3e,
-                                          constrained_domain=self.pBC)
+    if self.use_periodic:
+      self.Q4    = FunctionSpace(self.mesh, self.QM4e,
+                                 constrained_domain=self.pBC)
+      self.QTH3  = FunctionSpace(self.mesh, self.QTH3e,
+                                 constrained_domain=self.pBC)
     
     s = "    - 3D function spaces created - "
     print_text(s, cls=self)
@@ -754,6 +753,9 @@ class D3Model(Model):
       def eval(self, values, x):
         values[0] = abs(min(0, x[2]))
     self.D = Depth(element=self.Q.ufl_element())
+   
+    self.init_mask(1.0) # default to all grounded ice 
+    self.init_E(1.0)    # always use no enhancement on rate-factor A 
     
     # Age model   
     self.age           = Function(self.Q, name='age')

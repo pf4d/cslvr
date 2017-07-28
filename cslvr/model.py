@@ -52,14 +52,14 @@ class Model(object):
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
-    self.order       = order
-    self.out_dir     = out_dir
-    self.MPI_rank    = MPI.rank(mpi_comm_world())
-    self.use_periodic_boundaries = use_periodic
+    self.order        = order
+    self.out_dir      = out_dir
+    self.MPI_rank     = MPI.rank(mpi_comm_world())
+    self.use_periodic = use_periodic
     
     self.generate_constants()
     self.set_mesh(mesh)
-    self.generate_function_spaces(order, use_periodic, **kwargs)
+    self.generate_function_spaces(**kwargs)
     self.initialize_variables()
 
   def color(self):
@@ -364,15 +364,10 @@ class Model(object):
     s = "::: output directory changed to '%s' :::" % out_dir
     print_text(s, cls=self.this)
 
-  def generate_function_spaces(self, order=1, use_periodic=False):
+  def generate_function_spaces(self):
     r"""
     Generates the finite-element function spaces used by all children of this
     :class:`Model`.
-
-    :param order:        order :math:`k` of the shape function, default linear
-    :param use_periodic: use periodic boundaries along lateral boundary 
-                         (e.g. ISMIP-HOM).
-    :type use_periodic:  bool
 
     The element shape-functions available from this method are :
 
@@ -385,37 +380,52 @@ class Model(object):
     * ``self.V`` -- same as ``self.Q3`` but formed using :class:`~fenics.VectorFunctionSpace`
 
     """
+    order = self.order
+
     s = "::: generating fundamental function spaces of order %i :::" % order
     print_text(s, cls=self.this)
+    
+    # define elements that may or may not be used :
+    self.Q1e    = FiniteElement("CG", self.mesh.ufl_cell(), order)
+    self.V1e    = VectorElement("CG", self.mesh.ufl_cell(), order)
+    self.Q2e    = FiniteElement("CG", self.mesh.ufl_cell(), order+1)
+    self.QM2e   = MixedElement([self.Q1e]*2)
+    self.QM3e   = MixedElement([self.Q1e]*3)
+    self.QM4e   = MixedElement([self.Q1e]*4)
+    self.QTH3e  = MixedElement([self.Q2e,self.Q2e,self.Q2e,self.Q1e])
+    self.BDMe   = FiniteElement("BDM", self.mesh.ufl_cell(), 1)
+    self.DGe    = FiniteElement("DG",  self.mesh.ufl_cell(), 0)
+    self.DG1e   = FiniteElement("DG",  self.mesh.ufl_cell(), 1)
+    self.QTH2e  = MixedElement([self.Q2e,self.Q2e,self.Q1e])
+    self.BDMMe  = MixedElement([self.BDMe, self.DGe])
 
-    if use_periodic:
+    # NOTE: generate periodic function spaces if required
+    # the functionspaces must be initialized with constrained domains prior
+    # to mesh deformation.  If periodic boundary conditions are not used, the 
+    # individual "Physics" classes will initialize the FunctionSpaces to 
+    # conserve CPU time and especially memory :
+    if self.use_periodic:
       self.generate_pbc()
+      self.Q                = FunctionSpace(self.mesh, self.Q1e,
+                                            constrained_domain=self.pBC)
+      self.Q2               = FunctionSpace(self.mesh, self.QM2e,
+                                            constrained_domain=self.pBC)
+      self.Q3               = FunctionSpace(self.mesh, self.QM3e,
+                                            constrained_domain=self.pBC)
+      self.Q_non_periodic   = FunctionSpace(self.mesh, self.Q1e)
+      self.Q3_non_periodic  = FunctionSpace(self.mesh, self.QM3e)
     else:
       self.pBC = None
-    # NOTE: these are defined for all models in order to accomodate the
-    # `constrained domain' for periodic boundaries;  once the mesh is deformed,
-    # the periodic boundaries will not work if the functionspace is re-defined
-    # by a ``Physics'' class.
-    self.Q1e              = FiniteElement("CG", self.mesh.ufl_cell(), order)
-    self.V1e              = VectorElement("CG", self.mesh.ufl_cell(), order)
-    self.Q2e              = FiniteElement("CG", self.mesh.ufl_cell(), order+1)
-    self.QM2e             = MixedElement([self.Q1e]*2)
-    self.QM3e             = MixedElement([self.Q1e]*3)
-    self.QM4e             = MixedElement([self.Q1e]*4)
-    self.QTH3e            = MixedElement([self.Q2e,self.Q2e,self.Q2e,self.Q1e])
-    self.BDMe             = FiniteElement("BDM", self.mesh.ufl_cell(), 1)
-    self.DGe              = FiniteElement("DG",  self.mesh.ufl_cell(), 0)
-    self.DG1e             = FiniteElement("DG",  self.mesh.ufl_cell(), 1)
+      self.Q                = FunctionSpace(self.mesh, self.Q1e)
+      self.Q3               = FunctionSpace(self.mesh, self.QM3e)
+      self.Q_non_periodic   = self.Q
+      self.Q3_non_periodic  = self.Q3
+
+    # NOTE: the function spaces "_non_periodic" are needed as some 
+    # functions must be defined as non-periodic for the solution to make sense 
+    # see (self.initialize_variables()).
     
-    self.Q                = FunctionSpace(self.mesh, self.Q1e,
-                                          constrained_domain=self.pBC)
-    self.Q2               = FunctionSpace(self.mesh, self.QM2e,
-                                          constrained_domain=self.pBC)
-    self.Q3               = FunctionSpace(self.mesh, self.QM3e,
-                                          constrained_domain=self.pBC)
-    self.Q_non_periodic   = FunctionSpace(self.mesh, self.Q1e)
-    self.Q3_non_periodic  = FunctionSpace(self.mesh, MixedElement([self.Q1e]*3))
-    self.V                = FunctionSpace(self.mesh, self.V1e)
+    self.V  = FunctionSpace(self.mesh, self.V1e)
 
     s = "    - fundamental function spaces created - "
     print_text(s, cls=self.this)
@@ -851,7 +861,7 @@ class Model(object):
     s = "::: initializing velocity magnitude :::"
     print_text(s, cls=self.this)
     # fenics issue #405 bug workaround :
-    if self.use_periodic_boundaries:
+    if self.use_periodic:
       u      = Function(self.Q)
       v      = Function(self.Q)
       w      = Function(self.Q)
@@ -2409,7 +2419,6 @@ class Model(object):
 
     # shelf mask (2 if shelf) :
     self.mask          = Function(self.Q, name='mask')
-    self.init_mask(1.0) # default to all grounded ice 
 
     # lateral boundary mask (1 if on lateral boundary) :
     self.lat_mask      = Function(self.Q, name='lat_mask')
@@ -2455,7 +2464,6 @@ class Model(object):
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
     self.lam           = Function(self.Q, name='lam')
-    self.init_E(1.0) # always use no enhancement on rate-factor A 
     
     # energy model :
     self.T             = Function(self.Q, name='T')

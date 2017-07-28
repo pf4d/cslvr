@@ -6,6 +6,7 @@ from varglas.helper import plotIce
 searise = DataFactory.get_searise()
 bamber  = DataFactory.get_bamber()
 rignot  = DataFactory.get_rignot()
+measure = DataFactory.get_gre_measures()
 
 bamber['Bo'][bamber['Bo'] == -9999] = 0.0
 

@@ -6,6 +6,7 @@ from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
                               File, Constant, FiniteElement
+from ufl               import indexed
 from pyproj            import Proj, transform
 from colored           import fg, attr
 
@@ -387,6 +388,13 @@ def print_min_max(u, title, color='97'):
     uMax = MPI.max(mpi_comm_world(), u.max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
     print_text(s, color)
+  elif isinstance(u, indexed.Indexed):
+    dim = u.value_rank() + 1
+    for i in range(u.value_rank()):
+      uMin = u.vector().array()[i : u.vector().size() : dim].min()
+      uMax = u.vector().array()[i : u.vector().size() : dim].max()
+      s    = title + '_%i <min, max> : <%.3e, %.3e>' % (i, uMin, uMax)
+      print_text(s, color)
   elif isinstance(u, ndarray):
     if u.dtype != float64:
       u = u.astype(float64)

@@ -65,8 +65,6 @@ class LatModel(Model):
     zmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
     zmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
     
-    self.use_periodic_boundaries = True
-    
     class PeriodicBoundary(SubDomain):
       
       def inside(self, x, on_boundary):
@@ -122,12 +120,12 @@ class LatModel(Model):
         % (self.dim, self.num_cells, self.num_facets, self.dof)
     print_text(s, cls=self)
 
-  def generate_function_spaces(self, order=1, use_periodic=False):
+  def generate_function_spaces(self):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(LatModel, self).generate_function_spaces(order, use_periodic)
+    super(LatModel, self).generate_function_spaces()
 
   def generate_stokes_function_spaces(self, kind='mini'):
     """
@@ -469,6 +467,9 @@ class LatModel(Model):
 
     s = "::: initializing 2D variables :::"
     print_text(s, cls=self)
+   
+    self.init_mask(1.0) # default to all grounded ice 
+    self.init_E(1.0)    # always use no enhancement on rate-factor A 
 
     # Depth below sea level :
     class Depth(Expression):

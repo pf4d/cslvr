@@ -120,12 +120,12 @@ class MomentumDukowiczPlaneStrain(Momentum):
     A      = + Vd_shf*dx_f + Vd_gnd*dx_g - (Pe + Pc)*dx \
              - (Nc_g + Sl_gnd)*dBed_g - (Nc_f + Pb_w)*dBed_f
     
-    if (not model.use_periodic_boundaries and use_pressure_bc):
+    if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
       A -= Pb_w*dLat_t
     
-    if (not model.use_periodic_boundaries and not use_lat_bcs):
+    if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
       print_text(s, self.color())
       A -= Pb_l*dLat_d

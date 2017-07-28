@@ -39,6 +39,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     #       method throws an error if I don't do this :
     parameters["adjoint"]["stop_annotating"] = False
 
+    Q          = model.Q
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -76,27 +77,34 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     #===========================================================================
     # define variational problem :
+    
+    # system unknown function space is created now if periodic boundaries 
+    # are not used (see model.generate_function_space()) :
+    if model.use_periodic:
+      Q2   = model.Q2
+    else:
+      Q2   = FunctionSpace(mesh, model.QM2e)
 
     # momenturm and adjoint :
-    U      = Function(model.Q2, name = 'G')
-    Lam    = Function(model.Q2, name = 'Lam')
-    dU     = TrialFunction(model.Q2)
-    Phi    = TestFunction(model.Q2)
-    Lam    = Function(model.Q2)
+    U      = Function(Q2, name = 'G')
+    Lam    = Function(Q2, name = 'Lam')
+    dU     = TrialFunction(Q2)
+    Phi    = TestFunction(Q2)
+    Lam    = Function(Q2)
    
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx = FunctionAssigner(model.u.function_space(), model.Q2.sub(0))
-    self.assy = FunctionAssigner(model.v.function_space(), model.Q2.sub(1))
-    self.assz = FunctionAssigner(model.w.function_space(), model.Q)
+    self.assx = FunctionAssigner(model.u.function_space(), Q2.sub(0))
+    self.assy = FunctionAssigner(model.v.function_space(), Q2.sub(1))
+    self.assz = FunctionAssigner(model.w.function_space(), Q)
     phi, psi  = Phi
     du,  dv   = dU
     u,   v    = U
     
     # vertical velocity :
-    dw     = TrialFunction(model.Q)
-    chi    = TestFunction(model.Q)
-    w      = Function(model.Q, name='w_f')
+    dw     = TrialFunction(Q)
+    chi    = TestFunction(Q)
+    w      = Function(Q, name='w_f')
 
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dOmega \
                + (u*N[0] + v*N[1] + dw*N[2] - Fb)*chi*dGamma_b
@@ -105,8 +113,8 @@ class MomentumDukowiczStokesReduced(Momentum):
     #n_f        = model.n_f
     #self.w_F   = (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dx
     #wD         = (Fb - u*n_f[0] - v*n_f[1])/n_f[2]
-    #w_bcs_g    = DirichletBC(model.Q, wD, model.ff, model.GAMMA_B_GND)
-    #w_bcs_f    = DirichletBC(model.Q, wD, model.ff, model.GAMMA_B_FLT)
+    #w_bcs_g    = DirichletBC(Q, wD, model.ff, model.GAMMA_B_GND)
+    #w_bcs_f    = DirichletBC(Q, wD, model.ff, model.GAMMA_B_FLT)
     #self.w_bcs = [w_bcs_g, w_bcs_f]
     
     # viscous dissipation :
@@ -138,7 +146,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - Pe*dOmega \
              - Sl_gnd*dGamma_bg - Pb*dGamma_bw
     
-    if (not model.use_periodic_boundaries and use_pressure_bc):
+    if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
       A -= Pb*dGamma_lt
@@ -257,7 +265,7 @@ class MomentumDukowiczStokesReduced(Momentum):
                 'preconditioner'           : 'hypre_amg',
                 'relative_tolerance'       : 1e-9,
                 'relaxation_parameter'     : 0.7,
-                'maximum_iterations'       : 35,
+                'maximum_iterations'       : 50,
                 'error_on_nonconvergence'  : False,
                 'krylov_solver'            :
                 {
@@ -348,7 +356,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     #                           annotate=False)
     
     self.assz.assign(model.w, self.w, annotate=annotate)
-    #w = project(self.w, model.Q, annotate=annotate)
+    #w = project(self.w, Q, annotate=annotate)
     print_min_max(self.w, 'w')
 
   def solve(self, annotate=False):
@@ -452,23 +460,28 @@ class MomentumDukowiczStokes(Momentum):
 
     #===========================================================================
     # define variational problem :
+      
+    # system unknown function space is created now if periodic boundaries 
+    # are not used (see model.generate_function_space()) :
+    if model.use_periodic:
+      Q4   = model.Q4
+    else:
+      Q4   = FunctionSpace(model.mesh, model.QM4e)
 
     # momenturm and adjoint :
-    U      = Function(model.Q4, name = 'G')
-    dU     = TrialFunction(model.Q4)
-    Phi    = TestFunction(model.Q4)
+    U      = Function(Q4, name = 'G')
+    dU     = TrialFunction(Q4)
+    Phi    = TestFunction(Q4)
 
     # function assigner goes from the U function solve to U3 vector 
     # function used to save :
-    self.assx  = FunctionAssigner(model.u.function_space(), model.Q4.sub(0))
-    self.assy  = FunctionAssigner(model.v.function_space(), model.Q4.sub(1))
-    self.assz  = FunctionAssigner(model.w.function_space(), model.Q4.sub(2))
-    self.assp  = FunctionAssigner(model.p.function_space(), model.Q4.sub(3))
+    self.assx  = FunctionAssigner(model.u.function_space(), Q4.sub(0))
+    self.assy  = FunctionAssigner(model.v.function_space(), Q4.sub(1))
+    self.assz  = FunctionAssigner(model.w.function_space(), Q4.sub(2))
+    self.assp  = FunctionAssigner(model.p.function_space(), Q4.sub(3))
     phi, psi, xi,  kappa = Phi
     du,  dv,  dw,  dP    = dU
     u,   v,   w,   p     = U
-
-    N = FacetNormal(model.mesh)
 
     # create velocity vector :
     U3      = as_vector([u,v,w])
@@ -483,8 +496,8 @@ class MomentumDukowiczStokes(Momentum):
     else:
       s  = "    - using nonlinear form of momentum -"
       eta_shf, eta_gnd = self.viscosity(U3)
-      Vd_shf   = (4*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (4*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
 
     # potential energy :
@@ -500,8 +513,8 @@ class MomentumDukowiczStokes(Momentum):
     # impenetrability constraint :
     sig_f  = self.stress_tensor(U3, p, eta_shf)
     sig_g  = self.stress_tensor(U3, p, eta_gnd)
-    lam_f  = p#- dot(N, dot(sig_f, N))
-    lam_g  = p#- dot(N, dot(sig_g, N))
+    lam_f  = - dot(N, dot(sig_f, N))
+    lam_g  = - dot(N, dot(sig_g, N))
     Nc_g   = - lam_g * (dot(U3, N) - Fb)
     Nc_f   = - lam_f * (dot(U3, N) - Fb)
 
@@ -511,14 +524,15 @@ class MomentumDukowiczStokes(Momentum):
 
     # action :
     A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - (Pe + Pc)*dOmega \
-             - (Nc_g + Sl_gnd)*dGamma_bg - (Nc_f + Pb_w)*dGamma_bw
+             - (Nc_g + Sl_gnd)*dGamma_bg
+             #- (Nc_g + Sl_gnd)*dGamma_bg - (Nc_f + Pb_w)*dGamma_bw
 
-    if (not model.use_periodic_boundaries and use_pressure_bc):
+    if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
       A -= Pb_w*dGamma_ltu
 
-    if (not model.use_periodic_boundaries and not use_lat_bcs):
+    if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
       print_text(s, self.color())
       A -= Pb_l*dGamma_ld
@@ -736,14 +750,24 @@ class MomentumNitscheStokes(Momentum):
     # function used to save :
     if stabilized:
       s  = "    - using stabilized elements -"
-      Q4 = model.Q4
-      self.assx  = FunctionAssigner(model.u.function_space(), model.Q4.sub(0))
-      self.assy  = FunctionAssigner(model.v.function_space(), model.Q4.sub(1))
-      self.assz  = FunctionAssigner(model.w.function_space(), model.Q4.sub(2))
-      self.assp  = FunctionAssigner(model.p.function_space(), model.Q4.sub(3))
+      # system unknown function space is created now if periodic boundaries 
+      # are not used (see model.generate_function_space()) :
+      if model.use_periodic:
+        Q4   = model.Q4
+      else:
+        Q4   = FunctionSpace(model.mesh, model.QM4e)
+      self.assx  = FunctionAssigner(model.u.function_space(), Q4.sub(0))
+      self.assy  = FunctionAssigner(model.v.function_space(), Q4.sub(1))
+      self.assz  = FunctionAssigner(model.w.function_space(), Q4.sub(2))
+      self.assp  = FunctionAssigner(model.p.function_space(), Q4.sub(3))
     else:
       s  = "    - using Taylor-Hood elements -"
-      Q4 = model.QTH3
+      # system unknown function space is created now if periodic boundaries 
+      # are not used (see model.generate_function_space()) :
+      if model.use_periodic:
+        Q4   = model.QTH3
+      else:
+        Q4   = FunctionSpace(model.mesh, model.QTH3e)
       self.assx  = FunctionAssigner(model.u.function_space(),
                                     model.Q_non_periodic)
       self.assy  = FunctionAssigner(model.v.function_space(),
@@ -823,12 +847,12 @@ class MomentumNitscheStokes(Momentum):
 
     self.mom_F = B_o + B_g - F
     
-    if (not model.use_periodic_boundaries and use_pressure_bc):
+    if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
       self.mom_F -= Pb_w*dGamma_ltu
     
-    if (not model.use_periodic_boundaries and not use_lat_bcs):
+    if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
       print_text(s, self.color())
       self.mom_F -= Pb_l*dGamma_ld
@@ -992,13 +1016,15 @@ class MomentumNitscheStokes(Momentum):
       self.assy.assign(model.v, v_n, annotate=annotate)
       self.assz.assign(model.w, w_n, annotate=annotate)
       self.assp.assign(model.p, p_n, annotate=annotate)
-    
-    U3 = model.U3.split(True)
 
-    print_min_max(U3[0],   'u')
-    print_min_max(U3[1],   'v')
-    print_min_max(U3[2],   'w')
-    print_min_max(model.p, 'p')
+    print_min_max(model.U3, 'U3')
+    
+    #U3 = model.U3.split(True)
+
+    #print_min_max(U3[0],   'u')
+    #print_min_max(U3[1],   'v')
+    #print_min_max(U3[2],   'w')
+    #print_min_max(model.p, 'p')
 
 
 

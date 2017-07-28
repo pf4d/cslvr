@@ -86,15 +86,15 @@ class D1Model(Model):
     else:
       s = "::: refinement finished, redefining function spaces :::"
       print_text(s, self.D1Model_color)
-      self.generate_function_spaces(self.use_periodic_boundaries)
+      self.generate_function_spaces()
       self.initialize_variables()
 
-  def generate_function_spaces(self, order=1, use_periodic=False):
+  def generate_function_spaces(self):
     """
     Generates the appropriate finite-element function spaces from parameters
     specified in the config file for the model.
     """
-    super(D1Model, self).generate_function_spaces(order, use_periodic)
+    super(D1Model, self).generate_function_spaces()
     
   def init_S_bc(self, S_bc):
     """

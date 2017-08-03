@@ -16,7 +16,7 @@ from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, \
                               size, hstack, vstack, argmin, zeros, shape, \
                               sqrt, show
-from fenics            import Mesh, MeshEditor, Point, File
+from fenics            import Mesh, MeshEditor, Point, File, XDMFFile
 from pyproj            import transform
 from cslvr.inputoutput import print_text, print_min_max
 #from scipy.spatial     import ConvexHull
@@ -449,6 +449,23 @@ class MeshGenerator(object):
     s   = "\nExecuting :\n\n\t %s\n\n" % cmd
     print_text(s, self.color)
     subprocess.call(cmd.split())
+    
+    cmd = 'gzip -f ' + xml
+    s   = "\nExecuting :\n\n\t %s\n\n" % cmd
+    print_text(s, self.color)
+    subprocess.call(cmd.split())
+
+  def convert_msh_to_xdmf(self, mshfile, xdmffile):
+    """
+    convert <mshfile> .msh file to .xdmf file <xdmffile>.
+    """
+    self.convert_msh_to_xml(mshfile, xdmffile)
+
+    xdmf      = self.direc + xdmffile + '.xdmf'
+    xml       = self.direc + xmlfile  + '.xml.gz'
+    mesh      = Mesh(xml)
+    mesh_file = XDMFFile(mesh.mpi_comm(), xdmf)
+    mesh_file.write(mesh)
 
 
 class linear_attractor(object):
@@ -580,6 +597,7 @@ class max_field(object):
       l.append(f(x,y,z,entity))
     return max(l)
 
+
 class MeshRefiner(object):
 
   def __init__(self, di, fn, gmsh_file_name):
@@ -672,7 +690,8 @@ class MeshRefiner(object):
   
   def convert_msh_to_xml(self):
     """
-    convert <mshfile> .msh file to .xml file <xmlfile> via dolfin-convert.
+    convert ``self.out_file_name``.msh file to .xml file 
+    ``self.out_file_name``.xml via dolfin-convert.
     """
     msh = self.out_file_name + '.msh'
     xml = self.out_file_name + '.xml'
@@ -686,6 +705,19 @@ class MeshRefiner(object):
     s   = "\nExecuting :\n\n\t %s\n\n" % cmd
     print_text(s, self.color)
     subprocess.call(cmd.split())
+
+  def convert_msh_to_xdmf(self):
+    """
+    convert ``self.out_file_name``.msh file to .xdmf file 
+    ``self.out_file_name``.xdmf via dolfin-convert.
+    """
+    self.convert_msh_to_xml()
+
+    xdmf      = self.out_file_name + '.xdmf'
+    xml       = self.out_file_name + '.xml.gz'
+    mesh      = Mesh(xml)
+    mesh_file = XDMFFile(mesh.mpi_comm(), xdmf)
+    mesh_file.write(mesh)
 
 
 class MeshExtruder(object):

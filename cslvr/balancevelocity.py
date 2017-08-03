@@ -71,8 +71,6 @@ class BalanceVelocity(Physics):
     adot     = model.adot
     ubarm    = model.Ubar
     Fb       = model.Fb
-    dOmega_g = model.dOmega_g()
-    dOmega_w = model.dOmega_w()
     dOmega   = model.dOmega()
     dGamma   = model.dGamma()
       
@@ -117,7 +115,8 @@ class BalanceVelocity(Physics):
     gamma = Constant(0.0)#Constant(10000)
 
     # stabilization test space :
-    Uhat    = as_vector([uhat, vhat])
+    if   len(grad(Phi)) == 3:    Uhat = as_vector([uhat, vhat, 0])
+    elif len(grad(Phi)) == 2:    Uhat = as_vector([uhat, vhat])
     Ut      = H*Uhat
     Unorm   = sqrt(dot(Ut, Ut) + DOLFIN_EPS)
     PE      = Unorm*h/(2*gamma)
@@ -262,7 +261,7 @@ class BalanceVelocity(Physics):
     kappa  = Constant(self.kappa)
     dOmega = model.dOmega()
     dGamma = model.dGamma()
-    
+
     # horizontally smoothed direction of flow :
     a_dSdx = + d_x * phi * dOmega \
              + (kappa*H)**2 * dot(grad(phi), grad(d_x)) * dOmega \
@@ -278,15 +277,15 @@ class BalanceVelocity(Physics):
     s    = "::: solving for smoothed x-component of flow direction " + \
            "with kappa = %g :::" % self.kappa
     print_text(s, cls=self)
-    solve(a_dSdx == L_dSdx, model.d_x,
-          solver_parameters=self.linear_solve_params(), annotate=annotate)
+    solve(a_dSdx == L_dSdx, model.d_x, annotate=annotate)
+          #solver_parameters=self.linear_solve_params(), annotate=annotate)
     print_min_max(model.d_x, 'd_x')
     
     s    = "::: solving for smoothed y-component of flow direction " + \
            "with kappa = %g :::" % self.kappa
     print_text(s, cls=self)
-    solve(a_dSdy == L_dSdy, model.d_y,
-          solver_parameters=self.linear_solve_params(), annotate=annotate)
+    solve(a_dSdy == L_dSdy, model.d_y, annotate=annotate)
+          #solver_parameters=self.linear_solve_params(), annotate=annotate)
     print_min_max(model.d_y, 'd_y')
       
     # normalize the direction vector :

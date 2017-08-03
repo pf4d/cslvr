@@ -47,7 +47,7 @@ dbm.rescale_field('U_ob', 'ref', umin=2500.0, umax=50000.0, inverse=True)
 # restrict element size on the shelves and outside the domain of the data :
 #dbm.data['ref'][slp] = 2000.0
 dbm.data['ref'][shf] = 10000.0
-dbm.data['ref'][slw] = 10000.0
+dbm.data['ref'][slw] = 50000.0
 
 print_min_max(dbm.data['ref'], 'ref')
 

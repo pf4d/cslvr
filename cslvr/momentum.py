@@ -192,66 +192,20 @@ class Momentum(Physics):
     """
     raiseNotDefined()
 
-  def unify_eta(self):
-    """
-    Unifies viscosity defined over grounded and shelves to model.eta.
-    """
-    s = "::: unifying viscosity on shelf and grounded areas to model.eta :::"
-    print_text(s, self.color())
-    
-    model = self.model
-    
-    num_shf = MPI.sum(mpi_comm_world(), len(model.shf_dofs))
-    num_gnd = MPI.sum(mpi_comm_world(), len(model.gnd_dofs))
-
-    print_min_max(num_shf, 'number of floating vertices')
-    print_min_max(num_gnd, 'number of grounded vertices')
-
-    if num_gnd == 0 and num_shf == 0:
-      s = "    - floating and grounded regions have not been marked -"
-      print_text(s, self.color())
-
-    elif num_gnd == 0:
-      s = "    - all floating ice, assigning eta_shf to eta  -"
-      print_text(s, self.color())
-      model.init_eta(project(self.eta_shf, model.Q))
-
-    elif num_shf == 0:
-      s = "    - all grounded ice, assigning eta_gnd to eta -"
-      print_text(s, self.color())
-      model.init_eta(project(self.eta_gnd, model.Q))
-
-    else: 
-      s = "    - grounded and floating ice present, unifying eta -"
-      print_text(s, self.color())
-      eta_shf = project(self.eta_shf, model.Q)
-      eta_gnd = project(self.eta_gnd, model.Q)
-     
-      # remove areas where viscosities overlap : 
-      eta_shf.vector()[model.gnd_dofs] = 0.0
-      eta_gnd.vector()[model.shf_dofs] = 0.0
-      
-      # unify eta to self.eta :
-      model.init_eta(eta_shf.vector() + eta_gnd.vector())
-
   def viscosity(self, U):
     r"""
-    calculates the viscosity saved to ``self.eta_shf`` and ``self.eta_gnd``, for
-    floating and grounded ice, respectively.  Uses velocity vector ``U`` with
-    components ``u``,``v``,``w``.  
-    If ``linear == True``, form viscosity from ``model.U3``.
+    calculates and returns the viscosity :math:`\eta` using velocity 
+    vector ``U`` with components ``u``,``v``,``w``.
     """
     s  = "::: forming visosity :::"
     print_text(s, self.color())
     model    = self.model
     n        = model.n
-    A_shf    = model.A_shf
-    A_gnd    = model.A_gnd
+    A        = model.A
     eps_reg  = model.eps_reg
     epsdot   = self.effective_strain_rate(U)
-    eta_shf  = 0.5 * A_shf**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
-    eta_gnd  = 0.5 * A_gnd**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
-    return (eta_shf, eta_gnd)
+    eta      = 0.5 * A**(-1/n) * (epsdot + eps_reg)**((1-n)/(2*n))
+    return eta
 
   def calc_q_fric(self):
     r"""

@@ -53,8 +53,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     h          = model.h
     N          = model.N
     D          = model.D
-    A_shf      = model.A_shf
-    A_gnd      = model.A_gnd
+    A          = model.A
     n          = model.n
     eps_reg    = model.eps_reg
     Fb         = model.Fb
@@ -82,16 +81,14 @@ class MomentumDukowiczPlaneStrain(Momentum):
     epsdot  = self.effective_strain_rate(U2)
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
-      U3_c             = model.U3.copy(True)
-      U3_2             = as_vector([U3_c[0], U3_c[1]])
-      eta_shf, eta_gnd = self.viscosity(U3_2)
-      Vd_shf           = 2 * eta_shf * epsdot
-      Vd_gnd           = 2 * eta_gnd * epsdot
+      U3_c    = model.U3.copy(True)
+      U3_2    = as_vector([U3_c[0], U3_c[1]])
+      eta     = self.viscosity(U3_2)
+      Vd      = 2 * eta * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
-      eta_shf, eta_gnd = self.viscosity(U2)
-      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      eta      = self.viscosity(U2)
+      Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
 
     # potential energy :
@@ -105,20 +102,16 @@ class MomentumDukowiczPlaneStrain(Momentum):
     Pc     = p * div(U2) 
     
     # inpenetrability constraint :
-    #sig_f  = self.stress_tensor(U2, p, eta_shf)
-    #sig_g  = self.stress_tensor(U2, p, eta_gnd)
-    lam_f  = p#-dot(N, dot(sig_f, N))
-    lam_g  = p#-dot(N, dot(sig_g, N))
-    Nc_g   = -lam_g * dot(U2,N)
-    Nc_f   = -lam_f * dot(U2,N)
+    sig  = self.stress_tensor(U2, p, eta)
+    lam  = p#-dot(N, dot(sig, N))
+    Nc   = -lam * dot(U2,N)
 
     # pressure boundary :
     Pb_w   = - rhosw*g*D * dot(U2,N)
     Pb_l   = - rhoi*g*(S - z) * dot(U2,N)
 
     # action : 
-    A      = + Vd_shf*dx_f + Vd_gnd*dx_g - (Pe + Pc)*dx \
-             - (Nc_g + Sl_gnd)*dBed_g - (Nc_f + Pb_w)*dBed_f
+    A      = + (Vd - Pe - Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb_w*dBed_f
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
@@ -135,12 +128,11 @@ class MomentumDukowiczPlaneStrain(Momentum):
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
       print_text(s, self.color())
-      U3_c       = model.U3.copy(True)
-      U3_2       = as_vector([U3_c[0], U3_c[1]])
-      eta_shf_l, eta_gnd_l = self.viscosity(U3_2)
-      sig_g_l    = self.stress_tensor(U3_2, model.p, eta_gnd_l)
-      #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
-      A -= dot(dot(sig_g_l, N), U2) * dLat_d
+      U3_c   = model.U3.copy(True)
+      U3_2   = as_vector([U3_c[0], U3_c[1]])
+      eta_l  = self.viscosity(U3_2)
+      sig_l  = self.stress_tensor(U3_2, model.p, eta_l)
+      A     -= dot(dot(sig_l, N), U2) * dLat_d
 
     # the first variation of the action in the direction of a
     # test function ; the extremum :

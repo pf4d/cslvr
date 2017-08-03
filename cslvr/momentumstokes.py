@@ -50,8 +50,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
-    A_shf      = model.A_shf
-    A_gnd      = model.A_gnd
+    A          = model.A
     n          = model.n
     eps_reg    = model.eps_reg
     h          = model.h
@@ -122,14 +121,12 @@ class MomentumDukowiczStokesReduced(Momentum):
     epsdot  = self.effective_strain_rate(U3)
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
-      eta_shf, eta_gnd = self.viscosity(model.U3.copy(True))
-      Vd_shf           = 2 * eta_shf * epsdot
-      Vd_gnd           = 2 * eta_gnd * epsdot
+      eta   = self.viscosity(model.U3.copy(True))
+      Vd    = 2 * eta * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
-      eta_shf, eta_gnd = self.viscosity(U3)
-      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      eta   = self.viscosity(U3)
+      Vd    = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
 
     # potential energy :
@@ -143,8 +140,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     Pb     = (rhoi*g*(S - z) - rhosw*g*D) * dot(U3, N)
 
     # action :
-    A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - Pe*dOmega \
-             - Sl_gnd*dGamma_bg - Pb*dGamma_bw
+    A      = + (Vd - Pe)*dOmega - Sl_gnd*dGamma_bg - Pb*dGamma_bw
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
@@ -157,11 +153,10 @@ class MomentumDukowiczStokesReduced(Momentum):
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
       print_text(s, self.color())
-      U3_c                 = model.U3.copy(True)
-      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
-      sig_g_l    = self.stress_tensor(U3_c, model.p, eta_gnd_l)
-      #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
-      A -= dot(dot(sig_g_l, N), U3) * dGamma_ld
+      U3_c     = model.U3.copy(True)
+      eta_l    = self.viscosity(U3_c)
+      sig_l    = self.stress_tensor(U3_c, model.p, eta_l)
+      A -= dot(dot(sig_l, N), U3) * dGamma_ld
 
     # the first variation of the action in the direction of a
     # test function ; the extremum :
@@ -281,61 +276,6 @@ class MomentumDukowiczStokesReduced(Momentum):
                  'vert_solve_method'    : 'mumps'}
     return m_params
   
-  #def solve_pressure(self, annotate=False):
-  #  """
-  #  Solve for pressure model.p.
-  #  """
-  #  s    = "::: solving Dukowicz reduced pressure :::"
-  #  print_text(s, self.color())
-  #  
-  #  model = self.model
-  #  #Q     = FunctionSpace(model.mesh, 'CG', 2)
-  #  Q     = model.Q
-  #  p     = TrialFunction(Q)
-  #  phi   = TestFunction(Q)
-  # 
-  #  U     = model.U3
-  #  #u3,v3,w3 = model.U3.split(True)
-  #  #u     = interpolate(u3, Q)
-  #  #v     = interpolate(v3, Q)
-  #  #w     = interpolate(w3, Q)
-  #  #U     = as_vector([u,v,w])
-
-  #  #b_shf   = self.b_shf
-  #  #b_gnd   = self.b_gnd
-  #  #eps_reg = model.eps_reg
-  #  #n       = model.n
-  #  #  
-  #  #epsdot  = self.effective_strain_rate(U)
-  #  #eta_shf = 0.5 * b_shf * (epsdot + eps_reg)**((1-n)/(2*n))
-  #  #eta_gnd = 0.5 * b_gnd * (epsdot + eps_reg)**((1-n)/(2*n))
-  #  eta_shf  = self.eta_shf
-  #  eta_gnd  = self.eta_gnd
-
-  #  epi     = self.strain_rate_tensor(U)
-  #  ep_zx   = epi[2,0]
-  #  ep_zy   = epi[2,1]
-  #  ep_zz   = epi[2,2]
-  #  rho     = model.rhoi
-  #  g       = model.g
-  #  dx      = model.dx
-  #  dx_g    = model.dx_g
-  #  dx_f    = model.dx_f
-
-  #  a     = p.dx(2) * phi * dx
-  #  L     = + rho * g * phi * dx \
-  #          - (2*eta_shf*ep_zx) * phi.dx(0) * dx_f \
-  #          - (2*eta_shf*ep_zy) * phi.dx(1) * dx_f \
-  #          - (2*eta_shf*ep_zz) * phi.dx(2) * dx_f \
-  #          - (2*eta_gnd*ep_zx) * phi.dx(0) * dx_g \
-  #          - (2*eta_gnd*ep_zy) * phi.dx(1) * dx_g \
-  #          - (2*eta_gnd*ep_zz) * phi.dx(2) * dx_g \
-  # 
-  #  p = Function(Q) 
-  #  solve(a == L, p, annotate=annotate)
-  #  print_min_max(p, 'p')
-  #  model.save_xdmf(p, 'p')
-
   def solve_vert_velocity(self, annotate=False):
     """ 
     Solve for vertical velocity w.
@@ -439,8 +379,7 @@ class MomentumDukowiczStokes(Momentum):
     rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
-    A_shf      = model.A_shf
-    A_gnd      = model.A_gnd
+    A          = model.A
     n          = model.n
     eps_reg    = model.eps_reg
     h          = model.h
@@ -490,14 +429,12 @@ class MomentumDukowiczStokes(Momentum):
     epsdot  = self.effective_strain_rate(U3)
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
-      eta_shf, eta_gnd = self.viscosity(model.U3.copy(True))
-      Vd_shf   = 2 * eta_shf * epsdot
-      Vd_gnd   = 2 * eta_gnd * epsdot
+      eta  = self.viscosity(model.U3.copy(True))
+      Vd   = 2 * eta * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
-      eta_shf, eta_gnd = self.viscosity(U3)
-      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      eta  = self.viscosity(U3)
+      Vd   = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
 
     # potential energy :
@@ -511,21 +448,17 @@ class MomentumDukowiczStokes(Momentum):
     Pc     = p * div(U3)
 
     # impenetrability constraint :
-    sig_f  = self.stress_tensor(U3, p, eta_shf)
-    sig_g  = self.stress_tensor(U3, p, eta_gnd)
-    lam_f  = - dot(N, dot(sig_f, N))
-    lam_g  = - dot(N, dot(sig_g, N))
-    Nc_g   = - lam_g * (dot(U3, N) - Fb)
-    Nc_f   = - lam_f * (dot(U3, N) - Fb)
+    sig    = self.stress_tensor(U3, p, eta)
+    lam    = - dot(N, dot(sig, N))
+    Nc     = - lam * (dot(U3, N) - Fb)
 
     # pressure boundary :
     Pb_w   = - rhosw*g*D * dot(U3, N)
     Pb_l   = - rhoi*g*(S - z) * dot(U3, N)
 
     # action :
-    A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - (Pe + Pc)*dOmega \
-             - (Nc_g + Sl_gnd)*dGamma_bg
-             #- (Nc_g + Sl_gnd)*dGamma_bg - (Nc_f + Pb_w)*dGamma_bw
+    A      = + (Vd - Pe - Pc)*dOmega - Nc*dGamma_b \
+             - Nc*dGamma_b - Sl_gnd*dGamma_bg - Pb_w*dGamma_bw
 
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
@@ -542,11 +475,10 @@ class MomentumDukowiczStokes(Momentum):
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
       print_text(s, self.color())
-      U3_c                 = model.U3.copy(True)
-      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
-      sig_g_l    = self.stress_tensor(U3_c, model.p, eta_gnd_l)
-      #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
-      A -= dot(dot(sig_g_l, N), U3) * dGamma_ld
+      U3_c     = model.U3.copy(True)
+      eta_l    = self.viscosity(U3_c)
+      sig_l    = self.stress_tensor(U3_c, model.p, eta_l)
+      A       -= dot(dot(sig_l, N), U3) * dGamma_ld
 
     # the first variation of the action integral A w.r.t. U in the 
     # direction of a test function Phi; the extremum :
@@ -719,8 +651,7 @@ class MomentumNitscheStokes(Momentum):
     g          = model.g
     beta       = model.beta
     lam        = model.lam
-    A_shf      = model.A_shf
-    A_gnd      = model.A_gnd
+    A          = model.A
     N          = model.n
     eps_reg    = model.eps_reg
     h          = model.h
@@ -795,10 +726,10 @@ class MomentumNitscheStokes(Momentum):
     # viscosity :
     if linear:
       s  = "    - using linear form of momentum using model.U3 -"
-      eta_shf, eta_gnd = self.viscosity(model.U3.copy(True))
+      eta  = self.viscosity(model.U3.copy(True))
     else:
       s  = "    - using nonlinear form of momentum -"
-      eta_shf, eta_gnd = self.viscosity(u)
+      eta  = self.viscosity(u)
     print_text(s, self.color())
 
     alpha = Constant(1e-12)
@@ -862,11 +793,10 @@ class MomentumNitscheStokes(Momentum):
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
       print_text(s, self.color())
-      U3_c                 = model.U3.copy(True)
-      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
-      sig_g_l    = self.stress_tensor(U3_c, model.p, eta_gnd_l)
-      #sig_g_l    = self.stress_tensor(U2, p, eta_gnd)
-      A += dot(dot(sig_g_l, n), u) * dGamma_ld
+      U3_c    = model.U3.copy(True)
+      eta     = self.viscosity(U3_c)
+      sig_l   = self.stress_tensor(U3_c, model.p, eta_l)
+      A      += dot(dot(sig_l, n), u) * dGamma_ld
 
     # the first variation of the extremum in the direction
     # a trial function dU; the Jacobian :

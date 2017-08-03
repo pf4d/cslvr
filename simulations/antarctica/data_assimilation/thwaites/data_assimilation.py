@@ -6,12 +6,13 @@ import sys
 
 
 # set the relavent directories :
-var_dir = 'dump/vars_thwaites_basin_crude/'    # directory from gen_vars.py
-out_dir = 'dump/thwaites_basin_crude/'         # base directory to save
+msh_lvl = 'crude'
+var_dir = 'dump/vars_thwaites_basin_%s/' % msh_lvl # directory from gen_vars.py
+out_dir = 'dump/thwaites_basin_%s/' % msh_lvl      # base directory to save
 
 # create HDF5 files for saving and loading data :
-fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
-fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',     'r')
+fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes_%s.h5' % msh_lvl, 'r')
+fdata   = HDF5File(mpi_comm_world(), var_dir + 'state_%s.h5' % msh_lvl,     'r')
 
 # create 3D model for stokes solves :
 d3model = D3Model(fdata, out_dir)
@@ -21,6 +22,9 @@ d3model.set_subdomains(fdata)
 d3model.set_srf_mesh(fmeshes)
 d3model.set_bed_mesh(fmeshes)
 d3model.set_dvd_mesh(fmeshes)
+
+#d3model.save_xdmf(d3model.ff, 'ff')
+#sys.exit(0)
 
 # initialize the 3D model vars :
 d3model.init_S(fdata)
@@ -56,9 +60,16 @@ bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
 bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
 
+#bedmodel.save_xdmf(bedmodel.B, 'bed_B')
+#sys.exit(0)
+
 # solve the balance velocity :
-bv = BalanceVelocity(bedmodel, kappa=5.0)
+bv = BalanceVelocity(bedmodel, kappa=5.0, stabilization_method='GLS')
+bv.solve_direction_of_flow((-bedmodel.S.dx(0), -bedmodel.S.dx(1)))
 bv.solve(annotate=False)
+
+#bedmodel.save_xdmf(bedmodel.Ubar, 'bed_Ubar')
+#sys.exit(0)
 
 # assign the balance velocity to the 3D model's bed :
 d3model.assign_submesh_variable(d3model.d_x,  bedmodel.d_x)
@@ -79,8 +90,12 @@ d3model.init_Ubar(Ubar_e)
 d3model.init_beta_SIA()
 
 mom    = MomentumDukowiczBP(d3model, linear=False)
-momTMC = MomentumDukowiczBrinkerhoffStokes(d3model, linear=False)
+momTMC = MomentumDukowiczStokes(d3model, linear=False)
 nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True)
+
+#mom.solve()
+#d3model.save_xdmf(d3model.U3, 'U3')
+#sys.exit(0)
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '02/u_opt.h5', 'r')
 #d3model.set_out_dir(out_dir + '02/')

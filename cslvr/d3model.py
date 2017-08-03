@@ -618,20 +618,26 @@ class D3Model(Model):
     bcs  = []
     # extrude bed (ff = 3,5) 
     if d == 'up':
-      if self.N_GAMMA_B_GND != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      if self.N_GAMMA_B_FLT != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
+      #if self.N_GAMMA_B_GND != 0:
+      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      #if self.N_GAMMA_B_FLT != 0:
+      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
-      if self.N_GAMMA_S_GND != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      if self.N_GAMMA_S_FLT != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      if self.N_GAMMA_U_GND != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      if self.N_GAMMA_U_FLT != 0:
-        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
+      #if self.N_GAMMA_S_GND != 0:
+      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      #if self.N_GAMMA_S_FLT != 0:
+      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      #if self.N_GAMMA_U_GND != 0:
+      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      #if self.N_GAMMA_U_FLT != 0:
+      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
     try:
       name = '%s extruded %s' % (u.name(), d)
     except AttributeError:
@@ -657,21 +663,27 @@ class D3Model(Model):
     bcs = []
     # integral is zero on bed (ff = 3,5) 
     if d == 'up':
-      if self.N_GAMMA_B_GND != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      if self.N_GAMMA_B_FLT != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
+      #if self.N_GAMMA_B_GND != 0:
+      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      #if self.N_GAMMA_B_FLT != 0:
+      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
       a      = v.dx(2) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
-      if self.N_GAMMA_S_GND != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      if self.N_GAMMA_S_FLT != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      if self.N_GAMMA_U_GND != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      if self.N_GAMMA_U_FLT != 0:
-        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      #if self.N_GAMMA_S_GND != 0:
+      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      #if self.N_GAMMA_S_FLT != 0:
+      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
+      #if self.N_GAMMA_U_GND != 0:
+      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      #if self.N_GAMMA_U_FLT != 0:
+      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
       a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
     name   = 'value integrated %s' % d 

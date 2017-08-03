@@ -622,30 +622,6 @@ class Model(object):
     s = "::: initializing flow-rate factor over grounded and shelves :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.A, A)
-    self.init_A_shf(A)
-    self.init_A_gnd(A)
-  
-  def init_A_shf(self, A_shf):
-    r"""
-    Set overlying shelf rate factor :math:`A |_{sea}`, ``self.A_shf``,
-    by calling :func:`assign_variable`.
-    
-    :param A_shf:  flow-rate factor over shelves defined by ``self.dx_f``
-    """
-    s = "::: initializing rate factor over shelves :::"
-    print_text(s, cls=self.this)
-    self.assign_variable(self.A_shf, A_shf)
-  
-  def init_A_gnd(self, A_gnd):
-    r"""
-    Set overlying grounded rate factor :math:`A |_{gnd}`, ``self.A_gnd``,
-    by calling :func:`assign_variable`.
-    
-    :param A_gnd:  flow-rate factor over grounded ice defined by ``self.dx_g``
-    """
-    s = "::: initializing rate factor over grounded ice :::"
-    print_text(s, cls=self.this)
-    self.assign_variable(self.A_gnd, A_gnd)
     
   def init_E(self, E):
     r"""
@@ -657,32 +633,6 @@ class Model(object):
     s = "::: initializing enhancement factor over grounded and shelves :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.E, E)
-    self.init_E_shf(E)
-    self.init_E_gnd(E)
-  
-  def init_E_shf(self, E_shf):
-    r"""
-    Set overlying shelf flow-enhancement factor :math:`E |_{shf}`, 
-    ``self.E_shf``,
-    by calling :func:`assign_variable`.
-    
-    :param E_shf:  enhancement factor over floating ice defined by ``self.dx_f``
-    """
-    s = "::: initializing enhancement factor over shelves :::"
-    print_text(s, cls=self.this)
-    self.assign_variable(self.E_shf, E_shf)
-  
-  def init_E_gnd(self, E_gnd):
-    r"""
-    Set overlying grounded flow-enhancement factor :math:`E |_{gnd}`,
-    ``self.E_gnd``,
-    by calling :func:`assign_variable`.
-    
-    :param E_gnd:  enhancement factor over grounded ice defined by ``self.dx_g``
-    """
-    s = "::: initializing enhancement factor over grounded ice :::"
-    print_text(s, cls=self.this)
-    self.assign_variable(self.E_gnd, E_gnd)
   
   def init_eta(self, eta):
     r"""
@@ -1818,13 +1768,9 @@ class Model(object):
     W           = self.W
     R           = self.R
     E           = self.E
-    E_shf       = self.E_shf
-    E_gnd       = self.E_gnd
     a_T         = conditional( lt(Tp, 263.15),  self.a_T_l, self.a_T_u)
     Q_T         = conditional( lt(Tp, 263.15),  self.Q_T_l, self.Q_T_u)
     W_T         = conditional( lt(W,  0.01),    W,          0.01)
-    self.A_shf  = E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
-    self.A_gnd  = E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
     self.A      = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
 
   def calc_A(self):
@@ -2332,11 +2278,7 @@ class Model(object):
     * ``self.p``         -- pressure
     * ``self.beta``      -- basal traction
     * ``self.E``         -- enhancement factor
-    * ``self.E_gnd``     -- enhancement factor over grounded ice
-    * ``self.E_shf``     -- enhancement factor over floating ice
     * ``self.A``         -- flow-rate factor
-    * ``self.A_gnd``     -- flow-rate factor over grounded ice
-    * ``self.A_shf``     -- flow-rate factor over floating ice
     * ``self.u_lat``     -- :math:`x`-component velocity lateral b.c.
     * ``self.v_lat``     -- :math:`y`-component velocity lateral b.c.
     * ``self.w_lat``     -- :math:`z`-component velocity lateral b.c.
@@ -2455,11 +2397,7 @@ class Model(object):
     self.p             = Function(self.Q_non_periodic, name='p')
     self.beta          = Function(self.Q, name='beta')
     self.E             = Function(self.Q, name='E')
-    self.E_gnd         = Function(self.Q, name='E_gnd')
-    self.E_shf         = Function(self.Q, name='E_shf')
     self.A             = Function(self.Q, name='A')
-    self.A_gnd         = Function(self.Q, name='A_gnd')
-    self.A_shf         = Function(self.Q, name='A_shf')
     self.u_lat         = Function(self.Q, name='u_lat')
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')

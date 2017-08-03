@@ -1,13 +1,17 @@
 from cslvr   import *
 from fenics  import *
 
-out_dir  = 'dump/vars_thwaites_basin_crude/'
-thklim   = 1.0
-measures = DataFactory.get_ant_measures(res=900)
+msh_lvl  = 'crude'
+out_dir  = 'dump/vars_thwaites_basin_%s/' % msh_lvl
+thklim   = 100.0
+measures = DataFactory.get_ant_measures()
 bedmap1  = DataFactory.get_bedmap1(thklim=thklim)
 bedmap2  = DataFactory.get_bedmap2(thklim=thklim)
 
-mesh = Mesh('dump/meshes/thwaites_3D_U_mesh_basin_crude.xml.gz')
+m_n  = 'dump/meshes/thwaites_3D_U_mesh_basin_%s.xdmf' % msh_lvl
+f_m  = XDMFFile(mpi_comm_world(), m_n)
+mesh = Mesh()
+f_m.read(mesh)
 
 dm = DataInput(measures, mesh=mesh)
 d1 = DataInput(bedmap1,  mesh=mesh)
@@ -44,15 +48,13 @@ lst = [model.S,
        model.U_mask,
        model.lat_mask]
 
-f = HDF5File(mpi_comm_world(), out_dir + 'state.h5', 'w')
+f = HDF5File(mpi_comm_world(), out_dir + 'state_%s.h5' % msh_lvl, 'w')
 
 model.save_list_to_hdf5(lst, f)
 model.save_subdomain_data(f)
 model.save_mesh(f)
 
 f.close()
-
-model.save_xdmf(model.U_ob, 'U_ob')
 
 
 

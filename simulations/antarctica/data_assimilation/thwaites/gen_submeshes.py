@@ -1,11 +1,12 @@
 from cslvr import *
 
 # set the output directory :
-in_dir  = 'dump/vars_thwaites_basin_crude/'
+msh_lvl = 'crude'
+in_dir  = 'dump/vars_thwaites_basin_%s/' % msh_lvl
 out_dir = in_dir
 
-f  = HDF5File(mpi_comm_world(), in_dir + 'state.h5',     'r')
-fn = HDF5File(mpi_comm_world(), in_dir + 'submeshes.h5', 'w')
+f  = HDF5File(mpi_comm_world(), in_dir + 'state_%s.h5' % msh_lvl,     'r')
+fn = HDF5File(mpi_comm_world(), in_dir + 'submeshes_%s.h5' % msh_lvl, 'w')
 
 model = D3Model(mesh=f, out_dir=out_dir)
 

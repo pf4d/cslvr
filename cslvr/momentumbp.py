@@ -43,8 +43,7 @@ class MomentumBP(Momentum):
     R          = model.R
     g          = model.g
     beta       = model.beta
-    A_shf      = model.A_shf
-    A_gnd      = model.A_gnd
+    A          = model.A
     N          = model.N
     D          = model.D
     Fb         = model.Fb
@@ -116,14 +115,12 @@ class MomentumBP(Momentum):
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
       U3_c     = model.U3.copy(True)
-      eta_shf, eta_gnd = self.viscosity(U3)
-      Vd_shf   = 2 * eta_shf * epsdot
-      Vd_gnd   = 2 * eta_gnd * epsdot
+      eta      = self.viscosity(U3)
+      Vd       = 2 * eta * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
-      eta_shf, eta_gnd = self.viscosity(U3)
-      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      eta      = self.viscosity(U3)
+      Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
     
     # vertical velocity :
@@ -148,10 +145,8 @@ class MomentumBP(Momentum):
     #Coef     = 1/(beta * Ne**(q/p))
     
     # residual :
-    self.mom_F = + 2 * eta_shf * dot(epi_1, grad(phi)) * dOmega_w \
-                 + 2 * eta_shf * dot(epi_2, grad(psi)) * dOmega_w \
-                 + 2 * eta_gnd * dot(epi_1, grad(phi)) * dOmega_g \
-                 + 2 * eta_gnd * dot(epi_2, grad(psi)) * dOmega_g \
+    self.mom_F = + 2 * eta * dot(epi_1, grad(phi)) * dOmega \
+                 + 2 * eta * dot(epi_2, grad(psi)) * dOmega \
                  + rhoi * g * S.dx(0) * phi * dOmega \
                  + rhoi * g * S.dx(1) * psi * dOmega \
                  + beta * u * phi * dGamma_b \
@@ -169,11 +164,9 @@ class MomentumBP(Momentum):
           " conditions -"
       print_text(s, self.color())
       U3_c       = model.U3.copy(True)
-      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
-      sig_g_l    = self.quasi_stress_tensor(U3_c, model.p, eta_gnd_l)
-      #sig_g_l    = self.stress_tensor(U, model.p, eta_gnd)
-      grad
-      self.mom_F += dot(sig_g_l, N) * dGamma_ld
+      eta_l      = self.viscosity(U3_c)
+      sig_l      = self.quasi_stress_tensor(U3_c, model.p, eta_l)
+      self.mom_F += dot(sig_l, N) * dGamma_ld
     
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dOmega \
                + (u*N[0] + v*N[1] + dw*N[2] - Fb) * chi * dGamma_b \
@@ -196,8 +189,7 @@ class MomentumBP(Momentum):
                           model.v_lat, model.ff, model.GAMMA_L_DVD))
       #self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_L_DVD)
     
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
+    self.eta     = eta
     self.U       = U 
     self.wf      = wf
     self.dU      = dU
@@ -335,21 +327,12 @@ class MomentumBP(Momentum):
     g       = model.g
     S       = model.S
     z       = model.x[2]
-    p       = model.p
-    eta_shf = self.eta_shf
-    eta_gnd = self.eta_gnd
+    eta     = self.eta
     w       = self.wf
 
-    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2), annotate=annotate)
-    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2), annotate=annotate)
+    p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2), annotate=annotate)
     
-    # unify the pressure over shelves and grounded ice : 
-    p_v                 = p.vector().array()
-    p_gnd_v             = p_gnd.vector().array()
-    p_shf_v             = p_shf.vector().array()
-    p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
-    p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
-    model.assign_variable(p, p_v, annotate=annotate)
+    model.assign_variable(model.p, p, annotate=annotate)
 
   def solve_vert_velocity(self, annotate=False):
     """ 
@@ -448,8 +431,7 @@ class MomentumDukowiczBP(Momentum):
     rhosw      = model.rhosw
     g          = model.g
     beta       = model.beta
-    A_shf      = model.A_shf
-    A_gnd      = model.A_gnd
+    A          = model.A
     eps_reg    = model.eps_reg
     n          = model.n
     h          = model.h
@@ -516,14 +498,12 @@ class MomentumDukowiczBP(Momentum):
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
       U3_c     = model.U3.copy(True)
-      eta_shf, eta_gnd = self.viscosity(U3_c)
-      Vd_shf   = 2 * eta_shf * epsdot
-      Vd_gnd   = 2 * eta_gnd * epsdot
+      eta      = self.viscosity(U3_c)
+      Vd       = 2 * eta * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
-      eta_shf, eta_gnd = self.viscosity(U3)
-      Vd_shf   = (2*n)/(n+1) * A_shf**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-      Vd_gnd   = (2*n)/(n+1) * A_gnd**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
+      eta      = self.viscosity(U3)
+      Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
     print_text(s, self.color())
       
     # potential energy :
@@ -536,8 +516,7 @@ class MomentumDukowiczBP(Momentum):
     Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
     
     # action :
-    A      = + Vd_shf*dOmega_w + Vd_gnd*dOmega_g - Pe*dOmega \
-             - Sl_gnd*dGamma_bg - Pb*dGamma_bw
+    A      = (Vd - Pe)*dOmega - Sl_gnd*dGamma_bg - Pb*dGamma_bw
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
@@ -551,10 +530,9 @@ class MomentumDukowiczBP(Momentum):
           " conditions -"
       print_text(s, self.color())
       U3_c       = model.U3.copy(True)
-      eta_shf_l, eta_gnd_l = self.viscosity(U3_c)
-      sig_g_l    = self.quasi_stress_tensor(U3_c, model.p, eta_gnd_l)
-      #sig_g_l    = self.stress_tensor(U3, model.p, eta_gnd)
-      A -= dot(dot(sig_g_l, N), U3) * dGamma_ld
+      eta_l      = self.viscosity(U3_c)
+      sig_l      = self.quasi_stress_tensor(U3_c, model.p, eta_l)
+      A -= dot(dot(sig_l, N), U3) * dGamma_ld
 
     # the first variation of the action in the direction of a
     # test function ; the extremum :
@@ -569,8 +547,7 @@ class MomentumDukowiczBP(Momentum):
     self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dOmega \
                + (u*N[0] + v*N[1] + dw*N[2] - Fb)*chi*dGamma_b
    
-    self.eta_shf = eta_shf
-    self.eta_gnd = eta_gnd
+    self.eta     = eta
     self.A       = A
     self.U       = U 
     self.w       = w  
@@ -707,23 +684,13 @@ class MomentumDukowiczBP(Momentum):
     g       = model.g
     S       = model.S
     z       = model.x[2]
-    p       = model.p
-    eta_shf = self.eta_shf
-    eta_gnd = self.eta_gnd
+    eta     = self.eta
     w       = self.w
 
-    p_shf   = project(rhoi*g*(S - z) + 2*eta_shf*w.dx(2),
-                      annotate=annotate)
-    p_gnd   = project(rhoi*g*(S - z) + 2*eta_gnd*w.dx(2),
-                      annotate=annotate)
+    p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2), annotate=annotate)
     
     # unify the pressure over shelves and grounded ice : 
-    p_v                 = p.vector().array()
-    p_gnd_v             = p_gnd.vector().array()
-    p_shf_v             = p_shf.vector().array()
-    p_v[model.gnd_dofs] = p_gnd_v[model.gnd_dofs]
-    p_v[model.shf_dofs] = p_shf_v[model.shf_dofs]
-    model.assign_variable(p, p_gnd)
+    model.assign_variable(model.p, p, annotate=annotate)
 
   def solve_vert_velocity(self, annotate=False):
     """on.dumps(x, sort_keys=True, indent=2)

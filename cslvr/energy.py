@@ -606,15 +606,13 @@ class Enthalpy(Energy):
     # momentum-dependent properties :
     U                = momentum.velocity()
     epsdot           = momentum.effective_strain_rate(U) + model.eps_reg
-    eta_shf, eta_gnd = momentum.viscosity(U)
+    eta              = momentum.viscosity(U)
    
     #n           = model.n 
     #Tp          = model.Tp
     #W           = model.W
     #R           = model.R
     #E           = model.E
-    #E_shf       = model.E_shf
-    #E_gnd       = model.E_gnd
     #theta_m     = model.theta_melt
     #theta_c     = 146.3*Tp + 7.253/2.0*Tp**2
     #theta_w     = 0.01*L + theta_m
@@ -625,15 +623,11 @@ class Enthalpy(Energy):
     #W_T         = conditional( lt(theta, theta_w),  W_w,         0.01)
     #W_c         = conditional( le(theta, theta_m),  0.0,         1.0)
 
-    #A_shf       = E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp))
-    #A_gnd       = E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*Tp))
     #A           = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
-    #eta_shf     = 0.5 * A_shf**(-1/n) * epsdot**((1-n)/(2*n))
-    #eta_gnd     = 0.5 * A_gnd**(-1/n) * epsdot**((1-n)/(2*n))
+    #eta         = 0.5 * A**(-1/n) * epsdot**((1-n)/(2*n))
 
     # internal friction (strain heat) :
-    Q_s_gnd = 4 * eta_gnd * epsdot
-    Q_s_shf = 4 * eta_shf * epsdot
+    Q_s   = 4 * eta * epsdot
 
     # coefficient for non-advective water flux (enthalpy-gradient) :
     k_c   = conditional( gt(W, 0.0), model.k_0, 1 )
@@ -743,10 +737,8 @@ class Enthalpy(Energy):
                      #+ inner(LL(psi), Lu(theta)) * dx
       
       self.theta_L = + g_b * psi * dBed_g \
-                     + Q_s_gnd * psi * dx_g \
-                     + Q_s_shf * psi * dx_f \
-                     #+ inner(LL(psi), Q_s_gnd) * dx_g \
-                     #+ inner(LL(psi), Q_s_shf) * dx_f
+                     + Q_s * psi * dx \
+                     #+ inner(LL(psi), Q_s) * dx \
 
       self.nrg_F   = self.theta_a - self.theta_L
       
@@ -779,8 +771,7 @@ class Enthalpy(Energy):
                 + kappa/c * dot(grad(psi), grad(thetamid)) * dx \
       
       theta_L = + g_b * psi * dBed_g \
-                + Q_s_gnd * psi * dx_g \
-                + Q_s_shf * psi * dx_f
+                + Q_s * psi * dx
 
       self.theta_a = lhs(theta_a - theta_L)
       self.theta_L = rhs(theta_a - theta_L)
@@ -830,8 +821,7 @@ class Enthalpy(Energy):
     self.rho     = rho
     self.kappa   = kappa
     self.Xi      = Xi
-    self.Q_s_gnd = Q_s_gnd
-    self.Q_s_shf = Q_s_shf
+    self.Q_s     = Q_s
 
     # initialize the boundary conditions and thermal properties, if 
     # we have not done so already :
@@ -1331,8 +1321,7 @@ class Enthalpy(Energy):
     rho     = self.rho
     kappa   = self.kappa
     Xi      = self.Xi
-    Q_s_gnd = self.Q_s_gnd
-    Q_s_shf = self.Q_s_shf
+    Q_s     = self.Q_s
 
     theta_s = model.theta_surface
     theta_f = model.theta_float
@@ -1340,8 +1329,7 @@ class Enthalpy(Energy):
     L       = model.L
     R       = model.R
     n       = model.n
-    E_shf   = model.E_shf
-    E_gnd   = model.E_gnd
+    E       = model.E
     T_m     = model.T_melt
     T       = model.T
     W       = model.W
@@ -1401,19 +1389,13 @@ class Enthalpy(Energy):
 
     # viscosity and strain-heating :
     epsdot  = self.effective_strain_rate(U_t) + model.eps_reg
-    #b_shf   = ( E_shf*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    #b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
-    #eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
-    #eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
-    #Q_s_gnd = 4 * eta_gnd * epsdot
-    #Q_s_shf = 4 * eta_shf * epsdot
+    #b       = ( E*a_T*(1 + 181.25*W_c*W_T)*exp(-Q_T/(R*T)) )**(-1/n)
+    #eta     = 0.5 * b * epsdot**((1-n)/(2*n))
+    #Q_s     = 4 * eta * epsdot
     Tp      = T + gamma*p
-    b_shf   = ( E_shf*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    b_gnd   = ( E_gnd*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
-    eta_shf = 0.5 * b_shf * epsdot**((1-n)/(2*n))
-    eta_gnd = 0.5 * b_gnd * epsdot**((1-n)/(2*n))
-    Q_s_gnd = 4 * eta_gnd * epsdot
-    Q_s_shf = 4 * eta_shf * epsdot
+    b       = ( E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp)) )**(-1/n)
+    eta     = 0.5 * b * epsdot**((1-n)/(2*n))
+    Q_s     = 4 * eta * epsdot
     
     # frictional heating :
     q_fric = beta * inner(U_t, U_t)
@@ -1434,8 +1416,7 @@ class Enthalpy(Energy):
               + kappa/c * dot(grad(psi), grad(dtheta)) * dx \
     
     theta_L = + g_b * psi * dBed_g \
-              + Q_s_gnd * psi * dx_g \
-              + Q_s_shf * psi * dx_f
+              + Q_s * psi * dx
 
     #nrg_F = theta_a - theta_L
     

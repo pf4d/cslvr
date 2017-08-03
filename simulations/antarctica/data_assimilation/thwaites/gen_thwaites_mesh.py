@@ -10,12 +10,12 @@ mesh_name = 'thwaites_3D_U_mesh_basin_crude'
 #mesh_name = 'thwaites_3D_U_mesh_block_crude'
 
 # get the data :
-measure = DataFactory.get_ant_measures(res=900)
+measure = DataFactory.get_ant_measures()
 bedmap2 = DataFactory.get_bedmap2()
 
 # process the data :
-dbm = DataInput(measure, gen_space=False)
-db2 = DataInput(bedmap2, gen_space=False)
+dbm = DataInput(measure)
+db2 = DataInput(bedmap2)
 
 # get surface velocity magnitude :
 U_ob = sqrt(dbm.data['vx']**2 + dbm.data['vy']**2 + 1e-16)
@@ -37,8 +37,8 @@ mask   = interp(dbm.x, dbm.y)
 
 # get dofs for shelves where we restrict the element size :
 slp = gS_n >  20
-shf = mask >= 1.1
-nan = mask <  0.1
+shf = mask >= 1.9
+nan = mask <  1.9
 msk = dbm.data['mask'] < 0.1
 
 # eliminate just the edge of the mask so that we can properly interpolate
@@ -49,11 +49,11 @@ db2.data['mask'][L > 0.0] = 0
 
 #===============================================================================
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=1000.0, umax=500000.0, inverse=True)
+dbm.rescale_field('U_ob', 'ref', umin=5000.0, umax=500000.0, inverse=True)
 
 # restrict element size on the shelves and outside the domain of the data :
-dbm.data['ref'][slp] = 1000.0
-dbm.data['ref'][shf] = 5000.0
+dbm.data['ref'][slp] = 5000.0
+#dbm.data['ref'][shf] = 5000.0
 #dbm.data['ref'][nan] = 50000.0
 #dbm.data['ref'][msk] = 50000.0
 
@@ -71,7 +71,7 @@ print_min_max(dbm.data['ref'], 'ref')
 m = MeshGenerator(db2, mesh_name, out_dir)
 
 m.create_contour('mask', zero_cntr=1e-9, skip_pts=0)
-m.plot_contour()
+#m.plot_contour()
 
 ## create a box around some area :
 #x1 = -2.20497e6; y1 = 34742
@@ -89,7 +89,7 @@ gb = GetBasin(db2, basin='21')
 gb.extend_boundary(1000)
 gb.check_dist(5000)
 gb.intersection(m.longest_cont)
-gb.plot_xycoords_buf(other=m.longest_cont)
+#gb.plot_xycoords_buf(other=m.longest_cont)
 m.set_contour(gb.get_xy_contour())
 
 m.eliminate_intersections(dist=100)
@@ -110,8 +110,8 @@ ref_bm.set_background_field(aid)
 
 #===============================================================================
 # finish stuff up :
-ref_bm.finish(gui = False, out_file_name = out_dir + mesh_name)
-ref_bm.convert_msh_to_xml()
+ref_bm.finish(gui=False, out_file_name=out_dir + mesh_name)
+ref_bm.convert_msh_to_xdmf()
 
 
 

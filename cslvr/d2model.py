@@ -46,6 +46,10 @@ class D2Model(Model):
     self.kind = kind
     
     Model.__init__(self, mesh, out_dir, order, use_periodic)
+   
+    # default integration measures : 
+    self.dOmega = dx#Boundary(dx, [0], 'entire interior')
+    self.dGamma = ds#Boundary(ds, [0], 'entire exterior')
   
   def color(self):
     return '150'

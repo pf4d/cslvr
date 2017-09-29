@@ -22,12 +22,6 @@ The Model classes
 .. automodule:: d3model
    :members:
 
-Hybrid model
-------------
-
-.. automodule:: hybridmodel
-   :members:
-
 Lateral model for submeshes of 3D meshes
 ----------------------------------------
 

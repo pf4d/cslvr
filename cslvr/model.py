@@ -17,7 +17,6 @@ class Model(object):
   The basic model from which each of these inherit :
 
    * :class:`~latmodel.LatModel`       - plane strain model
-   * :class:`~hybridmodel.HybridModel` - L1L2 "hybrid" model
    * :class:`~d1model.D1Model`         - 1D firn model
    * :class:`~d2model.D2Model`         - 2D model (SSA, SIA, balance velocity)
    * :class:`~d3model.D3Model`         - 3D model (first-order, full-Stokes)

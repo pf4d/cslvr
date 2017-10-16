@@ -1,5 +1,5 @@
-from varglas        import *
-from varglas.helper import plotIce
+from cslvr        import *
+from cslvr.helper import plotIce
 
 
 # collect the raw data :

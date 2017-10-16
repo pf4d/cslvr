@@ -9,7 +9,7 @@ p2    = Point(L,   L,   1)            # x, y, z corner
 mesh  = BoxMesh(p1, p2, 25, 25, 5)    # a box to fill the void 
 
 # output directiories :
-mdl_odr = 'FS_duk'
+mdl_odr = 'BP'
 out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 

@@ -122,9 +122,9 @@ class DataFactory(object):
     
     # save the data in matlab format :
     vara['pyproj_Proj']       = p
-    vara['map_western_edge']  = west 
-    vara['map_eastern_edge']  = east 
-    vara['map_southern_edge'] = south 
+    vara['map_western_edge']  = west
+    vara['map_eastern_edge']  = east
+    vara['map_southern_edge'] = south
     vara['map_northern_edge'] = north
     vara['nx']                = nx
     vara['ny']                = ny

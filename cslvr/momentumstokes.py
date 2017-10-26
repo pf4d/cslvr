@@ -744,7 +744,7 @@ class MomentumNitscheStokes(Momentum):
     Pb_l  = - rhoi*g*(S - z) * n
 
     def epsilon(u): return 0.5*(grad(u) + grad(u).T)
-    def sigma(u,p): return 2*eta_gnd * epsilon(u) - p*I
+    def sigma(u,p): return 2*eta * epsilon(u) - p*I
     def L(u,p):     return -div(sigma(u,p))
     
     t   = dot(sigma(u,p), n)

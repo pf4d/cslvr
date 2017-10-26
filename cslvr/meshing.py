@@ -1,12 +1,3 @@
-"""
-Utilities file:
-
-  This contains classes that are used by UM-FEISM to aid in the loading
-  of data and preparing data for use in DOLFIN based simulation.
-  Specifically the data are projected onto the mesh with appropriate
-  basis functions.
-
-"""
 import subprocess
 import inspect
 import os
@@ -110,11 +101,13 @@ class MeshGenerator(object):
     xn, yn = transform(self.dd.proj, proj, x, y)
     self.longest_cont = array([xn, yn]).T
 
-  def set_contour(self,cont_array):
-    """ This is an alternative to the create_contour method that allows you to
+  def set_contour(self, cont_array):
+    """
+    This is an alternative to the create_contour method that allows you to
     manually specify contour points.
     Inputs:
-    cont_array : A numpy array of contour points (i.e. array([[1,2],[3,4],...]))
+      cont_array : A numpy array of contour points
+                   (i.e. array([[1,2],[3,4],...]))
     """
     s = "::: manually setting contour with %s nodes:::"
     print_text(s % shape(cont_array)[0], self.color)
@@ -203,12 +196,9 @@ class MeshGenerator(object):
     """
     write the contour created with create_contour to the .geo file with mesh
     spacing <lc>.  If <boundary_extend> is true, the spacing in the interior
-    of the domain will be the same as the distance between nodes on the contour.
+    of the domain will be the same as the distance between nodes on the 
+    contour.
     """
-    #FIXME: sporadic results when used with ipython, does not stops writing the
-    #       file after a certain point.  calling restart() then write again
-    #       results in correct .geo file written.  However, running the script
-    #       outside of ipython works.
     s    = "::: writing gmsh contour to \"%s%s.geo\" :::"
     print_text(s % (self.direc, self.fn), self.color)
     c   = self.longest_cont

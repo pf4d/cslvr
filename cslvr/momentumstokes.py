@@ -750,32 +750,22 @@ class MomentumNitscheStokes(Momentum):
     t   = dot(sigma(u,p), n)
     s   = dot(sigma(v,q), n)
 
-    if stabilized:
-      B_o = + inner(sigma(u,p),grad(v))*dOmega \
-            - div(u)*q*dOmega \
-            + alpha * h**2 * inner(L(u,p), L(v,q)) * dOmega
-      
-      B_g = - dot(n,t) * dot(v,n) * dGamma_b \
-            - (dot(u,n) - u_n) * dot(s,n) * dGamma_b \
-            + gamma/h * dot(u,n) * dot(v,n) * dGamma_b \
-            + beta * dot(ut, v) * dGamma_b
-      
-      F   = + dot(f,v) * dx \
-            + gamma/h * u_n * dot(v,n) * dGamma_b \
-            + alpha * h**2 * inner(f, L(v,q)) * dOmega
-   
-    else: 
-      B_o = + inner(sigma(u,p),grad(v))*dOmega \
-            - div(u)*q*dOmega
-      
-      B_g = - dot(n,t) * dot(v,n) * dGamma_b \
-            - (dot(u,n) - u_n) * dot(s,n) * dGamma_b \
-            + gamma/h * dot(u,n) * dot(v,n) * dGamma_b \
-            + beta * dot(u, v) * dGamma_b \
-      
-      F   = + dot(f,v) * dOmega \
-            + gamma/h * u_n * dot(v,n) * dGamma_b \
+    B_o = + inner(sigma(u,p),grad(v))*dOmega \
+          - div(u)*q*dOmega
+    
+    B_g = - dot(n,t) * dot(v,n) * dGamma_b \
+          - (dot(u,n) - u_n) * dot(s,n) * dGamma_b \
+          + gamma/h * dot(u,n) * dot(v,n) * dGamma_b \
+          + beta * dot(ut, v) * dGamma_b
+    
+    F   = + dot(f,v) * dx \
+          + gamma/h * u_n * dot(v,n) * dGamma_b
 
+    # stabilized form is identical to TH with the addition the following terms :
+    if stabilized:
+      B_o += alpha * h**2 * inner(L(u,p), L(v,q)) * dOmega
+      F   += alpha * h**2 * inner(f, L(v,q)) * dOmega
+   
     self.mom_F = B_o + B_g - F
     
     if (not model.use_periodic and use_pressure_bc):

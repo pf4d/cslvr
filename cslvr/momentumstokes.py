@@ -736,7 +736,7 @@ class MomentumNitscheStokes(Momentum):
     gamma = Constant(1e2)
     f     = Constant((0.0, 0.0, -rhoi * g))
     I     = Identity(3)
-    u_n   = Constant(0.0)
+    u_n   = Fb
 
     # pressure boundary :
     ut    = u - dot(u,n)*n
@@ -756,7 +756,7 @@ class MomentumNitscheStokes(Momentum):
             + alpha * h**2 * inner(L(u,p), L(v,q)) * dOmega
       
       B_g = - dot(n,t) * dot(v,n) * dGamma_b \
-            - dot(u,n) * dot(s,n) * dGamma_b \
+            - (dot(u,n) - u_n) * dot(s,n) * dGamma_b \
             + gamma/h * dot(u,n) * dot(v,n) * dGamma_b \
             + beta * dot(ut, v) * dGamma_b
       
@@ -769,7 +769,7 @@ class MomentumNitscheStokes(Momentum):
             - div(u)*q*dOmega
       
       B_g = - dot(n,t) * dot(v,n) * dGamma_b \
-            - dot(u,n) * dot(s,n) * dGamma_b \
+            - (dot(u,n) - u_n) * dot(s,n) * dGamma_b \
             + gamma/h * dot(u,n) * dot(v,n) * dGamma_b \
             + beta * dot(u, v) * dGamma_b \
       

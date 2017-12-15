@@ -1,7 +1,7 @@
 from scipy.io          import loadmat
 from scipy.interpolate import RectBivariateSpline, interp2d
-from pylab             import array, linspace, ones, isnan, all, zeros, \
-                              ndarray, e, nan, float64
+from pylab             import array, linspace, ones, isnan, all, zeros, shape, \
+                              ndarray, e, nan, float64, logical_and, where
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
@@ -103,6 +103,41 @@ class DataInput(object):
     else:
       s = "    - not using a mesh - "
       print_text(s, self.color)
+
+  def reduce_size_to_box(self, ll_lon, ll_lat, ur_lon, ur_lat):
+    """
+    Reduce the size of the data to the box with lower-left-corner 
+    coordinates (``ll_lon``, ``ll_lat``) and upper-right-corner
+    coordinates (``ur_lon``, ``ur_lat``).
+    """
+    # convert to projection coordinates :
+    xmax,ymax = self.proj(ll_lon, ll_lat)
+    xmin,ymin = self.proj(ur_lon, ur_lat)
+
+    # mark the areas we want to keep :    
+    xlt = self.x < xmin
+    xgt = self.x > xmax
+    ylt = self.y < ymin
+    ygt = self.y > ymax
+    
+    # take the union :
+    xs  = where(logical_and(xlt, xgt))[0]
+    ys  = where(logical_and(ylt, ygt))[0]
+   
+    # cut out the parts we do not need :
+    for i in self.data:
+      self.data[i] = self.data[i][:,xs]
+      self.data[i] = self.data[i][ys,:]
+
+    # replace the statistics :
+    self.x     = self.x[xs]
+    self.y     = self.y[ys]
+    self.x_min = self.x.min()
+    self.x_max = self.x.max()
+    self.y_min = self.y.min()
+    self.y_max = self.y.max()
+    self.nx    = len(self.x)
+    self.ny    = len(self.y)
 
   def change_projection(self, di):
     """

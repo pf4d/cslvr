@@ -1033,11 +1033,13 @@ def plotIce(di, u, name, direc,
       m.drawmeridians(np.arange(0, 360, 20.0),
                       color = 'black',
                       linewidth = 0.5,
-                      labels = mer_lab)
+                      labels = mer_lab,
+                      fontsize = 8)
       m.drawparallels(np.arange(-90, 90, 5.0), 
                       color = 'black', 
                       linewidth = 0.5,
-                      labels = par_lab)
+                      labels = par_lab,
+                      fontsize = 8)
       m.drawmapscale(-130, -68, 0, -90, 1000, 
                      yoffset  = offset, 
                      barstyle = 'fancy')
@@ -1046,7 +1048,7 @@ def plotIce(di, u, name, direc,
     elif cont is 'greenland':
       w   = 1532453.49654
       h   = 2644074.78236
-      fig = plt.figure(figsize=(8,11.5))
+      fig = plt.figure(figsize=(7,10))
       ax  = fig.add_subplot(111)
     
       lon_0 = -41.5
@@ -1057,7 +1059,7 @@ def plotIce(di, u, name, direc,
                   projection='stere', lat_ts=71, 
                   lon_0=lon_0, lat_0=lat_0)
 
-      offset = 0.015 * (m.ymax - m.ymin)
+      offset = 0.010 * (m.ymax - m.ymin)
       
       if drawGridLabels:
         mer_lab = [False, False, False, True]
@@ -1070,10 +1072,12 @@ def plotIce(di, u, name, direc,
       # labels = [left,right,top,bottom]
       m.drawmeridians(np.arange(0, 360, 5.0),
                       color = 'black',
-                      labels = mer_lab)
+                      labels = mer_lab,
+                      fontsize = 8)
       m.drawparallels(np.arange(-90, 90, 5.0), 
                       color = 'black', 
-                      labels = par_lab)
+                      labels = par_lab,
+                      fontsize = 8)
       m.drawmapscale(-34, 60.5, -41.5, 71, 400, 
                      yoffset  = offset, 
                      barstyle = 'fancy')

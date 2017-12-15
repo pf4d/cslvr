@@ -1962,6 +1962,7 @@ class Model(object):
     """
     # iterate through each component and convert to array :
     U_v = []
+    # TODO: this can be done without split :
     if type(U[0]) == indexed.Indexed:
       U = U.split(True)
     for u in U:

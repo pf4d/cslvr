@@ -162,18 +162,20 @@ class DataFactory(object):
     global home
     
     #direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009' 
-    direc    = home + '/greenland/measures/greenland_vel_mosaic250' 
-    files    = ['mask', '_vx_v1', '_vy_v1', '_ex_v1', '_ey_v1']
+    direc = home + '/greenland/measures/greenland_vel_mosaic500_2016_2017_' 
+    #TODO: find a way to intelligently leave out the error if you don't want
+    #      to download them:
+    files    = ['mask', 'vx_v2', 'vy_v2']#, '_ex_v2', '_ey_v2']
     vara     = dict()
     
-    d    = TiffFile(direc + '_vx_v1.tif')
+    d    = TiffFile(direc + 'vx_v2.tif')
     mask = (d.asarray() != -2e9).astype('i')
     
     ftns = [mask]
     for n in files[1:]:
       data    = TiffFile(direc + n + '.tif')
       ftns.append(data.asarray())
-      print_text('      Measures : %-*s key : "%s" '%(30,n,n[1:]), '230')
+      print_text('      Measures : %-*s key : "%s" '%(30,n,n), '230')
     print_text('      Measures : %-*s key : "%s"'%(30,files[0],files[0]), '230')
 
     #projection info :
@@ -192,15 +194,22 @@ class DataFactory(object):
     p    = Proj(txt)
      
     # extents of domain :
-    # FIXME: this projection is incorrect...
-    ny,nx =  shape(d.asarray())
-    dx    =  250
+    ny,nx       =  shape(d.asarray())
+    dx          = 500
+    lon_min     = -75.0
+    lon_max     = -14.0
+    lat_min     =  60.0
+    lat_max     =  83.0
+
+    # old v1 values :
+    # FIXME: no projection extents provided, only longitude ranges which 
+    #        do not mach the data.  What a fucking disappointment.
     west  = -645000.0
     east  =  west  + nx*dx
     south = -3370000.0 
     north =  south + ny*dx
     
-    # save the data in matlab format :
+    # set up a dictionary for use with cslvr::DataInput class :
     vara['pyproj_Proj']       = p
     vara['map_western_edge']  = west
     vara['map_eastern_edge']  = east

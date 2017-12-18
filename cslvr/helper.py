@@ -185,7 +185,7 @@ class IsotropicMeshRefiner(object):
         error = h**2 * Hnorm
         e_list_calc.append(error)
       e_list.append(error)
-   
+
     idx   = int(len(e_list_calc) * REFINE_RATIO)
     e_mid = sorted(e_list, reverse=True)[idx]
     print "error midpoint :", e_mid
@@ -905,6 +905,7 @@ def plotIce(di, u, name, direc,
             u2               = None,
             u2_levels        = None,
             u2_color         = 'k',
+            u2_linewidth     = 1.0,
             title            = '',
             cmap             = 'gist_yarg',
             scale            = 'lin',
@@ -927,8 +928,10 @@ def plotIce(di, u, name, direc,
             zoom_box         = False,
             zoom_box_kwargs  = None,
             plot_pts         = None,
+            plot_texts       = None,
             plot_continent   = False,
             cont_plot_params = None,
+            drawcoastlines   = True,
             box_params       = None):
   """
   Args:
@@ -1097,11 +1100,12 @@ def plotIce(di, u, name, direc,
     plot_scale     = params['plot_scale']
     axes_color     = params['axes_color']
 
-
-    dlon = (urcrnrlon - llcrnrlon) / 2.0
-    dlat = (urcrnrlat - llcrnrlat) / 2.0
-    lon_0 = llcrnrlon + dlon
-    lat_0 = llcrnrlat + dlat
+    if cont is 'greenland':
+      lon_0 = -41.5
+      lat_0 =  71
+    elif cont is 'antarctica':
+      lon_0 =  0
+      lat_0 = -90
 
     fig   = plt.figure(figsize=figsize)
     ax    = fig.add_subplot(111)
@@ -1118,27 +1122,42 @@ def plotIce(di, u, name, direc,
     if plot_grid:
       m.drawmeridians(np.arange(0, 360, lon_interval),
                       color = 'black',
-                      labels = [False, False, False, True])
+                      labels = [True, False, True, True],
+                      linewidth = 0.5,
+                      fontsize = 8)
       m.drawparallels(np.arange(-90, 90, lat_interval), 
                       color = 'black', 
-                      labels = [True, False, False, False])
-
+                      labels = [True, False, True, True],
+                      linewidth = 0.5,
+                      fontsize = 8)
+    else:
+      ax.set_xticklabels([])
+      ax.set_yticklabels([])
+      ax.xaxis.set_ticks_position('none')
+      ax.yaxis.set_ticks_position('none')
+        
     if scale_loc == 1:
-      fact = 1.8
+      y_fact = 1.8
+      x_fact = 1.0
     elif scale_loc == 2:
-      fact = 0.2
+      y_fact = 0.2
+      x_fact = 1.0
+    elif scale_loc == 3:
+      y_fact = 1.8
+      x_fact = 0.25
 
     if plot_scale :
-      dx         = (m.xmax - m.xmin)/2.0 
-      dy         = (m.ymax - m.ymin)/2.0 
-      xmid       = m.xmin + dx
-      ymid       = m.ymin + fact*dy
+      dx         = (m.xmax - m.xmin)/2.0
+      dy         = (m.ymax - m.ymin)/2.0
+      xmid       = m.xmin + x_fact*dx
+      ymid       = m.ymin + y_fact*dy
       slon, slat = m(xmid, ymid, inverse=True)
       m.drawmapscale(slon, slat, slon, slat, scale_length, 
                      barstyle = 'fancy', fontcolor=scale_color)
 
     for axis in ['top','bottom','left','right']:
       ax.spines[axis].set_color(axes_color)
+      ax.spines[axis].set_linewidth(1.5)
       
   else:
     s = ">>> plotIce REQUIRES A 'dict' OF SPECIFIC PARAMETERS FOR 'custom' <<<"
@@ -1148,8 +1167,9 @@ def plotIce(di, u, name, direc,
 
   # convert to new projection coordinates from lon,lat :
   x, y  = m(lon, lat)
- 
-  m.drawcoastlines(linewidth=0.5, color = 'black')
+
+  if drawcoastlines: 
+    m.drawcoastlines(linewidth=0.5, color = 'black')
   #m.shadedrelief()
   #m.bluemarble()
   #m.etopo()
@@ -1278,8 +1298,9 @@ def plotIce(di, u, name, direc,
       mn.drawmapscale(slon, slat, slon, slat, scale_length, 
                       yoffset  = 0.025 * 2.0 * dy,
                       barstyle = 'fancy', fontcolor=scale_font_color)
-  
-    mn.drawcoastlines(linewidth=0.5, color = 'black')
+ 
+    if drawcoastlines: 
+      mn.drawcoastlines(linewidth=0.5, color = 'black')
     
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
@@ -1361,9 +1382,15 @@ def plotIce(di, u, name, direc,
         axins.clabel(cs, inline=1, colors='k', fmt='%1.2f')
 
   if u2 is not None:
-    v2 = u2.compute_vertex_values(mesh)
-    csu2 = ax.tricontour(x, y, fi, v2, linewidths=1.5,
-                         levels=u2_levels, colors=u2_color) 
+    if isinstance(u2, str):
+      v2   = di.data[u2]
+      csu2 = ax.contour(x, y, v2, levels=u2_levels, 
+                        linewidths=u2_linewidth, colors=u2_color) 
+    elif isinstance(u2, Function) \
+      or isinstance(u2, dolfin.functions.function.Function):
+      v2 = u2.compute_vertex_values(mesh)
+      csu2 = ax.tricontour(x, y, fi, v2, linewidths=u2_linewidth,
+                           levels=u2_levels, colors=u2_color) 
     #for line in csu2.collections:
     #  if line.get_linestyle() != [(None, None)]:
     #    line.set_linestyle([(None, None)])
@@ -1376,6 +1403,15 @@ def plotIce(di, u, name, direc,
     for lat_i, lon_i, sty_i, clr_i in zip(lat_a, lon_a, sty_a, clr_a):
       x_i, y_i = m(lon_i, lat_i)
       ax.plot(x_i, y_i, color=clr_i, marker=sty_i)
+
+  if plot_texts is not None:
+    lat_a = plot_texts['lat']
+    lon_a = plot_texts['lon']
+    txt_a = plot_texts['text']
+    clr_a = plot_texts['color']
+    for lat_i, lon_i, txt_i, clr_i in zip(lat_a, lon_a, txt_a, clr_a):
+      x_i, y_i = m(lon_i, lat_i)
+      ax.text(x_i, y_i, txt_i, color=clr_i)
 
   if box_params is not None:
     x1,y1   = m(box_params['llcrnrlon'], box_params['llcrnrlat'])

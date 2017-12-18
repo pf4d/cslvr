@@ -719,9 +719,9 @@ class DataFactory(object):
     # format the mask for cslvr :
     mask = mask_orig.copy(True)
     mask[mask == 1] = 0
-    mask[mask == 2] = 1
+    mask[mask == 2] = 1  # grounded ice
     mask[mask == 3] = 0
-    mask[mask == 4] = 1
+    mask[mask == 4] = 2  # ice shelves
                
     # generate  mask for lateral boundaries :
     Hc = mask.copy(True)

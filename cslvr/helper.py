@@ -792,13 +792,14 @@ def plot_variable(u, name, direc,
   
   # set the extended colormap :  
   cmap = pl.get_cmap(cmap)
+  cmap.set_bad(color='white', alpha=1.0)
   
   # countour levels :
   if scale == 'log':
     if levels is None:
       levels    = np.logspace(np.log10(vmin), np.log10(vmax), numLvls)
-    v[v < vmin] = vmin + 2e-16
-    v[v > vmax] = vmax - 2e-16
+    #v[v < vmin] = vmin + 2e-16
+    #v[v > vmax] = vmax - 2e-16
     formatter   = LogFormatter(10, labelOnlyBase=False)
     norm        = colors.LogNorm()
   
@@ -806,8 +807,8 @@ def plot_variable(u, name, direc,
   elif scale == 'sym_log':
     if levels is None:
       levels  = np.linspace(vmin, vmax, numLvls)
-    v[v < vmin] = vmin + 2e-16
-    v[v > vmax] = vmax - 2e-16
+    #v[v < vmin] = vmin + 2e-16
+    #v[v > vmax] = vmax - 2e-16
     formatter   = LogFormatter(e, labelOnlyBase=False)
     norm        = colors.SymLogNorm(vmin=vmin, vmax=vmax,
                                     linscale=0.001, linthresh=0.001)
@@ -836,10 +837,10 @@ def plot_variable(u, name, direc,
     
   if contour_type == 'filled':
     if scale != 'log':
-      cs = ax.tricontourf(x, y, t, v, levels=levels, 
+      cs = ax.tricontourf(x, y, t, v, levels=levels, vmin=vmin, vmax=vmax,
                          cmap=cmap, norm=norm, extend=extend)
     else:
-      cs = ax.tricontourf(x, y, t, v, levels=levels, 
+      cs = ax.tricontourf(x, y, t, v, levels=levels, vmin=vmin, vmax=vmax,
                          cmap=cmap, norm=norm)
   elif contour_type == 'lines':
     cs = ax.tricontour(x, y, t, v, linewidths=2.0,
@@ -850,7 +851,8 @@ def plot_variable(u, name, direc,
         line.set_color('red')
         line.set_linewidth(1.5)
     if levels_2 is not None:
-      cs2 = ax.tricontour(x, y, t, v, levels=levels_2, colors='0.30') 
+      cs2 = ax.tricontour(x, y, t, v, levels=levels_2, vmin=vmin, vmax=vmax,
+                          colors='0.30') 
       for line in cs2.collections:
         if line.get_linestyle() != [(None, None)]:
           line.set_linestyle([(None, None)])
@@ -1207,14 +1209,14 @@ def plotIce(di, u, name, direc,
   elif levels is not None:
     vmin = levels.min()
   else:
-    vmin = v.min()
+    vmin = np.nanmin(v)
 
   if umax != None and levels is None:
     vmax = umax
   elif levels is not None:
     vmax = levels.max()
   else:
-    vmax = v.max()
+    vmax = np.nanmax(v)
   
   # set the extended colormap :  
   cmap = pl.get_cmap(cmap)
@@ -1313,20 +1315,21 @@ def plotIce(di, u, name, direc,
     #cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
     if contour_type == 'filled':
       if scale != 'log':
-        cs = ax.contourf(x, y, v, levels=levels, 
+        cs = ax.contourf(x, y, v, levels=levels, vmin=vmin, vmax=vmax, 
                          cmap=cmap, norm=norm, extend=extend)
       else:
-        cs = ax.contourf(x, y, v, levels=levels, 
+        cs = ax.contourf(x, y, v, levels=levels, vmin=vmin, vmax=vmax, 
                          cmap=cmap, norm=norm)
       if zoom_box:
         if scale != 'log':
-          axins.contourf(x, y, v, levels=levels, 
+          axins.contourf(x, y, v, levels=levels, vmin=vmin, vmax=vmax, 
                          cmap=cmap, norm=norm, extend=extend)
         else:
-          axins.contourf(x, y, v, levels=levels, 
+          axins.contourf(x, y, v, levels=levels, vmin=vmin, vmax=vmax, 
                          cmap=cmap, norm=norm)
     if contour_type == 'lines':
-      cs = ax.contour(x, y, v, levels=levels, colors='k') 
+      cs = ax.contour(x, y, v, levels=levels, colors='k',
+                      vmin=vmin, vmax=vmax,) 
       for line in cs.collections:
         if line.get_linestyle() != [(None, None)]:
           line.set_linestyle([(None, None)])
@@ -1341,7 +1344,7 @@ def plotIce(di, u, name, direc,
             line.set_linewidth(0.5)
       ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
-        axins.contour(x, y, v, levels=levels, colors='k') 
+        axins.contour(x, y, v, levels=levels, colors='k', vmin=vmin, vmax=vmax) 
   
   elif isinstance(u, Function) \
     or isinstance(u, dolfin.functions.function.Function):
@@ -1349,20 +1352,20 @@ def plotIce(di, u, name, direc,
     #                  cmap=get_cmap(cmap), norm=norm)
     if contour_type == 'filled':
       if scale != 'log':
-        cs = ax.tricontourf(x, y, fi, v, levels=levels, 
+        cs = ax.tricontourf(x, y, fi, v, levels=levels, vmin=vmin, vmax=vmax, 
                            cmap=cmap, norm=norm, extend=extend)
       else:
-        cs = ax.tricontourf(x, y, fi, v, levels=levels, 
+        cs = ax.tricontourf(x, y, fi, v, levels=levels, vmin=vmin, vmax=vmax,
                            cmap=cmap, norm=norm)
       if zoom_box:
         if scale != 'log':
-          axins.tricontourf(x, y, fi, v, levels=levels, 
+          axins.tricontourf(x, y, fi, v, levels=levels, vmin=vmin, vmax=vmax,
                             cmap=cmap, norm=norm, extend=extend)
         else:
-          axins.tricontourf(x, y, fi, v, levels=levels, 
+          axins.tricontourf(x, y, fi, v, levels=levels, vmin=vmin, vmax=vmax,
                             cmap=cmap, norm=norm)
     elif contour_type == 'lines':
-      cs = ax.tricontour(x, y, fi, v, linewidths=2.0,
+      cs = ax.tricontour(x, y, fi, v, linewidths=2.0, vmin=vmin, vmax=vmax,
                          levels=levels, colors='k') 
       for line in cs.collections:
         if line.get_linestyle() != [(None, None)]:
@@ -1370,7 +1373,8 @@ def plotIce(di, u, name, direc,
           line.set_color('red')
           line.set_linewidth(1.5)
       if levels_2 is not None:
-        cs2 = ax.tricontour(x, y, fi, v, levels=levels_2, colors='0.30') 
+        cs2 = ax.tricontour(x, y, fi, v, levels=levels_2, vmin=vmin, vmax=vmax,
+                            colors='0.30') 
         for line in cs2.collections:
           if line.get_linestyle() != [(None, None)]:
             line.set_linestyle([(None, None)])
@@ -1378,7 +1382,8 @@ def plotIce(di, u, name, direc,
             line.set_linewidth(0.5)
       ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
-        axins.tricontour(x, y, fi, v, levels=levels, colors='k')
+        axins.tricontour(x, y, fi, v, levels=levels, vmin=vmin, vmax=vmax,
+                         colors='k')
         axins.clabel(cs, inline=1, colors='k', fmt='%1.2f')
 
   if u2 is not None:

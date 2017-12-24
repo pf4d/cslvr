@@ -1,7 +1,8 @@
 from scipy.io          import loadmat
-from scipy.interpolate import RectBivariateSpline, interp2d
+from scipy.interpolate import RectBivariateSpline, griddata, interp2d
 from pylab             import array, linspace, ones, isnan, all, zeros, shape, \
-                              ndarray, e, nan, float64, logical_and, where
+                              ndarray, e, nan, float64, logical_and, where, \
+                              meshgrid
 from fenics            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
@@ -55,6 +56,7 @@ class DataInput(object):
     # initialize extents :
     self.ny         = di.pop('ny')
     self.nx         = di.pop('nx')
+    self.dx         = di.pop('dx')
     self.x_min      = float(di.pop('map_western_edge'))
     self.x_max      = float(di.pop('map_eastern_edge'))
     self.y_min      = float(di.pop('map_southern_edge'))
@@ -175,24 +177,71 @@ class DataInput(object):
     """
     return self.proj(lon,lat)
 
-  def interpolate_to_di(self, do, fn, fo):
+  def interpolate_from_di(self, di, fi, fo, order=3):
     """
-    Interpolates the data field with key ``fn`` from ``self.data`` to 
-    the grid used by another :class:`~inputoutput.DataInput` object ``do``, 
-    saved to key ``do.data[fo]``.
+    Interpolates the data field with key ``fi`` of 
+    another :class:`~inputoutput.DataInput` object ``di`` to the grid used 
+    by this object.  Saves the resulting interpolation within this object's
+    ``self.data`` dictionary with key ``fo``.  Order may be any of:
 
-    :param do: the :class:`~inputoutput.DataInput` to interpolate to
-    :param fn: the key of the data to interpolate from ``self.data``
-    :param fo: the key to save the data to ``do.data``
-    :type do: :class:`~inputoutput.DataInput`
-    :type fn: string
-    :type fo: string
+    * ``1``  -- nearest-neighbor interpolation
+    * ``2``  -- linear interpolation
+    * ``3``  -- cubic interpolation
+
+    :param di: the :class:`~inputoutput.DataInput` to interpolate from
+    :param fi: the key of the data to interpolate from.
+    :param fo: the key to save the data within ``self.data``
+    :param order: order of interpolation (see above).
+    :type di:    :class:`~inputoutput.DataInput`
+    :type fi:    string
+    :type fo:    string
+    :type order: int
     """
-    s = "::: interpolating %s's '%s' field to %s's grid with key '%s' :::"
-    print_text(s % (self.name, fn, do.name, fo) , self.color)
-    interp      = interp2d(self.x, self.y, self.data[fn])
-    fo_v        = interp(do.x, do.y)
-    do.data[fo] = fo_v
+    if   order == 1:  method = 'nearest'
+    elif order == 2:  method = 'linear'
+    elif order == 3:  method = 'cubic'
+    else:
+      s = ">>> interpolate_from_di() REQUIRES method == 1,2, or 3 <<<"
+      print_text(s, 'red', 1)
+      sys.exit(1)
+
+    s = "::: interpolating %s's '%s' field to %s's grid with key '%s' using" + \
+        " %s interpolation :::"
+    print_text(s % (di.name, fi, self.name, fo, method), self.color)
+
+    # check if the projections are the same :
+    
+    # if they are, then use structured grid interpolation :
+    if self.proj.srs == di.proj.srs:
+      s      = '    - projections match, using structured interpolation -'
+      print_text(s, self.color)
+     
+      # NOTE the data is transposed as required by RectBivariateSpline.
+      #      It must therefore be transposed back, as follows : 
+      interp = RectBivariateSpline(di.x, di.y, di.data[fi].T,
+                                     kx=order, ky=order)
+      fo_v  = interp(self.x, self.y).T
+
+    # if not, then use scipy::griddata to interpolate unstructured data :
+    else:
+      s      = '    - projections do not match, using unstructured ' + \
+               'interpolation -'
+      print_text(s, self.color)
+      xs,ys   = self.transform_xy(di)
+      di_pts  = (xs.flatten(), ys.flatten())
+      xr,yr   = meshgrid(self.x, self.y)
+      do_pts  = (xr,yr)
+      
+      # create interpolation object to convert to bedmap2 coordinates :
+      # surface accumulation/ablation :
+      fo_v    = griddata(di_pts, di.data[fi].flatten(), do_pts,
+                         method=method, fill_value=0.0)
+
+    # set the data to our dictionary :
+    self.data[fo] = fo_v
+
+    print_min_max(di.data[fi], 'original %s    ' % fi)
+    print_min_max(fo_v,        'interpolated %s' % fo)
 
   def transform_xy(self, di):
     """
@@ -206,7 +255,8 @@ class DataInput(object):
     # FIXME : need a fast way to convert all the x, y. Currently broken
     s = "::: transforming coordinates from %s to %s :::" % (di.name, self.name)
     print_text(s, self.color)
-    xn, yn = transform(di.proj, self.proj, di.x, di.y)
+    vx,vy  = meshgrid(di.x, di.y)
+    xn, yn = transform(di.proj, self.proj, vx, vy)
     return (xn, yn)
 
   def rescale_field(self, fo, fn, umin, umax, inverse=False):

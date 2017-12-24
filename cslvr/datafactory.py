@@ -128,10 +128,196 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = nx
     vara['ny']                = ny
+    vara['dx']                = dx
     
     # save the data in matlab format :
     vara['dataset']   = 'measures'
     vara['continent'] = 'antarctica'
+    for n, f in zip(names, ftns):
+      vara[n] = f[::-1, :]
+    return vara
+ 
+  
+  @staticmethod
+  def get_bedmachine(thklim = 0.0):
+    """
+    Greenland `Bedmachine <http://onlinelibrary.wiley.com/doi/10.1002/2017GL074954/full>`_ geometry. 
+    This class creates a new lateral boundary mask with key
+    ``lat_mask`` that is 1 at any lateral boundary gridpoint and 0 
+    everywhere else; this is used to mark cliff and sea-water boundaries
+    by :class:`latmodel.LatModel.calculate_boundaries` and 
+    :class:`d3model.D3Model.calculate_boundaries`.
+    
+    The keys of the dictionary returned by this function are :
+     
+    * ``B``  -- basal topography height
+    * ``S``  -- surface topography height
+    * ``H``  -- ice thickness
+    * ``lat_mask`` -- lateral-boundary mask
+    * ``Bo`` -- basal topography height before imposing ``thklim`` 
+    * ``mask`` -- ice shelf mask (1 where shelves, 0 where grounded)
+    * ``mask_orig`` -- original ice mask from the data
+    
+    :param thklim: minimum-allowed ice thickness
+    :type thklim: float
+    :rtype: dict
+    """
+    s    = "::: getting Greenland Bedmachine data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
+    global home
+    
+    direc = home + '/greenland/bedmachine/'
+    filen = 'BedMachineGreenland-2017-09-20.nc'
+
+    data  = Dataset(direc + filen, mode = 'r')
+    vara  = dict()
+    
+    needed_vars = {'surface'   : 'S',
+                   'bed'       : 'B',
+                   'thickness' : 'H',
+                   'mask'      : 'mask_orig'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Bedmachine : %-*s key : %s '%(30,v, txt), '230')
+    
+    # retrieve data :
+    S          = array(data.variables['surface'][:])
+    B          = array(data.variables['bed'][:])
+    H          = array(data.variables['thickness'][:])
+    mask_orig  = array(data.variables['mask'][:])
+      
+    try:
+      data_new = Dataset(direc + 'bedmachine_cslvr.nc', 'r')
+    except RuntimeError:
+      s    = "::: cslvr bedmachine data not present, calculating :::"
+      print_text(s, 'red', 1)
+      # format the mask for cslvr :
+      mask = mask_orig.copy(True)
+      mask[mask == 1] = 0
+      mask[mask == 2] = 1  # grounded ice
+      mask[mask == 3] = 2  # floating ice
+      mask[mask == 4] = 0  # non-Greenland land
+    
+      # generate  mask for lateral boundaries :
+      Hc = mask.copy(True)
+      
+      # calculate mask gradient, to properly mark lateral boundaries :
+      gradH = gradient(Hc)
+      L     = gradH[0]**2 + gradH[1]**2
+      L[L > 0.0] = 1.0
+      L[L < 1.0] = 0.0
+      
+      # mark one more level in :
+      Hc[L > 0.0] = 0
+      
+      gradH = gradient(Hc)
+      L2    = gradH[0]**2 + gradH[1]**2
+      L2[L2 > 0.0] = 1.0
+      L2[L2 < 1.0] = 0.0
+      
+      # combine them :
+      L[L2 > 0.0] = 1.0
+      
+      # create a new netcdf4 file :
+      data_new  = Dataset(direc + 'bedmachine_cslvr.nc', mode = 'w',
+                          format='NETCDF4')
+
+      data_new.description = "CSLVR data generated for use with bedmachine."
+      
+      # copy the dimensions :
+      for name, dimension in data.dimensions.iteritems():
+        data_new.createDimension(name, 
+                            len(dimension) if not dimension.isunlimited()
+                                             else None)
+      # create the variables :
+      data_new.createVariable('x',        data.variables['x'].dtype,
+                                          data.variables['x'].dimensions)
+      data_new.createVariable('y',        data.variables['y'].dtype,
+                                          data.variables['y'].dimensions)
+      data_new.createVariable('mask',     data.variables['mask'].dtype,
+                                          data.variables['mask'].dimensions)
+      data_new.createVariable('lat_mask', L.dtype,
+                                          data.variables['mask'].dimensions)
+
+      # copy the attributes of the dimensions :
+      for ncattr in data.variables['x'].ncattrs():
+        data_new.setncattr(ncattr, data.variables['x'].getncattr(ncattr))
+      for ncattr in data.variables['y'].ncattrs():
+        data_new.setncattr(ncattr, data.variables['y'].getncattr(ncattr))
+      for ncattr in data.variables['mask'].ncattrs():
+        data_new.setncattr(ncattr, data.variables['mask'].getncattr(ncattr))
+
+      # write the variables to the new netcdf :
+      data_new.variables['x'][:]        =  data.variables['x'][:]
+      data_new.variables['y'][:]        =  data.variables['y'][:]
+      data_new.variables['mask'][:]     =  mask
+      data_new.variables['lat_mask'][:] =  L
+
+    mask = array(data_new.variables['mask'][:])
+    L    = array(data_new.variables['lat_mask'][:])
+   
+    # remove the junk data and impose thickness limit :
+    B   = B.copy(True)
+    H[H == data.no_data] = 0.0
+    S[H < thklim] = B[H < thklim] + thklim
+    H[H < thklim] = thklim
+    B             = S - H
+     
+    # extents of domain :
+    nx    = int(data.ny)
+    ny    = int(data.nx)
+    dx    = data.spacing
+    west  = data.xmin
+    east  = west + nx*dx
+    north = data.ymax
+    south = north - ny*dx
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '70'
+    lon_0  = '-45'
+    
+    # create projection :
+    txt  =   " +proj="   + proj \
+           + " +lat_0="  + lat_0 \
+           + " +lat_ts=" + lat_ts \
+           + " +lon_0="  + lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    p    = Proj(txt)
+
+    # close the datasets, we are done with them :
+    data.close()
+    data_new.close()
+    
+    # save the data in matlab format :
+    vara['pyproj_Proj']       = p
+    vara['map_western_edge']  = west 
+    vara['map_eastern_edge']  = east 
+    vara['map_southern_edge'] = south 
+    vara['map_northern_edge'] = north
+    vara['nx']                = nx
+    vara['ny']                = ny
+    vara['dx']                = dx
+    
+    names = ['S', 'B', 'H', 'mask_orig', 'mask', 'lat_mask']
+    ftns  = [ S,   B,   H,   mask_orig,   mask,   L        ]
+    
+    s = '      DataInput  : %-*s key : "%s"'
+    print_text(s % (30,names[-2],names[-2]), '230')
+    print_text(s % (30,names[-1],names[-1]), '230')
+    
+    # save the data in matlab format :
+    vara['dataset']   = 'Bedmachine'
+    vara['continent'] = 'greenland'
     for n, f in zip(names, ftns):
       vara[n] = f[::-1, :]
     return vara
@@ -217,6 +403,7 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = nx
     vara['ny']                = ny
+    vara['dx']                = dx
     
     # retrieve data :
     vara['dataset']   = 'measures'
@@ -302,6 +489,7 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = nx
     vara['ny']                = ny
+    vara['dx']                = dx
     
     names = ['vx', 'vy', 'v_err', 'mask']
     ftns  = [ vx,   vy,   err,     mask ]
@@ -370,6 +558,7 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = len(x)
     vara['ny']                = len(y)
+    vara['dx']                = 5000.0
  
     vara['dataset']   = 'Fox Maule'
     vara['continent'] = 'greenland'
@@ -482,6 +671,7 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = len(x)
     vara['ny']                = len(y)
+    vara['dx']                = 5000.0
     for n, f in zip(names, ftns):
       vara[n] = f
     return vara 
@@ -641,6 +831,7 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = nx
     vara['ny']                = ny
+    vara['dx']                = dx
     
     names = ['B', 'S', 'H', 'mask', 'lat_mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
@@ -774,11 +965,13 @@ class DataFactory(object):
     # save the data in matlab format :
     vara['pyproj_Proj']       = p
     vara['map_western_edge']  = west 
+    vara['dx']                = dx
     vara['map_eastern_edge']  = east 
     vara['map_southern_edge'] = south 
     vara['map_northern_edge'] = north
     vara['nx']                = len(x)
     vara['ny']                = len(y)
+    vara['dx']                = 1000.0
      
     names = ['B', 'Bo', 'S', 'H', 'lat_mask', 'Herr', 'mask', 'mask_orig']
     ftns  = [ B,   Bo,   S,   H,   L,          Herr,   mask,   mask_orig]
@@ -887,6 +1080,7 @@ class DataFactory(object):
     vara['map_northern_edge'] = north
     vara['nx']                = len(x)
     vara['ny']                = len(y)
+    vara['dx']                = 5000.0
  
     names = ['S', 'adot', 'B', 'T', 'q_geo','U_sar', \
              'lat', 'lon', 'dhdt']

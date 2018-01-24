@@ -321,6 +321,183 @@ class DataFactory(object):
     for n, f in zip(names, ftns):
       vara[n] = f[::-1, :]
     return vara
+
+  @staticmethod
+  def get_gimp():
+    """
+    `Greenland Ice Mapping Project <http://nsidc.org/data/NSIDC-0645/versions/1>`_
+    surface topography data.
+    
+    The keys of the dictionary returned by this function are :
+     
+    * ``S``  -- surface topography height
+   
+    :rtype: dict
+    """
+    
+    s    = "::: getting GIMP data from DataFactory :::"
+    print_text(s, DataFactory.color)
+
+    global home
+    direc    = home + '/greenland/gimp/' 
+   
+    S        = TiffFile(direc + 'gimpdem_90m_v1.1.tif').asarray()
+    mask     = TiffFile(direc + 'GimpIceMask_90m_v1.1.tif').asarray()
+
+    # remove ice-free areas :
+    S[mask == 0] = 0
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '70'
+    lon_0  = '-45'
+    
+    # create projection :
+    txt  =   " +proj="   + proj \
+           + " +lat_0="  + lat_0 \
+           + " +lat_ts=" + lat_ts \
+           + " +lon_0="  + lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    p    = Proj(txt)
+    
+    east,south = p(-55.7983, 59.1996)
+     
+    # extents of domain :
+    ny,nx =  S.shape
+    dx    =  90.0
+    west  = east - nx*dx
+    north = south + ny*dx
+    
+    # save the data in matlab format :
+    vara                      = dict()
+    vara['pyproj_Proj']       = p
+    vara['map_western_edge']  = west 
+    vara['map_eastern_edge']  = east 
+    vara['map_southern_edge'] = south 
+    vara['map_northern_edge'] = north
+    vara['nx']                = nx
+    vara['ny']                = ny
+    vara['dx']                = dx
+    
+    print_text('      GIMP : %-*s key : "%s"' % (30,'S',   'S'),    '230')
+    #print_text('      GIMP : %-*s key : "%s"' % (30,'mask','mask'), '230')
+   
+    # retrieve data :
+    vara['dataset']   = 'GIMP'
+    vara['continent'] = 'greenland'
+    vara['S'] = S[::-1, :]
+    return vara 
+ 
+  
+  @staticmethod
+  def get_noel():
+    """
+    Greenland `surface-mass balance <https://www.the-cryosphere.net/10/2361/2016/>`_ at 1km resolution averaged over the years (1958 -- 2015).
+    
+    The keys of the dictionary returned by this function are :
+     
+    * ``S``  -- surface topography height
+    * ``mask`` -- ice shelf mask (1 where ice, 0 where no ice)
+    * ``smb`` -- surface-mass balance in m.i.e. a^{-1}.
+    
+    :param thklim: minimum-allowed ice thickness
+    :type thklim: float
+    :rtype: dict
+    """
+    s    = "::: getting Greenland Bedmachine data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
+    global home
+    
+    direc = home + '/greenland/noeel/'
+    filen = 'SMB_rec.1960-1989.BN_RACMO2.3p2_1km.YYmean.nc'
+
+    data  = Dataset(direc + filen, mode = 'r')
+    vara  = dict()
+    
+    needed_vars = {'SMB_rec' : 'smb'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Noeel : %-*s key : %s '%(30,v, txt), '230')
+    
+    filen = 'Icemask_Topo_Iceclasses_lon_lat_average_1km.nc'
+    data2 = Dataset(direc + filen, mode = 'r')
+    
+    needed_vars = {'GrIS'       : 'mask',
+                   'Topography' : 'S'}
+    
+    for v in data2.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Noeel : %-*s key : %s '%(30,v, txt), '230')
+      
+    # retrieve data :
+    # convert from [mm w.e.] to [m i.e.] :
+    smb  = array(data.variables['SMB_rec'][:][0]) / 1000.0 * 910.0/1000.0
+    mask = array(data2.variables['GrIS'][:])
+    S    = array(data2.variables['Topography'][:])
+    lat  = array(data2.variables['LAT'][:])
+    lon  = array(data2.variables['LON'][:])
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '70'
+    lon_0  = '-45'
+    
+    # create projection :
+    txt  =   " +proj="   + proj \
+           + " +lat_0="  + lat_0 \
+           + " +lat_ts=" + lat_ts \
+           + " +lon_0="  + lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    p    = Proj(txt)
+
+    # NOTE: used this to calculate the values of 'west' and 'north' below :
+    #x,y = p(lon, lat)
+   
+    # extents of domain :
+    ny,nx = shape(S)
+    dx    = 1000.0
+    west  = -639456.29834742961
+    east  = west + nx*dx
+    north = -656095.58634326793
+    south = north - ny*dx
+
+    # close the datasets, we are done with them :
+    data.close()
+    data2.close()
+    
+    # save the data in matlab format :
+    vara['pyproj_Proj']       = p
+    vara['map_western_edge']  = west 
+    vara['map_eastern_edge']  = east 
+    vara['map_southern_edge'] = south 
+    vara['map_northern_edge'] = north
+    vara['nx']                = nx
+    vara['ny']                = ny
+    vara['dx']                = dx
+    
+    names = ['S', 'mask', 'smb']
+    ftns  = [ S,   mask,   smb ]
+    
+    # save the data in matlab format :
+    vara['dataset']   = 'Noel'
+    vara['continent'] = 'greenland'
+    for n, f in zip(names, ftns):
+      vara[n] = f#[::-1, :]
+    return vara
   
   
   @staticmethod
@@ -802,7 +979,7 @@ class DataFactory(object):
     # extents of domain :
     nx    =  6667
     ny    =  6667
-    dx    =  1000
+    dx    =  1000.0
     west  = -3333500.0
     east  =  3333500.0
     north =  3333500.0
@@ -965,7 +1142,6 @@ class DataFactory(object):
     # save the data in matlab format :
     vara['pyproj_Proj']       = p
     vara['map_western_edge']  = west 
-    vara['dx']                = dx
     vara['map_eastern_edge']  = east 
     vara['map_southern_edge'] = south 
     vara['map_northern_edge'] = north

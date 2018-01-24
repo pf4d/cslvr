@@ -257,6 +257,7 @@ class DataInput(object):
     print_text(s, self.color)
     vx,vy  = meshgrid(di.x, di.y)
     xn, yn = transform(di.proj, self.proj, vx, vy)
+    print_text('    - done -', self.color)
     return (xn, yn)
 
   def rescale_field(self, fo, fn, umin, umax, inverse=False):

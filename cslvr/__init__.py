@@ -1,4 +1,4 @@
-__version__    = '2017.1.0'
+__version__    = '2017.2.0'
 __author__     = 'Evan Cummings, Douglas Brinkerhoff, Jesse Johnson'
 __license__    = 'LGPL-3'
 __maintainer__ = 'Evan Cummings'

@@ -47,7 +47,6 @@ class Model(object):
     parameters['form_compiler']['cpp_optimize']       = True
     parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
     parameters["form_compiler"]["representation"]     = 'uflacs'
-    parameters['plotting_backend']                    = 'matplotlib'
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
@@ -484,7 +483,7 @@ class Model(object):
     print_text(s, cls=self.this)
     self.assign_variable(self.theta, theta)
     # init pressure-melting temperature thing :
-    theta_v = self.theta.vector().array()
+    theta_v = self.theta.vector().get_local()
     T_v     = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v[T_v > self.T_w(0)] = self.T_w(0)
     self.init_Tp(T_v)
@@ -819,9 +818,9 @@ class Model(object):
       assign(w, U.sub(2))
     else:
       u,v,w  = U.split(True)
-    u_v      = u.vector().array()
-    v_v      = v.vector().array()
-    w_v      = w.vector().array()
+    u_v      = u.vector().get_local()
+    v_v      = v.vector().get_local()
+    w_v      = w.vector().get_local()
     U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + DOLFIN_EPS)
     self.assign_variable(self.U_mag, U_mag_v)
   
@@ -839,8 +838,8 @@ class Model(object):
     print_text(s, cls=self.this)
     self.assign_variable(self.u_ob, u_ob)
     self.assign_variable(self.v_ob, v_ob)
-    u_v      = self.u_ob.vector().array()
-    v_v      = self.v_ob.vector().array()
+    u_v      = self.u_ob.vector().get_local()
+    v_v      = self.v_ob.vector().get_local()
     U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
     self.assign_variable(self.U_ob, U_mag_v)
   
@@ -929,8 +928,8 @@ class Model(object):
     s = "::: initializing shelf mask :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.mask, mask)
-    self.shf_dofs = np.where(self.mask.vector().array() == 2.0)[0]
-    self.gnd_dofs = np.where(self.mask.vector().array() == 1.0)[0]
+    self.shf_dofs = np.where(self.mask.vector().get_local() == 2.0)[0]
+    self.gnd_dofs = np.where(self.mask.vector().get_local() == 1.0)[0]
   
   def init_U_mask(self, U_mask):
     r"""
@@ -948,8 +947,8 @@ class Model(object):
     s = "::: initializing velocity mask :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.U_mask, U_mask)
-    self.Uob_dofs         = np.where(self.U_mask.vector().array() == 1.0)[0]
-    self.Uob_missing_dofs = np.where(self.U_mask.vector().array() == 0.0)[0]
+    self.Uob_dofs         = np.where(self.U_mask.vector().get_local() == 1.0)[0]
+    self.Uob_missing_dofs = np.where(self.U_mask.vector().get_local() == 0.0)[0]
   
   def init_lat_mask(self, lat_mask):
     r"""
@@ -1395,16 +1394,16 @@ class Model(object):
     H        = self.S - self.B
     U_s      = Function(Q, name='U_s')
     if U_mag == None:
-      U_v                        = self.U_ob.vector().array()
-      Ubar_v                     = self.Ubar.vector().array()
+      U_v                        = self.U_ob.vector().get_local()
+      Ubar_v                     = self.Ubar.vector().get_local()
       U_v[self.Uob_missing_dofs] = Ubar_v[self.Uob_missing_dofs]
     else:
-      U_v = U_mag.vector().array()
+      U_v = U_mag.vector().get_local()
     U_v[U_v < eps] = eps
     self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
     beta_0   = project((rhoi*g*H*S_mag) / U_s, Q, annotate=False)
-    beta_0_v = beta_0.vector().array()
+    beta_0_v = beta_0.vector().get_local()
     beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
     self.assign_variable(self.betaSIA, beta_0_v)
@@ -1439,13 +1438,13 @@ class Model(object):
     g      = self.g
     H      = S - B
 
-    Ubar_v = Ubar.vector().array()
+    Ubar_v = Ubar.vector().get_local()
     Ubar_v[Ubar_v < 1e-10] = 1e-10
     self.assign_variable(Ubar, Ubar_v)
            
     D      = Function(Q, name='D')
-    B_v    = B.vector().array()
-    D_v    = D.vector().array()
+    B_v    = B.vector().get_local()
+    D_v    = D.vector().get_local()
     D_v[B_v < 0] = B_v[B_v < 0]
     self.assign_variable(D, D_v)
 
@@ -1696,7 +1695,7 @@ class Model(object):
     
     #if mode == 'steady':
     #  beta0                   = project(self.beta_f, Q, annotate=False)
-    #  beta0_v                 = beta0.vector().array()
+    #  beta0_v                 = beta0.vector().get_local()
     #  beta0_v[beta0_v < 1e-2] = 1e-2
     #  self.assign_variable(beta0, beta0_v)
     #
@@ -1706,7 +1705,7 @@ class Model(object):
     
     if mode == 'steady':
       beta0  = project(self.beta_f, Q, annotate=False)
-      beta0_v                 = beta0.vector().array()
+      beta0_v                 = beta0.vector().get_local()
       beta0_v[beta0_v < DOLFIN_EPS] = DOLFIN_EPS
       self.init_beta(beta0_v)
     elif mode == 'transient':
@@ -1721,8 +1720,8 @@ class Model(object):
     s    = "::: updating statistical beta :::"
     print_text(s, self.D3Model_color)
     beta   = project(self.beta_f, self.Q, annotate=False)
-    beta_v = beta.vector().array()
-    ##betaSIA_v = self.betaSIA.vector().array()
+    beta_v = beta.vector().get_local()
+    ##betaSIA_v = self.betaSIA.vector().get_local()
     ##beta_v[beta_v < 10.0]   = betaSIA_v[beta_v < 10.0]
     beta_v[beta_v < 0.0]    = 0.0
     #beta_v[beta_v > 2500.0] = 2500.0
@@ -1861,8 +1860,8 @@ class Model(object):
     :rtype:  :class:`~fenics.Function` of angle values.
     """
     u,v,w   = U.split(True)
-    u_v     = u.vector().array()
-    v_v     = v.vector().array()
+    u_v     = u.vector().get_local()
+    v_v     = v.vector().get_local()
     theta_v = np.arctan2(v_v, u_v)
     Q       = u.function_space()
     theta   = Function(Q, name='theta_xy_U_angle')
@@ -1878,8 +1877,8 @@ class Model(object):
     :rtype:  :class:`~fenics.Function` of angle values.
     """
     u,v,w   = self.U3.split(True)
-    u_v     = u.vector().array()
-    w_v     = w.vector().array()
+    u_v     = u.vector().get_local()
+    w_v     = w.vector().get_local()
     theta_v = np.arctan2(w_v, u_v)
     theta   = Function(self.Q, name='theta_xz_U_angle')
     self.assign_variable(theta, theta_v)
@@ -1967,7 +1966,7 @@ class Model(object):
       U = U.split(True)
     for u in U:
       # convert to array and normailze the components of U :
-      u_v = u.vector().array()
+      u_v = u.vector().get_local()
       U_v.append(u_v)
     U_v = np.array(U_v)
 
@@ -2068,7 +2067,7 @@ class Model(object):
       #u.interpolate(var, annotate=annotate)
 
     #elif isinstance(var, GenericVector):
-    #  self.assign_variable(u, var.array(), annotate=annotate)
+    #  self.assign_variable(u, var.get_local(), annotate=annotate)
 
     elif isinstance(var, str):
       File(var) >> u
@@ -2237,7 +2236,7 @@ class Model(object):
     Coordinates of various types : 
 
     * ``self.x``   -- :class:`~fenics.SpatialCoordinate` for ``self.mesh``
-    * ``self.h``   -- :class:`~fenics.CellSize` for ``self.mesh``
+    * ``self.h``   -- :class:`~fenics.CellDiameter` for ``self.mesh``
     * ``self.N``   -- :class:`~fenics.FacetNormal` for ``self.mesh``
     * ``self.lat`` -- latitude :class:`~fenics.Function`
     * ``self.lon`` -- longitude :class:`~fenics.Function`
@@ -2349,7 +2348,7 @@ class Model(object):
 
     # Coordinates of various types 
     self.x             = SpatialCoordinate(self.mesh)
-    self.h             = CellSize(self.mesh)
+    self.h             = CellDiameter(self.mesh)
     self.N             = FacetNormal(self.mesh)
     self.lat           = Function(self.Q, name='lat')
     self.lon           = Function(self.Q, name='lon')
@@ -2698,13 +2697,13 @@ class Model(object):
       energy.solve_basal_melt_rate()
       
       # always initialize Fb to the zero-energy-flux bc :  
-      Fb_v = self.Mb.vector().array() * self.rhoi(0) / self.rhow(0)
+      Fb_v = self.Mb.vector().get_local() * self.rhoi(0) / self.rhow(0)
       self.init_Fb(Fb_v)
   
       # update bounds based on temperate zone :
       if energy.energy_flux_mode == 'Fb':
-        Fb_m_v                 = self.Fb_max.vector().array()
-        alpha_v                = self.alpha.vector().array()
+        Fb_m_v                 = self.Fb_max.vector().get_local()
+        alpha_v                = self.alpha.vector().get_local()
         Fb_m_v[:]              = DOLFIN_EPS
         Fb_m_v[alpha_v == 1.0] = bounds[1]
         self.init_Fb_max(Fb_m_v)

@@ -975,6 +975,8 @@ def plotIce(di, u, name, direc,
     A sigle *direc/name.ext* in the source directory.
   
   """
+  #FIXME: re-factor this method to take generic kwargs for each method called,
+  #       and generally improve readability.
   # get the original projection coordinates and data :
   if isinstance(u, str):
     s = "::: plotting %s's \"%s\" field data directly :::" % (di.name, u)
@@ -1155,7 +1157,7 @@ def plotIce(di, u, name, direc,
       ymid       = m.ymin + y_fact*dy
       slon, slat = m(xmid, ymid, inverse=True)
       m.drawmapscale(slon, slat, slon, slat, scale_length, 
-                     barstyle = 'fancy', fontcolor=scale_color)
+                     barstyle = 'simple', linewidth=1.5, fontcolor=scale_color)
 
     for axis in ['top','bottom','left','right']:
       ax.spines[axis].set_color(axes_color)

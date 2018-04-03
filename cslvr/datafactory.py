@@ -411,7 +411,7 @@ class DataFactory(object):
     
     global home
     
-    direc = home + '/greenland/noeel/'
+    direc = home + '/greenland/noel/'
     filen = 'SMB_rec.1960-1989.BN_RACMO2.3p2_1km.YYmean.nc'
 
     data  = Dataset(direc + filen, mode = 'r')

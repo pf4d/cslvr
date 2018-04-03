@@ -348,6 +348,10 @@ class MomentumDukowiczStokesReduced(Momentum):
     print_min_max(U3[2], 'w')
 
 
+
+
+
+
 class MomentumDukowiczStokes(Momentum):
   """  
   """
@@ -456,8 +460,13 @@ class MomentumDukowiczStokes(Momentum):
     Pb_w   = - rhosw*g*D * dot(U3, N)
     Pb_l   = - rhoi*g*(S - z) * dot(U3, N)
 
+    # stabilization :
+    gv     = Constant((0.0, 0.0, g))
+    tau    = h**2 / (12 * A**(-1/n) * rhoi**2)
+    Lsq    = tau * dot( (grad(p) + rhoi*gv), (grad(p) + rhoi*gv) )
+
     # action :
-    A      = + (Vd - Pe - Pc)*dOmega - Nc*dGamma_b \
+    A      = + (Vd - Pe - Pc - Lsq)*dOmega \
              - Nc*dGamma_b - Sl_gnd*dGamma_bg - Pb_w*dGamma_bw
 
     if (not model.use_periodic and use_pressure_bc):
@@ -493,7 +502,7 @@ class MomentumDukowiczStokes(Momentum):
     self.U       = U 
     self.dU      = dU
     self.Phi     = Phi
-  
+
   def get_residual(self):
     """
     Returns the momentum residual.
@@ -617,6 +626,10 @@ class MomentumDukowiczStokes(Momentum):
     print_min_max(model.p, 'p')
 
 
+
+
+
+
 class MomentumNitscheStokes(Momentum):
   """  
   """
@@ -692,6 +705,8 @@ class MomentumNitscheStokes(Momentum):
       self.assz  = FunctionAssigner(model.w.function_space(), Q4.sub(2))
       self.assp  = FunctionAssigner(model.p.function_space(), Q4.sub(3))
     else:
+      # FIXME: Taylor-Hood does not work, the periodic bcs are not enforced properly.
+      #        I have not tested TH with non-periodic bcs.
       s  = "    - using Taylor-Hood elements -"
       # system unknown function space is created now if periodic boundaries 
       # are not used (see model.generate_function_space()) :
@@ -732,7 +747,7 @@ class MomentumNitscheStokes(Momentum):
       eta  = self.viscosity(u)
     print_text(s, self.color())
 
-    alpha = Constant(1e-12)
+    alpha = Constant(1e-16)  # TODO: find the "best" value for this
     gamma = Constant(1e2)
     f     = Constant((0.0, 0.0, -rhoi * g))
     I     = Identity(3)
@@ -758,7 +773,7 @@ class MomentumNitscheStokes(Momentum):
           + gamma/h * dot(u,n) * dot(v,n) * dGamma_b \
           + beta * dot(ut, v) * dGamma_b
     
-    F   = + dot(f,v) * dx \
+    F   = + dot(f,v) * dOmega \
           + gamma/h * u_n * dot(v,n) * dGamma_b
 
     # stabilized form is identical to TH with the addition the following terms :

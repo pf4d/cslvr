@@ -238,9 +238,9 @@ class D3Model(Model):
       sys.exit(1)
      
     # this function contains markers which may be applied to facets of the mesh
-    self.ff      = FacetFunction('size_t', self.mesh, 0)
-    self.ff_acc  = FacetFunction('size_t', self.mesh, 0)
-    self.cf      = CellFunction('size_t',  self.mesh, 0)
+    self.ff      = MeshFunction('size_t', self.mesh, 2, 0)
+    self.ff_acc  = MeshFunction('size_t', self.mesh, 2, 0)
+    self.cf      = MeshFunction('size_t', self.mesh, 3, 0)
     dofmap       = self.Q.dofmap()
     
     # default to all grounded ice :
@@ -503,7 +503,7 @@ class D3Model(Model):
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
     for c in cells(bmesh):
       if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
         pb[c] = 1
@@ -519,7 +519,7 @@ class D3Model(Model):
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
     for c in cells(bmesh):
       if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
         pb[c] = 1

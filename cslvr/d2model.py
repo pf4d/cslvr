@@ -175,9 +175,9 @@ class D2Model(Model):
       self.init_lat_mask(lat_mask)
      
     # this function contains markers which may be applied to facets of the mesh
-    self.ff      = FacetFunction('size_t', self.mesh)
-    self.ff_acc  = CellFunction('size_t',  self.mesh)
-    self.cf      = CellFunction('size_t',  self.mesh)
+    self.ff      = MeshFunction('size_t',  self.mesh, 1)
+    self.ff_acc  = MeshFunction('size_t',  self.mesh, 1)
+    self.cf      = MeshFunction('size_t',  self.mesh, 2)
     dofmap       = self.Q.dofmap()
 
     S = self.S

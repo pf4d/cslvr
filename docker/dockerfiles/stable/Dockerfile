@@ -89,16 +89,15 @@ RUN  cd $FENICS_HOME/pyipopt && \
      cd .. && rm -r pyipopt
 
 # install basemap for matplotlib :
-RUN  wget http://sourceforge.net/projects/matplotlib/files/matplotlib-toolkits/basemap-1.0.7/basemap-1.0.7.tar.gz
-RUN  tar -xzvf basemap-1.0.7.tar.gz && \
-     cd basemap-1.0.7/geos-3.3.3/ && \
-     ./configure --prefix=$PKG_DIR && \
-     make -j 4 && \
-     make install && \
-     cd .. && \
-     python setup.py install --user && \
-     cd .. && \
-     rm -r basemap-1.0.7 && rm basemap-1.0.7.tar.gz
+RUN git clone https://github.com/matplotlib/basemap.git
+RUN cd basemap/geos-3.3.3 && \
+    export GEOS_DIR=/usr/local/ && \
+    ./configure --prefix=$GEOS_DIR && \
+    make -j 8 && \
+    make install && \
+    cd .. && \
+    python setup.py install && \
+    cd ..
 
 # install gmsh-dynamic 2.10.1 :
 RUN  cd $PKG_DIR && \

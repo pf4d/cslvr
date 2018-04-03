@@ -1,7 +1,7 @@
 from cslvr import *
 
 a     = 0.5 * pi / 180     # surface slope in radians
-L     = 4000               # width of domain (also 8000, 10000, 14000)
+L     = 14000               # width of domain (also 8000, 10000, 14000)
 
 # create a genreic box mesh, we'll fit it to geometry below :
 p1    = Point(0.0, 0.0, 0.0)          # origin
@@ -9,7 +9,7 @@ p2    = Point(L,   L,   1)            # x, y, z corner
 mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void 
 
 # output directiories :
-mdl_odr = 'FS_th'
+mdl_odr = 'BP'
 out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 

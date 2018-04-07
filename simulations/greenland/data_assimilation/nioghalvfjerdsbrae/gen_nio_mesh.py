@@ -62,13 +62,14 @@ m.set_contour(gb.get_xy_contour())
 #===============================================================================
 # process the file and extrude :
 
-m.eliminate_intersections(dist=200)
-m.transform_contour(rignot)
-m.check_dist()
-m.write_gmsh_contour(boundary_extend=False)
-m.plot_contour()
-m.extrude(h=100000, n_layers=10)
-m.close_file()
+m.eliminate_intersections(dist=200)              # eliminate interscting lines
+#m.transform_contour(rignot) # convert to rignot projection if needed
+m.check_dist()                                   # remove points too close
+m.write_gmsh_contour(boundary_extend=False)      # create a .geo contour file
+m.write_argus_contour()                          # create a .exp contour file
+m.plot_contour()                                 # plot the contour
+m.extrude(h=100000, n_layers=10)                 # vertically extrude
+m.close_file()                                   # close the files
 
 
 #===============================================================================

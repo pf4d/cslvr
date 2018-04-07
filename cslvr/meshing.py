@@ -6,7 +6,7 @@ from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, \
                               size, hstack, vstack, argmin, zeros, shape, \
-                              sqrt, show, ndarray
+                              sqrt, show, ndarray, close
 from fenics            import Mesh, MeshEditor, Point, File, XDMFFile
 from pyproj            import transform
 from cslvr.inputoutput import print_text, print_min_max
@@ -70,6 +70,7 @@ class MeshGenerator(object):
 
     # remove skip points and last point to avoid overlap :
     self.longest_cont = cl[amax_ind]
+    close(fig) # close the figure because we only used it to get the contour.
     s    = "::: contour created, length %s nodes :::"
     print_text(s % shape(self.longest_cont)[0], self.color)
     self.remove_skip_points(skip_pts)
@@ -194,10 +195,10 @@ class MeshGenerator(object):
 
   def write_gmsh_contour(self, lc=100000, boundary_extend=True):
     """
-    write the contour created with create_contour to the .geo file with mesh
-    spacing <lc>.  If <boundary_extend> is true, the spacing in the interior
-    of the domain will be the same as the distance between nodes on the 
-    contour.
+    write the contour created with :func:`create_contour` to the .geo file 
+    with mesh spacing ``lc``.  If ``boundary_extend`` is true, the spacing in 
+    the interior of the domain will be the same as the distance between nodes 
+    on the contour.
     """
     s    = "::: writing gmsh contour to \"%s%s.geo\" :::"
     print_text(s % (self.direc, self.fn), self.color)
@@ -239,6 +240,26 @@ class MeshGenerator(object):
     self.surf_num = surf_num
     self.pts      = pts
     self.loop     = loop
+
+  def write_argus_contour(self):
+    """
+    write the contour created with :func:`create_contour` to the .exp file 
+    within the directory ``self.direc``/``self.fn``.
+    """
+    s    = "::: writing argus contour to \"%s%s.exp\" :::"
+    print_text(s % (self.direc, self.fn), self.color)
+    
+    c   = self.longest_cont
+    f   = open(self.direc + self.fn + '.exp', 'w')
+
+    f.write('## Icon:0\n')
+    f.write('# Points Count Value\n')
+    f.write('%i 1\n' % size(c[:,0]))
+    f.write('# X pos Y pos\n')
+    for i in range(size(c[:,0])):
+      f.write("%10.10f %10.10f\n" % (c[i,0], c[i,1]))
+    f.write("%10.10f %10.10f\n\n" % (c[0,0], c[0,1]))
+    f.close()
 
   def extrude(self, h, n_layers):
     """

@@ -70,7 +70,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting Antarctica measures data from DataFactory :::"
+    s    = "::: getting Antarctica 'Measures' data from DataFactory :::"
     print_text(s, DataFactory.color)
 
     global home
@@ -162,7 +162,7 @@ class DataFactory(object):
     :type thklim: float
     :rtype: dict
     """
-    s    = "::: getting Greenland Bedmachine data from DataFactory :::"
+    s    = "::: getting Greenland 'Bedmachine v3' data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
@@ -198,16 +198,21 @@ class DataFactory(object):
     except RuntimeError:
       s    = "::: cslvr bedmachine data not present, calculating :::"
       print_text(s, 'red', 1)
-      # format the mask for cslvr :
+
+      # generate  mask for lateral boundaries (floating and grounded both):
+      Hc   = mask_orig.copy(True)
+      Hc[mask_orig == 1] = 0
+      Hc[mask_orig == 2] = 1  # grounded ice
+      Hc[mask_orig == 3] = 1  # floating ice
+      Hc[mask_orig == 4] = 0  # non-Greenland land
+
+      # create mask for use by cslvr :
       mask = mask_orig.copy(True)
-      mask[mask == 1] = 0
-      mask[mask == 2] = 1  # grounded ice
-      mask[mask == 3] = 2  # floating ice
-      mask[mask == 4] = 0  # non-Greenland land
+      mask[mask_orig == 1] = 0
+      mask[mask_orig == 2] = 1  # grounded ice
+      mask[mask_orig == 3] = 2  # floating ice
+      mask[mask_orig == 4] = 0  # non-Greenland land
     
-      # generate  mask for lateral boundaries :
-      Hc = mask.copy(True)
-      
       # calculate mask gradient, to properly mark lateral boundaries :
       gradH = gradient(Hc)
       L     = gradH[0]**2 + gradH[1]**2
@@ -316,7 +321,7 @@ class DataFactory(object):
     print_text(s % (30,names[-1],names[-1]), '230')
     
     # save the data in matlab format :
-    vara['dataset']   = 'Bedmachine'
+    vara['dataset']   = 'Bedmachine v3'
     vara['continent'] = 'greenland'
     for n, f in zip(names, ftns):
       vara[n] = f[::-1, :]
@@ -335,7 +340,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting GIMP data from DataFactory :::"
+    s    = "::: getting 'GIMP' data from DataFactory :::"
     print_text(s, DataFactory.color)
 
     global home
@@ -406,7 +411,7 @@ class DataFactory(object):
     :type thklim: float
     :rtype: dict
     """
-    s    = "::: getting Greenland Bedmachine data from DataFactory :::"
+    s    = "::: getting Greenland 'Noel' data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
@@ -519,7 +524,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting Greenland measures data from DataFactory :::"
+    s    = "::: getting Greenland 'Measures' data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
@@ -607,7 +612,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting Greenland Rignot data from DataFactory :::"
+    s    = "::: getting Greenland 'Rignot' data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
@@ -768,7 +773,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting Bedmap 1 data from DataFactory :::"
+    s    = "::: getting 'Bedmap 1' data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
@@ -881,7 +886,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting Bedmap 2 data from DataFactory :::"
+    s    = "::: getting 'Bedmap 2' data from DataFactory :::"
     print_text(s, DataFactory.color)
 
     global home
@@ -1051,7 +1056,7 @@ class DataFactory(object):
     :rtype: dict
     """
 
-    s    = "::: getting Bamber data from DataFactory :::"
+    s    = "::: getting 'Bamber' topography data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home
@@ -1182,7 +1187,7 @@ class DataFactory(object):
     :rtype: dict
     """
     
-    s    = "::: getting Searise data from DataFactory :::"
+    s    = "::: getting 'Searise' data from DataFactory :::"
     print_text(s, DataFactory.color)
     
     global home

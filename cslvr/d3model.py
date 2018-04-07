@@ -535,7 +535,7 @@ class D3Model(Model):
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
     for c in cells(bmesh):
       if abs(Facet(self.mesh, cellmap[c.index()]).normal().z()) < 1e-3:
         pb[c] = 1
@@ -551,7 +551,7 @@ class D3Model(Model):
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
-    pb      = CellFunction("size_t", bmesh, 0)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
     self.lat_mask.set_allow_extrapolation(True)
     for c in cells(bmesh):
       f       = Facet(self.mesh, cellmap[c.index()])
@@ -559,6 +559,9 @@ class D3Model(Model):
       x_m     = f.midpoint().x()
       y_m     = f.midpoint().y()
       z_m     = f.midpoint().z()
+      #FIXME: lat_mask(x,y,z) throws an error with fenics 2017.2.0 :
+      # *** Error:   Unable to compute tetrahedron point collision.
+      # *** Reason:  Not implemented for degenerate tetrahedron.
       if abs(n.z()) < 1e-3 and self.lat_mask(x_m, y_m, z_m) <= 0:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)

@@ -6,7 +6,7 @@ from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
 from pylab             import array, linspace, ones, meshgrid, figure, \
                               size, hstack, vstack, argmin, zeros, shape, \
-                              sqrt, show
+                              sqrt, show, ndarray
 from fenics            import Mesh, MeshEditor, Point, File, XDMFFile
 from pyproj            import transform
 from cslvr.inputoutput import print_text, print_min_max
@@ -1091,7 +1091,7 @@ class GetBasin(object):
     ax.set_aspect("equal")
 
     # plot other
-    if other != None:
+    if type(other) == ndarray:
       ax.plot(other[:,0], other[:,1], 'g', lw=3.0)
 
     # plot buffered coordinates

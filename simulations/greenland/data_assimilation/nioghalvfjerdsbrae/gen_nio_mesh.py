@@ -35,7 +35,8 @@ dbm.data['mask'][L > 0.0] = 0
 m = MeshGenerator(dbm, mesh_name, out_dir)
 
 #m.create_contour('mask', zero_cntr=0.0001, skip_pts=0)
-m.create_contour('H', zero_cntr=50, skip_pts=0) # 50 meter thickness contour
+m.create_contour('H', zero_cntr=50, skip_pts=20) # 50 meter thickness contour
+m.eliminate_intersections(dist=200)              # eliminate interscting lines
 
 #===============================================================================
 # a box region :
@@ -52,11 +53,11 @@ m.create_contour('H', zero_cntr=50, skip_pts=0) # 50 meter thickness contour
 
 #===============================================================================
 # or a basin :
-
 gb = GetBasin(dbm, basin='2.1')
+gb.remove_skip_points(400)
 gb.extend_edge(10000)
 gb.intersection(m.longest_cont)
-gb.plot_xycoords_buf(other=m.longest_cont)
+gb.plot_xycoords(other=m.longest_cont)
 m.set_contour(gb.get_xy_contour())
 
 #===============================================================================

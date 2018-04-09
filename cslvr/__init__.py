@@ -1,5 +1,5 @@
 __version__    = '2017.2.0'
-__author__     = 'Evan Cummings, Douglas Brinkerhoff, Jesse Johnson'
+__author__     = 'Evan Cummings, Douglas Brinkerhoff, Jesse Johnson, Aaron St. George'
 __license__    = 'LGPL-3'
 __maintainer__ = 'Evan Cummings'
 __email__      = 'cummings.evan@gmail.com'

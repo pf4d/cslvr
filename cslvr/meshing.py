@@ -1,12 +1,11 @@
 import subprocess
 import inspect
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
 from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
-from pylab             import array, linspace, ones, meshgrid, figure, \
-                              size, hstack, vstack, argmin, zeros, shape, \
-                              sqrt, show, ndarray, close
 from fenics            import Mesh, MeshEditor, Point, File, XDMFFile
 from pyproj            import transform
 from cslvr.inputoutput import print_text, print_min_max
@@ -31,7 +30,7 @@ class MeshGenerator(object):
     self.dd         = dd
     self.fn         = fn
     self.direc      = direc
-    self.x, self.y  = meshgrid(dd.x, dd.y)
+    self.x, self.y  = np.meshgrid(dd.x, dd.y)
     if not os.path.exists(direc):
       os.makedirs(direc)
     self.f          = open(direc + fn + '.geo', 'w')
@@ -51,7 +50,7 @@ class MeshGenerator(object):
 
     # create contour :
     field  = self.dd.data[var]
-    fig = figure()
+    fig = plt.figure()
     self.ax = fig.add_subplot(111)
     self.ax.set_aspect('equal')
     self.c = self.ax.contour(self.x, self.y, field, [zero_cntr])
@@ -63,16 +62,16 @@ class MeshGenerator(object):
     amax_ind = 0
 
     for a in cl:
-      if size(a) > amax:
-        amax = size(a)
+      if np.size(a) > amax:
+        amax = np.size(a)
         amax_ind = ind
       ind += 1
 
     # remove skip points and last point to avoid overlap :
     self.longest_cont = cl[amax_ind]
-    close(fig) # close the figure because we only used it to get the contour.
+    plt.close(fig) # close the figure; we only used it to get the contour.
     s    = "::: contour created, length %s nodes :::"
-    print_text(s % shape(self.longest_cont)[0], self.color)
+    print_text(s % np.shape(self.longest_cont)[0], self.color)
     self.remove_skip_points(skip_pts)
 
   def remove_skip_points(self, skip_pts):
@@ -83,7 +82,7 @@ class MeshGenerator(object):
     longest_cont      = self.longest_cont
     self.longest_cont = longest_cont[::skip_pts,:][:-1,:]
     s    = "::: contour points skipped, new length %s nodes :::"
-    print_text(s % shape(self.longest_cont)[0], self.color)
+    print_text(s % np.shape(self.longest_cont)[0], self.color)
 
   def transform_contour(self, di):
     """
@@ -100,7 +99,7 @@ class MeshGenerator(object):
     print_text(s % (name, self.dd.name), self.color)
     x,y    = self.longest_cont.T
     xn, yn = transform(self.dd.proj, proj, x, y)
-    self.longest_cont = array([xn, yn]).T
+    self.longest_cont = np.array([xn, yn]).T
 
   def set_contour(self, cont_array):
     """
@@ -111,8 +110,8 @@ class MeshGenerator(object):
                    (i.e. array([[1,2],[3,4],...]))
     """
     s = "::: manually setting contour with %s nodes:::"
-    print_text(s % shape(cont_array)[0], self.color)
-    fig = figure()
+    print_text(s % np.shape(cont_array)[0], self.color)
+    fig = plt.figure()
     self.ax = fig.add_subplot(111)
     self.ax.set_aspect('equal')
     self.longest_cont = cont_array
@@ -127,7 +126,7 @@ class MeshGenerator(object):
     lc = self.longest_cont
     ax.plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
     ax.set_title("contour")
-    show()
+    plt.show()
 
   def eliminate_intersections(self, dist=10):
     """
@@ -151,7 +150,7 @@ class MeshGenerator(object):
 
     lc   = self.longest_cont
 
-    flag = ones(len(lc))
+    flag = np.ones(len(lc))
     intr = False
     for ii in range(len(lc)-1):
 
@@ -171,7 +170,7 @@ class MeshGenerator(object):
           intr       = True
 
     counter  = 0
-    new_cont = zeros((int(sum(flag)),2))
+    new_cont = np.zeros((int(sum(flag)),2))
     for ii,fl in enumerate(flag):
       if fl:
         new_cont[counter,:] = lc[ii,:]
@@ -205,7 +204,7 @@ class MeshGenerator(object):
     c   = self.longest_cont
     f   = self.f
 
-    pts = size(c[:,0])
+    pts = np.size(c[:,0])
 
     # write the file to .geo file :
     f.write("// Mesh spacing\n")
@@ -252,13 +251,14 @@ class MeshGenerator(object):
     c   = self.longest_cont
     f   = open(self.direc + self.fn + '.exp', 'w')
 
+    f.write('## Name:%s\n' % self.fn)
     f.write('## Icon:0\n')
     f.write('# Points Count Value\n')
-    f.write('%i 1\n' % size(c[:,0]))
+    f.write('%i 1\n' % (np.size(c[:,0]) + 1))
     f.write('# X pos Y pos\n')
-    for i in range(size(c[:,0])):
+    for i in range(np.size(c[:,0])):
       f.write("%10.10f %10.10f\n" % (c[i,0], c[i,1]))
-    f.write("%10.10f %10.10f\n\n" % (c[0,0], c[0,1]))
+    f.write("%10.10f %10.10f"     % (c[0,0], c[0,1]))  # write first once more
     f.close()
 
   def extrude(self, h, n_layers):
@@ -375,11 +375,11 @@ class MeshGenerator(object):
     remove points in contour that are not a linear distance of at least
     <dist> from previous point.
     """
-    lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    lin_dist = lambda p1, p2: np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
     xycoords = self.longest_cont
 
-    mask = ones(len(xycoords), dtype=bool)
+    mask = np.ones(len(xycoords), dtype=bool)
 
     i = 0
     while(i < len(xycoords)-1):
@@ -427,9 +427,9 @@ class MeshGenerator(object):
       p3 = intersection
 
     contour_intersect = zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1])
-    self.longest_cont = array(contour_intersect)[1:]
+    self.longest_cont = np.array(contour_intersect)[1:]
     s    = "::: intersection contour created, length %s nodes :::"
-    print_text(s % shape(self.longest_cont)[0], self.color)
+    print_text(s % np.shape(self.longest_cont)[0], self.color)
 
   def extend_edge(self, r):
     """
@@ -446,7 +446,7 @@ class MeshGenerator(object):
     p1 = cascaded_union(polygons)
     p3 = cascaded_union(p1)
 
-    xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+    xycoords_buf = np.array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
     self.longest_cont = xycoords_buf
 
   def convert_msh_to_xml(self, mshfile, xmlfile):
@@ -755,7 +755,7 @@ class MeshExtruder(object):
     self.n_v2 = mesh.num_vertices()
 
     # Initialize tetrahedron array for extruded mesh
-    self.global_tets = array([-1,-1,-1,-1])
+    self.global_tets = np.array([-1,-1,-1,-1])
 
   def extrude_mesh(self,l,z_offset):
     # accepts the number of layers and the length of extrusion
@@ -764,33 +764,34 @@ class MeshExtruder(object):
 
     # Extrude vertices
     all_coords = []
-    for i in linspace(0,z_offset,l):
-      all_coords.append(hstack((mesh.coordinates(),i*ones((self.n_v2,1)))))
-    self.global_vertices = vstack(all_coords)
+    for i in np.linspace(0,z_offset,l):
+      all_coords.append(np.hstack((mesh.coordinates(),
+                                  i*np.ones((self.n_v2,1)))))
+    self.global_vertices = np.vstack(all_coords)
 
     # Extrude cells (tris to tetrahedra)
     for i in range(l-1):
       for c in self.mesh.cells():
         # Make a prism out of 2 stacked triangles
-        vertices = hstack((c+i*self.n_v2,c+(i+1)*self.n_v2))
+        vertices = np.hstack((c+i*self.n_v2,c+(i+1)*self.n_v2))
 
         # Determine prism orientation
-        smallest_vertex_index = argmin(vertices)
+        smallest_vertex_index = np.argmin(vertices)
 
         # Map to I-ordering of Dompierre et al.
         mapping = self.indirection_table[smallest_vertex_index]
 
         # Determine which subdivision scheme to use.
         if min(vertices[mapping][[1,5]]) < min(vertices[mapping][[2,4]]):
-          local_tets = vstack((vertices[mapping][[0,1,2,5]],\
-                               vertices[mapping][[0,1,5,4]],\
-                               vertices[mapping][[0,4,5,3]]))
+          local_tets = np.vstack((vertices[mapping][[0,1,2,5]],\
+                                  vertices[mapping][[0,1,5,4]],\
+                                  vertices[mapping][[0,4,5,3]]))
         else:
-          local_tets = vstack((vertices[mapping][[0,1,2,4]],\
-                               vertices[mapping][[0,4,2,5]],\
-                               vertices[mapping][[0,4,5,3]]))
+          local_tets = np.vstack((vertices[mapping][[0,1,2,4]],\
+                                  vertices[mapping][[0,4,2,5]],\
+                                  vertices[mapping][[0,4,5,3]]))
         # Concatenate local tet to cell array
-        self.global_tets = vstack((self.global_tets,local_tets))
+        self.global_tets = np.vstack((self.global_tets,local_tets))
 
     # Eliminate phantom initialization tet
     self.global_tets = self.global_tets[1:,:]
@@ -842,6 +843,7 @@ class GetBasin(object):
   are not consistent; some domains work, others do not. The hope is that
   extension of the domain will help here too.
 
+  Originally written by Aaron St. George, updated by Evan Cummings
   """
   def __init__(self, di, basin=None):
     """
@@ -903,20 +905,20 @@ class GetBasin(object):
       sl = line.split()
       if sl[id] == self.basin:
         self.llcoords.append([sl[lon],sl[lat]])
-    self.llcoords = array(self.llcoords)
+    self.llcoords = np.array(self.llcoords)
 
   def convert_to_projection(self):
     """
     """
     self.xycoords = []
     self.edge     = []
-    p = self.llcoords[0,:] # previous point
+    p             = self.llcoords[0,:] # previous point
     self.xycoords.append(self.di.get_xy(p[0],p[1]))
     self.edge.append(True)
-    p_p = self.xycoords[-1]
-    distance = 0
+    p_p           = self.xycoords[-1]
+    distance      = 0
 
-    lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    lin_dist = lambda p1, p2: np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
     for p in self.llcoords:
       p_n = self.di.get_xy(p[0],p[1]) # Current point xy
@@ -938,11 +940,11 @@ class GetBasin(object):
       self.edge.pop()
     """
 
-    self.xycoords = array(self.xycoords)
+    self.xycoords = np.array(self.xycoords)
     self.plot_coords["xycoords"] = self.xycoords
 
-    #self.clean_edge() #clean (very rare) incorrectly identified edge points
-    self.edge = array(self.edge)
+    self.clean_edge() #clean (very rare) incorrectly identified edge points
+    self.edge = np.array(self.edge)
     
     s    = "::: basin contour created with length %i :::"
     print_text(s % len(self.xycoords), self.color)
@@ -980,13 +982,13 @@ class GetBasin(object):
     remove points in xycoords that are not a linear distance of at least
     <dist> from previous point.
     """
-    lin_dist = lambda p1, p2: sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    lin_dist = lambda p1, p2: np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
     edge     = self.edge
     xycoords = self.xycoords
     n        = len(xycoords)
 
-    mask = ones(n, dtype=bool)
+    mask = np.ones(n, dtype=bool)
 
     i = 0
     while(i < n-1):
@@ -1019,8 +1021,8 @@ class GetBasin(object):
 
   def extend_boundary(self, r):
     """
-    Extends a 2d contour out from points in self.xycoords by a distance
-    <r> (radius) in all directions.
+    Extends a 2d contour out from points in ``self.xycoords`` by a distance
+    ``r`` (radius) in all directions.
     """
     s    = "::: extending boundary by %i meters :::" % r
     print_text(s, self.color)
@@ -1036,7 +1038,7 @@ class GetBasin(object):
     p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
     p3 = cascaded_union([p1,p2])
 
-    xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+    xycoords_buf = np.array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
     self.plot_coords["xycoords_buf"] = xycoords_buf
     self.xycoords = xycoords_buf
     s    = "::: extended contour created of length %i :::" % len(self.xycoords)
@@ -1052,7 +1054,7 @@ class GetBasin(object):
     print_text(s, self.color)
 
     xycoords = self.xycoords
-    edge = self.edge
+    edge     = self.edge
 
     polygons = []
     for i, v in enumerate(xycoords):
@@ -1064,7 +1066,7 @@ class GetBasin(object):
     p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
     p3 = cascaded_union([p1,p2])
 
-    xycoords_buf = array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+    xycoords_buf = np.array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
     self.plot_coords["xycoords_buf"] = xycoords_buf
     self.xycoords = xycoords_buf
 
@@ -1095,7 +1097,7 @@ class GetBasin(object):
     else:
       p3 = intersection
 
-    xycoords_intersect = array(zip(p3.exterior.xy[:][0], \
+    xycoords_intersect = np.array(zip(p3.exterior.xy[:][0], \
                                    p3.exterior.xy[:][1]))
 
     self.plot_coords["xycoords_intersect"] = xycoords_intersect
@@ -1104,42 +1106,57 @@ class GetBasin(object):
     s    = "::: intersection created with length %i :::"
     print_text(s % len(self.xycoords), self.color)
 
-  def plot_xycoords_buf(self, other=None):
+  def plot_xycoords(self, other=None):
     """
     """
-    fig = figure()
+    fig = plt.figure()
     ax  = fig.add_subplot(111)
     ax.set_aspect("equal")
 
+    # plot intersection
+    if "xycoords_intersect" in self.plot_coords:
+      xycoords_intersect = self.plot_coords["xycoords_intersect"]
+      ax.plot(xycoords_intersect[:,0], xycoords_intersect[:,1], 'c', lw=8.0)
+
     # plot other
-    if type(other) == ndarray:
-      ax.plot(other[:,0], other[:,1], 'g', lw=3.0)
+    if type(other) == np.ndarray:
+      ax.plot(other[:,0], other[:,1], 'g', lw=4.0)
 
     # plot buffered coordinates
     if "xycoords_buf" in self.plot_coords:
       xycoords_buf = self.plot_coords["xycoords_buf"]
-      ax.plot(xycoords_buf[:,0], xycoords_buf[:,1], 'b', lw=2.5)
+      ax.plot(xycoords_buf[:,0], xycoords_buf[:,1], 'b', lw=2.0)
 
     # plot original data
     xycoords = self.plot_coords["xycoords"]
-    ax.plot(xycoords[:,0], xycoords[:,1], 'r', lw=2.5)
+    ax.plot(xycoords[:,0], xycoords[:,1], 'r', lw=2.0)
 
     #from numpy import ma
     #interior = ma.masked_array(xycoords, array([zip(self.edge,self.edge)]))
     #ax.plot(interior[:,0], interior[:,1], 'k', lw=3.0)
 
-    # plot intersection
-    if "xycoords_intersect" in self.plot_coords:
-      xycoords_intersect = self.plot_coords["xycoords_intersect"]
-      ax.plot(xycoords_intersect[:,0], xycoords_intersect[:,1], 'c', lw=8)
-
     ax.set_title("boundaries")
-    show()
+    plt.show()
 
   def get_xy_contour(self):
     """
     """
     return self.xycoords
+  
+  def remove_skip_points(self, skip_pts):
+    """
+    remove all but those nodes which are ``skip_pts`` distance apart.
+    """
+    # remove skip points and last point to avoid overlap,
+    # but leave the edge intact :
+    mask          = np.arange(0, len(self.xycoords), skip_pts)
+    union         = np.union1d(mask, np.where(self.edge)[0])
+    self.xycoords = self.xycoords[union]
+    self.edge     = self.edge[union]
+    #self.xycoords = self.xycoords[::skip_pts,:][:-1,:]
+    #self.edge     = self.edge[::skip_pts][:-1]
+    s             = "::: contour points skipped, new length %s nodes :::"
+    print_text(s % np.shape(self.xycoords)[0], self.color)
 
 
 

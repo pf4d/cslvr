@@ -327,6 +327,102 @@ class DataFactory(object):
       vara[n] = f[::-1, :]
     return vara
 
+
+  @staticmethod
+  def get_mouginot():
+    """
+    `Greenland <http://www.mdpi.com/2072-4292/9/4/364>`_ velocity mosiac.
+    This function creates a new data field with
+    key ``mask`` that is 1 where velocity measurements are present and 
+    0 where they are not.
+   
+    The keys of the dictionary returned by this function are :
+     
+    * ``vx``  -- :math:`x`-component of velocity
+    * ``vy``  -- :math:`y`-component of velocity
+    * ``mask`` -- observation mask
+
+    :rtype: dict
+    """
+    s    = "::: getting Greenland 'Mouginot' data from DataFactory :::"
+    print_text(s, DataFactory.color)
+    
+    global home
+    
+    direc = home + '/greenland/mouginot/'
+    filen = 'Greenland_ice_speed_v2017.nc'
+
+    data  = Dataset(direc + filen, mode = 'r')
+    vara  = dict()
+    
+    needed_vars = {'VX'   : 'vx',
+                   'VY'   : 'vx'}
+    
+    s    = "    - data-fields collected : python dict key to access -"
+    print_text(s, DataFactory.color)
+    for v in data.variables:
+      try:
+        txt = '"' + needed_vars[v] + '"'
+      except KeyError:
+        txt = ''
+      print_text('      Mouginot : %-*s key : %s '%(30,v, txt), '230')
+    
+    # retrieve data :
+    vx         = array(data.variables['VY'][:])
+    vy         = array(data.variables['VX'][:])
+    mask       = (vx != 0.0).astype('i')
+    
+    # extents of domain :
+    nx    = len(data.variables['x'][:])
+    ny    = len(data.variables['y'][:])
+    dx    = 150.0
+    west  = data.variables['x'][:].min()
+    east  = data.variables['x'][:].max()
+    north = data.variables['y'][:].max()
+    south = data.variables['y'][:].min()
+
+    #projection info :
+    proj   = 'stere'
+    lat_0  = '90'
+    lat_ts = '70'
+    lon_0  = '-45'
+    
+    # create projection :
+    txt  =   " +proj="   + proj \
+           + " +lat_0="  + lat_0 \
+           + " +lat_ts=" + lat_ts \
+           + " +lon_0="  + lon_0 \
+           + " +k=1 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563" \
+           + " +towgs84=0.000,0.000,0.000 +to_meter=1"
+    p    = Proj(txt)
+
+    # close the datasets, we are done with them :
+    data.close()
+    
+    # save the data in matlab format :
+    vara['pyproj_Proj']       = p
+    vara['map_western_edge']  = west 
+    vara['map_eastern_edge']  = east 
+    vara['map_southern_edge'] = south 
+    vara['map_northern_edge'] = north
+    vara['nx']                = nx
+    vara['ny']                = ny
+    vara['dx']                = dx
+    
+    names = ['vx', 'vy', 'mask']
+    ftns  = [ vx,   vy,   mask ]
+    
+    s = '      DataInput  : %-*s key : "%s"'
+    print_text(s % (30,names[-1],names[-1]), '230')
+    
+    # save the data in matlab format :
+    vara['dataset']   = 'Mouginot'
+    vara['continent'] = 'greenland'
+    for n, f in zip(names, ftns):
+      vara[n] = f[::-1, :]
+    return vara
+
+
   @staticmethod
   def get_gimp():
     """

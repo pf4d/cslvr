@@ -7,22 +7,24 @@ mesh_name = 'nioghalvfjerdsbrae_3D'
 
 # get the data :
 bedmachine = DataFactory.get_bedmachine()
-rignot     = DataFactory.get_rignot()
+#rignot     = DataFactory.get_rignot()
+mouginot   = DataFactory.get_mouginot()
 
 # process the data :
 dbm        = DataInput(bedmachine)
-drg        = DataInput(rignot)
+#drg        = DataInput(rignot)
+dmg        = DataInput(mouginot)
 
-drg.change_projection(dbm)
+#drg.change_projection(dbm)
 
 # get surface velocity magnitude :
-U_ob = np.sqrt(drg.data['vx']**2 + drg.data['vy']**2 + 1e-16)
-drg.data['U_ob'] = U_ob
+U_ob = np.sqrt(dmg.data['vx']**2 + dmg.data['vy']**2 + 1e-16)
+dmg.data['U_ob'] = U_ob
 
 
 #===============================================================================
 # form field from which to refine :
-drg.rescale_field('U_ob', 'ref', umin=100.0, umax=300000.0, inverse=True)
+dmg.rescale_field('U_ob', 'ref', umin=100.0, umax=300000.0, inverse=True)
 
 # eliminate just the edge of the mask so that we can properly interpolate
 # the geometry to the terminus :
@@ -75,7 +77,7 @@ m.close_file()                                   # close the files
 
 #===============================================================================
 # refine :
-ref_bm = MeshRefiner(drg, 'ref', gmsh_file_name = out_dir + mesh_name)
+ref_bm = MeshRefiner(dmg, 'ref', gmsh_file_name = out_dir + mesh_name)
 
 a,aid = ref_bm.add_static_attractor()
 ref_bm.set_background_field(aid)

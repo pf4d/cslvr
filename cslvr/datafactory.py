@@ -365,7 +365,7 @@ class DataFactory(object):
         txt = '"' + needed_vars[v] + '"'
       except KeyError:
         txt = ''
-      print_text('      Mouginot : %-*s key : %s '%(30,v, txt), '230')
+      print_text('      Mouginot   : %-*s key : %s '%(30,v, txt), '230')
     
     # retrieve data :
     vx         = array(data.variables['VY'][:])

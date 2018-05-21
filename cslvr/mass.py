@@ -34,82 +34,147 @@ class Mass(Physics):
 
 class FreeSurface(Mass):
   """
-  """  
-  def __init_(self, model):
+  """ 
+  # TODO: think about how to make this usable with D2Model.
+  def __init_(self, model, thklim,
+              static_boundary_conditions = False,
+              use_shock_capturing        = False,
+              lump_mass_matrix           = False):
     """
     """
-    s    = "::: INITIALIZING FREE-SURFACE PHYSICS :::"
-    print_text(s, self.D3Model_color)
+    print_text("::: INITIALIZING FREE-SURFACE PHYSICS :::", self.color())
     
     if type(model) != D3Model:
       s = ">>> FreeSurface REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
+   
+    self.thklim                     = thklim 
+    self.static_boundary_conditions = static_boundary_conditions
+    self.use_shock_capturing        = use_shock_capturing
+    self.lump_mass_matrix           = lump_mass_matrix
+
+    # get the dof map :
+    if periodic_boundary_conditions:
+      self.d2v      = dof_to_vertex_map(model.Q_non_periodic)
+      self.mhat_non = Function(model.Q_non_periodic)
+    else:
+      self.d2v      = dof_to_vertex_map(model.Q)
+
+    Q       = model.Q
+    Q_flat  = model.Q_flat
+    ff_flat = model.ff_flat
+    ds      = model.ds_flat
+    dSrf    = model.dSrf
+    dBed    = model.dBed
     
-    # sigma coordinate :
-    self.sigma = project((model.x[2] - model.B) / (model.S - model.B),
-                         annotate=False)
-    print_min_max(self.sigma, 'sigma')
+    S       = Function(Q_flat) # surface elevation
+    adot    = Function(Q_flat) # accumulation
+    u       = Function(Q_flat) # x-component of velocity
+    v       = Function(Q_flat) # y-component of velocity
+    w       = Function(Q_flat) # z-component of velocity
+    m       = Function(Q_flat) # mesh velocity (can only be in the z direction)
+    rho     = Function(self.Q) # for calculating the ice-sheet mass
+    h       = CellSize(model.flat_mesh)
 
-    Q      = self.Q
-    Q_flat = self.Q_flat
+    # self.m when assembled gives the mass of the domain :
+    rho.vector()[:] = model.rhoi
+    self.M_tot      = rho * dx
 
-    phi    = TestFunction(Q_flat)
-    dS     = TrialFunction(Q_flat)
+    # for regions when constant surface, dSdt = 0 :    
+    self.bcs = []
+    self.bcs.append(DirichletBC(Q, 0.0, ff_flat, self.GAMMA_S_GND))  # grounded
+    self.bcs.append(DirichletBC(Q, 0.0, ff_flat, self.GAMMA_S_FLT))  # shelves
+    self.bcs.append(DirichletBC(Q, 0.0, ff_flat, self.GAMMA_U_GND))  # grounded
+    self.bcs.append(DirichletBC(Q, 0.0, ff_flat, self.GAMMA_U_FLT))  # shelves
+
+    # set up linear variational problem for unknown dSdt :
+    phi         = TestFunction(Q_flat)
+    psi         = TrialFunction(Q_flat)
+    dSdt        = Function(Q_flat)
+
+    # SUPG-modified trial function (artifical diffusion in direction of flow) :
+    U           = as_vector([u, v, w])
+    unorm       = sqrt(dot(U,U) + 1e-1)
+    phihat      = phi + h / (2.0*unorm) * dot(U, grad(phi))
+
+    # mass matrices :
+    mass        = psi * phihat * dSrf
+    lumped_mass = phi * dSrf
+
+    # stiffness matrix :
+    stiffness   = + adot * phi * dSrf \
+                  + w * phi * dSrf \
+                  - dot(U, grad(S)) * phihat * dSrf
+   
+    # shock-capturing steady-state residual dependent artificial diffusion :
+    S_mag       = dot(grad(S), grad(S)) + 1e-1
+    resid       = dot(U, grad(S)) - w - adot
+    C           = 1e1 * h / (2*unorm) * S_mag * resid**2
+    diffusion   = C * dot(grad(phi), grad(S)) * dSrf
     
-    Shat   = Function(Q_flat) # surface elevation velocity 
-    ahat   = Function(Q_flat) # accumulation velocity
-    uhat   = Function(Q_flat) # horizontal velocity
-    vhat   = Function(Q_flat) # horizontal velocity perp. to uhat
-    what   = Function(Q_flat) # vertical velocity
-    mhat   = Function(Q_flat) # mesh velocity
-    dSdt   = Function(Q_flat) # surface height change
-    M      = Function(Q_flat) # mass
-    ds     = self.ds_flat
-    dSurf  = model.dSrf
-    dBase  = model.dBed
+    # set up the Galerkin/least-squares formulation of the Stokes functional :
+    self.A_pro  = dSdt*phi*dSrf - psi*phi*dBed - psi*phi.dx(2)*dx
+
+    self.stiffness    = stiffness
+    self.diffusion    = diffusion
+    self.mass         = mass
+    self.lumped_mass  = lumped_mass
+    self.Shat         = S
+    self.ahat         = adot
+    self.uhat         = u
+    self.vhat         = v
+    self.what         = w
+    self.mhat         = m
+    self.dSdt         = dSdt
+
+  def solve(self):
+    """
+    """
+    print_text("::: solving free-surface relation :::", self.color())
     
-    self.static_boundary = DirichletBC(Q, 0.0, self.ff_flat, 4)
-    h = CellSize(self.flat_mesh)
+    model  = self.model
+    config = self.config
+  
+    # assign the current values from the deformed mesh to the sigma-coord mesh :
+    self.assign_variable(self.Shat, model.S) 
+    self.assign_variable(self.ahat, model.adot) 
+    self.assign_variable(self.uhat, model.u) 
+    self.assign_variable(self.vhat, model.v) 
+    self.assign_variable(self.what, model.w) 
 
-    # upwinded trial function :
-    unorm       = sqrt(self.uhat**2 + self.vhat**2 + 1e-1)
-    upwind_term = h/(2.*unorm)*(self.uhat*phi.dx(0) + self.vhat*phi.dx(1))
-    phihat      = phi + upwind_term
+    # assemple the stiffness matrix :
+    K = assemble(self.stiffness, keep_diagonal=True)
 
-    mass_matrix = dS * phihat * dSurf
-    lumped_mass = phi * dSurf
+    # apply static boundary conditions, if desired :
+    if self.static_boundary_conditions:
+      for bc in self.bcs: bc.apply(K)
 
-    stiffness_matrix = - self.uhat * self.Shat.dx(0) * phihat * dSurf \
-                       - self.vhat * self.Shat.dx(1) * phihat * dSurf\
-                       + (self.what + self.ahat) * phihat * dSurf
-    
-    # Calculate the nonlinear residual dependent scalar
-    term1            = self.Shat.dx(0)**2 + self.Shat.dx(1)**2 + 1e-1
-    term2            = + self.uhat*self.Shat.dx(0) \
-                       + self.vhat*self.Shat.dx(1) \
-                       - (self.what + self.ahat)
-    C                = 10.0*h/(2*unorm) * term1 * term2**2
-    diffusion_matrix = C * dot(grad(phi), grad(self.Shat)) * dSurf
-    
-    # Set up the Galerkin-least squares formulation of the Stokes' functional
-    A_pro         = - phi.dx(2)*dS*dx - dS*phi*dBase + dSdt*phi*dSurf 
-    M.vector()[:] = 1.0
-    self.M        = M*dx
+    if self.use_shock_capturing:
+      D = assemble(self.diffusion)
+      K = K - D
+      print_min_max(D, 'D')
+      print_min_max(K, 'K')
 
-    self.newz                   = Function(self.Q)
-    self.mass_matrix            = mass_matrix
-    self.stiffness_matrix       = stiffness_matrix
-    self.diffusion_matrix       = diffusion_matrix
-    self.lumped_mass            = lumped_mass
-    self.A_pro                  = A_pro
-    self.Shat                   = Shat
-    self.ahat                   = ahat
-    self.uhat                   = uhat
-    self.vhat                   = vhat
-    self.what                   = what
-    self.mhat                   = mhat
-    self.dSdt                   = dSdt
+    # calculate preliminary guess :
+    if self.lump_mass_matrix:
+      M               = assemble(self.lumped_mass)
+      M_a             = M.get_local()
+      M_a[M_a == 0.0] = 1.0
+      self.assign_variable(self.dSdt, K.get_local() / M_a)
+    else:
+      M = assemble(self.mass, keep_diagonal=True)
+      if self.static_boundary_conditions:
+        for bc in self.bcs: bc.apply(M)
+      M.ident_zeros()
+      solve(M, self.dSdt.vector(), K, annotate=False)
+   
+    # calculate GLS system :
+    A = assemble(lhs(self.A_pro))
+    p = assemble(rhs(self.A_pro))
+    q = Vector()
+    solve(A, q, p, annotate=False)
+    self.assign_variable(self.dSdt, q)
 
   def rhs_func_explicit(self, t, S, *f_args):
     """
@@ -120,56 +185,39 @@ class FreeSurface(Mass):
     :param S : Current height of the ice sheet
     :rtype   : Array containing rate of change of the ice surface values
     """
-    model             = self.model
-    config            = self.config
-    thklim            = config['free_surface']['thklim']
-    B                 = model.B.compute_vertex_values()
+    # TODO: move this function into Model class timestepping function
+    model   = self.model
+    d2v     = self.d2v
+    thklim  = self.thklim
+    B       = model.B.compute_vertex_values()
+
+    # impose the thickness limit :
     S[(S-B) < thklim] = thklim + B[(S-B) < thklim]
-    
-    # the surface is never on a periodic FunctionSpace :
-    if config['periodic_boundary_conditions']:
-      d2v = dof_to_vertex_map(model.Q_non_periodic)
-    else:
-      d2v = dof_to_vertex_map(model.Q)
-    
     model.assign_variable(model.S, S[d2v])
    
     if config['velocity']['on']:
       model.U.vector()[:] = 0.0
       self.velocity_instance.solve()
-      if config['velocity']['log']:
-        U = project(as_vector([model.u, model.v, model.w]))
-        s    = '::: saving velocity U.pvd file :::'
-        print_text(s, self.color())
-        self.file_U << U
       print_min_max(U, 'U')
 
     if config['surface_climate']['on']:
       self.surface_climate_instance.solve()
    
     if config['free_surface']['on']:
-      self.surface_instance.solve()
-      if self.config['log']:
-        s    = '::: saving surface S.pvd file :::'
-        print_text(s, self.color())
-        self.file_S << model.S
+      self.solve()
       print_min_max(model.S, 'S')
  
-    return model.dSdt.compute_vertex_values()
+    return self.dSdt.compute_vertex_values()
 
   def really_solve(self):
     """
     Performs the physics, evaluating and updating the enthalpy and age as 
     well as storing the velocity, temperature, and the age in vtk files.
-
     """
-    s    = '::: solving TransientSolver :::'
-    print_text(s, self.color())
-
-    t0     = time()
+    # TODO: move this function into Model class timestepping function
+    print_text('::: solving TransientSolver :::', self.color())
 
     model  = self.model
-    config = self.config
     
     t      = config['t_start']
     t_end  = config['t_end']
@@ -178,133 +226,81 @@ class FreeSurface(Mass):
    
     mesh   = model.mesh 
     adot   = model.adot
-    sigma  = model.sigma
-
     S      = model.S
     B      = model.B
 
-    if config['periodic_boundary_conditions']:
-      d2v      = dof_to_vertex_map(model.Q_non_periodic)
-      mhat_non = Function(model.Q_non_periodic)
-    else:
-      d2v      = dof_to_vertex_map(model.Q)
+    # history of the the total mass of the domain (iteration `k = 0`:
+    m_tot_k           = assemble(self.M_tot) 
+    self.mass_history = [m_tot_k]
 
     # Loop over all times
     while t <= t_end:
 
-      B_a = B.compute_vertex_values()
-      S_v = S.compute_vertex_values()
-      
-      tic = time()
+      # get time :
+      t0 = time()
 
-      S_0 = S_v
-      f_0 = self.rhs_func_explicit(t, S_0)
-      S_1 = S_0 + dt*f_0
-      S_1[(S_1-B_a) < thklim] = thklim + B_a[(S_1-B_a) < thklim]
+      # get nodal values :
+      B_a                      = B.compute_vertex_values()
+      S_a                      = S.compute_vertex_values()
+
+      # Runga-Kutta method ?
+      S_0                      = S_a
+      f_0                      = self.rhs_func_explicit(t, S_0)
+      S_1                      = S_0 + dt*f_0
+      S_1[(S_1-B_a) < thklim]  = thklim + B_a[(S_1-B_a) < thklim]
       model.assign_variable(S, S_1[d2v])
 
-      f_1                     = self.rhs_func_explicit(t, S_1)
-      S_2                     = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
-      S_2[(S_2-B_a) < thklim] = thklim + B_a[(S_2-B_a) < thklim] 
+      f_1                      = self.rhs_func_explicit(t, S_1)
+      S_2                      = 0.5*S_0 + 0.5*S_1 + 0.5*dt*f_1
+      S_2[(S_2-B_a) < thklim]  = thklim + B_a[(S_2-B_a) < thklim] 
       model.assign_variable(S, S_2[d2v])
-     
-      mesh.coordinates()[:, 2] = sigma.compute_vertex_values()*(S_2 - B_a) + B_a
-      if config['periodic_boundary_conditions']:
-        temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
-        model.assign_variable(mhat_non, temp)
-        m_temp = project(mhat_non,model.Q)
-        model.assign_variable(model.mhat, m_temp.vector().get_local())
+    
+      # adjust the z coordinate of the mesh vertices : 
+      z_a                      = mesh.coordinates()[:, 2]
+      S_a                      = S.compute_vertex_values()
+      sigma                    = (z_a - B_a) / (S_a - B_a)
+      
+      mesh.coordinates()[:, 2] = sigma * (S_2 - B_a) + B_a
+
+      # calculate mesh velocity :
+      if self.periodic_boundary_conditions:
+        temp = (S_2[d2v] - S_0[d2v]) / dt * sigma[d2v]
+        model.assign_variable(self.mhat_non, temp)
+        
+        # FIXME: projection not required :
+        m_temp = project(self.mhat_non, model.Q)
+        model.assign_variable(model.mhat, m_temp)
       else:
-        temp = (S_2[d2v] - S_0[d2v])/dt * sigma.vector().get_local()
+        temp = (S_2[d2v] - S_0[d2v])/dt * sigma[d2v]
         model.assign_variable(model.mhat, temp)
-      # Calculate enthalpy update
+
+      # calculate enthalpy update :
       if self.config['enthalpy']['on']:
         self.enthalpy_instance.solve(H0=model.H, Hhat=model.H, uhat=model.u, 
                                    vhat=model.v, what=model.w, mhat=model.mhat)
-        if self.config['enthalpy']['log']:
-          s    = '::: saving temperature T.pvd file :::'
-          print_text(s, self.color())
-          self.file_T << model.T
         print_min_max(model.H,  'H')
         print_min_max(model.T,  'T')
         print_min_max(model.Mb, 'Mb')
         print_min_max(model.W,  'W')
 
-      # Calculate age update
+      # calculate age update :
       if self.config['age']['on']:
         self.age_instance.solve(A0=model.A, Ahat=model.A, uhat=model.u, 
                                 vhat=model.v, what=model.w, mhat=model.mhat)
-        if config['log']: 
-          s   = '::: saving age age.pvd file :::'
-          print_text(s, self.color())
-          self.file_a << model.age
         print_min_max(model.age, 'age')
 
       # store information : 
-      if self.config['log']:
-        self.t_log.append(t)
-        M = assemble(self.surface_instance.M)
-        self.mass.append(M)
+      m_tot = assemble(self.M_tot)
+      self.mass_history.append(m_tot)
 
-      # increment time step :
-      s = '>>> Time: %i yr, CPU time for last dt: %.3f s, Mass: %.2f <<<' \
-          % (t, time()-tic, M/self.M_prev)
+      # print statistics :
+      s = '>>> sim time: %g yr, CPU time: %g s, mass m_t / m_t-1: %g <<<' \
+          % (t, time()-t0, m_tot / m_tot_k)
       print_text(s, 'red', 1)
 
-      self.M_prev = M
-      t          += dt
-      self.step_time.append(time() - tic)
-
-    # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
-    text = "Total time to compute: %02d:%02d:%02d" % (h,m,s)
-    print_text(text, 'red', 1)
-    
-  def solve(self):
-    """
-    """
-    config = self.config
-   
-    self.assign_variable(self.Shat, self.S) 
-    self.assign_variable(self.ahat, self.adot) 
-    self.assign_variable(self.uhat, self.u) 
-    self.assign_variable(self.vhat, self.v) 
-    self.assign_variable(self.what, self.w) 
-
-    m = assemble(self.mass_matrix,      keep_diagonal=True)
-    r = assemble(self.stiffness_matrix, keep_diagonal=True)
-
-    s    = "::: solving free-surface :::"
-    print_text(s, self.D3Model_color)
-    if config['free_surface']['lump_mass_matrix']:
-      m_l = assemble(self.lumped_mass)
-      m_l = m_l.get_local()
-      m_l[m_l==0.0]=1.0
-      m_l_inv = 1./m_l
-
-    if config['free_surface']['static_boundary_conditions']:
-      self.static_boundary.apply(m,r)
-
-    if config['free_surface']['use_shock_capturing']:
-      k = assemble(self.diffusion_matrix)
-      r -= k
-      print_min_max(r, 'D')
-
-    if config['free_surface']['lump_mass_matrix']:
-      self.assign_variable(self.dSdt, m_l_inv * r.get_local())
-    else:
-      m.ident_zeros()
-      solve(m, self.dSdt.vector(), r, annotate=False)
-
-    A = assemble(lhs(self.A_pro))
-    p = assemble(rhs(self.A_pro))
-    q = Vector()  
-    solve(A, q, p, annotate=False)
-    self.assign_variable(self.dSdt, q)
+      # increment :
+      m_tot_k = m_tot
+      t      += dt
 
 
 class MassHybrid(Mass):
@@ -395,7 +391,7 @@ class MassHybrid(Mass):
     self.vbar_proj = (vbar-vbar_si)*xsi*dx
 
     # mass term :
-    self.M  = dH*xsi*dx
+    self.m  = dH*xsi*dx
     
     # residual :
     self.R_thick = + (H-H0) / dt * xsi * dx \
@@ -460,12 +456,12 @@ class MassHybrid(Mass):
     s    = "::: solving for corrective velocities :::"
     print_text(s, self.color())
 
-    solve(self.M == self.ubar_proj, model.ubar_c,
+    solve(self.m == self.ubar_proj, model.ubar_c,
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=params['ffc_params'],
           annotate=annotate)
 
-    solve(self.M == self.vbar_proj, model.vbar_c,
+    solve(self.m == self.vbar_proj, model.vbar_c,
           solver_parameters={'linear_solver':'mumps'},
           form_compiler_parameters=params['ffc_params'],
           annotate=annotate)

@@ -1,6 +1,3 @@
-import inspect
-import os
-import sys
 from tifffile           import TiffFile
 from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
                                gradient
@@ -9,6 +6,9 @@ from netCDF4            import Dataset
 from scipy.interpolate  import griddata
 from pyproj             import Proj, transform
 from cslvr.inputoutput  import print_text
+import inspect
+import os
+import sys
 
 class DataFactory(object):
   """

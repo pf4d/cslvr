@@ -1,4 +1,4 @@
-from fenics            import *
+from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.physics     import Physics
 from cslvr.d2model     import D2Model

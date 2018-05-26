@@ -1,4 +1,4 @@
-from fenics            import *
+from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, print_min_max
 from cslvr.d2model     import D2Model
@@ -12,9 +12,15 @@ import sys
 class MomentumHybrid(Momentum):
   """
   2D hybrid model.
+  
+  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
   """
-  def initialize(self, model, solve_params=None, isothermal=True,
-                 linear=False, use_lat_bcs=False, use_pressure_bc=True):
+  def initialize(self, model,
+                 solve_params    = None,
+                 linear          = False,
+                 use_lat_bcs     = False,
+                 use_pressure_bc = True,
+                 isothermal      = True):
     """ 
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.
@@ -94,8 +100,7 @@ class MomentumHybrid(Momentum):
       return -1./H
 
     def A_v(T):
-      return model.A 
-      #return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
+      return conditional(le(T,263.15), Bc*exp(-Qc/(R*T)), Bw*exp(-Qw/(R*T)))
     
     def epsilon_dot(s):
       # linearize the viscosity :

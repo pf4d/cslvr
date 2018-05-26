@@ -1,18 +1,19 @@
-import subprocess
-import inspect
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image
+from PIL               import Image
 from gmshpy            import GModel, GmshSetOption, FlGui
 from scipy.interpolate import RectBivariateSpline
-from fenics            import Mesh, MeshEditor, Point, File, XDMFFile
+from dolfin            import Mesh, MeshEditor, Point, File, XDMFFile
 from pyproj            import transform
-from cslvr.inputoutput import print_text, print_min_max
-#from scipy.spatial     import ConvexHull
 from shapely.geometry  import Polygon
 from shapely.geometry  import Point as shapelyPoint
 from shapely.ops       import cascaded_union
+from cslvr.inputoutput import print_text, print_min_max
+import numpy               as np
+import matplotlib.pyplot   as plt
+import subprocess
+import inspect
+import os
+
+
 
 
 class MeshGenerator(object):
@@ -479,6 +480,8 @@ class MeshGenerator(object):
     mesh_file.write(mesh)
 
 
+
+
 class linear_attractor(object):
   r"""
   Create an attractor object which refines with min and max cell radius 
@@ -556,6 +559,9 @@ class linear_attractor(object):
         lc = l_max
     return lc
 
+
+
+
 class static_attractor(object):
   """
   """
@@ -581,6 +587,8 @@ class static_attractor(object):
     return lc
 
 
+
+
 class min_field(object):
   """
   Return the minimum of a list of attactor operator fields <f_list>.
@@ -595,6 +603,8 @@ class min_field(object):
     return min(l)
 
 
+
+
 class max_field(object):
   """
   Return the minimum of a list of attactor operator fields <f_list>.
@@ -607,6 +617,8 @@ class max_field(object):
     for f in self.f_list:
       l.append(f(x,y,z,entity))
     return max(l)
+
+
 
 
 class MeshRefiner(object):
@@ -731,6 +743,8 @@ class MeshRefiner(object):
     mesh_file.write(mesh)
 
 
+
+
 class MeshExtruder(object):
   """
   Due to extreme bugginess in the gmsh extrusion utilities, this class
@@ -820,6 +834,8 @@ class MeshExtruder(object):
   def write_mesh_to_file(self,filename):
     # Output mesh
     File(filename) << self.new_mesh
+
+
 
 class GetBasin(object):
   """

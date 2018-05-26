@@ -1,4 +1,4 @@
-from fenics               import *
+from dolfin               import *
 from dolfin_adjoint       import *
 from cslvr.inputoutput    import print_text, print_min_max
 from cslvr.d3model        import D3Model

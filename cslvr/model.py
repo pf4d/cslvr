@@ -1,15 +1,17 @@
-from fenics               import *
+from dolfin               import *
 from dolfin_adjoint       import *
-from cslvr.inputoutput    import print_text, get_text, print_min_max
 from copy                 import copy
 from scipy.io             import savemat
 from ufl                  import indexed
+from cslvr.inputoutput    import print_text, get_text, print_min_max
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
 import sys
 import os
 import re
+
+
 
 
 class Model(object):
@@ -25,7 +27,7 @@ class Model(object):
   :param out_dir:      location for the output directory
   :param order:        order of the shape function basis, default linear
   :param use_periodic: use periodic boundaries or not
-  :type mesh:          :class:`~fenics.Mesh`
+  :type mesh:          :class:`~dolfin.Mesh`
   :type out_dir:       string
   :type order:         int
   :type use_periodic:  bool
@@ -256,13 +258,13 @@ class Model(object):
 
   def generate_pbc(self):
     """
-    return a :class:`fenics.SubDomain` of periodic lateral boundaries.
+    return a :class:`dolfin.SubDomain` of periodic lateral boundaries.
     """
     raiseNotDefined()
     
   def set_mesh(self, f):
     """
-    Sets the ``mesh`` instance to ``f``, either a :class:`fenics.Mesh` or  ``.h5``
+    Sets the ``mesh`` instance to ``f``, either a :class:`dolfin.Mesh` or  ``.h5``
     file with a mesh saved with name ``mesh``.
     """
     s = "::: setting mesh :::"
@@ -375,7 +377,7 @@ class Model(object):
     * ``self.Q4`` -- :math:`\mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega)`  
     * ``self.Q_non_periodic`` -- same as ``self.Q``, but without periodic constraints
     * ``self.Q3_non_periodic`` -- same as ``self.Q3``, but without periodic constraints
-    * ``self.V`` -- same as ``self.Q3`` but formed using :class:`~fenics.VectorFunctionSpace`
+    * ``self.V`` -- same as ``self.Q3`` but formed using :class:`~dolfin.VectorFunctionSpace`
 
     """
     order = self.order
@@ -449,6 +451,16 @@ class Model(object):
     s = "::: initializng basal topography :::"
     print_text(s, cls=self.this)
     self.assign_variable(self.B, B)
+
+  def init_sigma(self, sigma):
+    r"""
+    Set sigma coordinate by calling :func:`assign_variable`.
+    
+    :param sigma:   sigma coordinate
+    """
+    s = "::: initializng sigma coordinate :::"
+    print_text(s, cls=self.this)
+    self.assign_variable(self.sigma, sigma)
 
   def init_B_err(self, B_err):
     r"""
@@ -808,7 +820,7 @@ class Model(object):
     """
     s = "::: initializing velocity magnitude :::"
     print_text(s, cls=self.this)
-    # fenics issue #405 bug workaround :
+    # dolfin issue #405 bug workaround :
     if self.use_periodic:
       u      = Function(self.Q)
       v      = Function(self.Q)
@@ -1771,20 +1783,6 @@ class Model(object):
     W_T         = conditional( lt(W,  0.01),    W,          0.01)
     self.A      = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
 
-  def calc_A(self):
-    """
-    calculates flow-rate factor ``self.A``, set to ``self.A``.
-    """
-    Tp          = self.Tp
-    W           = self.W
-    R           = self.R
-    E           = self.E
-    a_T         = conditional( lt(Tp, 263.15),  self.a_T_l, self.a_T_u)
-    Q_T         = conditional( lt(Tp, 263.15),  self.Q_T_l, self.Q_T_u)
-    W_T         = conditional( lt(W,  0.01),    W,          0.01)
-    A           = E*a_T*(1 + 181.25*W_T)*exp(-Q_T/(R*Tp))
-    self.A      = A
- 
   def calc_eta(self, epsdot):
     r"""
     Calculates viscosity :math:`\eta`, set to ``self.eta``, given by 
@@ -1824,7 +1822,7 @@ class Model(object):
   def calc_normal_vector(self):
     """
     Calculates the outward-pointing normal vector as a FEniCS function.
-    This could then be used in any :class:`~fenics.DirichletBC`.
+    This could then be used in any :class:`~dolfin.DirichletBC`.
     Saved to ``self.n_f``.
     """
     s     = "::: calculating normal-vector function :::"
@@ -1857,7 +1855,7 @@ class Model(object):
     :math:`\mathbf{u}_h = [u\ v]^\intercal` from the x-axis.
 
     :param U: horizontal velocity vector :math:`\mathbf{u}_h = [u\ v]^\intercal`
-    :rtype:  :class:`~fenics.Function` of angle values.
+    :rtype:  :class:`~dolfin.Function` of angle values.
     """
     u,v,w   = U.split(True)
     u_v     = u.vector().get_local()
@@ -1874,7 +1872,7 @@ class Model(object):
     :math:`\mathbf{u}_v = [u\ w]^\intercal` from the x-axis.
 
     :param U: vertical velocity vector :math:`\mathbf{u}_v = [u\ w]^\intercal`
-    :rtype:  :class:`~fenics.Function` of angle values.
+    :rtype:  :class:`~dolfin.Function` of angle values.
     """
     u,v,w   = self.U3.split(True)
     u_v     = u.vector().get_local()
@@ -1890,7 +1888,7 @@ class Model(object):
     by angle ``theta``.
 
     :param theta: angle in radians to rotate about the :math:`z`-axis
-    :rtype:       :class:`~fenics.Matrix` :math:`R_z`
+    :rtype:       :class:`~dolfin.Matrix` :math:`R_z`
     """
     c  = cos(theta)
     s  = sin(theta)
@@ -1905,7 +1903,7 @@ class Model(object):
     by angle ``theta``.
 
     :param theta: angle in radians to rotate about the :math:`y`-axis
-    :rtype:       :class:`~fenics.Matrix` :math:`R_y`
+    :rtype:       :class:`~dolfin.Matrix` :math:`R_y`
     """
     c  = cos(theta)
     s  = sin(theta)
@@ -1930,9 +1928,9 @@ class Model(object):
 
       M_r = R \cdot M
 
-    :param M:     :class:`~fenics.Matrix` or :class:`~fenics.Tensor` to be 
+    :param M:     :class:`~dolfin.Matrix` or :class:`~dolfin.Tensor` to be 
                   rotated
-    :param R:     rotation :class:`~fenics.Matrix` or :class:`~fenics.Tensor`
+    :param R:     rotation :class:`~dolfin.Matrix` or :class:`~dolfin.Tensor`
     :rtype:       rotated matrix
     """
     if len(M.ufl_shape) == 2:
@@ -1985,7 +1983,7 @@ class Model(object):
 
     :param U:    :class:`~fencics.GenericVector`, list, or tuple of vector
                  components
-    :rtype:      normalized :class:`~fenics.GenericVector`
+    :rtype:      normalized :class:`~dolfin.GenericVector`
                  :math:`\hat{\mathbf{u}}` of :math:`\mathbf{u}`
     """
     s   = "::: normalizing vector :::"
@@ -2000,7 +1998,7 @@ class Model(object):
     # normalize the vector :
     U_v /= norm_u
     
-    # convert back to fenics :
+    # convert back to dolfin :
     U_f = []
     for u_v in U_v:
       u_f = Function(Q, name='u_f')
@@ -2015,9 +2013,9 @@ class Model(object):
     Assign the values from the function ``u_from`` to the function ``u_to``,
     where ``u_from`` and ``u_to`` are defined over non-identical meshes.
 
-    :param u_to:    :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :param u_to:    :class:`~dolfin.Function` or :class:`~dolfin.GenericVector`
                     to assign to
-    :param u_from: :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :param u_from: :class:`~dolfin.Function` or :class:`~dolfin.GenericVector`
                    to assign from
     """
     s   = "::: assigning submesh variable :::"
@@ -2029,17 +2027,17 @@ class Model(object):
   def assign_variable(self, u, var, annotate=False):
     """
     Manually assign the values from ``var`` to ``u``.  The parameter ``var``
-    may be a string pointing to the location of an :class:`~fenics.XDMFFile`, 
-    :class:`~fenics.HDF5File`, or an xml file.
+    may be a string pointing to the location of an :class:`~dolfin.XDMFFile`, 
+    :class:`~dolfin.HDF5File`, or an xml file.
 
-    :param u:        FEniCS :class:`~fenics.Function` assigning to
+    :param u:        FEniCS :class:`~dolfin.Function` assigning to
     :param var:      value assigning from
     :param annotate: allow Dolfin-Adjoint annotation
-    :type var:       float, int, :class:`~fenics.Expression`,
-                     :class:`~fenics.Constant`, :class:`~fenics.GenericVector`,
-                     string, :class:`~fenics.HDF5File`
-    :type u:         :class:`~fenics.Function`, :class:`~fenics.GenericVector`,
-                     :class:`~fenics.Constant`, float, int
+    :type var:       float, int, :class:`~dolfin.Expression`,
+                     :class:`~dolfin.Constant`, :class:`~dolfin.GenericVector`,
+                     string, :class:`~dolfin.HDF5File`
+    :type u:         :class:`~dolfin.Function`, :class:`~dolfin.GenericVector`,
+                     :class:`~dolfin.Constant`, float, int
     :type annotate:  bool
     """
     if isinstance(var, float) or isinstance(var, int):
@@ -2087,15 +2085,15 @@ class Model(object):
 
   def save_hdf5(self, u, f, name=None):
     """
-    Save a :class:`~fenics.Function` ``u`` to the .h5 file ``f`` in the 
+    Save a :class:`~dolfin.Function` ``u`` to the .h5 file ``f`` in the 
     ``hdf5`` subdirectory of ``self.out_dir``.  If ``name`` = ``None``, 
     this will save the flie under ``u.name()``.
 
     :param u: the function to save
     :param f: the file to save to
-    :type f:  :class:`~fenics.HDF5File`
-    :type u:  :class:`~fenics.Constant`, :class:`~fenics.Function`, or 
-              :class:`~fenics.GenericVector`
+    :type f:  :class:`~dolfin.HDF5File`
+    :type u:  :class:`~dolfin.Constant`, :class:`~dolfin.Function`, or 
+              :class:`~dolfin.GenericVector`
     """
     if name == None:
       name = u.name()
@@ -2106,11 +2104,11 @@ class Model(object):
 
   def save_xdmf(self, u, name, f=None, t=0.0):
     """
-    Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
-    :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
+    Save a :class:`~dolfin.XDMFFile` with name ``name`` of the 
+    :class:`~dolfin.Function` ``u`` to the ``xdmf`` directory specified by 
     ``self.out_dir``.
     
-    If ``f`` is a :class:`~fenics.XDMFFile` object, save to this instead.
+    If ``f`` is a :class:`~dolfin.XDMFFile` object, save to this instead.
 
     If ``t`` is a float or an int, mark the file with the timestep ``t``.
 
@@ -2118,14 +2116,14 @@ class Model(object):
     :param name: the name of the .xdmf file to save
     :param f:    the file to save to
     :param t:    the timestep to mark the file with
-    :type f:     :class:`~fenics.XDMFFile`
-    :type u:     :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type f:     :class:`~dolfin.XDMFFile`
+    :type u:     :class:`~dolfin.Function` or :class:`~dolfin.GenericVector`
     :type t:     int or float
     """
     if f != None:
       s       = "::: saving %s.xdmf file :::" % name
       print_text(s, 'green')#cls=self.this)
-      f << (u, float(t))
+      f.write(u)
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
       print_text(s, 'green')#cls=self.this)
@@ -2137,12 +2135,12 @@ class Model(object):
     Create Matlab version 4 file output of regular gridded data contained by 
     ``f``.  Currently, this function only works for 2D :math:`x,y`-plane data.
 
-    :param u:  a :class:`~fenics.Function`, to be mapped onto the regular 
+    :param u:  a :class:`~dolfin.Function`, to be mapped onto the regular 
                grid used by ``di``
     :param di: a :class:`~inputoutput.DataInput` object
     :param filename: filename to save as
     :param val:      value to make values outside of mesh, default :math:`e`
-    :type u:         :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type u:         :class:`~dolfin.Function` or :class:`~dolfin.GenericVector`
     :type filename:  string
     :type val:       float
     :rtype:          MatLab file ``<self.out_dir>/matlab/<filename>.mat``.
@@ -2178,7 +2176,7 @@ class Model(object):
 
     :param lst:    list
     :param h5File: the file to save to
-    :type h5File:  :class:`~fenics.HDF5File`
+    :type h5File:  :class:`~dolfin.HDF5File`
     """
     s    = '::: saving variables in list arg post_tmc_save_vars :::'
     print_text(s, cls=self.this)
@@ -2191,7 +2189,7 @@ class Model(object):
     to hd5f file ``h5File``.
 
     :param h5File: the file to save to
-    :type h5File: :class:`~fenics.HDF5File`
+    :type h5File: :class:`~dolfin.HDF5File`
     """
     s = "::: writing 'ff' FacetFunction to supplied hdf5 file :::"
     print_text(s, cls=self)
@@ -2207,10 +2205,10 @@ class Model(object):
 
   def save_mesh(self, h5File): 
     """
-    save the mesh ``self.mesh`` to :class:`~fenics.HDF5File` ``h5File``.
+    save the mesh ``self.mesh`` to :class:`~dolfin.HDF5File` ``h5File``.
     
     :param h5File: the file to save to
-    :type h5File:  :class:`~fenics.HDF5File`
+    :type h5File:  :class:`~dolfin.HDF5File`
     """
     s = "::: writing 'mesh' to supplied hdf5 file :::"
     print_text(s, cls=self.this)
@@ -2235,12 +2233,12 @@ class Model(object):
     
     Coordinates of various types : 
 
-    * ``self.x``   -- :class:`~fenics.SpatialCoordinate` for ``self.mesh``
-    * ``self.h``   -- :class:`~fenics.CellDiameter` for ``self.mesh``
-    * ``self.N``   -- :class:`~fenics.FacetNormal` for ``self.mesh``
-    * ``self.lat`` -- latitude :class:`~fenics.Function`
-    * ``self.lon`` -- longitude :class:`~fenics.Function`
-    * ``self.n_f`` -- outward-pointing normal :class:`~fenics.Function`
+    * ``self.x``   -- :class:`~dolfin.SpatialCoordinate` for ``self.mesh``
+    * ``self.h``   -- :class:`~dolfin.CellDiameter` for ``self.mesh``
+    * ``self.N``   -- :class:`~dolfin.FacetNormal` for ``self.mesh``
+    * ``self.lat`` -- latitude :class:`~dolfin.Function`
+    * ``self.lon`` -- longitude :class:`~dolfin.Function`
+    * ``self.n_f`` -- outward-pointing normal :class:`~dolfin.Function`
 
     Time step :
 
@@ -2353,6 +2351,7 @@ class Model(object):
     self.lat           = Function(self.Q, name='lat')
     self.lon           = Function(self.Q, name='lon')
     self.n_f           = Function(self.V, name='n_f')
+    self.sigma         = Function(self.Q, name='sigma')
 
     # time step :
     self.time_step = Constant(100.0)
@@ -2391,7 +2390,7 @@ class Model(object):
     self.assy  = FunctionAssigner(v.function_space(), self.Q_non_periodic)
     self.assz  = FunctionAssigner(w.function_space(), self.Q_non_periodic)
 
-    # momentum model :
+    # momentum :
     self.eta           = Function(self.Q, name='eta')
     self.p             = Function(self.Q_non_periodic, name='p')
     self.beta          = Function(self.Q, name='beta')
@@ -2401,8 +2400,12 @@ class Model(object):
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
     self.lam           = Function(self.Q, name='lam')
+
+    # mass :
+    self.adot          = Function(self.Q, name='adot')  # upper smb
+    self.dSdt          = Function(self.Q, name='dSdt')
     
-    # energy model :
+    # energy :
     self.T             = Function(self.Q, name='T')
     self.Tp            = Function(self.Q, name='Tp')
     self.q_geo         = Function(self.Q, name='q_geo')
@@ -2432,19 +2435,21 @@ class Model(object):
     self.temp_rat      = Function(self.Q, name='temp_rat')
     self.k_0           = Constant(1.0,    name='k_0')
     self.k_0.rename('k_0', 'k_0')
-    
-    # adjoint model :
+
+    # always initialize the bulk density :
+    self.assign_variable(self.rhob, self.rhoi)
+
+    # adjoint :
     self.control_opt   = Function(self.Q, name='control_opt')
 
-    # balance Velocity model :
-    self.adot          = Function(self.Q, name='adot')
+    # balance Velocity :
     self.d_x           = Function(self.Q, name='d_x')
     self.d_y           = Function(self.Q, name='d_y')
     self.Ubar          = Function(self.Q, name='Ubar')
     self.uhat          = Function(self.Q, name='uhat')
     self.vhat          = Function(self.Q, name='vhat')
-    
-    # Stress-balance model (this is always non-periodic) :
+
+    # Stress-balance (this is always non-periodic) :
     self.M_ii          = Function(self.Q_non_periodic, name='M_ii')
     self.M_ij          = Function(self.Q_non_periodic, name='M_ij')
     self.M_iz          = Function(self.Q_non_periodic, name='M_iz')
@@ -2584,253 +2589,6 @@ class Model(object):
         s    = "::: calling home-rolled Newton method callback :::"
         print_text(s, cls=self.this)
         cb_ftn()
-
-  def thermo_solve(self, momentum, energy, wop_kwargs,
-                   callback=None, atol=1e2, rtol=1e0, max_iter=50,
-                   iter_save_vars=None, post_tmc_save_vars=None,
-                   starting_i=1):
-    r""" 
-    Perform thermo-mechanical coupling between momentum and energy.
-
-    :param momentum:       an :class:`~momentum.Momentum` instance
-    :param energy:         an :class:`~energy.Energy` instance.  Currently 
-                           this only works for :class:`~energy.Enthalpy`
-    :param wop_kwargs:     a :py:class:`~dict` of arguments for
-                           water-optimization method 
-                           :func:`~energy.Energy.optimize_water_flux`
-    :param callback:       a function that is called back at the end of each 
-                           iteration
-    :param atol:           absolute stopping tolerance 
-                           :math:`a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert`
-    :param rtol:           relative stopping tolerance
-                           :math:`r_{tol} \leq \Vert r_n - r_{n-1} \Vert`
-    :param max_iter:       maximum number of iterations to perform
-    :param iter_save_vars: python :py:class:`~list` containing functions to 
-                           save each iteration
-    :param starting_i:     if you are restarting this process, you may start 
-                           it at a later iteration. 
-    """
-    s    = '::: performing thermo-mechanical coupling with atol = %.2e, ' + \
-           'rtol = %.2e, and max_iter = %i :::'
-    print_text(s % (atol, rtol, max_iter), cls=self.this)
-    
-    from cslvr import Momentum
-    from cslvr import Energy
-    
-    if not isinstance(momentum, Momentum):
-      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
-      print_text(s % type(momentum) , 'red', 1)
-      sys.exit(1)
-    
-    if not isinstance(energy, Energy):
-      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
-      print_text(s % type(energy) , 'red', 1)
-      sys.exit(1)
-
-    # mark starting time :
-    t0   = time()
-
-    # ensure that we have a steady-state form :
-    if energy.transient:
-      energy.make_steady_state()
-
-    # retain base install directory :
-    out_dir_i = self.out_dir
-
-    # directory for saving convergence history :
-    d_hist   = self.out_dir + 'tmc/convergence_history/'
-    if not os.path.exists(d_hist) and self.MPI_rank == 0:
-      os.makedirs(d_hist)
-
-    # number of digits for saving variables :
-    n_i  = len(str(max_iter))
-    
-    # get the bounds of Fb, the max will be updated based on temperate zones :
-    if energy.energy_flux_mode == 'Fb':
-      bounds = copy(wop_kwargs['bounds'])
-      self.init_Fb_min(bounds[0])
-      self.init_Fb_max(bounds[1])
-      wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
-
-    # L_2 erro norm between iterations :
-    abs_error = np.inf
-    rel_error = np.inf
-      
-    # number of iterations, from a starting point (useful for restarts) :
-    if starting_i <= 1:
-      counter = 1
-    else:
-      counter = starting_i
-   
-    # previous velocity for norm calculation
-    U_prev    = self.theta.copy(True)
-
-    # perform a fixed-point iteration until the L_2 norm of error 
-    # is less than tolerance :
-    while abs_error > atol and rel_error > rtol and counter <= max_iter:
-       
-      # set a new unique output directory :
-      out_dir_n = 'tmc/%0*d/' % (n_i, counter)
-      self.set_out_dir(out_dir_i + out_dir_n)
-      
-      # solve velocity :
-      momentum.solve(annotate=False)
-
-      # update pressure-melting point :
-      energy.calc_T_melt(annotate=False)
-
-      # calculate basal friction heat flux :
-      momentum.calc_q_fric()
-      
-      # derive temperature and temperature-melting flux terms :
-      energy.calc_basal_temperature_flux()
-      energy.calc_basal_temperature_melting_flux()
-
-      # solve energy steady-state equations to derive temperate zone :
-      energy.derive_temperate_zone(annotate=False)
-      
-      # fixed-point interation for thermal parameters and discontinuous 
-      # properties :
-      energy.update_thermal_parameters(annotate=False)
-      
-      # calculate the basal-melting rate :
-      energy.solve_basal_melt_rate()
-      
-      # always initialize Fb to the zero-energy-flux bc :  
-      Fb_v = self.Mb.vector().get_local() * self.rhoi(0) / self.rhow(0)
-      self.init_Fb(Fb_v)
-  
-      # update bounds based on temperate zone :
-      if energy.energy_flux_mode == 'Fb':
-        Fb_m_v                 = self.Fb_max.vector().get_local()
-        alpha_v                = self.alpha.vector().get_local()
-        Fb_m_v[:]              = DOLFIN_EPS
-        Fb_m_v[alpha_v == 1.0] = bounds[1]
-        self.init_Fb_max(Fb_m_v)
-      
-      # optimize the flux of water to remove abnormally high water :
-      if energy.energy_flux_mode == 'Fb':
-        energy.optimize_water_flux(**wop_kwargs)
-
-      # solve the energy-balance and partition T and W from theta :
-      energy.solve(annotate=False)
-      
-      # calculate L_2 norms :
-      abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
-      tht_nrm      = norm(self.theta.vector(), 'l2')
-
-      # save convergence history :
-      if counter == 1:
-        rel_error  = abs_error_n
-        if self.MPI_rank == 0:
-          err_a = np.array([abs_error_n])
-          nrm_a = np.array([tht_nrm])
-          np.savetxt(d_hist + 'abs_err.txt',    err_a)
-          np.savetxt(d_hist + 'theta_norm.txt', nrm_a)
-      else:
-        rel_error = abs(abs_error - abs_error_n)
-        if self.MPI_rank == 0:
-          err_n = np.loadtxt(d_hist + 'abs_err.txt')
-          nrm_n = np.loadtxt(d_hist + 'theta_norm.txt')
-          err_a = np.append(err_n, np.array([abs_error_n]))
-          nrm_a = np.append(nrm_n, np.array([tht_nrm]))
-          np.savetxt(d_hist + 'abs_err.txt',     err_a)
-          np.savetxt(d_hist + 'theta_norm.txt',  nrm_a)
-
-      # print info to screen :
-      if self.MPI_rank == 0:
-        s0    = '>>> '
-        s1    = 'TMC fixed-point iteration %i (max %i) done: ' \
-                 % (counter, max_iter)
-        s2    = 'r (abs) = %.2e ' % abs_error
-        s3    = '(tol %.2e), '    % atol
-        s4    = 'r (rel) = %.2e ' % rel_error
-        s5    = '(tol %.2e)'      % rtol
-        s6    = ' <<<'
-        text0 = get_text(s0, 'red', 1)
-        text1 = get_text(s1, 'red')
-        text2 = get_text(s2, 'red', 1)
-        text3 = get_text(s3, 'red')
-        text4 = get_text(s4, 'red', 1)
-        text5 = get_text(s5, 'red')
-        text6 = get_text(s6, 'red', 1)
-        print text0 + text1 + text2 + text3 + text4 + text5 + text6
-      
-      # update error stuff and increment iteration counter :
-      abs_error    = abs_error_n
-      U_prev       = self.theta.copy(True)
-      counter     += 1
-
-      # call callback function if set :
-      if callback != None:
-        s    = '::: calling thermo-couple-callback function :::'
-        print_text(s, cls=self.this)
-        callback()
-    
-      # save state to unique hdf5 file :
-      if isinstance(iter_save_vars, list):
-        s    = '::: saving variables in list arg iter_save_vars :::'
-        print_text(s, cls=self.this)
-        out_file = self.out_dir + 'tmc.h5'
-        foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-        for var in iter_save_vars:
-          self.save_hdf5(var, f=foutput)
-        foutput.close()
-    
-    # reset the base directory ! :
-    self.set_out_dir(out_dir_i)
-    
-    # reset the bounds on Fb :
-    if energy.energy_flux_mode == 'Fb':  wop_kwargs['bounds'] = bounds
-      
-    # save state to unique hdf5 file :
-    if isinstance(post_tmc_save_vars, list):
-      s    = '::: saving variables in list arg post_tmc_save_vars :::'
-      print_text(s, cls=self.this)
-      out_file = self.out_dir + 'tmc.h5'
-      foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-      for var in post_tmc_save_vars:
-        self.save_hdf5(var, f=foutput)
-      foutput.close()
-
-    # calculate total time to compute
-    tf = time()
-    s  = tf - t0
-    m  = s / 60.0
-    h  = m / 60.0
-    s  = s % 60
-    m  = m % 60
-    text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
-    print_text(text, 'red', 1)
-       
-    # plot the convergence history : 
-    s    = "::: convergence info saved to \'%s\' :::"
-    print_text(s % d_hist, cls=self.this)
-    if self.MPI_rank == 0:
-      np.savetxt(d_hist + 'time.txt', np.array([tf - t0]))
-
-      err_a = np.loadtxt(d_hist + 'abs_err.txt')
-      nrm_a = np.loadtxt(d_hist + 'theta_norm.txt')
-     
-      # plot iteration error : 
-      fig   = plt.figure()
-      ax    = fig.add_subplot(111)
-      ax.set_ylabel(r'$\Vert \theta_{n-1} - \theta_n \Vert$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(err_a, 'k-', lw=2.0)
-      plt.grid()
-      plt.savefig(d_hist + 'abs_err.png', dpi=100)
-      plt.close(fig)
-      
-      # plot theta norm :
-      fig = plt.figure()
-      ax  = fig.add_subplot(111)
-      ax.set_ylabel(r'$\Vert \theta_n \Vert$')
-      ax.set_xlabel(r'iteration')
-      ax.plot(nrm_a, 'k-', lw=2.0)
-      plt.grid()
-      plt.savefig(d_hist + 'theta_norm.png', dpi=100)
-      plt.close(fig)
 
   def assimilate_U_ob(self, momentum, beta_i, max_iter, 
                       tmc_kwargs, uop_kwargs,
@@ -3284,124 +3042,105 @@ class Model(object):
       #np.savetxt(d + 'Js.txt',   np.array(fin_Js))
       #np.savetxt(d + 'as.txt',   np.array(alphas))
 
-  def transient_solve(self, momentum, energy, mass, t_start, t_end, time_step,
-                      adaptive=False, annotate=False, callback=None):
+  def thermo_solve(self, thermo_kwargs):
+    """
+    Perform thermo-mechanical coupling between momentum and energy.
+    
+    This needs be implemented by children of the :class:`~model.Model` class. 
+    """
+    raiseNotDefined()
+  
+  def transient_iteration(self, momentum, mass, time_step, adaptive, annotate):
+    """
+    This function defines one interation of the transient solution, and is 
+    called by the function ``model.transient_solve``.
+    
+    This must be implemented by the child classes for 
+    :func:`self.transient_solve`` to work.
+    """
+    raiseNotDefined()
+
+  def transient_solve(self, momentum, mass, t_start, t_end, time_step,
+                      tmc_kwargs = None,
+                      adaptive   = False,
+                      annotate   = False,
+                      callback   = None):
     """
     """
     s    = '::: performing transient run :::'
     print_text(s, cls=self)
     
     from cslvr.momentum import Momentum
-    from cslvr.energy   import Energy
     from cslvr.mass     import Mass
-    
+
+    # the minimum requirements for a transient solve are momentum and mass : 
     if momentum.__class__.__base__ != Momentum:
       s = ">>> transient_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
       print_text(s % type(momentum), 'red', 1)
-      sys.exit(1)
-    
-    if energy.__class__.__base__ != Energy:
-      s = ">>> transient_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
-      print_text(s % type(energy), 'red', 1)
       sys.exit(1)
     
     if mass.__class__.__base__ != Mass:
       s = ">>> transient_solve REQUIRES A 'Mass' INSTANCE, NOT %s <<<"
       print_text(s % type(mass), 'red', 1)
       sys.exit(1)
-    
+
     stars = "*****************************************************************"
     self.init_time_step(time_step)
-    self.step_time = []
     t0             = time()
     t              = t_start
     dt             = time_step
-    alpha          = momentum.solve_params['solver']['newton_solver']
-    alpha          = alpha['relaxation_parameter']
+    # TODO: replace the while loop with iterator over `times` to eliminate
+    #       accumulated floating-point error.  Also, the adaptive solver should
+    #       be made to follow the CFL condition :
+    #times         = np.linspace(t_start, t_end, (t_end - t_start) / dt)
+    par            = momentum.solve_params['solver']['newton_solver']
+    alpha          = par['relaxation_parameter']
+
+    # history of the the total mass of the domain (iteration `k = 0`:
+    self.step_time    = []                    # list of time steps (for adapt)
+    m_tot_k           = assemble(mass.M_tot)  # initial mass
+    print_min_max(m_tot_k, 'initial m_tot_k')
+    self.mass_history = [m_tot_k]             # mass history
    
     # Loop over all times
+    # TODO: provide the ability to use self.thermo_solve() !!!!!
     while t <= t_end:
 
       # start the timer :
       tic = time()
+
+      # this will be implemented in the child class (see template above) : 
+      self.transient_iteration(momentum, mass, dt, adaptive, annotate)
       
-      # solve momentum equation, lower alpha on failure :
-      if adaptive:
-        solved_u = False
-        par    = momentum.solve_params['solver']['newton_solver']
-        while not solved_u:
-          if par['relaxation_parameter'] < 0.2:
-            status_u = [False, False]
-            break
-          # always reset velocity for good convergence :
-          self.assign_variable(momentum.get_U(), DOLFIN_EPS)
-          status_u = momentum.solve(annotate=annotate)
-          solved_u = status_u[1]
-          if not solved_u:
-            par['relaxation_parameter'] /= 1.43
-            print_text(stars, 'red', 1)
-            s = ">>> WARNING: newton relaxation parameter lowered to %g <<<"
-            print_text(s % par['relaxation_parameter'], 'red', 1)
-            print_text(stars, 'red', 1)
+      # thermo-mechanical couple if desired :
+      if tmc_kwargs is not None: self.thermo_solve(**tmc_kwargs)
 
-      # solve velocity :
-      else:
-        momentum.solve(annotate=annotate)
-    
-      # solve mass equations, lowering time step on failure :
-      if adaptive:
-        solved_h = False
-        while not solved_h:
-          if dt < DOLFIN_EPS:
-            status_h = [False,False]
-            break
-          H        = self.H.copy(True)
-          status_h = mass.solve(annotate=annotate)
-          solved_h = status_h[1]
-          if t <= 100:
-            solved_h = True
-          if not solved_h:
-            dt /= 2.0
-            print_text(stars, 'red', 1)
-            s = ">>> WARNING: time step lowered to %g <<<"
-            print_text(s % dt, 'red', 1)
-            self.init_time_step(dt)
-            self.init_H_H0(H)
-            print_text(stars, 'red', 1)
+      # calculate the total mass :
+      m_tot = assemble(mass.M_tot)
+      print_min_max(m_tot_k, 'm_tot_k')
 
-      # solve mass :
-      else:
-        mass.solve(annotate=annotate)
-      
-      ## use adaptive solver if desired :
-      #if adaptive and (not mom_s[1] or not mas_s[1]):
-      #  s = "::: reducing time step for convergence :::"
-      #  print_text(s, self.color())
-      #  solved, dt, t = self.adaptive_update(momentum, energy, mass,
-      #                                       t_start, t_end, t,
-      #                                       annotate=annotate)
-      #  time_step = dt
-      #  self.init_time_step(dt)
-      
-      # solve energy :
-      energy.solve(annotate=annotate)
-
-      # update pressure-melting point :
-      energy.calc_T_melt(annotate=annotate)
-
+      # call a user-defined callback function!  useful!  solve age equation!
       if callback != None:
-        s    = '::: calling callback function :::'
-        print_text(s,cls=self.this)
+        print_text('::: calling callback function :::', cls=self.this)
         callback()
-       
-      # increment time step :
-      s = '>>> Time: %g yr, CPU time for last dt: %.3f s <<<'
-      print_text(s % (t+dt, time()-tic), 'red', 1)
 
-      t += dt
-      self.step_time.append(time() - tic)
-      
+      # end the timer :
+      tok = time()
+ 
+      # print statistics :
+      s = '>>> sim time: %g yr, CPU time: %g s, mass m_t / m_{t-1}: %g <<<'
+      print_text(s % (t, tok - tic, m_tot / m_tot_k), 'red', 1)
+
+      # store information : 
+      self.mass_history.append(m_tot)
+      self.step_time.append(tok - tic)
+
+      # increment :
+      m_tot_k = m_tot
+      t      += dt
+
       # for the subsequent iteration, reset the parameters to normal :
+      # TODO: fix the adaptive to something with CFL.
       if adaptive:
         if par['relaxation_parameter'] != alpha:
           print_text("::: resetting alpha to normal :::", cls=self.this)
@@ -3410,7 +3149,6 @@ class Model(object):
           print_text("::: resetting dt to normal :::", cls=self.this)
           self.init_time_step(time_step)
           dt = time_step
-      
 
     # calculate total time to compute
     s = time() - t0

@@ -1,4 +1,4 @@
-from fenics                 import *
+from dolfin                 import *
 from dolfin_adjoint         import *
 from cslvr.inputoutput      import get_text, print_text, print_min_max
 from cslvr.d3model          import D3Model
@@ -15,6 +15,8 @@ import os
 import json
 
 
+
+
 class Energy(Physics):
   """
   Abstract class outlines the structure of an energy conservation.
@@ -26,10 +28,15 @@ class Energy(Physics):
     """
     instance = Physics.__new__(self, model)
     return instance
-  
-  def __init__(self, model, momentum, solve_params=None, transient=False,
-               use_lat_bc=False, energy_flux_mode='Fb',
-               stabilization_method='GLS'):
+ 
+  # TODO: `energy_flux_mode` and `stabilization_method` are specific to the 
+  #       D3Model energy solvers.
+  def __init__(self, model, momentum,
+               solve_params         = None,
+               transient            = False,
+               use_lat_bc           = False,
+               energy_flux_mode     = 'Fb',
+               stabilization_method = 'GLS'):
     """
     """
     s    = "::: INITIALIZING ENERGY :::"
@@ -535,6 +542,8 @@ class Energy(Physics):
     Perform the Newton solve of the energy equation.
     """
     raiseNotDefined()
+
+
 
 
 class Enthalpy(Energy):
@@ -1479,12 +1488,21 @@ class Enthalpy(Energy):
       model.assign_variable(model.W,  W_v)
 
 
+
+
 class EnergyHybrid(Energy):
   """
   New 2D hybrid model.
+
+  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
   """
-  def initialize(self, model, solve_params=None, transient=False,
-                 use_lat_bc=False, epsdot_ftn=None, zero_energy_flux=False):
+  # TODO: `energy_flux_mode` and `stabilization_method` makes no sense here.
+  def initialize(self, model, momentum,
+                 solve_params         = None,
+                 transient            = False,
+                 use_lat_bc           = False,
+                 energy_flux_mode     = 'Fb',
+                 stabilization_method = 'GLS'):
     """ 
     Set up energy equation residual. 
     """
@@ -1517,7 +1535,6 @@ class EnergyHybrid(Energy):
     beta    = model.beta
     T_s     = model.T_surface
     T_w     = model.T_w
-    U       = model.UHV
     H       = model.H
     H0      = model.H0
     T_      = model.T_
@@ -1540,7 +1557,8 @@ class EnergyHybrid(Energy):
     # ANSATZ    
     coef  = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
     dcoef = [lambda s:0.0, lambda s:5*s**3]
-    
+
+    U    = momentum.U
     u_   = [U[0], U[2]]
     v_   = [U[1], U[3]]
     
@@ -1657,10 +1675,11 @@ class EnergyHybrid(Energy):
     """ 
     Returns a set of default ffc options that yield good performance
     """
-    ffc_options = {"optimize"               : True,
-                   "eliminate_zeros"        : True,
-                   "precompute_basis_const" : True,
-                   "precompute_ip_const"    : True}
+    #ffc_options = {"optimize"               : True,
+    #               "eliminate_zeros"        : True,
+    #               "precompute_basis_const" : True,
+    #               "precompute_ip_const"    : True}
+    ffc_options = {"optimize"               : True}
     return ffc_options
 
   def default_solve_params(self):
@@ -1701,6 +1720,9 @@ class EnergyHybrid(Energy):
     model.assign_variable(model.Ts, out_T[0])
     model.assign_variable(model.Tb, out_T[-1]) 
 
+    # update the melting temperature too : 
+    self.calc_T_melt(annotate=annotate)
+
   def calc_T_melt(self, annotate=False):
     """
     Calculates pressure-melting point in model.T_melt.
@@ -1717,10 +1739,18 @@ class EnergyHybrid(Energy):
     model.assign_variable(model.Tm,     T_melt)
 
 
-class EnergyFirn(Energy):
 
-  def initialize(self, model, momentum, solve_params=None, transient=False,
-                 use_lat_bc=False, energy_flux_mode='Fb', reset=False):
+
+class EnergyFirn(Energy):
+  """
+  """
+  # TODO: energy flux mode makes no sense here.
+  def initialize(self, model, momentum,
+                 solve_params     = None,
+                 transient        = False,
+                 use_lat_bc       = False,
+                 energy_flux_mode = 'Fb',
+                 reset            = False):
     """
     """
     s    = "::: INITIALIZING FIRN ENERGY PHYSICS :::"

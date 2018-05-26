@@ -1,7 +1,7 @@
+from dolfin import Mesh
 import inspect
 import os
 import sys
-from fenics import Mesh
 
 class MeshFactory(object):
     

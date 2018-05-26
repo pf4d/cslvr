@@ -17,8 +17,11 @@ class Age(Physics):
                   attributes such as velocties, age, and surface climate
   """
 
-  def __init__(self, model, solve_params=None, transient=False,
-               use_smb_for_ela=False, ela=None):
+  def __init__(self, model,
+               solve_params    = None,
+               transient       = False,
+               use_smb_for_ela = False,
+               ela             = None):
     """ 
     Set up the equations 
     """
@@ -61,7 +64,7 @@ class Age(Physics):
       self.L = + Constant(1.0) * phi * dx \
                + tau * L(phi) * dx
    
-    # FIXME: 3D model does not mesh-movement anymore. 
+    # FIXME: 3D model does not currently support mesh-movement. 
     else:
       s    = "    - using transient -"
       print_text(s, self.color())
@@ -75,13 +78,14 @@ class Age(Physics):
       tau    = h / (2 * Unorm)
 
       # midpoint value of age for Crank-Nicholson :
+      # FIXME: what is ahat?
       a_mid = 0.5*(a + self.ahat)
       
       # SUPG intrinsic time parameter :
       Unorm = sqrt(dot(U,U) + DOLFIN_EPS)
       tau   = h / (2 * Unorm)
       
-      # the advective part of the operator : 
+      # the differental operator is entirely advective : 
       def L(u): return dot(U, grad(u))
 
       # streamlin-upwind/Petrov-Galerkin form : 
@@ -105,47 +109,17 @@ class Age(Physics):
         return x[2] > ela and on_boundary
       self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
 
-  def solve(self):
+  def solve(self, annotate=False):
     """ 
     Solve the system
     """
-    model  = self.model
-
-    # Solve!
-    s    = "::: solving age :::"
-    print_text(s, self.color())
-    #solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
-    solve(self.a == self.L, self.age, self.bc_age)
-    model.age.interpolate(self.age)
-    print_min_max(model.age, 'age')
-  
-  
-  def solve_age(self, ahat=None, a0=None, uhat=None, what=None, vhat=None):
-    """ 
-    Solve the system
+    print_text("::: solving age :::", self.color())
     
-    :param ahat   : Observable estimate of the age
-    :param a0     : Initial age of the ice
-    :param uhat   : Horizontal velocity
-    :param vhat   : Horizontal velocity perpendicular to :attr:`uhat`
-    :param what   : Vertical velocity
-    """
-    # Assign values to midpoint quantities and mesh velocity
-    if ahat:
-      self.assign_variable(self.ahat, ahat)
-      self.assign_variable(self.a0,   a0)
-      self.assign_variable(self.uhat, uhat)
-      self.assign_variable(self.vhat, vhat)
-      self.assign_variable(self.what, what)
-
     # Solve!
-    s    = "::: solving age :::"
-    print_text(s, self.D3Model_color)
-    solve(self.a == self.L, model.age, self.age_bc,
-          annotate=False)
-    #solve(self.a_a == self.a_L, self.age, self.age_bc, annotate=False)
-    #self.age.interpolate(self.age)
-    print_min_max(model.age, 'age')
+    #solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
+    solve(self.a == self.L, self.age, self.bc_age, annotate=annotate)
+    self.model.age.interpolate(self.age)
+    print_min_max(self.model.age, 'age')
 
 
 class FirnAge(Physics):

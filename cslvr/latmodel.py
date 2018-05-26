@@ -1,8 +1,8 @@
-from fenics            import *
+from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, get_text, print_min_max
 from cslvr.model       import Model
-from pylab             import inf
+from scipy             import inf
 import sys
 
 class LatModel(Model):

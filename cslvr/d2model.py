@@ -1,9 +1,8 @@
-from fenics            import *
+from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, get_text, print_min_max
 from cslvr.model       import Model
 from cslvr.helper      import Boundary, VerticalBasis
-from pylab             import inf
 import numpy               as np
 import sys
 
@@ -138,7 +137,7 @@ class D2Model(Model):
                                             constrained_domain=self.pBC)
       self.DG1              = FunctionSpace(self.mesh, self.DG1e,
                                             constrained_domain=self.pBC)
-    elif self.kind == 'hybrid' and self.use_periodic:
+    if self.kind == 'hybrid':
       # default values if not provided : 
       self.poly_deg = kwargs.get('poly_deg', 2)
       self.N_T      = kwargs.get('N_T',      8)
@@ -367,6 +366,21 @@ class D2Model(Model):
       s = "::: initializing velocity :::"
       print_text(s, cls=self)
       self.assign_variable(self.U3, U)
+
+  def solve_hydrostatic_pressure(self, annotate=False):
+    r"""
+    Solve for the hydrostatic pressure :math:`p = f_c = \rho g (S - z)` to 
+    ``self.p``, with surface height :math:`S` given by ``self.S``, ice 
+    density :math:`\rho` given by ``self.rho``, and :math:`z`-coordinate
+    given by ``self.x[2]``.
+
+    :param annotate: allow Dolfin-Adjoint annotation of this procedure.
+    :type annotate: bool
+    """
+    rhoi = self.rhoi(0)
+    g    = self.g(0)
+    H    = self.S.vector().get_local() - self.B.vector().get_local()
+    self.assign_variable(self.p, rhoi*g*H)
     
   def initialize_variables(self):
     """
@@ -377,6 +391,8 @@ class D2Model(Model):
 
     s = "::: initializing 2D variables :::"
     print_text(s, cls=self)
+    
+    self.init_E(1.0)    # always use init. with no flow enhancement
 
     if self.kind == 'balance':
       # Enthalpy model
@@ -437,6 +453,87 @@ class D2Model(Model):
       self.u_s           = u_s
       self.v_s           = v_s
       self.w_s           = w_s
+
+  def thermo_solve(self, momentum, energy, annotate=False):
+    """
+    Perform thermo-mechanical coupling between momentum and energy.
+    
+    :param momentum: momentum instance to couple with ``energy``.
+    :param energy:   energy instance to couple with ``momentum``.
+    :type momentum:  :class:`~momentum.Momentum`
+    :type energy:    :class:`~energy.Energy`
+    """
+    
+    from cslvr import Momentum
+    from cslvr import Energy
+
+    # TODO: also make sure these are D2Model momentum and energy classes. 
+    if not isinstance(momentum, Momentum):
+      s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+      print_text(s % type(momentum) , 'red', 1)
+      sys.exit(1)
+    
+    if not isinstance(energy, Energy):
+      s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+      print_text(s % type(energy) , 'red', 1)
+      sys.exit(1)
+
+    # this is the simplest thing!
+    momentum.solve(annotate=annotate)
+    energy.solve(annotate=annotate)
+
+  def transient_iteration(self, momentum, mass, time_step, adaptive, annotate):
+    """
+    This function defines one interation of the transient solution, and is 
+    called by the function ``model.transient_solve``.
+    """
+    # TODO: this adaptive interation should be altered to include CFL.
+    # do solve adaptively :
+    if adaptive:
+    
+      # solve momentum equation, lower alpha on failure :
+      solved_u = False
+      par      = momentum.solve_params['solver']['newton_solver']
+      while not solved_u:
+        if par['relaxation_parameter'] < 0.2:
+          status_u = [False, False]
+          break
+        # always reset velocity for good convergence :
+        self.assign_variable(momentum.get_U(), DOLFIN_EPS)
+        status_u = momentum.solve(annotate=annotate)
+        solved_u = status_u[1]
+        # TODO: rewind the dolfin-adjoint tape too!
+        if not solved_u:
+          par['relaxation_parameter'] /= 1.43
+          print_text(stars, 'red', 1)
+          s = ">>> WARNING: newton relaxation parameter lowered to %g <<<"
+          print_text(s % par['relaxation_parameter'], 'red', 1)
+          print_text(stars, 'red', 1)
+
+      # solve mass equation, lowering time step on failure :
+      solved_h = False
+      dt       = time_step
+      while not solved_h:
+        if dt < DOLFIN_EPS:
+          status_h = [False,False]
+          break
+        H        = self.H.copy(True)
+        status_h = mass.solve(annotate=annotate)
+        solved_h = status_h[1]
+        # TODO: rewind the dolfin-adjoint tape too!
+        if not solved_h:
+          dt /= 2.0
+          print_text(stars, 'red', 1)
+          s = ">>> WARNING: time step lowered to %g <<<"
+          print_text(s % dt, 'red', 1)
+          self.init_time_step(dt)
+          self.init_H_H0(H)
+          print_text(stars, 'red', 1)
+
+    # do not solve adaptively :
+    else:
+      momentum.solve(annotate=annotate)
+      mass.solve(annotate=annotate)
 
 
 

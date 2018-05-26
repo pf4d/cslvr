@@ -1,9 +1,9 @@
-from fenics                 import *
+from dolfin                 import *
 from dolfin_adjoint         import *
-from cslvr.inputoutput      import get_text, print_text, print_min_max
-from cslvr.physics          import Physics
 from copy                   import deepcopy
 from cslvr.helper           import raiseNotDefined
+from cslvr.inputoutput      import get_text, print_text, print_min_max
+from cslvr.physics          import Physics
 import numpy                    as np
 import matplotlib.pyplot        as plt
 import sys

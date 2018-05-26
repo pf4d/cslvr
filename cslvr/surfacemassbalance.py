@@ -5,6 +5,9 @@ class SurfaceMassBalance(Physics):
   
   def __init__(self, model, config):
     """
+    This class computes the surface accumulation/ablation function 
+    ``model.adot`` from balance velocity, lower surface-mass balance
+    ``model.Mb``, and ice-sheet thickness ``model.H``.
     """ 
     s    = "::: INITIALIZING SURFACE-MASS-BALANCE PHYSICS :::"
     print_text(s, self.color())

@@ -1,39 +1,14 @@
-from fenics  import *
-from varglas import *
-
-#set_log_active(False)
-
-parameters['form_compiler']['precision']         = 30
-parameters['form_compiler']['optimize']          = True
-parameters['form_compiler']['cpp_optimize']      = True
-parameters['form_compiler']['representation']    = 'quadrature'
-
-mesh = MeshFactory.get_circle()
+from cslvr   import *
+from mshr    import *
 
 out_dir = './A_hybrid/'
+
 thklim  = 1.0
-L       = 800000.
-xmin    = -L
-xmax    =  L
-ymin    = -L
-ymax    =  L
+r       = 800000.0
+res     = 25
 
-# width and origin of the domain for deforming x coord :
-width_x  = xmax - xmin
-offset_x = xmin
-
-# width and origin of the domain for deforming y coord :
-width_y  = ymax - ymin
-offset_y = ymin
-for x in mesh.coordinates():
-  # transform x :
-  x[0]  = x[0]  * width_x
-  # transform y :
-  x[1]  = x[1]  * width_y
-
-model = D2Model(out_dir = out_dir)
-model.set_mesh(mesh)
-model.generate_function_spaces(use_periodic = False)
+mesh  = generate_mesh(Circle(Point(0,0), r), res)
+model = D2Model(mesh, out_dir=out_dir, use_periodic=False, kind='hybrid')
 
 # surface mass balance : 
 class Adot(Expression):
@@ -57,8 +32,8 @@ model.init_B(0.0)
 model.init_adot(adot)
 model.init_beta(1e9)
 model.init_T_surface(T_s)
-model.init_T_T0_(268.0)
-model.init_H(thklim)
+model.init_T_T0(268.0)
+model.init_H_H0(thklim)
 model.init_H_bounds(thklim, 1e4)
 model.init_q_geo(model.ghf)
 #model.init_beta_stats()
@@ -66,21 +41,27 @@ model.init_q_geo(model.ghf)
 model.eps_reg.assign(1e-10)
 
 mom = MomentumHybrid(model, isothermal=False)
-nrg = EnergyHybrid(model, transient=True)
-mas = MassTransportHybrid(model, thklim=thklim, isothermal=False)
+nrg = EnergyHybrid(model, mom, transient=True)
+mas = MassHybrid(model, mom, thklim=thklim, isothermal=False)
 
-U_file  = File(out_dir + 'U.pvd')
-S_file  = File(out_dir + 'S.pvd')
-Tb_file = File(out_dir + 'Tb.pvd')
-Ts_file = File(out_dir + 'Ts.pvd')
+U_file  = XDMFFile(out_dir + 'U.xdmf')
+S_file  = XDMFFile(out_dir + 'S.xdmf')
+Tb_file = XDMFFile(out_dir + 'Tb.xdmf')
+Ts_file = XDMFFile(out_dir + 'Ts.xdmf')
 def cb_ftn():
-  model.save_pvd(model.U3, 'U3', U_file)
-  model.save_pvd(model.Tb, 'Tb', Tb_file)
-  model.save_pvd(model.Ts, 'Ts', Ts_file)
-  model.save_pvd(model.S,  'S',  S_file)
+  nrg.solve()
+  model.save_xdmf(model.U3, 'U3', U_file)
+  model.save_xdmf(model.Tb, 'Tb', Tb_file)
+  model.save_xdmf(model.Ts, 'Ts', Ts_file)
+  model.save_xdmf(model.S,  'S',  S_file)
 
-model.transient_solve(mom, nrg, mas, t_start=0.0, t_end=200000.0, 
-                      time_step = 10.0, annotate=False, callback=cb_ftn)
-
+model.transient_solve(mom, mas,
+                      t_start    = 0.0,
+                      t_end      = 100.0,
+                      time_step  = 10.0,
+                      tmc_kwargs = None,
+                      adaptive   = True,
+                      annotate   = False,
+                      callback   = cb_ftn)
 
 

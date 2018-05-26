@@ -1,6 +1,6 @@
-from helper            import raiseNotDefined
-from fenics            import *
+from dolfin            import *
 from dolfin_adjoint    import *
+from cslvr.helper      import raiseNotDefined
 from cslvr.inputoutput import get_text, print_text, print_min_max
 import numpy               as np
 import matplotlib.pyplot   as plt
@@ -76,7 +76,7 @@ class Physics(object):
     :param integral:  measure over which to integrate 
                       (see :func:`~model.calculate_boundaries`)
     :param kind:      kind of regularization to use
-    :type c:          :class:`~fenics.Function`
+    :type c:          :class:`~dolfin.Function`
     :type integral:   int 
     :type kind:       string
     """

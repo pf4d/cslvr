@@ -1,17 +1,20 @@
-import inspect
-import pylab                 as pl
-import numpy                 as np
-from pylab                   import plt
-from fenics                  import *
-from ufl                     import indexed
+from dolfin                  import *
 from dolfin_adjoint          import *
+from pyproj                  import *
+from ufl                     import indexed
 from termcolor               import colored, cprint
 from mpl_toolkits.basemap    import Basemap
 from matplotlib              import colors, ticker
 from matplotlib.ticker       import LogFormatter, ScalarFormatter
-from pyproj                  import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable, inset_locator
 from cslvr.inputoutput       import print_text, DataInput
+import matplotlib.pyplot     as plt
+import pylab                 as pl
+import numpy                 as np
+import inspect
+
+
+
 
 def raiseNotDefined():
   fileName = inspect.stack()[1][1]
@@ -21,6 +24,9 @@ def raiseNotDefined():
   text = "*** Method not implemented: %s at line %s of %s"
   print text % (method, line, fileName)
   sys.exit(1)
+
+
+
 
 class Boundary(object):
   def __init__(self, measure, markers, description):
@@ -34,7 +40,10 @@ class Boundary(object):
       else:
         meas += self.measure(m)
     return meas
-  
+
+
+
+
 def download_file(url, direc, folder, extract=False):
   """
   Download a file with url string ``url`` into directory ``direc/folder``.
@@ -102,6 +111,8 @@ def download_file(url, direc, folder, extract=False):
     os.remove(direc + fn)
 
 
+
+
 class IsotropicMeshRefiner(object):
   """
   In this class, the cells in the mesh are isotropically refined above a 
@@ -112,6 +123,7 @@ class IsotropicMeshRefiner(object):
     :m_0:  Initial unrefined mesh
     :U_ex: Representation of the ice sheet as a dolfin expression
 
+  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
   """
   def __init__(self, m_0, U_ex):
     self.mesh = m_0
@@ -233,6 +245,8 @@ class IsotropicMeshRefiner(object):
     os.system(string)
 
 
+
+
 class AnisotropicMeshRefiner(object):
   """
   This class performs anistropic mesh refinements on the mesh in order to 
@@ -244,7 +258,8 @@ class AnisotropicMeshRefiner(object):
   
     :m_0:  Initial unrefined mesh
     :U_ex: Representation of the ice sheet as a Dolfin expression
-
+  
+  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
   """
   
   def __init__(self, m_0, U_ex):
@@ -496,6 +511,8 @@ class AnisotropicMeshRefiner(object):
     os.system(string)
 
 
+
+
 def write_gmsh(mesh,path):
   """
   This function iterates through the mesh and writes a file to the specified
@@ -547,104 +564,8 @@ def write_gmsh(mesh,path):
   output.close()
 
 
-def extract_boundary_mesh(mesh,surface_facet,marker,variable_list = []):
-  """
-  This function iterates through the cells and vertces of the mesh in order
-  to find the boundaries
 
-  Args:
 
-    :mesh:          The dolfin mesh for which to find the boundaries
-    :marker:        Cell marker to determine the surface facets
-    :variable_list: A list of variables corrisponding to the mesh
- 
-  Returns:
-  
-    :rtype: FEniCS boundary mesh containing information on the surface of the
-            mesh and a list of surface variables derived from the variable_list 
-            parameter.
-
-  """
-  from dolfin import vertices
-
-  D = mesh.topology().dim()
-  surface_mesh = BoundaryMesh(mesh,'exterior')
-  surface_mesh.clear()
- 
-  editor = MeshEditor()
-  editor.open(surface_mesh,mesh.type().type2string(mesh.type().facet_type()), D-1,D-1)
-
-  mesh.init(D-1,D)
-
-  #exterior = mesh.parallel_data().exterior_facet()
-
-  num_vertices = mesh.num_vertices()
-
-  boundary_vertices = (pl.ones(num_vertices)*num_vertices).astype(int)
-  num_boundary_vertices = 0
-  num_boundary_cells = 0
-
-  #surface_facet = mesh.domains().facet_domains(mesh)
-  boundary_facet = MeshFunctionBool(mesh,D-1,False)
-  for f in facets(mesh):
-    if surface_facet[f] == marker and f.exterior():
-      boundary_facet[f] = True
-#    if boundary_facet[f]:
-      for v in vertices(f):
-        v_index = v.index()
-        if boundary_vertices[v_index] == num_vertices:
-          boundary_vertices[v_index] = num_boundary_vertices
-          num_boundary_vertices += 1
-      num_boundary_cells += 1 
-
-  editor.init_vertices(num_boundary_vertices)
-  editor.init_cells(num_boundary_cells)
-
-  vertex_map = surface_mesh.entity_map(0)
-  if num_boundary_vertices > 0:
-    vertex_map.init(surface_mesh, 0, num_boundary_vertices)
-
-  cell_map = surface_mesh.entity_map(D-1)
-  if num_boundary_cells > 0:
-    cell_map.init(surface_mesh, D-1, num_boundary_cells)
-
-  for v in vertices(mesh):
-    vertex_index = boundary_vertices[v.index()]
-    if vertex_index != mesh.num_vertices():
-      if vertex_map.size() > 0:
-        vertex_map[vertex_index] = v.index()
-      editor.add_vertex(vertex_index,v.point())
-
-  cell = pl.zeros(surface_mesh.type().num_vertices(surface_mesh.topology().dim()),dtype = pl.uintp)
-  current_cell = 0
-  for f in facets(mesh):
-    if boundary_facet[f]:
-      vertices = f.entities(0)
-      for ii in range(cell.size):
-        cell[ii] = boundary_vertices[vertices[ii]]
-      if cell_map.size()>0:
-        cell_map[current_cell] = f.index()
-      editor.add_cell(current_cell,cell)
-      current_cell += 1
-
-  surface_mesh.order()
-  Q = FunctionSpace(surface_mesh,"CG",1)
-  surface_variable_list = []
-
-  for ii in range(len(variable_list)):
-    surface_variable_list.append(Function(Q))
-
-  v2d_surf = vertex_to_dof_map(Q)
-  print vertex_map.array()
-  v2d_3d = vertex_to_dof_map(variable_list[0].function_space())
-
-  for ii,index in enumerate(vertex_map.array()):
-    for jj,variable in enumerate(variable_list):
-      surface_variable_list[jj].vector()[v2d_surf[ii]] = variable_list[jj].vector()[v2d_3d[index]]
-
-  return surface_mesh,surface_variable_list
-
-    
 def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   """
   This function creates a dolfin 2D expression from data input
@@ -669,52 +590,6 @@ def generate_expression_from_gridded_data(x,y,var,kx=1,ky=1):
   return DolfinExpression
 
 
-def extrude(f, b, d, ff, Q):
-  r"""
-  This extrudes a function *u* vertically in the direction *d* = 'up' or
-  'down'.  It does this by solving a variational problem:
-  
-  .. math::
-     
-     \frac{\partial v}{\partial z} = 0 \hspace{10mm}
-     v|_b = u
-
-  Args:
-  
-    :f:  Dolfin function defined along a boundary
-    :b:  Boundary condition
-    :d:  Subdomain over which to perform differentiation
-    :ff: Subdomain FacetFunction 
-    :Q:  FunctionSpace of domain
-
-  """
-  # define test and trial based on function space :
-  phi = TestFunction(Q)
-  v   = TrialFunction(Q)
-
-  # linear PDE :
-  a  = v.dx(d) * phi * dx
-  L  = DOLFIN_EPS * phi * dx  # really close to zero to fool FFC
-  bc = DirichletBC(Q, f, ff, b)
-
-  # solve and return new Function
-  v  = Function(Q)
-  solve(a == L, v, bc)
-  return v
-
-
-def get_bed_mesh(mesh):
-  """
-  Returns the bed of ``mesh``.
-  """
-  bmesh   = BoundaryMesh(mesh, 'exterior')
-  cellmap = bmesh.entity_map(2)
-  pb      = CellFunction("size_t", bmesh, 0)
-  for c in cells(bmesh):
-    if Facet(mesh, cellmap[c.index()]).normal().z() < 0:
-      pb[c] = 1
-  submesh = SubMesh(bmesh, pb, 1)           # subset of surface mesh
-  return submesh
 
 
 def plot_variable(u, name, direc, 
@@ -901,6 +776,8 @@ def plot_variable(u, name, direc,
   if show:
     plt.show()
   plt.close(fig)
+
+
 
 
 def plotIce(di, u, name, direc, 
@@ -1468,10 +1345,15 @@ def plotIce(di, u, name, direc,
   return m
 
 
+
+
 # VERTICAL BASIS REPLACES A NORMAL FUNCTION, SUCH THAT VERTICAL DERIVATIVES
 # CAN BE EVALUATED IN MUCH THE SAME WAY AS HORIZONTAL DERIVATIVES.  IT NEEDS
 # TO BE SUPPLIED A LIST OF FUNCTIONS OF SIGMA THAT MULTIPLY EACH COEFFICIENT.
 class VerticalBasis(object):
+  """ 
+  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
+  """ 
   def __init__(self, u, coef, dcoef):
     self.u     = u
     self.coef  = coef
@@ -1487,8 +1369,13 @@ class VerticalBasis(object):
     return sum([u.dx(x)*c(s) for u,c in zip(self.u, self.coef)])
 
 
+
+
 # SIMILAR TO ABOVE, BUT FOR CALCULATION OF FINITE DIFFERENCE QUANTITIES.
 class VerticalFDBasis(object):
+  """ 
+  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
+  """ 
   def __init__(self,u, deltax, coef, sigmas):
     self.u      = u 
     self.deltax = deltax
@@ -1511,6 +1398,8 @@ class VerticalFDBasis(object):
 
   def dx(self,i,x):
     return self.u[i].dx(x)        
+
+
 
 
 # PERFORMS GAUSSIAN QUADRATURE FOR ARBITRARY FUNCTION OF SIGMA, 

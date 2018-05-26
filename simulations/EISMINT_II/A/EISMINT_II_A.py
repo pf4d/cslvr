@@ -97,8 +97,8 @@ def cb_ftn():
 
 model.transient_solve(mom, mas,
                       t_start    = 0.0,
-                      t_end      = 1000.0,
-                      time_step  = 100.0,
+                      t_end      = 50000.0,
+                      time_step  = 10.0,
                       tmc_kwargs = None,
                       adaptive   = True,
                       annotate   = False,

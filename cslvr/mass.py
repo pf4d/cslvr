@@ -82,11 +82,13 @@ class FreeSurface(Mass):
     # get the dof map :
     if model.use_periodic:
       self.v2d      = vertex_to_dof_map(model.Q_non_periodic)
+      self.d2v      = dof_to_vertex_map(model.Q_non_periodic)
       self.mhat_non = Function(model.Q_non_periodic)
       self.assmhat  = FunctionAssigner(model.mhat.function_space(),
                                        model.Q_non_periodic)
     else:
       self.v2d      = vertex_to_dof_map(Q)
+      self.d2v      = dof_to_vertex_map(Q)
 
     # self.m when assembled gives the mass of the domain :
     self.M_tot  = rhob * dx
@@ -144,17 +146,20 @@ class FreeSurface(Mass):
     mesh   = model.mesh
     sigma  = model.sigma   # sigma coordinate
     thklim = self.thklim   # thickness limit
+    d2v    = self.d2v
     v2d    = self.v2d
     
-    # impose the thickness limit :
+    # impose the thickness limit and update the surface :
     B                       = model.B.vector().get_local()
     thin                    = (S - B) < thklim
     S[thin]                 = B[thin] + thklim
+    model.assign_variable(model.S, S)
 
-    # update the mesh and surface :
+    # update the mesh :
     sigma                   = sigma.compute_vertex_values()
-    mesh.coordinates()[:,2] = sigma*(S[v2d] - B[v2d]) + B[v2d] # update mesh
-    model.assign_variable(model.S, S)                          # update surface
+    S                       = model.S.compute_vertex_values()
+    B                       = model.B.compute_vertex_values()
+    mesh.coordinates()[:,2] = sigma*(S - B) + B
 
   def solve(self):
     """

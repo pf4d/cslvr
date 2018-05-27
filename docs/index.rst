@@ -50,6 +50,7 @@ Contents:
    :caption: Balance equations
 
    momentum
+   mass
    energy
    velocity
    stress

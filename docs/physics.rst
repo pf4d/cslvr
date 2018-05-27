@@ -10,11 +10,15 @@ Momentum balance
 .. automodule:: momentum
    :members:
 
-Internal energy balance
+Mass balance
+------------
+.. autoclass:: mass.Mass
+   :members:
+
+Energy balance
 -----------------------
 
 .. autoclass:: energy.Energy
    :members:
-
 
 

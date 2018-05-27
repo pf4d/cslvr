@@ -38,13 +38,40 @@ class Mass(Physics):
 
 
 class FreeSurface(Mass):
-  """
+  r"""
+  This class defines the physics and solution to the upper free-surface equation.
+    .. math::
+       \frac{\partial S}{\partial t} - u_z + \underline{u} \cdot \nabla S = \mathring{S}
+
+  When the :func:`~mass.FreeSurface.solve` method is executed, something similar to the following output will be displayed:
+
+  .. code-block:: none
+
+     ::: solving free-surface relation :::
+     || K_source ||_2    : 2.205e+12
+     || K_advection ||_2 : 7.736e+08
+     || K_stab_u ||_2    : 1.322e+10
+     || K_stab_gs ||_2   : 1.699e+10
+     dSdt <min, max> : <-8.790e+09, 1.436e+08>
+     ::: extruding function downwards :::
+     Process 0: Solving linear variational problem.
+     extruded function <min, max> : <-1.127e+01, 5.443e-01>
+     dSdt <min, max> : <-1.127e+01, 5.443e-01>
+
+  Here, 
+  
+  * ``S`` is the surface height :math:`S` saved to ``model.S``
+  * ``dSdt`` is the time rate of change :math:`\partial_t S` of the surface :math:`S`
+  * ``K_source`` is the tensor corresponding to the upper-surface accumulation/ablation function :math:`\mathring{S}` located (currently) at ``model.adot``
+  * ``K_advection`` is the tensor corresponding to the advective part of the free-surface equation :math:`- u_z + \underline{u} \cdot \nabla S`
+  * ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in term the direction of velocity located (currently) at ``model.U3``
+  * ``K_stab_gs`` is the tensor corresponding to the streamline/Petrov-Galerkin term in the direction of surface gradient :math:`\nabla S`
   """ 
   def __init__(self, model,
                thklim              = 1.0,
-               use_shock_capturing = False,
                lump_mass_matrix    = False):
     """
+
     """
     print_text("::: INITIALIZING FREE-SURFACE PHYSICS :::", self.color())
     
@@ -53,87 +80,56 @@ class FreeSurface(Mass):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
-    self.model                 = model   
-    self.thklim                = thklim 
-    self.use_shock_capturing   = use_shock_capturing
-    self.lump_mass_matrix      = lump_mass_matrix
+    self.model            = model   
+    self.thklim           = thklim 
+    self.lump_mass_matrix = lump_mass_matrix
 
-    # TODO: set up flat mesh stuff in D3Model!
+    # get model var's so we don't have a bunch of ``model.`` crap in our math :
     Q       = model.Q
-    Q_flat  = model.Q
-    ds      = model.ds
     dSrf    = model.dSrf
     dBed    = model.dBed
-    rhob    = model.rhob       # for calculating the ice-sheet mass
-    flat_mesh = model.mesh
-    
-    S       = Function(Q_flat, name='mass.S')
-    adot    = Function(Q_flat, name='mass.adot')
-    u       = Function(Q_flat)
-    v       = Function(Q_flat)
-    w       = Function(Q_flat)
-    mhat    = Function(Q_flat)
-    h       = CellDiameter(flat_mesh)
-    
-    self.assx  = FunctionAssigner(u.function_space(), model.u.function_space())
-    self.assy  = FunctionAssigner(v.function_space(), model.v.function_space())
-    self.assz  = FunctionAssigner(w.function_space(), model.w.function_space())
+    rhob    = model.rhob
+    S       = model.S
+    adot    = model.adot
+    u       = model.u
+    v       = model.v
+    w       = model.w
+    mhat    = model.mhat
+    h       = model.h
 
-    # get the dof map :
+    # specical dof mapping for periodic spaces :
     if model.use_periodic:
-      self.v2d      = vertex_to_dof_map(model.Q_non_periodic)
-      self.d2v      = dof_to_vertex_map(model.Q_non_periodic)
       self.mhat_non = Function(model.Q_non_periodic)
-      self.assmhat  = FunctionAssigner(model.mhat.function_space(),
+      self.assmhat  = FunctionAssigner(mhat.function_space(),
                                        model.Q_non_periodic)
-    else:
-      self.v2d      = vertex_to_dof_map(Q)
-      self.d2v      = dof_to_vertex_map(Q)
 
-    # self.m when assembled gives the mass of the domain :
+    # when assembled, this gives the total mass of the domain :
     self.M_tot  = rhob * dx
 
     # set up linear variational problem for unknown dSdt :
-    phi         = TestFunction(Q_flat)
-    psi         = TrialFunction(Q_flat)
-    dSdt        = Function(Q_flat, name='mass.dSdt')
+    phi         = TestFunction(Q)
+    psi         = TrialFunction(Q)
+    dSdt        = Function(Q, name='mass.dSdt')
+
+    # velocity vector :
+    U           = as_vector([u, v, w])
 
     # SUPG-modified trial function (artifical diffusion in direction of flow) :
-    U           = as_vector([u, v, w])
-    unorm       = sqrt(dot(U,U) + 1e-1)
-    phihat      = phi + h / (2.0*unorm) * dot(U, grad(phi))
+    unorm       = sqrt(dot(U,U)) + DOLFIN_EPS
+    phi_u       = h / (2.0*unorm) * dot(U, grad(phi))
 
-    # mass matrices :
-    mass        = psi * phi * dSrf
-    lumped_mass = phi * dSrf
+    # shock-capturing steady-state residual dependent artificial diffusion :
+    gSnorm      = dot(grad(S), grad(S)) + DOLFIN_EPS
+    phi_gs      = h / (2.0*gSnorm) * dot(grad(S), grad(phi))
+
+    # mass matrix :
+    self.mass   = psi * phi * dSrf
 
     # stiffness matrix :
-    stiffness   = + adot * phi * dSrf \
-                  + w * phi * dSrf \
-                  - dot(U, grad(S)) * phihat * dSrf
-   
-    # shock-capturing steady-state residual dependent artificial diffusion :
-    S_mag       = dot(grad(S), grad(S)) + 1e-1
-    resid       = dot(U, grad(S)) - w - adot
-    C           = 1e1 * h / (2*unorm) * S_mag * resid**2
-    diffusion   = C * dot(grad(phi), grad(S)) * dSrf
-    
-    # TODO: just solve over a 2D mesh, then this step is not required.
-    # extrude the surface value of dSdt throughout the domain; i.e., 
-    # d/dz (dSdt) = 0, dSdt |_{Gamma_S} = f where M.f = K : 
-    self.A_pro  = dSdt*phi*dSrf - psi*phi*dBed - psi*phi.dx(2)*dx
-
-    self.stiffness    = stiffness
-    self.diffusion    = diffusion
-    self.mass         = mass
-    self.lumped_mass  = lumped_mass
-    self.S            = S
-    self.adot         = adot
-    self.u            = u
-    self.v            = v
-    self.w            = w
-    self.mhat         = mhat
-    self.dSdt         = dSdt
+    self.source      = adot                  * phi    * dSrf
+    self.advection   = (dot(U, grad(S)) - w) * phi    * dSrf 
+    self.stab_u      = dot(U, grad(S))       * phi_u  * dSrf
+    self.stab_gs     = dot(grad(S), grad(S)) * phi_gs * dSrf
 
   def update_mesh_and_surface(self, S):
     """
@@ -146,8 +142,6 @@ class FreeSurface(Mass):
     mesh   = model.mesh
     sigma  = model.sigma   # sigma coordinate
     thklim = self.thklim   # thickness limit
-    d2v    = self.d2v
-    v2d    = self.v2d
     
     # impose the thickness limit and update the surface :
     B                       = model.B.vector().get_local()
@@ -161,51 +155,50 @@ class FreeSurface(Mass):
     B                       = model.B.compute_vertex_values()
     mesh.coordinates()[:,2] = sigma*(S - B) + B
 
-  def solve(self):
+  def solve(self, annotate=False):
     """
     This method solves the free-surface equation, updating ``self.model.dSdt``.
+
+    Currently does not support dolfin-adjoint annotation.
     """
     print_text("::: solving free-surface relation :::", self.color())
     
     model  = self.model
   
-    # assign the current values from the deformed mesh to the sigma-coord mesh :
-    model.assign_variable(self.S,    model.S) 
-    model.assign_variable(self.adot, model.adot) 
-    self.assx.assign(self.u,        model.u)
-    self.assy.assign(self.v,        model.v)
-    self.assz.assign(self.w,        model.w)
-    #model.assign_variable(self.u,    model.u) 
-    #model.assign_variable(self.v,    model.v) 
-    #model.assign_variable(self.w,    model.w) 
+    # assemple the stiffness and mass matrices :
+    K_source    = assemble(self.source)
+    K_advection = assemble(self.advection)
+    K_stab_u    = assemble(self.stab_u)
+    K_stab_gs   = assemble(self.stab_gs)
 
-    # assemple the stiffness matrix :
-    K = assemble(self.stiffness, keep_diagonal=True)
+    # print tensor statistics :
+    print_min_max( norm(K_source,    'l2'),  '|| K_source ||_2   ' )
+    print_min_max( norm(K_advection, 'l2'),  '|| K_advection ||_2' )
+    print_min_max( norm(K_stab_u,    'l2'),  '|| K_stab_u ||_2   ' )
+    print_min_max( norm(K_stab_gs,   'l2'),  '|| K_stab_gs ||_2  ' )
 
-    # add artificial diffusion to stiff. matrix in regions of high S gradients :
-    if self.use_shock_capturing:
-      D = assemble(self.diffusion)
-      K = K - D
-      print_min_max(D, 'D')
-      print_min_max(K, 'K')
-
-    # calculate preliminary guess :
+    # form stiffness matrix :
+    K = K_source - K_advection - K_stab_u - K_stab_gs
+    
+    # form mass matrix :
+    # NOTE: ident_zeros() ensures that interior nodes are 
+    #       set to the identity, otherwise it is not invertable; due to the 
+    #       fact that the interior nodes are not needed for the calculation 
+    #       of dSdt which is only defined at the upper surface boundary 
+    #       ``dSrf``.  This fact gives rise to the following:
+    # TODO: Solve the free-surface equation over a 2D mesh which is extruded        #       back to the 3D mesh
     if self.lump_mass_matrix:
-      M               = assemble(self.lumped_mass)
-      M_a             = M.get_local()
-      M_a[M_a == 0.0] = 1.0
-      self.assign_variable(self.dSdt, K.get_local() / M_a)
+      M = assemble(action(self.mass, Constant(1)))  # vector of row sums
+      M[M == 0] = 1.0                               # analogous to ident_zeros()
+      model.assign_variable(model.dSdt, K.get_local() / M.get_local())
     else:
       M = assemble(self.mass, keep_diagonal=True)
       M.ident_zeros()
-      solve(M, self.dSdt.vector(), K, annotate=False)
-   
-    # extrude the surface value of dSdt throughout the domain :
-    A = assemble(lhs(self.A_pro))
-    p = assemble(rhs(self.A_pro))
-    q = Vector()
-    solve(A, model.dSdt.vector(), p, annotate=False)
-    print_min_max(model.dSdt, 'dSdt')
+      solve(M, model.dSdt.vector(), K, annotate=annotate)
+
+    # extrude the value throughout the interior and assign it to the model :
+    dSdt = model.vert_extrude(model.dSdt, d='down')
+    model.assign_variable(model.dSdt, dSdt)
 
 
 
@@ -214,7 +207,7 @@ class MassHybrid(Mass):
   """
   New 2D hybrid model.
 
-  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/
+  Original author: `Doug Brinkerhoff <https://dbrinkerhoff.org/>`_
   """
   def __init__(self, model, momentum, 
                thklim       = 1.0,

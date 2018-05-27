@@ -83,8 +83,7 @@ elif mdl_odr == 'FS_th':
 #               use_lat_bc = False)
 mas = FreeSurface(model,
                   thklim              = 1.0,
-                  use_shock_capturing = False,
-                  lump_mass_matrix    = False)
+                  lump_mass_matrix    = True)
 
 U_file  = XDMFFile(out_dir + 'U.xdmf')
 S_file  = XDMFFile(out_dir + 'S.xdmf')

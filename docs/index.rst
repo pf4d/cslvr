@@ -6,7 +6,9 @@
 Cryospheric Problem Solver
 **************************
 
-Contents:
+Built from elements of the [Var]iational [Gl]acier [S]imulator (`VarGlaS <https://github.com/douglas-brinkerhoff/VarGlaS>`_) by `Doug Brinkerhoff <https://dbrinkerhoff.org/>`_ and the [U] of [M] [F]irn [D]ensification [M]odel (`UM-FDM <https://github.com/pf4d/um-fdm>`_).
+
+For the mathematical background, please `read the thesis <https://arxiv.org/abs/1609.02190)>`_.
 
 .. _prelim:
 

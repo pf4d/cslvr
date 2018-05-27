@@ -39,6 +39,7 @@ class Mass(Physics):
 
 class FreeSurface(Mass):
   r"""
+
   This class defines the physics and solution to the upper free-surface equation.
     .. math::
        \frac{\partial S}{\partial t} - u_z + \underline{u} \cdot \nabla S = \mathring{S}
@@ -64,8 +65,9 @@ class FreeSurface(Mass):
   * ``dSdt`` is the time rate of change :math:`\partial_t S` of the surface :math:`S`
   * ``K_source`` is the tensor corresponding to the upper-surface accumulation/ablation function :math:`\mathring{S}` located (currently) at ``model.adot``
   * ``K_advection`` is the tensor corresponding to the advective part of the free-surface equation :math:`- u_z + \underline{u} \cdot \nabla S`
-  * ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in term the direction of velocity located (currently) at ``model.U3``
-  * ``K_stab_gs`` is the tensor corresponding to the streamline/Petrov-Galerkin term in the direction of surface gradient :math:`\nabla S`
+  * ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in stabilization term the direction of velocity located (currently) at ``model.U3``
+  * ``K_stab_gs`` is the tensor corresponding to the streamline/Petrov-Galerkin stabilization term in the direction of surface gradient :math:`\nabla S`
+
   """ 
   def __init__(self, model,
                thklim              = 1.0,

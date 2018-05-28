@@ -334,7 +334,7 @@ class Energy(Physics):
   def optimize_water_flux(self, max_iter, bounds, method='ipopt',
                           adj_save_vars=None, adj_callback=None):
     """
-    determine the correct basal-water flux.
+    determine the correct basal-mass balance saved (currently) to ``model.Fb``.
     """
     s    = '::: optimizing for water-flux in %i maximum iterations :::'
     print_text(s % max_iter, cls=self)
@@ -528,18 +528,18 @@ class Energy(Physics):
 
   def calc_bulk_density(self):
     """
-    Calculate the bulk density stored in model.rho_b.
+    Calculate the bulk density stored in ``model.rhob``.
     """
     # calculate bulk density :
     s = "::: calculating bulk density :::"
     print_text(s, cls=self)
     model       = self.model
-    rho_b       = project(self.rho, annotate=False)
-    model.assign_variable(model.rhob, rho_b)
+    rhob        = project(self.rho, annotate=False)
+    model.assign_variable(model.rhob, rhob)
 
   def solve(self, annotate=False, params=None):
     """ 
-    Perform the Newton solve of the energy equation.
+    Solve of the energy equation.
     """
     raiseNotDefined()
 

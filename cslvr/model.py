@@ -3053,10 +3053,10 @@ class Model(object):
   def transient_iteration(self, momentum, mass, time_step, adaptive, annotate):
     """
     This function defines one interation of the transient solution, and is 
-    called by the function ``model.transient_solve``.
+    called by the function :func:`~model.transient_solve`.
     
     This must be implemented by the child classes for 
-    :func:`self.transient_solve`` to work.
+    :func:`~model.transient_solve` to work.
     """
     raiseNotDefined()
 
@@ -3084,7 +3084,6 @@ class Model(object):
       print_text(s % type(mass), 'red', 1)
       sys.exit(1)
 
-    stars = "*****************************************************************"
     self.init_time_step(time_step)
     t0             = time()
     t              = t_start
@@ -3103,7 +3102,6 @@ class Model(object):
     self.mass_history = [m_tot_k]             # mass history
    
     # Loop over all times
-    # TODO: provide the ability to use self.thermo_solve() !!!!!
     while t <= t_end:
 
       # start the timer :

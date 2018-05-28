@@ -487,6 +487,8 @@ class D2Model(Model):
     This function defines one interation of the transient solution, and is 
     called by the function ``model.transient_solve``.
     """
+    stars = "*****************************************************************"
+    
     # TODO: this adaptive interation should be altered to include CFL.
     # do solve adaptively :
     if adaptive:

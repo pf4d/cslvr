@@ -111,18 +111,17 @@ class FreeSurface(Mass):
     # set up linear variational problem for unknown dSdt :
     phi         = TestFunction(Q)
     psi         = TrialFunction(Q)
-    dSdt        = Function(Q, name='mass.dSdt')
 
     # velocity vector :
     U           = as_vector([u, v, w])
 
     # SUPG-modified trial function (artifical diffusion in direction of flow) :
     unorm       = sqrt(dot(U,U)) + DOLFIN_EPS
-    phi_u       = h / (2.0*unorm) * dot(U, grad(phi))
+    phi_u       = h / (2 * unorm) * dot(U, grad(phi))
 
-    # shock-capturing steady-state residual dependent artificial diffusion :
+    # SUPG-modified shock-capturing trial function :
     gSnorm      = dot(grad(S), grad(S)) + DOLFIN_EPS
-    phi_gs      = h / (2.0*gSnorm) * dot(grad(S), grad(phi))
+    phi_gs      = h / (2 * gSnorm) * dot(grad(S), grad(phi))
 
     # mass matrix :
     self.mass   = psi * phi * dSrf
@@ -130,8 +129,8 @@ class FreeSurface(Mass):
     # stiffness matrix :
     self.source      = adot                  * phi    * dSrf
     self.advection   = (dot(U, grad(S)) - w) * phi    * dSrf 
-    self.stab_u      = dot(U, grad(S))       * phi_u  * dSrf
-    self.stab_gs     = dot(grad(S), grad(S)) * phi_gs * dSrf
+    self.stab_u      = (dot(U, grad(S)) - w) * phi_u  * dSrf
+    self.stab_gs     = (dot(U, grad(S)) - w) * phi_gs * dSrf
 
   def update_mesh_and_surface(self, S):
     """
@@ -180,7 +179,7 @@ class FreeSurface(Mass):
     print_min_max( norm(K_stab_gs,   'l2'),  '|| K_stab_gs ||_2  ' )
 
     # form stiffness matrix :
-    K = K_source - K_advection - K_stab_u - K_stab_gs
+    K = K_source - K_advection - K_stab_u# - K_stab_gs
     
     # form mass matrix :
     # NOTE: ident_zeros() ensures that interior nodes are 
@@ -231,7 +230,6 @@ class MassHybrid(Mass):
       self.solve_params = solve_params
     
     # CONSTANTS
-    year   = model.spy
     rho    = model.rhoi
     g      = model.g
     n      = model.n(0)
@@ -253,12 +251,13 @@ class MassHybrid(Mass):
     S      = B + H
     coef   = [lambda s:1.0, lambda s:1./4.*(5*s**4 - 1.0)]
     T      = VerticalFDBasis(T_, deltax, coef, sigmas)
-    
-    Bc    = 3.61e-13*year
-    Bw    = 1.73e3*year #model.a0 ice hardness
-    Qc    = 6e4
-    Qw    = model.Q0 # ice act. energy
-    Rc    = model.R  # gas constant
+
+    # thermal parameters :
+    Bc     = model.a_T_l    # lower bound of flow-rate const.
+    Bw     = model.a_T_u    # upper bound of flow-rate const.
+    Qc     = model.Q_T_l    # lower bound of ice act. energy
+    Qw     = model.Q_T_u    # upper bound of ice act. energy
+    Rc     = model.R        # gas constant
    
     # function spaces : 
     dH  = TrialFunction(Q)

@@ -359,7 +359,6 @@ class MeshGenerator(object):
     print_text(s, self.color)
     self.f.close()
 
-
   def create_2D_mesh(self, outfile):
     """
     create the 2D mesh to file <outfile>.msh.

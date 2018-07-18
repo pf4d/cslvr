@@ -476,6 +476,10 @@ class D3Model(Model):
     self.init_S(S)
     self.init_B(B)
 
+    # allow the functions to be extrapolated for nodes near the boundary :
+    self.S.set_allow_extrapolation(True)
+    self.B.set_allow_extrapolation(True)
+
     # sigma coordinate :
     self.init_sigma(project((self.x[2] - self.B) / (self.S - self.B)))
     
@@ -490,8 +494,8 @@ class D3Model(Model):
     print_text(s, cls=self)
     
     for x in self.mesh.coordinates():
-      x[2] = (x[2] / mesh_height) * ( + self.S(x[0],x[1],x[2]) \
-                                      - self.B(x[0],x[1],x[2]) )
+      x[2] = (x[2] / mesh_height) * ( + self.S(x[0], x[1], x[2]) \
+                                      - self.B(x[0], x[1], x[2]) )
       x[2] = x[2] + self.B(x[0], x[1], x[2])
     s = "    - done - "
     print_text(s, cls=self)
@@ -1045,76 +1049,23 @@ class D3Model(Model):
 
     Currently, the dolfin-adjoint ``annotate`` is not supported.
 
-    The three-dimensional free-surface problem is solved using the fourth-order
-    `Runge-Kutta method <https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods>`_:
-
-    The initial value problem is specified as follows:
-    
-    .. math::
-       \frac{\partial S}{\partial t} = f(t,S), \quad S(t_0) = S_0.
-    
-    Here :math:`S` is the unknown function---in this case, the surface height :math:`S`---of time :math:`t`, which we would like to approximate; we are told that :math:`\partial_t S`, the rate at which :math:`S` changes, is a function of :math:`t` and :math:`S` itself.
-    In particular, this function involves the momentum balance defined by ``momentum`` and the free-surface relation defined by ``mass``:
-    
-    .. math::
-       f(t,S) = \mathring{S} + u_z - \underline{u} \cdot \nabla S
-     
-    At the initial time :math:`t_0` the corresponding :math:`S` value is :math:`S_0`.
-    The function :math:`f` and the data :math:`t_0`,  :math:`S_0` are given.
-    
-    Now pick a step-size :math:`\Delta t > 0` and define
-    
-    .. math::
-      \begin{align}
-        S_{n+1} &= S_n + \tfrac{1}{6} \left(k_1 + 2k_2 + 2k_3 + k_4 \right),\\
-        t_{n+1} &= t_n + \Delta t
-      \end{align}
-    
-    for :math:`n = 0, 1, 2, 3, \ldots`, using
-    
-    .. math::
-      \begin{align}
-        k_1 &= \Delta t \ f\left(t_n,                      S_n \right), \\
-        k_2 &= \Delta t \ f\left(t_n + \frac{\Delta t}{2}, S_n + \frac{k_1}{2}\right), \\
-        k_3 &= \Delta t \ f\left(t_n + \frac{\Delta t}{2}, S_n + \frac{k_2}{2}\right), \\
-        k_4 &= \Delta t \ f\left(t_n + \Delta t,           S_n + k_3\right).
-      \end{align}
-    
-    Here :math:`S_{n+1}` is the RK4 approximation of :math:`S(t_{n+1})`, and the next value :math:`S_{n+1}` is determined by the present value :math:`S_n` plus the weighted average of four increments, where each increment is the product of the size of the interval, :math:`\Delta t`, and an estimated slope specified by the function :math:`f` on the right-hand side of the differential equation.
-    
-    * :math:`k_1` is the increment based on the slope at the beginning of the interval, using :math:`S_n`; Euler's method
-    * :math:`k_2` is the increment based on the slope at the midpoint of the interval, using :math:`S_n` and :math:`k_1`;
-    * :math:`k_3` is again the increment based on the slope at the midpoint, but now using :math:`S_n` and :math:`k_2`;
-    * :math:`k_4` is the increment based on the slope at the end of the interval, using :math:`S_n` and :math:`k_3`.
-    
-    In averaging the four increments, greater weight is given to the increments at the midpoint.
-    The RK4 method is a fourth-order method, meaning that the local truncation error is :math:`\mathcal{O}((\Delta t)^5)`, while the total accumulated error is on the order of :math:`\mathcal{O}((\Delta t)^4)`.
     """
     dt        = time_step
     mesh      = self.mesh
     dSdt      = self.dSdt
 
-    # fourth-order Runge-Kutta method :
-    def f(y):
-      mass.update_mesh_and_surface(y)         # prepare the geometry
-      momentum.solve()                        # calculate velocity
-      mass.solve()                            # derive free surface
-      return dSdt.vector().get_local()        # return array
+    # calculate velocity :
+    momentum.solve()
 
     # initial surface :
     S_0     = self.S.vector().get_local()
-    
-    k_1     = dt * f(S_0)                     # 1.) first order
-    k_2     = dt * f(S_0 + k_1/2.0)           # 2.) second order
-    k_3     = dt * f(S_0 + k_2/2.0)           # 3.) third order
-    k_4     = dt * f(S_0 + k_3)               # 4.) fourth order
 
-    # next surface :
-    S_1     = S_0 + 1.0 / 6.0 * (k_1 + 2*k_2 + 2*k_3 + k_4)
-   
-    # final update : 
-    mass.update_mesh_and_surface(S_1)         # prepare the geometry
-    momentum.solve()                          # calculate velocity
+    # calculate new surface :
+    mass.solve()
+
+    # update the surface :
+    S_1     = self.S.vector().get_local()
+    mass.update_mesh_and_surface(S_1)
 
     # calculate mesh velocity :
     B_a       = self.B.vector().get_local()

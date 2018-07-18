@@ -7,9 +7,7 @@ from cslvr.inputoutput    import print_text, get_text, print_min_max
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
-import sys
-import os
-import re
+import sys, os, re, json
 
 
 
@@ -2022,7 +2020,8 @@ class Model(object):
     print_text(s, cls=self.this)
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
-    print_min_max(u_to, u_to.name())
+    print_min_max(u_from, 'u_from : ' + u_from.name())
+    print_min_max(u_to,   'u_to   : ' + u_to.name())
 
   def assign_variable(self, u, var, annotate=False):
     """
@@ -2590,6 +2589,65 @@ class Model(object):
         print_text(s, cls=self.this)
         cb_ftn()
 
+  def RK4(self, f, y_0, dt):
+    r"""
+    This method is an abstraction of the fourth-order
+    `Runge-Kutta method <https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods>`_:
+
+    The initial value problem is specified as follows:
+    
+    .. math::
+       \frac{\mathrm{d} y}{\mathrm{d} t} = f(t,y), \quad y(t_0) = y_0.
+    
+    Here :math:`y` is the unknown function of time :math:`t`, which we would like to approximate; we are told that :math:`\dot{y}`, the rate at which :math:`S` changes, is a function of :math:`t` and :math:`y` itself.
+    The function :math:`f` and the data :math:`t_0`,  :math:`S_0` and step-size :math:`\Delta t > 0` must be supplied.
+    The RK4 method specifies the iteration
+    
+    .. math::
+      \begin{align}
+        y_{n+1} &= y_n + \tfrac{1}{6} \left(k_1 + 2k_2 + 2k_3 + k_4 \right),\\
+        t_{n+1} &= t_n + \Delta t
+      \end{align}
+    
+    for :math:`n = 0, 1, 2, 3, \ldots`, using
+    
+    .. math::
+      \begin{align}
+        k_1 &= \Delta t \ f\left(t_n,                      y_n \right), \\
+        k_2 &= \Delta t \ f\left(t_n + \frac{\Delta t}{2}, y_n + \frac{k_1}{2}\right), \\
+        k_3 &= \Delta t \ f\left(t_n + \frac{\Delta t}{2}, y_n + \frac{k_2}{2}\right), \\
+        k_4 &= \Delta t \ f\left(t_n + \Delta t,           y_n + k_3\right).
+      \end{align}
+    
+    Here :math:`y_{n+1}` is the RK4 approximation of :math:`y(t_{n+1})`, and the next value :math:`y_{n+1}` is determined by the present value :math:`y_n` plus the weighted average of four increments, where each increment is the product of the size of the interval, :math:`\Delta t`, and an estimated slope specified by the function :math:`f` on the right-hand side of the differential equation.
+    
+    * :math:`k_1` is the increment based on the slope at the beginning of the interval, using :math:`y_n`; Euler's method
+    * :math:`k_2` is the increment based on the slope at the midpoint of the interval, using :math:`y_n` and :math:`k_1`;
+    * :math:`k_3` is again the increment based on the slope at the midpoint, but now using :math:`y_n` and :math:`k_2`;
+    * :math:`k_4` is the increment based on the slope at the end of the interval, using :math:`y_n` and :math:`k_3`.
+    
+    In averaging the four increments, greater weight is given to the increments at the midpoint.
+    The RK4 method is a fourth-order method, meaning that the local truncation error is :math:`\mathcal{O}((\Delta t)^5)`, while the total accumulated error is on the order of :math:`\mathcal{O}((\Delta t)^4)`.
+
+    This function returns :math:`y_{n+1}` given the parameters :
+    
+    :param f:   function :math:`\dot{y} = f(t,y)`
+    :param y_0: initial values
+    :param dt:  timestep :math:`\Delta t`
+    :type f:    function
+    :type y_0:  :class:`~numpy.ndarray`
+    :type dt:   float
+    :rtype:     :class:`~numpy.ndarray` 
+    """
+    k_1     = dt * f(y_0)                     # 1.) first order
+    k_2     = dt * f(y_0 + k_1/2.0)           # 2.) second order
+    k_3     = dt * f(y_0 + k_2/2.0)           # 3.) third order
+    k_4     = dt * f(y_0 + k_3)               # 4.) fourth order
+
+    # next vector :
+    return  y_0 + 1.0 / 6.0 * (k_1 + 2*k_2 + 2*k_3 + k_4)
+
+   
   def assimilate_U_ob(self, momentum, beta_i, max_iter, 
                       tmc_kwargs, uop_kwargs,
                       atol                = 1e2,
@@ -3085,21 +3143,17 @@ class Model(object):
       sys.exit(1)
 
     self.init_time_step(time_step)
-    t0             = time()
-    t              = t_start
-    dt             = time_step
-    # TODO: replace the while loop with iterator over `times` to eliminate
-    #       accumulated floating-point error.  Also, the adaptive solver should
-    #       be made to follow the CFL condition :
-    #times         = np.linspace(t_start, t_end, (t_end - t_start) / dt)
-    par            = momentum.solve_params['solver']['newton_solver']
-    alpha          = par['relaxation_parameter']
+    t0             = time()    # starting time (for total time to compute)
+    t              = t_start   # beginning time
+    dt             = time_step # current time step
+    dt_0           = time_step # initial time step for adaptive solve
 
     # history of the the total mass of the domain (iteration `k = 0`:
     self.step_time    = []                    # list of time steps (for adapt)
     m_tot_k           = assemble(mass.M_tot)  # initial mass
     print_min_max(m_tot_k, 'initial m_tot_k')
     self.mass_history = [m_tot_k]             # mass history
+    stars             = ("*") * 80            # stars for printing
    
     # Loop over all times
     while t <= t_end:
@@ -3124,10 +3178,26 @@ class Model(object):
 
       # end the timer :
       tok = time()
+
+      # calculate Courant number :
+      c   = dt * norm( project(self.U3 / self.h) )
  
-      # print statistics :
-      s = '>>> sim time: %g yr, CPU time: %g s, mass m_t / m_{t-1}: %g <<<'
-      print_text(s % (t, tok - tic, m_tot / m_tot_k), 'red', 1)
+      ## print statistics :
+      #s = (">>> sim time: %g yr, "
+      #     "dt: %g yr, "
+      #     "CPU time: %g s, "
+      #     "courant number: %g, "
+      #     "mass m_t / m_{t-1} - 1: %g <<<")
+      #print_text(s % (t + dt, dt, tok - tic, c, 1 - m_tot / m_tot_k), 'red', 1)
+      
+      print_text(">>> iteration %i complete <<<" % len(self.step_time), 'red',1)
+      stats = {"sim time [yr]           " : " %g" % (t + dt),
+               "dt [yr]                 " : " %g" % dt,
+               "CPU time [s]            " : " %g" % (tok - tic),
+               "courant number [--]     " : " %g" % c,
+               "mass m_t - m_{t-1} [kg] " : " %g" % (m_tot - m_tot_k)}
+      s = json.dumps(stats, sort_keys=True, indent=2, separators=('',' : '))
+      print_text(s, 'red', 1)
 
       # store information : 
       self.mass_history.append(m_tot)
@@ -3137,16 +3207,16 @@ class Model(object):
       m_tot_k = m_tot
       t      += dt
 
-      # for the subsequent iteration, reset the parameters to normal :
-      # TODO: fix the adaptive to something with CFL.
       if adaptive:
-        if par['relaxation_parameter'] != alpha:
-          print_text("::: resetting alpha to normal :::", cls=self.this)
-          par['relaxation_parameter'] = alpha
-        if dt != time_step:
-          print_text("::: resetting dt to normal :::", cls=self.this)
-          self.init_time_step(time_step)
-          dt = time_step
+        dt_n = dt
+        if   c > 0.5               : dt_n = dt/2.0
+        elif c < 0.1 and dt < dt_0 : dt_n = dt*2.0
+        if dt_n != dt:
+          dt = dt_n
+          print_text(stars, 'red', 1)
+          print_text(">>> WARNING: time step altered to %g <<<" % dt, 'red', 1)
+          print_text(stars, 'red', 1)
+          self.init_time_step(dt)
 
     # calculate total time to compute
     s = time() - t0

@@ -13,19 +13,21 @@ S = 1 - sqrt(X**2 + Y**2)
 
 m = MeshGenerator(x, y, msh_name, out_dir)
 
-m.create_contour(S, zero_cntr=0, skip_pts=10)
+m.create_contour(S, zero_cntr=0, skip_pts=5)
 #m.plot_contour()
-m.write_gmsh_contour(boundary_extend=False)
+m.write_gmsh_contour(boundary_extend=True)
 m.extrude(h=1, n_layers=5)
 m.finish()
 m.close_file()
-
-m     = MeshRefiner(x, y, S, out_dir + msh_name)
-a,aid = m.add_static_attractor(c=0.008, inv=True)
-m.set_background_field(aid)
-
-m.finish(gui=False, dim=3, out_file_name = out_dir + msh_name)
+m.create_mesh()
 m.convert_msh_to_xml()
+
+#m     = MeshRefiner(x, y, S, out_dir + msh_name)
+#a,aid = m.add_static_attractor(c=0.015, inv=True)
+#m.set_background_field(aid)
+#
+#m.finish(gui=False, dim=3, out_file_name = out_dir + msh_name)
+#m.convert_msh_to_xml()
 
 
 

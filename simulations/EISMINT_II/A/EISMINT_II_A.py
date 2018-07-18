@@ -84,40 +84,41 @@ model.init_A(1e-16)             # constant flow-rate factor
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
-  mom = MomentumBP(model)
+  mom = MomentumBP(model, use_pressure_bc=False)
 elif mdl_odr == 'BP_duk':
-  mom = MomentumDukowiczBP(model)
+  mom = MomentumDukowiczBP(model, use_pressure_bc=False)
 elif mdl_odr == 'RS':
-  mom = MomentumDukowiczStokesReduced(model)
+  mom = MomentumDukowiczStokesReduced(model, use_pressure_bc=False)
 elif mdl_odr == 'FS_duk':
-  mom = MomentumDukowiczStokes(model)
+  mom = MomentumDukowiczStokes(model, use_pressure_bc=False)
 elif mdl_odr == 'FS_stab':
-  mom = MomentumNitscheStokes(model, stabilized=True)
+  mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=True)
 elif mdl_odr == 'FS_th':
-  mom = MomentumNitscheStokes(model, stabilized=False)
+  mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=False)
 
 #nrg = Enthalpy(model, mom,
 #               transient  = True,
 #               use_lat_bc = False)
-mas = FreeSurface(model,
-                  thklim              = 1.0,
-                  lump_mass_matrix    = True)
+mass = FreeSurface(model,
+                   thklim              = thklim,
+                   lump_mass_matrix    = False)
 
 # create a function to be called at the end of each iteration :
 U_file  = XDMFFile(out_dir + 'U.xdmf')
 S_file  = XDMFFile(out_dir + 'S.xdmf')
 #T_file  = XDMFFile(out_dir + 'T.xdmf')
+
 def cb_ftn():
   #nrg.solve()                               # quasi-thermo-mechanical couple
-  model.save_xdmf(model.U3, 'U3', U_file)
-  #model.save_xdmf(model.T,  'T',  T_file)
-  model.save_xdmf(model.S,  'S',  S_file)
+  model.save_xdmf(model.U3,    'U3',          U_file)
+  model.save_xdmf(model.S,     'S',           S_file)
+  #model.save_xdmf(model.T,     'T',           T_file)
 
 # run the transient simulation :
-model.transient_solve(mom, mas,
+model.transient_solve(mom, mass,
                       t_start    = 0.0,
-                      t_end      = 50000.0,
-                      time_step  = 10.0,
+                      t_end      = 5000.0,
+                      time_step  = 10,
                       tmc_kwargs = None,
                       adaptive   = True,
                       annotate   = False,

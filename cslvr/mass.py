@@ -6,6 +6,7 @@ from cslvr.d2model     import D2Model
 from cslvr.d3model     import D3Model
 from cslvr.helper      import VerticalBasis, VerticalFDBasis, \
                               VerticalIntegrator
+import json
 
 
 
@@ -82,8 +83,14 @@ class FreeSurface(Mass):
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
-    self.model            = model   
-    self.thklim           = thklim 
+    self.solve_params    = self.default_solve_params()
+    s = "::: using default parameters :::"
+    print_text(s, self.color())
+    s = json.dumps(self.solve_params, sort_keys=True, indent=2)
+    print_text(s, '230')
+
+    self.model            = model
+    self.thklim           = thklim
     self.lump_mass_matrix = lump_mass_matrix
 
     # get model var's so we don't have a bunch of ``model.`` crap in our math :
@@ -91,13 +98,14 @@ class FreeSurface(Mass):
     dSrf    = model.dSrf
     dBed    = model.dBed
     rhob    = model.rhob
-    S       = model.S
+    S_0     = model.S
     adot    = model.adot
     u       = model.u
     v       = model.v
     w       = model.w
     mhat    = model.mhat
     h       = model.h
+    dt      = model.time_step
 
     # specical dof mapping for periodic spaces :
     if model.use_periodic:
@@ -110,27 +118,60 @@ class FreeSurface(Mass):
 
     # set up linear variational problem for unknown dSdt :
     phi         = TestFunction(Q)
-    psi         = TrialFunction(Q)
+    dS          = TrialFunction(Q)
+    S           = Function(Q, name='mass.S')
 
     # velocity vector :
-    U           = as_vector([u, v, w])
+    U           = as_vector([u, v, 0])
+
+    # z-coordinate unit vector :
+    k           = as_vector([0, 0, 1])
 
     # SUPG-modified trial function (artifical diffusion in direction of flow) :
     unorm       = sqrt(dot(U,U)) + DOLFIN_EPS
-    phi_u       = h / (2 * unorm) * dot(U, grad(phi))
+    tau         = h / (2 * unorm)
+    phihat      = phi + tau * dot(U, grad(phi))
 
     # SUPG-modified shock-capturing trial function :
     gSnorm      = dot(grad(S), grad(S)) + DOLFIN_EPS
-    phi_gs      = h / (2 * gSnorm) * dot(grad(S), grad(phi))
+    tau_gs      = h / (2 * gSnorm)
+    phihat_gs   = phi + tau_gs * dot(grad(S), grad(phi))
+
+    # source coefficient :
+    gS          = sqrt(1 + dot(grad(S), grad(S)))
 
     # mass matrix :
-    self.mass   = psi * phi * dSrf
+    self.mass   = S * phi * dSrf
+
+    # right-hand side, i.e., \partial_t S = \delta :
+    delta       = gS*adot - (dot(U, grad(S)) - w)
+
+    # theta-scheme (nu = 1/2 == Crank-Nicolson) :
+    nu          = 0.5
+    S_mid       = nu*S + (1 - nu)*S_0
+    
+    # the linear differential operator for this problem (pure advection) :
+    def Lu(u): return dot(U, grad(u))
+
+    # partial time derivative :
+    dSdt = (S - S_0) / dt
+
+    # LHS of dSdt + Lu(S_mid) = f :
+    f  = adot + w
+
+    # bilinear form :
+    self.delta_S = + dSdt * phi * dx \
+                   + Lu(S_mid) * phi * dx \
+                   - f * phi * dx \
+                   + inner( Lu(phi), tau*(dSdt + Lu(S_mid) - f) ) * dx
+    # Jacobian :
+    self.mass_Jac = derivative(self.delta_S, S, dS)
+    self.S        = S
 
     # stiffness matrix :
-    self.source      = adot                  * phi    * dSrf
-    self.advection   = (dot(U, grad(S)) - w) * phi    * dSrf 
-    self.stab_u      = (dot(U, grad(S)) - w) * phi_u  * dSrf
-    self.stab_gs     = (dot(U, grad(S)) - w) * phi_gs * dSrf
+    self.source      = f       * phi           * dSrf
+    self.advection   = Lu(S_0) * phi           * dSrf
+    self.stab_u      = Lu(S_0) * tau * Lu(phi) * dSrf
 
   def update_mesh_and_surface(self, S):
     """
@@ -155,8 +196,60 @@ class FreeSurface(Mass):
     S                       = model.S.compute_vertex_values()
     B                       = model.B.compute_vertex_values()
     mesh.coordinates()[:,2] = sigma*(S - B) + B
+  
+  def get_solve_params(self):
+    """
+    Returns the solve parameters.
+    """
+    return self.solve_params
 
+  def default_solve_params(self):
+    """ 
+    Returns a set of default solver parameters that yield good performance
+    """
+    nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
+                                  'preconditioner'           : 'none',
+                                  'relative_tolerance'       : 1e-13,
+                                  'relaxation_parameter'     : 1.0,
+                                  'maximum_iterations'       : 20,
+                                  'error_on_nonconvergence'  : False}}
+    params  = {'solver'  : {'linear_solver'       : 'mumps',
+                            'preconditioner'      : 'none'},
+               'nparams' : nparams}
+    return params
+  
   def solve(self, annotate=False):
+    """
+    This method solves the free-surface equation for the upper-surface height :math:`S`, updating ``self.model.S``.
+
+    Currently does not support dolfin-adjoint annotation.
+    """
+    print_text("::: solving free-surface relation :::", self.color())
+    
+    model  = self.model
+  
+    ## solve the linear system :
+    #solve(lhs(self.delta_S) == rhs(self.delta_S), self.S, annotate=annotate)
+
+    # solve the non-linear system :
+    model.assign_variable(self.S, 0.0, annotate=annotate)
+    solve(self.delta_S == 0, self.S, J=self.mass_Jac,
+          annotate=annotate, solver_parameters=self.solve_params['nparams'])
+    
+    # update the model variable :
+    model.assign_variable(model.S, self.S, annotate=annotate)
+
+    # assemple the stiffness and mass matrices :
+    K_source    = assemble(self.source)
+    K_advection = assemble(self.advection)
+    K_stab_u    = assemble(self.stab_u)
+
+    # print tensor statistics :
+    print_min_max( norm(K_source,    'l2'),  '|| K_source ||_2   ' )
+    print_min_max( norm(K_advection, 'l2'),  '|| K_advection ||_2' )
+    print_min_max( norm(K_stab_u,    'l2'),  '|| K_stab_u ||_2   ' )
+
+  def old_solve(self, annotate=False):
     """
     This method solves the free-surface equation, updating ``self.model.dSdt``.
 

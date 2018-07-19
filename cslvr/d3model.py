@@ -475,13 +475,6 @@ class D3Model(Model):
 
     self.init_S(S)
     self.init_B(B)
-
-    # allow the functions to be extrapolated for nodes near the boundary :
-    self.S.set_allow_extrapolation(True)
-    self.B.set_allow_extrapolation(True)
-
-    # sigma coordinate :
-    self.init_sigma(project((self.x[2] - self.B) / (self.S - self.B)))
     
     # transform z :
     # thickness = surface - base, z = thickness + base
@@ -494,11 +487,13 @@ class D3Model(Model):
     print_text(s, cls=self)
     
     for x in self.mesh.coordinates():
-      x[2] = (x[2] / mesh_height) * ( + self.S(x[0], x[1], x[2]) \
-                                      - self.B(x[0], x[1], x[2]) )
-      x[2] = x[2] + self.B(x[0], x[1], x[2])
+      x[2] = (x[2] / mesh_height) * (S(x[0], x[1], x[2]) - B(x[0], x[1], x[2]))
+      x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
     print_text(s, cls=self)
+
+    # sigma coordinate :
+    self.init_sigma(project((self.x[2] - B) / (S - B)))
 
   def form_srf_mesh(self):
     """

@@ -876,11 +876,11 @@ class GetBasin(object):
     home     = os.path.dirname(os.path.abspath(filename)) + "/.."
 
     if di.cont == "greenland":
-      path           = home + "/data/greenland/basins/"
+      path           = home + "/data/greenland/"
       self.datafile  = path + "GrnDrainageSystems_Ekholm.txt"
       self.imagefile = path + "Grn_Drainage_Systems.png"
     elif di.cont == "antarctica":
-      path           = home + "/data/antarctica/basins/"
+      path           = home + "/data/antarctica/"
       self.datafile  = path + "Ant_Full_DrainageSystem_Polygons.txt"
       self.imagefile = path + "Ant_ICESatDSMaps_Fig_1.jpg"
     else:

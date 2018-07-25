@@ -475,6 +475,11 @@ class D3Model(Model):
 
     self.init_S(S)
     self.init_B(B)
+
+    if type(S) == Constant or type(S) == float or type(S) == int:
+      S = Expression('S', S=S, degree=0)
+    if type(B) == Constant or type(B) == float or type(B) == int:
+      B = Expression('B', B=B, degree=0)
     
     # transform z :
     # thickness = surface - base, z = thickness + base

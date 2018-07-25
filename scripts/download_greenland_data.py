@@ -46,12 +46,12 @@ home     = os.path.dirname(os.path.abspath(filename)) + '/../data/greenland'
 
 # Fox Maule et al. (2005) basal heat flux :
 q_geo   = 'http://websrv.cs.umt.edu/isis/images/d/da/Greenland_heat_flux_5km.nc'
-fldr    = 'fox_maule'
+fldr    = ''
 download_file(q_geo, home, fldr)
 
 # searise dataset :
 searise = 'http://websrv.cs.umt.edu/isis/images/e/e9/Greenland_5km_dev1.2.nc'
-fldr    = 'searise'
+fldr    = ''
 download_file(searise, home, fldr)
 
 # NASA basins dataset for Greenland:
@@ -59,22 +59,9 @@ basins_shape  = 'http://icesat4.gsfc.nasa.gov/cryo_data/' + \
                 'drainage_divides/GrnDrainageSystems_Ekholm.txt'
 basins_image  = 'http://icesat4.gsfc.nasa.gov/cryo_data/' + \
                 'drainage_divides/Grn_Drainage_Systems_sm.png'
-fldr    = 'basins'
+fldr    = ''
 download_file(basins_shape, home, fldr)
 download_file(basins_image, home, fldr)
-
-## Bamber 2013 bedrock topography dataset :
-#v2      = 'https://dl.dropboxusercontent.com/s/qd02y99d1xrkdz3/' + \
-#          'Greenland_bedrock_topography_V2.tar.gz?dl=1&token_ha' + \
-#          'sh=AAFzWa8fuvcKC2tBYqY9VzDLctRWwqX2EuN-179bJ74XEg'
-#fldr    = 'bamber13'
-#download_file(v2, home, fldr, extract=True)
-#
-## updated Rignot 2014 velocity data :
-#merged  = 'https://www.dropbox.com/s/ov5bl30jsojws8g/velocity_' + \
-#          'greenland_v4Aug2014.tar.gz?dl=1'
-#fldr    = 'rignot'
-#download_file(merged, home, fldr, extract=True)
 
 
 

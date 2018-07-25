@@ -747,11 +747,14 @@ class MomentumNitscheStokes(Momentum):
       eta  = self.viscosity(u)
     print_text(s, self.color())
 
-    alpha = Constant(1e-16)  # TODO: find the "best" value for this
+    alpha = Constant(0.0)  # TODO: find the "best" value for this
     gamma = Constant(1e2)
     f     = Constant((0.0, 0.0, -rhoi * g))
     I     = Identity(3)
     u_n   = Fb
+
+    # intrinsic-time stabilization parameter :
+    tau   = alpha * h**2
 
     # pressure boundary :
     ut    = u - dot(u,n)*n
@@ -760,7 +763,7 @@ class MomentumNitscheStokes(Momentum):
 
     def epsilon(u): return 0.5*(grad(u) + grad(u).T)
     def sigma(u,p): return 2*eta * epsilon(u) - p*I
-    def L(u,p):     return -div(sigma(u,p))
+    def L(u,p):     return div(sigma(u,p))
     
     t   = dot(sigma(u,p), n)
     s   = dot(sigma(v,q), n)
@@ -777,9 +780,10 @@ class MomentumNitscheStokes(Momentum):
           + gamma/h * u_n * dot(v,n) * dGamma_b
 
     # stabilized form is identical to TH with the addition the following terms :
+    # FIXME: this formulation needs to be carefully re-analyzed, because it doesn't work.
     if stabilized:
-      B_o += alpha * h**2 * inner(L(u,p), L(v,q)) * dOmega
-      F   += alpha * h**2 * inner(f, L(v,q)) * dOmega
+      B_o += inner(L(v,q), tau*L(u,p)) * dOmega
+      F   -= inner(L(v,q), tau*f)      * dOmega
    
     self.mom_F = B_o + B_g - F
     
@@ -895,7 +899,7 @@ class MomentumNitscheStokes(Momentum):
               {
                 'linear_solver'            : 'mumps',
                 'relative_tolerance'       : 1e-9,
-                'relaxation_parameter'     : 1.0,
+                'relaxation_parameter'     : 0.7,
                 'maximum_iterations'       : 12,
                 'error_on_nonconvergence'  : False,
               }}

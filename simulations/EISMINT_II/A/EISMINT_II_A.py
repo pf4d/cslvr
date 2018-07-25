@@ -51,7 +51,7 @@ for x in mesh.coordinates():
 model = D3Model(mesh, out_dir=out_dir, use_periodic=False)
 
 # set the model geometry and deform the mesh z coordinate to match :
-model.deform_mesh_to_geometry(S=thklim, B=0.0)
+model.deform_mesh_to_geometry(S=thklim, B=0)
 
 # iterate through and color each facet and cell of the mesh :
 model.calculate_boundaries()

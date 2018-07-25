@@ -57,6 +57,9 @@ class DataFactory(object):
     `Antarctica Measures <https://nsidc.org/data/docs/measures/nsidc0484_rignot/>`_ surface velocity data.  This function creates a new data field with
     key ``mask`` that is 1 where velocity measurements are present and 
     0 where they are not.
+    
+    You will have to download the data and manually place it in the 
+    ``cslvr_root_dir/data/antarctica`` directory.
    
     The keys of the dictionary returned by this function are :
      
@@ -76,9 +79,9 @@ class DataFactory(object):
     global home
  
     if res == 900:
-      direc = home + '/antarctica/measures/antarctica_ice_velocity_900m_v2.nc' 
+      direc = home + '/antarctica/antarctica_ice_velocity_900m_v2.nc' 
     elif res == 450:
-      direc = home + '/antarctica/measures/antarctica_ice_velocity_450m_v2.nc' 
+      direc = home + '/antarctica/antarctica_ice_velocity_450m_v2.nc' 
     else:
       print "get_ant_measures() 'res' arg must be either 900 or 450"
       exit(0)
@@ -148,6 +151,9 @@ class DataFactory(object):
     by :class:`latmodel.LatModel.calculate_boundaries` and 
     :class:`d3model.D3Model.calculate_boundaries`.
     
+    You will have to download the data and manually place it in the 
+    ``cslvr_root_dir/data/greenland`` directory.
+    
     The keys of the dictionary returned by this function are :
      
     * ``B``  -- basal topography height
@@ -167,7 +173,7 @@ class DataFactory(object):
     
     global home
     
-    direc = home + '/greenland/bedmachine/'
+    direc = home + '/greenland/'
     filen = 'BedMachineGreenland-2017-09-20.nc'
 
     data  = Dataset(direc + filen, mode = 'r')
@@ -195,7 +201,7 @@ class DataFactory(object):
       
     try:
       data_new = Dataset(direc + 'bedmachine_cslvr.nc', 'r')
-    except RuntimeError:
+    except IOError:
       s    = "::: cslvr bedmachine data not present, calculating :::"
       print_text(s, 'red', 1)
 
@@ -335,6 +341,11 @@ class DataFactory(object):
     This function creates a new data field with
     key ``mask`` that is 1 where velocity measurements are present and 
     0 where they are not.
+
+    You will have to contact the authors of that paper to get the data.
+    When you download it from them, you can just put the .nc file named
+    ``Greenland_ice_speed_v2017.nc`` in the ``root_dir/data/greenland``
+    directory.
    
     The keys of the dictionary returned by this function are :
      
@@ -349,7 +360,7 @@ class DataFactory(object):
     
     global home
     
-    direc = home + '/greenland/mouginot/'
+    direc = home + '/greenland/'
     filen = 'Greenland_ice_speed_v2017.nc'
 
     data  = Dataset(direc + filen, mode = 'r')
@@ -429,6 +440,9 @@ class DataFactory(object):
     `Greenland Ice Mapping Project <http://nsidc.org/data/NSIDC-0645/versions/1>`_
     surface topography data.
     
+    You will have to download the data and manually place it in the 
+    ``cslvr_root_dir/data/greenland`` directory.
+    
     The keys of the dictionary returned by this function are :
      
     * ``S``  -- surface topography height
@@ -440,7 +454,7 @@ class DataFactory(object):
     print_text(s, DataFactory.color)
 
     global home
-    direc    = home + '/greenland/gimp/' 
+    direc    = home + '/greenland' 
    
     S        = TiffFile(direc + 'gimpdem_90m_v1.1.tif').asarray()
     mask     = TiffFile(direc + 'GimpIceMask_90m_v1.1.tif').asarray()
@@ -497,6 +511,9 @@ class DataFactory(object):
     """
     Greenland `surface-mass balance <https://www.the-cryosphere.net/10/2361/2016/>`_ at 1km resolution averaged over the years (1958 -- 2015).
     
+    You will have to download the data from the authors and manually place 
+    it in the ``cslvr_root_dir/data/greenland`` directory.
+    
     The keys of the dictionary returned by this function are :
      
     * ``S``  -- surface topography height
@@ -512,7 +529,7 @@ class DataFactory(object):
     
     global home
     
-    direc = home + '/greenland/noel/'
+    direc = home + '/greenland/'
     filen = 'SMB_rec.1960-1989.BN_RACMO2.3p2_1km.YYmean.nc'
 
     data  = Dataset(direc + filen, mode = 'r')
@@ -608,6 +625,9 @@ class DataFactory(object):
     surface velocity data.  This function creates a new data field with 
     key ``mask`` that is 1 where velocity measurements are present 
     and 0 where they are not.
+    
+    You will have to download the data from the authors and manually place 
+    it in the ``cslvr_root_dir/data/greenland`` directory.
    
     The keys of the dictionary returned by this function are :
      
@@ -626,7 +646,7 @@ class DataFactory(object):
     global home
     
     #direc    = home + '/greenland/measures/greenland_vel_mosaic500_2008_2009' 
-    direc = home + '/greenland/measures/greenland_vel_mosaic500_2016_2017_' 
+    direc = home + '/greenland/greenland_vel_mosaic500_2016_2017_' 
     #TODO: find a way to intelligently leave out the error if you don't want
     #      to download them:
     files    = ['mask', 'vx_v2', 'vy_v2']#, '_ex_v2', '_ey_v2']
@@ -697,6 +717,9 @@ class DataFactory(object):
     Greenland `Rignot <http://www.ess.uci.edu/group/erignot/data/ice-flow-greenland-international-polar-year-2008%E2%80%932009>`_ surface velocity data. 
     This function creates a new data field with key ``mask`` that is 1 where
     velocity measurements are present and 0 where they are not.
+    
+    You will have to download the data from the authors and manually place 
+    it in the ``cslvr_root_dir/data/greenland`` directory.
    
     The keys of the dictionary returned by this function are :
      
@@ -713,7 +736,7 @@ class DataFactory(object):
     
     global home
     
-    direc = home + '/greenland/rignot/velocity_greenland_v4Aug2014.nc'
+    direc = home + '/greenland/velocity_greenland_v4Aug2014.nc'
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     
@@ -788,6 +811,9 @@ class DataFactory(object):
     Greenland `Fox Maule <http://websrv.cs.umt.edu/isis/index.php/Greenland_Basal_Heat_Flux>`_ geothermal-heat-flux data.  This function converts the 
     geothermal-heat flux data from J s\ :sup:`-1` m\ :sup:`-2` to that used 
     by CSLVR, J a\ :sup:`-1` m\ :sup:`-2`.
+
+    This data is downloaded by executing the script 
+    ``cslvr_root/scripts/download_greenland_data.py``
    
     The keys of the dictionary returned by this function are :
      
@@ -798,7 +824,7 @@ class DataFactory(object):
     
     global home
  
-    direc = home + "/greenland/fox_maule/Greenland_heat_flux_5km.nc"
+    direc = home + "/greenland/Greenland_heat_flux_5km.nc"
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     
@@ -853,6 +879,9 @@ class DataFactory(object):
     J a\ :sup:`-1` m\ :sup:`-2`, and the surface temperature data from 
     degrees Celsius to degrees Kelvin.  The parameter ``thklim`` sets the 
     minimum allowed ice thickness.
+
+    This data is downloaded by executing the script 
+    ``cslvr_root/scripts/download_antarctica_data.py``
    
     The keys of the dictionary returned by this function are :
      
@@ -874,7 +903,7 @@ class DataFactory(object):
     
     global home
  
-    direc = home + '/antarctica/bedmap1/ALBMAPv1.nc'
+    direc = home + '/antarctica/ALBMAPv1.nc'
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     
@@ -964,6 +993,9 @@ class DataFactory(object):
     everywhere else; this is used to mark cliff and sea-water boundaries
     by :class:`latmodel.LatModel.calculate_boundaries` and 
     :class:`d3model.D3Model.calculate_boundaries`.
+
+    This data is downloaded by executing the script 
+    ``cslvr_root/scripts/download_antarctica_data.py``
     
     The keys of the dictionary returned by this function are :
      
@@ -986,7 +1018,7 @@ class DataFactory(object):
     print_text(s, DataFactory.color)
 
     global home
-    direc    = home + '/antarctica/bedmap2/bedmap2_tiff/' 
+    direc    = home + '/antarctica/bedmap2/' 
    
     B           = TiffFile(direc + 'bedmap2_bed.tif')
     S           = TiffFile(direc + 'bedmap2_surface.tif') 
@@ -1136,6 +1168,9 @@ class DataFactory(object):
     by :class:`latmodel.LatModel.calculate_boundaries` and 
     :class:`d3model.D3Model.calculate_boundaries`.
     
+    You will have to download the data from the authors and manually place 
+    it in the ``cslvr_root_dir/data/greenland`` directory.
+    
     The keys of the dictionary returned by this function are :
      
     * ``B``  -- basal topography height
@@ -1157,7 +1192,7 @@ class DataFactory(object):
     
     global home
    
-    direc = home + '/greenland/bamber13/Greenland_bedrock_topography_V2.nc' 
+    direc = home + '/greenland/Greenland_bedrock_topography_V2.nc' 
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     
@@ -1267,6 +1302,9 @@ class DataFactory(object):
     Greenland `Searise <http://websrv.cs.umt.edu/isis/index.php/Present_Day_Greenland>`_ data.
 
     This function converts the geothermal-heat flux data from J s\ :sup:`-1` m\ :sup:`-2` to that used by CSLVR, J a\ :sup:`-1` m\ :sup:`-2`, and the surface temperature data from degrees Celsius to degrees Kelvin.
+
+    This data is downloaded by executing the script 
+    ``cslvr_root/scripts/download_greenland_data.py``
     
     The keys of the dictionary returned by this function are :
      
@@ -1288,7 +1326,7 @@ class DataFactory(object):
     
     global home
     
-    direc = home + "/greenland/searise/Greenland_5km_dev1.2.nc"
+    direc = home + "/greenland/Greenland_5km_dev1.2.nc"
     data  = netcdf_file(direc, mode = 'r')
     vara  = dict()
     

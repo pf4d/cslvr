@@ -291,8 +291,8 @@ class BalanceVelocity(Physics):
     # normalize the direction vector :
     s    =  r"::: normalizing flow direction :::"
     print_text(s, cls=self)
-    d_x_v = model.d_x.vector().array()
-    d_y_v = model.d_y.vector().array()
+    d_x_v = model.d_x.vector().get_local()
+    d_y_v = model.d_y.vector().get_local()
     d_n_v = np.sqrt(d_x_v**2 + d_y_v**2 + DOLFIN_EPS)
     model.init_uhat(d_x_v / d_n_v)
     model.init_vhat(d_y_v / d_n_v)

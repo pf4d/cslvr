@@ -145,13 +145,10 @@ class DataFactory(object):
   def get_bedmachine(thklim = 0.0):
     """
     Greenland `Bedmachine <http://onlinelibrary.wiley.com/doi/10.1002/2017GL074954/full>`_ geometry. 
-    This class creates a new lateral boundary mask with key
-    ``lat_mask`` that is 1 at any lateral boundary gridpoint and 0 
-    everywhere else; this is used to mark cliff and sea-water boundaries
-    by :class:`latmodel.LatModel.calculate_boundaries` and 
-    :class:`d3model.D3Model.calculate_boundaries`.
     
-    You will have to download the data and manually place it in the 
+    You will have to download the data and manually
+    (from `here <https://nsidc.org/data/idbmg4>`_)
+    and place it in the 
     ``cslvr_root_dir/data/greenland`` directory.
     
     The keys of the dictionary returned by this function are :
@@ -159,7 +156,6 @@ class DataFactory(object):
     * ``B``  -- basal topography height
     * ``S``  -- surface topography height
     * ``H``  -- ice thickness
-    * ``lat_mask`` -- lateral-boundary mask
     * ``Bo`` -- basal topography height before imposing ``thklim`` 
     * ``mask`` -- ice shelf mask (1 where shelves, 0 where grounded)
     * ``mask_orig`` -- original ice mask from the data
@@ -170,6 +166,8 @@ class DataFactory(object):
     """
     s    = "::: getting Greenland 'Bedmachine v3' data from DataFactory :::"
     print_text(s, DataFactory.color)
+    s    = "    - imposing thickness limit ``thklim = %g`` m to data -"
+    print_text(s % thklim, DataFactory.color)
     
     global home
     
@@ -205,13 +203,6 @@ class DataFactory(object):
       s    = "::: cslvr bedmachine data not present, calculating :::"
       print_text(s, 'red', 1)
 
-      # generate  mask for lateral boundaries (floating and grounded both):
-      Hc   = mask_orig.copy(True)
-      Hc[mask_orig == 1] = 0
-      Hc[mask_orig == 2] = 1  # grounded ice
-      Hc[mask_orig == 3] = 1  # floating ice
-      Hc[mask_orig == 4] = 0  # non-Greenland land
-
       # create mask for use by cslvr :
       mask = mask_orig.copy(True)
       mask[mask_orig == 1] = 0
@@ -219,23 +210,6 @@ class DataFactory(object):
       mask[mask_orig == 3] = 2  # floating ice
       mask[mask_orig == 4] = 0  # non-Greenland land
     
-      # calculate mask gradient, to properly mark lateral boundaries :
-      gradH = gradient(Hc)
-      L     = gradH[0]**2 + gradH[1]**2
-      L[L > 0.0] = 1.0
-      L[L < 1.0] = 0.0
-      
-      # mark one more level in :
-      Hc[L > 0.0] = 0
-      
-      gradH = gradient(Hc)
-      L2    = gradH[0]**2 + gradH[1]**2
-      L2[L2 > 0.0] = 1.0
-      L2[L2 < 1.0] = 0.0
-      
-      # combine them :
-      L[L2 > 0.0] = 1.0
-      
       # create a new netcdf4 file :
       data_new  = Dataset(direc + 'bedmachine_cslvr.nc', mode = 'w',
                           format='NETCDF4')
@@ -254,8 +228,6 @@ class DataFactory(object):
                                           data.variables['y'].dimensions)
       data_new.createVariable('mask',     data.variables['mask'].dtype,
                                           data.variables['mask'].dimensions)
-      data_new.createVariable('lat_mask', L.dtype,
-                                          data.variables['mask'].dimensions)
 
       # copy the attributes of the dimensions :
       for ncattr in data.variables['x'].ncattrs():
@@ -269,10 +241,8 @@ class DataFactory(object):
       data_new.variables['x'][:]        =  data.variables['x'][:]
       data_new.variables['y'][:]        =  data.variables['y'][:]
       data_new.variables['mask'][:]     =  mask
-      data_new.variables['lat_mask'][:] =  L
 
     mask = array(data_new.variables['mask'][:])
-    L    = array(data_new.variables['lat_mask'][:])
    
     # remove the junk data and impose thickness limit :
     B   = B.copy(True)
@@ -319,11 +289,10 @@ class DataFactory(object):
     vara['ny']                = ny
     vara['dx']                = dx
     
-    names = ['S', 'B', 'H', 'mask_orig', 'mask', 'lat_mask']
-    ftns  = [ S,   B,   H,   mask_orig,   mask,   L        ]
+    names = ['S', 'B', 'H', 'mask_orig', 'mask']
+    ftns  = [ S,   B,   H,   mask_orig,   mask ]
     
     s = '      DataInput  : %-*s key : "%s"'
-    print_text(s % (30,names[-2],names[-2]), '230')
     print_text(s % (30,names[-1],names[-1]), '230')
     
     # save the data in matlab format :
@@ -988,11 +957,7 @@ class DataFactory(object):
   def get_bedmap2(thklim = 0.0):
     """
     Antarctica `Bedmap 2 <https://www.bas.ac.uk/project/bedmap-2/>`_
-    topography data.  This class creates a new lateral boundary mask with key
-    ``lat_mask`` that is 1 at any lateral boundary gridpoint and 0 
-    everywhere else; this is used to mark cliff and sea-water boundaries
-    by :class:`latmodel.LatModel.calculate_boundaries` and 
-    :class:`d3model.D3Model.calculate_boundaries`.
+    topography data.
 
     This data is downloaded by executing the script 
     ``cslvr_root/scripts/download_antarctica_data.py``
@@ -1003,7 +968,6 @@ class DataFactory(object):
     * ``S``  -- surface topography height
     * ``H``  -- ice thickness
     * ``mask`` -- ice shelf mask
-    * ``lat_mask`` -- lateral-boundary mask
     * ``rock_mask`` -- rock outcrop mask
     * ``b_uncert`` -- basal-topography uncertainty
     * ``coverage`` -- is a binary grid showing the distribution of ice thickness data used in the grid of ice thickness
@@ -1028,7 +992,6 @@ class DataFactory(object):
     b_uncert    = TiffFile(direc + 'bedmap2_grounded_bed_uncertainty.tif') 
     coverage    = TiffFile(direc + 'bedmap2_coverage.tif')
     gl04c_WGS84 = TiffFile(direc + 'gl04c_geiod_to_WGS84.tif')
-    
    
     B           = B.asarray()
     S           = S.asarray()
@@ -1049,63 +1012,6 @@ class DataFactory(object):
     H[H == 32767]  = thklim
     H[H <= thklim] = thklim
     S = B + H
-    
-    # generate mask for lateral boundaries :
-    Hc = mask.copy(True)
-    Hc[mask > 0] = 1
-    
-    # calculate mask gradient, to properly mark lateral boundaries :
-    gradH = gradient(Hc)
-    L     = gradH[0]**2 + gradH[1]**2
-    L[L > 0.0] = 1.0
-    L[L < 1.0] = 0.0
-
-    # mark one more level in :
-    Hc[L > 0.0] = 0
-    
-    gradH = gradient(Hc)
-    L2    = gradH[0]**2 + gradH[1]**2
-    L2[L2 > 0.0] = 1.0
-    L2[L2 < 1.0] = 0.0
-
-    # mark one more level in :
-    Hc[L2 > 0.0] = 0
-    
-    gradH = gradient(Hc)
-    L3    = gradH[0]**2 + gradH[1]**2
-    L3[L3 > 0.0] = 1.0
-    L3[L3 < 1.0] = 0.0
-
-    # mark one more level in :
-    Hc[L3 > 0.0] = 0
-    
-    gradH = gradient(Hc)
-    L4    = gradH[0]**2 + gradH[1]**2
-    L4[L4 > 0.0] = 1.0
-    L4[L4 < 1.0] = 0.0
-
-    # mark one more level in :
-    Hc[L4 > 0.0] = 0
-    
-    gradH = gradient(Hc)
-    L5    = gradH[0]**2 + gradH[1]**2
-    L5[L5 > 0.0] = 1.0
-    L5[L5 < 1.0] = 0.0
-
-    # mark one more level in :
-    Hc[L5 > 0.0] = 0
-    
-    gradH = gradient(Hc)
-    L6    = gradH[0]**2 + gradH[1]**2
-    L6[L6 > 0.0] = 1.0
-    L6[L6 < 1.0] = 0.0
-    
-    # combine them :
-    L[L2 > 0.0] = 1.0
-    L[L3 > 0.0] = 1.0
-    L[L4 > 0.0] = 1.0
-    L[L5 > 0.0] = 1.0
-    L[L6 > 0.0] = 1.0
     
     vara        = dict()
      
@@ -1143,9 +1049,9 @@ class DataFactory(object):
     vara['ny']                = ny
     vara['dx']                = dx
     
-    names = ['B', 'S', 'H', 'mask', 'lat_mask', 'rock_mask', 'b_uncert', 
+    names = ['B', 'S', 'H', 'mask', 'rock_mask', 'b_uncert', 
              'coverage', 'gl04c_WGS84']
-    ftns  = [B, S, H, mask, L, rock_mask, b_uncert, coverage, gl04c_WGS84]
+    ftns  = [B, S, H, mask, rock_mask, b_uncert, coverage, gl04c_WGS84]
     
     for n in names:
       print_text('      Bedmap 2 : %-*s key : "%s" '%(30,n,n), '230')
@@ -1162,11 +1068,6 @@ class DataFactory(object):
   def get_bamber(thklim = 0.0):
     """
     Greenland `Bamber <https://nsidc.org/data/NSIDC-0092>`_ topography data.
-    This class creates a new lateral boundary mask with key
-    ``lat_mask`` that is 1 at any lateral boundary gridpoint and 0 
-    everywhere else; this is used to mark cliff and sea-water boundaries
-    by :class:`latmodel.LatModel.calculate_boundaries` and 
-    :class:`d3model.D3Model.calculate_boundaries`.
     
     You will have to download the data from the authors and manually place 
     it in the ``cslvr_root_dir/data/greenland`` directory.
@@ -1177,7 +1078,6 @@ class DataFactory(object):
     * ``S``  -- surface topography height
     * ``H``  -- ice thickness
     * ``Herr``  -- ice thickness error
-    * ``lat_mask`` -- lateral-boundary mask
     * ``Bo`` -- basal topography height before imposing ``thklim`` 
     * ``mask`` -- ice shelf mask (1 where shelves, 0 where grounded)
     * ``mask_orig`` -- original ice mask from the data
@@ -1227,26 +1127,6 @@ class DataFactory(object):
     mask[mask == 3] = 0
     mask[mask == 4] = 2  # ice shelves
                
-    # generate  mask for lateral boundaries :
-    Hc = mask.copy(True)
-    
-    # calculate mask gradient, to properly mark lateral boundaries :
-    gradH = gradient(Hc)
-    L     = gradH[0]**2 + gradH[1]**2
-    L[L > 0.0] = 1.0
-    L[L < 1.0] = 0.0
-
-    # mark one more level in :
-    Hc[L > 0.0] = 0
-    
-    gradH = gradient(Hc)
-    L2    = gradH[0]**2 + gradH[1]**2
-    L2[L2 > 0.0] = 1.0
-    L2[L2 < 1.0] = 0.0
-    
-    # combine them :
-    L[L2 > 0.0] = 1.0
-   
     # remove the junk data and impose thickness limit :
     B   = Bo.copy(True)
     H[H == -9999.0] = 0.0
@@ -1285,8 +1165,8 @@ class DataFactory(object):
     vara['ny']                = len(y)
     vara['dx']                = 1000.0
      
-    names = ['B', 'Bo', 'S', 'H', 'lat_mask', 'Herr', 'mask', 'mask_orig']
-    ftns  = [ B,   Bo,   S,   H,   L,          Herr,   mask,   mask_orig]
+    names = ['B', 'Bo', 'S', 'H', 'Herr', 'mask', 'mask_orig']
+    ftns  = [ B,   Bo,   S,   H,   Herr,   mask,   mask_orig]
     
     # save the data in matlab format :
     vara['dataset']   = 'Bamber'

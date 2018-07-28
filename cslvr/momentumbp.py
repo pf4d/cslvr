@@ -115,7 +115,7 @@ class MomentumBP(Momentum):
     if linear:
       s  = "    - using linear form of momentum using model.U3 in epsdot -"
       U3_c     = model.U3.copy(True)
-      eta      = self.viscosity(U3)
+      eta      = self.viscosity(U3_c)
       Vd       = 2 * eta * epsdot
     else:
       s  = "    - using nonlinear form of momentum -"
@@ -149,8 +149,8 @@ class MomentumBP(Momentum):
                  + 2 * eta * dot(epi_2, grad(psi)) * dOmega \
                  + rhoi * g * S.dx(0) * phi * dOmega \
                  + rhoi * g * S.dx(1) * psi * dOmega \
-                 + beta * u * phi * dGamma_b \
-                 + beta * v * psi * dGamma_b \
+                 + beta * u * phi * dGamma_bg \
+                 + beta * v * psi * dGamma_bg \
    
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
@@ -376,7 +376,7 @@ class MomentumBP(Momentum):
 
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS)
+    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -735,24 +735,24 @@ class MomentumDukowiczBP(Momentum):
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=False)
+    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
           annotate = annotate, solver_parameters = params['solver'])
     u, v = self.U.split()
 
-    self.assx.assign(model.u, u, annotate=False)
-    self.assy.assign(model.v, v, annotate=False)
+    self.assx.assign(model.u, u, annotate=annotate)
+    self.assy.assign(model.v, v, annotate=annotate)
 
     u,v,w = model.U3.split(True)
     print_min_max(u, 'u')
     print_min_max(v, 'v')
       
     if params['solve_vert_velocity']:
-      self.solve_vert_velocity(annotate=False)
+      self.solve_vert_velocity(annotate=annotate)
     if params['solve_pressure']:
-      self.solve_pressure(annotate=False)
+      self.solve_pressure(annotate=annotate)
 
 
 

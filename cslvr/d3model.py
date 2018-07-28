@@ -3,6 +3,7 @@ from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, get_text, print_min_max
 from cslvr.model       import Model
 from cslvr.helper      import Boundary
+from scipy.spatial     import cKDTree
 import sys
 
 class D3Model(Model):
@@ -221,20 +222,31 @@ class D3Model(Model):
     s = "    - 3D function spaces created - "
     print_text(s, cls=self)
 
-  def calculate_boundaries(self, mask=None, lat_mask=None, adot=None,
-                           U_mask=None, mark_divide=False):
+  def calculate_boundaries(self,
+                           mask        = None,
+                           adot        = None,
+                           U_mask      = None,
+                           mark_divide = False,
+                           contour     = None):
     """
     Determines the boundaries of the current model mesh
     """
     s = "::: calculating boundaries :::"
     print_text(s, cls=self)
 
-    if lat_mask == None and mark_divide:
+    if    (contour is     None and     mark_divide) \
+       or (contour is not None and not mark_divide):
       s = ">>> IF PARAMETER <mark_divide> OF calculate_boundaries() IS " + \
-          "TRUE, PARAMETER <lat_mask> MUST BE AN EXPRESSION FOR THE LATERAL" + \
-          " BOUNDARIES <<<"
+          "TRUE, PARAMETER <contour> MUST BE A NUMPY ARRAY OF COORDINATES " + \
+          "OF THE ICE-SHEET EXTERIOR BOUNDARY <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
+
+    elif contour is not None and mark_divide:
+      s = "    - marking the interior facets for incomplete meshes -"
+      print_text(s, cls=self)
+      tree = cKDTree(contour)
+      self.contour_tree = tree # save this for ``self.form_dvd_mesh()``
      
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = MeshFunction('size_t', self.mesh, 2, 0)
@@ -257,11 +269,6 @@ class D3Model(Model):
     self.init_adot(adot)
     self.init_mask(mask)
     self.init_U_mask(U_mask)
-
-    if mark_divide:
-      s = "    - marking the interior facets for incomplete meshes -"
-      print_text(s, cls=self)
-      self.init_lat_mask(lat_mask)
     
     tol = 1e-6
     
@@ -311,8 +318,7 @@ class D3Model(Model):
       elif n.z() >  -tol and n.z() < tol and f.exterior():
         # if we want to use a basin, we need to mark the interior facets :
         if mark_divide:
-          lat_mask_xy = lat_mask(x_m, y_m, z_m)
-          if lat_mask_xy > 0:
+          if tree.query((x_m, y_m))[0] < 1000:
             if z_m > 0:
               self.ff[f] = self.GAMMA_L_OVR
             else:
@@ -389,6 +395,10 @@ class D3Model(Model):
 
     * ``self.dx_g``    --  internal above grounded
     * ``self.dx_f``    --  internal above floating
+
+    This method will create a :py:class:`dict` called ``self.measures``
+    containing all of the :class:`ufl.measure.Measure` instances for 
+    this :class:`~model.Model`. 
     """
     # calculate the number of cells and facets that are of a certain type
     # for determining Dirichlet boundaries :
@@ -465,6 +475,30 @@ class D3Model(Model):
     self.dGamma_l   = Boundary(self.ds, [4,7,10],
                       'entire exterior and interior lateral surface')
 
+    # save a dictionary of boundaries for later access by user :
+    measures = [self.dOmega,
+                self.dOmega_g,
+                self.dOmega_w,
+                self.dGamma,
+                self.dGamma_bg,
+                self.dGamma_bw,
+                self.dGamma_b,
+                self.dGamma_sgu,
+                self.dGamma_swu,
+                self.dGamma_su,
+                self.dGamma_sg,
+                self.dGamma_sw,
+                self.dGamma_s,
+                self.dGamma_ld,
+                self.dGamma_lto,
+                self.dGamma_ltu,
+                self.dGamma_lt,
+                self.dGamma_l]
+    self.measures = {}
+    for m in measures:
+      self.measures[m.description] = m
+
+
   def deform_mesh_to_geometry(self, S, B):
     """
     Deforms the 3D mesh to the geometry from FEniCS Expressions for the 
@@ -473,9 +507,11 @@ class D3Model(Model):
     s = "::: deforming mesh to geometry :::"
     print_text(s, cls=self)
 
+    # initialize the topography functions :
     self.init_S(S)
     self.init_B(B)
 
+    # convert constants to expressions that can be evaluated at (x,y,z) :
     if type(S) == Constant or type(S) == float or type(S) == int:
       S = Expression('S', S=S, degree=0)
     if type(B) == Constant or type(B) == float or type(B) == int:
@@ -487,6 +523,9 @@ class D3Model(Model):
     max_height  = self.mesh.coordinates()[:,2].max()
     min_height  = self.mesh.coordinates()[:,2].min()
     mesh_height = max_height - min_height
+
+    # sigma coordinate :
+    self.init_sigma( project((self.x[2] - min_height) / mesh_height, self.Q) )
     
     s = "    - iterating through %i vertices - " % self.num_vertices
     print_text(s, cls=self)
@@ -496,9 +535,6 @@ class D3Model(Model):
       x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
     print_text(s, cls=self)
-
-    # sigma coordinate :
-    self.init_sigma(project((self.x[2] - B) / (S - B)))
 
   def form_srf_mesh(self):
     """
@@ -548,27 +584,28 @@ class D3Model(Model):
     submesh = SubMesh(bmesh, pb, 1)
     self.latmesh = submesh
 
-  def form_dvd_mesh(self):
+  def form_dvd_mesh(self, contour):
     """
     sets self.dvdmesh, the lateral divide boundary mesh for this model instance.
+
+    :param contour: NumPy array of exterior points to exclude.
+    :type contour:  :class:`numpy.ndarray`
     """
     s = "::: extracting lateral divide mesh :::"
     print_text(s, cls=self)
+      
+    tree = cKDTree(contour)
 
     bmesh   = BoundaryMesh(self.mesh, 'exterior')
     cellmap = bmesh.entity_map(2)
     pb      = MeshFunction("size_t", bmesh, 2, 0)
-    self.lat_mask.set_allow_extrapolation(True)
     for c in cells(bmesh):
       f       = Facet(self.mesh, cellmap[c.index()])
       n       = f.normal()
       x_m     = f.midpoint().x()
       y_m     = f.midpoint().y()
       z_m     = f.midpoint().z()
-      #FIXME: lat_mask(x,y,z) throws an error with dolfin 2017.2.0 :
-      # *** Error:   Unable to compute tetrahedron point collision.
-      # *** Reason:  Not implemented for degenerate tetrahedron.
-      if abs(n.z()) < 1e-3 and self.lat_mask(x_m, y_m, z_m) <= 0:
+      if abs(n.z()) < 1e-3 and tree.query((x_m, y_m))[0] > 1000:
         pb[c] = 1
     submesh = SubMesh(bmesh, pb, 1)
     self.dvdmesh = submesh

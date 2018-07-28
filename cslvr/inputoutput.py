@@ -1,8 +1,8 @@
 from scipy.io          import loadmat
-from scipy.interpolate import RectBivariateSpline, griddata, interp2d
+from scipy.interpolate import RectBivariateSpline, griddata, interp2d, interp1d
 from numpy             import array, linspace, ones, isnan, all, zeros, shape, \
                               ndarray, e, nan, float64, logical_and, where, \
-                              meshgrid
+                              meshgrid, arange
 from dolfin            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
                               MPI, mpi_comm_world, GenericVector, parameters, \
@@ -419,10 +419,8 @@ class DataInput(object):
     :type order: int
     :type near: bool
     """
-    if near:
-      t = 'nearest-neighbor'
-    else:
-      t = '%i-order spline' % order
+    if near:  t = 'nearest-neighbor'
+    else:     t = 'O(%i) spline' % order
     s = "::: getting '%s' %s expression from '%s' :::" % (fn, t, self.name)
     print_text(s, self.color)
 
@@ -432,8 +430,11 @@ class DataInput(object):
       new_proj = self.new_p
       old_proj = self.proj
 
-    if not near :
+    if not near:
       spline = RectBivariateSpline(self.x, self.y, data.T, kx=order, ky=order)
+    else:
+      interp_x = interp1d(self.x, arange(len(self.x)), kind='nearest')
+      interp_y = interp1d(self.y, arange(len(self.y)), kind='nearest')
 
     xs       = self.x
     ys       = self.y
@@ -451,8 +452,8 @@ class DataInput(object):
         if not near:
           values[0] = spline(xn, yn)
         else:
-          idx       = abs(xs - xn).argmin()
-          idy       = abs(ys - yn).argmin()
+          idx       = int(interp_x(xn))
+          idy       = int(interp_y(yn))
           values[0] = data[idy, idx]
 
     return CslvrExpression(element = self.element)

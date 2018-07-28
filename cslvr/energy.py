@@ -174,9 +174,9 @@ class Energy(Physics):
     model = self.model
 
     T_w   = model.T_w(0)
-    S     = model.S.vector().array()
-    lat   = model.lat.vector().array()
-    lon   = model.lon.vector().array()
+    S     = model.S.vector().get_local()
+    lat   = model.lat.vector().get_local()
+    lon   = model.lon.vector().get_local()
    
     # greenland : 
     Tn    = 41.83 - 6.309e-3*S - 0.7189*lat - 0.0672*lon + T_w
@@ -195,12 +195,12 @@ class Energy(Physics):
     model = self.model
 
     T_w   = model.T_w(0)
-    T     = model.T_surface.vector().array()
+    T     = model.T_surface.vector().get_local()
 
     adot  = 2.5 * 2**((T-T_w)/10)
     
     if model.N_OMEGA_FLT > 0:
-      shf_dofs = np.where(model.mask.vector().array() == 0.0)[0]
+      shf_dofs = np.where(model.mask.vector().get_local() == 0.0)[0]
       adot[model.shf_dofs] = -100
 
     model.init_adot(adot)
@@ -252,9 +252,9 @@ class Energy(Physics):
     theta_o = Function(model.Q)
 
     # calculate L_inf norm :
-    theta_v   = model.theta.vector().array()
-    theta_m_v = model.theta_melt.vector().array()
-    Wc_v      = model.Wc.vector().array()
+    theta_v   = model.theta.vector().get_local()
+    theta_m_v = model.theta_melt.vector().get_local()
+    Wc_v      = model.Wc.vector().get_local()
     theta_c_v = theta_m_v + Wc_v * model.L(0)
     theta_o.vector().set_local(np.abs(theta_v - theta_c_v))
     theta_o.vector().apply('insert')
@@ -303,7 +303,7 @@ class Energy(Physics):
     T_w      = model.T_w(0)
     
     # temperature is a quadradic function of energy :
-    theta_v  = model.theta.vector().array()
+    theta_v  = model.theta.vector().get_local()
     T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
     T_v      = T_n_v.copy()
     Tp_v     = T_n_v.copy()
@@ -313,8 +313,8 @@ class Energy(Physics):
     model.init_Tp(Tp_v)
     
     # correct for the pressure-melting point :
-    T_melt_v     = model.T_melt.vector().array()
-    theta_melt_v = model.theta_melt.vector().array()
+    T_melt_v     = model.T_melt.vector().get_local()
+    theta_melt_v = model.theta_melt.vector().get_local()
     warm         = theta_v >= theta_melt_v
     cold         = theta_v <  theta_melt_v
     T_v[warm]    = T_melt_v[warm]
@@ -838,10 +838,10 @@ class Enthalpy(Energy):
       # calculate energy and temperature melting point :
       self.calc_T_melt(annotate=False)
 
-      T_v        = T.vector().array()
-      W_v        = W.vector().array()
-      T_s_v      = T_surface.vector().array()
-      T_m_v      = T_m.vector().array()
+      T_v        = T.vector().get_local()
+      W_v        = W.vector().get_local()
+      T_s_v      = T_surface.vector().get_local()
+      T_m_v      = T_m.vector().get_local()
       Tp_v       = T_v.copy()
       theta_s_v  = 146.3*T_s_v + 7.253/2.0*T_s_v**2
       theta_f_v  = 146.3*(T_m_v - 1.0) + 7.253/2.0*(T_m_v - 1.0)**2
@@ -941,9 +941,11 @@ class Enthalpy(Energy):
    
     self.calc_temperate_thickness()
 
-    alpha_int_v = model.alpha_int.vector().array()
-    H_v    = model.S.vector().array() - model.B.vector().array() + DOLFIN_EPS
-    temp_rat_v = alpha_int_v / H_v
+    S_v         = model.S.vector().get_local()
+    B_v         = model.B.vector().get_local()
+    alpha_int_v = model.alpha_int.vector().get_local()
+    H_v         = S_v - B_v + DOLFIN_EPS
+    temp_rat_v  = alpha_int_v / H_v
     temp_rat_v[temp_rat_v < 0.0] = 0.0
     temp_rat_v[temp_rat_v > 1.0] = 1.0
     model.init_temp_rat(alpha_int_v / H_v)
@@ -963,7 +965,7 @@ class Enthalpy(Energy):
     T_w   = model.T_w
     p     = model.p
 
-    p_v   = p.vector().array()
+    p_v   = p.vector().get_local()
     Tm    = T_w(0) - gamma(0)*p_v
     tht_m = 146.3*Tm + 7.253/2.0*Tm**2
     
@@ -1008,9 +1010,9 @@ class Enthalpy(Energy):
     #gradTm_B = model.gradTm_B
 
     ## where the gradients are equal, a basal temperate layer exists :
-    #alpha_v   = model.alpha.vector().array()
-    #grad_Tm_v = gradTm_B.vector().array()
-    #grad_T_v  = gradT_B.vector().array()
+    #alpha_v   = model.alpha.vector().get_local()
+    #grad_Tm_v = gradTm_B.vector().get_local()
+    #grad_T_v  = gradT_B.vector().get_local()
 
     #dg                 = np.abs(grad_Tm_v - grad_T_v)
     #print_min_max(dg, 'dg')
@@ -1018,8 +1020,8 @@ class Enthalpy(Energy):
     #alpha_v[dg < 1e-2] = 1.0
     #model.init_alpha(alpha_v)
 
-    W_v              = model.W.vector().array()
-    alpha_v          = model.alpha.vector().array()
+    W_v              = model.W.vector().get_local()
+    alpha_v          = model.alpha.vector().get_local()
     alpha_v[:]       = 0
     alpha_v[W_v > 0] = 1
     model.init_alpha(alpha_v)
@@ -1110,16 +1112,16 @@ class Enthalpy(Energy):
     grad_n  = Function(model.Q)
     solve(A_n, grad_n.vector(), B_n, 'cg', 'amg', annotate=False)
     
-    W_v      = model.W.vector().array()
-    q_fric_v = model.q_fric.vector().array()
-    q_geo_v  = model.q_geo.vector().array()
-    grad_n_v = grad_n.vector().array()
+    W_v      = model.W.vector().get_local()
+    q_fric_v = model.q_fric.vector().get_local()
+    q_geo_v  = model.q_geo.vector().get_local()
+    grad_n_v = grad_n.vector().get_local()
 
     rho_v    = W_v*rhow + (1 - W_v)*rhoi
     Mb_v     = (q_geo_v + q_fric_v - grad_n_v) / (L * rho_v)
     
-    T_v      = model.T.vector().array()
-    T_melt_v = T_melt.vector().array()
+    T_v      = model.T.vector().get_local()
+    T_melt_v = T_melt.vector().get_local()
     Mb_v[T_v < T_melt_v] = 0.0    # if frozen, no melt
     if model.N_OMEGA_FLT > 0:
       Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
@@ -1200,14 +1202,14 @@ class Enthalpy(Energy):
     # calculate water content :
     #theta_t         = Function(model.Q)
     #theta_t.interpolate(self.theta)
-    #theta_v         = theta_t.vector().array()
-    theta_v         = self.theta.vector().array()
-    theta_melt_v    = model.theta_melt.vector().array()
+    #theta_v         = theta_t.vector().get_local()
+    theta_v         = self.theta.vector().get_local()
+    theta_melt_v    = model.theta_melt.vector().get_local()
     W_v             = (theta_v - theta_melt_v) / model.L(0)
     W_v[W_v < 0.0]  = 0.0    # no water where frozen, please.
     
     # mark appropriately basal regions with an overlying temperate layer :
-    alpha_v          = model.alpha.vector().array()
+    alpha_v          = model.alpha.vector().get_local()
     alpha_v[:]       = 0
     alpha_v[W_v > 0] = 1
     model.init_alpha(alpha_v)
@@ -1465,13 +1467,13 @@ class Enthalpy(Energy):
       # temperature solved with quadradic formula, using expression for c : 
       s = "::: calculating initial temperature :::"
       print_text(s, cls=self)
-      theta_v  = theta.vector().array()
+      theta_v  = theta.vector().get_local()
       T_n_v    = (-146.3 + np.sqrt(146.3**2 + 2*7.253*theta_v)) / 7.253
       T_v      = T_n_v.copy()
       
       # update temperature for wet/dry areas :
-      T_melt_v     = model.T_melt.vector().array()
-      theta_melt_v = model.theta_melt.vector().array()
+      T_melt_v     = model.T_melt.vector().get_local()
+      theta_melt_v = model.theta_melt.vector().get_local()
       warm         = theta_v >= theta_melt_v
       cold         = theta_v <  theta_melt_v
       T_v[warm]    = T_melt_v[warm]
@@ -1710,8 +1712,8 @@ class EnergyHybrid(Energy):
       model.T0_.assign(model.T_)
 
     #  correct for pressure melting point :
-    T_v                 = model.T_.vector().array()
-    T_melt_v            = model.Tm.vector().array()
+    T_v                 = model.T_.vector().get_local()
+    T_melt_v            = model.Tm.vector().get_local()
     T_v[T_v > T_melt_v] = T_melt_v[T_v > T_melt_v]
     model.assign_variable(model.T_, T_v)
     
@@ -1813,7 +1815,7 @@ class EnergyFirn(Energy):
     rhob = rhow * Wm + (1-Wm)*rhof
 
     # initialize energy :
-    T_v = T.vector().array()
+    T_v = T.vector().get_local()
     model.assign_variable(theta,  ci(0)*T_v)
     model.assign_variable(theta0, ci(0)*T_v)
     
@@ -1896,7 +1898,7 @@ class EnergyFirn(Energy):
     L       = model.L(0)
 
     # update coefficients used by enthalpy :
-    thetap     = model.theta.vector().array()
+    thetap     = model.theta.vector().get_local()
     thetahigh  = np.where(thetap > thetasp)[0]
     thetalow   = np.where(thetap < thetasp)[0]
     
@@ -1906,13 +1908,13 @@ class EnergyFirn(Energy):
     model.assign_variable(model.T, Tp)
 
     # calculate dW :
-    Wp   = model.W.vector().array()
-    Wp0  = model.W0.vector().array()
+    Wp   = model.W.vector().get_local()
+    Wp0  = model.W0.vector().get_local()
     dW   = Wp - Wp0                 # water content change
     model.assign_variable(model.dW, dW)
 
     # adjust the snow density if water is refrozen :
-    rho_v         = model.rho.vector().array()
+    rho_v         = model.rho.vector().get_local()
     freeze        = dW < 0
     melt          = dW > 0
     rho_v[freeze] = rho_v[freeze] - dW[freeze] * model.rhoi(0)
@@ -1920,10 +1922,10 @@ class EnergyFirn(Energy):
     
     ## calculate W :
     #model.assign_variable(model.W0, model.W)
-    #Wp             = model.W.vector().array()
+    #Wp             = model.W.vector().get_local()
     #Wp[thetahigh]  = (thetap[thetahigh] - ci*T_w) / L
     #Wp[thetalow]   = 0.0
-    #Wp0            = model.W0.vector().array()
+    #Wp0            = model.W0.vector().get_local()
     #dW             = Wp - Wp0                 # water content change
     #model.assign_variable(model.W,  Wp)
     #model.assign_variable(model.dW, dW)

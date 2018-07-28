@@ -174,16 +174,16 @@ J_measure = model.dGamma_sg
 R_measure = model.dGamma_bg
 
 # form the cost functional :
-J_log = mom.form_obj_ftn(u        = mom.get_U(),
-                         u_ob     = [model.u_ob,  model.v_ob],
-                         integral = model.dGamma_sg,
-                         kind     = 'log') 
+J_log = mom.form_cost_ftn(u        = mom.get_U(),
+                          u_ob     = [model.u_ob,  model.v_ob],
+                          integral = model.dGamma_sg,
+                          kind     = 'log') 
 
 # form the cost functional :
-J_l2  = mom.form_obj_ftn(u        = mom.get_U(),
-                         u_ob     = [model.u_ob,  model.v_ob],
-                         integral = model.dGamma_sg,
-                         kind     = 'l2') 
+J_l2  = mom.form_cost_ftn(u        = mom.get_U(),
+                          u_ob     = [model.u_ob,  model.v_ob],
+                          integral = model.dGamma_sg,
+                          kind     = 'l2') 
 
 # form the regularization functional :
 if reg_typ == 'TV':

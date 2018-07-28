@@ -52,32 +52,32 @@ class Physics(object):
 
     .. math::
 
-      \mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} \nabla c \cdot \nabla c\ d\Gamma
+      \mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} \nabla c \cdot \nabla c\ \mathrm{d}\Gamma
 
     2. ``TV`` -- total variation regularization
 
     .. math::
 
-      \mathscr{R}(c) = \int_{\Gamma} \left( \nabla c \cdot \nabla c + c_0 \right)^{\frac{1}{2}}\ d\Gamma,
+      \mathscr{R}(c) = \int_{\Gamma} \left( \nabla c \cdot \nabla c + c_0 \right)^{\frac{1}{2}}\ \mathrm{d}\Gamma,
 
     3. ``square`` -- squared regularization
 
     .. math::
 
-      \mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} c^2\ d\Gamma,
+      \mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} c^2\ \mathrm{d}\Gamma,
 
     4. ``abs`` -- absolute regularization
 
     .. math::
     
-      \mathscr{R}(c) = \int_{\Gamma} |c|\ d\Gamma,
+      \mathscr{R}(c) = \int_{\Gamma} |c|\ \mathrm{d}\Gamma,
 
     :param c:         the control variable
     :param integral:  measure over which to integrate 
                       (see :func:`~model.calculate_boundaries`)
     :param kind:      kind of regularization to use
-    :type c:          :class:`~dolfin.Function`
-    :type integral:   int 
+    :type c:          :class:`dolfin.Function`
+    :type integral:   :class:`~helper.Boundary`
     :type kind:       string
     """
     s  = "::: forming '%s' regularization functional for variable" + \
@@ -110,26 +110,68 @@ class Physics(object):
 
     return R
 
-  def form_obj_ftn(self, u, u_ob, integral, kind='log', eps=0.01):
-    """
-    Forms and returns an objective functional for use with adjoint.
+  def form_cost_ftn(self, u, u_ob, integral, kind='log', eps=0.01):
+    r"""
+    Forms and returns a cost functional for use with adjoint calculations such
+    as :func:`~physics.Physics.optimize`.
+    
+    The choices for ``kind`` are :
+
+    1. ``log`` -- logarithmic cost
+
+    .. math::
+
+      \mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \ln \left( \frac{ \Vert u \Vert_2 + \epsilon }{ \Vert u_{\mathrm{ob}} \Vert_2 + \epsilon } \right)^2 \mathrm{d}\Gamma
+
+    2. ``l2`` -- :math:`L_2`-norm cost
+
+    .. math::
+
+      \mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \Vert u - u_{\mathrm{ob}} \Vert_2^2 \mathrm{d}\Gamma
+
+    3. ``ratio`` -- ratio cost
+
+    .. math::
+
+      \mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \left( 1 - \left( \frac{ \Vert u \Vert_2 + \epsilon }{ \Vert u_{\mathrm{ob}} \Vert_2 + \epsilon } \right) \right)^2 \mathrm{d}\Gamma
+
+    4. ``abs`` -- absolute value cost
+
+    .. math::
+
+      \mathscr{J}(u) = \int_{\Gamma} \left| u - u_{\mathrm{ob}} \right| \mathrm{d}\Gamma
+
+    :param u:        the state variable
+    :param u_ob:     observation of the state variable ``u``
+    :param integral: measure over which to integrate 
+                     (see :func:`~model.calculate_boundaries`)
+    :param kind:     kind of cost function to use
+    :param eps:      regularization for ``kind = 'log'`` or ``kind = 'ratio'``
+                     cost functionals
+    :type u:         :class:`dolfin_adjoint.Function`
+    :type u_ob:      :class:`dolfin.Function`
+    :type integral:  :class:`~helper.Boundary`
+    :type kind:      string
+    :type eps:       float or int
     """
     s  = "::: forming '%s' objective functional integrated over %s :::"
     print_text(s % (kind, integral.description), self.color())
 
     dJ = integral()
 
-    if type(u) != list and type(u_ob) != list:
+    if type(u) is not list and type(u_ob) is not list:
       u    = [u]
       u_ob = [u_ob]
     # for a UFL expression for the norm and difference :
     U     = 0
     U_ob  = 0
     U_err = 0
+    U_abs = 0
     for Ui, U_obi in zip(u, u_ob):
       U     += Ui**2
       U_ob  += U_obi**2
       U_err += (Ui - U_obi)**2
+      U_abs += abs(Ui - U_obi)
     U    = sqrt(U)
     U_ob = sqrt(U_ob)
 
@@ -143,7 +185,7 @@ class Physics(object):
       J  = 0.5 * (1 -  (U + eps) / (U_ob + eps))**2 * dJ
 
     elif kind == 'abs': 
-      J  = abs(U_err) * dJ
+      J  = U_abs * dJ
 
     else:
       s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'l2', " + \
@@ -298,6 +340,11 @@ class Physics(object):
     # functional lists to be populated :
     global J_a, R_a
     J_a, R_a = [],[]
+
+    # container for the current optimal velocity for evaluation :
+    global u_opt
+    u_opt = DolfinAdjointVariable(u)
+
     # solve the physics with annotation enabled :
     s    = '::: solving forward problem :::'
     print_text(s, cls=self)
@@ -308,16 +355,28 @@ class Physics(object):
     print_text(s % method, cls=self)
 
     # objective function callback function : 
-    def eval_cb(I, c):
-      s    = '::: adjoint objective eval post callback function :::'
+    def eval_cb_post(I, c):
+      s    = '::: adjoint objective post-eval callback function :::'
       print_text(s, cls=self)
       print_min_max(I,    'I')
       for ci in c:
         print_min_max(ci,    'control: ' + ci.name())
     
     # objective gradient callback function :
-    def deriv_cb(I, dI, c):
-      global counter, J_a, R_a
+    def derivative_cb_post(I, dI, c):
+      global counter, J_a, R_a, u_opt
+        
+      # update the DA current velocity to the model for evaluation 
+      # purposes only;
+      u_opt = DolfinAdjointVariable(u).tape_value()
+
+      # make the control available too :
+      for i in range(len(control)):
+        control[i].assign(c[i], annotate=False)
+
+      # this method is called by IPOPT only once per nonlinear iteration.
+      # SciPy will call this many times, and we only want to save the 
+      # functionals once per iteration.  See ``scipy_callback()`` below :
       if method == 'ipopt':
         s0    = '>>> '
         s1    = 'iteration %i (max %i) complete'
@@ -328,47 +387,70 @@ class Physics(object):
         if MPI.rank(mpi_comm_world())==0:
           print text0 + text1 + text2
         counter += 1
-      s    = '::: adjoint obj. gradient post callback function :::'
+
+        # print functional values :
+        ftnls = self.calc_functionals(u_opt,u_ob,control,J_measure,R_measure)
+        
+        # add to the list of functional evaluations :
+        J_a.append(ftnls[0])
+        R_a.append(ftnls[1])
+
+      s    = '::: adjoint objective gradient post-eval callback function :::'
       print_text(s, cls=self)
       for (dIi,ci) in zip(dI,c):
         print_min_max(dIi,    'dI/control: ' + ci.name())
         self.model.save_xdmf(dIi, 'dI_control_' + ci.name())
         self.model.save_xdmf(ci, 'control_' + ci.name())
-      
-      # update the DA current velocity to the model for evaluation 
-      # purposes only;
-      u_opt = DolfinAdjointVariable(u).tape_value()
-
-      for i in range(len(control)):
-        control[i].assign(c[i], annotate=False)
-
-      # print functional values :
-      ftnls = self.calc_functionals(u_opt, u_ob, control, J_measure, R_measure)
-
-      # add to the list of functional evaluations :
-      J_a.append(ftnls[0])
-      R_a.append(ftnls[1])
 
       # call that callback, if you want :
       if adj_callback is not None:
         adj_callback(I, dI, c)
-   
+
     # define the control parameter :
     m = []
     for i in control:
       m.append(Control(i, value=i))
     
     # create the reduced functional to minimize :
-    F = ReducedFunctional(Functional(I), m, eval_cb_post=eval_cb,
-                          derivative_cb_post=deriv_cb)
+    F = ReducedFunctional(Functional(I), m,
+                          eval_cb_post        = eval_cb_post,
+                          derivative_cb_post  = derivative_cb_post)
 
     # optimize with scipy's fmin_l_bfgs_b :
-    if method == 'l_bfgs_b': 
+    if method == 'l_bfgs_b':
+
+      # this callback is called only once per iteration :
+      def scipy_callback(c):
+        global counter, J_a, R_a, u_opt
+        s0    = '>>> '
+        s1    = 'iteration %i (max %i) complete'
+        s2    = ' <<<'
+        text0 = get_text(s0, 'red', 1)
+        text1 = get_text(s1 % (counter, max_iter), 'red')
+        text2 = get_text(s2, 'red', 1)
+        if MPI.rank(mpi_comm_world())==0:
+          print text0 + text1 + text2
+        counter += 1
+
+        # NOTE: the variables ``u_opt`` and ``control`` were updated by the
+        #       ``derivative_cb_post`` method.
+        # print functional values :
+        ftnls = self.calc_functionals(u_opt,u_ob,control,J_measure,R_measure)
+        
+        # add to the list of functional evaluations :
+        J_a.append(ftnls[0])
+        R_a.append(ftnls[1])
+
+      # TODO: provide access to the solver parameters and set up default values.
       out = minimize(F, method="L-BFGS-B", tol=1e-9, bounds=bounds,
-                     options={"disp"    : True,
-                              "maxiter" : max_iter,
-                              "gtol"    : 1e-5})
+                     callback = scipy_callback,
+                     options  ={"disp"    : True,
+                                "maxiter" : max_iter,
+                                "gtol"    : 1e-5})
       b_opt = out
+
+      # convert to something that we can zip (see below) ! 
+      if type(b_opt) is not list: b_opt = [b_opt]
     
     # or optimize with IPOpt (preferred) :
     elif method == 'ipopt':
@@ -388,6 +470,7 @@ class Physics(object):
                     "linear_solver"      : "ma97"}
       solver = IPOPTSolver(problem, parameters=parameters)
       b_opt  = solver.solve()
+    
 
     # make the optimal control parameter available :
     for c,b in zip(control, b_opt):

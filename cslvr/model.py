@@ -4,6 +4,7 @@ from copy                 import copy
 from scipy.io             import savemat
 from ufl                  import indexed
 from cslvr.inputoutput    import print_text, get_text, print_min_max
+from matplotlib.ticker    import NullFormatter 
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
@@ -959,17 +960,6 @@ class Model(object):
     self.assign_variable(self.U_mask, U_mask)
     self.Uob_dofs         = np.where(self.U_mask.vector().get_local() == 1.0)[0]
     self.Uob_missing_dofs = np.where(self.U_mask.vector().get_local() == 0.0)[0]
-  
-  def init_lat_mask(self, lat_mask):
-    r"""
-    Set lateral boundary mask ``self.lat_mask``
-    by calling :func:`assign_variable`.
-    
-    :param lat_mask: lateral boundary mask (1 on lateral boundary, 0 not)
-    """
-    s = "::: initializing lateral boundary mask :::"
-    print_text(s, cls=self.this)
-    self.assign_variable(self.lat_mask, lat_mask)
   
   def init_d_x(self, d_x):
     r"""
@@ -2246,7 +2236,6 @@ class Model(object):
     Masks : 
 
     * ``self.mask``      -- shelf mask (1 if grounded, 2 if shelf)
-    * ``self.lat_mask``  -- lateral boundary mask (1 if on lateral boundary)
     * ``self.U_mask``    -- velocity mask (1 if velocity measurements present)
 
     Topography :
@@ -2358,9 +2347,6 @@ class Model(object):
 
     # shelf mask (2 if shelf) :
     self.mask          = Function(self.Q, name='mask')
-
-    # lateral boundary mask (1 if on lateral boundary) :
-    self.lat_mask      = Function(self.Q, name='lat_mask')
 
     # velocity mask (1 if velocity measurements present) :
     self.U_mask        = Function(self.Q, name='U_mask')
@@ -2887,7 +2873,7 @@ class Model(object):
       # solve the adjoint system :
       physics.optimize(**adj_kwargs)
       
-      # call the pre-adjoint callback function :
+      # call the post-adjoint callback function :
       if post_callback is not None:
         s    = '::: calling L_curve() post-adjoint post_callback() :::'
         print_text(s, cls=self.this)
@@ -2984,7 +2970,7 @@ class Model(object):
       # the functional type
       ftnl_t = ['J', 'J', 'J', 'J', 'R', 'R', 'R', 'R']
 
-      # collect the cost functionals :
+      # collect the functionals :
       ftnl_a = [J_logs, J_l2s,  J_rats, J_abss, R_tvs,  R_tiks, R_sqs,  R_abss]
       
       k    = 0    # counter so we can plot side-by-side
@@ -3030,7 +3016,7 @@ class Model(object):
       leg.get_frame().set_alpha(0.0)
       leg.get_frame().set_color('w')
       
-      plt.tight_layout(rect=[0.005,0.01,0.88,0.995])
+      plt.tight_layout(rect=[0, 0, 1, 1])
       plt.savefig(out_dir_i + 'convergence.pdf')
       plt.close(fig)
 
@@ -3041,27 +3027,43 @@ class Model(object):
       fig, ax_a = plt.subplots(4,4, figsize=(10,10))
       J_lbl     = r'$\mathscr{J}_{\mathrm{%s}}$'
       R_lbl     = r'$\mathscr{R}_{\mathrm{%s}}$'
-      
+
+      # for each cost functional i :
       for i in range(4):
         J_i   = ftnl_a[i][:,-1]
+        # and for each regularization functional j :
         for j in range(4):
           R_j   = ftnl_a[4+j][:,-1]
-          ax_a[i,j].plot(J_i, R_j, '-', c='k', lw=1.5)
+          ax_a[j,i].plot(J_i, R_j, '-', c='k', lw=1.5)
+          # and for each regularization parameter k :
           for k in range(len(alphas)):
-            ax_a[i,j].plot(J_i[k], R_j[k], 'o', c=colors[k], lw=2.0,
+            ax_a[j,i].plot(J_i[k], R_j[k], 'o', c=colors[k], lw=2.0,
                            label = r'$\gamma = %g$' % alphas[k])
-          tit = r'%s $\circ$ %s' % (R_lbl % subs[4+j], J_lbl % subs[i])
-          ax_a[i,j].set_title(tit)
-          #ax_a[i,j].set_xlabel(J_lbl % subs[i])
-          #ax_a[i,j].set_ylabel(R_lbl % subs[4+j])
+
           #ax_a[i,j].grid()
-          ax_a[i,j].set_yscale('log')
-          ##ax_a[i,j].set_xscale('log')
+          ax_a[j,i].set_yscale('log')
+          #ax_a[j,i].set_xscale('log')
+          
+          # format the labels for less clutter :
+          if j == 3:
+            ax_a[j,i].set_xlabel(J_lbl % subs[i]) 
+          else:
+            ax_a[j,i].xaxis.set_major_formatter(NullFormatter())
+            ax_a[j,i].xaxis.set_minor_formatter(NullFormatter())
+          if i == 0:
+            ax_a[j,i].set_ylabel(R_lbl % subs[4+j])
+          else:
+            ax_a[j,i].yaxis.set_major_formatter(NullFormatter())
+            ax_a[j,i].yaxis.set_minor_formatter(NullFormatter())
+
+          #tit = r'%s $\circ$ %s' % (R_lbl % subs[4+j], J_lbl % subs[i])
+          #ax_a[i,j].set_title(tit)
+
           if i == 0 and j == 0:
-            leg = ax_a[i,j].legend(loc='upper right', ncol=2)
+            leg = ax_a[j,i].legend(loc='upper right', ncol=2, fontsize=4)
             leg.get_frame().set_alpha(0.0)
 
-      # we only want the last value of each optimization : 
+      # we only want the last value of each optimization :
       #fin_Js = Js[:,-1]
       #fin_Rs = Rs[:,-1]
       
@@ -3070,7 +3072,7 @@ class Model(object):
       
       #ax.plot(fin_Js, fin_Rs, 'k-', lw=2.0)
       
-      ax.grid()
+      #ax.grid()
     
       ## useful for figuring out what reg. parameter goes with what :  
       #for i,c in zip(range(len(alphas)), colors):

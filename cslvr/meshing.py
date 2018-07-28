@@ -75,6 +75,26 @@ class MeshGenerator(object):
     print_text(s % np.shape(self.longest_cont)[0], self.color)
     self.remove_skip_points(skip_pts)
 
+  def save_contour(self, name):
+    """
+    Saves the current contour ``self.longest_cont`` to the ouput directory
+    ``self.direc`` named ``name``.
+
+    :param name: name of the file to save the contour as.
+    :type name: string
+    """
+    np.savetxt(self.direc + name, self.longest_cont)
+
+  def load_contour(self, name):
+    """
+    Loads the contour from the ouput directory ``self.direc`` named ``name`` 
+    set to ``self.longest_cont``.
+
+    :param name: name of the file to load the contour.
+    :type name: string
+    """
+    self.longest_cont = np.loadtxt(self.direc + name)
+
   def remove_skip_points(self, skip_pts):
     """
     remove every other <skip_pts> node from the contour.

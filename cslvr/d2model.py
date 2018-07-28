@@ -153,25 +153,29 @@ class D2Model(Model):
     s = "    - 2D function spaces created - "
     print_text(s, cls=self)
 
-  def calculate_boundaries(self, mask=None, lat_mask=None,
-                           adot=None, U_mask=None, mark_divide=False):
+  def calculate_boundaries(self,
+                           mask        = None,
+                           adot        = None,
+                           U_mask      = None,
+                           mark_divide = False,
+                           contour     = None):
     """
     Determines the boundaries of the current model mesh
     """
     s = "::: calculating boundaries :::"
     print_text(s, cls=self)
 
-    if    (lat_mask == None and mark_divide) \
-       or (lat_mask != None and not mark_divide):
+    if    (contour is     None and     mark_divide) \
+       or (contour is not None and not mark_divide):
       s = ">>> IF PARAMETER <mark_divide> OF calculate_boundaries() IS " + \
-          "TRUE, PARAMETER <lat_mask> MUST BE AN EXPRESSION FOR THE LATERAL" + \
-          " BOUNDARIES <<<"
+          "TRUE, PARAMETER <contour> MUST BE A NUMPY ARRAY OF COORDINATES " + \
+          "OF THE ICE-SHEET EXTERIOR BOUNDARY <<<"
       print_text(s, 'red', 1)
       sys.exit(1)
-    elif lat_mask != None and mark_divide:
+    elif contour is not None and mark_divide:
       s = "    - marking the interior facets for incomplete meshes -"
       print_text(s, cls=self)
-      self.init_lat_mask(lat_mask)
+      tree = cKDTree(contour)
      
     # this function contains markers which may be applied to facets of the mesh
     self.ff      = MeshFunction('size_t',  self.mesh, 1)
@@ -201,7 +205,6 @@ class D2Model(Model):
     self.mask.set_allow_extrapolation(True)
     self.adot.set_allow_extrapolation(True)
     self.U_mask.set_allow_extrapolation(True)
-    self.lat_mask.set_allow_extrapolation(True)
     
     tol = 1e-6
     
@@ -218,8 +221,7 @@ class D2Model(Model):
       if f.exterior():
         # if we want to use a basin, we need to mark the interior facets :
         if mark_divide:
-          lat_mask_xy = lat_mask(x_m, y_m)
-          if lat_mask_xy > 0:
+          if tree.query((x_m, y_m))[0] > 1000:
             self.ff[f] = self.GAMMA_L_DVD
           else:
             if mask_xy > 1:

@@ -86,7 +86,7 @@ class Momentum(Physics):
 
   def linearize_viscosity(self, reset_orig_config=True):
     """
-    reset the momentum to the original configuration.
+    linearize the viscosity using the velocity stored in ``model.U3``.
     """
     s = "::: RE-INITIALIZING MOMENTUM PHYSICS WITH LINEAR VISCOSITY :::"
     print_text(s, self.color())
@@ -134,35 +134,35 @@ class Momentum(Physics):
 
   def get_residual(self):
     """
-    Returns the momentum residual.
+    Returns the momentum residual ``self.mom_F``.
     """
     #raiseNotDefined()
     return self.mom_F
 
   def get_U(self):
     """
-    Return the velocity Function.
+    Return the velocity Function ``self.U``.
     """
     #raiseNotDefined()
     return self.U
 
   def get_dU(self):
     """
-    Return the trial function for U.
+    Return the trial function for ``self.U``, ``self.dU``.
     """
     #raiseNotDefined()
     return self.dU
 
   def get_Phi(self):
     """
-    Return the test function for U.
+    Return the test function for ``self.U``, ``self.Phi``.
     """
     #raiseNotDefined()
     return self.Phi
 
   def get_Lam(self):
     """
-    Return the adjoint function for U.
+    Return the adjoint function for ``self.U``.
     """
     raiseNotDefined()
   
@@ -195,7 +195,7 @@ class Momentum(Physics):
   def viscosity(self, U):
     r"""
     calculates and returns the viscosity :math:`\eta` using velocity 
-    vector ``U`` with components ``u``,``v``,``w``.
+    vector ``U`` with components ``u``, ``v``, ``w``.
     """
     s  = "::: forming visosity :::"
     print_text(s, self.color())
@@ -252,13 +252,15 @@ class Momentum(Physics):
     return self.J + replace(R, {Phi : dU})
 
   def dLdc(self, L, c): 
-    """
+    r"""
     Returns the derivative of the Lagrangian consisting of adjoint-computed
     self.Lam values w.r.t. the control variable ``c``, i.e., 
 
-       dL    d [             ]
-       -- = -- [ L(self.Lam) ]
-       dc   dc [             ]
+    .. math::
+
+       \frac{\mathrm{d} L}{\mathrm{d} c} = \frac{\mathrm{d}}{\mathrm{d} c} \mathscr{L} \left( \lambda \right),
+
+    where :math:`\mathscr{L}` is the Lagrangian computed by :func:`~momentum.Momentum.Lagrangian` and :math:`\lambda` is the adjoint variable.
 
     """
     s  = "::: forming dLdc :::"
@@ -282,7 +284,7 @@ class Momentum(Physics):
     
   def solve_adjoint_momentum(self, H):
     """
-    Solves for the adjoint variables self.Lam from the Hamiltonian <H>.
+    Solves for the adjoint variables ``self.Lam`` from the Hamiltonian <H>.
     """
     U   = self.get_U()
     Phi = self.get_Phi()

@@ -4,7 +4,6 @@ from copy                 import copy
 from scipy.io             import savemat
 from ufl                  import indexed
 from cslvr.inputoutput    import print_text, get_text, print_min_max
-from matplotlib.ticker    import NullFormatter 
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
@@ -2053,9 +2052,6 @@ class Model(object):
       u.assign(var, annotate=annotate)
       #u.interpolate(var, annotate=annotate)
 
-    #elif isinstance(var, GenericVector):
-    #  self.assign_variable(u, var.get_local(), annotate=annotate)
-
     elif isinstance(var, str):
       File(var) >> u
 
@@ -2901,207 +2897,6 @@ class Model(object):
     text = "time to complete L-curve procedure: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
-    #===========================================================================
-   
-    # save the resulting functional values and alphas to CSF : 
-    if self.MPI_rank==0:
-
-      # iterate through the directiories we just created and grab the data :
-      alphas = []
-      J_logs = []
-      J_l2s  = []
-      J_rats = []
-      J_abss = []
-      R_tvs  = []
-      R_tiks = []
-      R_sqs  = []
-      R_abss = []
-      ns     = []
-      for d in next(os.walk(out_dir_i))[1]:
-        m = re.search('(alpha_)(\d\W\dE\W\d+)', d)
-        if m is not None:
-          do = out_dir_i + d + '/objective_ftnls_history/'
-          alphas.append(float(m.group(2)))
-          J_logs.append( np.loadtxt(do  + 'J_log.txt'))
-          J_l2s.append(  np.loadtxt(do  + 'J_l2.txt'))
-          J_rats.append( np.loadtxt(do  + 'J_rat.txt'))
-          J_abss.append( np.loadtxt(do  + 'J_abs.txt'))
-          R_tvs.append(  np.loadtxt(do  + 'R_tv_%s.txt'  % control.name()))
-          R_tiks.append( np.loadtxt(do  + 'R_tik_%s.txt' % control.name()))
-          R_sqs.append(  np.loadtxt(do  + 'R_sq_%s.txt'  % control.name()))
-          R_abss.append( np.loadtxt(do  + 'R_abs_%s.txt' % control.name()))
-          ns.append(len(J_logs[-1]))
-      alphas = np.array(alphas) 
-      J_logs = np.array(J_logs)
-      J_l2s  = np.array(J_l2s)
-      J_rats = np.array(J_rats)
-      J_abss = np.array(J_abss)
-      R_tvs  = np.array(R_tvs)
-      R_tiks = np.array(R_tiks)
-      R_sqs  = np.array(R_sqs)
-      R_abss = np.array(R_abss)
-      ns     = np.array(ns)
-
-      # sort everything :
-      idx    = np.argsort(alphas)
-      alphas = alphas[idx]
-      J_logs = J_logs[idx] 
-      J_l2s  = J_l2s[idx]
-      J_rats = J_rats[idx]
-      J_abss = J_abss[idx]
-      R_tvs  = R_tvs[idx]
-      R_tiks = R_tiks[idx]
-      R_sqs  = R_sqs[idx]
-      R_abss = R_abss[idx]
-      ns     = ns[idx]
-     
-      # plot the functionals : 
-      #=========================================================================
-      fig = plt.figure(figsize=(6,2.5))
-      ax  = fig.add_subplot(111)
-
-      # we want to plot the different alpha values a different shade :
-      cmap = plt.get_cmap('viridis')
-      colors = [ cmap(x) for x in np.linspace(0, 1, 8) ]
-    
-      # the subscripts of file names :
-      subs = ['log', 'l2',  'rat', 'abs', 'tv',  'tik', 'sq',  'abs']
-    
-      # the functional type
-      ftnl_t = ['J', 'J', 'J', 'J', 'R', 'R', 'R', 'R']
-
-      # collect the functionals :
-      ftnl_a = [J_logs, J_l2s,  J_rats, J_abss, R_tvs,  R_tiks, R_sqs,  R_abss]
-      
-      k    = 0    # counter so we can plot side-by-side
-      ints = [0]  # to modify the x-axis labels
-      for i in range(len(alphas)):
-        
-        # create the x-interval to plot :
-        xi = np.arange(k, k + ns[i])
-        ints.append(xi.max())
-
-        # if this is the first iteration, we put a legend on it :
-        if i == 0:
-          for ft, nm, sub, c in zip(ftnl_a, ftnl_t, subs, colors):
-            ax.plot(xi, ft[i],  '-',  c=c,  lw=1.5, alpha=0.8,
-                    label = r'$\mathscr{%s}_{\mathrm{%s}}$' % (nm, sub))
-
-        # otherwise, we don't need cluttered legends :
-        else:
-          for ft, c in zip(ftnl_a, colors):
-            ax.plot(xi, ft[i],  '-',  c=c,  lw=1.5, alpha=0.8,)
-
-        k += ns[i] - 1
-
-      ints = np.array(ints)
-      
-      label = []
-      for i in alphas:
-        label.append(r'$\gamma = %g$' % i)
-
-      # reset the x-label to be meaningfull :
-      ax.set_xticks(ints)
-      ax.set_xticklabels(label, size='small', ha='left')#, rotation=-45)
-      ax.set_xlabel(r'relative iteration')
-      ax.set_xlim([0, ints[-1]])
-      
-      ax.xaxis.grid()
-      ax.set_yscale('log')
-      
-      # plot the functional legend across the top in a row : 
-      #leg = ax.legend(loc='upper center', ncol=4)
-      #leg = ax.legend(loc='center right')
-      leg = ax.legend(bbox_to_anchor=(1.2,0.5), loc='center right', ncol=1)
-      leg.get_frame().set_alpha(0.0)
-      leg.get_frame().set_color('w')
-      
-      plt.tight_layout(rect=[0, 0, 1, 1])
-      plt.savefig(out_dir_i + 'convergence.pdf')
-      plt.close(fig)
-
-      # plot L-curve :
-      #=========================================================================
-      
-      colors    = [cmap(x) for x in np.linspace(0,1,len(alphas))]
-      fig, ax_a = plt.subplots(4,4, figsize=(10,10))
-      J_lbl     = r'$\mathscr{J}_{\mathrm{%s}}$'
-      R_lbl     = r'$\mathscr{R}_{\mathrm{%s}}$'
-
-      # for each cost functional i :
-      for i in range(4):
-        J_i   = ftnl_a[i][:,-1]
-        # and for each regularization functional j :
-        for j in range(4):
-          R_j   = ftnl_a[4+j][:,-1]
-          ax_a[j,i].plot(J_i, R_j, '-', c='k', lw=1.5)
-          # and for each regularization parameter k :
-          for k in range(len(alphas)):
-            ax_a[j,i].plot(J_i[k], R_j[k], 'o', c=colors[k], lw=2.0,
-                           label = r'$\gamma = %g$' % alphas[k])
-
-          #ax_a[i,j].grid()
-          ax_a[j,i].set_yscale('log')
-          #ax_a[j,i].set_xscale('log')
-          
-          # format the labels for less clutter :
-          if j == 3:
-            ax_a[j,i].set_xlabel(J_lbl % subs[i]) 
-          else:
-            ax_a[j,i].xaxis.set_major_formatter(NullFormatter())
-            ax_a[j,i].xaxis.set_minor_formatter(NullFormatter())
-          if i == 0:
-            ax_a[j,i].set_ylabel(R_lbl % subs[4+j])
-          else:
-            ax_a[j,i].yaxis.set_major_formatter(NullFormatter())
-            ax_a[j,i].yaxis.set_minor_formatter(NullFormatter())
-
-          #tit = r'%s $\circ$ %s' % (R_lbl % subs[4+j], J_lbl % subs[i])
-          #ax_a[i,j].set_title(tit)
-
-          if i == 0 and j == 0:
-            leg = ax_a[j,i].legend(loc='upper right', ncol=2, fontsize=4)
-            leg.get_frame().set_alpha(0.0)
-
-      # we only want the last value of each optimization :
-      #fin_Js = Js[:,-1]
-      #fin_Rs = Rs[:,-1]
-      
-      #fig = plt.figure(figsize=(6,2.5))
-      #ax  = fig.add_subplot(111)
-      
-      #ax.plot(fin_Js, fin_Rs, 'k-', lw=2.0)
-      
-      #ax.grid()
-    
-      ## useful for figuring out what reg. parameter goes with what :  
-      #for i,c in zip(range(len(alphas)), colors):
-      #  ax.plot(fin_Js[i], fin_Rs[i], 'o',  c=c, lw=2.0,
-      #          label = r'$\gamma = %g$' % alphas[i])
-     
-      #ax.set_xlabel(r'$\mathscr{I}^*$')
-      #ax.set_ylabel(r'$\mathscr{R}^*$')
-      
-      #leg = ax.legend(loc='upper right', ncol=2)
-      #leg.get_frame().set_alpha(0.0)
-      
-      #ax.set_yscale('log')
-      ##ax.set_xscale('log')
-      
-      plt.tight_layout()
-      plt.savefig(out_dir_i + 'l_curve.pdf')
-      plt.close(fig)
-
-      # save the functionals :
-      #=========================================================================
-
-      #d = out_dir_i + 'functionals/'
-      #if not os.path.exists(d):
-      #  os.makedirs(d)
-      #np.savetxt(d + 'Rs.txt',   np.array(fin_Rs))
-      #np.savetxt(d + 'Js.txt',   np.array(fin_Js))
-      #np.savetxt(d + 'as.txt',   np.array(alphas))
-
   def thermo_solve(self, thermo_kwargs):
     """
     Perform thermo-mechanical coupling between momentum and energy.
@@ -3184,14 +2979,7 @@ class Model(object):
       # calculate Courant number :
       c   = dt * norm( project(self.U3 / self.h) )
  
-      ## print statistics :
-      #s = (">>> sim time: %g yr, "
-      #     "dt: %g yr, "
-      #     "CPU time: %g s, "
-      #     "courant number: %g, "
-      #     "mass m_t / m_{t-1} - 1: %g <<<")
-      #print_text(s % (t + dt, dt, tok - tic, c, 1 - m_tot / m_tot_k), 'red', 1)
-      
+      # print statistics :
       print_text(">>> iteration %i complete <<<" % len(self.step_time), 'red',1)
       stats = {"sim time [yr]           " : " %g" % (t + dt),
                "dt [yr]                 " : " %g" % dt,
@@ -3209,6 +2997,7 @@ class Model(object):
       m_tot_k = m_tot
       t      += dt
 
+      # adjust the time step to obey the CFL condition, if desired :
       if adaptive:
         dt_n = dt
         if   c > 0.5               : dt_n = dt/2.0

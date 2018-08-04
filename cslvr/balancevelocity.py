@@ -78,12 +78,7 @@ class BalanceVelocity(Physics):
     #===========================================================================
     # form to calculate direction of flow (down driving stress gradient) :
     if stabilization_method == 'BDM':
-      # system unknown function space is created now if periodic boundaries 
-      # are not used (see model.generate_function_space()) :
-      if model.use_periodic:
-        Q    = model.BDM
-      else:
-        Q    = FunctionSpace(model.mesh, model.BDMMe)
+      Q                  = model.BDM
       Phi                = TestFunction(Q)
       U                  = TrialFunction(Q)
       self.U_s           = Function(Q)
@@ -92,22 +87,17 @@ class BalanceVelocity(Physics):
       phi                = as_vector([phi_x,  phi_y ])
       j                  = as_vector([j_x,    j_y   ])
     elif stabilization_method == 'DG':
-      # system unknown function space is created now if periodic boundaries 
-      # are not used (see model.generate_function_space()) :
-      if model.use_periodic:
-        Q    = model.DG1
-      else:
-        Q    = FunctionSpace(model.mesh, model.DG1e)
-      Phi   = TestFunction(model.DG1)
-      ubar  = TrialFunction(model.DG1)
-    else:
-      Q           = model.Q
-      Phi         = TestFunction(Q)
-      ubar        = TrialFunction(Q)
-      self.uv     = Function(model.Q)
-      self.vv     = Function(model.Q)
-      self.U_vert = as_vector([self.uv, self.vv])
-      self.Uvnorm = Function(model.Q)
+      Q                  = model.DG1
+      Phi                = TestFunction(Q)
+      ubar               = TrialFunction(Q)
+    else:                
+      Q                  = model.Q
+      Phi                = TestFunction(Q)
+      ubar               = TrialFunction(Q)
+      self.uv            = Function(model.Q)
+      self.vv            = Function(model.Q)
+      self.U_vert        = as_vector([self.uv, self.vv])
+      self.Uvnorm        = Function(model.Q)
       self.Uvnorm.assign(Constant(1e16))
     self.Ubar = ubar
 

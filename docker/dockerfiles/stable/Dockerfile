@@ -1,4 +1,4 @@
-FROM       quay.io/fenicsproject/stable:latest
+FROM       quay.io/fenicsproject/stable:2017.2.0.r4
 MAINTAINER pf4d <mail@cummings.evan@gmail.com>
 USER       root
 
@@ -14,6 +14,7 @@ RUN apt-get update && \
                        patch \
                        gmsh \ 
                        libxrender1 \
+                       libgeos-dev \
                        libglu1-mesa \
                        libsm6 \
                        libxcursor1 \
@@ -40,7 +41,7 @@ RUN pip install --upgrade ipython \
 USER fenics
 
 COPY WELCOME         $FENICS_HOME/WELCOME
-ENV  CSLVR_VERSION   2017.1.0
+ENV  CSLVR_VERSION   2017.2.0
 ENV  PKG_DIR         $FENICS_HOME/.local
 ENV  IPOPT_DIR       $PKG_DIR
 ENV  GEOS_DIR        $PKG_DIR
@@ -50,7 +51,7 @@ ENV  LD_LIBRARY_PATH $PKG_DIR/lib:$LD_LIBRARY_PATH
 
 # install libadjoint :
 RUN  cd $FENICS_HOME && \
-     git clone -b libadjoint-2017.1.0 \
+     git clone -b libadjoint-2017.2.0 \
                   https://bitbucket.org/dolfin-adjoint/libadjoint
 RUN  cd $FENICS_HOME/libadjoint && \
      mkdir build; cd build && \
@@ -60,7 +61,7 @@ RUN  cd $FENICS_HOME/libadjoint && \
 
 # install dolfin-adjoint :
 RUN  cd $FENICS_HOME && \
-     git clone -b dolfin-adjoint-2017.1.0 \
+     git clone -b dolfin-adjoint-2017.2.0 \
                   https://bitbucket.org/dolfin-adjoint/dolfin-adjoint
 RUN  cd $FENICS_HOME/dolfin-adjoint && \
      python setup.py install --user && \
@@ -89,29 +90,39 @@ RUN  cd $FENICS_HOME/pyipopt && \
      cd .. && rm -r pyipopt
 
 # install basemap for matplotlib :
-RUN git clone https://github.com/matplotlib/basemap.git
-RUN cd basemap/geos-3.3.3 && \
-    export GEOS_DIR=/usr/local/ && \
-    ./configure --prefix=$GEOS_DIR && \
-    make -j 8 && \
-    make install && \
-    cd .. && \
+RUN cd $PKG_DIR && \
+    git clone https://github.com/matplotlib/basemap.git
+RUN cd basemap && \
     python setup.py install && \
     cd ..
 
 # install gmsh-dynamic 2.10.1 :
-RUN  cd $PKG_DIR && \
-     wget https://www.dropbox.com/s/hp64kx6wh790sf6/gmsh.tgz && \
-     tar -xzvf gmsh.tgz && \
-     rm gmsh.tgz
-RUN  cd $PKG_DIR/gmsh-2.10.1-dynamic-svn-Linux && \
-     cp -r bin/ .. && \
-     cp -r lib/ .. && \
-     cd gmshpy && \
-     python setup.py install --user && \
-     cd ../.. && rm -r gmsh-2.10.1-dynamic-svn-Linux
+RUN cd &PKG_DIR && \
+    git clone https://gitlab.onelab.info/gmsh/gmsh.git
+RUN cd gmsh && \
+    mkdir build && \
+    cd build && \
+    cmake -D ENABLE_WRAP_PYTHON=ON \
+          -D ENABLE_FLTK=ON \
+          -D ENABLE_PRIVATE_API=ON \
+          -D SWIG_EXECUTABLE=${SWIG_DIR}/bin/swig \
+          -D PYTHON_EXECUTABLE:FILEPATH=$(which python) \
+          -D ENABLE_PETSC=OFF \
+          -D ENABLE_SLEPC=OFF \
+          -D ENABLE_PETSC4PY=OFF \
+          -D ENABLE_MPI=ON \
+          -D CMAKE_C_COMPILER=mpicc \
+          -D CMAKE_CXX_COMPILER=mpicxx \
+          -D CMAKE_Fortran_COMPILER=mpifort \
+          -D CMAKE_INSTALL_PREFIX=$PKG_DIR .. && \
+    make && \
+    make install
 
 # install cslvr :
-RUN  git clone https://github.com/pf4d/cslvr
+RUN  cd $PKG_DIR && \
+     git clone https://github.com/pf4d/cslvr
 
 USER root
+
+
+

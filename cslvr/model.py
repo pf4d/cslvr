@@ -413,7 +413,7 @@ class Model(object):
       self.Q_non_periodic   = FunctionSpace(self.mesh, self.Q1e)
       self.Q3_non_periodic  = FunctionSpace(self.mesh, self.QM3e)
     else:
-      self.pBC = None
+      self.pBC              = None
       self.Q                = FunctionSpace(self.mesh, self.Q1e)
       self.Q3               = FunctionSpace(self.mesh, self.QM3e)
       self.Q_non_periodic   = self.Q
@@ -2011,7 +2011,7 @@ class Model(object):
     lg.interpolate(u_to, u_from)
     print_min_max(u_from, 'u_from : ' + u_from.name())
     print_min_max(u_to,   'u_to   : ' + u_to.name())
-
+  
   def assign_variable(self, u, var, annotate=False):
     """
     Manually assign the values from ``var`` to ``u``.  The parameter ``var``

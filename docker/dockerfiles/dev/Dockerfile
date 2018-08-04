@@ -1,8 +1,8 @@
-FROM quay.io/fenicsproject/stable:latest
+FROM quay.io/fenicsproject/stable:2017.2.0.r4
 MAINTAINER pf4d <mail@cummings.evan@gmail.com>
 
 USER fenics
-ENV  CSLVR_VERSION 2017.1.0
+ENV  CSLVR_VERSION 2017.2.0
 COPY WELCOME $FENICS_HOME/WELCOME
 
 USER root
@@ -21,6 +21,7 @@ RUN apt-get update && \
                        libglu1-mesa \
                        libsm6 \
                        libxcursor1 \
+                       libgeos-dev \
                        texlive-base \
                        texlive-fonts-recommended \
                        texlive-latex-extra \
@@ -37,7 +38,7 @@ RUN pip install --upgrade colored \
                           tifffile
 
 # install libadjoint :
-RUN git clone -b libadjoint-2017.1.0 https://bitbucket.org/dolfin-adjoint/libadjoint
+RUN git clone -b libadjoint-2017.2.0 https://bitbucket.org/dolfin-adjoint/libadjoint
 RUN cd libadjoint && \
     mkdir build; cd build && \
     cmake -DCMAKE_INSTALL_PREFIX="/usr/local" .. && \
@@ -46,7 +47,7 @@ RUN cd libadjoint && \
     rm -r libadjoint
 
 # install dolfin-adjoint :
-RUN git clone -b dolfin-adjoint-2017.1.0 https://bitbucket.org/dolfin-adjoint/dolfin-adjoint
+RUN git clone -b dolfin-adjoint-2017.2.0 https://bitbucket.org/dolfin-adjoint/dolfin-adjoint
 ENV PYTHONPATH /home/fenics/dolfin-adjoint:$PYTHONPATH
 
 # install ipopt with default packages -- these overlap with those used by 
@@ -80,26 +81,31 @@ RUN cd pyipopt && \
 
 # install basemap for matplotlib :
 RUN git clone https://github.com/matplotlib/basemap.git
-RUN cd basemap/geos-3.3.3 && \
-    export GEOS_DIR=/usr/local/ && \
-    ./configure --prefix=$GEOS_DIR && \
-    make -j 8 && \
-    make install && \
-    cd .. && \
+RUN cd basemap && \
     python setup.py install && \
     cd ..
 
-# install gmsh-dynamic 2.10.1 :
-RUN wget https://www.dropbox.com/s/hp64kx6wh790sf6/gmsh.tgz
-RUN tar -xzvf gmsh.tgz && \
-    cd gmsh-2.10.1-dynamic-svn-Linux && \
-    cd gmshpy && \
-    python setup.py install && \
-    ldconfig && \
-    cd ../.. && \
-    rm gmsh.tgz
-ENV PATH /home/fenics/gmsh-2.10.1-dynamic-svn-Linux/bin:$PATH
-ENV LD_LIBRARY_PATH /home/fenics/gmsh-2.10.1-dynamic-svn-Linux/lib:$LD_LIBRARY_PATH
+# install gmsh :
+RUN git clone https://gitlab.onelab.info/gmsh/gmsh.git
+RUN cd gmsh && \
+    mkdir build && \
+    cd build && \
+    cmake -D ENABLE_WRAP_PYTHON=ON \
+          -D ENABLE_FLTK=ON \
+          -D ENABLE_PRIVATE_API=ON \
+          -D SWIG_EXECUTABLE=${SWIG_DIR}/bin/swig \
+          -D PYTHON_EXECUTABLE:FILEPATH=$(which python) \
+          -D ENABLE_PETSC=OFF \
+          -D ENABLE_SLEPC=OFF \
+          -D ENABLE_PETSC4PY=OFF \
+          -D ENABLE_MPI=ON \
+          -D CMAKE_C_COMPILER=mpicc \
+          -D CMAKE_CXX_COMPILER=mpicxx \
+          -D CMAKE_Fortran_COMPILER=mpifort \
+          -D CMAKE_INSTALL_PREFIX="/usr/local" .. && \
+    make && \
+    make install
+
 
 ## install cslvr :
 #RUN git clone https://github.com/pf4d/cslvr

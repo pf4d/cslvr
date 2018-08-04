@@ -39,7 +39,7 @@ class MomentumBP(Momentum):
     B          = model.B
     z          = model.x[2]
     rhoi       = model.rhoi
-    rhow       = model.rhow
+    rhosw      = model.rhosw
     R          = model.R
     g          = model.g
     beta       = model.beta
@@ -73,6 +73,7 @@ class MomentumBP(Momentum):
     dGamma_ltu = model.dGamma_ltu()
     dGamma_lt  = model.dGamma_lt()
     dGamma_l   = model.dGamma_l()
+    dGamma_w   = model.dGamma_w()
     
     # new constants :
     p0     = 101325
@@ -135,7 +136,7 @@ class MomentumBP(Momentum):
                         0.5* v.dx(2)            ])
    
     # boundary integral terms : 
-    f_w    = rhoi*g*(S - z) - rhow*g*D               # lateral
+    f_w    = rhoi*g*(S - z) - rhosw*g*D              # lateral
     p_a    = p0 * (1 - g*z/(ci*T0))**(ci*M/R)        # surface pressure
     
     #Ne       = (S-B) + rhow/rhoi * D
@@ -151,11 +152,12 @@ class MomentumBP(Momentum):
                  + rhoi * g * S.dx(1) * psi * dOmega \
                  + beta * u * phi * dGamma_bg \
                  + beta * v * psi * dGamma_bg \
+                 - f_w * (N[0]*phi + N[1]*psi) * dGamma_bw
    
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, self.color())
-      self.mom_F += f_w * (N[0]*phi + N[1]*psi) * dGamma_lt
+      self.mom_F -= f_w * (N[0]*phi + N[1]*psi) * dGamma_lt
     
     # add lateral boundary conditions :  
     # FIXME: need correct BP treatment here
@@ -507,13 +509,14 @@ class MomentumDukowiczBP(Momentum):
     print_text(s, self.color())
       
     # potential energy :
-    Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
+    Pe     = - rhoi * g * dot(U3, grad(S))
 
     # dissipation by sliding :
-    Sl_gnd = - 0.5 * beta * (u**2 + v**2)
+    Sl_gnd = - 0.5 * beta * dot(U3, U3)
 
     # pressure boundary :
-    Pb     = (rhoi*g*(S - z) - rhosw*g*D) * (u*N[0] + v*N[1])
+    f_w    = rhoi*g*(S - z) - rhosw*g*D
+    Pb     = f_w * dot(U3, N)
     
     # action :
     A      = (Vd - Pe)*dOmega - Sl_gnd*dGamma_bg - Pb*dGamma_bw

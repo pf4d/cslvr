@@ -35,7 +35,7 @@ class D2Model(Model):
                 'GAMMA' : ext_b}
 
   def __init__(self, mesh, out_dir='./results/', order=1,
-               use_periodic=False, kind='balance'):
+               use_periodic=False, kind='submesh'):
     """
     Create and instance of a 2D model.
     """
@@ -130,6 +130,9 @@ class D2Model(Model):
     s = "::: generating 2D function spaces :::"
     print_text(s, cls=self)
 
+    if self.kind == 'submesh':
+      pass
+
     if self.kind == 'balance' and self.use_periodic:
       self.QTH2             = FunctionSpace(self.mesh, self.QTH2e,
                                             constrained_domain=self.pBC)
@@ -137,7 +140,11 @@ class D2Model(Model):
                                             constrained_domain=self.pBC)
       self.DG1              = FunctionSpace(self.mesh, self.DG1e,
                                             constrained_domain=self.pBC)
-    if self.kind == 'hybrid':
+    elif self.kind == 'balance' and not self.use_periodic:
+      self.QTH2             = FunctionSpace(self.mesh, self.QTH2e)
+      self.BDM              = FunctionSpace(self.mesh, self.BDMMe)
+      self.DG1              = FunctionSpace(self.mesh, self.DG1e)
+    elif self.kind == 'hybrid':
       # default values if not provided : 
       self.poly_deg = kwargs.get('poly_deg', 2)
       self.N_T      = kwargs.get('N_T',      8)
@@ -427,7 +434,6 @@ class D2Model(Model):
       self.Ts            = Function(self.Q, name='Ts')
       self.Tb            = Function(self.Q, name='Tb')
       
-      # horizontal velocity :
       self.U3            = Function(self.HV, name='U3')
       u_                 = [self.U3[0],   self.U3[2]]
       v_                 = [self.U3[1],   self.U3[3]]

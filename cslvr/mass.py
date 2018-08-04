@@ -78,8 +78,8 @@ class FreeSurface(Mass):
     """
     print_text("::: INITIALIZING FREE-SURFACE PHYSICS :::", self.color())
     
-    if type(model) != D3Model:
-      s = ">>> FreeSurface REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+    if type(model) != D2Model:
+      s = ">>> FreeSurface REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
       print_text(s % type(model) , 'red', 1)
       sys.exit(1)
 
@@ -95,8 +95,6 @@ class FreeSurface(Mass):
 
     # get model var's so we don't have a bunch of ``model.`` crap in our math :
     Q       = model.Q
-    dSrf    = model.dSrf
-    dBed    = model.dBed
     rhob    = model.rhob
     S_0     = model.S
     adot    = model.adot
@@ -141,7 +139,7 @@ class FreeSurface(Mass):
     gS          = sqrt(1 + dot(grad(S), grad(S)))
 
     # mass matrix :
-    self.mass   = S * phi * dSrf
+    self.mass   = S * phi * dx
 
     # right-hand side, i.e., \partial_t S = \delta :
     delta       = gS*adot - (dot(U, grad(S)) - w)
@@ -160,18 +158,16 @@ class FreeSurface(Mass):
     f  = adot + w
 
     # bilinear form :
-    self.delta_S = + dSdt * phi * dx \
-                   + Lu(S_mid) * phi * dx \
-                   - f * phi * dx \
+    self.delta_S = + (dSdt + Lu(S_mid) - f) * phi * dx \
                    + inner( Lu(phi), tau*(dSdt + Lu(S_mid) - f) ) * dx
     # Jacobian :
     self.mass_Jac = derivative(self.delta_S, S, dS)
     self.S        = S
 
     # stiffness matrix :
-    self.source      = f       * phi           * dSrf
-    self.advection   = Lu(S_0) * phi           * dSrf
-    self.stab_u      = Lu(S_0) * tau * Lu(phi) * dSrf
+    self.source      = f       * phi           * dx
+    self.advection   = Lu(S_0) * phi           * dx
+    self.stab_u      = Lu(S_0) * tau * Lu(phi) * dx
 
   def update_mesh_and_surface(self, S):
     """
@@ -209,7 +205,7 @@ class FreeSurface(Mass):
     """
     nparams = {'newton_solver' : {'linear_solver'            : 'mumps',
                                   'preconditioner'           : 'none',
-                                  'relative_tolerance'       : 1e-13,
+                                  'relative_tolerance'       : 1e-12,
                                   'relaxation_parameter'     : 1.0,
                                   'maximum_iterations'       : 20,
                                   'error_on_nonconvergence'  : False}}
@@ -232,9 +228,13 @@ class FreeSurface(Mass):
     #solve(lhs(self.delta_S) == rhs(self.delta_S), self.S, annotate=annotate)
 
     # solve the non-linear system :
-    model.assign_variable(self.S, 0.0, annotate=annotate)
+    model.assign_variable(self.S, DOLFIN_EPS, annotate=annotate)
     solve(self.delta_S == 0, self.S, J=self.mass_Jac,
           annotate=annotate, solver_parameters=self.solve_params['nparams'])
+    print_min_max(self.S, self.S.name())
+
+    # the solution is only valid at the upper surface :    
+    #S = model.vert_extrude(self.S, d='down')
     
     # update the model variable :
     model.assign_variable(model.S, self.S, annotate=annotate)

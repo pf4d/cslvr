@@ -222,6 +222,68 @@ class D3Model(Model):
     s = "    - 3D function spaces created - "
     print_text(s, cls=self)
 
+  def generate_submesh_to_mesh_map(self, sub_model):
+    r"""
+    Create a map from each of the functionspaces defined in this model with the
+    submesh model ``sub_model``. 
+    """
+    # TODO: for now, only works for linear elements.
+    
+    bmesh   = BoundaryMesh(self.mesh, "exterior") # surface boundary mesh
+    vertmap = bmesh.entity_map(0)                 # map from bmesh to mesh
+    submesh = sub_model.mesh                      # get the submesh
+    m       = vertex_to_dof_map(self.Q)
+    si      = dof_to_vertex_map(sub_model.Q)
+    t       = submesh.data().array('parent_vertex_indices', 0)
+
+    # form the map from submesh dof to mesh dof :
+    mesh_vertices = []
+    for sub_dof in range(sub_model.Q.dim()):
+      submesh_vertex     = si[sub_dof]
+      boundary_vertex    = t[submesh_vertex]
+      mesh_vertex        = vertmap[int(boundary_vertex)] # np.uint not accepted
+      mesh_vertices.append(mesh_vertex)
+    Q_to_Qs_dofmap       = m[mesh_vertices]
+
+    self.submesh_map_dict = {'Q' : Q_to_Qs_dofmap}
+
+  def assign_from_submesh_variable(self, u, u_sub):
+    r"""
+    Assign the values from the variable ``u_sub`` defined on a submesh of 
+    this :class:`~model.Model`'s mesh to the variable ``u``.
+    """
+    u_sub_a = u_sub.vector().get_local()
+    u_a     = u.vector().get_local()
+    dofmap  = self.submesh_map_dict['Q']
+    n       = len(u.function_space().split())
+
+    if n == 0:
+      u_a[dofmap] = u_sub_a
+    else:
+      for i in range(n):
+        u_a[i::3][dofmap] = u_sub_a[i::3]
+    
+    self.assign_variable(u, u_a)
+
+  def assign_to_submesh_variable(self, u, u_sub):
+    r"""
+    Assign the values from the variable ``u`` defined on a 3D mesh used
+    with a :class:`~model.D3Model` to the submesh variable ``u_sub``.
+    """
+    u_sub_a = u_sub.vector().get_local()
+    u_a     = u.vector().get_local()
+    dofmap  = self.submesh_map_dict['Q']
+    n       = len(u.function_space().split())
+
+    if n == 0:
+      u_sub_a = u_a[dofmap]
+    else:
+      for i in range(n):
+        u_sub_a[i::3] = u_a[i::3][dofmap]
+
+    self.assign_variable(u_sub, u_sub_a)
+
+
   def calculate_boundaries(self,
                            mask        = None,
                            adot        = None,
@@ -258,9 +320,13 @@ class D3Model(Model):
     if mask == None:
       mask = Expression('1.0', element=self.Q.ufl_element())
     
-    # default to all positive accumulation :
+    # default to zero accumulation :
     if adot == None:
-      adot = Expression('1.0', element=self.Q.ufl_element())
+      adot = Expression('0.0', element=self.Q.ufl_element())
+   
+    # convert constants to expressions that can be evaluated at (x,y,z) :
+    elif type(adot) == Constant or type(adot) == float or type(adot) == int:
+      adot = Expression('adot', adot=adot, degree=0)
     
     # default to U observations everywhere :
     if U_mask == None:
@@ -474,6 +540,8 @@ class D3Model(Model):
                       'entire exterior lateral surface')
     self.dGamma_l   = Boundary(self.ds, [4,7,10],
                       'entire exterior and interior lateral surface')
+    self.dGamma_w   = Boundary(self.ds, [4,10,5],
+                      'exterior surface in contact with water')
 
     # save a dictionary of boundaries for later access by user :
     measures = [self.dOmega,

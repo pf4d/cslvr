@@ -105,7 +105,6 @@ RUN cd gmsh && \
     cmake -D ENABLE_WRAP_PYTHON=ON \
           -D ENABLE_FLTK=ON \
           -D ENABLE_PRIVATE_API=ON \
-          -D SWIG_EXECUTABLE=${SWIG_DIR}/bin/swig \
           -D PYTHON_EXECUTABLE:FILEPATH=$(which python) \
           -D ENABLE_PETSC=OFF \
           -D ENABLE_SLEPC=OFF \

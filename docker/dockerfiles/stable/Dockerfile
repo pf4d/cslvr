@@ -97,8 +97,7 @@ RUN cd $PKG_DIR && \
     cd ..
 
 # install gmsh-dynamic 2.10.1 :
-RUN cd &PKG_DIR && \
-    git clone https://gitlab.onelab.info/gmsh/gmsh.git
+RUN git clone https://gitlab.onelab.info/gmsh/gmsh.git
 RUN cd gmsh && \
     mkdir build && \
     cd build && \

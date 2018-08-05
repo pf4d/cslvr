@@ -91,9 +91,9 @@ RUN  cd $FENICS_HOME/pyipopt && \
 
 # install basemap for matplotlib :
 RUN cd $PKG_DIR && \
-    git clone https://github.com/matplotlib/basemap.git
-RUN cd basemap && \
-    python setup.py install && \
+    git clone https://github.com/matplotlib/basemap.git && \
+    cd basemap && \
+    python setup.py install --user && \
     cd ..
 
 # install gmsh-dynamic 2.10.1 :

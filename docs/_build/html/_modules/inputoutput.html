@@ -1,0 +1,783 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>inputoutput &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>inputoutput</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for inputoutput</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">scipy.io</span>          <span class="k">import</span> <span class="n">loadmat</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="k">import</span> <span class="n">RectBivariateSpline</span><span class="p">,</span> <span class="n">griddata</span><span class="p">,</span> <span class="n">interp2d</span><span class="p">,</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">numpy</span>             <span class="k">import</span> <span class="n">array</span><span class="p">,</span> <span class="n">linspace</span><span class="p">,</span> <span class="n">ones</span><span class="p">,</span> <span class="n">isnan</span><span class="p">,</span> <span class="nb">all</span><span class="p">,</span> <span class="n">zeros</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> \
+                              <span class="n">ndarray</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">nan</span><span class="p">,</span> <span class="n">float64</span><span class="p">,</span> <span class="n">logical_and</span><span class="p">,</span> <span class="n">where</span><span class="p">,</span> \
+                              <span class="n">meshgrid</span><span class="p">,</span> <span class="n">arange</span>
+<span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="n">interpolate</span><span class="p">,</span> <span class="n">Expression</span><span class="p">,</span> <span class="n">Function</span><span class="p">,</span> \
+                              <span class="n">vertices</span><span class="p">,</span> <span class="n">FunctionSpace</span><span class="p">,</span> <span class="n">RectangleMesh</span><span class="p">,</span> \
+                              <span class="n">MPI</span><span class="p">,</span> <span class="n">mpi_comm_world</span><span class="p">,</span> <span class="n">GenericVector</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> \
+                              <span class="n">File</span><span class="p">,</span> <span class="n">Constant</span><span class="p">,</span> <span class="n">FiniteElement</span>
+<span class="kn">from</span> <span class="nn">ufl</span>               <span class="k">import</span> <span class="n">indexed</span>
+<span class="kn">from</span> <span class="nn">pyproj</span>            <span class="k">import</span> <span class="n">Proj</span><span class="p">,</span> <span class="n">transform</span>
+<span class="kn">from</span> <span class="nn">colored</span>           <span class="k">import</span> <span class="n">fg</span><span class="p">,</span> <span class="n">attr</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<div class="viewcode-block" id="DataInput"><a class="viewcode-back" href="../input.html#inputoutput.DataInput">[docs]</a><span class="k">class</span> <span class="nc">DataInput</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  This class is used as a container for all geographical and geological data</span>
+<span class="sd">  used by CSLVR, and posseses the ability to</span>
+
+<span class="sd">  1. Remove rows or columns in sets that are entirely composed of ``nan``&#39;s (done automatically).</span>
+<span class="sd">  2. Convert projections between datasets.</span>
+<span class="sd">  3. Generate :class:`~dolfin.Expression` objects to be used by :class:`~model.Model` instances</span>
+<span class="sd">  </span>
+<span class="sd">  :param di:         dictionary of data returned by one of the functions of :class:`~datafactory.DataFactory`</span>
+<span class="sd">  :param mesh:       finite-element mesh to use for generation of :class:`~dolfin.Expression`&#39;s, if desired</span>
+<span class="sd">  :param order:      if a mesh is used, this defines the order of the finite-element basis used by :func:`~inputoutput.DataInput.get_expression`</span>
+<span class="sd">  :type di: dict</span>
+<span class="sd">  :type mesh: :class:`~dolfin.Mesh`</span>
+<span class="sd">  :type order: int</span>
+
+<span class="sd">  A number of class variables are generated by the instantiation of this </span>
+<span class="sd">  class which may be useful.  These are:</span>
+
+<span class="sd">  * ``self.data`` -- dict of data associated with :class:`~datafactory.DataFactory` dict ``di``</span>
+<span class="sd">  * ``self.proj`` -- projection :class:`~pyproj.Proj`</span>
+
+<span class="sd">  Data projection :math:`x,y` coordinates :</span>
+
+<span class="sd">  * ``self.x`` -- :class:`~numpy.array` of data grid :math:`x`-coordinates</span>
+<span class="sd">  * ``self.y`` -- :class:`~numpy.array` of data grid :math:`y`-coordinates</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">,</span> <span class="n">mesh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span>       <span class="o">=</span> <span class="n">mesh</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span>       <span class="o">=</span> <span class="p">{}</span>        <span class="c1"># dictionary of data</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rem_nans</span>   <span class="o">=</span> <span class="kc">False</span>     <span class="c1"># may change depending on &#39;identify_nans&#39; call</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">chg_proj</span>   <span class="o">=</span> <span class="kc">False</span>     <span class="c1"># change to other projection flag</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">color</span>      <span class="o">=</span> <span class="s1">&#39;light_green&#39;</span>
+
+    <span class="n">di</span>              <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span>       <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cont</span>       <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;continent&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">proj</span>       <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;pyproj_Proj&#39;</span><span class="p">)</span>
+
+    <span class="c1"># initialize extents :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ny</span>         <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;ny&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nx</span>         <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;nx&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dx</span>         <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dx&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x_min</span>      <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;map_western_edge&#39;</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x_max</span>      <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;map_eastern_edge&#39;</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y_min</span>      <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;map_southern_edge&#39;</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y_max</span>      <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;map_northern_edge&#39;</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span>          <span class="o">=</span> <span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_max</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nx</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y</span>          <span class="o">=</span> <span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y_min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_max</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ny</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">good_x</span>     <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>      <span class="c1"># no NaNs</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">good_y</span>     <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>      <span class="c1"># no NaNs</span>
+
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: creating </span><span class="si">%s</span><span class="s2"> DataInput object :::&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="c1"># process the data di :</span>
+    <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">di</span><span class="p">:</span>
+
+      <span class="c1"># raw data matrix with key fn :</span>
+      <span class="n">d</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>
+
+      <span class="c1"># identify, but not remove the NaNs :</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">__identify_nans</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+
+      <span class="c1"># add to the dictionary of arrays :</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">d</span>
+
+    <span class="c1"># remove un-needed rows/cols from data:</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rem_nans</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__remove_nans</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+
+      <span class="c1"># define the finite elmenet of the problem :</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">element</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s2">&quot;CG&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">(),</span> <span class="n">order</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">ufl_cell</span><span class="p">()</span><span class="o">.</span><span class="n">topological_dimension</span><span class="p">()</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_facets</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_cells</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span>
+      <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_edges</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_cells</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using </span><span class="si">%i</span><span class="s2">D mesh with </span><span class="si">%i</span><span class="s2"> cells, </span><span class="si">%i</span><span class="s2"> facets, </span><span class="si">%i</span><span class="s2"> vertices - &quot;</span> \
+          <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">)</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - not using a mesh - &quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DataInput.reduce_size_to_box"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.reduce_size_to_box">[docs]</a>  <span class="k">def</span> <span class="nf">reduce_size_to_box</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ll_lon</span><span class="p">,</span> <span class="n">ll_lat</span><span class="p">,</span> <span class="n">ur_lon</span><span class="p">,</span> <span class="n">ur_lat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reduce the size of the data to the box with lower-left-corner </span>
+<span class="sd">    coordinates (``ll_lon``, ``ll_lat``) and upper-right-corner</span>
+<span class="sd">    coordinates (``ur_lon``, ``ur_lat``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># convert to projection coordinates :</span>
+    <span class="n">xmax</span><span class="p">,</span><span class="n">ymax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">ll_lon</span><span class="p">,</span> <span class="n">ll_lat</span><span class="p">)</span>
+    <span class="n">xmin</span><span class="p">,</span><span class="n">ymin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">ur_lon</span><span class="p">,</span> <span class="n">ur_lat</span><span class="p">)</span>
+
+    <span class="c1"># mark the areas we want to keep :    </span>
+    <span class="n">xlt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">&lt;</span> <span class="n">xmin</span>
+    <span class="n">xgt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">&gt;</span> <span class="n">xmax</span>
+    <span class="n">ylt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">&lt;</span> <span class="n">ymin</span>
+    <span class="n">ygt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">&gt;</span> <span class="n">ymax</span>
+    
+    <span class="c1"># take the union :</span>
+    <span class="n">xs</span>  <span class="o">=</span> <span class="n">where</span><span class="p">(</span><span class="n">logical_and</span><span class="p">(</span><span class="n">xlt</span><span class="p">,</span> <span class="n">xgt</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ys</span>  <span class="o">=</span> <span class="n">where</span><span class="p">(</span><span class="n">logical_and</span><span class="p">(</span><span class="n">ylt</span><span class="p">,</span> <span class="n">ygt</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+   
+    <span class="c1"># cut out the parts we do not need :</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span><span class="n">xs</span><span class="p">]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">ys</span><span class="p">,:]</span>
+
+    <span class="c1"># replace the statistics :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">xs</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">ys</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nx</span>    <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ny</span>    <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DataInput.change_projection"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.change_projection">[docs]</a>  <span class="k">def</span> <span class="nf">change_projection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Changes the :class:`~pyproj.Proj` of this data to that of the </span>
+<span class="sd">    ``di`` :class:`~inputoutput.DataInput` object&#39;s :class:`~pyproj.Proj`.</span>
+<span class="sd">    The works only if the object was created with the parameter</span>
+<span class="sd">    ``create_proj == True``.</span>
+
+<span class="sd">    :param di: the :class:`~inputoutput.DataInput` which contains the projection you would like to convert to</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">di</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+      <span class="n">proj</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">proj</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">di</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span>
+      <span class="n">proj</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;pyproj_Proj&#39;</span><span class="p">]</span>
+
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: changing &#39;</span><span class="si">%s</span><span class="s2">&#39; DataInput object projection to that of &#39;</span><span class="si">%s</span><span class="s2">&#39; :::&quot;</span> \
+           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">chg_proj</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">new_p</span>    <span class="o">=</span> <span class="n">proj</span></div>
+
+<div class="viewcode-block" id="DataInput.get_xy"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.get_xy">[docs]</a>  <span class="k">def</span> <span class="nf">get_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the :math:`(x,y)` projection map coordinates corresponding to a </span>
+<span class="sd">    given (lon,lat) coordinate pair using this :class:`~inputoutput.DataInput`</span>
+<span class="sd">    object&#39;s current projection ``self.proj``.</span>
+
+<span class="sd">    :param lon: longitude coordinate(s)</span>
+<span class="sd">    :param lat: latitude coordinate(s)</span>
+<span class="sd">    :type lon: float, :class:`~numpy.array`</span>
+<span class="sd">    :type lat: float, :class:`~numpy.array`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DataInput.interpolate_from_di"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.interpolate_from_di">[docs]</a>  <span class="k">def</span> <span class="nf">interpolate_from_di</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">,</span> <span class="n">fi</span><span class="p">,</span> <span class="n">fo</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interpolates the data field with key ``fi`` of </span>
+<span class="sd">    another :class:`~inputoutput.DataInput` object ``di`` to the grid used </span>
+<span class="sd">    by this object.  Saves the resulting interpolation within this object&#39;s</span>
+<span class="sd">    ``self.data`` dictionary with key ``fo``.  Order may be any of:</span>
+
+<span class="sd">    * ``1``  -- nearest-neighbor interpolation</span>
+<span class="sd">    * ``2``  -- linear interpolation</span>
+<span class="sd">    * ``3``  -- cubic interpolation</span>
+
+<span class="sd">    :param di: the :class:`~inputoutput.DataInput` to interpolate from</span>
+<span class="sd">    :param fi: the key of the data to interpolate from.</span>
+<span class="sd">    :param fo: the key to save the data within ``self.data``</span>
+<span class="sd">    :param order: order of interpolation (see above).</span>
+<span class="sd">    :type di:    :class:`~inputoutput.DataInput`</span>
+<span class="sd">    :type fi:    string</span>
+<span class="sd">    :type fo:    string</span>
+<span class="sd">    :type order: int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span>   <span class="n">order</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span>
+    <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;linear&#39;</span>
+    <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>  <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;cubic&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; interpolate_from_di() REQUIRES method == 1,2, or 3 &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: interpolating </span><span class="si">%s</span><span class="s2">&#39;s &#39;</span><span class="si">%s</span><span class="s2">&#39; field to </span><span class="si">%s</span><span class="s2">&#39;s grid with key &#39;</span><span class="si">%s</span><span class="s2">&#39; using&quot;</span> <span class="o">+</span> \
+        <span class="s2">&quot; </span><span class="si">%s</span><span class="s2"> interpolation :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">fi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">fo</span><span class="p">,</span> <span class="n">method</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="c1"># check if the projections are the same :</span>
+    
+    <span class="c1"># if they are, then use structured grid interpolation :</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="o">.</span><span class="n">srs</span> <span class="o">==</span> <span class="n">di</span><span class="o">.</span><span class="n">proj</span><span class="o">.</span><span class="n">srs</span><span class="p">:</span>
+      <span class="n">s</span>      <span class="o">=</span> <span class="s1">&#39;    - projections match, using structured interpolation -&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+     
+      <span class="c1"># NOTE the data is transposed as required by RectBivariateSpline.</span>
+      <span class="c1">#      It must therefore be transposed back, as follows : </span>
+      <span class="n">interp</span> <span class="o">=</span> <span class="n">RectBivariateSpline</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+                                     <span class="n">kx</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">ky</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+      <span class="n">fo_v</span>  <span class="o">=</span> <span class="n">interp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="c1"># if not, then use scipy::griddata to interpolate unstructured data :</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span>      <span class="o">=</span> <span class="s1">&#39;    - projections do not match, using unstructured &#39;</span> <span class="o">+</span> \
+               <span class="s1">&#39;interpolation -&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+      <span class="n">xs</span><span class="p">,</span><span class="n">ys</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_xy</span><span class="p">(</span><span class="n">di</span><span class="p">)</span>
+      <span class="n">di_pts</span>  <span class="o">=</span> <span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">ys</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+      <span class="n">xr</span><span class="p">,</span><span class="n">yr</span>   <span class="o">=</span> <span class="n">meshgrid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+      <span class="n">do_pts</span>  <span class="o">=</span> <span class="p">(</span><span class="n">xr</span><span class="p">,</span><span class="n">yr</span><span class="p">)</span>
+      
+      <span class="c1"># create interpolation object to convert to bedmap2 coordinates :</span>
+      <span class="c1"># surface accumulation/ablation :</span>
+      <span class="n">fo_v</span>    <span class="o">=</span> <span class="n">griddata</span><span class="p">(</span><span class="n">di_pts</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">do_pts</span><span class="p">,</span>
+                         <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># set the data to our dictionary :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fo</span><span class="p">]</span> <span class="o">=</span> <span class="n">fo_v</span>
+
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fi</span><span class="p">],</span> <span class="s1">&#39;original </span><span class="si">%s</span><span class="s1">    &#39;</span> <span class="o">%</span> <span class="n">fi</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">fo_v</span><span class="p">,</span>        <span class="s1">&#39;interpolated </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">fo</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DataInput.transform_xy"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.transform_xy">[docs]</a>  <span class="k">def</span> <span class="nf">transform_xy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transforms the projection coordinates (``di.x``, ``di.y``) of the </span>
+<span class="sd">    :class:`~inputoutput.DataInput` object ``di`` to the projection used</span>
+<span class="sd">    by this :class:`~inputoutput.DataInput`&#39;s.</span>
+<span class="sd">    </span>
+<span class="sd">    :param di: the :class:`~inputoutput.DataInput` with projection coordinates to transform</span>
+<span class="sd">    :rtype: tuple of converted coordinates</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># FIXME : need a fast way to convert all the x, y. Currently broken</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: transforming coordinates from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">vx</span><span class="p">,</span><span class="n">vy</span>  <span class="o">=</span> <span class="n">meshgrid</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">xn</span><span class="p">,</span> <span class="n">yn</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">proj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">,</span> <span class="n">vx</span><span class="p">,</span> <span class="n">vy</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s1">&#39;    - done -&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">xn</span><span class="p">,</span> <span class="n">yn</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DataInput.rescale_field"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.rescale_field">[docs]</a>  <span class="k">def</span> <span class="nf">rescale_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fo</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">umin</span><span class="p">,</span> <span class="n">umax</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rescale the data field of this instance with key ``fo`` to lower and </span>
+<span class="sd">    upper bound ``umin``, ``umax``, creating a new data field in the process</span>
+<span class="sd">    with key ``fn``.</span>
+
+<span class="sd">    If ``inverse == True``, scale the data to the inverse of data ``fo``,</span>
+<span class="sd">    i.e., the smallest values become ``umax``, and the largest become ``umin``.</span>
+
+<span class="sd">    This is useful, for example, when refining a mesh in areas where a </span>
+<span class="sd">    velocity field is of highest magnitude.</span>
+
+<span class="sd">    :param fo: key of the data to rescale</span>
+<span class="sd">    :param fn: key of the new rescaled data</span>
+<span class="sd">    :param umin: minimum value to rescale</span>
+<span class="sd">    :param umax: maximum value to rescale</span>
+<span class="sd">    :param inverse: rescale the inverse of ``fo`` instead</span>
+<span class="sd">    :type fo: string</span>
+<span class="sd">    :type fn: string</span>
+<span class="sd">    :type umin: float</span>
+<span class="sd">    :type umax: float</span>
+<span class="sd">    :type inverse: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">inverse</span><span class="p">:</span>
+      <span class="n">inv_txt</span> <span class="o">=</span> <span class="s1">&#39;inversely&#39;</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">inverse</span><span class="p">:</span>
+      <span class="n">inv_txt</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: rescaling data field &#39;</span><span class="si">%s</span><span class="s2">&#39; </span><span class="si">%s</span><span class="s2"> with lower and upper &quot;</span> <span class="o">+</span> \
+        <span class="s2">&quot;bound (</span><span class="si">%g</span><span class="s2">, </span><span class="si">%g</span><span class="s2">) to field &#39;</span><span class="si">%s</span><span class="s2">&#39; :::&quot;</span> 
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">fo</span><span class="p">,</span> <span class="n">inv_txt</span><span class="p">,</span> <span class="n">umin</span><span class="p">,</span> <span class="n">umax</span><span class="p">,</span> <span class="n">fn</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">U</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fo</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inverse</span><span class="p">:</span>
+      <span class="n">amin</span> <span class="o">=</span> <span class="p">(</span> <span class="n">umin</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="o">-</span> <span class="n">umax</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">umax</span> <span class="o">-</span> <span class="n">umin</span><span class="p">)</span>
+      <span class="n">amax</span> <span class="o">=</span> <span class="n">umin</span> <span class="o">/</span> <span class="p">(</span> <span class="n">amin</span> <span class="o">+</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">inverse</span><span class="p">:</span>
+      <span class="n">amin</span> <span class="o">=</span> <span class="p">(</span> <span class="n">umin</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">-</span> <span class="n">umax</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">umax</span> <span class="o">-</span> <span class="n">umin</span><span class="p">)</span>
+      <span class="n">amax</span> <span class="o">=</span> <span class="n">umin</span> <span class="o">/</span> <span class="p">(</span> <span class="n">amin</span> <span class="o">+</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="o">.</span><span class="n">max</span><span class="p">())</span> <span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">amin</span> <span class="o">+</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">U</span><span class="p">))</span> <span class="o">*</span> <span class="n">amax</span></div>
+
+  <span class="k">def</span> <span class="nf">__identify_nans</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">fn</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    private method to identify rows and columns of all nans from grids. This</span>
+<span class="sd">    happens when the data from multiple GIS databases don&#39;t quite align on</span>
+<span class="sd">    whatever the desired grid is.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">good_x</span> <span class="o">=</span> <span class="o">~</span><span class="nb">all</span><span class="p">(</span><span class="n">isnan</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">good_x</span>  <span class="c1"># good cols</span>
+    <span class="n">good_y</span> <span class="o">=</span> <span class="o">~</span><span class="nb">all</span><span class="p">(</span><span class="n">isnan</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">good_y</span>  <span class="c1"># good rows</span>
+
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">good_x</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">good_x</span><span class="p">):</span>
+      <span class="n">total_nan_x</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">good_x</span> <span class="o">==</span> <span class="kc">False</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">rem_nans</span> <span class="o">=</span> <span class="kc">True</span>
+      <span class="n">s</span> <span class="o">=</span>  <span class="s2">&quot;Warning: </span><span class="si">%d</span><span class="s2"> row(s) of </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s2"> are entirely NaN.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">total_nan_x</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">good_y</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">good_y</span><span class="p">):</span>
+      <span class="n">total_nan_y</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">good_y</span> <span class="o">==</span> <span class="kc">False</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">rem_nans</span> <span class="o">=</span> <span class="kc">True</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;Warning: </span><span class="si">%d</span><span class="s2"> col(s) of </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s2"> are entirely NaN.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">total_nan_y</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">good_x</span> <span class="o">=</span> <span class="n">good_x</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">good_y</span> <span class="o">=</span> <span class="n">good_y</span>
+
+  <span class="k">def</span> <span class="nf">__remove_nans</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    remove extra rows/cols from data where NaNs were identified and set the</span>
+<span class="sd">    extents to those of the good x and y values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: removing NaNs from </span><span class="si">%s</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">good_x</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">good_y</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nx</span>    <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ny</span>    <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">good_y</span><span class="p">,</span> <span class="p">:</span>          <span class="p">]</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">][:,</span>           <span class="bp">self</span><span class="o">.</span><span class="n">good_x</span><span class="p">]</span>
+
+<div class="viewcode-block" id="DataInput.set_data_min"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.set_data_min">[docs]</a>  <span class="k">def</span> <span class="nf">set_data_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">boundary</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set all values of the array associated with this instance&#39;s ``self.data`` </span>
+<span class="sd">    dictionary with key ``fn`` below ``boundary`` to value ``val``.</span>
+
+<span class="sd">    :param fn: key of data array</span>
+<span class="sd">    :param boundary: boundary below which to assign</span>
+<span class="sd">    :param val:      boundary to assign</span>
+<span class="sd">    :type fn: string</span>
+<span class="sd">    :type boundary: float</span>
+<span class="sd">    :type val: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: setting any value of </span><span class="si">%s</span><span class="s2">&#39;s </span><span class="si">%s</span><span class="s2"> field below </span><span class="si">%.3e</span><span class="s2"> to </span><span class="si">%.3e</span><span class="s2"> :::&quot;</span> \
+           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">boundary</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    
+    <span class="n">d</span>                <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>
+    <span class="n">d</span><span class="p">[</span><span class="n">d</span> <span class="o">&lt;=</span> <span class="n">boundary</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>    <span class="o">=</span> <span class="n">d</span></div>
+
+<div class="viewcode-block" id="DataInput.set_data_max"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.set_data_max">[docs]</a>  <span class="k">def</span> <span class="nf">set_data_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">boundary</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set all values of the array associated with this instance&#39;s ``self.data`` </span>
+<span class="sd">    dictionary with key ``fn`` above ``boundary`` to value ``val``.</span>
+
+<span class="sd">    :param fn: key of data array</span>
+<span class="sd">    :param boundary: boundary below which to assign</span>
+<span class="sd">    :param val:      boundary to assign</span>
+<span class="sd">    :type fn: string</span>
+<span class="sd">    :type boundary: float</span>
+<span class="sd">    :type val: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: setting any value of </span><span class="si">%s</span><span class="s2">&#39;s </span><span class="si">%s</span><span class="s2"> field above </span><span class="si">%.3e</span><span class="s2"> to </span><span class="si">%.3e</span><span class="s2"> :::&quot;</span> \
+           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">boundary</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    
+    <span class="n">d</span>                <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>
+    <span class="n">d</span><span class="p">[</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="n">boundary</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>    <span class="o">=</span> <span class="n">d</span></div>
+
+<div class="viewcode-block" id="DataInput.set_data_val"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.set_data_val">[docs]</a>  <span class="k">def</span> <span class="nf">set_data_val</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">old_val</span><span class="p">,</span> <span class="n">new_val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set all values of the array associated with this instance&#39;s ``self.data`` </span>
+<span class="sd">    dictionary with key ``fn`` with value ``old_val`` to ``new_val``.</span>
+
+<span class="sd">    :param fn: key of data array</span>
+<span class="sd">    :param old_val: the value to change</span>
+<span class="sd">    :param new_val: the value to replace</span>
+<span class="sd">    :type fn: string</span>
+<span class="sd">    :type old_val: float</span>
+<span class="sd">    :type new_val: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: setting all values of </span><span class="si">%s</span><span class="s2">&#39;s </span><span class="si">%s</span><span class="s2"> field equal to </span><span class="si">%.3e</span><span class="s2"> to </span><span class="si">%.3e</span><span class="s2"> :::&quot;</span> \
+           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">old_val</span><span class="p">,</span> <span class="n">new_val</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    
+    <span class="n">d</span>                <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>
+    <span class="n">d</span><span class="p">[</span><span class="n">d</span> <span class="o">==</span> <span class="n">old_val</span><span class="p">]</span>  <span class="o">=</span> <span class="n">new_val</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>    <span class="o">=</span> <span class="n">d</span></div>
+
+<div class="viewcode-block" id="DataInput.get_expression"><a class="viewcode-back" href="../input.html#inputoutput.DataInput.get_expression">[docs]</a>  <span class="k">def</span> <span class="nf">get_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">near</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a spline-interpolation expression for data with key ``fn`` with </span>
+<span class="sd">    order of approximation in :math:`x` and :math:`y` directions ``order``.</span>
+<span class="sd">    if ``near == True``, use nearest-neighbor interpolation.</span>
+
+<span class="sd">    :param fn: key of data to form expression of</span>
+<span class="sd">    :param order: order of the interpolation</span>
+<span class="sd">    :param near:  use nearest-neighbor interpolation</span>
+<span class="sd">    :type fn: string</span>
+<span class="sd">    :type order: int</span>
+<span class="sd">    :type near: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">near</span><span class="p">:</span>  <span class="n">t</span> <span class="o">=</span> <span class="s1">&#39;nearest-neighbor&#39;</span>
+    <span class="k">else</span><span class="p">:</span>     <span class="n">t</span> <span class="o">=</span> <span class="s1">&#39;O(</span><span class="si">%i</span><span class="s1">) spline&#39;</span> <span class="o">%</span> <span class="n">order</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: getting &#39;</span><span class="si">%s</span><span class="s2">&#39; </span><span class="si">%s</span><span class="s2"> expression from &#39;</span><span class="si">%s</span><span class="s2">&#39; :::&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">chg_proj</span><span class="p">:</span>
+      <span class="n">new_proj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_p</span>
+      <span class="n">old_proj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">near</span><span class="p">:</span>
+      <span class="n">spline</span> <span class="o">=</span> <span class="n">RectBivariateSpline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">kx</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">ky</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">interp_x</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)),</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
+      <span class="n">interp_y</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)),</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
+
+    <span class="n">xs</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span>
+    <span class="n">ys</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span>
+    <span class="n">chg_proj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chg_proj</span>
+
+    <span class="k">class</span> <span class="nc">CslvrExpression</span><span class="p">(</span><span class="n">Expression</span><span class="p">):</span>
+      <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">      Class that handles interpolation between altered projection coordinates.</span>
+<span class="sd">      &quot;&quot;&quot;</span>
+      <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">chg_proj</span><span class="p">:</span>
+          <span class="n">xn</span><span class="p">,</span> <span class="n">yn</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">new_proj</span><span class="p">,</span> <span class="n">old_proj</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">xn</span><span class="p">,</span> <span class="n">yn</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">near</span><span class="p">:</span>
+          <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">spline</span><span class="p">(</span><span class="n">xn</span><span class="p">,</span> <span class="n">yn</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">idx</span>       <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">interp_x</span><span class="p">(</span><span class="n">xn</span><span class="p">))</span>
+          <span class="n">idy</span>       <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">interp_y</span><span class="p">(</span><span class="n">yn</span><span class="p">))</span>
+          <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">idy</span><span class="p">,</span> <span class="n">idx</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">CslvrExpression</span><span class="p">(</span><span class="n">element</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="print_min_max"><a class="viewcode-back" href="../output.html#inputoutput.print_min_max">[docs]</a><span class="k">def</span> <span class="nf">print_min_max</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;97&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Print the minimum and maximum values of ``u``, a Vector, Function, or array.</span>
+
+<span class="sd">  :param u: the variable to print the min and max of</span>
+<span class="sd">  :param title: the name of the function to print</span>
+<span class="sd">  :param color: the color of printed text</span>
+<span class="sd">  :type u: :class:`~dolfin.GenericVector`, :class:`~numpy.ndarray`, :class:`~dolfin.Function`, int, float, :class:`~dolfin.Constant`</span>
+<span class="sd">  :type title: string</span>
+<span class="sd">  :type color: string</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">GenericVector</span><span class="p">):</span>
+    <span class="n">uMin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">u</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">uMax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">u</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s1">&#39; &lt;min, max&gt; : &lt;</span><span class="si">%.3e</span><span class="s1">, </span><span class="si">%.3e</span><span class="s1">&gt;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">uMin</span><span class="p">,</span> <span class="n">uMax</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">cls</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">indexed</span><span class="o">.</span><span class="n">Indexed</span><span class="p">):</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">value_rank</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">value_rank</span><span class="p">()):</span>
+      <span class="n">uMin</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()[</span><span class="n">i</span> <span class="p">:</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="p">:</span> <span class="n">dim</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+      <span class="n">uMax</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()[</span><span class="n">i</span> <span class="p">:</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="p">:</span> <span class="n">dim</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+      <span class="n">s</span>    <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s1">&#39;_</span><span class="si">%i</span><span class="s1"> &lt;min, max&gt; : &lt;</span><span class="si">%.3e</span><span class="s1">, </span><span class="si">%.3e</span><span class="s1">&gt;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">uMin</span><span class="p">,</span> <span class="n">uMax</span><span class="p">)</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">cls</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">float64</span><span class="p">:</span>
+      <span class="n">u</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">uMin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">u</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">uMax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">u</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s1">&#39; &lt;min, max&gt; : &lt;</span><span class="si">%.3e</span><span class="s1">, </span><span class="si">%.3e</span><span class="s1">&gt;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">uMin</span><span class="p">,</span> <span class="n">uMax</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">cls</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">Function</span><span class="p">):</span><span class="c1"># \</span>
+    <span class="c1">#   or isinstance(u, dolfin.functions.function.Function):</span>
+    <span class="n">uMin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">uMax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s1">&#39; &lt;min, max&gt; : &lt;</span><span class="si">%.3e</span><span class="s1">, </span><span class="si">%.3e</span><span class="s1">&gt;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">uMin</span><span class="p">,</span> <span class="n">uMax</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">cls</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s1">&#39; : </span><span class="si">%.3e</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">u</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">cls</span><span class="p">)</span>
+  <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">Constant</span><span class="p">):</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s1">&#39; : </span><span class="si">%.3e</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">u</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">cls</span><span class="p">)</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="n">er</span> <span class="o">=</span> <span class="n">title</span> <span class="o">+</span> <span class="s2">&quot;: print_min_max function requires a Vector, Function&quot;</span> \
+         <span class="o">+</span> <span class="s2">&quot;, array, int or float, not </span><span class="si">%s</span><span class="s2">.&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">er</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_text"><a class="viewcode-back" href="../output.html#inputoutput.get_text">[docs]</a><span class="k">def</span> <span class="nf">get_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">atrb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Returns text ``text`` from calling class ``cls`` for printing at a later time.</span>
+
+<span class="sd">  :param text: the text to print</span>
+<span class="sd">  :param color: the color of the text to print</span>
+<span class="sd">  :param atrb: attributes to send use by ``colored`` package</span>
+<span class="sd">  :param cls: the calling class</span>
+<span class="sd">  :type text: string</span>
+<span class="sd">  :type color: string</span>
+<span class="sd">  :type atrb: int</span>
+<span class="sd">  :type cls: object</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="bp">cls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">color</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">color</span><span class="p">()</span>
+  <span class="k">if</span> <span class="n">color</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">text</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">atrb</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="n">text</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">text</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="n">fg</span><span class="p">(</span><span class="n">color</span><span class="p">),</span> <span class="n">attr</span><span class="p">(</span><span class="n">atrb</span><span class="p">),</span> <span class="n">attr</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">text</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">text</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="n">fg</span><span class="p">(</span><span class="n">color</span><span class="p">),</span> <span class="n">attr</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+  <span class="k">return</span> <span class="n">text</span></div>
+
+
+<div class="viewcode-block" id="print_text"><a class="viewcode-back" href="../output.html#inputoutput.print_text">[docs]</a><span class="k">def</span> <span class="nf">print_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">atrb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Print text ``text`` from calling class ``cls`` to the screen.</span>
+
+<span class="sd">  :param text: the text to print</span>
+<span class="sd">  :param color: the color of the text to print</span>
+<span class="sd">  :param atrb: attributes to send use by ``colored`` package</span>
+<span class="sd">  :param cls: the calling class</span>
+<span class="sd">  :type text: string</span>
+<span class="sd">  :type color: string</span>
+<span class="sd">  :type atrb: int</span>
+<span class="sd">  :type cls: object</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">if</span> <span class="n">MPI</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">())</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span> <span class="n">get_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">atrb</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

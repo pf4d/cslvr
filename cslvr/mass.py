@@ -78,17 +78,10 @@ class UpperFreeSurface(Mass):
       Newton solver finished in 1 iterations and 1 linear solver iterations.
     mass.S <min, max> : <-1.140e+02, 6.065e+02>
     S <min, max> : <1.000e+00, 6.065e+02>
-    || K_source ||_2    : 2.414e+12
-    || K_advection ||_2 : 3.521e+07
-    || K_stab_u ||_2    : 2.399e+07
-    S <min, max> : <1.000e+00, 6.065e+02>
 
   Here, 
   
   * ``S`` is the surface height :math:`S` saved to ``model.S``
-  * ``K_source`` is the tensor corresponding to the source term :math:`f = u_z + \Vert \underline{\hat{k}} - \nabla S \Vert \mathring{S}` with upper-surface accumulation/ablation function located (currently) at ``model.ring_S`` and vertical velocity :math:`u_z`.
-  * ``K_advection`` is the tensor corresponding to the advective part of the free-surface equation :math:`\underline{u} \cdot \nabla S`
-  * ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in stabilization term the direction of velocity located (currently) at ``model.U3``
 
   """ 
   def __init__(self, model,
@@ -220,7 +213,7 @@ class UpperFreeSurface(Mass):
 
     Currently does not support dolfin-adjoint annotation.
     """
-    print_text("::: solving free-surface relation :::", cls=self)
+    print_text("::: solving free-surface relation for dSdt :::", cls=self)
 
     model  = self.model
 

@@ -1,0 +1,550 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Output &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Meshing" href="meshing.html" />
+    <link rel="prev" title="Input" href="input.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Output</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#by-the-model-class">By the Model class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-inputoutput">Printing text data to the screen</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-helper">Plot geographic results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plot-mathematical-results">Plot mathematical results</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Output</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/output.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="output">
+<h1>Output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="by-the-model-class">
+<h2>By the Model class<a class="headerlink" href="#by-the-model-class" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt>
+<em class="property">class </em><code class="descclassname">model.</code><code class="descname">Model</code><span class="sig-paren">(</span><em>mesh</em>, <em>out_dir='./results/'</em>, <em>order=1</em>, <em>use_periodic=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>The basic model from which each of these inherit :</p>
+<blockquote>
+<div><ul class="simple">
+<li><a class="reference internal" href="model.html#latmodel.LatModel" title="latmodel.LatModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">LatModel</span></code></a>       - plane strain model</li>
+<li><a class="reference internal" href="model.html#d1model.D1Model" title="d1model.D1Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D1Model</span></code></a>         - 1D firn model</li>
+<li><a class="reference internal" href="model.html#d2model.D2Model" title="d2model.D2Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D2Model</span></code></a>         - 2D model (SSA, SIA, balance velocity)</li>
+<li><a class="reference internal" href="model.html#d3model.D3Model" title="d3model.D3Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D3Model</span></code></a>         - 3D model (first-order, full-Stokes)</li>
+</ul>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mesh</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code>) – the finite-element mesh</li>
+<li><strong>out_dir</strong> (<em>string</em>) – location for the output directory</li>
+<li><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – order of the shape function basis, default linear</li>
+<li><strong>use_periodic</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – use periodic boundaries or not</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt>
+<code class="descname">save_hdf5</code><span class="sig-paren">(</span><em>u</em>, <em>f</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_hdf5"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the .h5 file <code class="docutils literal notranslate"><span class="pre">f</span></code> in the 
+<code class="docutils literal notranslate"><span class="pre">hdf5</span></code> subdirectory of <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.  If <code class="docutils literal notranslate"><span class="pre">name</span></code> = <code class="docutils literal notranslate"><span class="pre">None</span></code>, 
+this will save the flie under <code class="docutils literal notranslate"><span class="pre">u.name()</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, or 
+<code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – the function to save</li>
+<li><strong>f</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>) – the file to save to</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">save_list_to_hdf5</code><span class="sig-paren">(</span><em>lst</em>, <em>h5File</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_list_to_hdf5"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>save a list of functions or coefficients <code class="docutils literal notranslate"><span class="pre">lst</span></code> to hdf5 file <code class="docutils literal notranslate"><span class="pre">h5File</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>lst</strong> – list</li>
+<li><strong>h5File</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>) – the file to save to</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">save_matlab</code><span class="sig-paren">(</span><em>u</em>, <em>di</em>, <em>filename</em>, <em>val=2.718281828459045</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_matlab"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Create Matlab version 4 file output of regular gridded data contained by 
+<code class="docutils literal notranslate"><span class="pre">f</span></code>.  Currently, this function only works for 2D <span class="math notranslate nohighlight">\(x,y\)</span>-plane data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, to be mapped onto the regular 
+grid used by <code class="docutils literal notranslate"><span class="pre">di</span></code></li>
+<li><strong>di</strong> – a <a class="reference internal" href="input.html#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> object</li>
+<li><strong>filename</strong> (<em>string</em>) – filename to save as</li>
+<li><strong>val</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – value to make values outside of mesh, default <span class="math notranslate nohighlight">\(e\)</span></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">MatLab file <code class="docutils literal notranslate"><span class="pre">&lt;self.out_dir&gt;/matlab/&lt;filename&gt;.mat</span></code>.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">save_mesh</code><span class="sig-paren">(</span><em>h5File</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_mesh"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>save the mesh <code class="docutils literal notranslate"><span class="pre">self.mesh</span></code> to <code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code> <code class="docutils literal notranslate"><span class="pre">h5File</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>h5File</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>) – the file to save to</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">save_subdomain_data</code><span class="sig-paren">(</span><em>h5File</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_subdomain_data"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Save the subdomain <code class="docutils literal notranslate"><span class="pre">self.ff</span></code>, <code class="docutils literal notranslate"><span class="pre">self.ff_acc</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.cf</span></code> 
+to hd5f file <code class="docutils literal notranslate"><span class="pre">h5File</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>h5File</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>) – the file to save to</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descname">save_xdmf</code><span class="sig-paren">(</span><em>u</em>, <em>name</em>, <em>f=None</em>, <em>t=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_xdmf"><span class="viewcode-link">[source]</span></a></dt>
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the 
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by 
+<code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> object, save to this instead.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">t</span></code> is a float or an int, mark the file with the timestep <code class="docutils literal notranslate"><span class="pre">t</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – the function to save</li>
+<li><strong>name</strong> – the name of the .xdmf file to save</li>
+<li><strong>f</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code>) – the file to save to</li>
+<li><strong>t</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – the timestep to mark the file with</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-inputoutput">
+<span id="printing-text-data-to-the-screen"></span><h2>Printing text data to the screen<a class="headerlink" href="#module-inputoutput" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="inputoutput.print_min_max">
+<code class="descclassname">inputoutput.</code><code class="descname">print_min_max</code><span class="sig-paren">(</span><em>u</em>, <em>title</em>, <em>color='97'</em>, <em>cls=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#print_min_max"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.print_min_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print the minimum and maximum values of <code class="docutils literal notranslate"><span class="pre">u</span></code>, a Vector, Function, or array.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, int, float, <code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>) – the variable to print the min and max of</li>
+<li><strong>title</strong> (<em>string</em>) – the name of the function to print</li>
+<li><strong>color</strong> (<em>string</em>) – the color of printed text</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="inputoutput.get_text">
+<code class="descclassname">inputoutput.</code><code class="descname">get_text</code><span class="sig-paren">(</span><em>text</em>, <em>color=None</em>, <em>atrb=0</em>, <em>cls=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#get_text"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.get_text" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns text <code class="docutils literal notranslate"><span class="pre">text</span></code> from calling class <code class="docutils literal notranslate"><span class="pre">cls</span></code> for printing at a later time.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>text</strong> (<em>string</em>) – the text to print</li>
+<li><strong>color</strong> (<em>string</em>) – the color of the text to print</li>
+<li><strong>atrb</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – attributes to send use by <code class="docutils literal notranslate"><span class="pre">colored</span></code> package</li>
+<li><strong>cls</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><em>object</em></a>) – the calling class</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="inputoutput.print_text">
+<code class="descclassname">inputoutput.</code><code class="descname">print_text</code><span class="sig-paren">(</span><em>text</em>, <em>color=None</em>, <em>atrb=0</em>, <em>cls=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#print_text"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.print_text" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print text <code class="docutils literal notranslate"><span class="pre">text</span></code> from calling class <code class="docutils literal notranslate"><span class="pre">cls</span></code> to the screen.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>text</strong> (<em>string</em>) – the text to print</li>
+<li><strong>color</strong> (<em>string</em>) – the color of the text to print</li>
+<li><strong>atrb</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – attributes to send use by <code class="docutils literal notranslate"><span class="pre">colored</span></code> package</li>
+<li><strong>cls</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><em>object</em></a>) – the calling class</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-helper">
+<span id="plot-geographic-results"></span><h2>Plot geographic results<a class="headerlink" href="#module-helper" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="helper.plotIce">
+<code class="descclassname">helper.</code><code class="descname">plotIce</code><span class="sig-paren">(</span><em>di</em>, <em>u</em>, <em>name</em>, <em>direc</em>, <em>u2=None</em>, <em>u2_levels=None</em>, <em>u2_color='k'</em>, <em>u2_linewidth=1.0</em>, <em>title=''</em>, <em>cmap='gist_yarg'</em>, <em>scale='lin'</em>, <em>umin=None</em>, <em>umax=None</em>, <em>numLvls=12</em>, <em>drawGridLabels=True</em>, <em>levels=None</em>, <em>levels_2=None</em>, <em>tp=False</em>, <em>tpAlpha=0.5</em>, <em>contour_type='filled'</em>, <em>params=None</em>, <em>extend='neither'</em>, <em>show=True</em>, <em>ext='.pdf'</em>, <em>res=150</em>, <em>cb=True</em>, <em>cb_format='%.1e'</em>, <em>zoom_box=False</em>, <em>zoom_box_kwargs=None</em>, <em>plot_pts=None</em>, <em>plot_texts=None</em>, <em>plot_continent=False</em>, <em>cont_plot_params=None</em>, <em>drawcoastlines=True</em>, <em>box_params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/helper.html#plotIce"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#helper.plotIce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Args:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">di:</th><td class="field-body">DataInput object with desired projection</td>
+</tr>
+<tr class="field-even field"><th class="field-name">u:</th><td class="field-body">solution to plot; can be either a function on a 2D mesh, or a
+string key to matrix variable in <code class="docutils literal notranslate"><span class="pre">di</span></code>.data.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">name:</th><td class="field-body">title of the plot, latex accepted</td>
+</tr>
+<tr class="field-even field"><th class="field-name">direc:</th><td class="field-body">directory string location to save image.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">cmap:</th><td class="field-body">colormap to use - see images directory for sample and name</td>
+</tr>
+<tr class="field-even field"><th class="field-name">scale:</th><td class="field-body">scale to plot, either ‘log’, ‘lin’, or ‘bool’</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">numLvls:</th><td class="field-body">number of levels for field values</td>
+</tr>
+<tr class="field-even field"><th class="field-name">levels:</th><td class="field-body">manual levels, if desired.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">tp:</th><td class="field-body">boolean determins plotting of triangle overlay</td>
+</tr>
+<tr class="field-even field"><th class="field-name">tpAlpha:</th><td class="field-body">alpha level of triangles 0.0 (transparent) - 1.0 (opaque)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">extends:</th><td class="field-body">for the colorbar, extend upper range and may be [“neither”,
+“both”, “min”, “max”]. default is “neither”.</td>
+</tr>
+</tbody>
+</table>
+<p>for plotting the zoom-box, make <code class="docutils literal notranslate"><span class="pre">zoom_box</span></code> = True and supply dict
+<em>zoom_box_kwargs</em> with parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">zoom:</th><td class="field-body">ammount to zoom</td>
+</tr>
+<tr class="field-even field"><th class="field-name">loc:</th><td class="field-body">location of box</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">loc1:</th><td class="field-body">loc of first line</td>
+</tr>
+<tr class="field-even field"><th class="field-name">loc2:</th><td class="field-body">loc of second line</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">x1:</th><td class="field-body">first x-coord</td>
+</tr>
+<tr class="field-even field"><th class="field-name">y1:</th><td class="field-body">first y-coord</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">x2:</th><td class="field-body">second x-coord</td>
+</tr>
+<tr class="field-even field"><th class="field-name">y2:</th><td class="field-body">second y-coord</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">scale_font_color:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">scale font color</td>
+</tr>
+<tr class="field-even field"><th class="field-name">scale_length:</th><td class="field-body">scale length in km</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">scale_loc:</th><td class="field-body">1=top, 2=bottom</td>
+</tr>
+<tr class="field-even field"><th class="field-name">plot_grid:</th><td class="field-body">plot the triangles</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">axes_color:</th><td class="field-body">color of axes</td>
+</tr>
+<tr class="field-even field"><th class="field-name">plot_points:</th><td class="field-body">dict of points to plot</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>Returns:</p>
+<blockquote>
+<div>A sigle <em>direc/name.ext</em> in the source directory.</div></blockquote>
+</dd></dl>
+
+</div>
+<div class="section" id="plot-mathematical-results">
+<h2>Plot mathematical results<a class="headerlink" href="#plot-mathematical-results" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt>
+<code class="descclassname">helper.</code><code class="descname">plot_variable</code><span class="sig-paren">(</span><em>u</em>, <em>name</em>, <em>direc</em>, <em>figsize=(8</em>, <em>7)</em>, <em>cmap='gist_yarg'</em>, <em>scale='lin'</em>, <em>numLvls=12</em>, <em>levels=None</em>, <em>levels_2=None</em>, <em>umin=None</em>, <em>umax=None</em>, <em>vec_scale=None</em>, <em>tp=False</em>, <em>tpAlpha=0.5</em>, <em>show=True</em>, <em>hide_ax_tick_labels=False</em>, <em>xlabel='$x$'</em>, <em>ylabel='$y$'</em>, <em>equal_axes=True</em>, <em>title=''</em>, <em>hide_axis=False</em>, <em>colorbar_loc='right'</em>, <em>contour_type='filled'</em>, <em>extend='neither'</em>, <em>ext='.pdf'</em>, <em>res=150</em>, <em>cb=True</em>, <em>cb_format='%.1e'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/helper.html#plot_variable"><span class="viewcode-link">[source]</span></a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="meshing.html" class="btn btn-neutral float-right" title="Meshing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="input.html" class="btn btn-neutral" title="Input" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

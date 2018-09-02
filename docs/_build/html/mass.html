@@ -1,0 +1,384 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Mass balance &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Energy balance" href="energy.html" />
+    <link rel="prev" title="Momentum balance" href="momentum.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Mass balance</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/mass.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="mass-balance">
+<h1>Mass balance<a class="headerlink" href="#mass-balance" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="mass.Mass">
+<em class="property">class </em><code class="descclassname">mass.</code><code class="descname">Mass</code><a class="reference internal" href="_modules/mass.html#Mass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract class outlines the structure of a mass conservation.</p>
+<dl class="method">
+<dt id="mass.Mass.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the default color for this class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.Mass.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.Mass.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.Mass.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=True</em>, <em>params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve the conservation of mass equation for a free-surface evolution.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="mass.UpperFreeSurface">
+<em class="property">class </em><code class="descclassname">mass.</code><code class="descname">UpperFreeSurface</code><span class="sig-paren">(</span><em>model</em>, <em>thklim=1.0</em>, <em>lump_mass_matrix=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#UpperFreeSurface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.UpperFreeSurface" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>This class defines the physics and solution to the upper free-surface equation.</dt>
+<dd><div class="first last math notranslate nohighlight">
+\[\frac{\partial S}{\partial t} - u_z + \underline{u} \cdot \nabla S = \Vert \underline{\hat{k}} - \nabla S \Vert \mathring{S}.\]</div>
+</dd>
+</dl>
+<p>When the <code class="xref py py-func docutils literal notranslate"><span class="pre">solve()</span></code> method is executed, something similar to the following output will be displayed:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>::: solving free-surface relation :::
+mass.S &lt;min, max&gt; : &lt;3.000e-16, 3.000e-16&gt;
+Solving nonlinear variational problem.
+  Newton iteration 0: r (abs) = 2.750e+12 (tol = 1.000e-10) r (rel) = 1.000e+00 (tol = 1.000e-12)
+  Newton iteration 1: r (abs) = 9.595e-04 (tol = 1.000e-10) r (rel) = 3.489e-16 (tol = 1.000e-12)
+  Newton solver finished in 1 iterations and 1 linear solver iterations.
+mass.S &lt;min, max&gt; : &lt;-1.140e+02, 6.065e+02&gt;
+S &lt;min, max&gt; : &lt;1.000e+00, 6.065e+02&gt;
+</pre></div>
+</div>
+<p>Here,</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code> is the surface height <span class="math notranslate nohighlight">\(S\)</span> saved to <code class="docutils literal notranslate"><span class="pre">model.S</span></code></li>
+</ul>
+<dl class="method">
+<dt id="mass.UpperFreeSurface.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#UpperFreeSurface.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.UpperFreeSurface.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method solves the free-surface equation for the upper-surface height <span class="math notranslate nohighlight">\(S\)</span>, updating <code class="docutils literal notranslate"><span class="pre">self.model.S</span></code>.</p>
+<p>Currently does not support dolfin-adjoint annotation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.UpperFreeSurface.solve_dSdt">
+<code class="descname">solve_dSdt</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#UpperFreeSurface.solve_dSdt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.UpperFreeSurface.solve_dSdt" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method solves the free-surface equation, updating <code class="docutils literal notranslate"><span class="pre">self.model.dSdt</span></code>.</p>
+<p>Currently does not support dolfin-adjoint annotation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="mass.LowerFreeSurface">
+<em class="property">class </em><code class="descclassname">mass.</code><code class="descname">LowerFreeSurface</code><span class="sig-paren">(</span><em>model</em>, <em>thklim=1.0</em>, <em>lump_mass_matrix=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#LowerFreeSurface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.LowerFreeSurface" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>This class defines the physics and solution to the lower free-surface equation.</dt>
+<dd><div class="first last math notranslate nohighlight">
+\[\frac{\partial B}{\partial t} - u_z + \underline{u} \cdot \nabla B = - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}.\]</div>
+</dd>
+</dl>
+<p>When the <code class="xref py py-func docutils literal notranslate"><span class="pre">solve()</span></code> method is executed, something similar to the following output will be displayed:</p>
+<p>Here,</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code> is the surface height <span class="math notranslate nohighlight">\(B\)</span> saved to <code class="docutils literal notranslate"><span class="pre">model.B</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">K_source</span></code> is the tensor corresponding to the source term <span class="math notranslate nohighlight">\(f = u_z - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}\)</span> with lower-surface accumulation/ablation function located (currently) at <code class="docutils literal notranslate"><span class="pre">model.ring_B</span></code> and vertical velocity <span class="math notranslate nohighlight">\(u_z\)</span>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">K_advection</span></code> is the tensor corresponding to the advective part of the free-surface equation <span class="math notranslate nohighlight">\(\underline{u} \cdot \nabla B\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">K_stab_u</span></code> is the tensor corresponding to the streamline/Petrov-Galerkin in stabilization term the direction of velocity located (currently) at <code class="docutils literal notranslate"><span class="pre">model.U3</span></code></li>
+</ul>
+<dl class="method">
+<dt id="mass.LowerFreeSurface.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#LowerFreeSurface.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.LowerFreeSurface.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method solves the lower free-surface equation for the lower-surface height <span class="math notranslate nohighlight">\(B\)</span>, updating <code class="docutils literal notranslate"><span class="pre">self.model.B</span></code>.</p>
+<p>Currently does not support dolfin-adjoint annotation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="mass.MassHybrid">
+<em class="property">class </em><code class="descclassname">mass.</code><code class="descname">MassHybrid</code><span class="sig-paren">(</span><em>model</em>, <em>momentum</em>, <em>thklim=1.0</em>, <em>solve_params=None</em>, <em>isothermal=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#MassHybrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.MassHybrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>New 2D hybrid model.</p>
+<p>Original author: <a class="reference external" href="https://dbrinkerhoff.org/">Doug Brinkerhoff</a></p>
+<dl class="method">
+<dt id="mass.MassHybrid.default_ffc_options">
+<code class="descname">default_ffc_options</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#MassHybrid.default_ffc_options"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.MassHybrid.default_ffc_options" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default ffc options that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.MassHybrid.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#MassHybrid.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.MassHybrid.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.MassHybrid.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#MassHybrid.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.MassHybrid.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.MassHybrid.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#MassHybrid.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.MassHybrid.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solves for hybrid conservation of mass.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="mass.FirnMass">
+<em class="property">class </em><code class="descclassname">mass.</code><code class="descname">FirnMass</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#FirnMass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.FirnMass" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="mass.FirnMass.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#FirnMass.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.FirnMass.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>If conserving the mass of the firn column, calculate height of each 
+interval :</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="energy.html" class="btn btn-neutral float-right" title="Energy balance" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="momentum.html" class="btn btn-neutral" title="Momentum balance" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

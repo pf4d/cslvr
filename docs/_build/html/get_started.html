@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Hello CSLVR &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Input" href="input.html" />
+    <link rel="prev" title="Installation" href="install.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Hello CSLVR</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#set-up-the-model">Set up the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#solve-the-momentum-balance">Solve the momentum balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plot-the-results">Plot the results</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Hello CSLVR</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/get_started.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="hello-cslvr">
+<h1>Hello CSLVR<a class="headerlink" href="#hello-cslvr" title="Permalink to this headline">¶</a></h1>
+<p>We begin with an example that does not require any external data; the “<a class="reference external" href="http://homepages.ulb.ac.be/~fpattyn/ismip/">Ice Sheet Model Intercomparison Project for Higher-Order Models</a>”.</p>
+<div class="section" id="set-up-the-model">
+<h2>Set up the model<a class="headerlink" href="#set-up-the-model" title="Permalink to this headline">¶</a></h2>
+<p>First, import CSLVR:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">cslvr</span> <span class="k">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>Next, we make a simple three-dimensional box mesh with 15 cells in the <span class="math notranslate nohighlight">\(x\)</span> and <span class="math notranslate nohighlight">\(y\)</span> directions, 5 cells in the <span class="math notranslate nohighlight">\(z\)</span> direction, and width of 8 km:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">L</span>     <span class="o">=</span> <span class="mi">8000</span>                          <span class="c1"># width of domain</span>
+<span class="n">p1</span>    <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>          <span class="c1"># origin</span>
+<span class="n">p2</span>    <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="n">L</span><span class="p">,</span>   <span class="n">L</span><span class="p">,</span>   <span class="mi">1</span><span class="p">)</span>            <span class="c1"># x, y, z corner</span>
+<span class="n">mesh</span>  <span class="o">=</span> <span class="n">BoxMesh</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>    <span class="c1"># a box to fill the void</span>
+</pre></div>
+</div>
+<p>This problem is three-dimensional with periodic lateral boundaries. Thus we need to instantiate a <a class="reference internal" href="model.html#d3model.D3Model" title="d3model.D3Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D3Model</span></code></a> with periodic lateral boundaries, like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">D3Model</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span> <span class="o">=</span> <span class="s1">&#39;./results/&#39;</span><span class="p">,</span> <span class="n">use_periodic</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We now mark the exterior facets and interior cells appropriately by calling <a class="reference internal" href="model.html#model.Model.calculate_boundaries" title="model.Model.calculate_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_boundaries()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">calculate_boundaries</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The ISMIP-HOM experiment “A” geometry is created using the FEniCS class <code class="xref py py-class docutils literal notranslate"><span class="pre">Expression</span></code>, requiring the specification of the type of finite-element used by the <code class="docutils literal notranslate"><span class="pre">model</span></code> – defined by the <code class="xref py py-class docutils literal notranslate"><span class="pre">FunctionSpace</span></code> created in the instantiation above – accessed by <code class="docutils literal notranslate"><span class="pre">model.Q</span></code>.  With the surface and bed functions defined, the mesh may be deformed to the desired geometry through the use of <a class="reference internal" href="model.html#d3model.D3Model.deform_mesh_to_geometry" title="d3model.D3Model.deform_mesh_to_geometry"><code class="xref py py-func docutils literal notranslate"><span class="pre">deform_mesh_to_geometry()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span>       <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span>     <span class="c1"># surface slope in radians</span>
+<span class="n">surface</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;- x[0] * tan(a)&#39;</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                     <span class="n">element</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
+<span class="n">bed</span>     <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span>  <span class="s1">&#39;- x[0] * tan(a) - 1000.0 + 500.0 * &#39;</span> \
+                     <span class="o">+</span> <span class="s1">&#39; sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)&#39;</span><span class="p">,</span>
+                     <span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
+<span class="n">model</span><span class="o">.</span><span class="n">deform_mesh_to_geometry</span><span class="p">(</span><span class="n">surface</span><span class="p">,</span> <span class="n">bed</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="solve-the-momentum-balance">
+<h2>Solve the momentum balance<a class="headerlink" href="#solve-the-momentum-balance" title="Permalink to this headline">¶</a></h2>
+<p>We can now set the desired isothermal flow-rate factor <span class="math notranslate nohighlight">\(A\)</span> and constant basal traction coefficient <span class="math notranslate nohighlight">\(\beta\)</span> through the appropriate <code class="docutils literal notranslate"><span class="pre">init_</span></code> method of the base class <a class="reference internal" href="model.html#model.Model" title="model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">init_beta</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>                       <span class="c1"># really high friction</span>
+<span class="n">model</span><span class="o">.</span><span class="n">init_A</span><span class="p">(</span><span class="mf">1e-16</span><span class="p">)</span>                         <span class="c1"># cold, isothermal rate-factor</span>
+</pre></div>
+</div>
+<p>For three-dimensional momentum problems, we can solve either the first-order <code class="xref py py-class docutils literal notranslate"><span class="pre">MomentumDukowiczBP</span></code> physics,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mom</span> <span class="o">=</span> <span class="n">MomentumDukowiczBP</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>the reformulated-Stokes <a class="reference internal" href="momentum.html#momentumstokes.MomentumDukowiczStokesReduced" title="momentumstokes.MomentumDukowiczStokesReduced"><code class="xref py py-class docutils literal notranslate"><span class="pre">MomentumDukowiczStokesReduced</span></code></a> physics,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mom</span> <span class="o">=</span> <span class="n">MomentumDukowiczStokesReduced</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or the full-Stokes <a class="reference internal" href="momentum.html#momentumstokes.MomentumDukowiczStokes" title="momentumstokes.MomentumDukowiczStokes"><code class="xref py py-class docutils literal notranslate"><span class="pre">MomentumDukowiczStokes</span></code></a> physics,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mom</span> <span class="o">=</span> <span class="n">MomentumDukowiczStokes</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Once this choice is made, you can solve the momentum balance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mom</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Let’s investigate the resulting velocity divergence <span class="math notranslate nohighlight">\(\nabla \cdot \mathbf{u}\)</span> by projecting the 3D velocity resulting from the momentum balance that is saved to <code class="docutils literal notranslate"><span class="pre">model.U3</span></code> with the FEniCS function <code class="xref py py-func docutils literal notranslate"><span class="pre">project()</span></code> and the UFL divergence function <code class="xref py py-func docutils literal notranslate"><span class="pre">div()</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">divU</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">div</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="plot-the-results">
+<h2>Plot the results<a class="headerlink" href="#plot-the-results" title="Permalink to this headline">¶</a></h2>
+<p>Now we can save the resulting velocity <code class="docutils literal notranslate"><span class="pre">model.U3</span></code>, pressure <code class="docutils literal notranslate"><span class="pre">model.p</span></code> and our calculated <code class="docutils literal notranslate"><span class="pre">divU</span></code> functions to xdmf files for use with <a class="reference external" href="http://www.paraview.org/">paraview</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">save_xdmf</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span>  <span class="s1">&#39;p&#39;</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">save_xdmf</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">save_xdmf</span><span class="p">(</span><span class="n">divU</span><span class="p">,</span>     <span class="s1">&#39;divU&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Additionally, we can plot the <code class="xref py py-class docutils literal notranslate"><span class="pre">Functions</span></code> over the surface or bed by creating surface and bed meshes associated with the 3D model:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">form_srf_mesh</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">form_bed_mesh</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>These functions save the surface mesh to <code class="docutils literal notranslate"><span class="pre">model.srfmesh</span></code> and bed mesh to <code class="docutils literal notranslate"><span class="pre">model.bedmesh</span></code>.  With these created, we can instantiate 2D models with the <a class="reference internal" href="model.html#d2model.D2Model" title="d2model.D2Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D2Model</span></code></a> class:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">srfmodel</span> <span class="o">=</span> <span class="n">D2Model</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">srfmesh</span><span class="p">)</span>
+<span class="n">bedmodel</span> <span class="o">=</span> <span class="n">D2Model</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">bedmesh</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We don’t have a function for <code class="docutils literal notranslate"><span class="pre">divU</span></code> included in the <code class="docutils literal notranslate"><span class="pre">model</span></code> instance, so we have to make one ourselves:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">divU_b</span>   <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">bedmodel</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Next, we interpolate from the 3D mesh to the 2D mesh using the Lagrange interpolation method <a class="reference internal" href="model.html#model.Model.assign_submesh_variable" title="model.Model.assign_submesh_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_submesh_variable()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bedmodel</span><span class="o">.</span><span class="n">assign_submesh_variable</span><span class="p">(</span><span class="n">divU_b</span><span class="p">,</span> <span class="n">divU</span><span class="p">)</span>
+<span class="n">srfmodel</span><span class="o">.</span><span class="n">assign_submesh_variable</span><span class="p">(</span><span class="n">srfmodel</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">)</span>
+<span class="n">bedmodel</span><span class="o">.</span><span class="n">assign_submesh_variable</span><span class="p">(</span><span class="n">bedmodel</span><span class="o">.</span><span class="n">p</span><span class="p">,</span>  <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To plot <span class="math notranslate nohighlight">\(\mathbf{u}\)</span>, we need to calculate the velocity magnitude:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">srfmodel</span><span class="o">.</span><span class="n">init_U_mag</span><span class="p">(</span><span class="n">srfmodel</span><span class="o">.</span><span class="n">U3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now we figure out some nice-looking contour levels:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">U_min</span>  <span class="o">=</span> <span class="n">srfmodel</span><span class="o">.</span><span class="n">U_mag</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+<span class="n">U_max</span>  <span class="o">=</span> <span class="n">srfmodel</span><span class="o">.</span><span class="n">U_mag</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="n">U_lvls</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="n">U_min</span><span class="p">,</span> <span class="mi">87</span><span class="p">,</span> <span class="mi">88</span><span class="p">,</span> <span class="mi">89</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">91</span><span class="p">,</span> <span class="mi">92</span><span class="p">,</span> <span class="n">U_max</span><span class="p">])</span>
+
+<span class="n">p_min</span>  <span class="o">=</span> <span class="n">bedmodel</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+<span class="n">p_max</span>  <span class="o">=</span> <span class="n">bedmodel</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="n">p_lvls</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mf">4e6</span><span class="p">,</span> <span class="mf">5e6</span><span class="p">,</span> <span class="mf">6e6</span><span class="p">,</span> <span class="mf">7e6</span><span class="p">,</span> <span class="mf">8e6</span><span class="p">,</span> <span class="mf">9e6</span><span class="p">,</span> <span class="mf">1e7</span><span class="p">,</span> <span class="mf">1.1e7</span><span class="p">,</span> <span class="mf">1.2e7</span><span class="p">,</span> <span class="n">p_max</span><span class="p">])</span>
+
+<span class="n">d_min</span>  <span class="o">=</span> <span class="n">divU_b</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+<span class="n">d_max</span>  <span class="o">=</span> <span class="n">divU_b</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="n">d_lvls</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="n">d_min</span><span class="p">,</span> <span class="o">-</span><span class="mf">5e-3</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.5e-3</span><span class="p">,</span> <span class="o">-</span><span class="mf">1e-3</span><span class="p">,</span>
+                <span class="mf">1e-3</span><span class="p">,</span> <span class="mf">2.5e-3</span><span class="p">,</span> <span class="mf">5e-3</span><span class="p">,</span> <span class="n">d_max</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>and finally plot the variables as pdf’s using <code class="xref py py-func docutils literal notranslate"><span class="pre">plot_variable()</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">plot_variable</span><span class="p">(</span><span class="n">u</span> <span class="o">=</span> <span class="n">srfmodel</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;U_mag&#39;</span><span class="p">,</span> <span class="n">direc</span> <span class="o">=</span> <span class="n">plt_dir</span><span class="p">,</span>
+              <span class="n">ext</span>                 <span class="o">=</span> <span class="s1">&#39;.pdf&#39;</span><span class="p">,</span>
+              <span class="n">title</span>               <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;$\mathbf</span><span class="si">{u}</span><span class="s1"> |_S$&#39;</span><span class="p">,</span>
+              <span class="n">levels</span>              <span class="o">=</span> <span class="n">U_lvls</span><span class="p">,</span>
+              <span class="n">cmap</span>                <span class="o">=</span> <span class="s1">&#39;viridis&#39;</span><span class="p">,</span>
+              <span class="n">tp</span>                  <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+              <span class="n">show</span>                <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+              <span class="n">extend</span>              <span class="o">=</span> <span class="s1">&#39;neither&#39;</span><span class="p">,</span>
+              <span class="n">cb_format</span>           <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%g</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="n">plot_variable</span><span class="p">(</span><span class="n">u</span> <span class="o">=</span> <span class="n">bedmodel</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="n">direc</span> <span class="o">=</span> <span class="n">plt_dir</span><span class="p">,</span>
+              <span class="n">ext</span>                 <span class="o">=</span> <span class="s1">&#39;.pdf&#39;</span><span class="p">,</span>
+              <span class="n">title</span>               <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;$p |_B$&#39;</span><span class="p">,</span>
+              <span class="n">levels</span>              <span class="o">=</span> <span class="n">p_lvls</span><span class="p">,</span>
+              <span class="n">cmap</span>                <span class="o">=</span> <span class="s1">&#39;viridis&#39;</span><span class="p">,</span>
+              <span class="n">tp</span>                  <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+              <span class="n">show</span>                <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+              <span class="n">extend</span>              <span class="o">=</span> <span class="s1">&#39;min&#39;</span><span class="p">,</span>
+              <span class="n">cb_format</span>           <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%.1e</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="n">plot_variable</span><span class="p">(</span><span class="n">u</span> <span class="o">=</span> <span class="n">divU_b</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;divU&#39;</span><span class="p">,</span> <span class="n">direc</span> <span class="o">=</span> <span class="n">plt_dir</span><span class="p">,</span>
+              <span class="n">ext</span>                 <span class="o">=</span> <span class="s1">&#39;.pdf&#39;</span><span class="p">,</span>
+              <span class="n">title</span>               <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;$\nabla \cdot \mathbf</span><span class="si">{u}</span><span class="s1"> |_B$&#39;</span><span class="p">,</span>
+              <span class="n">cmap</span>                <span class="o">=</span> <span class="s1">&#39;RdGy&#39;</span><span class="p">,</span>
+              <span class="n">levels</span>              <span class="o">=</span> <span class="n">d_lvls</span><span class="p">,</span>
+              <span class="n">tp</span>                  <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+              <span class="n">show</span>                <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+              <span class="n">extend</span>              <span class="o">=</span> <span class="s1">&#39;neither&#39;</span><span class="p">,</span>
+              <span class="n">cb_format</span>           <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%.1e</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The full-Stokes solutions derived by solving <a class="reference internal" href="momentum.html#momentumstokes.MomentumDukowiczStokes" title="momentumstokes.MomentumDukowiczStokes"><code class="xref py py-class docutils literal notranslate"><span class="pre">MomentumDukowiczStokes</span></code></a> are plotted below.</p>
+<img alt="https://www.dropbox.com/s/gpny5ntyt0ybav0/U_mag.png?raw=1" src="https://www.dropbox.com/s/gpny5ntyt0ybav0/U_mag.png?raw=1" />
+<img alt="https://www.dropbox.com/s/xjeqr824qjb5gek/p.png?raw=1" src="https://www.dropbox.com/s/xjeqr824qjb5gek/p.png?raw=1" />
+<img alt="https://www.dropbox.com/s/gvr6lzm9whi48t2/divU.png?raw=1" src="https://www.dropbox.com/s/gvr6lzm9whi48t2/divU.png?raw=1" />
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="input.html" class="btn btn-neutral float-right" title="Input" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="install.html" class="btn btn-neutral" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

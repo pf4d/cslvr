@@ -1,0 +1,711 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>latmodel &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>latmodel</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for latmodel</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">dolfin_adjoint</span>    <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">get_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">from</span> <span class="nn">cslvr.model</span>       <span class="k">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">scipy</span>             <span class="k">import</span> <span class="n">inf</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<div class="viewcode-block" id="LatModel"><a class="viewcode-back" href="../model.html#latmodel.LatModel">[docs]</a><span class="k">class</span> <span class="nc">LatModel</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">OMEGA_GND</span>   <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># internal cells over bedrock</span>
+  <span class="n">OMEGA_FLT</span>   <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># internal cells over water</span>
+  <span class="n">GAMMA_S_GND</span> <span class="o">=</span> <span class="mi">2</span>   <span class="c1"># grounded upper surface</span>
+  <span class="n">GAMMA_B_GND</span> <span class="o">=</span> <span class="mi">3</span>   <span class="c1"># grounded lower surface (bedrock)</span>
+  <span class="n">GAMMA_S_FLT</span> <span class="o">=</span> <span class="mi">6</span>   <span class="c1"># shelf upper surface</span>
+  <span class="n">GAMMA_B_FLT</span> <span class="o">=</span> <span class="mi">5</span>   <span class="c1"># shelf lower surface</span>
+  <span class="n">GAMMA_L_DVD</span> <span class="o">=</span> <span class="mi">7</span>   <span class="c1"># basin divides</span>
+  <span class="n">GAMMA_L_OVR</span> <span class="o">=</span> <span class="mi">4</span>   <span class="c1"># terminus over water</span>
+  <span class="n">GAMMA_L_UDR</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># terminus under water</span>
+  <span class="n">GAMMA_U_GND</span> <span class="o">=</span> <span class="mi">8</span>   <span class="c1"># grounded surface with U observations</span>
+  <span class="n">GAMMA_U_FLT</span> <span class="o">=</span> <span class="mi">9</span>   <span class="c1"># shelf surface with U observations</span>
+  <span class="n">GAMMA_ACC</span>   <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># areas with positive surface accumulation</span>
+  
+  <span class="c1"># external boundaries :</span>
+  <span class="n">ext_boundaries</span> <span class="o">=</span> <span class="p">{</span><span class="n">GAMMA_S_GND</span> <span class="p">:</span> <span class="s1">&#39;grounded upper surface&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_B_GND</span> <span class="p">:</span> <span class="s1">&#39;grounded lower surface (bedrock)&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_S_FLT</span> <span class="p">:</span> <span class="s1">&#39;shelf upper surface&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_B_FLT</span> <span class="p">:</span> <span class="s1">&#39;shelf lower surface&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_L_DVD</span> <span class="p">:</span> <span class="s1">&#39;basin divides&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_L_OVR</span> <span class="p">:</span> <span class="s1">&#39;terminus over water&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_L_UDR</span> <span class="p">:</span> <span class="s1">&#39;terminus under water&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_U_GND</span> <span class="p">:</span> <span class="s1">&#39;grounded upper surface with U observations&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_U_FLT</span> <span class="p">:</span> <span class="s1">&#39;shelf upper surface with U observations&#39;</span><span class="p">,</span>
+                    <span class="n">GAMMA_ACC</span>   <span class="p">:</span> <span class="s1">&#39;upper surface with accumulation&#39;</span><span class="p">}</span>
+
+  <span class="c1"># internal boundaries :</span>
+  <span class="n">int_boundaries</span> <span class="o">=</span> <span class="p">{</span><span class="n">OMEGA_GND</span>   <span class="p">:</span> <span class="s1">&#39;internal cells located over bedrock&#39;</span><span class="p">,</span>
+                    <span class="n">OMEGA_FLT</span>   <span class="p">:</span> <span class="s1">&#39;internal cells located over water&#39;</span><span class="p">}</span>
+
+  <span class="c1"># union :</span>
+  <span class="n">boundaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">ext_boundaries</span><span class="p">,</span> <span class="o">**</span><span class="n">int_boundaries</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="s1">&#39;./results/&#39;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">use_periodic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create and instance of a 2D model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING LATERAL MODEL :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">use_periodic</span><span class="p">)</span>
+  
+<div class="viewcode-block" id="LatModel.color"><a class="viewcode-back" href="../model.html#latmodel.LatModel.color">[docs]</a>  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s1">&#39;150&#39;</span></div>
+
+<div class="viewcode-block" id="LatModel.generate_pbc"><a class="viewcode-back" href="../model.html#latmodel.LatModel.generate_pbc">[docs]</a>  <span class="k">def</span> <span class="nf">generate_pbc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return a SubDomain of periodic lateral boundaries.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using 2D periodic boundaries -&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">xmin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">xmax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="n">zmin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">zmax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    
+    <span class="k">class</span> <span class="nc">PeriodicBoundary</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
+      
+      <span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return True if on left or bottom boundary AND NOT on one </span>
+<span class="sd">        of the two corners (0, 1) and (1, 0).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">((</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmin</span><span class="p">)</span> <span class="ow">or</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">zmin</span><span class="p">))</span> <span class="ow">and</span> \
+                    <span class="p">(</span><span class="ow">not</span> <span class="p">((</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmin</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">zmax</span><span class="p">))</span> \
+                     <span class="ow">or</span> <span class="p">(</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">zmin</span><span class="p">))))</span> \
+                     <span class="ow">and</span> <span class="n">on_boundary</span><span class="p">)</span>
+
+      <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remap the values on the top and right sides to the bottom and left</span>
+<span class="sd">        sides.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">zmax</span><span class="p">):</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmax</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">zmax</span>
+        <span class="k">elif</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">):</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmax</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">zmax</span><span class="p">):</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">zmax</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">pBC</span> <span class="o">=</span> <span class="n">PeriodicBoundary</span><span class="p">()</span></div>
+  
+<div class="viewcode-block" id="LatModel.set_mesh"><a class="viewcode-back" href="../model.html#latmodel.LatModel.set_mesh">[docs]</a>  <span class="k">def</span> <span class="nf">set_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets the mesh.</span>
+<span class="sd">    </span>
+<span class="sd">    :param mesh : Dolfin mesh to be written</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">LatModel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+    
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: setting 2D mesh :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; 2D MODEL REQUIRES A 2D MESH, EXITING &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">size_global</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">size_global</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">size_global</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - </span><span class="si">%i</span><span class="s2">D mesh set, </span><span class="si">%i</span><span class="s2"> cells, </span><span class="si">%i</span><span class="s2"> facets, </span><span class="si">%i</span><span class="s2"> vertices - &quot;</span> \
+        <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LatModel.generate_function_spaces"><a class="viewcode-back" href="../model.html#latmodel.LatModel.generate_function_spaces">[docs]</a>  <span class="k">def</span> <span class="nf">generate_function_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates the appropriate finite-element function spaces from parameters</span>
+<span class="sd">    specified in the config file for the model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">LatModel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">generate_function_spaces</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="LatModel.generate_stokes_function_spaces"><a class="viewcode-back" href="../model.html#latmodel.LatModel.generate_stokes_function_spaces">[docs]</a>  <span class="k">def</span> <span class="nf">generate_stokes_function_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;mini&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates the appropriate finite-element function spaces from parameters</span>
+<span class="sd">    specified in the config file for the model.</span>
+
+<span class="sd">    If &lt;kind&gt; == &#39;mini&#39;, use enriched mini elements.</span>
+<span class="sd">    If &lt;kind&gt; == &#39;th&#39;,   use Taylor-Hood elements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: generating Stokes function spaces :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        
+    <span class="c1"># mini elements :</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;mini&#39;</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Bub</span>    <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> 
+                                  <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">MQ</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">Bub</span>
+      <span class="n">M3</span>          <span class="o">=</span> <span class="n">MixedFunctionSpace</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">MQ</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Q4</span>     <span class="o">=</span> <span class="n">MixedFunctionSpace</span><span class="p">([</span><span class="n">M3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">])</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Q5</span>     <span class="o">=</span> <span class="n">MixedFunctionSpace</span><span class="p">([</span><span class="n">M3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">])</span>
+
+    <span class="c1"># Taylor-Hood elements :</span>
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;th&#39;</span><span class="p">:</span>
+      <span class="n">V</span>           <span class="o">=</span> <span class="n">VectorFunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="s2">&quot;CG&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span>
+                                        <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Q4</span>     <span class="o">=</span> <span class="n">V</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Q5</span>     <span class="o">=</span> <span class="n">V</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; METHOD generate_stokes_function_spaces &lt;kind&gt; FIELD &lt;&lt;&lt;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> \
+          <span class="s2">&quot;&gt;&gt;&gt; MAY BE &#39;mini&#39; OR &#39;th&#39;, NOT &#39;</span><span class="si">%s</span><span class="s2">&#39;. &lt;&lt;&lt;&quot;</span> <span class="o">%</span> <span class="n">kind</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - Stokes function spaces created - &quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="LatModel.calculate_boundaries"><a class="viewcode-back" href="../model.html#latmodel.LatModel.calculate_boundaries">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_boundaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lat_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                           <span class="n">adot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">U_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mark_divide</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determines the boundaries of the current model mesh</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: calculating boundaries :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">lat_mask</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">mark_divide</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; IF PARAMETER &lt;mark_divide&gt; OF calculate_boundaries() IS &quot;</span> <span class="o">+</span> \
+          <span class="s2">&quot;TRUE, PARAMETER &lt;lat_mask&gt; MUST BE AN EXPRESSION FOR THE LATERAL&quot;</span> <span class="o">+</span> \
+          <span class="s2">&quot; BOUNDARIES &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+     
+    <span class="c1"># this function contains markers which may be applied to facets of the mesh</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ff</span>      <span class="o">=</span> <span class="n">FacetFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ff_acc</span>  <span class="o">=</span> <span class="n">FacetFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cf</span>      <span class="o">=</span> <span class="n">CellFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="n">dofmap</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">dofmap</span><span class="p">()</span>
+
+    <span class="n">S</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span>
+    
+    <span class="c1"># default to all grounded ice :</span>
+    <span class="k">if</span> <span class="n">mask</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">mask</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
+    
+    <span class="c1"># default to all positive accumulation :</span>
+    <span class="k">if</span> <span class="n">adot</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">adot</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
+    
+    <span class="c1"># default to U observations everywhere :</span>
+    <span class="k">if</span> <span class="n">U_mask</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">U_mask</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_adot</span><span class="p">(</span><span class="n">adot</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_U_mask</span><span class="p">(</span><span class="n">U_mask</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mark_divide</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - marking the interior facets for incomplete meshes -&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">init_lat_mask</span><span class="p">(</span><span class="n">lat_mask</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">adot</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">U_mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">lat_mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-6</span>
+    
+    <span class="c1"># iterate through the facets and mark each if on a boundary :</span>
+    <span class="c1">#</span>
+    <span class="c1">#   2 = high slope, upward facing ................ grounded surface</span>
+    <span class="c1">#   3 = grounded high slope, downward facing ..... grounded base</span>
+    <span class="c1">#   4 = low slope, upward or downward facing ..... sides</span>
+    <span class="c1">#   5 = floating ................................. floating base</span>
+    <span class="c1">#   6 = floating ................................. floating surface</span>
+    <span class="c1">#   7 = floating sides</span>
+    <span class="c1">#</span>
+    <span class="c1"># facet for accumulation :</span>
+    <span class="c1">#</span>
+    <span class="c1">#   1 = high slope, upward facing ................ positive adot</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> facets - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">facets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">):</span>
+      <span class="n">n</span>        <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">normal</span><span class="p">()</span>
+      <span class="n">x_m</span>      <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+      <span class="n">y_m</span>      <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+      <span class="n">mask_xy</span>  <span class="o">=</span> <span class="n">mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+      
+      <span class="k">if</span>   <span class="n">n</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&gt;=</span>  <span class="n">tol</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">exterior</span><span class="p">():</span>
+        <span class="n">adot_xy</span>   <span class="o">=</span> <span class="n">adot</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+        <span class="n">U_mask_xy</span> <span class="o">=</span> <span class="n">U_mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">adot_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">ff_acc</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_ACC</span>
+        <span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">U_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_U_FLT</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_S_FLT</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">U_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_U_GND</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_S_GND</span>
+    
+      <span class="k">elif</span> <span class="n">n</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="n">tol</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">exterior</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_B_FLT</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_B_GND</span>
+      
+      <span class="k">elif</span> <span class="n">n</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&gt;</span>  <span class="o">-</span><span class="n">tol</span> <span class="ow">and</span> <span class="n">n</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">tol</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">exterior</span><span class="p">():</span>
+        <span class="c1"># if we want to use a basin, we need to mark the interior facets :</span>
+        <span class="k">if</span> <span class="n">mark_divide</span><span class="p">:</span>
+          <span class="n">lat_mask_xy</span> <span class="o">=</span> <span class="n">lat_mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+          <span class="k">if</span> <span class="n">lat_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">y_m</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_OVR</span>
+            <span class="k">else</span><span class="p">:</span>
+              <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_UDR</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span>
+        <span class="c1"># otherwise just mark for over (4) and under (10) water :</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="k">if</span> <span class="n">y_m</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_OVR</span>
+          <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_UDR</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> cells - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">):</span>
+      <span class="n">x_m</span>     <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+      <span class="n">y_m</span>     <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+      <span class="n">mask_xy</span> <span class="o">=</span> <span class="n">mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+
+      <span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - done - &quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">set_measures</span><span class="p">()</span></div>
+    
+<div class="viewcode-block" id="LatModel.deform_mesh_to_geometry"><a class="viewcode-back" href="../model.html#latmodel.LatModel.deform_mesh_to_geometry">[docs]</a>  <span class="k">def</span> <span class="nf">deform_mesh_to_geometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Deforms the 2D mesh to the geometry from FEniCS Expressions for the </span>
+<span class="sd">    surface &lt;S&gt; and bed &lt;B&gt;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: deforming mesh to geometry :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_S</span><span class="p">(</span><span class="n">S</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_B</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+    
+    <span class="c1"># transform z :</span>
+    <span class="c1"># thickness = surface - base, z = thickness + base</span>
+    <span class="c1"># Get the height of the mesh, assumes that the base is at z=0</span>
+    <span class="n">max_height</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">min_height</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">mesh_height</span> <span class="o">=</span> <span class="n">max_height</span> <span class="o">-</span> <span class="n">min_height</span>
+    
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> vertices - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">():</span>
+      <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">mesh_height</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span> <span class="o">+</span> <span class="n">S</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> \
+                                      <span class="o">-</span> <span class="n">B</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">)</span>
+      <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">B</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - done - &quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="LatModel.calc_thickness"><a class="viewcode-back" href="../model.html#latmodel.LatModel.calc_thickness">[docs]</a>  <span class="k">def</span> <span class="nf">calc_thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the continuous thickness field which increases from 0 at the </span>
+<span class="sd">    surface to the actual thickness at the bed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: calculating z-varying thickness :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="c1">#H = project(self.S - self.x[2], self.Q, annotate=False)</span>
+    <span class="n">H</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">Constant</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>
+    <span class="n">Hv</span>         <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span>
+    <span class="n">Hv</span><span class="p">[</span><span class="n">Hv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">H</span></div>
+  
+<div class="viewcode-block" id="LatModel.solve_hydrostatic_pressure"><a class="viewcode-back" href="../model.html#latmodel.LatModel.solve_hydrostatic_pressure">[docs]</a>  <span class="k">def</span> <span class="nf">solve_hydrostatic_pressure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solve for the hydrostatic pressure &#39;p&#39;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># solve for vertical velocity :</span>
+    <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;::: solving hydrostatic pressure :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">rhoi</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoi</span>
+    <span class="n">g</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span>
+    <span class="c1">#S      = self.S</span>
+    <span class="c1">#z      = self.x[2]</span>
+    <span class="c1">#p      = project(rhoi*g*(S - z), self.Q, annotate=annotate)</span>
+    <span class="n">p</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">rhoi</span><span class="o">*</span><span class="n">g</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>
+    <span class="n">pv</span>     <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span>
+    <span class="n">pv</span><span class="p">[</span><span class="n">pv</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="LatModel.vert_extrude"><a class="viewcode-back" href="../model.html#latmodel.LatModel.vert_extrude">[docs]</a>  <span class="k">def</span> <span class="nf">vert_extrude</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="s1">&#39;self&#39;</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This extrudes a function *u* vertically in the direction *d* = &#39;up&#39; or</span>
+<span class="sd">    &#39;down&#39;.  It does this by solving a variational problem:</span>
+<span class="sd">  </span>
+<span class="sd">    .. math::</span>
+<span class="sd">       </span>
+<span class="sd">       \frac{\partial v}{\partial z} = 0 \hspace{10mm}</span>
+<span class="sd">       v|_b = u</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: extruding function </span><span class="si">%s</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="n">d</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span> <span class="o">!=</span> <span class="n">FunctionSpace</span><span class="p">:</span>
+      <span class="n">Q</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">ff</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ff</span>
+    <span class="n">phi</span>  <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">v</span>    <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">a</span>    <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">L</span>    <span class="o">=</span> <span class="n">DOLFIN_EPS</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">bcs</span>  <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># extrude bed (ff = 3,5) </span>
+    <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="s1">&#39;up&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_B_GND</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_B_GND</span><span class="p">))</span>  <span class="c1"># grounded</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_B_FLT</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_B_FLT</span><span class="p">))</span>  <span class="c1"># shelves</span>
+    <span class="c1"># extrude surface (ff = 2,6) </span>
+    <span class="k">elif</span> <span class="n">d</span> <span class="o">==</span> <span class="s1">&#39;down&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_S_GND</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_S_GND</span><span class="p">))</span>  <span class="c1"># grounded</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_GND</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_U_GND</span><span class="p">))</span>  <span class="c1"># grounded</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_S_FLT</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_S_FLT</span><span class="p">))</span>  <span class="c1"># shelves</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_FLT</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_U_FLT</span><span class="p">))</span>  <span class="c1"># shelves</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> extruded </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">d</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;extruded&#39;</span>
+    <span class="n">v</span>    <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="n">L</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">bcs</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s1">&#39;extruded function&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">v</span></div>
+  
+<div class="viewcode-block" id="LatModel.vert_integrate"><a class="viewcode-back" href="../model.html#latmodel.LatModel.vert_integrate">[docs]</a>  <span class="k">def</span> <span class="nf">vert_integrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="s1">&#39;self&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Integrate &lt;u&gt; from the bed to the surface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: vertically integrating function :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span> <span class="o">!=</span> <span class="n">FunctionSpace</span><span class="p">:</span>
+      <span class="n">Q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">ff</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ff</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">v</span>   <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">bcs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># integral is zero on bed (ff = 3,5) </span>
+    <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="s1">&#39;up&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_B_GND</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_B_GND</span><span class="p">))</span>  <span class="c1"># grounded</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_B_FLT</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_B_FLT</span><span class="p">))</span>  <span class="c1"># shelves</span>
+      <span class="n">a</span>      <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="c1"># integral is zero on surface (ff = 2,6) </span>
+    <span class="k">elif</span> <span class="n">d</span> <span class="o">==</span> <span class="s1">&#39;down&#39;</span><span class="p">:</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_S_GND</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_S_GND</span><span class="p">))</span>  <span class="c1"># grounded</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_GND</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_U_GND</span><span class="p">))</span>  <span class="c1"># grounded</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_FLT</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_U_FLT</span><span class="p">))</span>  <span class="c1"># shelves</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_S_FLT</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_S_FLT</span><span class="p">))</span>  <span class="c1"># shelves</span>
+      <span class="n">a</span>      <span class="o">=</span> <span class="o">-</span><span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">L</span>      <span class="o">=</span> <span class="n">u</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">name</span>   <span class="o">=</span> <span class="s1">&#39;value integrated </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">d</span> 
+    <span class="n">v</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="n">L</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">bcs</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s1">&#39;vertically integrated function&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">v</span></div>
+
+<div class="viewcode-block" id="LatModel.calc_vert_average"><a class="viewcode-back" href="../model.html#latmodel.LatModel.calc_vert_average">[docs]</a>  <span class="k">def</span> <span class="nf">calc_vert_average</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the vertical average of a given function *u*.  </span>
+<span class="sd">    </span>
+<span class="sd">    :param u: Function to avergage vertically</span>
+<span class="sd">    :rtype:   the vertical average of *u*</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">H</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">uhat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: calculating vertical average :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">ubar</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">uhat</span><span class="o">/</span><span class="n">H</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span> <span class="s1">&#39;ubar&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;vertical average of </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">u</span><span class="o">.</span><span class="n">name</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;vertical average&#39;</span>
+    <span class="n">ubar</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">ubar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ubar</span></div>
+
+<div class="viewcode-block" id="LatModel.initialize_variables"><a class="viewcode-back" href="../model.html#latmodel.LatModel.initialize_variables">[docs]</a>  <span class="k">def</span> <span class="nf">initialize_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initializes the class&#39;s variables to default values that are then set</span>
+<span class="sd">    by the individually created model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">LatModel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">initialize_variables</span><span class="p">()</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing 2D variables :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+   
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_mask</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span> <span class="c1"># default to all grounded ice </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_E</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>    <span class="c1"># always use no enhancement on rate-factor A </span>
+
+    <span class="c1"># Depth below sea level :</span>
+    <span class="k">class</span> <span class="nc">Depth</span><span class="p">(</span><span class="n">Expression</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">D</span> <span class="o">=</span> <span class="n">Depth</span><span class="p">(</span><span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

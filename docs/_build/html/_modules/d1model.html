@@ -1,0 +1,765 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>d1model &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>d1model</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for d1model</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">dolfin_adjoint</span>    <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">get_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">from</span> <span class="nn">cslvr.model</span>       <span class="k">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="k">import</span> <span class="n">interp1d</span>
+<span class="kn">import</span> <span class="nn">numpy</span>               <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span>          <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<div class="viewcode-block" id="D1Model"><a class="viewcode-back" href="../model.html#d1model.D1Model">[docs]</a><span class="k">class</span> <span class="nc">D1Model</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Data structure to hold firn model state data.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="s1">&#39;./results/&#39;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">use_periodic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create and instance of a 1D model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span> <span class="o">=</span> <span class="s1">&#39;150&#39;</span>
+    
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING 1D MODEL :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    
+    <span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">use_periodic</span><span class="p">)</span>
+
+<div class="viewcode-block" id="D1Model.set_mesh"><a class="viewcode-back" href="../model.html#d1model.D1Model.set_mesh">[docs]</a>  <span class="k">def</span> <span class="nf">set_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets the mesh.</span>
+<span class="sd">    </span>
+<span class="sd">    :mesh: :class:`~dolfin.Mesh` mesh to be used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">D1Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: setting 1D mesh :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+  
+    <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; 1D MODEL REQUIRES A 1D MESH, EXITING &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">size_global</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">dof</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">size_global</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - </span><span class="si">%i</span><span class="s2">D mesh set, </span><span class="si">%i</span><span class="s2"> cells, </span><span class="si">%i</span><span class="s2"> vertices - &quot;</span> \
+        <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+
+    <span class="c1"># set the geometry from the mesh :</span>
+    <span class="n">zb</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+    <span class="n">zs</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_S_bc</span><span class="p">(</span><span class="n">zs</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">init_B_bc</span><span class="p">(</span><span class="n">zb</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="D1Model.refine_mesh"><a class="viewcode-back" href="../model.html#d1model.D1Model.refine_mesh">[docs]</a>  <span class="k">def</span> <span class="nf">refine_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">divs</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span>  <span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    splits ``self.mesh`` *divs* times.</span>
+<span class="sd">  </span>
+<span class="sd">    Args:</span>
+<span class="sd">      :divs: number of times to split mesh</span>
+<span class="sd">      :i:    fraction of the mesh from the surface to split</span>
+<span class="sd">      :k:    multiple to decrease i by each step to reduce the distance from the</span>
+<span class="sd">             surface to split</span>
+<span class="sd">      :m:    counter used to keep track of calls</span>
+<span class="sd">  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">m</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: entering recursive mesh refinement function :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    
+    <span class="n">mesh</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span>
+    <span class="n">S</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span>
+    <span class="n">B</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B_bc</span>
+  
+    <span class="k">if</span> <span class="n">m</span> <span class="o">&lt;</span> <span class="n">divs</span> <span class="p">:</span>
+      <span class="n">cell_markers</span> <span class="o">=</span> <span class="n">CellFunction</span><span class="p">(</span><span class="s2">&quot;bool&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">)</span>
+      <span class="n">cell_markers</span><span class="o">.</span><span class="n">set_all</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">origin</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="n">S</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">(</span><span class="n">mesh</span><span class="p">):</span>
+        <span class="n">p</span>  <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">S</span> <span class="o">-</span> <span class="n">B</span><span class="p">)</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span>
+          <span class="n">cell_markers</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+      <span class="n">mesh</span> <span class="o">=</span> <span class="n">refine</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">cell_markers</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">set_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+      <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">refine_mesh</span><span class="p">(</span><span class="n">divs</span><span class="p">,</span> <span class="n">k</span><span class="o">/</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">m</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: refinement finished, redefining function spaces :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">generate_function_spaces</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">initialize_variables</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="D1Model.generate_function_spaces"><a class="viewcode-back" href="../model.html#d1model.D1Model.generate_function_spaces">[docs]</a>  <span class="k">def</span> <span class="nf">generate_function_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates the appropriate finite-element function spaces from parameters</span>
+<span class="sd">    specified in the config file for the model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">D1Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">generate_function_spaces</span><span class="p">()</span></div>
+    
+<div class="viewcode-block" id="D1Model.init_S_bc"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_S_bc">[docs]</a>  <span class="k">def</span> <span class="nf">init_S_bc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">S_bc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set the scalar-value for the surface. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializng surface boundary condition :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span> <span class="o">=</span> <span class="n">S_bc</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span><span class="p">,</span> <span class="s1">&#39;S_bc&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D1Model.init_B_bc"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_B_bc">[docs]</a>  <span class="k">def</span> <span class="nf">init_B_bc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">B_bc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set the scalar-value for bed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializng bed boundary condition :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">B_bc</span> <span class="o">=</span> <span class="n">B_bc</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">B_bc</span><span class="p">,</span> <span class="s1">&#39;B_bc&#39;</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="D1Model.init_theta_surface"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_theta_surface">[docs]</a>  <span class="k">def</span> <span class="nf">init_theta_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta_s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing surface energy :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">theta_surface</span> <span class="o">=</span> <span class="n">theta_s</span></div>
+  
+<div class="viewcode-block" id="D1Model.init_rho_surface"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_rho_surface">[docs]</a>  <span class="k">def</span> <span class="nf">init_rho_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho_s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing surface density :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho_surface</span> <span class="o">=</span> <span class="n">rho_s</span></div>
+  
+<div class="viewcode-block" id="D1Model.init_w_surface"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_w_surface">[docs]</a>  <span class="k">def</span> <span class="nf">init_w_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w_s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing surface velocity :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w_surface</span> <span class="o">=</span> <span class="n">w_s</span></div>
+  
+<div class="viewcode-block" id="D1Model.init_r_surface"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_r_surface">[docs]</a>  <span class="k">def</span> <span class="nf">init_r_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r_s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing surface grain-size :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">r_surface</span> <span class="o">=</span> <span class="n">r_s</span></div>
+  
+<div class="viewcode-block" id="D1Model.init_sigma_surface"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_sigma_surface">[docs]</a>  <span class="k">def</span> <span class="nf">init_sigma_surface</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma_s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing surface stress :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_surface</span> <span class="o">=</span> <span class="n">sigma_s</span></div>
+    
+<div class="viewcode-block" id="D1Model.init_rho"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_rho">[docs]</a>  <span class="k">def</span> <span class="nf">init_rho</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing density :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span> <span class="n">rho</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">)</span></div>
+ 
+<div class="viewcode-block" id="D1Model.init_adot"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_adot">[docs]</a>  <span class="k">def</span> <span class="nf">init_adot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing accumulation :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adot</span><span class="p">,</span> <span class="n">adot</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bdot</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">adot</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">spy</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adot</span><span class="p">,</span> <span class="s1">&#39;adot&#39;</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bdot</span><span class="p">,</span> <span class="s1">&#39;bdot&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D1Model.init_r"><a class="viewcode-back" href="../model.html#d1model.D1Model.init_r">[docs]</a>  <span class="k">def</span> <span class="nf">init_r</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing grain-size :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="s1">&#39;r^2&#39;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="D1Model.set_boundary_conditions"><a class="viewcode-back" href="../model.html#d1model.D1Model.set_boundary_conditions">[docs]</a>  <span class="k">def</span> <span class="nf">set_boundary_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta_exp</span><span class="p">,</span> <span class="n">rho_exp</span><span class="p">,</span> <span class="n">w_exp</span><span class="p">,</span> <span class="n">r_exp</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># enthalpy surface condition :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">theta_S</span>     <span class="o">=</span> <span class="n">theta_exp</span>
+    
+    <span class="c1"># density surface condition :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho_S</span>   <span class="o">=</span> <span class="n">rho_exp</span>
+
+    <span class="c1"># velocity surface condition :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w_S</span>     <span class="o">=</span> <span class="n">w_exp</span>
+
+    <span class="c1"># grain radius surface condition :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">r_S</span>     <span class="o">=</span> <span class="n">r_exp</span>
+
+    <span class="c1"># age surface condition (always zero at surface) :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">age_S</span>   <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># sigma suface condition (always zero at surface) :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_S</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    
+    <span class="n">L</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> 
+    <span class="n">thetasp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thetasp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Tw</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Tw</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">rhoi</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">rhow</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhow</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">g</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">etaw</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">etaw</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># water percentage on the surface :</span>
+    <span class="k">class</span> <span class="nc">BCW</span><span class="p">(</span><span class="n">Expression</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thetas</span><span class="p">,</span> <span class="n">cps</span><span class="p">,</span> <span class="n">rhos</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thetas</span>   <span class="o">=</span> <span class="n">thetas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cps</span>  <span class="o">=</span> <span class="n">cps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhos</span> <span class="o">=</span> <span class="n">rhos</span>
+      <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="c1">#psis  = 1 - self.rhos/rhoi</span>
+        <span class="c1">#Wmi   = 0.0057 / (1 - psis) + 0.017         # irr. water content</span>
+        <span class="c1">#if self.thetas &gt; thetasp:</span>
+        <span class="c1">#  values[0] = Wmi + (self.thetas - self.cps*Tw) / L</span>
+        <span class="c1">#else:</span>
+        <span class="c1">#  values[0] = Wmi</span>
+        <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.08</span>
+    
+    <span class="c1"># water flux at the surface :</span>
+    <span class="k">class</span> <span class="nc">BCWFlux</span><span class="p">(</span><span class="n">Expression</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rs</span><span class="p">,</span> <span class="n">rhos</span><span class="p">,</span> <span class="n">thetas</span><span class="p">,</span> <span class="n">cps</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rs</span>     <span class="o">=</span> <span class="n">rs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhos</span>   <span class="o">=</span> <span class="n">rhos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thetas</span>     <span class="o">=</span> <span class="n">thetas</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cps</span>    <span class="o">=</span> <span class="n">cps</span>
+      <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">rhos</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhos</span>
+        <span class="n">rs</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rs</span>
+        <span class="c1">#ks    = 0.077 * (1.0/100)**2 * rs * exp(-7.8*rhos/rhow)</span>
+        <span class="n">ks</span>    <span class="o">=</span> <span class="mf">0.0602</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.00957</span> <span class="o">*</span> <span class="n">rhos</span><span class="p">)</span>
+        <span class="n">psis</span>  <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">rhos</span><span class="o">/</span><span class="n">rhoi</span>
+        <span class="n">Wmi</span> <span class="o">=</span> <span class="mf">0.0057</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">psis</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.017</span>         <span class="c1"># irr. water content</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thetas</span> <span class="o">&gt;</span> <span class="n">thetasp</span><span class="p">:</span>
+          <span class="n">omg_s</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetas</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cps</span><span class="o">*</span><span class="n">Tw</span><span class="p">)</span> <span class="o">/</span> <span class="n">L</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">omg_s</span> <span class="o">=</span> <span class="n">Wmi</span>
+        <span class="n">Wes</span>   <span class="o">=</span> <span class="p">(</span><span class="n">omg_s</span> <span class="o">-</span> <span class="n">Wmi</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">psis</span> <span class="o">-</span> <span class="n">Wmi</span><span class="p">)</span>
+        <span class="n">kws</span>   <span class="o">=</span> <span class="n">ks</span> <span class="o">*</span> <span class="n">Wes</span><span class="o">**</span><span class="mf">3.0</span>
+        <span class="n">Ks</span>    <span class="o">=</span> <span class="n">kws</span> <span class="o">*</span> <span class="n">rhow</span> <span class="o">*</span> <span class="n">g</span> <span class="o">/</span> <span class="n">etaw</span>
+        <span class="nb">print</span> <span class="s2">&quot;::::::::::::::::::::::::KS&quot;</span><span class="p">,</span> <span class="n">Ks</span><span class="p">,</span> <span class="n">rs</span><span class="p">,</span> <span class="n">rhos</span><span class="p">,</span> <span class="n">omg_s</span>
+        <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">Ks</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">W_S</span> <span class="o">=</span> <span class="n">BCW</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+    <span class="c1">#self.W_S = BCWFlux(0.0, 0.0, 0.0, 0.0)</span>
+
+<div class="viewcode-block" id="D1Model.calculate_boundaries"><a class="viewcode-back" href="../model.html#d1model.D1Model.calculate_boundaries">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_boundaries</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determines the boundaries of the current model mesh</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># this function contains markers which may be applied to facets of the mesh</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ff</span> <span class="o">=</span> <span class="n">FacetFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="n">tol</span>     <span class="o">=</span> <span class="mf">1e-3</span>
+
+    <span class="n">S</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B_bc</span>
+   
+    <span class="c1"># iterate through the facets and mark each if on a boundary :</span>
+    <span class="c1">#</span>
+    <span class="c1">#   0 = surface</span>
+    <span class="c1">#   1 = base</span>
+    <span class="k">class</span> <span class="nc">Surface</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">on_boundary</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">S</span>
+    
+    <span class="k">class</span> <span class="nc">Base</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
+      <span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">on_boundary</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">B</span>
+
+    <span class="n">S</span> <span class="o">=</span> <span class="n">Surface</span><span class="p">()</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">Base</span><span class="p">()</span>
+    <span class="n">S</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">B</span><span class="o">.</span><span class="n">mark</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s1">&#39;ds&#39;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">)</span><span class="c1">#[self.ff]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dx</span> <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s1">&#39;dx&#39;</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D1Model.initialize_variables"><a class="viewcode-back" href="../model.html#d1model.D1Model.initialize_variables">[docs]</a>  <span class="k">def</span> <span class="nf">initialize_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initializes the class&#39;s variables to default values that are then set</span>
+<span class="sd">    by the individually created model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">(</span><span class="n">D1Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">initialize_variables</span><span class="p">()</span>
+    
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing 1D model variables :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">l</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+   
+    <span class="c1"># surface Dirichlet boundary :</span>
+    <span class="k">def</span> <span class="nf">surface</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">on_boundary</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span>
+    
+    <span class="c1"># base Dirichlet boundary :</span>
+    <span class="k">def</span> <span class="nf">base</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">on_boundary</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">B_bc</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">surface</span> <span class="o">=</span> <span class="n">surface</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">base</span>    <span class="o">=</span> <span class="n">base</span>
+
+    <span class="c1">#===========================================================================</span>
+    <span class="c1"># Define variational problem spaces :</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">m</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">m0</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;m0&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">W</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;W&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">W0</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;W0&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dW</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dW&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">drhodt</span>  <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;drhodt&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">theta</span>   <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;theta&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">theta0</span>  <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;theta0&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>     <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rho&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rhoCoef</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;rhoCoef&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">bdot</span>    <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;bdot&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w0</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;w0&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">age</span>     <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;age&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">age0</span>    <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;age0&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span>   <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;sigma&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">r</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">p</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;p&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">u</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;u&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ql</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ql&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Smi</span>     <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Smi&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">adot</span>    <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;adot&#39;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoCoef</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcHh</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">lini</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l</span>                    <span class="c1"># initial height vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">lnew</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>             <span class="c1"># previous height vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">t</span>       <span class="o">=</span> <span class="mf">0.0</span>                       <span class="c1"># initialize time</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">S_1</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span>                 <span class="c1"># previous time-step surface  </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">zo</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span>                 <span class="c1"># z-coordinate of initial surface</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ht</span>      <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span><span class="p">]</span>               <span class="c1"># list of surface heights</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">origHt</span>  <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">zo</span><span class="p">]</span>                 <span class="c1"># list of initial surface heights</span></div>
+
+<div class="viewcode-block" id="D1Model.update_wBc"><a class="viewcode-back" href="../model.html#d1model.D1Model.update_wBc">[docs]</a>  <span class="k">def</span> <span class="nf">update_wBc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adjust the velocity at the surface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: adjusting vertical velocity on the surface :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w_surface</span><span class="o">.</span><span class="n">t</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w_surface</span><span class="o">.</span><span class="n">rhos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhop</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">bdotNew</span>             <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w_surface</span><span class="o">.</span><span class="n">adot</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">spy</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bdot</span><span class="p">,</span> <span class="n">bdotNew</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="D1Model.update_rhoBc"><a class="viewcode-back" href="../model.html#d1model.D1Model.update_rhoBc">[docs]</a>  <span class="k">def</span> <span class="nf">update_rhoBc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adjust the density at the surface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: adjusting surface density :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    <span class="c1">#dW_s = self.dW[self.index][-1]</span>
+    <span class="c1">#if self.Ts &gt; self.Tw:</span>
+    <span class="c1">#  if dW_s &gt; 0:</span>
+    <span class="c1">#    if self.rho_surface.rhon &lt; self.rhoi(0):</span>
+    <span class="c1">#      self.rho_surface.rhon += dW_s*self.rhow(0)</span>
+    <span class="c1">#  else:</span>
+    <span class="c1">#    self.rho_surface.rhon += dW_s*self.rhow(0)#83.0</span>
+    <span class="c1">#else:</span>
+    <span class="c1">#  self.rho_surface.rhon = self.rhos</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho_surface</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span></div>
+
+<div class="viewcode-block" id="D1Model.vert_integrate"><a class="viewcode-back" href="../model.html#d1model.D1Model.vert_integrate">[docs]</a>  <span class="k">def</span> <span class="nf">vert_integrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Integrate &lt;u&gt; from the surface to the bed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: vertically integrating function :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+
+    <span class="n">ff</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ff</span>
+    <span class="n">Q</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">v</span>   <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    
+    <span class="c1"># surface Dirichlet boundary :</span>
+    <span class="k">def</span> <span class="nf">surface</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">on_boundary</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_bc</span>
+    
+    <span class="c1"># integral is zero on surface</span>
+    <span class="n">bcs</span> <span class="o">=</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">surface</span><span class="p">)</span>
+    <span class="n">a</span>      <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">L</span>      <span class="o">=</span> <span class="n">u</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">v</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="n">L</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">bcs</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s1">&#39;vertically integrated function&#39;</span><span class="p">)</span>
+    <span class="c1">#print_min_max(v, &#39;vertically integrated %s&#39; % u.name())</span>
+    <span class="k">return</span> <span class="n">v</span></div>
+
+<div class="viewcode-block" id="D1Model.update_height_history"><a class="viewcode-back" href="../model.html#d1model.D1Model.update_height_history">[docs]</a>  <span class="k">def</span> <span class="nf">update_height_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    track the current height of the firn :</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ht</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># calculate the new height of original surface by interpolating the </span>
+    <span class="c1"># vertical speed from w and keeping the ratio intact :</span>
+    <span class="n">wp</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">interp</span>  <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">wp</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">wp</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">wzo</span>     <span class="o">=</span> <span class="n">interp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zo</span><span class="p">)</span>
+    <span class="n">dt</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_step</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">zs</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">zb</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">zs_1</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_1</span>
+    <span class="n">zo</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zo</span>
+    <span class="c1">#self.zo = zo * (zs - zb) / (zs_1 - zb) + wzo * dt</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">zo</span> <span class="o">=</span> <span class="n">zo</span> <span class="o">+</span> <span class="p">(</span><span class="n">zs</span> <span class="o">-</span> <span class="n">zs_1</span><span class="p">)</span> <span class="o">+</span> <span class="n">wzo</span> <span class="o">*</span> <span class="n">dt</span>
+    
+    <span class="c1"># track original height :</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">zo</span> <span class="o">&gt;</span> <span class="n">zb</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">origHt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zo</span><span class="p">)</span>
+    
+    <span class="c1"># update the previous time steps&#39; surface height :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">S_1</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="D1Model.set_ini_conv"><a class="viewcode-back" href="../model.html#d1model.D1Model.set_ini_conv">[docs]</a>  <span class="k">def</span> <span class="nf">set_ini_conv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ex</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    sets the firn model&#39;s initial state based on files in data/enthalpy folder.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ex</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">rhoin</span> <span class="o">=</span> <span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;data/fmic/initial/initial&quot;</span> <span class="o">+</span> <span class="n">ex</span> <span class="o">+</span> <span class="s2">&quot;/rho.txt&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoin</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w</span>     <span class="o">=</span> <span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;data/fmic/initial/initial&quot;</span> <span class="o">+</span> <span class="n">ex</span> <span class="o">+</span> <span class="s2">&quot;/w.txt&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span>     <span class="o">=</span> <span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;data/fmic/initial/initial&quot;</span> <span class="o">+</span> <span class="n">ex</span> <span class="o">+</span> <span class="s2">&quot;/z.txt&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">a</span>     <span class="o">=</span> <span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;data/fmic/initial/initial&quot;</span> <span class="o">+</span> <span class="n">ex</span> <span class="o">+</span> <span class="s2">&quot;/a.txt&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">theta</span> <span class="o">=</span> <span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;data/fmic/initial/initial&quot;</span> <span class="o">+</span> <span class="n">ex</span> <span class="o">+</span> <span class="s2">&quot;/theta.txt&quot;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">lin</span>   <span class="o">=</span> <span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;data/fmic/initial/initial&quot;</span> <span class="o">+</span> <span class="n">ex</span> <span class="o">+</span> <span class="s2">&quot;/l.txt&quot;</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">S_1</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                <span class="c1"># previous time-step surface  </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">zo</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                <span class="c1"># z-coordinate of initial surface</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ht</span>     <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>              <span class="c1"># list of surface heights</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">origHt</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>              <span class="c1"># list of initial surface heights</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Ts</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>    <span class="c1"># temperature of surface</span>
+  
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho_i</span><span class="p">,</span>   <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">theta_i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w_i</span><span class="p">,</span>     <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aF</span><span class="p">,</span>      <span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a0</span><span class="p">,</span>      <span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="D1Model.transient_solve"><a class="viewcode-back" href="../model.html#d1model.D1Model.transient_solve">[docs]</a>  <span class="k">def</span> <span class="nf">transient_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">t_start</span><span class="p">,</span> <span class="n">t_mid</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">time_step</span><span class="p">,</span>
+                      <span class="n">dt_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: performing transient run :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+    
+    <span class="kn">from</span> <span class="nn">cslvr.momentum</span> <span class="k">import</span> <span class="n">Momentum</span>
+    <span class="kn">from</span> <span class="nn">cslvr.energy</span>   <span class="k">import</span> <span class="n">Energy</span>
+      
+    <span class="k">if</span> <span class="n">momentum</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__base__</span> <span class="o">!=</span> <span class="n">Momentum</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; transient_solve REQUIRES A &#39;Momentum&#39; CHILD INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">momentum</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__base__</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">energy</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__base__</span> <span class="o">!=</span> <span class="n">Energy</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; transient_solve REQUIRES AN &#39;Energy&#39; CHILD INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">energy</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__base__</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+   
+    <span class="c1"># form time steps : </span>
+    <span class="k">if</span> <span class="n">dt_list</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">numt1</span>   <span class="o">=</span> <span class="p">(</span><span class="n">t_mid</span> <span class="o">-</span> <span class="n">t_start</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>  <span class="c1"># number of time steps</span>
+      <span class="n">numt2</span>   <span class="o">=</span> <span class="p">(</span><span class="n">t_end</span> <span class="o">-</span> <span class="n">t_mid</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>    <span class="c1"># number of time steps</span>
+      <span class="n">times1</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t_start</span><span class="p">,</span> <span class="n">t_mid</span><span class="p">,</span> <span class="n">numt1</span><span class="p">)</span>  <span class="c1"># array of times in seconds</span>
+      <span class="n">times2</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t_mid</span><span class="p">,</span>   <span class="n">t_end</span><span class="p">,</span> <span class="n">numt2</span><span class="p">)</span>  <span class="c1"># array of times in seconds</span>
+      <span class="n">dt1</span>     <span class="o">=</span> <span class="n">dt_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times1</span><span class="p">))</span>
+      <span class="n">dt2</span>     <span class="o">=</span> <span class="n">dt_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times2</span><span class="p">))</span>
+      <span class="n">times</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">times1</span><span class="p">,</span> <span class="n">times2</span><span class="p">))</span>
+      <span class="n">dts</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">dt1</span><span class="p">,</span> <span class="n">dt2</span><span class="p">))</span>
+    
+    <span class="k">else</span><span class="p">:</span> 
+      <span class="n">numt</span>   <span class="o">=</span> <span class="p">(</span><span class="n">t_end</span> <span class="o">-</span> <span class="n">t_start</span><span class="p">)</span> <span class="o">/</span> <span class="n">time_step</span> <span class="o">+</span> <span class="mi">1</span>    <span class="c1"># number of time steps</span>
+      <span class="n">times</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t_start</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">numt</span><span class="p">)</span>    <span class="c1"># array of times in seconds</span>
+      <span class="n">dts</span>    <span class="o">=</span> <span class="n">time_step</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">))</span>
+   
+    <span class="bp">self</span><span class="o">.</span><span class="n">t</span>     <span class="o">=</span> <span class="n">t_start</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">times</span> <span class="o">=</span> <span class="n">times</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dts</span>   <span class="o">=</span> <span class="n">dts</span>
+    
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">t</span><span class="p">,</span><span class="n">dt</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+
+      <span class="c1"># start the timer :</span>
+      <span class="n">tic</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+      
+      <span class="c1"># update timestep :</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">init_time_step</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+
+      <span class="c1"># solve momentum :</span>
+      <span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+      <span class="c1"># solve energy :</span>
+      <span class="n">energy</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+      <span class="c1"># solve mass :</span>
+      <span class="c1">#mass.solve(annotate=annotate)</span>
+      
+      <span class="c1"># update model parameters :</span>
+      <span class="k">if</span> <span class="n">t</span> <span class="o">!=</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">t</span>
+         <span class="n">momentum</span><span class="o">.</span><span class="n">U0</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">momentum</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">theta0</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">theta</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">W0</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">w0</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">age0</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">age</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">m0</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      
+      <span class="k">if</span> <span class="n">callback</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: calling callback function :::&#39;</span>
+        <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">D1Model_color</span><span class="p">)</span>
+        <span class="n">callback</span><span class="p">()</span>
+        
+      <span class="c1"># increment time step :</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;&gt;&gt;&gt; Time: </span><span class="si">%g</span><span class="s1"> yr, CPU time for last dt: </span><span class="si">%.3f</span><span class="s1"> s &lt;&lt;&lt;&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">t</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">spy</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">tic</span><span class="p">),</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># calculate total time to compute</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">s</span> <span class="o">/</span> <span class="mf">60.0</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">m</span> <span class="o">/</span> <span class="mf">60.0</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">s</span> <span class="o">%</span> <span class="mi">60</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m</span> <span class="o">%</span> <span class="mi">60</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Total time to compute: </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="n">m</span><span class="p">,</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

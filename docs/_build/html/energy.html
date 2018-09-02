@@ -1,0 +1,356 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Energy balance &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Velocity balance" href="velocity.html" />
+    <link rel="prev" title="Mass balance" href="mass.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Energy balance</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/energy.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="energy-balance">
+<h1>Energy balance<a class="headerlink" href="#energy-balance" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="energy.Enthalpy">
+<em class="property">class </em><code class="descclassname">energy.</code><code class="descname">Enthalpy</code><span class="sig-paren">(</span><em>model</em>, <em>momentum</em>, <em>solve_params=None</em>, <em>transient=False</em>, <em>use_lat_bc=False</em>, <em>energy_flux_mode='Fb'</em>, <em>stabilization_method='GLS'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="energy.Enthalpy.calc_PE">
+<code class="descname">calc_PE</code><span class="sig-paren">(</span><em>avg=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_PE"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_PE" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates the grid P’{e}clet number to self.model.PE.</p>
+<p>if avg=True, calculate the vertical average.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_T_melt">
+<code class="descname">calc_T_melt</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_T_melt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_T_melt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates temperature melting point model.T_melt and energy melting point
+model.theta_melt.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_basal_temperature_flux">
+<code class="descname">calc_basal_temperature_flux</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_basal_temperature_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_basal_temperature_flux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the basal temperature flux stored in model.gradT_B.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_basal_temperature_melting_flux">
+<code class="descname">calc_basal_temperature_melting_flux</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_basal_temperature_melting_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_basal_temperature_melting_flux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the basal temperature melting flux stored in model.gradTm_B.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_temp_rat">
+<code class="descname">calc_temp_rat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_temp_rat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_temp_rat" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates the ratio of the temperate zone, saved to model.temp_rat.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_temperate_thickness">
+<code class="descname">calc_temperate_thickness</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_temperate_thickness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_temperate_thickness" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates the temperate zone thickness, saved to model.alpha_int.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_vert_avg_W">
+<code class="descname">calc_vert_avg_W</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_vert_avg_W"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_vert_avg_W" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates the vertical averge water content W, saved to model.Wbar.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.calc_vert_avg_strain_heat">
+<code class="descname">calc_vert_avg_strain_heat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.calc_vert_avg_strain_heat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.calc_vert_avg_strain_heat" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates integrated strain-heating, saved to model.Qbar.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.derive_temperate_zone">
+<code class="descname">derive_temperate_zone</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.derive_temperate_zone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.derive_temperate_zone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve the steady-state energy equation, saving enthalpy to model.theta, 
+temperature to model.T, and water content to model.W such that the 
+regions with overlying temperate ice are properly marked by model.alpha.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>momentum</em>, <em>solve_params=None</em>, <em>transient=False</em>, <em>use_lat_bc=False</em>, <em>energy_flux_mode='Fb'</em>, <em>stabilization_method='GLS'</em>, <em>reset=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up energy equation residual.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.mark_temperate_zone">
+<code class="descname">mark_temperate_zone</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.mark_temperate_zone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.mark_temperate_zone" title="Permalink to this definition">¶</a></dt>
+<dd><p>mark basal regions with overlying temperate layer to model.alpha.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve the energy equations, saving enthalpy to model.theta, temperature 
+to model.T, and water content to model.W.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.solve_basal_melt_rate">
+<code class="descname">solve_basal_melt_rate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.solve_basal_melt_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.solve_basal_melt_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the basal melt rate stored in model.Mb.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.solve_divide">
+<code class="descname">solve_divide</code><span class="sig-paren">(</span><em>init=False</em>, <em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.solve_divide"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.solve_divide" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.update_thermal_parameters">
+<code class="descname">update_thermal_parameters</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.update_thermal_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.update_thermal_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>fixed-point iterations to make all linearized thermal parameters consistent.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="velocity.html" class="btn btn-neutral float-right" title="Velocity balance" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="mass.html" class="btn btn-neutral" title="Mass balance" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

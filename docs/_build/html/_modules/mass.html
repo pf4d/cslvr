@@ -1,0 +1,845 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>mass &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>mass</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for mass</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">dolfin_adjoint</span>    <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.physics</span>     <span class="k">import</span> <span class="n">Physics</span> 
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">from</span> <span class="nn">cslvr.d2model</span>     <span class="k">import</span> <span class="n">D2Model</span>
+<span class="kn">from</span> <span class="nn">cslvr.d3model</span>     <span class="k">import</span> <span class="n">D3Model</span>
+<span class="kn">from</span> <span class="nn">cslvr.helper</span>      <span class="k">import</span> <span class="n">VerticalBasis</span><span class="p">,</span> <span class="n">VerticalFDBasis</span><span class="p">,</span> \
+                              <span class="n">VerticalIntegrator</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+
+
+
+<div class="viewcode-block" id="Mass"><a class="viewcode-back" href="../physics.html#mass.Mass">[docs]</a><span class="k">class</span> <span class="nc">Mass</span><span class="p">(</span><span class="n">Physics</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Abstract class outlines the structure of a mass conservation.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates and returns a new Mass object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">instance</span> <span class="o">=</span> <span class="n">Physics</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">instance</span>
+  
+<div class="viewcode-block" id="Mass.color"><a class="viewcode-back" href="../physics.html#mass.Mass.color">[docs]</a>  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the default color for this class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s1">&#39;white&#39;</span></div>
+
+<div class="viewcode-block" id="Mass.default_solve_params"><a class="viewcode-back" href="../physics.html#mass.Mass.default_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">default_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default solver parameters that yield good performance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nparams</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;newton_solver&#39;</span> <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span>            <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">,</span>
+                                  <span class="s1">&#39;preconditioner&#39;</span>           <span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span>
+                                  <span class="s1">&#39;relative_tolerance&#39;</span>       <span class="p">:</span> <span class="mf">1e-12</span><span class="p">,</span>
+                                  <span class="s1">&#39;relaxation_parameter&#39;</span>     <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                                  <span class="s1">&#39;maximum_iterations&#39;</span>       <span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                                  <span class="s1">&#39;error_on_nonconvergence&#39;</span>  <span class="p">:</span> <span class="kc">False</span><span class="p">}}</span>
+    <span class="n">params</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solver&#39;</span>  <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span>       <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;preconditioner&#39;</span>      <span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">},</span>
+               <span class="s1">&#39;nparams&#39;</span> <span class="p">:</span> <span class="n">nparams</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">params</span></div>
+  
+<div class="viewcode-block" id="Mass.get_solve_params"><a class="viewcode-back" href="../physics.html#mass.Mass.get_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">get_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the solve parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span></div>
+  
+<div class="viewcode-block" id="Mass.solve"><a class="viewcode-back" href="../physics.html#mass.Mass.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Solve the conservation of mass equation for a free-surface evolution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">raiseNotDefined</span><span class="p">()</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="UpperFreeSurface"><a class="viewcode-back" href="../mass.html#mass.UpperFreeSurface">[docs]</a><span class="k">class</span> <span class="nc">UpperFreeSurface</span><span class="p">(</span><span class="n">Mass</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">  This class defines the physics and solution to the upper free-surface equation.</span>
+<span class="sd">    .. math::</span>
+<span class="sd">       \frac{\partial S}{\partial t} - u_z + \underline{u} \cdot \nabla S = \Vert \underline{\hat{k}} - \nabla S \Vert \mathring{S}.</span>
+
+<span class="sd">  When the :func:`~mass.FreeSurface.solve` method is executed, something similar to the following output will be displayed:</span>
+
+<span class="sd">  .. code-block:: none</span>
+
+<span class="sd">    ::: solving free-surface relation :::</span>
+<span class="sd">    mass.S &lt;min, max&gt; : &lt;3.000e-16, 3.000e-16&gt;</span>
+<span class="sd">    Solving nonlinear variational problem.</span>
+<span class="sd">      Newton iteration 0: r (abs) = 2.750e+12 (tol = 1.000e-10) r (rel) = 1.000e+00 (tol = 1.000e-12)</span>
+<span class="sd">      Newton iteration 1: r (abs) = 9.595e-04 (tol = 1.000e-10) r (rel) = 3.489e-16 (tol = 1.000e-12)</span>
+<span class="sd">      Newton solver finished in 1 iterations and 1 linear solver iterations.</span>
+<span class="sd">    mass.S &lt;min, max&gt; : &lt;-1.140e+02, 6.065e+02&gt;</span>
+<span class="sd">    S &lt;min, max&gt; : &lt;1.000e+00, 6.065e+02&gt;</span>
+
+<span class="sd">  Here, </span>
+<span class="sd">  </span>
+<span class="sd">  * ``S`` is the surface height :math:`S` saved to ``model.S``</span>
+
+<span class="sd">  &quot;&quot;&quot;</span> 
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+               <span class="n">thklim</span>              <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+               <span class="n">lump_mass_matrix</span>    <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;::: INITIALIZING UPPER-FREE-SURFACE PHYSICS :::&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D2Model</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; UpperFreeSurface REQUIRES A &#39;D2Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_solve_params</span><span class="p">()</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: using default parameters :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;230&#39;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span>            <span class="o">=</span> <span class="n">model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">thklim</span>           <span class="o">=</span> <span class="n">thklim</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">lump_mass_matrix</span> <span class="o">=</span> <span class="n">lump_mass_matrix</span>
+    
+    <span class="c1"># interpolate if the function spaces differ :</span>
+    <span class="n">Q</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">S_0</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
+    <span class="n">ring_S</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">adot</span>
+    <span class="n">u</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u</span>
+    <span class="n">v</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v</span>
+    <span class="n">w</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">w</span>
+    <span class="n">h</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">dt</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">time_step</span>
+
+    <span class="c1"># set up non-linear variational problem for unknown S :</span>
+    <span class="n">phi</span>         <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">dS</span>          <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">S_f</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;mass.S&#39;</span><span class="p">)</span>
+    <span class="n">dSdt_f</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;mass.dSdt&#39;</span><span class="p">)</span>
+
+    <span class="c1"># velocity vector :</span>
+    <span class="n">U</span>           <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># z-coordinate unit vector :</span>
+    <span class="n">k</span>           <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># SUPG-modified trial function (artifical diffusion in direction of flow) :</span>
+    <span class="n">unorm</span>       <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span><span class="n">U</span><span class="p">)</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+    <span class="n">tau</span>         <span class="o">=</span> <span class="n">h</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">unorm</span><span class="p">)</span>
+    <span class="n">phihat</span>      <span class="o">=</span> <span class="n">phi</span> <span class="o">+</span> <span class="n">tau</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">))</span>
+
+    <span class="c1"># SUPG-modified shock-capturing trial function :</span>
+    <span class="n">gSnorm</span>      <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">S_0</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">S_0</span><span class="p">))</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+    <span class="n">tau_gs</span>      <span class="o">=</span> <span class="n">h</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">gSnorm</span><span class="p">)</span>
+    <span class="n">phihat_gs</span>   <span class="o">=</span> <span class="n">phi</span> <span class="o">+</span> <span class="n">tau_gs</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">S_0</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">))</span>
+    
+    <span class="c1"># the linear differential operator for this problem (pure advection) :</span>
+    <span class="k">def</span> <span class="nf">Lu</span><span class="p">(</span><span class="n">u</span><span class="p">):</span> <span class="k">return</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+
+    <span class="c1"># dSdt mass matrix :</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lump_mass_matrix</span><span class="p">:</span>
+      <span class="n">M</span>         <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">action</span><span class="p">(</span><span class="n">dS</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span> <span class="n">Constant</span><span class="p">(</span><span class="mi">1</span><span class="p">)))</span>  <span class="c1"># row sums</span>
+      <span class="n">M</span><span class="p">[</span><span class="n">M</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> 
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">M</span>         <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">dS</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span><span class="p">)</span>
+
+    <span class="c1"># theta-scheme (nu = 1/2 == Crank-Nicolson) :</span>
+    <span class="n">nu</span>          <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">S_mid</span>       <span class="o">=</span> <span class="n">nu</span><span class="o">*</span><span class="n">S_f</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">S_0</span>
+
+    <span class="c1"># source coefficient :</span>
+    <span class="n">gS_f</span>        <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">S_mid</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">S_mid</span><span class="p">)))</span>
+    <span class="n">gS</span>          <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">S_0</span><span class="p">),</span>   <span class="n">grad</span><span class="p">(</span><span class="n">S_0</span><span class="p">)))</span>
+
+    <span class="c1"># partial time derivative :</span>
+    <span class="n">dSdt</span> <span class="o">=</span> <span class="p">(</span><span class="n">S_f</span> <span class="o">-</span> <span class="n">S_0</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span>
+
+    <span class="c1"># LHS of dSdt + Lu(S_mid) = f :</span>
+    <span class="n">f</span>    <span class="o">=</span> <span class="n">w</span> <span class="o">+</span> <span class="n">ring_S</span><span class="c1">#gS*ring_S</span>
+
+    <span class="c1"># variational residual :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">delta_S</span>  <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">dSdt</span> <span class="o">+</span> <span class="n">Lu</span><span class="p">(</span><span class="n">S_mid</span><span class="p">)</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span> \
+                    <span class="o">+</span> <span class="n">inner</span><span class="p">(</span> <span class="n">Lu</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="p">(</span><span class="n">dSdt</span> <span class="o">+</span> <span class="n">Lu</span><span class="p">(</span><span class="n">S_mid</span><span class="p">)</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span> <span class="p">)</span> <span class="o">*</span> <span class="n">dx</span>
+
+    <span class="c1"># dSdt variational form :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">delta_dS</span> <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">Lu</span><span class="p">(</span><span class="n">S_0</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span> \
+                    <span class="o">-</span> <span class="n">inner</span><span class="p">(</span> <span class="n">Lu</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">Lu</span><span class="p">(</span><span class="n">S_0</span><span class="p">)</span> <span class="p">)</span> <span class="o">*</span> <span class="n">dx</span>
+
+    <span class="c1"># Jacobian :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mass_Jac</span>    <span class="o">=</span> <span class="n">derivative</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_S</span><span class="p">,</span> <span class="n">S_f</span><span class="p">,</span> <span class="n">dS</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M</span>           <span class="o">=</span> <span class="n">M</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dSdt_f</span>      <span class="o">=</span> <span class="n">dSdt_f</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">S_f</span>         <span class="o">=</span> <span class="n">S_f</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Lu</span>          <span class="o">=</span> <span class="n">Lu</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f</span>           <span class="o">=</span> <span class="n">f</span>
+
+<div class="viewcode-block" id="UpperFreeSurface.solve"><a class="viewcode-back" href="../mass.html#mass.UpperFreeSurface.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method solves the free-surface equation for the upper-surface height :math:`S`, updating ``self.model.S``.</span>
+
+<span class="sd">    Currently does not support dolfin-adjoint annotation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;::: solving upper-free-surface relation :::&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">thklim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thklim</span>   <span class="c1"># thickness limit</span>
+   
+    <span class="c1">## solve the linear system :</span>
+    <span class="c1">#solve(lhs(self.delta_S) == rhs(self.delta_S), self.S, annotate=annotate)</span>
+
+    <span class="c1"># solve the non-linear system :</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">S_f</span><span class="p">,</span> <span class="n">DOLFIN_EPS</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_S</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_f</span><span class="p">,</span> <span class="n">J</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mass_Jac</span><span class="p">,</span>
+          <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">[</span><span class="s1">&#39;nparams&#39;</span><span class="p">])</span>
+
+    <span class="c1"># impose the thickness limit and update the model&#39;s surface :</span>
+    <span class="n">S</span>           <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S_f</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+    <span class="n">B</span>           <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+    <span class="n">thin</span>        <span class="o">=</span> <span class="p">(</span><span class="n">S</span> <span class="o">-</span> <span class="n">B</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">thklim</span>
+    <span class="n">S</span><span class="p">[</span><span class="n">thin</span><span class="p">]</span>     <span class="o">=</span> <span class="n">B</span><span class="p">[</span><span class="n">thin</span><span class="p">]</span> <span class="o">+</span> <span class="n">thklim</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">solve_dSdt</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="UpperFreeSurface.solve_dSdt"><a class="viewcode-back" href="../mass.html#mass.UpperFreeSurface.solve_dSdt">[docs]</a>  <span class="k">def</span> <span class="nf">solve_dSdt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method solves the free-surface equation, updating ``self.model.dSdt``.</span>
+
+<span class="sd">    Currently does not support dolfin-adjoint annotation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;::: solving free-surface relation for dSdt :::&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+    <span class="c1"># assemple the stiffness matrix :</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_dS</span><span class="p">)</span>
+
+    <span class="c1"># add artificial diffusion to stiff. matrix in regions of high S gradients :</span>
+    <span class="c1">#if self.use_shock_capturing:</span>
+    <span class="c1">#  D = assemble(self.diffusion)</span>
+    <span class="c1">#  K = K - D</span>
+    <span class="c1">#  print_min_max(D, &#39;D&#39;)</span>
+    <span class="c1">#  print_min_max(K, &#39;K&#39;)</span>
+
+    <span class="c1"># calculate preliminary guess :</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lump_mass_matrix</span><span class="p">:</span>
+      <span class="n">M_a</span>             <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+      <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dSdt_f</span><span class="p">,</span> <span class="n">K</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span> <span class="o">/</span> <span class="n">M_a</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dSdt_f</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">K</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">dSdt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dSdt_f</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="LowerFreeSurface"><a class="viewcode-back" href="../mass.html#mass.LowerFreeSurface">[docs]</a><span class="k">class</span> <span class="nc">LowerFreeSurface</span><span class="p">(</span><span class="n">Mass</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">  This class defines the physics and solution to the lower free-surface equation.</span>
+<span class="sd">    .. math::</span>
+<span class="sd">       \frac{\partial B}{\partial t} - u_z + \underline{u} \cdot \nabla B = - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}.</span>
+
+<span class="sd">  When the :func:`~mass.FreeSurface.solve` method is executed, something similar to the following output will be displayed:</span>
+
+<span class="sd">  Here, </span>
+<span class="sd">  </span>
+<span class="sd">  * ``B`` is the surface height :math:`B` saved to ``model.B``</span>
+<span class="sd">  * ``K_source`` is the tensor corresponding to the source term :math:`f = u_z - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}` with lower-surface accumulation/ablation function located (currently) at ``model.ring_B`` and vertical velocity :math:`u_z`.</span>
+<span class="sd">  * ``K_advection`` is the tensor corresponding to the advective part of the free-surface equation :math:`\underline{u} \cdot \nabla B`</span>
+<span class="sd">  * ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in stabilization term the direction of velocity located (currently) at ``model.U3``</span>
+
+<span class="sd">  &quot;&quot;&quot;</span> 
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+               <span class="n">thklim</span>              <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+               <span class="n">lump_mass_matrix</span>    <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;::: INITIALIZING LOWER-FREE-SURFACE PHYSICS :::&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D2Model</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; LowerFreeSurface REQUIRES A &#39;D2Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_solve_params</span><span class="p">()</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: using default parameters :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;230&#39;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span>            <span class="o">=</span> <span class="n">model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">thklim</span>           <span class="o">=</span> <span class="n">thklim</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">lump_mass_matrix</span> <span class="o">=</span> <span class="n">lump_mass_matrix</span>
+
+    <span class="c1"># get model var&#39;s so we don&#39;t have a bunch of ``model.`` crap in our math :</span>
+    <span class="n">Q</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">rhob</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhob</span>
+    <span class="n">B_0</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">ring_B</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
+    <span class="n">u</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u</span>
+    <span class="n">v</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v</span>
+    <span class="n">w</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">w</span>
+    <span class="n">h</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">dt</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">time_step</span>
+
+    <span class="c1"># set up non-linear variational problem for unknown B :</span>
+    <span class="n">phi</span>         <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">dS</span>          <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">B</span>           <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;mass.B&#39;</span><span class="p">)</span>
+
+    <span class="c1"># velocity vector :</span>
+    <span class="n">U</span>           <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># z-coordinate unit vector :</span>
+    <span class="n">k</span>           <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># SUPG-modified trial function (artifical diffusion in direction of flow) :</span>
+    <span class="n">unorm</span>       <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span><span class="n">U</span><span class="p">))</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span>
+    <span class="n">tau</span>         <span class="o">=</span> <span class="n">h</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">unorm</span><span class="p">)</span>
+    <span class="n">phihat</span>      <span class="o">=</span> <span class="n">phi</span> <span class="o">+</span> <span class="n">tau</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">))</span>
+
+    <span class="c1"># source coefficient :</span>
+    <span class="n">gB</span>          <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">)))</span>
+
+    <span class="c1"># theta-scheme (nu = 1/2 == Crank-Nicolson) :</span>
+    <span class="n">nu</span>          <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">B_mid</span>       <span class="o">=</span> <span class="n">nu</span><span class="o">*</span><span class="n">B</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">B_0</span>
+    
+    <span class="c1"># the linear differential operator for this problem (pure advection) :</span>
+    <span class="k">def</span> <span class="nf">Lu</span><span class="p">(</span><span class="n">u</span><span class="p">):</span> <span class="k">return</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+
+    <span class="c1"># partial time derivative :</span>
+    <span class="n">dBdt</span> <span class="o">=</span> <span class="p">(</span><span class="n">B</span> <span class="o">-</span> <span class="n">B_0</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span>
+
+    <span class="c1"># LHS of dSdt + Lu(S_mid) = f :</span>
+    <span class="n">f</span>  <span class="o">=</span> <span class="n">w</span> <span class="o">-</span> <span class="n">gB</span><span class="o">*</span><span class="n">ring_B</span>
+
+    <span class="c1"># bilinear form :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">delta_B</span> <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">dBdt</span> <span class="o">+</span> <span class="n">Lu</span><span class="p">(</span><span class="n">B_mid</span><span class="p">)</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span> \
+                   <span class="o">+</span> <span class="n">inner</span><span class="p">(</span> <span class="n">Lu</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="p">(</span><span class="n">dBdt</span> <span class="o">+</span> <span class="n">Lu</span><span class="p">(</span><span class="n">B_mid</span><span class="p">)</span> <span class="o">-</span> <span class="n">f</span><span class="p">)</span> <span class="p">)</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="c1"># Jacobian :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mass_Jac</span> <span class="o">=</span> <span class="n">derivative</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_B</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">dB</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">B</span>        <span class="o">=</span> <span class="n">B</span>
+
+    <span class="c1"># stiffness matrix :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">source</span>      <span class="o">=</span> <span class="n">f</span>       <span class="o">*</span> <span class="n">phi</span>           <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">advection</span>   <span class="o">=</span> <span class="n">Lu</span><span class="p">(</span><span class="n">B_0</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span>           <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">stab_u</span>      <span class="o">=</span> <span class="n">Lu</span><span class="p">(</span><span class="n">B_0</span><span class="p">)</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">*</span> <span class="n">Lu</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span>
+  
+<div class="viewcode-block" id="LowerFreeSurface.solve"><a class="viewcode-back" href="../mass.html#mass.LowerFreeSurface.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method solves the lower free-surface equation for the lower-surface height :math:`B`, updating ``self.model.B``.</span>
+
+<span class="sd">    Currently does not support dolfin-adjoint annotation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;::: solving lower-free-surface relation :::&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">thklim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thklim</span>   <span class="c1"># thickness limit</span>
+  
+    <span class="c1">## solve the linear system :</span>
+    <span class="c1">#solve(lhs(self.delta_S) == rhs(self.delta_S), self.S, annotate=annotate)</span>
+
+    <span class="c1"># solve the non-linear system :</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="n">DOLFIN_EPS</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delta_B</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="n">J</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mass_Jac</span><span class="p">,</span>
+          <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">[</span><span class="s1">&#39;nparams&#39;</span><span class="p">])</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+    <span class="c1"># assemple the stiffness and mass matrices :</span>
+    <span class="n">K_source</span>    <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
+    <span class="n">K_advection</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">advection</span><span class="p">)</span>
+    <span class="n">K_stab_u</span>    <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stab_u</span><span class="p">)</span>
+
+    <span class="c1"># print tensor statistics :</span>
+    <span class="n">print_min_max</span><span class="p">(</span> <span class="n">norm</span><span class="p">(</span><span class="n">K_source</span><span class="p">,</span>    <span class="s1">&#39;l2&#39;</span><span class="p">),</span>  <span class="s1">&#39;|| K_source ||_2   &#39;</span> <span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span> <span class="n">norm</span><span class="p">(</span><span class="n">K_advection</span><span class="p">,</span> <span class="s1">&#39;l2&#39;</span><span class="p">),</span>  <span class="s1">&#39;|| K_advection ||_2&#39;</span> <span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span> <span class="n">norm</span><span class="p">(</span><span class="n">K_stab_u</span><span class="p">,</span>    <span class="s1">&#39;l2&#39;</span><span class="p">),</span>  <span class="s1">&#39;|| K_stab_u ||_2   &#39;</span> <span class="p">)</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="MassHybrid"><a class="viewcode-back" href="../mass.html#mass.MassHybrid">[docs]</a><span class="k">class</span> <span class="nc">MassHybrid</span><span class="p">(</span><span class="n">Mass</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  New 2D hybrid model.</span>
+
+<span class="sd">  Original author: `Doug Brinkerhoff &lt;https://dbrinkerhoff.org/&gt;`_</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> 
+               <span class="n">thklim</span>       <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+               <span class="n">solve_params</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">isothermal</span>   <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING HYBRID MASS-BALANCE PHYSICS :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D2Model</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; MassHybrid REQUIRES A &#39;D2Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">solve_params</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_solve_params</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span> <span class="o">=</span> <span class="n">solve_params</span>
+    
+    <span class="c1"># CONSTANTS</span>
+    <span class="n">rho</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhoi</span>
+    <span class="n">g</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">g</span>
+    <span class="n">n</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">n</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="n">Q</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">B</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">beta</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span>
+    <span class="n">ring_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">adot</span>
+    <span class="n">ubar_c</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">ubar_c</span> 
+    <span class="n">vbar_c</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vbar_c</span>
+    <span class="n">H</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">H</span>
+    <span class="n">H0</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">H0</span>
+    <span class="n">U</span>      <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">U</span>
+    <span class="n">T_</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_</span>
+    <span class="n">deltax</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">deltax</span>
+    <span class="n">sigmas</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">sigmas</span>
+    <span class="n">h</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">dt</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">time_step</span>
+    <span class="n">S</span>      <span class="o">=</span> <span class="n">B</span> <span class="o">+</span> <span class="n">H</span>
+    <span class="n">coef</span>   <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.</span><span class="o">/</span><span class="mf">4.</span><span class="o">*</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">4</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)]</span>
+    <span class="n">T</span>      <span class="o">=</span> <span class="n">VerticalFDBasis</span><span class="p">(</span><span class="n">T_</span><span class="p">,</span> <span class="n">deltax</span><span class="p">,</span> <span class="n">coef</span><span class="p">,</span> <span class="n">sigmas</span><span class="p">)</span>
+
+    <span class="c1"># thermal parameters :</span>
+    <span class="n">Bc</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">a_T_l</span>    <span class="c1"># lower bound of flow-rate const.</span>
+    <span class="n">Bw</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">a_T_u</span>    <span class="c1"># upper bound of flow-rate const.</span>
+    <span class="n">Qc</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_T_l</span>    <span class="c1"># lower bound of ice act. energy</span>
+    <span class="n">Qw</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_T_u</span>    <span class="c1"># upper bound of ice act. energy</span>
+    <span class="n">Rc</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">R</span>        <span class="c1"># gas constant</span>
+   
+    <span class="c1"># function spaces : </span>
+    <span class="n">dH</span>  <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">xsi</span> <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+
+    <span class="c1"># when assembled, this gives the mass of the domain :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_tot</span>  <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">H</span> <span class="o">*</span> <span class="n">dx</span>
+
+    <span class="k">if</span> <span class="n">isothermal</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using isothermal rate-factor -&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="k">def</span> <span class="nf">A_v</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">b</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using temperature-dependent rate-factor -&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="k">def</span> <span class="nf">A_v</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">conditional</span><span class="p">(</span><span class="n">le</span><span class="p">(</span><span class="n">T</span><span class="p">,</span><span class="mf">263.15</span><span class="p">),</span><span class="n">Bc</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Qc</span><span class="o">/</span><span class="p">(</span><span class="n">Rc</span><span class="o">*</span><span class="n">T</span><span class="p">)),</span><span class="n">Bw</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Qw</span><span class="o">/</span><span class="p">(</span><span class="n">Rc</span><span class="o">*</span><span class="n">T</span><span class="p">)))</span>
+    
+    <span class="c1"># SIA DIFFUSION COEFFICIENT INTEGRAL TERM.</span>
+    <span class="k">def</span> <span class="nf">sia_int</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">A_v</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> <span class="o">*</span> <span class="n">s</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">vi</span> <span class="o">=</span> <span class="n">VerticalIntegrator</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+    
+    <span class="c1">#D = 2 * (rho*g)**n * A/(n+2) * H**(n+2) \</span>
+    <span class="c1">#      * dot(grad(S),grad(S))**((n-1)/2)</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">rho</span><span class="o">*</span><span class="n">g</span><span class="p">)</span><span class="o">**</span><span class="n">n</span> <span class="o">*</span> <span class="n">H</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> \
+            <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">S</span><span class="p">),</span><span class="n">grad</span><span class="p">(</span><span class="n">S</span><span class="p">))</span><span class="o">**</span><span class="p">((</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> \
+            <span class="o">*</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">sia_int</span><span class="p">)</span> \
+        <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">g</span> <span class="o">*</span> <span class="n">H</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">beta</span>
+
+    <span class="n">ubar</span> <span class="o">=</span> <span class="n">U</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">vbar</span> <span class="o">=</span> <span class="n">U</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="n">ubar_si</span> <span class="o">=</span> <span class="o">-</span><span class="n">D</span><span class="o">/</span><span class="n">H</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">vbar_si</span> <span class="o">=</span> <span class="o">-</span><span class="n">D</span><span class="o">/</span><span class="n">H</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">ubar_proj</span> <span class="o">=</span> <span class="p">(</span><span class="n">ubar</span><span class="o">-</span><span class="n">ubar_si</span><span class="p">)</span><span class="o">*</span><span class="n">xsi</span><span class="o">*</span><span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">vbar_proj</span> <span class="o">=</span> <span class="p">(</span><span class="n">vbar</span><span class="o">-</span><span class="n">vbar_si</span><span class="p">)</span><span class="o">*</span><span class="n">xsi</span><span class="o">*</span><span class="n">dx</span>
+
+    <span class="c1"># mass term :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">m</span>  <span class="o">=</span> <span class="n">dH</span><span class="o">*</span><span class="n">xsi</span><span class="o">*</span><span class="n">dx</span>
+    
+    <span class="c1"># residual :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">R_thick</span> <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">H</span><span class="o">-</span><span class="n">H0</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">xsi</span> <span class="o">*</span> <span class="n">dx</span> \
+                   <span class="o">+</span> <span class="n">D</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">S</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">xsi</span><span class="p">))</span> <span class="o">*</span> <span class="n">dx</span> \
+                   <span class="o">+</span> <span class="p">(</span><span class="n">Dx</span><span class="p">(</span><span class="n">ubar_c</span><span class="o">*</span><span class="n">H</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">Dx</span><span class="p">(</span><span class="n">vbar_c</span><span class="o">*</span><span class="n">H</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">xsi</span> <span class="o">*</span> <span class="n">dx</span> \
+                   <span class="o">-</span> <span class="n">ring_S</span> <span class="o">*</span> <span class="n">xsi</span> <span class="o">*</span> <span class="n">dx</span>
+
+    <span class="c1"># Jacobian :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">J_thick</span> <span class="o">=</span> <span class="n">derivative</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_thick</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">dH</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">bc</span> <span class="o">=</span> <span class="p">[]</span><span class="c1">#NOTE ? DirichletBC(Q, thklim, &#39;on_boundary&#39;) ? maybe ?</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">bc</span> <span class="o">=</span> <span class="p">[</span><span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">thklim</span><span class="p">,</span> <span class="s1">&#39;on_boundary&#39;</span><span class="p">)]</span>
+   
+    <span class="c1"># create solver for the problem : </span>
+    <span class="n">problem</span> <span class="o">=</span> <span class="n">NonlinearVariationalProblem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_thick</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">H</span><span class="p">,</span> 
+                <span class="n">J</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">J_thick</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bc</span><span class="p">)</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">H_min</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">H_max</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="n">NonlinearVariationalSolver</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span>
+
+<div class="viewcode-block" id="MassHybrid.get_solve_params"><a class="viewcode-back" href="../mass.html#mass.MassHybrid.get_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">get_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the solve parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span></div>
+
+<div class="viewcode-block" id="MassHybrid.default_ffc_options"><a class="viewcode-back" href="../mass.html#mass.MassHybrid.default_ffc_options">[docs]</a>  <span class="k">def</span> <span class="nf">default_ffc_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default ffc options that yield good performance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#ffc_options = {&quot;optimize&quot;               : True,</span>
+    <span class="c1">#               &quot;eliminate_zeros&quot;        : True,</span>
+    <span class="c1">#               &quot;precompute_basis_const&quot; : True,</span>
+    <span class="c1">#               &quot;precompute_ip_const&quot;    : True}</span>
+    <span class="n">ffc_options</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">ffc_options</span></div>
+  
+<div class="viewcode-block" id="MassHybrid.default_solve_params"><a class="viewcode-back" href="../mass.html#mass.MassHybrid.default_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">default_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default solver parameters that yield good performance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nparams</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;nonlinear_solver&#39;</span> <span class="p">:</span> <span class="s1">&#39;snes&#39;</span><span class="p">,</span>
+               <span class="s1">&#39;snes_solver&#39;</span>      <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;method&#39;</span>                  <span class="p">:</span> <span class="s1">&#39;vinewtonrsls&#39;</span><span class="p">,</span>
+                                     <span class="s1">&#39;linear_solver&#39;</span>           <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">,</span>
+                                     <span class="s1">&#39;relative_tolerance&#39;</span>      <span class="p">:</span> <span class="mf">1e-6</span><span class="p">,</span>
+                                     <span class="s1">&#39;absolute_tolerance&#39;</span>      <span class="p">:</span> <span class="mf">1e-6</span><span class="p">,</span>
+                                     <span class="s1">&#39;maximum_iterations&#39;</span>      <span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                                     <span class="s1">&#39;error_on_nonconvergence&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                                     <span class="s1">&#39;report&#39;</span>                  <span class="p">:</span> <span class="kc">True</span><span class="p">}}</span>
+    <span class="n">m_params</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solver&#39;</span>      <span class="p">:</span> <span class="n">nparams</span><span class="p">,</span>
+                 <span class="s1">&#39;ffc_params&#39;</span>  <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_ffc_options</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="n">m_params</span></div>
+
+<div class="viewcode-block" id="MassHybrid.solve"><a class="viewcode-back" href="../mass.html#mass.MassHybrid.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solves for hybrid conservation of mass.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span>
+
+    <span class="c1"># find corrective velocities :</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving for corrective velocities :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ubar_proj</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">ubar_c</span><span class="p">,</span>
+          <span class="n">solver_parameters</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span><span class="p">:</span><span class="s1">&#39;mumps&#39;</span><span class="p">},</span>
+          <span class="n">form_compiler_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;ffc_params&#39;</span><span class="p">],</span>
+          <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">vbar_proj</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">vbar_c</span><span class="p">,</span>
+          <span class="n">solver_parameters</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span><span class="p">:</span><span class="s1">&#39;mumps&#39;</span><span class="p">},</span>
+          <span class="n">form_compiler_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;ffc_params&#39;</span><span class="p">],</span>
+          <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ubar_c</span><span class="p">,</span> <span class="s1">&#39;ubar_c&#39;</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">vbar_c</span><span class="p">,</span> <span class="s1">&#39;vbar_c&#39;</span><span class="p">)</span>
+
+    <span class="c1"># SOLVE MASS CONSERVATION bounded by (H_max, H_min) :</span>
+    <span class="n">meth</span>   <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;snes_solver&#39;</span><span class="p">][</span><span class="s1">&#39;method&#39;</span><span class="p">]</span>
+    <span class="n">maxit</span>  <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;snes_solver&#39;</span><span class="p">][</span><span class="s1">&#39;maximum_iterations&#39;</span><span class="p">]</span>
+    <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;::: solving &#39;MassTransportHybrid&#39; using method &#39;</span><span class="si">%s</span><span class="s2">&#39; with </span><span class="si">%i</span><span class="s2"> &quot;</span> <span class="o">+</span> \
+             <span class="s2">&quot;max iterations :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">meth</span><span class="p">,</span> <span class="n">maxit</span><span class="p">),</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+   
+    <span class="c1"># define variational solver for the mass problem :</span>
+    <span class="c1">#p = NonlinearVariationalProblem(self.R_thick, model.H, J=self.J_thick,</span>
+    <span class="c1">#      bcs=self.bc, form_compiler_parameters=params[&#39;ffc_params&#39;])</span>
+    <span class="c1">#p.set_bounds(model.H_min, model.H_max)</span>
+    <span class="c1">#s = NonlinearVariationalSolver(p)</span>
+    <span class="c1">#s.parameters.update(params[&#39;solver&#39;])</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">H</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># update previous time step&#39;s H :</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">H</span><span class="p">)</span>
+    
+    <span class="c1"># update the surface :</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: updating surface :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">B_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+    <span class="n">H_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+    <span class="n">S_v</span> <span class="o">=</span> <span class="n">B_v</span> <span class="o">+</span> <span class="n">H_v</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="n">S_v</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">out</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="FirnMass"><a class="viewcode-back" href="../mass.html#mass.FirnMass">[docs]</a><span class="k">class</span> <span class="nc">FirnMass</span><span class="p">(</span><span class="n">Mass</span><span class="p">):</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING FIRN MASS-BALANCE PHYSICS :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D1Model</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; FirnMass REQUIRES A &#39;D1Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FirnMass.solve"><a class="viewcode-back" href="../mass.html#mass.FirnMass.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If conserving the mass of the firn column, calculate height of each </span>
+<span class="sd">    interval :</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+    <span class="n">zOld</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">z</span>
+    <span class="n">lnew</span>   <span class="o">=</span> <span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">lini</span><span class="p">)</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">rhoin</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">rhop</span>
+    <span class="n">zSum</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">zNew</span>   <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">n</span><span class="p">):</span>
+      <span class="n">zNew</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>  <span class="o">=</span> <span class="n">zSum</span> <span class="o">+</span> <span class="n">lnew</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+      <span class="n">zSum</span>    <span class="o">+=</span> <span class="n">lnew</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">z</span>    <span class="o">=</span> <span class="n">zNew</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">l</span>    <span class="o">=</span> <span class="n">lnew</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">mp</span>   <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">zNew</span> <span class="o">-</span> <span class="n">zOld</span><span class="p">)</span> <span class="o">/</span> <span class="n">model</span><span class="o">.</span><span class="n">dt</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">lnew</span> <span class="o">=</span> <span class="n">lnew</span>
+    
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">m_1</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">m</span><span class="p">,</span>   <span class="n">model</span><span class="o">.</span><span class="n">mp</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">][</span><span class="n">model</span><span class="o">.</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">z</span> <span class="c1"># update the mesh coor</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">bounding_box_tree</span><span class="p">()</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="p">)</span>     <span class="c1"># rebuild the mesh tree</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

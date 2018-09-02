@@ -21,12 +21,16 @@ import sys
 sys.path.insert(0, os.path.abspath('../cslvr/'))
 
 # -- General configuration ------------------------------------------------
-
-intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
-                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-                       'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'matplotlib': ('http://matplotlib.sourceforge.net/', None),
-                       'pyproj': ('https://jswhit.github.io/pyproj/', None)}
+intersphinx_mapping = \
+{
+  'python'    : ('http://docs.python.org/2.7', None),
+  'numpy'     : ('http://docs.scipy.org/doc/numpy/', None),
+  'scipy'     : ('http://docs.scipy.org/doc/scipy/reference/', None),
+  'matplotlib': ('http://matplotlib.sourceforge.net/', None),
+  'dolfin'    : ('https://fenics.readthedocs.io/en/latest/', None),
+  'ufl'       : ('https://fenics.readthedocs.io/projects/ufl/en/latest/', None),
+  'pyproj': ('https://jswhit.github.io/pyproj/', None)
+}
 # If your documentation needs a minimal Sphinx version, state it here.
 #
 # needs_sphinx = '1.0'
@@ -90,15 +94,15 @@ master_doc = 'index'
 
 # General information about the project.
 project   = u'CSLVR'
-copyright = u'2016, Evan M. Cummings'
-author    = u'Evan M. Cummings'
+copyright = u'2018, Evan M. Cummings'
+author    = u'author = Evan Cummings, Douglas Brinkerhoff, Jesse Johnson'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = u'2016'
+version = u'2017'
 # The full version, including alpha/beta/rc tags.
 #release = u'2016.1.0'
 

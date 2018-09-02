@@ -1,0 +1,677 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Momentum balance &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Mass balance" href="mass.html" />
+    <link rel="prev" title="The Physics classes" href="physics.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Momentum balance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#full-stokes">Full-Stokes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reformulated-stokes">Reformulated-Stokes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#first-order">First-order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hybrid">Hybrid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plane-strain">Plane-strain</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Momentum balance</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/momentum.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="momentum-balance">
+<h1>Momentum balance<a class="headerlink" href="#momentum-balance" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="full-stokes">
+<h2>Full-Stokes<a class="headerlink" href="#full-stokes" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="momentumstokes.MomentumDukowiczStokes">
+<em class="property">class </em><code class="descclassname">momentumstokes.</code><code class="descname">MomentumDukowiczStokes</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.deviatoric_stress_tensor">
+<code class="descname">deviatoric_stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.deviatoric_stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.deviatoric_stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the deviatoric stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.effective_strain_rate">
+<code class="descname">effective_strain_rate</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.effective_strain_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.effective_strain_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the effective strain rate squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.effective_stress">
+<code class="descname">effective_stress</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.effective_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.effective_stress" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the effective stress squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the unknown Function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.get_residual">
+<code class="descname">get_residual</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.get_residual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.get_residual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the momentum residual.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Here we set up the problem, and do all of the differentiation and
+memory allocation type stuff.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Newton solve of the full-Stokes equations</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.strain_rate_tensor">
+<code class="descname">strain_rate_tensor</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.strain_rate_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.strain_rate_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the strain-rate tensor of self.U.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.stress_tensor">
+<code class="descname">stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>p</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the Cauchy stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokes.velocity">
+<code class="descname">velocity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokes.velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokes.velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the velocity.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="reformulated-stokes">
+<h2>Reformulated-Stokes<a class="headerlink" href="#reformulated-stokes" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced">
+<em class="property">class </em><code class="descclassname">momentumstokes.</code><code class="descname">MomentumDukowiczStokesReduced</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.deviatoric_stress_tensor">
+<code class="descname">deviatoric_stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.deviatoric_stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.deviatoric_stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the Cauchy stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.effective_strain_rate">
+<code class="descname">effective_strain_rate</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.effective_strain_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.effective_strain_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the effective strain rate squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.effective_stress">
+<code class="descname">effective_stress</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.effective_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.effective_stress" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the effective stress squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the unknown Function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.get_residual">
+<code class="descname">get_residual</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.get_residual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.get_residual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the momentum residual.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Here we set up the problem, and do all of the differentiation and
+memory allocation type stuff.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Newton solve of the reduced full-Stokes equations</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.solve_vert_velocity">
+<code class="descname">solve_vert_velocity</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.solve_vert_velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.solve_vert_velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for vertical velocity w.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.strain_rate_tensor">
+<code class="descname">strain_rate_tensor</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.strain_rate_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.strain_rate_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the strain-rate tensor for the velocity &lt;U&gt;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.stress_tensor">
+<code class="descname">stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>p</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the BP Cauchy stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumstokes.MomentumDukowiczStokesReduced.velocity">
+<code class="descname">velocity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumstokes.html#MomentumDukowiczStokesReduced.velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumstokes.MomentumDukowiczStokesReduced.velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the velocity.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="first-order">
+<h2>First-order<a class="headerlink" href="#first-order" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="momentumbp.MomentumBP">
+<em class="property">class </em><code class="descclassname">momentumbp.</code><code class="descname">MomentumBP</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="momentumbp.MomentumBP.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.effective_strain_rate">
+<code class="descname">effective_strain_rate</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.effective_strain_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.effective_strain_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the BP effective strain rate squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the unknown <code class="xref py py-class docutils literal notranslate"><span class="pre">dolfin.Function</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.get_residual">
+<code class="descname">get_residual</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.get_residual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.get_residual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the momentum residual.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes the class’s variables to default values that are then set
+by the individually created model.</p>
+<p>Initilize the residuals and Jacobian for the momentum equations.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.quasi_strain_rate_tensor">
+<code class="descname">quasi_strain_rate_tensor</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.quasi_strain_rate_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.quasi_strain_rate_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the Dukowicz 2011 quasi-strain tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.quasi_stress_tensor">
+<code class="descname">quasi_stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.quasi_stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.quasi_stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the Dukowicz 2011 quasi-stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Newton solve of the first order equations</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.solve_pressure">
+<code class="descname">solve_pressure</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.solve_pressure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.solve_pressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the BP pressure ‘p’.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.solve_vert_velocity">
+<code class="descname">solve_vert_velocity</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.solve_vert_velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.solve_vert_velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Newton solve of the first order equations</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.strain_rate_tensor">
+<code class="descname">strain_rate_tensor</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.strain_rate_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.strain_rate_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the ‘Blatter-Pattyn’ simplified strain-rate tensor of &lt;U&gt;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.stress_tensor">
+<code class="descname">stress_tensor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the BP Cauchy stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumbp.MomentumBP.velocity">
+<code class="descname">velocity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumbp.html#MomentumBP.velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumbp.MomentumBP.velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the velocity.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="hybrid">
+<h2>Hybrid<a class="headerlink" href="#hybrid" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="momentumhybrid.MomentumHybrid">
+<em class="property">class </em><code class="descclassname">momentumhybrid.</code><code class="descname">MomentumHybrid</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>2D hybrid model.</p>
+<p>Original author: Doug Brinkerhoff: <a class="reference external" href="https://dbrinkerhoff.org/">https://dbrinkerhoff.org/</a></p>
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.default_ffc_options">
+<code class="descname">default_ffc_options</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.default_ffc_options"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.default_ffc_options" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default ffc options that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.form_obj_ftn">
+<code class="descname">form_obj_ftn</code><span class="sig-paren">(</span><em>integral</em>, <em>kind='log'</em>, <em>g1=0.01</em>, <em>g2=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.form_obj_ftn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.form_obj_ftn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forms and returns an objective functional for use with adjoint.
+Saves to self.J.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.get_Lam">
+<code class="descname">get_Lam</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.get_Lam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.get_Lam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the adjoint function for U.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.get_Phi">
+<code class="descname">get_Phi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.get_Phi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.get_Phi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the test function for U.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the velocity Function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.get_dU">
+<code class="descname">get_dU</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.get_dU"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.get_dU" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the trial function for U.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.get_residual">
+<code class="descname">get_residual</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.get_residual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.get_residual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the momentum residual.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>isothermal=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Here we set up the problem, and do all of the differentiation and
+memory allocation type stuff.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumhybrid.MomentumHybrid.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumhybrid.html#MomentumHybrid.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumhybrid.MomentumHybrid.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solves for hybrid velocity.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="plane-strain">
+<h2>Plane-strain<a class="headerlink" href="#plane-strain" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain">
+<em class="property">class </em><code class="descclassname">momentumplanestrain.</code><code class="descname">MomentumDukowiczPlaneStrain</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.calc_q_fric">
+<code class="descname">calc_q_fric</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.calc_q_fric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.calc_q_fric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the friction heat term stored in model.q_fric.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.deviatoric_stress_tensor">
+<code class="descname">deviatoric_stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.deviatoric_stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.deviatoric_stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the deviatoric stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.effective_strain_rate">
+<code class="descname">effective_strain_rate</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.effective_strain_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.effective_strain_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the effective strain rate squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.effective_stress">
+<code class="descname">effective_stress</code><span class="sig-paren">(</span><em>U</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.effective_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.effective_stress" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the effective stress squared.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the unknown Function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.get_residual">
+<code class="descname">get_residual</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.get_residual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.get_residual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the momentum residual.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.initialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Newton solve of the full-Stokes equations</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.strain_rate_tensor">
+<code class="descname">strain_rate_tensor</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.strain_rate_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.strain_rate_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the strain-rate tensor of self.U.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.stress_tensor">
+<code class="descname">stress_tensor</code><span class="sig-paren">(</span><em>U</em>, <em>p</em>, <em>eta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.stress_tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.stress_tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the Cauchy stress tensor.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentumplanestrain.MomentumDukowiczPlaneStrain.velocity">
+<code class="descname">velocity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentumplanestrain.html#MomentumDukowiczPlaneStrain.velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentumplanestrain.MomentumDukowiczPlaneStrain.velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the velocity.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="mass.html" class="btn btn-neutral float-right" title="Mass balance" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="physics.html" class="btn btn-neutral" title="The Physics classes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

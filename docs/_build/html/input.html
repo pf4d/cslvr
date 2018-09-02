@@ -1,0 +1,865 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Input &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Output" href="output.html" />
+    <link rel="prev" title="Hello CSLVR" href="get_started.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Input</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-helper">Downloading data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#accessing-downloaded-data-the-datafactory-class">Accessing downloaded data : the DataFactory class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-meshfactory">Accessing pre-built meshes : the MeshFactory class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#converting-data-to-cslvr-format-the-datainput-class">Converting data to CSLVR format : the DataInput class</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Input</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/input.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="input">
+<h1>Input<a class="headerlink" href="#input" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-helper">
+<span id="downloading-data"></span><h2>Downloading data<a class="headerlink" href="#module-helper" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="helper.download_file">
+<code class="descclassname">helper.</code><code class="descname">download_file</code><span class="sig-paren">(</span><em>url</em>, <em>direc</em>, <em>folder</em>, <em>extract=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/helper.html#download_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#helper.download_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download a file with url string <code class="docutils literal notranslate"><span class="pre">url</span></code> into directory <code class="docutils literal notranslate"><span class="pre">direc/folder</span></code>.
+If <code class="docutils literal notranslate"><span class="pre">extract</span> <span class="pre">==</span> <span class="pre">True</span></code>, extract the .zip or tar.gz file into the directory 
+and delete the .zip or tar.gz file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>url</strong> (<em>string</em>) – the URL of the file you want to download</li>
+<li><strong>direc</strong> (<em>string</em>) – the directory relative to the script where you want to save</li>
+<li><strong>folder</strong> (<em>string</em>) – a folder in directory <code class="docutils literal notranslate"><span class="pre">direc</span></code> you want to save into</li>
+<li><strong>extract</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – if the file is compressed as zip or tar.gz, extract it</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="accessing-downloaded-data-the-datafactory-class">
+<h2>Accessing downloaded data : the DataFactory class<a class="headerlink" href="#accessing-downloaded-data-the-datafactory-class" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="datafactory.DataFactory">
+<em class="property">class </em><code class="descclassname">datafactory.</code><code class="descname">DataFactory</code><a class="reference internal" href="_modules/datafactory.html#DataFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class contains several static methods that fetch and return raw data
+downloaded prevously by <a class="reference internal" href="#helper.download_file" title="helper.download_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">download_file()</span></code></a>.  These data are 
+located in the <code class="docutils literal notranslate"><span class="pre">data/continent</span></code> subdirectory of the CSLVR root directory, 
+where <code class="docutils literal notranslate"><span class="pre">continent</span></code> is currently either <code class="docutils literal notranslate"><span class="pre">antarctica</span></code> or <code class="docutils literal notranslate"><span class="pre">greenland</span></code>.</p>
+<p>Each one of the static methods defined here return a <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a> of 
+parameters needed by the <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> class for conversion
+to the FEniCS code used by CSLVR.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">pyproj_Proj</span></code>        – the geographical projection <code class="xref py py-class docutils literal notranslate"><span class="pre">Proj</span></code> instance associated with this data</li>
+<li><code class="docutils literal notranslate"><span class="pre">map_western_edge</span></code>   – the Western-most edge of the data in projection coordinates</li>
+<li><code class="docutils literal notranslate"><span class="pre">map_eastern_edge</span></code>   – the Eastern-most edge of the data in projection coordinates</li>
+<li><code class="docutils literal notranslate"><span class="pre">map_southern_edge</span></code>  – the Southern-most edge of the data in projection coordinates</li>
+<li><code class="docutils literal notranslate"><span class="pre">map_northern_edge</span></code>  – the Northern-most edge of the data in projection coordinates</li>
+<li><code class="docutils literal notranslate"><span class="pre">nx</span></code>                 – the number of x divisions of the data</li>
+<li><code class="docutils literal notranslate"><span class="pre">ny</span></code>                 – the number of y divisions of the data</li>
+<li><code class="docutils literal notranslate"><span class="pre">dataset</span></code>            – the name of the dataset</li>
+<li><code class="docutils literal notranslate"><span class="pre">continent</span></code>          – the continent of the datset</li>
+</ul>
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_ant_measures">
+<em class="property">static </em><code class="descname">get_ant_measures</code><span class="sig-paren">(</span><em>res=450</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_ant_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_ant_measures" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference external" href="https://nsidc.org/data/docs/measures/nsidc0484_rignot/">Antarctica Measures</a> surface velocity data.  This function creates a new data field with
+key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present and 
+0 where they are not.</p>
+<p>You will have to download the data and manually place it in the 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/antarctica</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">vx</span></code>  – <span class="math notranslate nohighlight">\(x\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">vy</span></code>  – <span class="math notranslate nohighlight">\(y\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">v_err</span></code>  – velocity error</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – observation mask</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>res</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – resolution of the data, may be either 450 or 900</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_bamber">
+<em class="property">static </em><code class="descname">get_bamber</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bamber"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bamber" title="Permalink to this definition">¶</a></dt>
+<dd><p>Greenland <a class="reference external" href="https://nsidc.org/data/NSIDC-0092">Bamber</a> topography data.</p>
+<p>You will have to download the data from the authors and manually place 
+it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code>  – basal topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – surface topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">H</span></code>  – ice thickness</li>
+<li><code class="docutils literal notranslate"><span class="pre">Herr</span></code>  – ice thickness error</li>
+<li><code class="docutils literal notranslate"><span class="pre">Bo</span></code> – basal topography height before imposing <code class="docutils literal notranslate"><span class="pre">thklim</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – ice shelf mask (1 where shelves, 0 where grounded)</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask_orig</span></code> – original ice mask from the data</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>thklim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – minimum-allowed ice thickness</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_bedmachine">
+<em class="property">static </em><code class="descname">get_bedmachine</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bedmachine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bedmachine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Greenland <a class="reference external" href="http://onlinelibrary.wiley.com/doi/10.1002/2017GL074954/full">Bedmachine</a> geometry.</p>
+<p>You will have to download the data and manually
+(from <a class="reference external" href="https://nsidc.org/data/idbmg4">here</a>)
+and place it in the 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code>  – basal topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – surface topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">H</span></code>  – ice thickness</li>
+<li><code class="docutils literal notranslate"><span class="pre">Bo</span></code> – basal topography height before imposing <code class="docutils literal notranslate"><span class="pre">thklim</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – ice shelf mask (1 where shelves, 0 where grounded)</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask_orig</span></code> – original ice mask from the data</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>thklim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – minimum-allowed ice thickness</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_bedmap1">
+<em class="property">static </em><code class="descname">get_bedmap1</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bedmap1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bedmap1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Antarctica <a class="reference external" href="https://doi.pangaea.de/10.1594/PANGAEA.734145">Bedmap 1</a>
+data.  This function converts the geothermal-heat flux data from 
+J s<sup>-1</sup> m<sup>-2</sup> to that used by CSLVR, 
+J a<sup>-1</sup> m<sup>-2</sup>, and the surface temperature data from 
+degrees Celsius to degrees Kelvin.  The parameter <code class="docutils literal notranslate"><span class="pre">thklim</span></code> sets the 
+minimum allowed ice thickness.</p>
+<p>This data is downloaded by executing the script 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_antarctica_data.py</span></code></p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code>  – basal topography</li>
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – surface topography</li>
+<li><code class="docutils literal notranslate"><span class="pre">T</span></code>  – surface temperature</li>
+<li><code class="docutils literal notranslate"><span class="pre">acca</span></code> – accumulation/ablation function “a”</li>
+<li><code class="docutils literal notranslate"><span class="pre">accr</span></code> – accumulation/ablation function “r”</li>
+<li><code class="docutils literal notranslate"><span class="pre">ghffm</span></code> – Fox-Maule geothermal-heat flux</li>
+<li><code class="docutils literal notranslate"><span class="pre">ghfsr</span></code> – Shapiro-Ritzwoller geothermal-heat flux</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>thklim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – minimum-allowed ice thickness</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_bedmap2">
+<em class="property">static </em><code class="descname">get_bedmap2</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bedmap2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bedmap2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Antarctica <a class="reference external" href="https://www.bas.ac.uk/project/bedmap-2/">Bedmap 2</a>
+topography data.</p>
+<p>This data is downloaded by executing the script 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_antarctica_data.py</span></code></p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code>  – basal topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – surface topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">H</span></code>  – ice thickness</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – ice shelf mask</li>
+<li><code class="docutils literal notranslate"><span class="pre">rock_mask</span></code> – rock outcrop mask</li>
+<li><code class="docutils literal notranslate"><span class="pre">b_uncert</span></code> – basal-topography uncertainty</li>
+<li><code class="docutils literal notranslate"><span class="pre">coverage</span></code> – is a binary grid showing the distribution of ice thickness data used in the grid of ice thickness</li>
+<li><code class="docutils literal notranslate"><span class="pre">gl04c_WGS84</span></code> – gives the values (as floating point) used to convert from heights relative to WGS84 datum to heights relative to EIGEN-GL04C geoid (to convert back to WGS84, add this grid)</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>thklim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – minimum-allowed ice thickness</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_gimp">
+<em class="property">static </em><code class="descname">get_gimp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_gimp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_gimp" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference external" href="http://nsidc.org/data/NSIDC-0645/versions/1">Greenland Ice Mapping Project</a>
+surface topography data.</p>
+<p>You will have to download the data and manually place it in the 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – surface topography height</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_gre_measures">
+<em class="property">static </em><code class="descname">get_gre_measures</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_gre_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_gre_measures" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference external" href="https://nsidc.org/data/NSIDC-0478/versions/2#">Greenland Measures</a> 
+surface velocity data.  This function creates a new data field with 
+key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present 
+and 0 where they are not.</p>
+<p>You will have to download the data from the authors and manually place 
+it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">vx</span></code>  – <span class="math notranslate nohighlight">\(x\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">vy</span></code>  – <span class="math notranslate nohighlight">\(y\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">ex</span></code>  – <span class="math notranslate nohighlight">\(x\)</span>-component of velocity error</li>
+<li><code class="docutils literal notranslate"><span class="pre">ey</span></code>  – <span class="math notranslate nohighlight">\(y\)</span>-component of velocity error</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – observation mask</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_gre_qgeo_fox_maule">
+<em class="property">static </em><code class="descname">get_gre_qgeo_fox_maule</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_gre_qgeo_fox_maule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_gre_qgeo_fox_maule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Greenland <a class="reference external" href="http://websrv.cs.umt.edu/isis/index.php/Greenland_Basal_Heat_Flux">Fox Maule</a> geothermal-heat-flux data.  This function converts the 
+geothermal-heat flux data from J s<sup>-1</sup> m<sup>-2</sup> to that used 
+by CSLVR, J a<sup>-1</sup> m<sup>-2</sup>.</p>
+<p>This data is downloaded by executing the script 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_greenland_data.py</span></code></p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">q_geo</span></code> – geothermal-heat flux</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_mouginot">
+<em class="property">static </em><code class="descname">get_mouginot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_mouginot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_mouginot" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference external" href="http://www.mdpi.com/2072-4292/9/4/364">Greenland</a> velocity mosiac.
+This function creates a new data field with
+key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present and 
+0 where they are not.</p>
+<p>You will have to contact the authors of that paper to get the data.
+When you download it from them, you can just put the .nc file named
+<code class="docutils literal notranslate"><span class="pre">Greenland_ice_speed_v2017.nc</span></code> in the <code class="docutils literal notranslate"><span class="pre">root_dir/data/greenland</span></code>
+directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">vx</span></code>  – <span class="math notranslate nohighlight">\(x\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">vy</span></code>  – <span class="math notranslate nohighlight">\(y\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – observation mask</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_noel">
+<em class="property">static </em><code class="descname">get_noel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_noel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_noel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Greenland <a class="reference external" href="https://www.the-cryosphere.net/10/2361/2016/">surface-mass balance</a> at 1km resolution averaged over the years (1958 – 2015).</p>
+<p>You will have to download the data from the authors and manually place 
+it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – surface topography height</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – ice shelf mask (1 where ice, 0 where no ice)</li>
+<li><code class="docutils literal notranslate"><span class="pre">smb</span></code> – surface-mass balance in m.i.e. a^{-1}.</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>thklim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – minimum-allowed ice thickness</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_rignot">
+<em class="property">static </em><code class="descname">get_rignot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_rignot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_rignot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Greenland <a class="reference external" href="http://www.ess.uci.edu/group/erignot/data/ice-flow-greenland-international-polar-year-2008%E2%80%932009">Rignot</a> surface velocity data. 
+This function creates a new data field with key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where
+velocity measurements are present and 0 where they are not.</p>
+<p>You will have to download the data from the authors and manually place 
+it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">vx</span></code>  – <span class="math notranslate nohighlight">\(x\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">vy</span></code>  – <span class="math notranslate nohighlight">\(y\)</span>-component of velocity</li>
+<li><code class="docutils literal notranslate"><span class="pre">v_err</span></code>  – velocity error</li>
+<li><code class="docutils literal notranslate"><span class="pre">mask</span></code> – observation mask</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="datafactory.DataFactory.get_searise">
+<em class="property">static </em><code class="descname">get_searise</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_searise"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_searise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Greenland <a class="reference external" href="http://websrv.cs.umt.edu/isis/index.php/Present_Day_Greenland">Searise</a> data.</p>
+<p>This function converts the geothermal-heat flux data from J s<sup>-1</sup> m<sup>-2</sup> to that used by CSLVR, J a<sup>-1</sup> m<sup>-2</sup>, and the surface temperature data from degrees Celsius to degrees Kelvin.</p>
+<p>This data is downloaded by executing the script 
+<code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_greenland_data.py</span></code></p>
+<p>The keys of the dictionary returned by this function are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code> – basal surface height</li>
+<li><code class="docutils literal notranslate"><span class="pre">S</span></code>  – upper surface height</li>
+<li><code class="docutils literal notranslate"><span class="pre">T</span></code> – surface temperature</li>
+<li><code class="docutils literal notranslate"><span class="pre">lat</span></code> – grid latitude</li>
+<li><code class="docutils literal notranslate"><span class="pre">lon</span></code> – grid longitude</li>
+<li><code class="docutils literal notranslate"><span class="pre">adot</span></code>  – accumulation/ablation function</li>
+<li><code class="docutils literal notranslate"><span class="pre">q_geo</span></code> – geothermal-heat flux</li>
+<li><code class="docutils literal notranslate"><span class="pre">dhdt</span></code> – suface height rate of change</li>
+<li><code class="docutils literal notranslate"><span class="pre">U_sar</span></code> – surface velocity magnitude</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-meshfactory">
+<span id="accessing-pre-built-meshes-the-meshfactory-class"></span><h2>Accessing pre-built meshes : the MeshFactory class<a class="headerlink" href="#module-meshfactory" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="converting-data-to-cslvr-format-the-datainput-class">
+<h2>Converting data to CSLVR format : the DataInput class<a class="headerlink" href="#converting-data-to-cslvr-format-the-datainput-class" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="inputoutput.DataInput">
+<em class="property">class </em><code class="descclassname">inputoutput.</code><code class="descname">DataInput</code><span class="sig-paren">(</span><em>di</em>, <em>mesh=None</em>, <em>order=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is used as a container for all geographical and geological data
+used by CSLVR, and posseses the ability to</p>
+<ol class="arabic simple">
+<li>Remove rows or columns in sets that are entirely composed of <code class="docutils literal notranslate"><span class="pre">nan</span></code>’s (done automatically).</li>
+<li>Convert projections between datasets.</li>
+<li>Generate <code class="xref py py-class docutils literal notranslate"><span class="pre">Expression</span></code> objects to be used by <a class="reference internal" href="model.html#model.Model" title="model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></a> instances</li>
+</ol>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>di</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – dictionary of data returned by one of the functions of <a class="reference internal" href="#datafactory.DataFactory" title="datafactory.DataFactory"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataFactory</span></code></a></li>
+<li><strong>mesh</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code>) – finite-element mesh to use for generation of <code class="xref py py-class docutils literal notranslate"><span class="pre">Expression</span></code>’s, if desired</li>
+<li><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – if a mesh is used, this defines the order of the finite-element basis used by <a class="reference internal" href="#inputoutput.DataInput.get_expression" title="inputoutput.DataInput.get_expression"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_expression()</span></code></a></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>A number of class variables are generated by the instantiation of this 
+class which may be useful.  These are:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.data</span></code> – dict of data associated with <a class="reference internal" href="#datafactory.DataFactory" title="datafactory.DataFactory"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataFactory</span></code></a> dict <code class="docutils literal notranslate"><span class="pre">di</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.proj</span></code> – projection <code class="xref py py-class docutils literal notranslate"><span class="pre">Proj</span></code></li>
+</ul>
+<p>Data projection <span class="math notranslate nohighlight">\(x,y\)</span> coordinates :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.x</span></code> – <code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code> of data grid <span class="math notranslate nohighlight">\(x\)</span>-coordinates</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.y</span></code> – <code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code> of data grid <span class="math notranslate nohighlight">\(y\)</span>-coordinates</li>
+</ul>
+<dl class="method">
+<dt id="inputoutput.DataInput.change_projection">
+<code class="descname">change_projection</code><span class="sig-paren">(</span><em>di</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.change_projection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.change_projection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes the <code class="xref py py-class docutils literal notranslate"><span class="pre">Proj</span></code> of this data to that of the 
+<code class="docutils literal notranslate"><span class="pre">di</span></code> <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> object’s <code class="xref py py-class docutils literal notranslate"><span class="pre">Proj</span></code>.
+The works only if the object was created with the parameter
+<code class="docutils literal notranslate"><span class="pre">create_proj</span> <span class="pre">==</span> <span class="pre">True</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>di</strong> – the <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> which contains the projection you would like to convert to</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.get_expression">
+<code class="descname">get_expression</code><span class="sig-paren">(</span><em>fn</em>, <em>order=1</em>, <em>near=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.get_expression"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.get_expression" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a spline-interpolation expression for data with key <code class="docutils literal notranslate"><span class="pre">fn</span></code> with 
+order of approximation in <span class="math notranslate nohighlight">\(x\)</span> and <span class="math notranslate nohighlight">\(y\)</span> directions <code class="docutils literal notranslate"><span class="pre">order</span></code>.
+if <code class="docutils literal notranslate"><span class="pre">near</span> <span class="pre">==</span> <span class="pre">True</span></code>, use nearest-neighbor interpolation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fn</strong> (<em>string</em>) – key of data to form expression of</li>
+<li><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – order of the interpolation</li>
+<li><strong>near</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – use nearest-neighbor interpolation</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.get_xy">
+<code class="descname">get_xy</code><span class="sig-paren">(</span><em>lon</em>, <em>lat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.get_xy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.get_xy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the <span class="math notranslate nohighlight">\((x,y)\)</span> projection map coordinates corresponding to a 
+given (lon,lat) coordinate pair using this <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a>
+object’s current projection <code class="docutils literal notranslate"><span class="pre">self.proj</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>lon</strong> (float, <code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code>) – longitude coordinate(s)</li>
+<li><strong>lat</strong> (float, <code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code>) – latitude coordinate(s)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.interpolate_from_di">
+<code class="descname">interpolate_from_di</code><span class="sig-paren">(</span><em>di</em>, <em>fi</em>, <em>fo</em>, <em>order=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.interpolate_from_di"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.interpolate_from_di" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolates the data field with key <code class="docutils literal notranslate"><span class="pre">fi</span></code> of 
+another <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> object <code class="docutils literal notranslate"><span class="pre">di</span></code> to the grid used 
+by this object.  Saves the resulting interpolation within this object’s
+<code class="docutils literal notranslate"><span class="pre">self.data</span></code> dictionary with key <code class="docutils literal notranslate"><span class="pre">fo</span></code>.  Order may be any of:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">1</span></code>  – nearest-neighbor interpolation</li>
+<li><code class="docutils literal notranslate"><span class="pre">2</span></code>  – linear interpolation</li>
+<li><code class="docutils literal notranslate"><span class="pre">3</span></code>  – cubic interpolation</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>di</strong> (<a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a>) – the <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> to interpolate from</li>
+<li><strong>fi</strong> (<em>string</em>) – the key of the data to interpolate from.</li>
+<li><strong>fo</strong> (<em>string</em>) – the key to save the data within <code class="docutils literal notranslate"><span class="pre">self.data</span></code></li>
+<li><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – order of interpolation (see above).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.reduce_size_to_box">
+<code class="descname">reduce_size_to_box</code><span class="sig-paren">(</span><em>ll_lon</em>, <em>ll_lat</em>, <em>ur_lon</em>, <em>ur_lat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.reduce_size_to_box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.reduce_size_to_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reduce the size of the data to the box with lower-left-corner 
+coordinates (<code class="docutils literal notranslate"><span class="pre">ll_lon</span></code>, <code class="docutils literal notranslate"><span class="pre">ll_lat</span></code>) and upper-right-corner
+coordinates (<code class="docutils literal notranslate"><span class="pre">ur_lon</span></code>, <code class="docutils literal notranslate"><span class="pre">ur_lat</span></code>).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.rescale_field">
+<code class="descname">rescale_field</code><span class="sig-paren">(</span><em>fo</em>, <em>fn</em>, <em>umin</em>, <em>umax</em>, <em>inverse=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.rescale_field"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.rescale_field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rescale the data field of this instance with key <code class="docutils literal notranslate"><span class="pre">fo</span></code> to lower and 
+upper bound <code class="docutils literal notranslate"><span class="pre">umin</span></code>, <code class="docutils literal notranslate"><span class="pre">umax</span></code>, creating a new data field in the process
+with key <code class="docutils literal notranslate"><span class="pre">fn</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">inverse</span> <span class="pre">==</span> <span class="pre">True</span></code>, scale the data to the inverse of data <code class="docutils literal notranslate"><span class="pre">fo</span></code>,
+i.e., the smallest values become <code class="docutils literal notranslate"><span class="pre">umax</span></code>, and the largest become <code class="docutils literal notranslate"><span class="pre">umin</span></code>.</p>
+<p>This is useful, for example, when refining a mesh in areas where a 
+velocity field is of highest magnitude.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fo</strong> (<em>string</em>) – key of the data to rescale</li>
+<li><strong>fn</strong> (<em>string</em>) – key of the new rescaled data</li>
+<li><strong>umin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – minimum value to rescale</li>
+<li><strong>umax</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – maximum value to rescale</li>
+<li><strong>inverse</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – rescale the inverse of <code class="docutils literal notranslate"><span class="pre">fo</span></code> instead</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.set_data_max">
+<code class="descname">set_data_max</code><span class="sig-paren">(</span><em>fn</em>, <em>boundary</em>, <em>val</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.set_data_max"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.set_data_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all values of the array associated with this instance’s <code class="docutils literal notranslate"><span class="pre">self.data</span></code> 
+dictionary with key <code class="docutils literal notranslate"><span class="pre">fn</span></code> above <code class="docutils literal notranslate"><span class="pre">boundary</span></code> to value <code class="docutils literal notranslate"><span class="pre">val</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fn</strong> (<em>string</em>) – key of data array</li>
+<li><strong>boundary</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – boundary below which to assign</li>
+<li><strong>val</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – boundary to assign</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.set_data_min">
+<code class="descname">set_data_min</code><span class="sig-paren">(</span><em>fn</em>, <em>boundary</em>, <em>val</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.set_data_min"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.set_data_min" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all values of the array associated with this instance’s <code class="docutils literal notranslate"><span class="pre">self.data</span></code> 
+dictionary with key <code class="docutils literal notranslate"><span class="pre">fn</span></code> below <code class="docutils literal notranslate"><span class="pre">boundary</span></code> to value <code class="docutils literal notranslate"><span class="pre">val</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fn</strong> (<em>string</em>) – key of data array</li>
+<li><strong>boundary</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – boundary below which to assign</li>
+<li><strong>val</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – boundary to assign</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.set_data_val">
+<code class="descname">set_data_val</code><span class="sig-paren">(</span><em>fn</em>, <em>old_val</em>, <em>new_val</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.set_data_val"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.set_data_val" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all values of the array associated with this instance’s <code class="docutils literal notranslate"><span class="pre">self.data</span></code> 
+dictionary with key <code class="docutils literal notranslate"><span class="pre">fn</span></code> with value <code class="docutils literal notranslate"><span class="pre">old_val</span></code> to <code class="docutils literal notranslate"><span class="pre">new_val</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fn</strong> (<em>string</em>) – key of data array</li>
+<li><strong>old_val</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – the value to change</li>
+<li><strong>new_val</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a>) – the value to replace</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inputoutput.DataInput.transform_xy">
+<code class="descname">transform_xy</code><span class="sig-paren">(</span><em>di</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inputoutput.html#DataInput.transform_xy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inputoutput.DataInput.transform_xy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms the projection coordinates (<code class="docutils literal notranslate"><span class="pre">di.x</span></code>, <code class="docutils literal notranslate"><span class="pre">di.y</span></code>) of the 
+<a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> object <code class="docutils literal notranslate"><span class="pre">di</span></code> to the projection used
+by this <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a>’s.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>di</strong> – the <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> with projection coordinates to transform</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">tuple of converted coordinates</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="output.html" class="btn btn-neutral float-right" title="Output" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="get_started.html" class="btn btn-neutral" title="Hello CSLVR" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

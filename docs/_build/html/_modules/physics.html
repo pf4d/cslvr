@@ -1,0 +1,751 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>physics &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>physics</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for physics</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">dolfin_adjoint</span>    <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.helper</span>      <span class="k">import</span> <span class="n">raiseNotDefined</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">get_text</span><span class="p">,</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">import</span> <span class="nn">numpy</span>               <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span>   <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+
+<div class="viewcode-block" id="Physics"><a class="viewcode-back" href="../physics.html#physics.Physics">[docs]</a><span class="k">class</span> <span class="nc">Physics</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  This abstract class outlines the structure of a physics calculation.</span>
+
+<span class="sd">  :param model: the model instance for this physics problem</span>
+<span class="sd">  :type model:  :class:`~model.Model`</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates and returns a new Physics object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">instance</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">instance</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+    <span class="k">return</span> <span class="n">instance</span>
+  
+<div class="viewcode-block" id="Physics.color"><a class="viewcode-back" href="../physics.html#physics.Physics.color">[docs]</a>  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the default color for this class.</span>
+
+<span class="sd">    :rtype: string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s1">&#39;white&#39;</span></div>
+  
+<div class="viewcode-block" id="Physics.default_solve_params"><a class="viewcode-back" href="../physics.html#physics.Physics.default_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">default_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default solver parameters that yield good performance</span>
+
+<span class="sd">    :rtype: dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">params</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solver&#39;</span> <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">params</span></div>
+
+<div class="viewcode-block" id="Physics.form_reg_ftn"><a class="viewcode-back" href="../physics.html#physics.Physics.form_reg_ftn">[docs]</a>  <span class="k">def</span> <span class="nf">form_reg_ftn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">integral</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;TV&#39;</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Formulates a regularization functional for use </span>
+<span class="sd">    with optimization of the control parameter :math:`c` given by ``c`` </span>
+<span class="sd">    over the integral ``integral``.</span>
+
+<span class="sd">    The choices for ``kind`` are :</span>
+
+<span class="sd">    1. ``Tikhonov`` -- Tikhonov regularization</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} \nabla c \cdot \nabla c\ \mathrm{d}\Gamma</span>
+
+<span class="sd">    2. ``TV`` -- total variation regularization</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{R}(c) = \int_{\Gamma} \left( \nabla c \cdot \nabla c + c_0 \right)^{\frac{1}{2}}\ \mathrm{d}\Gamma,</span>
+
+<span class="sd">    3. ``square`` -- squared regularization</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} c^2\ \mathrm{d}\Gamma,</span>
+
+<span class="sd">    4. ``abs`` -- absolute regularization</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">    </span>
+<span class="sd">      \mathscr{R}(c) = \int_{\Gamma} |c|\ \mathrm{d}\Gamma,</span>
+
+<span class="sd">    :param c:         the control variable</span>
+<span class="sd">    :param integral:  measure over which to integrate </span>
+<span class="sd">                      (see :func:`~model.calculate_boundaries`)</span>
+<span class="sd">    :param kind:      kind of regularization to use</span>
+<span class="sd">    :type c:          :class:`dolfin.Function`</span>
+<span class="sd">    :type integral:   :class:`~helper.Boundary`</span>
+<span class="sd">    :type kind:       string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;::: forming &#39;</span><span class="si">%s</span><span class="s2">&#39; regularization functional for variable&quot;</span> <span class="o">+</span> \
+         <span class="s2">&quot; &#39;</span><span class="si">%s</span><span class="s2">&#39; integrated over the </span><span class="si">%s</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">integral</span><span class="o">.</span><span class="n">description</span><span class="p">),</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">dR</span> <span class="o">=</span> <span class="n">integral</span><span class="p">()</span>
+   
+    <span class="c1"># the various possible regularization types : </span>
+    <span class="n">kinds</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TV&#39;</span><span class="p">,</span> <span class="s1">&#39;Tikhonov&#39;</span><span class="p">,</span> <span class="s1">&#39;square&#39;</span><span class="p">,</span> <span class="s1">&#39;abs&#39;</span><span class="p">]</span>
+    
+    <span class="c1"># form regularization term &#39;R&#39; :</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kinds</span><span class="p">:</span>
+      <span class="n">s</span>    <span class="o">=</span>   <span class="s2">&quot;&gt;&gt;&gt; VALID REGULARIZATIONS ARE &#39;TV&#39;, &#39;Tikhonov&#39;, &#39;square&#39;,&quot;</span> <span class="o">+</span> \
+               <span class="s2">&quot; or &#39;abs&#39; &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;TV&#39;</span><span class="p">:</span>
+      <span class="n">R</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">*</span> <span class="n">dR</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;Tikhonov&#39;</span><span class="p">:</span>
+      <span class="n">R</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="o">*</span> <span class="n">dR</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;square&#39;</span><span class="p">:</span>
+      <span class="n">R</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">c</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dR</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;abs&#39;</span><span class="p">:</span>
+      <span class="n">R</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">dR</span>
+
+    <span class="k">return</span> <span class="n">R</span></div>
+
+<div class="viewcode-block" id="Physics.form_cost_ftn"><a class="viewcode-back" href="../physics.html#physics.Physics.form_cost_ftn">[docs]</a>  <span class="k">def</span> <span class="nf">form_cost_ftn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">u_ob</span><span class="p">,</span> <span class="n">integral</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Forms and returns a cost functional for use with adjoint calculations such</span>
+<span class="sd">    as :func:`~physics.Physics.optimize`.</span>
+<span class="sd">    </span>
+<span class="sd">    The choices for ``kind`` are :</span>
+
+<span class="sd">    1. ``log`` -- logarithmic cost</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \ln \left( \frac{ \Vert u \Vert_2 + \epsilon }{ \Vert u_{\mathrm{ob}} \Vert_2 + \epsilon } \right)^2 \mathrm{d}\Gamma</span>
+
+<span class="sd">    2. ``l2`` -- :math:`L_2`-norm cost</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \Vert u - u_{\mathrm{ob}} \Vert_2^2 \mathrm{d}\Gamma</span>
+
+<span class="sd">    3. ``ratio`` -- ratio cost</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \left( 1 - \left( \frac{ \Vert u \Vert_2 + \epsilon }{ \Vert u_{\mathrm{ob}} \Vert_2 + \epsilon } \right) \right)^2 \mathrm{d}\Gamma</span>
+
+<span class="sd">    4. ``abs`` -- absolute value cost</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \mathscr{J}(u) = \int_{\Gamma} \left| u - u_{\mathrm{ob}} \right| \mathrm{d}\Gamma</span>
+
+<span class="sd">    :param u:        the state variable</span>
+<span class="sd">    :param u_ob:     observation of the state variable ``u``</span>
+<span class="sd">    :param integral: measure over which to integrate </span>
+<span class="sd">                     (see :func:`~model.calculate_boundaries`)</span>
+<span class="sd">    :param kind:     kind of cost function to use</span>
+<span class="sd">    :param eps:      regularization for ``kind = &#39;log&#39;`` or ``kind = &#39;ratio&#39;``</span>
+<span class="sd">                     cost functionals</span>
+<span class="sd">    :type u:         :class:`dolfin_adjoint.Function`</span>
+<span class="sd">    :type u_ob:      :class:`dolfin.Function`</span>
+<span class="sd">    :type integral:  :class:`~helper.Boundary`</span>
+<span class="sd">    :type kind:      string</span>
+<span class="sd">    :type eps:       float or int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;::: forming &#39;</span><span class="si">%s</span><span class="s2">&#39; objective functional integrated over </span><span class="si">%s</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">integral</span><span class="o">.</span><span class="n">description</span><span class="p">),</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">dJ</span> <span class="o">=</span> <span class="n">integral</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">u_ob</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">list</span><span class="p">:</span>
+      <span class="n">u</span>    <span class="o">=</span> <span class="p">[</span><span class="n">u</span><span class="p">]</span>
+      <span class="n">u_ob</span> <span class="o">=</span> <span class="p">[</span><span class="n">u_ob</span><span class="p">]</span>
+    <span class="c1"># for a UFL expression for the norm and difference :</span>
+    <span class="n">U</span>     <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">U_ob</span>  <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">U_err</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">U_abs</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">Ui</span><span class="p">,</span> <span class="n">U_obi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">u_ob</span><span class="p">):</span>
+      <span class="n">U</span>     <span class="o">+=</span> <span class="n">Ui</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">U_ob</span>  <span class="o">+=</span> <span class="n">U_obi</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">U_err</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Ui</span> <span class="o">-</span> <span class="n">U_obi</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">U_abs</span> <span class="o">+=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">Ui</span> <span class="o">-</span> <span class="n">U_obi</span><span class="p">)</span>
+    <span class="n">U</span>    <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+    <span class="n">U_ob</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">U_ob</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;log&#39;</span><span class="p">:</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span> <span class="p">(</span><span class="n">U</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">U_ob</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span> 
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;l2&#39;</span><span class="p">:</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">U_err</span> <span class="o">*</span> <span class="n">dJ</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;ratio&#39;</span><span class="p">:</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span>  <span class="p">(</span><span class="n">U</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">U_ob</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;abs&#39;</span><span class="p">:</span> 
+      <span class="n">J</span>  <span class="o">=</span> <span class="n">U_abs</span> <span class="o">*</span> <span class="n">dJ</span>
+
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; ADJOINT OBJECTIVE FUNCTIONAL MAY BE &#39;l2&#39;, &quot;</span> <span class="o">+</span> \
+          <span class="s2">&quot;&#39;log&#39;, &#39;ratio&#39;, OR &#39;abs&#39;, NOT &#39;</span><span class="si">%s</span><span class="s2">&#39; &lt;&lt;&lt;&quot;</span> <span class="o">%</span> <span class="n">kind</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">J</span></div>
+
+<div class="viewcode-block" id="Physics.calc_functionals"><a class="viewcode-back" href="../physics.html#physics.Physics.calc_functionals">[docs]</a>  <span class="k">def</span> <span class="nf">calc_functionals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">u_ob</span><span class="p">,</span> <span class="n">control</span><span class="p">,</span> <span class="n">J_measure</span><span class="p">,</span> <span class="n">R_measure</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Used to facilitate printing the objective function in adjoint solves.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: calculating functionals :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;208&#39;</span>
+
+    <span class="c1"># ensure we can iterate :</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">u_ob</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
+      <span class="n">u</span>    <span class="o">=</span> <span class="p">[</span><span class="n">u</span><span class="p">]</span>
+      <span class="n">u_ob</span> <span class="o">=</span> <span class="p">[</span><span class="n">u_ob</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">control</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>    <span class="n">control</span> <span class="o">=</span> <span class="p">[</span><span class="n">control</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">R_measure</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>  <span class="n">R_measure</span> <span class="o">=</span> <span class="p">[</span><span class="n">R_measure</span><span class="p">]</span>
+
+    <span class="c1"># for a UFL expression for the norm and difference :</span>
+    <span class="n">U</span>     <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">U_ob</span>  <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">U_err</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">Ui</span><span class="p">,</span> <span class="n">U_obi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">u_ob</span><span class="p">):</span>
+      <span class="n">U</span>     <span class="o">+=</span> <span class="n">Ui</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">U_ob</span>  <span class="o">+=</span> <span class="n">U_obi</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">U_err</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Ui</span> <span class="o">-</span> <span class="n">U_obi</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">U</span>    <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+    <span class="n">U_ob</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">U_ob</span><span class="p">)</span>
+
+    <span class="n">dJ</span> <span class="o">=</span> <span class="n">J_measure</span><span class="p">()</span>
+
+    <span class="n">J_log</span>   <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span> <span class="p">(</span><span class="n">U</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">U_ob</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span> 
+    <span class="n">J_l2</span>    <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">U_err</span> <span class="o">*</span> <span class="n">dJ</span>
+    <span class="n">J_rat</span>   <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span>  <span class="p">(</span><span class="n">U</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">U_ob</span> <span class="o">+</span> <span class="n">eps</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+    <span class="n">J_abs</span>   <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">U_err</span><span class="p">)</span> <span class="o">*</span> <span class="n">dJ</span>
+
+    <span class="n">J_log_a</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">J_log</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">J_l2_a</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">J_l2</span><span class="p">,</span>  <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">J_rat_a</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">J_rat</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">J_abs_a</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">J_abs</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+      
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">J_log_a</span><span class="p">,</span> <span class="s1">&#39;J_log </span><span class="se">\t\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">J_l2_a</span><span class="p">,</span>  <span class="s1">&#39;J_l2  </span><span class="se">\t\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">J_rat_a</span><span class="p">,</span> <span class="s1">&#39;J_rat </span><span class="se">\t\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">J_abs_a</span><span class="p">,</span> <span class="s1">&#39;J_abs </span><span class="se">\t\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">J_a</span> <span class="o">=</span> <span class="p">[</span><span class="n">J_log_a</span><span class="p">,</span> <span class="n">J_l2_a</span><span class="p">,</span>  <span class="n">J_rat_a</span><span class="p">,</span> <span class="n">J_abs_a</span><span class="p">]</span>
+
+    <span class="n">R_a</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">R_m</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">control</span><span class="p">,</span> <span class="n">R_measure</span><span class="p">):</span>
+      <span class="n">dR</span>      <span class="o">=</span> <span class="n">R_m</span><span class="p">()</span>
+      <span class="n">R_tv</span>    <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">*</span> <span class="n">dR</span>
+      <span class="n">R_tik</span>   <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">c</span><span class="p">))</span> <span class="o">*</span> <span class="n">dR</span>
+      <span class="n">R_sq</span>    <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">c</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dR</span>
+      <span class="n">R_abs</span>   <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">dR</span>
+      <span class="n">R_tv_a</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">R_tv</span><span class="p">,</span>  <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">R_tik_a</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">R_tik</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">R_sq_a</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">R_sq</span><span class="p">,</span>  <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">R_abs_a</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">R_abs</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">R_tv_a</span><span class="p">,</span>  <span class="s1">&#39;R_tv  : </span><span class="si">%s</span><span class="s1"> </span><span class="se">\t</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">R_tik_a</span><span class="p">,</span> <span class="s1">&#39;R_tik : </span><span class="si">%s</span><span class="s1"> </span><span class="se">\t</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">R_sq_a</span><span class="p">,</span>  <span class="s1">&#39;R_sq  : </span><span class="si">%s</span><span class="s1"> </span><span class="se">\t</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">R_abs_a</span><span class="p">,</span> <span class="s1">&#39;R_abs : </span><span class="si">%s</span><span class="s1"> </span><span class="se">\t</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+      <span class="n">R_a</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">R_tv_a</span><span class="p">,</span> <span class="n">R_tik_a</span><span class="p">,</span> <span class="n">R_sq_a</span><span class="p">,</span> <span class="n">R_abs_a</span><span class="p">])</span>
+    
+    <span class="k">return</span> <span class="p">[</span><span class="n">J_a</span><span class="p">,</span> <span class="n">R_a</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Physics.plot_ftnls"><a class="viewcode-back" href="../physics.html#physics.Physics.plot_ftnls">[docs]</a>  <span class="k">def</span> <span class="nf">plot_ftnls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">tf</span><span class="p">,</span> <span class="n">J</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">control</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save all the objective functional values with rudimentary plot.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">d</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">out_dir</span> <span class="o">+</span> <span class="s1">&#39;objective_ftnls_history/&#39;</span>
+    
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: saving objective functionals to </span><span class="si">%s</span><span class="s1"> :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">d</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="c1"># for images :</span>
+    <span class="n">J_lab</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;$\mathscr</span><span class="si">{J}</span><span class="s1">_{\mathrm{</span><span class="si">%s</span><span class="s1">}}$&#39;</span>
+    <span class="n">R_lab</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;$\mathscr</span><span class="si">{R}</span><span class="s1">_{\mathrm{</span><span class="si">%s</span><span class="s1">}}\left( </span><span class="si">%s</span><span class="s1"> \right)$&#39;</span>
+
+    <span class="c1"># for subscripts of file names :</span>
+    <span class="n">J_sub</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="s1">&#39;l2&#39;</span><span class="p">,</span>  <span class="s1">&#39;rat&#39;</span><span class="p">,</span> <span class="s1">&#39;abs&#39;</span><span class="p">]</span>
+    <span class="n">R_sub</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;tv&#39;</span><span class="p">,</span>  <span class="s1">&#39;tik&#39;</span><span class="p">,</span> <span class="s1">&#39;sq&#39;</span><span class="p">,</span>  <span class="s1">&#39;abs&#39;</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">MPI_rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">sub</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">J_sub</span><span class="p">):</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="s1">&#39;J_</span><span class="si">%s</span><span class="s1">.txt&#39;</span> <span class="o">%</span> <span class="n">sub</span><span class="p">,</span> <span class="n">J</span><span class="p">[:,</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span>  <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">J_lab</span> <span class="o">%</span> <span class="n">sub</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;iteration&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">J</span><span class="p">[:,</span><span class="n">i</span><span class="p">],</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="s1">&#39;J_</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">sub</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">control</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sub</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">R_sub</span><span class="p">):</span>
+          <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="s1">&#39;R_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.txt&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">()),</span> <span class="n">R</span><span class="p">[:,</span><span class="n">j</span><span class="p">][:,</span><span class="n">i</span><span class="p">])</span> 
+          <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+          <span class="n">ax</span>  <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+          <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+          <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">R_lab</span> <span class="o">%</span> <span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">()))</span>
+          <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;iteration&#39;</span><span class="p">)</span>
+          <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">R</span><span class="p">[:,</span><span class="n">j</span><span class="p">][:,</span><span class="n">i</span><span class="p">],</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+          <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+          <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="s1">&#39;R_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="p">()),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+          <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+      <span class="c1"># save the total time to compute :</span>
+      <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="s1">&#39;time.txt&#39;</span><span class="p">,</span>  <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">tf</span> <span class="o">-</span> <span class="n">t0</span><span class="p">]))</span></div>
+      
+<div class="viewcode-block" id="Physics.optimize"><a class="viewcode-back" href="../physics.html#physics.Physics.optimize">[docs]</a>  <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">u_ob</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">control</span><span class="p">,</span> <span class="n">J_measure</span><span class="p">,</span> <span class="n">R_measure</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span>
+               <span class="n">method</span>            <span class="o">=</span> <span class="s1">&#39;ipopt&#39;</span><span class="p">,</span>
+               <span class="n">max_iter</span>          <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+               <span class="n">adj_save_vars</span>     <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">adj_callback</span>      <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">post_adj_callback</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving optimal control to minimize ||u - u_ob|| with &quot;</span> <span class="o">+</span> \
+           <span class="s2">&quot;control parameter</span><span class="si">%s</span><span class="s2"> :::&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">control</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
+      <span class="n">control</span> <span class="o">=</span> <span class="p">[</span><span class="n">control</span><span class="p">]</span>
+    <span class="n">tx</span> <span class="o">=</span> <span class="s1">&#39;s &#39;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">control</span><span class="p">:</span>
+      <span class="n">tx</span> <span class="o">+=</span> <span class="s2">&quot;&#39;&quot;</span> <span class="o">+</span> <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;&#39;&quot;</span>
+      <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">control</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="n">tx</span> <span class="o">+=</span> <span class="s1">&#39; and &#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">tx</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+    <span class="c1"># reset entire dolfin-adjoint state :</span>
+    <span class="n">adj_reset</span><span class="p">()</span>
+
+    <span class="c1"># starting time :</span>
+    <span class="n">t0</span>   <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+    <span class="c1"># need this for the derivative callback :</span>
+    <span class="k">global</span> <span class="n">counter</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span> 
+    
+    <span class="c1"># functional lists to be populated :</span>
+    <span class="k">global</span> <span class="n">J_a</span><span class="p">,</span> <span class="n">R_a</span>
+    <span class="n">J_a</span><span class="p">,</span> <span class="n">R_a</span> <span class="o">=</span> <span class="p">[],[]</span>
+
+    <span class="c1"># container for the current optimal velocity for evaluation :</span>
+    <span class="k">global</span> <span class="n">u_opt</span>
+    <span class="n">u_opt</span> <span class="o">=</span> <span class="n">DolfinAdjointVariable</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+
+    <span class="c1"># solve the physics with annotation enabled :</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: solving forward problem :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="c1"># now solve the control optimization problem : </span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: starting adjoint-control optimization with method &#39;</span><span class="si">%s</span><span class="s2">&#39; :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">method</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="c1"># objective function callback function : </span>
+    <span class="k">def</span> <span class="nf">eval_cb_post</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+      <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: adjoint objective post-eval callback function :::&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">I</span><span class="p">,</span>    <span class="s1">&#39;I&#39;</span><span class="p">)</span>
+      <span class="k">for</span> <span class="n">ci</span> <span class="ow">in</span> <span class="n">c</span><span class="p">:</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">ci</span><span class="p">,</span>    <span class="s1">&#39;control: &#39;</span> <span class="o">+</span> <span class="n">ci</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+    
+    <span class="c1"># objective gradient callback function :</span>
+    <span class="k">def</span> <span class="nf">derivative_cb_post</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">dI</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+      <span class="k">global</span> <span class="n">counter</span><span class="p">,</span> <span class="n">J_a</span><span class="p">,</span> <span class="n">R_a</span><span class="p">,</span> <span class="n">u_opt</span>
+        
+      <span class="c1"># update the DA current velocity to the model for evaluation </span>
+      <span class="c1"># purposes only;</span>
+      <span class="n">u_opt</span> <span class="o">=</span> <span class="n">DolfinAdjointVariable</span><span class="p">(</span><span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">tape_value</span><span class="p">()</span>
+
+      <span class="c1"># make the control available too :</span>
+      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">control</span><span class="p">)):</span>
+        <span class="n">control</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+      <span class="c1"># this method is called by IPOPT only once per nonlinear iteration.</span>
+      <span class="c1"># SciPy will call this many times, and we only want to save the </span>
+      <span class="c1"># functionals once per iteration.  See ``scipy_callback()`` below :</span>
+      <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;ipopt&#39;</span><span class="p">:</span>
+        <span class="n">s0</span>    <span class="o">=</span> <span class="s1">&#39;&gt;&gt;&gt; &#39;</span>
+        <span class="n">s1</span>    <span class="o">=</span> <span class="s1">&#39;iteration </span><span class="si">%i</span><span class="s1"> (max </span><span class="si">%i</span><span class="s1">) complete&#39;</span>
+        <span class="n">s2</span>    <span class="o">=</span> <span class="s1">&#39; &lt;&lt;&lt;&#39;</span>
+        <span class="n">text0</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s0</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">text1</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s1</span> <span class="o">%</span> <span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">),</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">text2</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">MPI</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">())</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+          <span class="nb">print</span> <span class="n">text0</span> <span class="o">+</span> <span class="n">text1</span> <span class="o">+</span> <span class="n">text2</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># print functional values :</span>
+        <span class="n">ftnls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_functionals</span><span class="p">(</span><span class="n">u_opt</span><span class="p">,</span><span class="n">u_ob</span><span class="p">,</span><span class="n">control</span><span class="p">,</span><span class="n">J_measure</span><span class="p">,</span><span class="n">R_measure</span><span class="p">)</span>
+        
+        <span class="c1"># add to the list of functional evaluations :</span>
+        <span class="n">J_a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ftnls</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">R_a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ftnls</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+      <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: adjoint objective gradient post-eval callback function :::&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="k">for</span> <span class="p">(</span><span class="n">dIi</span><span class="p">,</span><span class="n">ci</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">dI</span><span class="p">,</span><span class="n">c</span><span class="p">):</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">dIi</span><span class="p">,</span>    <span class="s1">&#39;dI/control: &#39;</span> <span class="o">+</span> <span class="n">ci</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save_xdmf</span><span class="p">(</span><span class="n">dIi</span><span class="p">,</span> <span class="s1">&#39;dI_control_&#39;</span> <span class="o">+</span> <span class="n">ci</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save_xdmf</span><span class="p">(</span><span class="n">ci</span><span class="p">,</span> <span class="s1">&#39;control_&#39;</span> <span class="o">+</span> <span class="n">ci</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+
+      <span class="c1"># call that callback, if you want :</span>
+      <span class="k">if</span> <span class="n">adj_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">adj_callback</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">dI</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+
+    <span class="c1"># define the control parameter :</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">control</span><span class="p">:</span>
+      <span class="n">m</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Control</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">i</span><span class="p">))</span>
+    
+    <span class="c1"># create the reduced functional to minimize :</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="n">ReducedFunctional</span><span class="p">(</span><span class="n">Functional</span><span class="p">(</span><span class="n">I</span><span class="p">),</span> <span class="n">m</span><span class="p">,</span>
+                          <span class="n">eval_cb_post</span>        <span class="o">=</span> <span class="n">eval_cb_post</span><span class="p">,</span>
+                          <span class="n">derivative_cb_post</span>  <span class="o">=</span> <span class="n">derivative_cb_post</span><span class="p">)</span>
+
+    <span class="c1"># optimize with scipy&#39;s fmin_l_bfgs_b :</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;l_bfgs_b&#39;</span><span class="p">:</span>
+
+      <span class="c1"># this callback is called only once per iteration :</span>
+      <span class="k">def</span> <span class="nf">scipy_callback</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">counter</span><span class="p">,</span> <span class="n">J_a</span><span class="p">,</span> <span class="n">R_a</span><span class="p">,</span> <span class="n">u_opt</span>
+        <span class="n">s0</span>    <span class="o">=</span> <span class="s1">&#39;&gt;&gt;&gt; &#39;</span>
+        <span class="n">s1</span>    <span class="o">=</span> <span class="s1">&#39;iteration </span><span class="si">%i</span><span class="s1"> (max </span><span class="si">%i</span><span class="s1">) complete&#39;</span>
+        <span class="n">s2</span>    <span class="o">=</span> <span class="s1">&#39; &lt;&lt;&lt;&#39;</span>
+        <span class="n">text0</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s0</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">text1</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s1</span> <span class="o">%</span> <span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">),</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">text2</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">MPI</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">())</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+          <span class="nb">print</span> <span class="n">text0</span> <span class="o">+</span> <span class="n">text1</span> <span class="o">+</span> <span class="n">text2</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># NOTE: the variables ``u_opt`` and ``control`` were updated by the</span>
+        <span class="c1">#       ``derivative_cb_post`` method.</span>
+        <span class="c1"># print functional values :</span>
+        <span class="n">ftnls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_functionals</span><span class="p">(</span><span class="n">u_opt</span><span class="p">,</span><span class="n">u_ob</span><span class="p">,</span><span class="n">control</span><span class="p">,</span><span class="n">J_measure</span><span class="p">,</span><span class="n">R_measure</span><span class="p">)</span>
+        
+        <span class="c1"># add to the list of functional evaluations :</span>
+        <span class="n">J_a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ftnls</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">R_a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ftnls</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+      <span class="c1"># TODO: provide access to the solver parameters and set up default values.</span>
+      <span class="n">out</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L-BFGS-B&quot;</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-9</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+                     <span class="n">callback</span> <span class="o">=</span> <span class="n">scipy_callback</span><span class="p">,</span>
+                     <span class="n">options</span>  <span class="o">=</span><span class="p">{</span><span class="s2">&quot;disp&quot;</span>    <span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                                <span class="s2">&quot;maxiter&quot;</span> <span class="p">:</span> <span class="n">max_iter</span><span class="p">,</span>
+                                <span class="s2">&quot;gtol&quot;</span>    <span class="p">:</span> <span class="mf">1e-5</span><span class="p">})</span>
+      <span class="n">b_opt</span> <span class="o">=</span> <span class="n">out</span>
+
+      <span class="c1"># convert to something that we can zip (see below) ! </span>
+      <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">b_opt</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">list</span><span class="p">:</span> <span class="n">b_opt</span> <span class="o">=</span> <span class="p">[</span><span class="n">b_opt</span><span class="p">]</span>
+    
+    <span class="c1"># or optimize with IPOpt (preferred) :</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;ipopt&#39;</span><span class="p">:</span>
+      <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">pyipopt</span>
+      <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">info_red</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;You do not have IPOPT and/or pyipopt installed.</span>
+<span class="s2">                    When compiling IPOPT, make sure to link against HSL,</span>
+<span class="s2">                    as it is a necessity for practical problems.&quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">raise</span>
+      <span class="n">problem</span> <span class="o">=</span> <span class="n">MinimizationProblem</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">)</span>
+      <span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tol&quot;</span>                <span class="p">:</span> <span class="mf">1e-8</span><span class="p">,</span>
+                    <span class="s2">&quot;acceptable_tol&quot;</span>     <span class="p">:</span> <span class="mf">1e-6</span><span class="p">,</span>
+                    <span class="s2">&quot;maximum_iterations&quot;</span> <span class="p">:</span> <span class="n">max_iter</span><span class="p">,</span>
+                    <span class="s2">&quot;print_level&quot;</span>        <span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+                    <span class="c1">#&quot;ma97_order&quot;         : &quot;metis&quot;,</span>
+                    <span class="s2">&quot;linear_solver&quot;</span>      <span class="p">:</span> <span class="s2">&quot;ma97&quot;</span><span class="p">}</span>
+      <span class="n">solver</span> <span class="o">=</span> <span class="n">IPOPTSolver</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+      <span class="n">b_opt</span>  <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+    
+
+    <span class="c1"># make the optimal control parameter available :</span>
+    <span class="k">for</span> <span class="n">c</span><span class="p">,</span><span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">control</span><span class="p">,</span> <span class="n">b_opt</span><span class="p">):</span>
+      <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+    
+    <span class="c1"># call the post-adjoint callback function if set :</span>
+    <span class="k">if</span> <span class="n">post_adj_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: calling optimize_ubar() post-adjoined callback function :::&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="n">post_adj_callback</span><span class="p">()</span>
+    
+    <span class="c1"># save state to unique hdf5 file :</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">adj_save_vars</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+      <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: saving variables in list arg adj_save_vars :::&#39;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="n">out_file</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">out_dir</span> <span class="o">+</span> <span class="s1">&#39;u_opt.h5&#39;</span>
+      <span class="n">foutput</span>  <span class="o">=</span> <span class="n">HDF5File</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">out_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+      
+      <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">adj_save_vars</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">save_hdf5</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">foutput</span><span class="p">)</span>
+      
+      <span class="n">foutput</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="c1"># calculate total time to compute</span>
+    <span class="n">tf</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+    <span class="n">s</span>  <span class="o">=</span> <span class="n">tf</span> <span class="o">-</span> <span class="n">t0</span>
+    <span class="n">m</span>  <span class="o">=</span> <span class="n">s</span> <span class="o">/</span> <span class="mf">60.0</span>
+    <span class="n">h</span>  <span class="o">=</span> <span class="n">m</span> <span class="o">/</span> <span class="mf">60.0</span>
+    <span class="n">s</span>  <span class="o">=</span> <span class="n">s</span> <span class="o">%</span> <span class="mi">60</span>
+    <span class="n">m</span>  <span class="o">=</span> <span class="n">m</span> <span class="o">%</span> <span class="mi">60</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;time to optimize ||u - u_ob||: </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="n">m</span><span class="p">,</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># convert lists to arrays :</span>
+    <span class="n">J_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">J_a</span><span class="p">)</span>
+    <span class="n">R_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">R_a</span><span class="p">)</span>
+
+    <span class="c1"># save a rudimentary plot of functionals</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plot_ftnls</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">tf</span><span class="p">,</span> <span class="n">J_a</span><span class="p">,</span> <span class="n">R_a</span><span class="p">,</span> <span class="n">control</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Physics.solve"><a class="viewcode-back" href="../physics.html#physics.Physics.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solves the physics calculation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">raiseNotDefined</span><span class="p">()</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

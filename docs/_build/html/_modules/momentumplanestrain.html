@@ -1,0 +1,533 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>momentumplanestrain &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>momentumplanestrain</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for momentumplanestrain</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>               <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">dolfin_adjoint</span>       <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span>    <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">from</span> <span class="nn">cslvr.d2model</span>        <span class="k">import</span> <span class="n">D2Model</span>
+<span class="kn">from</span> <span class="nn">cslvr.latmodel</span>       <span class="k">import</span> <span class="n">LatModel</span>
+<span class="kn">from</span> <span class="nn">cslvr.physics</span>        <span class="k">import</span> <span class="n">Physics</span>
+<span class="kn">from</span> <span class="nn">cslvr.momentum</span>       <span class="k">import</span> <span class="n">Momentum</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain">[docs]</a><span class="k">class</span> <span class="nc">MomentumDukowiczPlaneStrain</span><span class="p">(</span><span class="n">Momentum</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;  </span>
+<span class="sd">  &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.initialize"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.initialize">[docs]</a>  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">solve_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">linear</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_lat_bcs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_pressure_bc</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING DUKOWICZ-PLANE-STRAIN PHYSICS :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">LatModel</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; MomentumDukowiczPlaneStrain REQUIRES A &#39;D2Model&#39; INSTANCE, &quot;</span> \
+          <span class="o">+</span> <span class="s2">&quot;NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span> <span class="o">=</span> <span class="n">solve_params</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">linear</span>       <span class="o">=</span> <span class="n">linear</span>
+
+    <span class="c1"># momenturm and adjoint :</span>
+    <span class="n">U</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
+    <span class="n">Lam</span>    <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;Lam&#39;</span><span class="p">)</span>
+    <span class="n">dU</span>     <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="p">)</span>
+    <span class="n">Phi</span>    <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="p">)</span>
+   
+    <span class="c1"># function assigner goes from the U function solve to U3 vector </span>
+    <span class="c1"># function used to save :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assz</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assp</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q3</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="n">mesh</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">mesh</span>
+    <span class="n">S</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
+    <span class="n">B</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">H</span>          <span class="o">=</span> <span class="n">S</span> <span class="o">-</span> <span class="n">B</span>
+    <span class="n">z</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">W</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">W</span>
+    <span class="n">R</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">R</span>
+    <span class="n">rhoi</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhoi</span>
+    <span class="n">rhosw</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhosw</span>
+    <span class="n">g</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">g</span>
+    <span class="n">beta</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span>
+    <span class="n">h</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">N</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+    <span class="n">D</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">D</span>
+    <span class="n">A</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">A</span>
+    <span class="n">n</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">n</span>
+    <span class="n">eps_reg</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">eps_reg</span>
+    <span class="n">Fb</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
+
+    <span class="n">dx_f</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_f</span>
+    <span class="n">dx_g</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_g</span>
+    <span class="n">dx</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx</span>
+    <span class="n">dBed_g</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
+    <span class="n">dBed_f</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_f</span>
+    <span class="n">dLat_t</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_t</span>
+    <span class="n">dLat_d</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_d</span>
+    <span class="n">dLat</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat</span>
+    <span class="n">dBed</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed</span>
+     
+    <span class="c1">#===========================================================================</span>
+    <span class="c1"># define variational problem :</span>
+    <span class="n">phi</span><span class="p">,</span> <span class="n">xsi</span><span class="p">,</span> <span class="n">kappa</span> <span class="o">=</span> <span class="n">Phi</span>
+    <span class="n">du</span><span class="p">,</span>  <span class="n">dw</span><span class="p">,</span>  <span class="n">dP</span>    <span class="o">=</span> <span class="n">dU</span>
+    <span class="n">u</span><span class="p">,</span>   <span class="n">w</span><span class="p">,</span>   <span class="n">p</span>     <span class="o">=</span> <span class="n">U</span>
+
+    <span class="c1"># create velocity vector :</span>
+    <span class="n">U2</span>     <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">u</span><span class="p">,</span><span class="n">w</span><span class="p">])</span>
+    
+    <span class="c1"># viscous dissipation :</span>
+    <span class="n">epsdot</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">effective_strain_rate</span><span class="p">(</span><span class="n">U2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">linear</span><span class="p">:</span>
+      <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;    - using linear form of momentum using model.U3 in epsdot -&quot;</span>
+      <span class="n">U3_c</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+      <span class="n">U3_2</span>    <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">U3_c</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">U3_c</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+      <span class="n">eta</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscosity</span><span class="p">(</span><span class="n">U3_2</span><span class="p">)</span>
+      <span class="n">Vd</span>      <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">epsdot</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;    - using nonlinear form of momentum -&quot;</span>
+      <span class="n">eta</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscosity</span><span class="p">(</span><span class="n">U2</span><span class="p">)</span>
+      <span class="n">Vd</span>       <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">n</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">A</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">epsdot</span> <span class="o">+</span> <span class="n">eps_reg</span><span class="p">)</span><span class="o">**</span><span class="p">((</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">n</span><span class="p">))</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="c1"># potential energy :</span>
+    <span class="n">Pe</span>     <span class="o">=</span> <span class="o">-</span> <span class="n">rhoi</span> <span class="o">*</span> <span class="n">g</span> <span class="o">*</span> <span class="n">w</span>
+
+    <span class="c1"># dissipation by sliding :</span>
+    <span class="n">Ut</span>     <span class="o">=</span> <span class="n">U2</span> <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="o">*</span><span class="n">N</span>
+    <span class="n">Sl_gnd</span> <span class="o">=</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Ut</span><span class="p">,</span> <span class="n">Ut</span><span class="p">)</span>
+
+    <span class="c1"># incompressibility constraint :</span>
+    <span class="n">Pc</span>     <span class="o">=</span> <span class="n">p</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">U2</span><span class="p">)</span> 
+    
+    <span class="c1"># inpenetrability constraint :</span>
+    <span class="n">sig</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stress_tensor</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+    <span class="n">lam</span>  <span class="o">=</span> <span class="n">p</span><span class="c1">#-dot(N, dot(sig, N))</span>
+    <span class="n">Nc</span>   <span class="o">=</span> <span class="o">-</span><span class="n">lam</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span>
+
+    <span class="c1"># pressure boundary :</span>
+    <span class="n">Pb_w</span>   <span class="o">=</span> <span class="o">-</span> <span class="n">rhosw</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="n">D</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">Pb_l</span>   <span class="o">=</span> <span class="o">-</span> <span class="n">rhoi</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="p">(</span><span class="n">S</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span>
+
+    <span class="c1"># action : </span>
+    <span class="n">A</span>      <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">Vd</span> <span class="o">-</span> <span class="n">Pe</span> <span class="o">-</span> <span class="n">Pc</span><span class="p">)</span><span class="o">*</span><span class="n">dx</span> <span class="o">-</span> <span class="n">Nc</span><span class="o">*</span><span class="n">dBed</span> <span class="o">-</span> <span class="n">Sl_gnd</span><span class="o">*</span><span class="n">dBed_g</span> <span class="o">-</span> <span class="n">Pb_w</span><span class="o">*</span><span class="n">dBed_f</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span> <span class="ow">and</span> <span class="n">use_pressure_bc</span><span class="p">):</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using water pressure lateral boundary condition -&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="n">A</span> <span class="o">-=</span> <span class="n">Pb_w</span><span class="o">*</span><span class="n">dLat_t</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">use_lat_bcs</span><span class="p">):</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using internal divide lateral pressure boundary condition -&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="n">A</span> <span class="o">-=</span> <span class="n">Pb_l</span><span class="o">*</span><span class="n">dLat_d</span>
+    
+    <span class="c1"># add lateral boundary conditions :  </span>
+    <span class="k">if</span> <span class="n">use_lat_bcs</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using internal divide lateral stress natural boundary&quot;</span> <span class="o">+</span> \
+          <span class="s2">&quot; conditions -&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+      <span class="n">U3_c</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+      <span class="n">U3_2</span>   <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">U3_c</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">U3_c</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+      <span class="n">eta_l</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscosity</span><span class="p">(</span><span class="n">U3_2</span><span class="p">)</span>
+      <span class="n">sig_l</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stress_tensor</span><span class="p">(</span><span class="n">U3_2</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">eta_l</span><span class="p">)</span>
+      <span class="n">A</span>     <span class="o">-=</span> <span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">sig_l</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span> <span class="n">U2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dLat_d</span>
+
+    <span class="c1"># the first variation of the action in the direction of a</span>
+    <span class="c1"># test function ; the extremum :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span> <span class="o">=</span> <span class="n">derivative</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">Phi</span><span class="p">)</span>
+
+    <span class="c1"># the first variation of the extremum in the direction</span>
+    <span class="c1"># a tril function ; the Jacobian :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span> <span class="o">=</span> <span class="n">derivative</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">dU</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">A</span>       <span class="o">=</span> <span class="n">A</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">U</span>       <span class="o">=</span> <span class="n">U</span> 
+    <span class="bp">self</span><span class="o">.</span><span class="n">dU</span>      <span class="o">=</span> <span class="n">dU</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Phi</span>     <span class="o">=</span> <span class="n">Phi</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Lam</span>     <span class="o">=</span> <span class="n">Lam</span></div>
+  
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.get_residual"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.get_residual">[docs]</a>  <span class="k">def</span> <span class="nf">get_residual</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the momentum residual.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">A</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.get_U"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.get_U">[docs]</a>  <span class="k">def</span> <span class="nf">get_U</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the unknown Function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.velocity"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.velocity">[docs]</a>  <span class="k">def</span> <span class="nf">velocity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the velocity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">as_vector</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.get_solve_params"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.get_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">get_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the solve parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span></div>
+  
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.strain_rate_tensor"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.strain_rate_tensor">[docs]</a>  <span class="k">def</span> <span class="nf">strain_rate_tensor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the strain-rate tensor of self.U.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epsdot</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">U</span><span class="p">)</span> <span class="o">+</span> <span class="n">grad</span><span class="p">(</span><span class="n">U</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">epsdot</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.stress_tensor"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.stress_tensor">[docs]</a>  <span class="k">def</span> <span class="nf">stress_tensor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">eta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the Cauchy stress tensor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming the Cauchy stress tensor :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">I</span>     <span class="o">=</span> <span class="n">Identity</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">tau</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deviatoric_stress_tensor</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">tau</span> <span class="o">-</span> <span class="n">p</span><span class="o">*</span><span class="n">I</span>
+    <span class="k">return</span> <span class="n">sigma</span></div>
+    
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.deviatoric_stress_tensor"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.deviatoric_stress_tensor">[docs]</a>  <span class="k">def</span> <span class="nf">deviatoric_stress_tensor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">eta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the deviatoric stress tensor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming the deviatoric part of the Cauchy stress tensor :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">epi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strain_rate_tensor</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">epi</span>
+    <span class="k">return</span> <span class="n">tau</span></div>
+  
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.effective_stress"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.effective_stress">[docs]</a>  <span class="k">def</span> <span class="nf">effective_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">eta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the effective stress squared.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tau</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deviatoric_stress_tensor</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+    <span class="n">tu_xx</span>  <span class="o">=</span> <span class="n">tau</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">tu_zz</span>  <span class="o">=</span> <span class="n">tau</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">tu_xz</span>  <span class="o">=</span> <span class="n">tau</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1"># Second invariant of the strain rate tensor squared</span>
+    <span class="n">taudot</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">tu_xx</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">tu_zz</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">tu_xz</span><span class="o">**</span><span class="mi">2</span>
+    <span class="k">return</span> <span class="n">taudot</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.effective_strain_rate"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.effective_strain_rate">[docs]</a>  <span class="k">def</span> <span class="nf">effective_strain_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the effective strain rate squared.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epi</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strain_rate_tensor</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+    <span class="n">ep_xx</span>  <span class="o">=</span> <span class="n">epi</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ep_zz</span>  <span class="o">=</span> <span class="n">epi</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">ep_xz</span>  <span class="o">=</span> <span class="n">epi</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="c1"># Second invariant of the strain rate tensor squared</span>
+    <span class="n">epsdot</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">ep_xx</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ep_zz</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">ep_xz</span><span class="o">**</span><span class="mi">2</span>
+    <span class="k">return</span> <span class="n">epsdot</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.calc_q_fric"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.calc_q_fric">[docs]</a>  <span class="k">def</span> <span class="nf">calc_q_fric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solve for the friction heat term stored in model.q_fric.</span>
+<span class="sd">    &quot;&quot;&quot;</span> 
+    <span class="c1"># calculate melt-rate : </span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: solving basal friction heat :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">dBed_g</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
+    <span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+    <span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">beta_v</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">u_v</span>      <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">w_v</span>      <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">Fb_v</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+
+    <span class="n">q_fric_v</span> <span class="o">=</span> <span class="n">beta_v</span> <span class="o">*</span> <span class="p">(</span><span class="n">u_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">w_v</span><span class="o">+</span><span class="n">Fb_v</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    
+    <span class="n">model</span><span class="o">.</span><span class="n">init_q_fric</span><span class="p">(</span><span class="n">q_fric_v</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.default_solve_params"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.default_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">default_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default solver parameters that yield good performance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nparams</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;newton_solver&#39;</span> <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span>            <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">,</span>
+                                  <span class="s1">&#39;relative_tolerance&#39;</span>       <span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
+                                  <span class="s1">&#39;relaxation_parameter&#39;</span>     <span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>
+                                  <span class="s1">&#39;maximum_iterations&#39;</span>       <span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+                                  <span class="s1">&#39;error_on_nonconvergence&#39;</span>  <span class="p">:</span> <span class="kc">False</span><span class="p">}}</span>
+    <span class="n">m_params</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solver&#39;</span>      <span class="p">:</span> <span class="n">nparams</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">m_params</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczPlaneStrain.solve"><a class="viewcode-back" href="../momentum.html#momentumplanestrain.MomentumDukowiczPlaneStrain.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Perform the Newton solve of the full-Stokes equations </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span>
+    
+    <span class="c1"># solve nonlinear system :</span>
+    <span class="n">rtol</span>   <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">][</span><span class="s1">&#39;relative_tolerance&#39;</span><span class="p">]</span>
+    <span class="n">maxit</span>  <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">][</span><span class="s1">&#39;maximum_iterations&#39;</span><span class="p">]</span>
+    <span class="n">alpha</span>  <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">][</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">]</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving plane-strain momentum equations&quot;</span> <span class="o">+</span> \
+           <span class="s2">&quot; with </span><span class="si">%i</span><span class="s2"> max iterations and step size = </span><span class="si">%.1f</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">maxit</span><span class="p">,</span> <span class="n">alpha</span><span class="p">),</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="c1"># zero out self.velocity for good convergence for any subsequent solves,</span>
+    <span class="c1"># e.g. model.L_curve() :</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+    
+    <span class="c1"># compute solution :</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> <span class="n">bcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span><span class="p">,</span>
+          <span class="n">annotate</span> <span class="o">=</span> <span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span>
+    <span class="n">u</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assp</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="n">U3</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>   <span class="s1">&#39;u&#39;</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>   <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">)</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

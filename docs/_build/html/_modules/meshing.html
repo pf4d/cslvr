@@ -1,0 +1,1427 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>meshing &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>meshing</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for meshing</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">PIL</span>               <span class="k">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">gmshpy</span>            <span class="k">import</span> <span class="n">GModel</span><span class="p">,</span> <span class="n">GmshSetOption</span><span class="p">,</span> <span class="n">FlGui</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="k">import</span> <span class="n">RectBivariateSpline</span>
+<span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="n">Mesh</span><span class="p">,</span> <span class="n">MeshEditor</span><span class="p">,</span> <span class="n">Point</span><span class="p">,</span> <span class="n">File</span><span class="p">,</span> <span class="n">XDMFFile</span>
+<span class="kn">from</span> <span class="nn">pyproj</span>            <span class="k">import</span> <span class="n">transform</span>
+<span class="kn">from</span> <span class="nn">shapely.geometry</span>  <span class="k">import</span> <span class="n">Polygon</span>
+<span class="kn">from</span> <span class="nn">shapely.geometry</span>  <span class="k">import</span> <span class="n">Point</span> <span class="k">as</span> <span class="n">shapelyPoint</span>
+<span class="kn">from</span> <span class="nn">shapely.ops</span>       <span class="k">import</span> <span class="n">cascaded_union</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">import</span> <span class="nn">numpy</span>               <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span>   <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+
+
+
+<div class="viewcode-block" id="MeshGenerator"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator">[docs]</a><span class="k">class</span> <span class="nc">MeshGenerator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  generate a mesh.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dd</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">direc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a mesh with DataInput object &lt;dd&gt;, output filename &lt;fn&gt;, and</span>
+<span class="sd">    output directory &lt;direc&gt;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;grey_46&#39;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING MESHGENERATOR :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dd</span>         <span class="o">=</span> <span class="n">dd</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fn</span>         <span class="o">=</span> <span class="n">fn</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">direc</span>      <span class="o">=</span> <span class="n">direc</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">dd</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">dd</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">direc</span><span class="p">):</span>
+      <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">direc</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f</span>          <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">direc</span> <span class="o">+</span> <span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.geo&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fieldList</span>  <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># list of field indexes created.</span>
+
+<div class="viewcode-block" id="MeshGenerator.create_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.create_contour">[docs]</a>  <span class="k">def</span> <span class="nf">create_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">zero_cntr</span><span class="p">,</span> <span class="n">skip_pts</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a contour of the data field with index &lt;var&gt; of &lt;dd&gt; provided at</span>
+<span class="sd">    initialization.  &lt;zero_cntr&gt; is the value of &lt;var&gt; to contour, &lt;skip_pts&gt;</span>
+<span class="sd">    is the number of points to skip in the contour, needed to prevent overlap.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: creating contour from </span><span class="si">%s</span><span class="s2">&#39;s </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s2"> field with skipping </span><span class="si">%i</span><span class="s2"> &quot;</span> <span class="o">+</span> \
+           <span class="s2">&quot;point(s) :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dd</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">skip_pts</span><span class="p">)</span> <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">skip_pts</span> <span class="o">=</span> <span class="n">skip_pts</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="c1"># create contour :</span>
+    <span class="n">field</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dd</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">var</span><span class="p">]</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="p">[</span><span class="n">zero_cntr</span><span class="p">])</span>
+
+    <span class="c1"># Get longest contour:</span>
+    <span class="n">cl</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">allsegs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ind</span>      <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">amax</span>     <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">amax_ind</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">cl</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">amax</span><span class="p">:</span>
+        <span class="n">amax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="n">amax_ind</span> <span class="o">=</span> <span class="n">ind</span>
+      <span class="n">ind</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1"># remove skip points and last point to avoid overlap :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">cl</span><span class="p">[</span><span class="n">amax_ind</span><span class="p">]</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span> <span class="c1"># close the figure; we only used it to get the contour.</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: contour created, length </span><span class="si">%s</span><span class="s2"> nodes :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">remove_skip_points</span><span class="p">(</span><span class="n">skip_pts</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.save_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.save_contour">[docs]</a>  <span class="k">def</span> <span class="nf">save_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Saves the current contour ``self.longest_cont`` to the ouput directory</span>
+<span class="sd">    ``self.direc`` named ``name``.</span>
+
+<span class="sd">    :param name: name of the file to save the contour as.</span>
+<span class="sd">    :type name: string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.load_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.load_contour">[docs]</a>  <span class="k">def</span> <span class="nf">load_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads the contour from the ouput directory ``self.direc`` named ``name`` </span>
+<span class="sd">    set to ``self.longest_cont``.</span>
+
+<span class="sd">    :param name: name of the file to load the contour.</span>
+<span class="sd">    :type name: string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.remove_skip_points"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.remove_skip_points">[docs]</a>  <span class="k">def</span> <span class="nf">remove_skip_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">skip_pts</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    remove every other &lt;skip_pts&gt; node from the contour.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># remove skip points and last point to avoid overlap :</span>
+    <span class="n">longest_cont</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">longest_cont</span><span class="p">[::</span><span class="n">skip_pts</span><span class="p">,:][:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: contour points skipped, new length </span><span class="si">%s</span><span class="s2"> nodes :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.transform_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.transform_contour">[docs]</a>  <span class="k">def</span> <span class="nf">transform_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transforms the coordinates of the contour to DataInput object &lt;di&gt;&#39;s</span>
+<span class="sd">    projection coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">di</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dd</span><span class="p">):</span>
+      <span class="n">proj</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">proj</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">di</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
+      <span class="n">name</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;dataset&#39;</span><span class="p">]</span>
+      <span class="n">proj</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;pyproj_Proj&#39;</span><span class="p">]</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: transforming contour coordinates from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dd</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span><span class="n">y</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">xn</span><span class="p">,</span> <span class="n">yn</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dd</span><span class="o">.</span><span class="n">proj</span><span class="p">,</span> <span class="n">proj</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xn</span><span class="p">,</span> <span class="n">yn</span><span class="p">])</span><span class="o">.</span><span class="n">T</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.set_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.set_contour">[docs]</a>  <span class="k">def</span> <span class="nf">set_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cont_array</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is an alternative to the create_contour method that allows you to</span>
+<span class="sd">    manually specify contour points.</span>
+<span class="sd">    Inputs:</span>
+<span class="sd">      cont_array : A numpy array of contour points</span>
+<span class="sd">                   (i.e. array([[1,2],[3,4],...]))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: manually setting contour with </span><span class="si">%s</span><span class="s2"> nodes:::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">cont_array</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">cont_array</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.plot_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.plot_contour">[docs]</a>  <span class="k">def</span> <span class="nf">plot_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot the contour created with the &quot;create_contour&quot; method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: plotting contour :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span>
+    <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">lw</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;contour&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.eliminate_intersections"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.eliminate_intersections">[docs]</a>  <span class="k">def</span> <span class="nf">eliminate_intersections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dist</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Eliminate intersecting boundary elements. &lt;dist&gt; is an integer specifiying</span>
+<span class="sd">    how far forward to look to eliminate intersections.  If any intersections</span>
+<span class="sd">    are found, this method is called recursively until none are found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: eliminating intersections :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Point</span><span class="p">:</span>
+      <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">ccw</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">y</span><span class="o">-</span><span class="n">A</span><span class="o">.</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">x</span><span class="o">-</span><span class="n">A</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">y</span><span class="o">-</span><span class="n">A</span><span class="o">.</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">x</span><span class="o">-</span><span class="n">A</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">intersect</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">D</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">ccw</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">D</span><span class="p">)</span> <span class="o">!=</span> <span class="n">ccw</span><span class="p">(</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">D</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ccw</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">)</span> <span class="o">!=</span> <span class="n">ccw</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">D</span><span class="p">)</span>
+
+    <span class="n">lc</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+
+    <span class="n">flag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="p">))</span>
+    <span class="n">intr</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+
+      <span class="n">A</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="o">*</span><span class="n">lc</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span>
+      <span class="n">B</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="o">*</span><span class="n">lc</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+
+      <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ii</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">ii</span> <span class="o">+</span> <span class="n">dist</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
+
+        <span class="n">C</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="o">*</span><span class="n">lc</span><span class="p">[</span><span class="n">jj</span><span class="p">])</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="o">*</span><span class="n">lc</span><span class="p">[</span><span class="n">jj</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">intersect</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">D</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ii</span><span class="o">!=</span><span class="n">jj</span><span class="o">+</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="o">!=</span><span class="n">jj</span><span class="p">:</span>
+          <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;  - intersection found between node </span><span class="si">%i</span><span class="s2"> and </span><span class="si">%i</span><span class="s2">&quot;</span>
+          <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">jj</span><span class="p">),</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+          <span class="n">flag</span><span class="p">[</span><span class="n">ii</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+          <span class="n">flag</span><span class="p">[</span><span class="n">jj</span><span class="p">]</span>   <span class="o">=</span> <span class="mi">0</span>
+          <span class="n">intr</span>       <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">counter</span>  <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">new_cont</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">flag</span><span class="p">)),</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">ii</span><span class="p">,</span><span class="n">fl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">flag</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">fl</span><span class="p">:</span>
+        <span class="n">new_cont</span><span class="p">[</span><span class="n">counter</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">lc</span><span class="p">[</span><span class="n">ii</span><span class="p">,:]</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">new_cont</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: eliminated </span><span class="si">%i</span><span class="s2"> nodes :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">sum</span><span class="p">(</span><span class="n">flag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="c1"># call again if required :</span>
+    <span class="k">if</span> <span class="n">intr</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">eliminate_intersections</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.restart"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.restart">[docs]</a>  <span class="k">def</span> <span class="nf">restart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    clear all contents from the .geo file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="o">.</span><span class="n">close</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.geo&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;Reopened </span><span class="se">\&quot;</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.geo</span><span class="se">\&quot;</span><span class="s1">.&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.write_gmsh_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.write_gmsh_contour">[docs]</a>  <span class="k">def</span> <span class="nf">write_gmsh_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lc</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span> <span class="n">boundary_extend</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    write the contour created with :func:`create_contour` to the .geo file </span>
+<span class="sd">    with mesh spacing ``lc``.  If ``boundary_extend`` is true, the spacing in </span>
+<span class="sd">    the interior of the domain will be the same as the distance between nodes </span>
+<span class="sd">    on the contour.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: writing gmsh contour to </span><span class="se">\&quot;</span><span class="si">%s%s</span><span class="s2">.geo</span><span class="se">\&quot;</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">c</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+    <span class="n">f</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span>
+
+    <span class="n">pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">c</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># write the file to .geo file :</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;// Mesh spacing</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;lc = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lc</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;// Points</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pts</span><span class="p">):</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Point(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;) = {&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> \
+              <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;,0,lc};</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">// Lines</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pts</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Line(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;) = {&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;};</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Line(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pts</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;) = {&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pts</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> \
+            <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;};</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;// Line loop</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">loop</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">loop</span> <span class="o">+=</span> <span class="s2">&quot;{&quot;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pts</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+      <span class="n">loop</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span>
+    <span class="n">loop</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pts</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;}&quot;</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Line Loop(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pts</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;) = &quot;</span> <span class="o">+</span> <span class="n">loop</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;// Surface</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">surf_num</span> <span class="o">=</span> <span class="n">pts</span><span class="o">+</span><span class="mi">2</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Plane Surface(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">surf_num</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;) = {&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">pts</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;};</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">boundary_extend</span><span class="p">:</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Mesh.CharacteristicLengthExtendFromBoundary = 0;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">surf_num</span> <span class="o">=</span> <span class="n">surf_num</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">pts</span>      <span class="o">=</span> <span class="n">pts</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">loop</span>     <span class="o">=</span> <span class="n">loop</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.write_argus_contour"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.write_argus_contour">[docs]</a>  <span class="k">def</span> <span class="nf">write_argus_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    write the contour created with :func:`create_contour` to the .exp file </span>
+<span class="sd">    within the directory ``self.direc``/``self.fn``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: writing argus contour to </span><span class="se">\&quot;</span><span class="si">%s%s</span><span class="s2">.exp</span><span class="se">\&quot;</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    
+    <span class="n">c</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+    <span class="n">f</span>   <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.exp&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;## Name:</span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;## Icon:0</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;# Points Count Value</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%i</span><span class="s1"> 1</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">c</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;# X pos Y pos</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">c</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])):</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%10.10f</span><span class="s2"> </span><span class="si">%10.10f</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%10.10f</span><span class="s2"> </span><span class="si">%10.10f</span><span class="s2">&quot;</span>     <span class="o">%</span> <span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]))</span>  <span class="c1"># write first once more</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.extrude"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.extrude">[docs]</a>  <span class="k">def</span> <span class="nf">extrude</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extrude the mesh &lt;h&gt; units with &lt;n_layers&gt; number of layers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: extruding gmsh contour </span><span class="si">%i</span><span class="s2"> layers :::&quot;</span> <span class="o">%</span> <span class="n">n_layers</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">surf_num</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+    <span class="n">layers</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">n_layers</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Extrude {0,0,&quot;</span> <span class="o">+</span> <span class="n">h</span> <span class="o">+</span> <span class="s2">&quot;}&quot;</span> \
+            <span class="o">+</span> <span class="s2">&quot;{Surface{&quot;</span> <span class="o">+</span> <span class="n">s</span> <span class="o">+</span> <span class="s2">&quot;};&quot;</span> \
+            <span class="o">+</span> <span class="s2">&quot;Layers{&quot;</span> <span class="o">+</span> <span class="n">layers</span> <span class="o">+</span> <span class="s2">&quot;};}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.add_box"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.add_box">[docs]</a>  <span class="k">def</span> <span class="nf">add_box</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">vin</span><span class="p">,</span> <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">zmin</span><span class="p">,</span> <span class="n">zmax</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    add a box to the mesh.  e.g. for Byrd Glacier data:</span>
+
+<span class="sd">      add_box(10000, 260000, 620000, -1080000, -710100, 0, 0)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">f</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;]      =  Box;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].VIn  =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">vin</span><span class="p">)</span>  <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].VOut =  lc;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].XMax =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">xmax</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].XMin =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">xmin</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].YMax =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">ymax</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].YMin =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">ymin</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].ZMax =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">zmax</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].ZMin =  &quot;</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">zmin</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">fieldList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.add_edge_attractor"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.add_edge_attractor">[docs]</a>  <span class="k">def</span> <span class="nf">add_edge_attractor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="n">f</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;]              = Attractor;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].NodesList    = &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].NNodesByEdge = 100;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.add_threshold"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.add_threshold">[docs]</a>  <span class="k">def</span> <span class="nf">add_threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">ifield</span><span class="p">,</span> <span class="n">lcMin</span><span class="p">,</span> <span class="n">lcMax</span><span class="p">,</span> <span class="n">distMin</span><span class="p">,</span> <span class="n">distMax</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="n">f</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span>
+
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;]         = Threshold;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].IField  = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ifield</span><span class="p">)</span>  <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].LcMin   = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lcMin</span><span class="p">)</span>   <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].LcMax   = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lcMax</span><span class="p">)</span>   <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].DistMin = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">distMin</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].DistMax = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">distMax</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">fieldList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.finish"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.finish">[docs]</a>  <span class="k">def</span> <span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    figure out background field and close the .geo file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">f</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span>
+    <span class="n">fd</span>    <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="n">flist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fieldList</span>
+
+    <span class="c1"># get a string of the fields list :</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">flist</span><span class="p">):</span>
+      <span class="n">l</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flist</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">l</span> <span class="o">+=</span> <span class="s1">&#39;, &#39;</span>
+
+    <span class="c1"># make the background mesh size the minimum of the fields :</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">flist</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;]            = Min;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Field[&quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;].FieldsList = {&quot;</span> <span class="o">+</span> <span class="n">l</span> <span class="o">+</span> <span class="s2">&quot;};</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Background Field    = &quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Background Field = &quot;</span> <span class="o">+</span> <span class="n">fd</span> <span class="o">+</span> <span class="s2">&quot;;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s1">&#39;finished, closing </span><span class="se">\&quot;</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.geo</span><span class="se">\&quot;</span><span class="s1">.&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.close_file"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.close_file">[docs]</a>  <span class="k">def</span> <span class="nf">close_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    close the .geo file down for further editing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s1">&#39;::: finished, closing </span><span class="se">\&quot;</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.geo</span><span class="se">\&quot;</span><span class="s1"> :::&#39;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.create_2D_mesh"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.create_2D_mesh">[docs]</a>  <span class="k">def</span> <span class="nf">create_2D_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    create the 2D mesh to file &lt;outfile&gt;.msh.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#FIXME: this fails every time, the call in the terminal does work however.</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gmsh &#39;</span> <span class="o">+</span> <span class="s1">&#39;-2 &#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn</span> <span class="o">+</span> <span class="s1">&#39;.geo&#39;</span><span class="c1"># -2 -o &#39; \</span>
+                  <span class="c1">#+ self.direc + outfile + &#39;.msh&#39;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Executing :</span><span class="se">\n\n\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">())</span></div>
+  
+<div class="viewcode-block" id="MeshGenerator.check_dist"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.check_dist">[docs]</a>  <span class="k">def</span> <span class="nf">check_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dist</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    remove points in contour that are not a linear distance of at least</span>
+<span class="sd">    &lt;dist&gt; from previous point.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lin_dist</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xycoords</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">xycoords</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+      <span class="n">p1</span> <span class="o">=</span> <span class="n">xycoords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+      <span class="n">j</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+      <span class="k">while</span><span class="p">(</span><span class="n">j</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">xycoords</span><span class="p">)</span> <span class="ow">and</span> \
+            <span class="n">lin_dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">xycoords</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">dist</span><span class="p">):</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+      <span class="n">i</span> <span class="o">=</span> <span class="n">j</span>
+
+    <span class="c1"># fix end of array</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">while</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">xycoords</span><span class="p">)</span> <span class="o">+</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">or</span> \
+          <span class="n">lin_dist</span><span class="p">(</span><span class="n">xycoords</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">xycoords</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">dist</span><span class="p">)):</span>
+      <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+      <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="c1"># print results</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: removed </span><span class="si">%s</span><span class="s2"> points closer than </span><span class="si">%s</span><span class="s2"> m to one another :::&quot;</span><span class="o">%</span> \
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span><span class="n">mask</span><span class="p">)),</span> <span class="n">dist</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">xycoords</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.intersection"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.intersection">[docs]</a>  <span class="k">def</span> <span class="nf">intersection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_contour</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Take the geometric intersection of current coordinates with &lt;new_contour&gt;.</span>
+<span class="sd">    Used primarily to replace the edge with something from a different</span>
+<span class="sd">    (better) data set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">contour</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">contour</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span>     <span class="n">contour</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">new_contour</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">new_contour</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="n">intersection</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">p2</span><span class="p">)</span>
+
+    <span class="c1"># check if multi-polygon is created. If so, take polygon </span>
+    <span class="c1"># with greatest area</span>
+    <span class="kn">import</span> <span class="nn">collections</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">intersection</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">Iterable</span><span class="p">):</span>
+      <span class="n">p3</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">intersection</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">area</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">p3</span> <span class="o">=</span> <span class="n">intersection</span>
+
+    <span class="n">contour_intersect</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">0</span><span class="p">],</span> <span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">1</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">contour_intersect</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: intersection contour created, length </span><span class="si">%s</span><span class="s2"> nodes :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.extend_edge"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.extend_edge">[docs]</a>  <span class="k">def</span> <span class="nf">extend_edge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extends a 2d contour out from points labeled in self.edge by a distance</span>
+<span class="sd">    &lt;r&gt; (radius) in all directions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span>
+
+    <span class="n">polygons</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xycoords</span><span class="p">):</span>
+      <span class="n">polygons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shapelyPoint</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+
+    <span class="c1"># union of our original polygon and convex hull</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">cascaded_union</span><span class="p">(</span><span class="n">polygons</span><span class="p">)</span>
+    <span class="n">p3</span> <span class="o">=</span> <span class="n">cascaded_union</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span>
+
+    <span class="n">xycoords_buf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">0</span><span class="p">],</span> <span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">longest_cont</span> <span class="o">=</span> <span class="n">xycoords_buf</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.convert_msh_to_xml"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.convert_msh_to_xml">[docs]</a>  <span class="k">def</span> <span class="nf">convert_msh_to_xml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mshfile</span><span class="p">,</span> <span class="n">xmlfile</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    convert &lt;mshfile&gt; .msh file to .xml file &lt;xmlfile&gt; via dolfin-convert.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">msh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="n">mshfile</span> <span class="o">+</span> <span class="s1">&#39;.msh&#39;</span>
+    <span class="n">xml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="n">xmlfile</span> <span class="o">+</span> <span class="s1">&#39;.xml&#39;</span>
+
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;dolfin-convert &#39;</span> <span class="o">+</span> <span class="n">msh</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">xml</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Executing :</span><span class="se">\n\n\t</span><span class="s2"> </span><span class="si">%s</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cmd</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gzip -f &#39;</span> <span class="o">+</span> <span class="n">xml</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Executing :</span><span class="se">\n\n\t</span><span class="s2"> </span><span class="si">%s</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cmd</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="MeshGenerator.convert_msh_to_xdmf"><a class="viewcode-back" href="../meshing.html#meshing.MeshGenerator.convert_msh_to_xdmf">[docs]</a>  <span class="k">def</span> <span class="nf">convert_msh_to_xdmf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mshfile</span><span class="p">,</span> <span class="n">xdmffile</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    convert &lt;mshfile&gt; .msh file to .xdmf file &lt;xdmffile&gt;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">convert_msh_to_xml</span><span class="p">(</span><span class="n">mshfile</span><span class="p">,</span> <span class="n">xdmffile</span><span class="p">)</span>
+
+    <span class="n">xdmf</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="n">xdmffile</span> <span class="o">+</span> <span class="s1">&#39;.xdmf&#39;</span>
+    <span class="n">xml</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direc</span> <span class="o">+</span> <span class="n">xmlfile</span>  <span class="o">+</span> <span class="s1">&#39;.xml.gz&#39;</span>
+    <span class="n">mesh</span>      <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="n">xml</span><span class="p">)</span>
+    <span class="n">mesh_file</span> <span class="o">=</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">mpi_comm</span><span class="p">(),</span> <span class="n">xdmf</span><span class="p">)</span>
+    <span class="n">mesh_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="linear_attractor"><a class="viewcode-back" href="../meshing.html#meshing.linear_attractor">[docs]</a><span class="k">class</span> <span class="nc">linear_attractor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Create an attractor object which refines with min and max cell radius </span>
+<span class="sd">  :math:`l_{min}`, :math:`l_{max}` over data field :math:`f`.  The </span>
+<span class="sd">  :math:`f_{max}` parameter specifies a max value for which to apply the </span>
+<span class="sd">  minimum cell size such that if :math:`f_i` is less than :math:`f_{max}`,</span>
+<span class="sd">  the cell size in this region will be :math:`l_{max}`.  If *inv* = ``True``</span>
+<span class="sd">  the object refines on the inverse of the data field :math:`f`.</span>
+
+<span class="sd">  .. math::</span>
+
+<span class="sd">     h_i = \begin{cases}</span>
+<span class="sd">             l_{min},     &amp; f_i &gt; f_{max} \\</span>
+<span class="sd">             l_{max},     &amp; f_i &lt; f_{max} \\</span>
+<span class="sd">             f_i,         &amp; otherwise \\</span>
+<span class="sd">           \end{cases}</span>
+
+<span class="sd">  Args:</span>
+
+<span class="sd">    :spline: the iterpolator which is evaluated at x- and y-coordinates</span>
+<span class="sd">    :f:      the :class:`~numpy.array` being interpolated</span>
+<span class="sd">    :f_max:  maximum value of *f* for *l_max* and *l_min*</span>
+<span class="sd">    :l_min:  minimum cell size</span>
+<span class="sd">    :l_max:  maximum cell size</span>
+<span class="sd">    :inv:    boolean, invert *f* for attraction</span>
+
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spline</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">f_max</span><span class="p">,</span> <span class="n">l_min</span><span class="p">,</span> <span class="n">l_max</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Refine the mesh off of data field &lt;f&gt; using spline &lt;spline&gt; with the</span>
+<span class="sd">    cell radius defined as :</span>
+
+<span class="sd">               {l_min,     f_i &gt; f_max</span>
+<span class="sd">    cell_h_i = {l_max,     f_i &lt; f_max</span>
+<span class="sd">               {f_i,       otherwise</span>
+
+<span class="sd">    If &lt;inv&gt; is True, refine off of the inverse of &lt;f&gt; instead.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">spline</span>   <span class="o">=</span> <span class="n">spline</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">field</span>    <span class="o">=</span> <span class="n">f</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">l_min</span>    <span class="o">=</span> <span class="n">l_min</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">l_max</span>    <span class="o">=</span> <span class="n">l_max</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f_max</span>    <span class="o">=</span> <span class="n">f_max</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inv</span>      <span class="o">=</span> <span class="n">inv</span>
+
+<div class="viewcode-block" id="linear_attractor.op"><a class="viewcode-back" href="../meshing.html#meshing.linear_attractor.op">[docs]</a>  <span class="k">def</span> <span class="nf">op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Method which evaluates this linear attractor.</span>
+
+<span class="sd">    Args:</span>
+
+<span class="sd">      :x:      the x-coordinate</span>
+<span class="sd">      :y:      the y-coordinate</span>
+<span class="sd">      :z:      the z-coordinate (not used)</span>
+<span class="sd">      :entity: not used</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    </span>
+<span class="sd">      :lc:     characteristic radius for a given cell at *(x,y)*</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">l_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_min</span>
+    <span class="n">l_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_max</span>
+    <span class="n">f</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span>
+    <span class="n">v</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spline</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inv</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_max</span><span class="p">:</span>
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">l_max</span> <span class="o">-</span> <span class="p">(</span><span class="n">l_max</span> <span class="o">-</span> <span class="n">l_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">f</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="n">v</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">l_min</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_max</span><span class="p">:</span>
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">l_min</span> <span class="o">+</span> <span class="p">(</span><span class="n">l_max</span> <span class="o">-</span> <span class="n">l_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">f</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="n">v</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">lc</span> <span class="o">=</span> <span class="n">l_max</span>
+    <span class="k">return</span> <span class="n">lc</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="static_attractor"><a class="viewcode-back" href="../meshing.html#meshing.static_attractor">[docs]</a><span class="k">class</span> <span class="nc">static_attractor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spline</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Refine the mesh off of data field &lt;spline&gt; with the cell radius</span>
+<span class="sd">    defined as :</span>
+
+<span class="sd">    cell_h_i = c * spline(x,y)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">spline</span> <span class="o">=</span> <span class="n">spline</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">c</span>      <span class="o">=</span> <span class="n">c</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">inv</span>    <span class="o">=</span> <span class="n">inv</span>
+
+<div class="viewcode-block" id="static_attractor.op"><a class="viewcode-back" href="../meshing.html#meshing.static_attractor.op">[docs]</a>  <span class="k">def</span> <span class="nf">op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">inv</span><span class="p">:</span>
+      <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">spline</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">*</span> <span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">spline</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">lc</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="min_field"><a class="viewcode-back" href="../meshing.html#meshing.min_field">[docs]</a><span class="k">class</span> <span class="nc">min_field</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Return the minimum of a list of attactor operator fields &lt;f_list&gt;.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_list</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f_list</span> <span class="o">=</span> <span class="n">f_list</span>
+
+  <span class="k">def</span> <span class="nf">op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_list</span><span class="p">:</span>
+      <span class="n">l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">entity</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">l</span><span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="max_field"><a class="viewcode-back" href="../meshing.html#meshing.max_field">[docs]</a><span class="k">class</span> <span class="nc">max_field</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Return the minimum of a list of attactor operator fields &lt;f_list&gt;.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_list</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">f_list</span> <span class="o">=</span> <span class="n">f_list</span>
+
+  <span class="k">def</span> <span class="nf">op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_list</span><span class="p">:</span>
+      <span class="n">l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">entity</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">l</span><span class="p">)</span></div>
+
+
+
+
+<span class="k">class</span> <span class="nc">MeshRefiner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">gmsh_file_name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a 2D or 3D mesh based on contour .geo file &lt;gmsh_file_name&gt;.</span>
+<span class="sd">    Refinements are done on DataInput object &lt;di&gt; with data field index &lt;fn&gt;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;43&#39;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: initializing MeshRefiner on </span><span class="se">\&quot;</span><span class="si">%s</span><span class="s2">.geo</span><span class="se">\&quot;</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="n">gmsh_file_name</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">field</span>  <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">fn</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">,</span> <span class="s1">&#39;refinement field [m]&#39;</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">spline</span> <span class="o">=</span> <span class="n">RectBivariateSpline</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">,</span> <span class="n">kx</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ky</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1">#load the mesh into a GModel</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">GModel</span><span class="o">.</span><span class="n">current</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">gmsh_file_name</span> <span class="o">+</span> <span class="s1">&#39;.geo&#39;</span><span class="p">)</span>
+
+    <span class="c1"># set some parameters :</span>
+    <span class="n">GmshSetOption</span><span class="p">(</span><span class="s2">&quot;Mesh&quot;</span><span class="p">,</span> <span class="s2">&quot;CharacteristicLengthFromPoints&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">GmshSetOption</span><span class="p">(</span><span class="s2">&quot;Mesh&quot;</span><span class="p">,</span> <span class="s2">&quot;CharacteristicLengthExtendFromBoundary&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">GmshSetOption</span><span class="p">(</span><span class="s2">&quot;Mesh&quot;</span><span class="p">,</span> <span class="s2">&quot;Smoothing&quot;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">add_linear_attractor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_max</span><span class="p">,</span> <span class="n">l_min</span><span class="p">,</span> <span class="n">l_max</span><span class="p">,</span> <span class="n">inv</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Refine the mesh with the cell radius defined as :</span>
+
+<span class="sd">               {l_min,     field_i &gt; f_max</span>
+<span class="sd">    cell_h_i = {l_max,     field_i &lt; f_max</span>
+<span class="sd">               {field_i,   otherwise</span>
+
+<span class="sd">    If &lt;inv&gt; is True, refine off of the inverse of &lt;field&gt; instead.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># field, f_max, l_min, l_max, hard_cut=false, inv=true</span>
+    <span class="n">a</span>   <span class="o">=</span> <span class="n">linear_attractor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spline</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">field</span><span class="p">,</span> <span class="n">f_max</span><span class="p">,</span> <span class="n">l_min</span><span class="p">,</span> <span class="n">l_max</span><span class="p">,</span>
+                           <span class="n">inv</span><span class="o">=</span><span class="n">inv</span><span class="p">)</span>
+    <span class="n">aid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">getFields</span><span class="p">()</span><span class="o">.</span><span class="n">addPythonField</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">op</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span><span class="n">aid</span>
+
+  <span class="k">def</span> <span class="nf">add_static_attractor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inv</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Refine the mesh with the cell radius defined as :</span>
+
+<span class="sd">    cell_h_i = c * field_i</span>
+
+<span class="sd">    returns a tuple, static_attractor object and id number.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># field, f_max, l_min, l_max, hard_cut=false, inv=true</span>
+    <span class="n">a</span>   <span class="o">=</span> <span class="n">static_attractor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spline</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">inv</span><span class="p">)</span>
+    <span class="n">aid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">getFields</span><span class="p">()</span><span class="o">.</span><span class="n">addPythonField</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">op</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span><span class="n">aid</span>
+
+  <span class="k">def</span> <span class="nf">add_min_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a miniumum field of attactor operator lists &lt;op_list&gt;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mf</span>  <span class="o">=</span> <span class="n">min_field</span><span class="p">(</span><span class="n">op_list</span><span class="p">)</span>
+    <span class="n">mid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">getFields</span><span class="p">()</span><span class="o">.</span><span class="n">addPythonField</span><span class="p">(</span><span class="n">mf</span><span class="o">.</span><span class="n">op</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mid</span>
+
+  <span class="k">def</span> <span class="nf">set_background_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idn</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set the background field to that of field index &lt;idn&gt;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">getFields</span><span class="p">()</span><span class="o">.</span><span class="n">setBackgroundFieldId</span><span class="p">(</span><span class="n">idn</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gui</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_file_name</span><span class="o">=</span><span class="s1">&#39;mesh&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finish and create the .msh file.  If &lt;gui&gt; is True, run the gui program,</span>
+<span class="sd">    Otherwise, create the .msh file with dimension &lt;dim&gt; and filename</span>
+<span class="sd">    &lt;out_file_name&gt;.msh.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">out_file_name</span> <span class="o">=</span> <span class="n">out_file_name</span>
+
+    <span class="c1">#launch the GUI</span>
+    <span class="k">if</span> <span class="n">gui</span><span class="p">:</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;::: opening GUI :::&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+      <span class="n">FlGui</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+    <span class="c1"># instead of starting the GUI, we could generate the mesh and save it</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: writing </span><span class="si">%s</span><span class="s2">.msh :::&quot;</span> <span class="o">%</span> <span class="n">out_file_name</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">mesh</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">out_file_name</span> <span class="o">+</span> <span class="s2">&quot;.msh&quot;</span><span class="p">)</span>
+  
+  <span class="k">def</span> <span class="nf">convert_msh_to_xml</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    convert ``self.out_file_name``.msh file to .xml file </span>
+<span class="sd">    ``self.out_file_name``.xml via dolfin-convert.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">msh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_file_name</span> <span class="o">+</span> <span class="s1">&#39;.msh&#39;</span>
+    <span class="n">xml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_file_name</span> <span class="o">+</span> <span class="s1">&#39;.xml&#39;</span>
+
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;dolfin-convert &#39;</span> <span class="o">+</span> <span class="n">msh</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">xml</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Executing :</span><span class="se">\n\n\t</span><span class="s2"> </span><span class="si">%s</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cmd</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+    
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gzip -f &#39;</span> <span class="o">+</span> <span class="n">xml</span>
+    <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Executing :</span><span class="se">\n\n\t</span><span class="s2"> </span><span class="si">%s</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cmd</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+  <span class="k">def</span> <span class="nf">convert_msh_to_xdmf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    convert ``self.out_file_name``.msh file to .xdmf file </span>
+<span class="sd">    ``self.out_file_name``.xdmf via dolfin-convert.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">convert_msh_to_xml</span><span class="p">()</span>
+
+    <span class="n">xdmf</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_file_name</span> <span class="o">+</span> <span class="s1">&#39;.xdmf&#39;</span>
+    <span class="n">xml</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">out_file_name</span> <span class="o">+</span> <span class="s1">&#39;.xml.gz&#39;</span>
+    <span class="n">mesh</span>      <span class="o">=</span> <span class="n">Mesh</span><span class="p">(</span><span class="n">xml</span><span class="p">)</span>
+    <span class="n">mesh_file</span> <span class="o">=</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">mpi_comm</span><span class="p">(),</span> <span class="n">xdmf</span><span class="p">)</span>
+    <span class="n">mesh_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+
+
+
+
+<div class="viewcode-block" id="MeshExtruder"><a class="viewcode-back" href="../meshing.html#meshing.MeshExtruder">[docs]</a><span class="k">class</span> <span class="nc">MeshExtruder</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Due to extreme bugginess in the gmsh extrusion utilities, this class</span>
+<span class="sd">  extrudes a 2D mesh footprint in the z direction in an arbitrary number of</span>
+<span class="sd">  layers.  Its primary purpose is to facilitate mesh generation for the</span>
+<span class="sd">  ice sheet model VarGlaS.  Method based on HOW TO SUBDIVIDE PYRAMIDS, PRISMS</span>
+<span class="sd">  AND HEXAHEDRA INTO TETRAHEDRA by Dompierre et al.</span>
+
+<span class="sd">  Written by Douglas Brinkerhoff 14.01.25</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="n">indirection_table</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span>
+                       <span class="mi">1</span><span class="p">:[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span>
+                       <span class="mi">2</span><span class="p">:[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span>
+                       <span class="mi">3</span><span class="p">:[</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+                       <span class="mi">4</span><span class="p">:[</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span>
+                       <span class="mi">5</span><span class="p">:[</span><span class="mi">5</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]}</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">mesh</span><span class="p">):</span>
+    <span class="c1"># Accepts a dolfin mesh of dimension 2</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span> <span class="o">=</span> <span class="n">mesh</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">n_v2</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span>
+
+    <span class="c1"># Initialize tetrahedron array for extruded mesh</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+  <span class="k">def</span> <span class="nf">extrude_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">l</span><span class="p">,</span><span class="n">z_offset</span><span class="p">):</span>
+    <span class="c1"># accepts the number of layers and the length of extrusion</span>
+
+    <span class="n">mesh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span>
+
+    <span class="c1"># Extrude vertices</span>
+    <span class="n">all_coords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">z_offset</span><span class="p">,</span><span class="n">l</span><span class="p">):</span>
+      <span class="n">all_coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">(),</span>
+                                  <span class="n">i</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_v2</span><span class="p">,</span><span class="mi">1</span><span class="p">)))))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">global_vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">all_coords</span><span class="p">)</span>
+
+    <span class="c1"># Extrude cells (tris to tetrahedra)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">l</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">cells</span><span class="p">():</span>
+        <span class="c1"># Make a prism out of 2 stacked triangles</span>
+        <span class="n">vertices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">c</span><span class="o">+</span><span class="n">i</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n_v2</span><span class="p">,</span><span class="n">c</span><span class="o">+</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n_v2</span><span class="p">))</span>
+
+        <span class="c1"># Determine prism orientation</span>
+        <span class="n">smallest_vertex_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">vertices</span><span class="p">)</span>
+
+        <span class="c1"># Map to I-ordering of Dompierre et al.</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">indirection_table</span><span class="p">[</span><span class="n">smallest_vertex_index</span><span class="p">]</span>
+
+        <span class="c1"># Determine which subdivision scheme to use.</span>
+        <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">]])</span> <span class="o">&lt;</span> <span class="nb">min</span><span class="p">(</span><span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">]]):</span>
+          <span class="n">local_tets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">]],</span>\
+                                  <span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">4</span><span class="p">]],</span>\
+                                  <span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">]]))</span>
+        <span class="k">else</span><span class="p">:</span>
+          <span class="n">local_tets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">]],</span>\
+                                  <span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">]],</span>\
+                                  <span class="n">vertices</span><span class="p">[</span><span class="n">mapping</span><span class="p">][[</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">]]))</span>
+        <span class="c1"># Concatenate local tet to cell array</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span><span class="p">,</span><span class="n">local_tets</span><span class="p">))</span>
+
+    <span class="c1"># Eliminate phantom initialization tet</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span><span class="p">[</span><span class="mi">1</span><span class="p">:,:]</span>
+
+    <span class="c1"># Query number of vertices and tets in new mesh</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">n_verts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_vertices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">n_tets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Initialize new dolfin mesh of dimension 3</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">new_mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">()</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">MeshEditor</span><span class="p">()</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">new_mesh</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">init_vertices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_verts</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">n_verts</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">init_cells</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_tets</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">n_tets</span><span class="p">)</span>
+
+    <span class="c1"># Copy vertex data into new mesh</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_vertices</span><span class="p">):</span>
+      <span class="n">m</span><span class="o">.</span><span class="n">add_vertex</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">Point</span><span class="p">(</span><span class="o">*</span><span class="n">v</span><span class="p">))</span>
+
+    <span class="c1"># Copy cell data into new mesh</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_tets</span><span class="p">):</span>
+      <span class="n">m</span><span class="o">.</span><span class="n">add_cell</span><span class="p">(</span><span class="n">j</span><span class="p">,</span><span class="o">*</span><span class="n">c</span><span class="p">)</span>
+
+    <span class="n">m</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="nf">write_mesh_to_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">filename</span><span class="p">):</span>
+    <span class="c1"># Output mesh</span>
+    <span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_mesh</span></div>
+
+
+
+<div class="viewcode-block" id="GetBasin"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin">[docs]</a><span class="k">class</span> <span class="nc">GetBasin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  This class contains functions to return a contour corresponding to the</span>
+<span class="sd">  perimeter of various basins in Antarctica and Greenland. The libraries of</span>
+<span class="sd">  basins are drawn from ICESat data, and posted here:</span>
+
+<span class="sd">  http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php</span>
+
+<span class="sd">  INPUTS:</span>
+<span class="sd">    di :</span>
+<span class="sd">      an instance of a DataInput obect (see above) needed for the projection</span>
+<span class="sd">      function</span>
+
+<span class="sd">    basin:</span>
+<span class="sd">      basin number. If left as None, the program will prompt you to pick a basin</span>
+
+<span class="sd">  TODO: Now working to extend the domain beyond the present day ice margin for</span>
+<span class="sd">  the purpose of increasing the stability of dynamic runs. Additionally, there</span>
+<span class="sd">  appear to be some stability issues when running the MCB algorithm, but these</span>
+<span class="sd">  are not consistent; some domains work, others do not. The hope is that</span>
+<span class="sd">  extension of the domain will help here too.</span>
+
+<span class="sd">  Originally written by Aaron St. George, updated by Evan Cummings</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">di</span><span class="p">,</span> <span class="n">basin</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">color</span>  <span class="o">=</span> <span class="s1">&#39;grey_46&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">di</span>     <span class="o">=</span> <span class="n">di</span>
+
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING BASIN GENERATOR :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span>  <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Get path of this file, which should be in the src directory</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getframeinfo</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())</span><span class="o">.</span><span class="n">filename</span>
+    <span class="n">home</span>     <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/..&quot;</span>
+
+    <span class="k">if</span> <span class="n">di</span><span class="o">.</span><span class="n">cont</span> <span class="o">==</span> <span class="s2">&quot;greenland&quot;</span><span class="p">:</span>
+      <span class="n">path</span>           <span class="o">=</span> <span class="n">home</span> <span class="o">+</span> <span class="s2">&quot;/data/greenland/&quot;</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span>  <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">&quot;GrnDrainageSystems_Ekholm.txt&quot;</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">imagefile</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">&quot;Grn_Drainage_Systems.png&quot;</span>
+    <span class="k">elif</span> <span class="n">di</span><span class="o">.</span><span class="n">cont</span> <span class="o">==</span> <span class="s2">&quot;antarctica&quot;</span><span class="p">:</span>
+      <span class="n">path</span>           <span class="o">=</span> <span class="n">home</span> <span class="o">+</span> <span class="s2">&quot;/data/antarctica/&quot;</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">datafile</span>  <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">&quot;Ant_Full_DrainageSystem_Polygons.txt&quot;</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">imagefile</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">&quot;Ant_ICESatDSMaps_Fig_1.jpg&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;Can not find data corresponding to location </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">di</span><span class="o">.</span><span class="n">cont</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">basin</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">show_and_get_basin</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">basin</span> <span class="o">=</span> <span class="n">basin</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrive_basin_latlong</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">convert_to_projection</span><span class="p">()</span>
+
+<div class="viewcode-block" id="GetBasin.show_and_get_basin"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.show_and_get_basin">[docs]</a>  <span class="k">def</span> <span class="nf">show_and_get_basin</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imagefile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imagefile</span><span class="p">)</span>
+    <span class="n">image</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">basin</span> <span class="o">=</span> <span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;Input the numerical code of the basin.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GetBasin.retrive_basin_latlong"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.retrive_basin_latlong">[docs]</a>  <span class="k">def</span> <span class="nf">retrive_basin_latlong</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">llcoords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">di</span><span class="o">.</span><span class="n">cont</span> <span class="o">==</span> <span class="s1">&#39;antarctica&#39;</span><span class="p">:</span>
+      <span class="nb">id</span>  <span class="o">=</span> <span class="mi">2</span>
+      <span class="n">lat</span> <span class="o">=</span> <span class="mi">0</span>
+      <span class="n">lon</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">di</span><span class="o">.</span><span class="n">cont</span> <span class="o">==</span> <span class="s1">&#39;greenland&#39;</span><span class="p">:</span>
+      <span class="nb">id</span>  <span class="o">=</span> <span class="mi">0</span>
+      <span class="n">lat</span> <span class="o">=</span> <span class="mi">1</span>
+      <span class="n">lon</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datafile</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+      <span class="n">sl</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+      <span class="k">if</span> <span class="n">sl</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">basin</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">llcoords</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">sl</span><span class="p">[</span><span class="n">lon</span><span class="p">],</span><span class="n">sl</span><span class="p">[</span><span class="n">lat</span><span class="p">]])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">llcoords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">llcoords</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GetBasin.convert_to_projection"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.convert_to_projection">[docs]</a>  <span class="k">def</span> <span class="nf">convert_to_projection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">edge</span>     <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">p</span>             <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">llcoords</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="c1"># previous point</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">di</span><span class="o">.</span><span class="n">get_xy</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">edge</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">p_p</span>           <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">distance</span>      <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">lin_dist</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">llcoords</span><span class="p">:</span>
+      <span class="n">p_n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">di</span><span class="o">.</span><span class="n">get_xy</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># Current point xy</span>
+      <span class="n">delta_X</span> <span class="o">=</span> <span class="n">lin_dist</span><span class="p">(</span><span class="n">p_n</span><span class="p">,</span> <span class="n">p_p</span><span class="p">)</span>
+      <span class="n">distance</span> <span class="o">+=</span> <span class="n">delta_X</span>
+
+      <span class="k">if</span> <span class="n">delta_X</span> <span class="o">&gt;</span> <span class="mf">500.</span><span class="p">:</span>            <span class="c1"># edge points are further apart</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">edge</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">edge</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_n</span><span class="p">)</span>
+      <span class="n">distance</span> <span class="o">=</span> <span class="mf">0.</span>
+      <span class="n">p_p</span> <span class="o">=</span> <span class="n">p_n</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    # remove points at end of array that may overlap</span>
+<span class="sd">    while(len(self.xycoords) &gt; 0):</span>
+<span class="sd">      self.xycoords.pop()</span>
+<span class="sd">      self.edge.pop()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">clean_edge</span><span class="p">()</span> <span class="c1">#clean (very rare) incorrectly identified edge points</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">edge</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">edge</span><span class="p">)</span>
+    
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: basin contour created with length </span><span class="si">%i</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GetBasin.clean_edge"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.clean_edge">[docs]</a>  <span class="k">def</span> <span class="nf">clean_edge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove spurious edge markers. Not very common, but they do happen.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">edge</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edge</span>
+    <span class="n">check</span> <span class="o">=</span> <span class="mi">5</span>
+
+    <span class="k">def</span> <span class="nf">check_n</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">check_f</span><span class="p">):</span>
+      <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">      Return True if for at least &lt;n&gt; points on either side of a given</span>
+<span class="sd">      index check_f(l[i]) returns True. Array will be assumed to be</span>
+<span class="sd">      circular, i.e. l[len(l)] will be converted to l[0], and</span>
+<span class="sd">      l[len(l)+1] will be converted to [1]</span>
+<span class="sd">      &quot;&quot;&quot;</span>
+      <span class="n">g</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">i</span><span class="p">:</span> <span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+
+      <span class="n">behind</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">check_f</span><span class="p">(</span> <span class="n">l</span><span class="p">[</span><span class="n">g</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">))]</span> <span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)])</span> <span class="o">==</span> <span class="n">n</span>
+      <span class="n">front</span>  <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">check_f</span><span class="p">(</span> <span class="n">l</span><span class="p">[</span><span class="n">g</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span> <span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)])</span> <span class="o">==</span> <span class="n">n</span>
+
+      <span class="k">return</span> <span class="n">front</span> <span class="ow">or</span> <span class="n">behind</span>
+
+    <span class="c1"># For every edge point make sure that at least &lt;check&gt; points on either</span>
+    <span class="c1"># side are also edge Points.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">edge</span><span class="p">)):</span>
+      <span class="k">if</span> <span class="n">edge</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">check_n</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">edge</span><span class="p">,</span> <span class="n">check</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="p">):</span>
+          <span class="n">edge</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="GetBasin.check_dist"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.check_dist">[docs]</a>  <span class="k">def</span> <span class="nf">check_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    remove points in xycoords that are not a linear distance of at least</span>
+<span class="sd">    &lt;dist&gt; from previous point.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lin_dist</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">edge</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edge</span>
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span>
+    <span class="n">n</span>        <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xycoords</span><span class="p">)</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+      <span class="n">p1</span> <span class="o">=</span> <span class="n">xycoords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+      <span class="n">j</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+      <span class="k">while</span><span class="p">(</span><span class="n">j</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="ow">and</span> <span class="n">lin_dist</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">xycoords</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">):</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+      <span class="n">i</span> <span class="o">=</span> <span class="n">j</span>
+
+    <span class="c1"># fix end of array</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">or</span> \
+          <span class="n">lin_dist</span><span class="p">(</span><span class="n">xycoords</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">xycoords</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">)):</span>
+      <span class="n">mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+      <span class="n">i</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="c1">#for i in range(0,n-2):</span>
+    <span class="c1">#  p1 = xycoords[i]</span>
+    <span class="c1">#  p2 = xycoords[i+1]</span>
+    <span class="c1">#  if lin_dist(p1, p2) &lt; r:</span>
+    <span class="c1">#    mask[i] = 0</span>
+
+    <span class="c1"># print results</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: removed </span><span class="si">%s</span><span class="s2"> points closer than </span><span class="si">%s</span><span class="s2"> m to one another :::&quot;</span><span class="o">%</span> \
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">(</span><span class="n">mask</span><span class="p">)),</span> <span class="n">r</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="n">xycoords</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="GetBasin.extend_boundary"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.extend_boundary">[docs]</a>  <span class="k">def</span> <span class="nf">extend_boundary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extends a 2d contour out from points in ``self.xycoords`` by a distance</span>
+<span class="sd">    ``r`` (radius) in all directions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: extending boundary by </span><span class="si">%i</span><span class="s2"> meters :::&quot;</span> <span class="o">%</span> <span class="n">r</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span>
+
+    <span class="n">polygons</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xycoords</span><span class="p">):</span>
+      <span class="n">polygons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shapelyPoint</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+
+    <span class="c1"># union of our original polygon and convex hull</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">cascaded_union</span><span class="p">(</span><span class="n">polygons</span><span class="p">)</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">xycoords</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">xycoords</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">p3</span> <span class="o">=</span> <span class="n">cascaded_union</span><span class="p">([</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">])</span>
+
+    <span class="n">xycoords_buf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">0</span><span class="p">],</span> <span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords_buf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xycoords_buf</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="n">xycoords_buf</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: extended contour created of length </span><span class="si">%i</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GetBasin.extend_edge"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.extend_edge">[docs]</a>  <span class="k">def</span> <span class="nf">extend_edge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extends a 2d contour out from points labeled in self.edge by a distance</span>
+<span class="sd">    &lt;r&gt; (radius) in all directions.</span>
+<span class="sd">    NOTE: this only works for greenland.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: extending edge by </span><span class="si">%i</span><span class="s2"> meters :::&quot;</span> <span class="o">%</span> <span class="n">r</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span>
+    <span class="n">edge</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edge</span>
+
+    <span class="n">polygons</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xycoords</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">edge</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+        <span class="n">polygons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shapelyPoint</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+
+    <span class="c1"># union of our original polygon and convex hull</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">cascaded_union</span><span class="p">(</span><span class="n">polygons</span><span class="p">)</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">xycoords</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">xycoords</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">p3</span> <span class="o">=</span> <span class="n">cascaded_union</span><span class="p">([</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">])</span>
+
+    <span class="n">xycoords_buf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">0</span><span class="p">],</span> <span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords_buf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xycoords_buf</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="n">xycoords_buf</span></div>
+
+<div class="viewcode-block" id="GetBasin.intersection"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.intersection">[docs]</a>  <span class="k">def</span> <span class="nf">intersection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Take the geometric intersection of current coordinates with &lt;other&gt;.</span>
+<span class="sd">    Used primarily to replace the edge with something from a different</span>
+<span class="sd">    (better) data set.</span>
+
+<span class="sd">    NOTE: it&#39;s probably better to extend the boundary before taking the</span>
+<span class="sd">    intersection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: taking intersection with new contour of length </span><span class="si">%i</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span>
+
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span> <span class="nb">zip</span><span class="p">(</span><span class="n">xycoords</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">xycoords</span><span class="p">[:,</span><span class="mi">1</span><span class="p">])</span> <span class="p">)</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span> <span class="nb">zip</span><span class="p">(</span><span class="n">other</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span>    <span class="n">other</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>   <span class="p">)</span> <span class="p">)</span>
+
+    <span class="n">intersection</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">p2</span><span class="p">)</span>
+
+    <span class="c1"># check if multi-polygon is created. If so, take polygon with greatest</span>
+    <span class="c1"># area</span>
+    <span class="kn">import</span> <span class="nn">collections</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">intersection</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">Iterable</span><span class="p">):</span>
+      <span class="n">p3</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">intersection</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">area</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">p3</span> <span class="o">=</span> <span class="n">intersection</span>
+
+    <span class="n">xycoords_intersect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">0</span><span class="p">],</span> \
+                                   <span class="n">p3</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">[:][</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords_intersect&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xycoords_intersect</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="n">xycoords_intersect</span>
+    
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: intersection created with length </span><span class="si">%i</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GetBasin.plot_xycoords"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.plot_xycoords">[docs]</a>  <span class="k">def</span> <span class="nf">plot_xycoords</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">ax</span>  <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span>
+
+    <span class="c1"># plot intersection</span>
+    <span class="k">if</span> <span class="s2">&quot;xycoords_intersect&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">:</span>
+      <span class="n">xycoords_intersect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords_intersect&quot;</span><span class="p">]</span>
+      <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xycoords_intersect</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">xycoords_intersect</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">8.0</span><span class="p">)</span>
+
+    <span class="c1"># plot other</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+      <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">other</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">other</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">4.0</span><span class="p">)</span>
+
+    <span class="c1"># plot buffered coordinates</span>
+    <span class="k">if</span> <span class="s2">&quot;xycoords_buf&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">:</span>
+      <span class="n">xycoords_buf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords_buf&quot;</span><span class="p">]</span>
+      <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xycoords_buf</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">xycoords_buf</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="c1"># plot original data</span>
+    <span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_coords</span><span class="p">[</span><span class="s2">&quot;xycoords&quot;</span><span class="p">]</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xycoords</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">xycoords</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="c1">#from numpy import ma</span>
+    <span class="c1">#interior = ma.masked_array(xycoords, array([zip(self.edge,self.edge)]))</span>
+    <span class="c1">#ax.plot(interior[:,0], interior[:,1], &#39;k&#39;, lw=3.0)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;boundaries&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="GetBasin.get_xy_contour"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.get_xy_contour">[docs]</a>  <span class="k">def</span> <span class="nf">get_xy_contour</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span></div>
+  
+<div class="viewcode-block" id="GetBasin.remove_skip_points"><a class="viewcode-back" href="../meshing.html#meshing.GetBasin.remove_skip_points">[docs]</a>  <span class="k">def</span> <span class="nf">remove_skip_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">skip_pts</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    remove all but those nodes which are ``skip_pts`` distance apart.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># remove skip points and last point to avoid overlap,</span>
+    <span class="c1"># but leave the edge intact :</span>
+    <span class="n">mask</span>          <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">),</span> <span class="n">skip_pts</span><span class="p">)</span>
+    <span class="n">union</span>         <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">union1d</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">edge</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">[</span><span class="n">union</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">edge</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">edge</span><span class="p">[</span><span class="n">union</span><span class="p">]</span>
+    <span class="c1">#self.xycoords = self.xycoords[::skip_pts,:][:-1,:]</span>
+    <span class="c1">#self.edge     = self.edge[::skip_pts][:-1]</span>
+    <span class="n">s</span>             <span class="o">=</span> <span class="s2">&quot;::: contour points skipped, new length </span><span class="si">%s</span><span class="s2"> nodes :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xycoords</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

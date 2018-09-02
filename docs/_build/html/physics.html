@@ -1,0 +1,668 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>The Physics classes &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Momentum balance" href="momentum.html" />
+    <link rel="prev" title="The Model classes" href="model.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The Physics classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-momentum">Momentum balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mass-balance">Mass balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#energy-balance">Energy balance</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>The Physics classes</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/physics.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-physics">
+<span id="the-physics-classes"></span><h1>The Physics classes<a class="headerlink" href="#module-physics" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="physics.Physics">
+<em class="property">class </em><code class="descclassname">physics.</code><code class="descname">Physics</code><a class="reference internal" href="_modules/physics.html#Physics"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics" title="Permalink to this definition">¶</a></dt>
+<dd><p>This abstract class outlines the structure of a physics calculation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>model</strong> (<a class="reference internal" href="model.html#model.Model" title="model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></a>) – the model instance for this physics problem</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="physics.Physics.calc_functionals">
+<code class="descname">calc_functionals</code><span class="sig-paren">(</span><em>u</em>, <em>u_ob</em>, <em>control</em>, <em>J_measure</em>, <em>R_measure</em>, <em>eps=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.calc_functionals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.calc_functionals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to facilitate printing the objective function in adjoint solves.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the default color for this class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.form_cost_ftn">
+<code class="descname">form_cost_ftn</code><span class="sig-paren">(</span><em>u</em>, <em>u_ob</em>, <em>integral</em>, <em>kind='log'</em>, <em>eps=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.form_cost_ftn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.form_cost_ftn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forms and returns a cost functional for use with adjoint calculations such
+as <a class="reference internal" href="#physics.Physics.optimize" title="physics.Physics.optimize"><code class="xref py py-func docutils literal notranslate"><span class="pre">optimize()</span></code></a>.</p>
+<p>The choices for <code class="docutils literal notranslate"><span class="pre">kind</span></code> are :</p>
+<ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">log</span></code> – logarithmic cost</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \ln \left( \frac{ \Vert u \Vert_2 + \epsilon }{ \Vert u_{\mathrm{ob}} \Vert_2 + \epsilon } \right)^2 \mathrm{d}\Gamma\]</div>
+<ol class="arabic simple" start="2">
+<li><code class="docutils literal notranslate"><span class="pre">l2</span></code> – <span class="math notranslate nohighlight">\(L_2\)</span>-norm cost</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \Vert u - u_{\mathrm{ob}} \Vert_2^2 \mathrm{d}\Gamma\]</div>
+<ol class="arabic simple" start="3">
+<li><code class="docutils literal notranslate"><span class="pre">ratio</span></code> – ratio cost</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{J}(u) = \frac{1}{2} \int_{\Gamma} \left( 1 - \left( \frac{ \Vert u \Vert_2 + \epsilon }{ \Vert u_{\mathrm{ob}} \Vert_2 + \epsilon } \right) \right)^2 \mathrm{d}\Gamma\]</div>
+<ol class="arabic simple" start="4">
+<li><code class="docutils literal notranslate"><span class="pre">abs</span></code> – absolute value cost</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{J}(u) = \int_{\Gamma} \left| u - u_{\mathrm{ob}} \right| \mathrm{d}\Gamma\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">dolfin_adjoint.Function</span></code>) – the state variable</li>
+<li><strong>u_ob</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">dolfin.Function</span></code>) – observation of the state variable <code class="docutils literal notranslate"><span class="pre">u</span></code></li>
+<li><strong>integral</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Boundary</span></code>) – measure over which to integrate 
+(see <code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_boundaries()</span></code>)</li>
+<li><strong>kind</strong> (<em>string</em>) – kind of cost function to use</li>
+<li><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – regularization for <code class="docutils literal notranslate"><span class="pre">kind</span> <span class="pre">=</span> <span class="pre">'log'</span></code> or <code class="docutils literal notranslate"><span class="pre">kind</span> <span class="pre">=</span> <span class="pre">'ratio'</span></code>
+cost functionals</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.form_reg_ftn">
+<code class="descname">form_reg_ftn</code><span class="sig-paren">(</span><em>c</em>, <em>integral</em>, <em>kind='TV'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.form_reg_ftn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.form_reg_ftn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Formulates a regularization functional for use 
+with optimization of the control parameter <span class="math notranslate nohighlight">\(c\)</span> given by <code class="docutils literal notranslate"><span class="pre">c</span></code> 
+over the integral <code class="docutils literal notranslate"><span class="pre">integral</span></code>.</p>
+<p>The choices for <code class="docutils literal notranslate"><span class="pre">kind</span></code> are :</p>
+<ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">Tikhonov</span></code> – Tikhonov regularization</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} \nabla c \cdot \nabla c\ \mathrm{d}\Gamma\]</div>
+<ol class="arabic simple" start="2">
+<li><code class="docutils literal notranslate"><span class="pre">TV</span></code> – total variation regularization</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{R}(c) = \int_{\Gamma} \left( \nabla c \cdot \nabla c + c_0 \right)^{\frac{1}{2}}\ \mathrm{d}\Gamma,\]</div>
+<ol class="arabic simple" start="3">
+<li><code class="docutils literal notranslate"><span class="pre">square</span></code> – squared regularization</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{R}(c) = \frac{1}{2} \int_{\Gamma} c^2\ \mathrm{d}\Gamma,\]</div>
+<ol class="arabic simple" start="4">
+<li><code class="docutils literal notranslate"><span class="pre">abs</span></code> – absolute regularization</li>
+</ol>
+<div class="math notranslate nohighlight">
+\[\mathscr{R}(c) = \int_{\Gamma} |c|\ \mathrm{d}\Gamma,\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>c</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">dolfin.Function</span></code>) – the control variable</li>
+<li><strong>integral</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Boundary</span></code>) – measure over which to integrate 
+(see <code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_boundaries()</span></code>)</li>
+<li><strong>kind</strong> (<em>string</em>) – kind of regularization to use</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.optimize">
+<code class="descname">optimize</code><span class="sig-paren">(</span><em>u</em>, <em>u_ob</em>, <em>I</em>, <em>control</em>, <em>J_measure</em>, <em>R_measure</em>, <em>bounds</em>, <em>method='ipopt'</em>, <em>max_iter=100</em>, <em>adj_save_vars=None</em>, <em>adj_callback=None</em>, <em>post_adj_callback=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.optimize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.optimize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.plot_ftnls">
+<code class="descname">plot_ftnls</code><span class="sig-paren">(</span><em>t0</em>, <em>tf</em>, <em>J</em>, <em>R</em>, <em>control</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.plot_ftnls"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.plot_ftnls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save all the objective functional values with rudimentary plot.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="physics.Physics.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/physics.html#Physics.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#physics.Physics.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solves the physics calculation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="module-momentum">
+<span id="momentum-balance"></span><h2>Momentum balance<a class="headerlink" href="#module-momentum" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="momentum.Momentum">
+<em class="property">class </em><code class="descclassname">momentum.</code><code class="descname">Momentum</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract class outlines the structure of a momentum calculation.</p>
+<dl class="method">
+<dt id="momentum.Momentum.Lagrangian">
+<code class="descname">Lagrangian</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.Lagrangian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.Lagrangian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the Lagrangian of the momentum equations.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.calc_q_fric">
+<code class="descname">calc_q_fric</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.calc_q_fric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.calc_q_fric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the friction heat term stored in <code class="docutils literal notranslate"><span class="pre">model.q_fric</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the default color for this class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.dLdc">
+<code class="descname">dLdc</code><span class="sig-paren">(</span><em>L</em>, <em>c</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.dLdc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.dLdc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the derivative of the Lagrangian consisting of adjoint-computed
+self.Lam values w.r.t. the control variable <code class="docutils literal notranslate"><span class="pre">c</span></code>, i.e.,</p>
+<div class="math notranslate nohighlight">
+\[\frac{\mathrm{d} L}{\mathrm{d} c} = \frac{\mathrm{d}}{\mathrm{d} c} \mathscr{L} \left( \lambda \right),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathscr{L}\)</span> is the Lagrangian computed by <a class="reference internal" href="#momentum.Momentum.Lagrangian" title="momentum.Momentum.Lagrangian"><code class="xref py py-func docutils literal notranslate"><span class="pre">Lagrangian()</span></code></a> and <span class="math notranslate nohighlight">\(\lambda\)</span> is the adjoint variable.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.get_Lam">
+<code class="descname">get_Lam</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.get_Lam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.get_Lam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the adjoint function for <code class="docutils literal notranslate"><span class="pre">self.U</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.get_Phi">
+<code class="descname">get_Phi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.get_Phi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.get_Phi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the test function for <code class="docutils literal notranslate"><span class="pre">self.U</span></code>, <code class="docutils literal notranslate"><span class="pre">self.Phi</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the velocity Function <code class="docutils literal notranslate"><span class="pre">self.U</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.get_dU">
+<code class="descname">get_dU</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.get_dU"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.get_dU" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the trial function for <code class="docutils literal notranslate"><span class="pre">self.U</span></code>, <code class="docutils literal notranslate"><span class="pre">self.dU</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.get_residual">
+<code class="descname">get_residual</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.get_residual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.get_residual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the momentum residual <code class="docutils literal notranslate"><span class="pre">self.mom_F</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>solve_params=None</em>, <em>linear=False</em>, <em>use_lat_bcs=False</em>, <em>use_pressure_bc=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Here we set up the problem, and do all of the differentiation and
+memory allocation type stuff.  Note that any Momentum object <em>must</em>
+call this method.  See the existing child Momentum objects for reference.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.linearize_viscosity">
+<code class="descname">linearize_viscosity</code><span class="sig-paren">(</span><em>reset_orig_config=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.linearize_viscosity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.linearize_viscosity" title="Permalink to this definition">¶</a></dt>
+<dd><p>linearize the viscosity using the velocity stored in <code class="docutils literal notranslate"><span class="pre">model.U3</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset the momentum to the original configuration.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em>, <em>params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the Newton solve of the momentum equations</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.solve_adjoint_momentum">
+<code class="descname">solve_adjoint_momentum</code><span class="sig-paren">(</span><em>H</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.solve_adjoint_momentum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.solve_adjoint_momentum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solves for the adjoint variables <code class="docutils literal notranslate"><span class="pre">self.Lam</span></code> from the Hamiltonian &lt;H&gt;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.solve_pressure">
+<code class="descname">solve_pressure</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.solve_pressure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.solve_pressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the hydrostatic pressure ‘p’.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="momentum.Momentum.viscosity">
+<code class="descname">viscosity</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/momentum.html#Momentum.viscosity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#momentum.Momentum.viscosity" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates and returns the viscosity <span class="math notranslate nohighlight">\(\eta\)</span> using velocity 
+vector <code class="docutils literal notranslate"><span class="pre">U</span></code> with components <code class="docutils literal notranslate"><span class="pre">u</span></code>, <code class="docutils literal notranslate"><span class="pre">v</span></code>, <code class="docutils literal notranslate"><span class="pre">w</span></code>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="mass-balance">
+<h2>Mass balance<a class="headerlink" href="#mass-balance" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="mass.Mass">
+<em class="property">class </em><code class="descclassname">mass.</code><code class="descname">Mass</code><a class="reference internal" href="_modules/mass.html#Mass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract class outlines the structure of a mass conservation.</p>
+<dl class="method">
+<dt id="mass.Mass.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the default color for this class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.Mass.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.Mass.get_solve_params">
+<code class="descname">get_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.get_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.get_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the solve parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mass.Mass.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=True</em>, <em>params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#Mass.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.Mass.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve the conservation of mass equation for a free-surface evolution.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="energy-balance">
+<h2>Energy balance<a class="headerlink" href="#energy-balance" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="energy.Energy">
+<em class="property">class </em><code class="descclassname">energy.</code><code class="descname">Energy</code><span class="sig-paren">(</span><em>model</em>, <em>momentum</em>, <em>solve_params=None</em>, <em>transient=False</em>, <em>use_lat_bc=False</em>, <em>energy_flux_mode='Fb'</em>, <em>stabilization_method='GLS'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract class outlines the structure of an energy conservation.</p>
+<dl class="method">
+<dt id="energy.Energy.adjust_adot">
+<code class="descname">adjust_adot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.adjust_adot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.adjust_adot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.calc_bulk_density">
+<code class="descname">calc_bulk_density</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.calc_bulk_density"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.calc_bulk_density" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the bulk density stored in <code class="docutils literal notranslate"><span class="pre">model.rhob</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.calc_functionals">
+<code class="descname">calc_functionals</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.calc_functionals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.calc_functionals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to facilitate printing the objective function in adjoint solves.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.calc_misfit">
+<code class="descname">calc_misfit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.calc_misfit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.calc_misfit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the misfit,</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.calc_obj">
+<code class="descname">calc_obj</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.calc_obj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.calc_obj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used to facilitate printing the objective function in adjoint solves.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the default color for this class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.default_solve_params">
+<code class="descname">default_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.default_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.default_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.form_cost_ftn">
+<code class="descname">form_cost_ftn</code><span class="sig-paren">(</span><em>kind='abs'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.form_cost_ftn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.form_cost_ftn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Forms and returns a cost functional for use with adjoint.
+Saves to self.J.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>model</em>, <em>momentum</em>, <em>solve_params=None</em>, <em>transient=False</em>, <em>use_lat_bc=False</em>, <em>energy_flux_mode='Fb'</em>, <em>stabilization_method='GLS'</em>, <em>reset=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Here we set up the problem, and do all of the differentiation and
+memory allocation type stuff.  Note that any Energy object <em>must</em>
+call this method.  See the existing child Energy objects for reference.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.make_steady_state">
+<code class="descname">make_steady_state</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.make_steady_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.make_steady_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>set the energy system to steady-state form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.make_transient">
+<code class="descname">make_transient</code><span class="sig-paren">(</span><em>time_step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.make_transient"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.make_transient" title="Permalink to this definition">¶</a></dt>
+<dd><p>set the energy system to transient form.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.optimize_water_flux">
+<code class="descname">optimize_water_flux</code><span class="sig-paren">(</span><em>max_iter</em>, <em>bounds</em>, <em>method='ipopt'</em>, <em>adj_save_vars=None</em>, <em>adj_callback=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.optimize_water_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.optimize_water_flux" title="Permalink to this definition">¶</a></dt>
+<dd><p>determine the correct basal-mass balance saved (currently) to <code class="docutils literal notranslate"><span class="pre">model.Fb</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.partition_energy">
+<code class="descname">partition_energy</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.partition_energy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.partition_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>solve for the water content model.W and temperature model.T.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.reset">
+<code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset the energy system to the original configuration.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.set_basal_flux_mode">
+<code class="descname">set_basal_flux_mode</code><span class="sig-paren">(</span><em>mode</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.set_basal_flux_mode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.set_basal_flux_mode" title="Permalink to this definition">¶</a></dt>
+<dd><p>reset the energy system to use zero energy basal flux.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em>, <em>params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve of the energy equation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Energy.solve_surface_climate">
+<code class="descname">solve_surface_climate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Energy.solve_surface_climate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Energy.solve_surface_climate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates PDD, surface temperature given current model geometry and 
+saves to model.T_surface.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="momentum.html" class="btn btn-neutral float-right" title="Momentum balance" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="model.html" class="btn btn-neutral" title="The Model classes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

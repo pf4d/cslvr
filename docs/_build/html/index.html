@@ -1,0 +1,327 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Cryospheric Problem Solver &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="install.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="#" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>Cryospheric Problem Solver</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="cryospheric-problem-solver">
+<h1>Cryospheric Problem Solver<a class="headerlink" href="#cryospheric-problem-solver" title="Permalink to this headline">¶</a></h1>
+<p>Built from elements of the [Var]iational [Gl]acier [S]imulator (<a class="reference external" href="https://github.com/douglas-brinkerhoff/VarGlaS">VarGlaS</a>) by <a class="reference external" href="https://dbrinkerhoff.org/">Doug Brinkerhoff</a> and the [U] of [M] [F]irn [D]ensification [M]odel (<a class="reference external" href="https://github.com/pf4d/um-fdm">UM-FDM</a>).</p>
+<p>For the mathematical background, please <a class="reference external" href="https://arxiv.org/abs/1609.02190)">read the thesis</a>.</p>
+<div class="toctree-wrapper compound" id="prelim">
+<p class="caption"><span class="caption-text">Preliminaries</span><a class="headerlink" href="#prelim" title="Permalink to this toctree">¶</a></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="install.html#using-docker">Using Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#from-source">From source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="get_started.html#set-up-the-model">Set up the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="get_started.html#solve-the-momentum-balance">Solve the momentum balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="get_started.html#plot-the-results">Plot the results</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound" id="data">
+<p class="caption"><span class="caption-text">Data</span><a class="headerlink" href="#data" title="Permalink to this toctree">¶</a></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="input.html#module-helper">Downloading data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#accessing-downloaded-data-the-datafactory-class">Accessing downloaded data : the DataFactory class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#module-meshfactory">Accessing pre-built meshes : the MeshFactory class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input.html#converting-data-to-cslvr-format-the-datainput-class">Converting data to CSLVR format : the DataInput class</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="output.html#by-the-model-class">By the Model class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output.html#module-inputoutput">Printing text data to the screen</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output.html#module-helper">Plot geographic results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="output.html#plot-mathematical-results">Plot mathematical results</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound" id="meshing">
+<p class="caption"><span class="caption-text">Mesh generation</span><a class="headerlink" href="#meshing" title="Permalink to this toctree">¶</a></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound" id="base-classes">
+<p class="caption"><span class="caption-text">Base Classes</span><a class="headerlink" href="#base-classes" title="Permalink to this toctree">¶</a></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="model.html#module-d1model">1D model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="model.html#module-d2model">2D model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="model.html#module-d3model">3D model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="model.html#module-latmodel">Lateral model for submeshes of 3D meshes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#module-momentum">Momentum balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#mass-balance">Mass balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#energy-balance">Energy balance</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound" id="balance">
+<p class="caption"><span class="caption-text">Balance equations</span><a class="headerlink" href="#balance" title="Permalink to this toctree">¶</a></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="momentum.html#full-stokes">Full-Stokes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="momentum.html#reformulated-stokes">Reformulated-Stokes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="momentum.html#first-order">First-order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="momentum.html#hybrid">Hybrid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="momentum.html#plane-strain">Plane-strain</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="install.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

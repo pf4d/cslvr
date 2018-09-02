@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>stressbalance &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>stressbalance</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for stressbalance</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.physics</span>     <span class="k">import</span> <span class="n">Physics</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+
+
+<div class="viewcode-block" id="StressBalance"><a class="viewcode-back" href="../stress.html#stressbalance.StressBalance">[docs]</a><span class="k">class</span> <span class="nc">StressBalance</span><span class="p">(</span><span class="n">Physics</span><span class="p">):</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">momentum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING STRESS-BALANCE PHYSICS :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="c1"># calculate viscosity in model.eta :</span>
+    <span class="n">U</span>      <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">velocity</span><span class="p">()</span>
+    <span class="n">epsdot</span> <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">effective_strain_rate</span><span class="p">(</span><span class="n">U</span><span class="p">)</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">eps_reg</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">calc_eta</span><span class="p">(</span><span class="n">epsdot</span><span class="p">)</span>
+    
+    <span class="c1"># stress tensor :</span>
+    <span class="n">tau</span>   <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">deviatoric_stress_tensor</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">eta</span><span class="p">)</span>
+
+    <span class="c1"># rotate about the z-axis : </span>
+    <span class="n">rad_xy</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_xy_velocity_angle</span><span class="p">(</span><span class="n">U</span><span class="p">)</span> 
+    <span class="n">Rz</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">z_rotation_matrix</span><span class="p">(</span><span class="n">rad_xy</span><span class="p">)</span>
+    <span class="n">tau_r</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rotate_tensor</span><span class="p">(</span><span class="n">tau</span><span class="p">,</span> <span class="n">Rz</span><span class="p">)</span>
+    
+    <span class="c1"># get surface stress :</span>
+    <span class="n">tau_ii_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_ij_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_iz_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_ji_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_jj_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_jz_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_zi_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_zj_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_zz_S</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    
+    <span class="c1"># get basal stress :</span>
+    <span class="n">tau_ii_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_ij_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_iz_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_ji_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_jj_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_jz_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_zi_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_zj_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">tau_zz_B</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    
+    <span class="c1"># vertically integrate deviatoric stress (membrane stress) :</span>
+    <span class="n">t_ii</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_ij</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_iz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_ji</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_jj</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_jz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_zi</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_zj</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">t_zz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_integrate</span><span class="p">(</span><span class="n">tau_r</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+
+    <span class="c1"># extrude the integral down the vertical :</span>
+    <span class="n">N_ii</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_ii</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_ij</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_ij</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_iz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_iz</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_ji</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_ji</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_jj</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_jj</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_jz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_jz</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_zi</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_zi</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_zj</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_zj</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">N_zz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">t_zz</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;down&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+
+    <span class="c1"># save the membrane stresses :</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_ii</span><span class="p">(</span><span class="n">N_ii</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_ij</span><span class="p">(</span><span class="n">N_ij</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_iz</span><span class="p">(</span><span class="n">N_iz</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_ji</span><span class="p">(</span><span class="n">N_ji</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_jj</span><span class="p">(</span><span class="n">N_jj</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_jz</span><span class="p">(</span><span class="n">N_jz</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_zi</span><span class="p">(</span><span class="n">N_zi</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_zj</span><span class="p">(</span><span class="n">N_zj</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">init_N_zz</span><span class="p">(</span><span class="n">N_zz</span><span class="p">)</span>
+    
+    <span class="c1"># get the components of horizontal velocity :</span>
+    <span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span>    <span class="o">=</span> <span class="n">U</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">U</span>        <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">])</span>
+    <span class="n">U_hat</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">normalize_vector</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+    <span class="n">U_n</span>      <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">U_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>  <span class="n">U_hat</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">])</span>
+    <span class="n">U_t</span>      <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">U_hat</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="n">U_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">])</span>
+    <span class="n">S</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
+    <span class="n">B</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+
+    <span class="c1"># directional derivative in direction of flow :</span>
+    <span class="k">def</span> <span class="nf">d_di</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>  <span class="k">return</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">U_n</span><span class="p">)</span>
+
+    <span class="c1"># directional derivative in direction across flow :</span>
+    <span class="k">def</span> <span class="nf">d_dj</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>  <span class="k">return</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">U_t</span><span class="p">)</span>
+
+    <span class="c1"># form components :</span>
+    <span class="n">phi</span>      <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    <span class="n">dtau</span>     <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
+    
+    <span class="c1"># mass matrix :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">phi</span><span class="o">*</span><span class="n">dtau</span><span class="o">*</span><span class="n">dx</span><span class="p">)</span>
+
+    <span class="c1"># integrated stress-balance using Leibniz Theorem :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_ii</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_di</span><span class="p">(</span><span class="n">N_ii</span><span class="p">)</span> <span class="o">+</span> <span class="n">tau_ii_S</span><span class="o">*</span><span class="n">d_di</span><span class="p">(</span><span class="n">S</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_ii_B</span><span class="o">*</span><span class="n">d_di</span><span class="p">(</span><span class="n">B</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_ij</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_dj</span><span class="p">(</span><span class="n">N_ij</span><span class="p">)</span> <span class="o">+</span> <span class="n">tau_ij_S</span><span class="o">*</span><span class="n">d_dj</span><span class="p">(</span><span class="n">S</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_ij_B</span><span class="o">*</span><span class="n">d_dj</span><span class="p">(</span><span class="n">B</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_iz</span> <span class="o">=</span> <span class="p">(</span><span class="n">tau_iz_S</span> <span class="o">-</span> <span class="n">tau_iz_B</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_ji</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_di</span><span class="p">(</span><span class="n">N_ji</span><span class="p">)</span> <span class="o">+</span> <span class="n">tau_ji_S</span><span class="o">*</span><span class="n">d_di</span><span class="p">(</span><span class="n">S</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_ji_B</span><span class="o">*</span><span class="n">d_di</span><span class="p">(</span><span class="n">B</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_jj</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_dj</span><span class="p">(</span><span class="n">N_jj</span><span class="p">)</span> <span class="o">+</span> <span class="n">tau_jj_S</span><span class="o">*</span><span class="n">d_dj</span><span class="p">(</span><span class="n">S</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_jj_B</span><span class="o">*</span><span class="n">d_dj</span><span class="p">(</span><span class="n">B</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_jz</span> <span class="o">=</span> <span class="p">(</span><span class="n">tau_jz_S</span> <span class="o">-</span> <span class="n">tau_jz_B</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_zi</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_di</span><span class="p">(</span><span class="n">N_zi</span><span class="p">)</span> <span class="o">+</span> <span class="n">tau_zi_S</span><span class="o">*</span><span class="n">d_di</span><span class="p">(</span><span class="n">S</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_zi_B</span><span class="o">*</span><span class="n">d_di</span><span class="p">(</span><span class="n">B</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_zj</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_dj</span><span class="p">(</span><span class="n">N_zj</span><span class="p">)</span> <span class="o">+</span> <span class="n">tau_zj_S</span><span class="o">*</span><span class="n">d_dj</span><span class="p">(</span><span class="n">S</span><span class="p">)</span> <span class="o">-</span> <span class="n">tau_zj_B</span><span class="o">*</span><span class="n">d_dj</span><span class="p">(</span><span class="n">B</span><span class="p">))</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">M_zz</span> <span class="o">=</span> <span class="p">(</span><span class="n">tau_zz_S</span> <span class="o">-</span> <span class="n">tau_zz_B</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dx</span>
+
+<div class="viewcode-block" id="StressBalance.solve"><a class="viewcode-back" href="../stress.html#stressbalance.StressBalance.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving &#39;Stress_Balance&#39; :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+    <span class="c1"># solve the linear system :</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_ii</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_ii</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_ii</span><span class="p">,</span> <span class="s1">&#39;M_ii&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_ij</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_ij</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_ij</span><span class="p">,</span> <span class="s1">&#39;M_ij&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_iz</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_iz</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_iz</span><span class="p">,</span> <span class="s1">&#39;M_iz&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_ji</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_ji</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_ji</span><span class="p">,</span> <span class="s1">&#39;M_ji&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_jj</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_jj</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_jj</span><span class="p">,</span> <span class="s1">&#39;M_jj&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_jz</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_jz</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_jz</span><span class="p">,</span> <span class="s1">&#39;M_jz&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_zi</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_zi</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_zi</span><span class="p">,</span> <span class="s1">&#39;m_zi&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_zj</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_zj</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_zj</span><span class="p">,</span> <span class="s1">&#39;M_zj&#39;</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">M_zz</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">assemble</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">M_zz</span><span class="p">))</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">M_zz</span><span class="p">,</span> <span class="s1">&#39;M_zz&#39;</span><span class="p">)</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

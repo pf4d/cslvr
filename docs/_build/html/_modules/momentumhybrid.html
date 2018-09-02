@@ -1,0 +1,631 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>momentumhybrid &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>momentumhybrid</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for momentumhybrid</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">dolfin</span>            <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">dolfin_adjoint</span>    <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cslvr.inputoutput</span> <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">from</span> <span class="nn">cslvr.d2model</span>     <span class="k">import</span> <span class="n">D2Model</span>
+<span class="kn">from</span> <span class="nn">cslvr.physics</span>     <span class="k">import</span> <span class="n">Physics</span>
+<span class="kn">from</span> <span class="nn">cslvr.momentum</span>    <span class="k">import</span> <span class="n">Momentum</span>
+<span class="kn">from</span> <span class="nn">cslvr.helper</span>      <span class="k">import</span> <span class="n">VerticalBasis</span><span class="p">,</span> <span class="n">VerticalFDBasis</span><span class="p">,</span> \
+                              <span class="n">VerticalIntegrator</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<div class="viewcode-block" id="MomentumHybrid"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid">[docs]</a><span class="k">class</span> <span class="nc">MomentumHybrid</span><span class="p">(</span><span class="n">Momentum</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  2D hybrid model.</span>
+<span class="sd">  </span>
+<span class="sd">  Original author: Doug Brinkerhoff: https://dbrinkerhoff.org/</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MomentumHybrid.initialize"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.initialize">[docs]</a>  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+                 <span class="n">solve_params</span>    <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">linear</span>          <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">use_lat_bcs</span>     <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">use_pressure_bc</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                 <span class="n">isothermal</span>      <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Here we set up the problem, and do all of the differentiation and</span>
+<span class="sd">    memory allocation type stuff.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING HYBRID MOMENTUM PHYSICS :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D2Model</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; MomentumHybrid REQUIRES A &#39;D2Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># save the solver parameters :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span> <span class="o">=</span> <span class="n">solve_params</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">linear</span>       <span class="o">=</span> <span class="n">linear</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u_s</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assy</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v_s</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assz</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w_s</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+    
+    <span class="c1"># CONSTANTS</span>
+    <span class="n">year</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">spy</span>
+    <span class="n">rho</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhoi</span>
+    <span class="n">g</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">g</span>
+    <span class="n">n</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">n</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+   
+    <span class="n">S</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span> 
+    <span class="n">B</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">H</span>       <span class="o">=</span> <span class="n">S</span> <span class="o">-</span> <span class="n">B</span>
+    <span class="n">beta</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span>
+    <span class="n">eps_reg</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">eps_reg</span>
+    <span class="c1">#H       = model.H</span>
+    <span class="c1">#S       = B + H</span>
+    <span class="n">deltax</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">deltax</span>
+    <span class="n">sigmas</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">sigmas</span>
+    <span class="n">T0_</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T0_</span>
+    <span class="n">T_</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_</span>
+    
+    <span class="n">Bc</span>      <span class="o">=</span> <span class="mf">3.61e-13</span><span class="o">*</span><span class="n">year</span>
+    <span class="n">Bw</span>      <span class="o">=</span> <span class="mf">1.73e3</span><span class="o">*</span><span class="n">year</span> <span class="c1"># model.a0 ice hardness</span>
+    <span class="n">Qc</span>      <span class="o">=</span> <span class="mf">6e4</span>
+    <span class="n">Qw</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q0</span>    <span class="c1"># ice act. energy</span>
+    <span class="n">R</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">R</span>     <span class="c1"># gas constant</span>
+    
+    <span class="c1"># MOMENTUM</span>
+    <span class="n">U</span>       <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">HV</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U&#39;</span><span class="p">)</span>
+    <span class="n">Lam</span>     <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">HV</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Lam&#39;</span><span class="p">)</span>
+    <span class="n">Phi</span>     <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">HV</span><span class="p">)</span>
+    <span class="n">dU</span>      <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">HV</span><span class="p">)</span>
+    
+    <span class="c1"># ANSATZ    </span>
+    <span class="n">coef</span>    <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.</span><span class="o">/</span><span class="mf">4.</span><span class="o">*</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">4</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)]</span>
+    <span class="n">dcoef</span>   <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">3</span><span class="p">]</span>
+    
+    <span class="n">u_</span>      <span class="o">=</span> <span class="p">[</span><span class="n">U</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>   <span class="n">U</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+    <span class="n">v_</span>      <span class="o">=</span> <span class="p">[</span><span class="n">U</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>   <span class="n">U</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span>
+    <span class="n">phi_</span>    <span class="o">=</span> <span class="p">[</span><span class="n">Phi</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">Phi</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+    <span class="n">psi_</span>    <span class="o">=</span> <span class="p">[</span><span class="n">Phi</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">Phi</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span>
+    
+    <span class="n">u</span>       <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">u_</span><span class="p">,</span>  <span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
+    <span class="n">v</span>       <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">v_</span><span class="p">,</span>  <span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
+    <span class="n">phi</span>     <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">phi_</span><span class="p">,</span><span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
+    <span class="n">psi</span>     <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">psi_</span><span class="p">,</span><span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
+    
+    <span class="c1"># energy functions :</span>
+    <span class="n">T</span>       <span class="o">=</span> <span class="n">VerticalFDBasis</span><span class="p">(</span><span class="n">T_</span><span class="p">,</span>  <span class="n">deltax</span><span class="p">,</span> <span class="n">coef</span><span class="p">,</span> <span class="n">sigmas</span><span class="p">)</span>
+    <span class="n">T0</span>      <span class="o">=</span> <span class="n">VerticalFDBasis</span><span class="p">(</span><span class="n">T0_</span><span class="p">,</span> <span class="n">deltax</span><span class="p">,</span> <span class="n">coef</span><span class="p">,</span> <span class="n">sigmas</span><span class="p">)</span>
+
+    <span class="c1"># METRICS FOR COORDINATE TRANSFORM</span>
+    <span class="k">def</span> <span class="nf">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="mf">1.</span><span class="o">/</span><span class="n">H</span><span class="o">*</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">s</span><span class="o">*</span><span class="n">H</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    
+    <span class="k">def</span> <span class="nf">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="mf">1.</span><span class="o">/</span><span class="n">H</span><span class="o">*</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">s</span><span class="o">*</span><span class="n">H</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    
+    <span class="k">def</span> <span class="nf">dsdz</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="o">-</span><span class="mf">1.</span><span class="o">/</span><span class="n">H</span>
+
+    <span class="k">def</span> <span class="nf">A_v</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">conditional</span><span class="p">(</span><span class="n">le</span><span class="p">(</span><span class="n">T</span><span class="p">,</span><span class="mf">263.15</span><span class="p">),</span> <span class="n">Bc</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Qc</span><span class="o">/</span><span class="p">(</span><span class="n">R</span><span class="o">*</span><span class="n">T</span><span class="p">)),</span> <span class="n">Bw</span><span class="o">*</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Qw</span><span class="o">/</span><span class="p">(</span><span class="n">R</span><span class="o">*</span><span class="n">T</span><span class="p">)))</span>
+    
+    <span class="k">def</span> <span class="nf">epsilon_dot</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="c1"># linearize the viscosity :</span>
+      <span class="k">if</span> <span class="n">linear</span><span class="p">:</span>
+        <span class="n">ue</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u</span>
+        <span class="n">ve</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v</span>
+      <span class="c1"># nonlinear viscosity :</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="n">ue</span>    <span class="o">=</span> <span class="n">u</span>
+        <span class="n">ve</span>    <span class="o">=</span> <span class="n">v</span>
+      <span class="k">return</span> <span class="p">(</span> <span class="o">+</span> <span class="p">(</span><span class="n">ue</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">ue</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> \
+               <span class="o">+</span> <span class="p">(</span><span class="n">ve</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">ve</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> \
+               <span class="o">+</span>   <span class="p">(</span><span class="n">ue</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">ue</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+                 <span class="o">*</span> <span class="p">(</span><span class="n">ve</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">ve</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+               <span class="o">+</span> <span class="mf">0.25</span><span class="o">*</span><span class="p">((</span><span class="n">ue</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdz</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ve</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdz</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> \
+               <span class="o">+</span> <span class="p">(</span><span class="o">+</span> <span class="p">(</span><span class="n">ue</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">ue</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+                  <span class="o">+</span> <span class="p">(</span><span class="n">ve</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">ve</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> \
+               <span class="o">+</span> <span class="n">eps_reg</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">A_v</span><span class="p">(</span><span class="n">T0</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="n">epsilon_dot</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">**</span><span class="p">((</span><span class="mi">1</span><span class="o">-</span><span class="n">n</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">n</span><span class="p">))</span>
+    
+    <span class="k">def</span> <span class="nf">membrane_xx</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">phi</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> \
+             <span class="o">*</span> <span class="p">(</span><span class="o">+</span> <span class="mi">4</span><span class="o">*</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+                <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
+    
+    <span class="k">def</span> <span class="nf">membrane_xy</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">phi</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> \
+             <span class="o">*</span> <span class="p">(</span><span class="o">+</span> <span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+                <span class="o">+</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
+    
+    <span class="k">def</span> <span class="nf">membrane_yx</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">psi</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">psi</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> \
+             <span class="o">*</span> <span class="p">(</span><span class="o">+</span> <span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+                <span class="o">+</span> <span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
+    
+    <span class="k">def</span> <span class="nf">membrane_yy</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">psi</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">psi</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">))</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> \
+             <span class="o">*</span> <span class="p">(</span><span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">u</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdx</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> \
+                <span class="o">+</span> <span class="mi">4</span><span class="o">*</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">v</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">dsdy</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
+    
+    <span class="k">def</span> <span class="nf">shear_xz</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">dsdz</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">phi</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">shear_yz</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">dsdz</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">psi</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">eta_v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">v</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">tau_dx</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">rho</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">*</span><span class="n">phi</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">tau_dy</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="k">return</span> <span class="n">rho</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">psi</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">w</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+      <span class="n">s</span>   <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+      <span class="n">w_0</span> <span class="o">=</span> <span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">U</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+      <span class="n">w_2</span> <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">U</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">U</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="n">s</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> \
+            <span class="o">+</span> <span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">H</span><span class="o">*</span><span class="n">U</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="o">+</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> \
+                            <span class="o">-</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">H</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> \
+            <span class="o">+</span> <span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">H</span><span class="o">*</span><span class="n">U</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="o">+</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> \
+                            <span class="o">-</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">H</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+      <span class="k">return</span> <span class="p">(</span><span class="n">u</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">B</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">v</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">B</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span><span class="o">/</span><span class="n">dsdz</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">w_0</span> <span class="o">+</span> <span class="n">w_2</span><span class="p">)</span>
+    
+    <span class="n">vi</span> <span class="o">=</span> <span class="n">VerticalIntegrator</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+    <span class="n">R_x</span> <span class="o">=</span> <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">membrane_xx</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">membrane_xy</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">shear_xz</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">phi</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">beta</span><span class="o">*</span><span class="n">u</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">tau_dx</span><span class="p">)</span>
+    <span class="n">R_y</span> <span class="o">=</span> <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">membrane_yx</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">membrane_yy</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">shear_yz</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">psi</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">beta</span><span class="o">*</span><span class="n">v</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> \
+          <span class="o">-</span> <span class="n">vi</span><span class="o">.</span><span class="n">intz</span><span class="p">(</span><span class="n">tau_dy</span><span class="p">)</span>
+
+    <span class="c1"># SIA</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span>   <span class="o">=</span> <span class="p">(</span><span class="n">R_x</span> <span class="o">+</span> <span class="n">R_y</span><span class="p">)</span><span class="o">*</span><span class="n">dx</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span> <span class="o">=</span> <span class="n">derivative</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span><span class="p">,</span> <span class="n">U</span><span class="p">,</span> <span class="n">dU</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">u</span>   <span class="o">=</span> <span class="n">u</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">v</span>   <span class="o">=</span> <span class="n">v</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w</span>   <span class="o">=</span> <span class="n">w</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">U</span>   <span class="o">=</span> <span class="n">U</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dU</span>  <span class="o">=</span> <span class="n">dU</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Phi</span> <span class="o">=</span> <span class="n">Phi</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Lam</span> <span class="o">=</span> <span class="n">Lam</span>
+    
+    <span class="n">problem</span> <span class="o">=</span> <span class="n">NonlinearVariationalProblem</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> 
+                <span class="n">J</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="n">NonlinearVariationalSolver</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.form_obj_ftn"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.form_obj_ftn">[docs]</a>  <span class="k">def</span> <span class="nf">form_obj_ftn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">integral</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="n">g1</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">g2</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Forms and returns an objective functional for use with adjoint.</span>
+<span class="sd">    Saves to self.J.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#NOTE: this overides base class momentum.form_obj_ftn() due to the</span>
+    <span class="c1">#      extra complexity of evaluating U on the surface.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">obj_ftn_type</span> <span class="o">=</span> <span class="n">kind</span>     <span class="c1"># need to save this for printing values.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">integral</span>     <span class="o">=</span> <span class="n">integral</span> <span class="c1"># this too.</span>
+    
+    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    
+    <span class="c1"># differentiate between objective over cells or facets :</span>
+    <span class="k">if</span> <span class="n">integral</span> <span class="ow">in</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">]:</span>
+      <span class="n">dJ</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="n">integral</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">dJ</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">ds</span><span class="p">(</span><span class="n">integral</span><span class="p">)</span>
+
+    <span class="n">adot</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">adot</span>
+    <span class="n">S</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
+    <span class="n">u_ob</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u_ob</span>
+    <span class="n">v_ob</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v_ob</span>
+    <span class="n">um</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>   <span class="c1"># surface u</span>
+    <span class="n">vm</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>   <span class="c1"># surface v</span>
+    <span class="n">u</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">v</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">w</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;log&#39;</span><span class="p">:</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span>  <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u</span><span class="o">**</span><span class="mi">2</span>    <span class="o">+</span> <span class="n">v</span><span class="o">**</span><span class="mi">2</span>   <span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> \
+                    <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">v_ob</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span> 
+      <span class="n">Jp</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span>  <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">um</span><span class="o">**</span><span class="mi">2</span>   <span class="o">+</span> <span class="n">vm</span><span class="o">**</span><span class="mi">2</span>  <span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> \
+                    <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">v_ob</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span> 
+      <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming log objective functional :::&quot;</span>
+    
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;kinematic&#39;</span><span class="p">:</span>
+      <span class="c1">#FIXME: no wm (yet), so this don&#39;t work.</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">u</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">v</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">w</span> <span class="o">+</span> <span class="n">adot</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">Jp</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">um</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">vm</span><span class="o">*</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">wm</span> <span class="o">+</span> <span class="n">adot</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming kinematic objective functional :::&quot;</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;L2&#39;</span><span class="p">:</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">u</span>  <span class="o">-</span> <span class="n">u_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">v</span>  <span class="o">-</span> <span class="n">v_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">Jp</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">um</span> <span class="o">-</span> <span class="n">u_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">vm</span> <span class="o">-</span> <span class="n">v_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming L2 objective functional :::&quot;</span>
+
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;ratio&#39;</span><span class="p">:</span>
+      <span class="c1">#NOTE: experimental</span>
+      <span class="n">U_n</span>   <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">u</span><span class="o">**</span><span class="mi">2</span>    <span class="o">+</span> <span class="n">v</span><span class="o">**</span><span class="mi">2</span>    <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+      <span class="n">U_m</span>   <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">um</span><span class="o">**</span><span class="mi">2</span>   <span class="o">+</span> <span class="n">vm</span><span class="o">**</span><span class="mi">2</span>   <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+      <span class="n">Uob_n</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">u_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">v_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+      <span class="c1">#J     = 0.5 * (+ (1 - (u + 1e-4)/(u_ob + 1e-4))</span>
+      <span class="c1">#               + (1 - (v + 1e-4)/(v_ob + 1e-4)) ) * Uob_n/U_n * dJ</span>
+      <span class="n">J</span>     <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span>  <span class="p">(</span><span class="n">U_n</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Uob_n</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">Jp</span>    <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span>  <span class="p">(</span><span class="n">U_m</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">Uob_n</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">s</span>     <span class="o">=</span> <span class="s2">&quot;::: forming ratio objective functional :::&quot;</span>
+    
+    <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;log_L2_hybrid&#39;</span><span class="p">:</span>
+      <span class="n">J1</span>  <span class="o">=</span> <span class="n">g1</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">u</span> <span class="o">-</span> <span class="n">u_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">v_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">J2</span>  <span class="o">=</span> <span class="n">g2</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span>   <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u</span><span class="o">**</span><span class="mi">2</span>    <span class="o">+</span> <span class="n">v</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>    <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> \
+                           <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">v_ob</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J1</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">um</span> <span class="o">-</span> <span class="n">u_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">vm</span> <span class="o">-</span> <span class="n">v_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J2</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span>   <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">um</span><span class="o">**</span><span class="mi">2</span>   <span class="o">+</span> <span class="n">vm</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>   <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> \
+                           <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">v_ob</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J1p</span> <span class="o">=</span> <span class="n">g1</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">um</span> <span class="o">-</span> <span class="n">u_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">vm</span> <span class="o">-</span> <span class="n">v_ob</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J2p</span> <span class="o">=</span> <span class="n">g2</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">ln</span><span class="p">(</span>   <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">um</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">vm</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">)</span> \
+                                <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u_ob</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">v_ob</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dJ</span>
+      <span class="n">J</span>  <span class="o">=</span> <span class="n">J1</span> <span class="o">+</span> <span class="n">J2</span>
+      <span class="n">Jp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">J1p</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">J2p</span>
+      <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming log/L2 hybrid objective with gamma_1 = &quot;</span> \
+            <span class="s2">&quot;</span><span class="si">%.1e</span><span class="s2"> and gamma_2 = </span><span class="si">%.1e</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; ADJOINT OBJECTIVE FUNCTIONAL MAY BE &#39;L2&#39;, &quot;</span> <span class="o">+</span> \
+          <span class="s2">&quot;&#39;log&#39;, &#39;kinematic&#39;, OR &#39;log_L2_hybrid&#39;, NOT &#39;</span><span class="si">%s</span><span class="s2">&#39; &lt;&lt;&lt;&quot;</span> <span class="o">%</span> <span class="n">kind</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - integrated over </span><span class="si">%s</span><span class="s2"> -&quot;</span> <span class="o">%</span> <span class="n">model</span><span class="o">.</span><span class="n">boundaries</span><span class="p">[</span><span class="n">integral</span><span class="p">]</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">J</span>  <span class="o">=</span> <span class="n">J</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span> <span class="o">=</span> <span class="n">Jp</span></div>
+    
+<div class="viewcode-block" id="MomentumHybrid.get_residual"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.get_residual">[docs]</a>  <span class="k">def</span> <span class="nf">get_residual</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the momentum residual.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.get_U"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.get_U">[docs]</a>  <span class="k">def</span> <span class="nf">get_U</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the velocity Function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.get_dU"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.get_dU">[docs]</a>  <span class="k">def</span> <span class="nf">get_dU</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the trial function for U.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dU</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.get_Phi"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.get_Phi">[docs]</a>  <span class="k">def</span> <span class="nf">get_Phi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the test function for U.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Phi</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.get_Lam"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.get_Lam">[docs]</a>  <span class="k">def</span> <span class="nf">get_Lam</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the adjoint function for U.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Lam</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.get_solve_params"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.get_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">get_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the solve parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.default_ffc_options"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.default_ffc_options">[docs]</a>  <span class="k">def</span> <span class="nf">default_ffc_options</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default ffc options that yield good performance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ffc_options</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;optimize&quot;</span>               <span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                   <span class="s2">&quot;eliminate_zeros&quot;</span>        <span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                   <span class="s2">&quot;precompute_basis_const&quot;</span> <span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                   <span class="s2">&quot;precompute_ip_const&quot;</span>    <span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">ffc_options</span></div>
+  
+<div class="viewcode-block" id="MomentumHybrid.default_solve_params"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.default_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">default_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Returns a set of default solver parameters that yield good performance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nparams</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;newton_solver&#39;</span> <span class="p">:</span>
+              <span class="p">{</span>
+                <span class="s1">&#39;linear_solver&#39;</span>            <span class="p">:</span> <span class="s1">&#39;cg&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;preconditioner&#39;</span>           <span class="p">:</span> <span class="s1">&#39;hypre_amg&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;relative_tolerance&#39;</span>       <span class="p">:</span> <span class="mf">1e-10</span><span class="p">,</span>
+                <span class="s1">&#39;relaxation_parameter&#39;</span>     <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s1">&#39;absolute_tolerance&#39;</span>       <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s1">&#39;maximum_iterations&#39;</span>       <span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                <span class="s1">&#39;error_on_nonconvergence&#39;</span>  <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s1">&#39;krylov_solver&#39;</span>            <span class="p">:</span>
+                <span class="p">{</span>
+                  <span class="s1">&#39;monitor_convergence&#39;</span>   <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                  <span class="c1">#&#39;preconditioner&#39; :</span>
+                  <span class="c1">#{</span>
+                  <span class="c1">#  &#39;structure&#39; : &#39;same&#39;</span>
+                  <span class="c1">#}</span>
+                <span class="p">}</span>
+              <span class="p">}}</span>
+    <span class="n">m_params</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solver&#39;</span>           <span class="p">:</span> <span class="n">nparams</span><span class="p">,</span>
+                 <span class="s1">&#39;ffc_params&#39;</span>       <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_ffc_options</span><span class="p">(),</span>
+                 <span class="s1">&#39;project_boundary&#39;</span> <span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">m_params</span></div>
+  
+<div class="viewcode-block" id="MomentumHybrid.solve"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solves for hybrid velocity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span>
+    
+    <span class="c1"># solve nonlinear system :</span>
+    <span class="n">rtol</span>   <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">][</span><span class="s1">&#39;relative_tolerance&#39;</span><span class="p">]</span>
+    <span class="n">maxit</span>  <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">][</span><span class="s1">&#39;maximum_iterations&#39;</span><span class="p">]</span>
+    <span class="n">alpha</span>  <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">][</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">]</span>
+    <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;::: solving &#39;MomentumHybrid&#39; with </span><span class="si">%i</span><span class="s2"> max iterations&quot;</span> <span class="o">+</span> \
+             <span class="s2">&quot; and step size = </span><span class="si">%.1f</span><span class="s2"> :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="p">(</span><span class="n">maxit</span><span class="p">,</span> <span class="n">alpha</span><span class="p">),</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    
+    <span class="c1"># compute solution :</span>
+    <span class="c1">#s = solve(self.mom_F == 0, self.U, J = self.mom_Jac,</span>
+    <span class="c1">#      annotate = annotate, solver_parameters = params[&#39;solver&#39;],</span>
+    <span class="c1">#      form_compiler_parameters = params[&#39;ffc_params&#39;])</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;project_boundary&#39;</span><span class="p">]:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u_s</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
+                       <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v_s</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
+                       <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w_s</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
+                       <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U3_s</span><span class="p">,</span> <span class="s1">&#39;U3_S&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+      <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u_b</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
+                       <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v_b</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
+                       <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w_b</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
+                       <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+      <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U3_b</span><span class="p">,</span> <span class="s1">&#39;U3_B&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">out</span></div></div>
+
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

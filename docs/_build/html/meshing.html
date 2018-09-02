@@ -1,0 +1,628 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Meshing &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The Model classes" href="model.html" />
+    <link rel="prev" title="Output" href="output.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="velocity.html">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Meshing</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/meshing.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-meshing">
+<span id="meshing"></span><h1>Meshing<a class="headerlink" href="#module-meshing" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="meshing.GetBasin">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">GetBasin</code><span class="sig-paren">(</span><em>di</em>, <em>basin=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class contains functions to return a contour corresponding to the
+perimeter of various basins in Antarctica and Greenland. The libraries of
+basins are drawn from ICESat data, and posted here:</p>
+<p><a class="reference external" href="http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php">http://icesat4.gsfc.nasa.gov/cryo_data/ant_grn_drainage_systems.php</a></p>
+<dl class="docutils">
+<dt>INPUTS:</dt>
+<dd><dl class="first last docutils">
+<dt>di :</dt>
+<dd>an instance of a DataInput obect (see above) needed for the projection
+function</dd>
+<dt>basin:</dt>
+<dd>basin number. If left as None, the program will prompt you to pick a basin</dd>
+</dl>
+</dd>
+</dl>
+<p>TODO: Now working to extend the domain beyond the present day ice margin for
+the purpose of increasing the stability of dynamic runs. Additionally, there
+appear to be some stability issues when running the MCB algorithm, but these
+are not consistent; some domains work, others do not. The hope is that
+extension of the domain will help here too.</p>
+<p>Originally written by Aaron St. George, updated by Evan Cummings</p>
+<dl class="method">
+<dt id="meshing.GetBasin.check_dist">
+<code class="descname">check_dist</code><span class="sig-paren">(</span><em>r</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.check_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.check_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>remove points in xycoords that are not a linear distance of at least
+&lt;dist&gt; from previous point.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.clean_edge">
+<code class="descname">clean_edge</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.clean_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.clean_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove spurious edge markers. Not very common, but they do happen.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.convert_to_projection">
+<code class="descname">convert_to_projection</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.convert_to_projection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.convert_to_projection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.extend_boundary">
+<code class="descname">extend_boundary</code><span class="sig-paren">(</span><em>r</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.extend_boundary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.extend_boundary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extends a 2d contour out from points in <code class="docutils literal notranslate"><span class="pre">self.xycoords</span></code> by a distance
+<code class="docutils literal notranslate"><span class="pre">r</span></code> (radius) in all directions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.extend_edge">
+<code class="descname">extend_edge</code><span class="sig-paren">(</span><em>r</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.extend_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.extend_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extends a 2d contour out from points labeled in self.edge by a distance
+&lt;r&gt; (radius) in all directions.
+NOTE: this only works for greenland.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.get_xy_contour">
+<code class="descname">get_xy_contour</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.get_xy_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.get_xy_contour" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.intersection">
+<code class="descname">intersection</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.intersection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.intersection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take the geometric intersection of current coordinates with &lt;other&gt;.
+Used primarily to replace the edge with something from a different
+(better) data set.</p>
+<p>NOTE: it’s probably better to extend the boundary before taking the
+intersection.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.plot_xycoords">
+<code class="descname">plot_xycoords</code><span class="sig-paren">(</span><em>other=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.plot_xycoords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.plot_xycoords" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.remove_skip_points">
+<code class="descname">remove_skip_points</code><span class="sig-paren">(</span><em>skip_pts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.remove_skip_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.remove_skip_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>remove all but those nodes which are <code class="docutils literal notranslate"><span class="pre">skip_pts</span></code> distance apart.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.retrive_basin_latlong">
+<code class="descname">retrive_basin_latlong</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.retrive_basin_latlong"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.retrive_basin_latlong" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="meshing.GetBasin.show_and_get_basin">
+<code class="descname">show_and_get_basin</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#GetBasin.show_and_get_basin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.GetBasin.show_and_get_basin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="meshing.MeshExtruder">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">MeshExtruder</code><span class="sig-paren">(</span><em>mesh</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshExtruder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshExtruder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Due to extreme bugginess in the gmsh extrusion utilities, this class
+extrudes a 2D mesh footprint in the z direction in an arbitrary number of
+layers.  Its primary purpose is to facilitate mesh generation for the
+ice sheet model VarGlaS.  Method based on HOW TO SUBDIVIDE PYRAMIDS, PRISMS
+AND HEXAHEDRA INTO TETRAHEDRA by Dompierre et al.</p>
+<p>Written by Douglas Brinkerhoff 14.01.25</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="meshing.MeshGenerator">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">MeshGenerator</code><span class="sig-paren">(</span><em>dd</em>, <em>fn</em>, <em>direc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator" title="Permalink to this definition">¶</a></dt>
+<dd><p>generate a mesh.</p>
+<dl class="method">
+<dt id="meshing.MeshGenerator.add_box">
+<code class="descname">add_box</code><span class="sig-paren">(</span><em>field</em>, <em>vin</em>, <em>xmin</em>, <em>xmax</em>, <em>ymin</em>, <em>ymax</em>, <em>zmin</em>, <em>zmax</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.add_box"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.add_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>add a box to the mesh.  e.g. for Byrd Glacier data:</p>
+<blockquote>
+<div>add_box(10000, 260000, 620000, -1080000, -710100, 0, 0)</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.add_edge_attractor">
+<code class="descname">add_edge_attractor</code><span class="sig-paren">(</span><em>field</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.add_edge_attractor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.add_edge_attractor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.add_threshold">
+<code class="descname">add_threshold</code><span class="sig-paren">(</span><em>field</em>, <em>ifield</em>, <em>lcMin</em>, <em>lcMax</em>, <em>distMin</em>, <em>distMax</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.add_threshold"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.add_threshold" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.check_dist">
+<code class="descname">check_dist</code><span class="sig-paren">(</span><em>dist=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.check_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.check_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>remove points in contour that are not a linear distance of at least
+&lt;dist&gt; from previous point.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.close_file">
+<code class="descname">close_file</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.close_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.close_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>close the .geo file down for further editing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.convert_msh_to_xdmf">
+<code class="descname">convert_msh_to_xdmf</code><span class="sig-paren">(</span><em>mshfile</em>, <em>xdmffile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.convert_msh_to_xdmf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.convert_msh_to_xdmf" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert &lt;mshfile&gt; .msh file to .xdmf file &lt;xdmffile&gt;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.convert_msh_to_xml">
+<code class="descname">convert_msh_to_xml</code><span class="sig-paren">(</span><em>mshfile</em>, <em>xmlfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.convert_msh_to_xml"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.convert_msh_to_xml" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert &lt;mshfile&gt; .msh file to .xml file &lt;xmlfile&gt; via dolfin-convert.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.create_2D_mesh">
+<code class="descname">create_2D_mesh</code><span class="sig-paren">(</span><em>outfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.create_2D_mesh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.create_2D_mesh" title="Permalink to this definition">¶</a></dt>
+<dd><p>create the 2D mesh to file &lt;outfile&gt;.msh.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.create_contour">
+<code class="descname">create_contour</code><span class="sig-paren">(</span><em>var</em>, <em>zero_cntr</em>, <em>skip_pts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.create_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.create_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a contour of the data field with index &lt;var&gt; of &lt;dd&gt; provided at
+initialization.  &lt;zero_cntr&gt; is the value of &lt;var&gt; to contour, &lt;skip_pts&gt;
+is the number of points to skip in the contour, needed to prevent overlap.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.eliminate_intersections">
+<code class="descname">eliminate_intersections</code><span class="sig-paren">(</span><em>dist=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.eliminate_intersections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.eliminate_intersections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Eliminate intersecting boundary elements. &lt;dist&gt; is an integer specifiying
+how far forward to look to eliminate intersections.  If any intersections
+are found, this method is called recursively until none are found.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.extend_edge">
+<code class="descname">extend_edge</code><span class="sig-paren">(</span><em>r</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.extend_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.extend_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extends a 2d contour out from points labeled in self.edge by a distance
+&lt;r&gt; (radius) in all directions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.extrude">
+<code class="descname">extrude</code><span class="sig-paren">(</span><em>h</em>, <em>n_layers</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.extrude"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.extrude" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extrude the mesh &lt;h&gt; units with &lt;n_layers&gt; number of layers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.finish">
+<code class="descname">finish</code><span class="sig-paren">(</span><em>field</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>figure out background field and close the .geo file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.intersection">
+<code class="descname">intersection</code><span class="sig-paren">(</span><em>new_contour</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.intersection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.intersection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take the geometric intersection of current coordinates with &lt;new_contour&gt;.
+Used primarily to replace the edge with something from a different
+(better) data set.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.load_contour">
+<code class="descname">load_contour</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.load_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.load_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the contour from the ouput directory <code class="docutils literal notranslate"><span class="pre">self.direc</span></code> named <code class="docutils literal notranslate"><span class="pre">name</span></code> 
+set to <code class="docutils literal notranslate"><span class="pre">self.longest_cont</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>string</em>) – name of the file to load the contour.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.plot_contour">
+<code class="descname">plot_contour</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.plot_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.plot_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the contour created with the “create_contour” method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.remove_skip_points">
+<code class="descname">remove_skip_points</code><span class="sig-paren">(</span><em>skip_pts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.remove_skip_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.remove_skip_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>remove every other &lt;skip_pts&gt; node from the contour.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.restart">
+<code class="descname">restart</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.restart"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.restart" title="Permalink to this definition">¶</a></dt>
+<dd><p>clear all contents from the .geo file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.save_contour">
+<code class="descname">save_contour</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.save_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.save_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the current contour <code class="docutils literal notranslate"><span class="pre">self.longest_cont</span></code> to the ouput directory
+<code class="docutils literal notranslate"><span class="pre">self.direc</span></code> named <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>string</em>) – name of the file to save the contour as.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.set_contour">
+<code class="descname">set_contour</code><span class="sig-paren">(</span><em>cont_array</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.set_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.set_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is an alternative to the create_contour method that allows you to
+manually specify contour points.
+Inputs:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>cont_array <span class="classifier-delimiter">:</span> <span class="classifier">A numpy array of contour points</span></dt>
+<dd>(i.e. array([[1,2],[3,4],…]))</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.transform_contour">
+<code class="descname">transform_contour</code><span class="sig-paren">(</span><em>di</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.transform_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.transform_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms the coordinates of the contour to DataInput object &lt;di&gt;’s
+projection coordinates.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.write_argus_contour">
+<code class="descname">write_argus_contour</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.write_argus_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.write_argus_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>write the contour created with <a class="reference internal" href="#meshing.MeshGenerator.create_contour" title="meshing.MeshGenerator.create_contour"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_contour()</span></code></a> to the .exp file 
+within the directory <code class="docutils literal notranslate"><span class="pre">self.direc</span></code>/<code class="docutils literal notranslate"><span class="pre">self.fn</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshing.MeshGenerator.write_gmsh_contour">
+<code class="descname">write_gmsh_contour</code><span class="sig-paren">(</span><em>lc=100000</em>, <em>boundary_extend=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#MeshGenerator.write_gmsh_contour"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.MeshGenerator.write_gmsh_contour" title="Permalink to this definition">¶</a></dt>
+<dd><p>write the contour created with <a class="reference internal" href="#meshing.MeshGenerator.create_contour" title="meshing.MeshGenerator.create_contour"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_contour()</span></code></a> to the .geo file 
+with mesh spacing <code class="docutils literal notranslate"><span class="pre">lc</span></code>.  If <code class="docutils literal notranslate"><span class="pre">boundary_extend</span></code> is true, the spacing in 
+the interior of the domain will be the same as the distance between nodes 
+on the contour.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="meshing.linear_attractor">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">linear_attractor</code><span class="sig-paren">(</span><em>spline</em>, <em>f</em>, <em>f_max</em>, <em>l_min</em>, <em>l_max</em>, <em>inv=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#linear_attractor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.linear_attractor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an attractor object which refines with min and max cell radius 
+<span class="math notranslate nohighlight">\(l_{min}\)</span>, <span class="math notranslate nohighlight">\(l_{max}\)</span> over data field <span class="math notranslate nohighlight">\(f\)</span>.  The 
+<span class="math notranslate nohighlight">\(f_{max}\)</span> parameter specifies a max value for which to apply the 
+minimum cell size such that if <span class="math notranslate nohighlight">\(f_i\)</span> is less than <span class="math notranslate nohighlight">\(f_{max}\)</span>,
+the cell size in this region will be <span class="math notranslate nohighlight">\(l_{max}\)</span>.  If <em>inv</em> = <code class="docutils literal notranslate"><span class="pre">True</span></code>
+the object refines on the inverse of the data field <span class="math notranslate nohighlight">\(f\)</span>.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}h_i = \begin{cases}
+        l_{min},     &amp; f_i &gt; f_{max} \\
+        l_{max},     &amp; f_i &lt; f_{max} \\
+        f_i,         &amp; otherwise \\
+      \end{cases}\end{split}\]</div>
+<p>Args:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">spline:</th><td class="field-body">the iterpolator which is evaluated at x- and y-coordinates</td>
+</tr>
+<tr class="field-even field"><th class="field-name">f:</th><td class="field-body">the <code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code> being interpolated</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">f_max:</th><td class="field-body">maximum value of <em>f</em> for <em>l_max</em> and <em>l_min</em></td>
+</tr>
+<tr class="field-even field"><th class="field-name">l_min:</th><td class="field-body">minimum cell size</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">l_max:</th><td class="field-body">maximum cell size</td>
+</tr>
+<tr class="field-even field"><th class="field-name">inv:</th><td class="field-body">boolean, invert <em>f</em> for attraction</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<dl class="method">
+<dt id="meshing.linear_attractor.op">
+<code class="descname">op</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>z</em>, <em>entity</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#linear_attractor.op"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.linear_attractor.op" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method which evaluates this linear attractor.</p>
+<p>Args:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">x:</th><td class="field-body">the x-coordinate</td>
+</tr>
+<tr class="field-even field"><th class="field-name">y:</th><td class="field-body">the y-coordinate</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">z:</th><td class="field-body">the z-coordinate (not used)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">entity:</th><td class="field-body">not used</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>Returns:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">lc:</th><td class="field-body">characteristic radius for a given cell at <em>(x,y)</em></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="meshing.max_field">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">max_field</code><span class="sig-paren">(</span><em>f_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#max_field"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.max_field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the minimum of a list of attactor operator fields &lt;f_list&gt;.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="meshing.min_field">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">min_field</code><span class="sig-paren">(</span><em>f_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#min_field"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.min_field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the minimum of a list of attactor operator fields &lt;f_list&gt;.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="meshing.static_attractor">
+<em class="property">class </em><code class="descclassname">meshing.</code><code class="descname">static_attractor</code><span class="sig-paren">(</span><em>spline</em>, <em>c</em>, <em>inv=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#static_attractor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.static_attractor" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="meshing.static_attractor.op">
+<code class="descname">op</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>z</em>, <em>entity</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/meshing.html#static_attractor.op"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#meshing.static_attractor.op" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="model.html" class="btn btn-neutral float-right" title="The Model classes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="output.html" class="btn btn-neutral" title="Output" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

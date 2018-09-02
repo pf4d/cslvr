@@ -1,0 +1,351 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Velocity balance &mdash; CSLVR  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Stress balance" href="stress.html" />
+    <link rel="prev" title="Energy balance" href="energy.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> CSLVR
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2017
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_started.html">Hello CSLVR</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="output.html">Output</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Mesh generation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="meshing.html">Meshing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Base Classes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="model.html">The Model classes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">The Physics classes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Balance equations</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="momentum.html">Momentum balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mass.html">Mass balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="energy.html">Energy balance</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Velocity balance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stress.html">Stress balance</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CSLVR</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Velocity balance</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/velocity.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="velocity-balance">
+<h1>Velocity balance<a class="headerlink" href="#velocity-balance" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="balancevelocity.BalanceVelocity">
+<em class="property">class </em><code class="descclassname">balancevelocity.</code><code class="descname">BalanceVelocity</code><span class="sig-paren">(</span><em>model</em>, <em>kappa=5.0</em>, <em>stabilization_method='SUPG'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class representing balance velocity physics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Model:</th><td class="field-body">a <a class="reference internal" href="model.html#d2model.D2Model" title="d2model.D2Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D2Model</span></code></a> instance holding all pertinent 
+variables, saved to <code class="docutils literal notranslate"><span class="pre">self.model</span></code>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Kappa:</th><td class="field-body">a floating-point value representing direction smoothing 
+radius in units of ice thickness <span class="math notranslate nohighlight">\(H = S-B\)</span>, where
+<span class="math notranslate nohighlight">\(H\)</span> is given by <code class="docutils literal notranslate"><span class="pre">self.model.H</span></code>, surface height
+<span class="math notranslate nohighlight">\(S\)</span> is given by <code class="docutils literal notranslate"><span class="pre">self.model.S</span></code> and bed height
+<span class="math notranslate nohighlight">\(B\)</span> is given by <code class="docutils literal notranslate"><span class="pre">self.model.B</span></code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Use like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bv</span> <span class="o">=</span> <span class="n">BalanceVelocity</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">kappa</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">stabilization_method</span><span class="o">=</span><span class="s1">&#39;SUPG&#39;</span><span class="p">)</span>
+<span class="go">::: INITIALIZING VELOCITY-BALANCE PHYSICS :::</span>
+<span class="go">    - using streamline-upwind/Petrov-Galerkin stabilization -</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bv</span><span class="o">.</span><span class="n">solve_direction_of_flow</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+<span class="go">::: solving for smoothed x-component of flow direction with kappa = 0 :::</span>
+<span class="go">Solving linear variational problem.</span>
+<span class="go">d_x &lt;min, max&gt; : &lt;-1.127e+04, 9.275e+03&gt;</span>
+<span class="go">::: solving for smoothed y-component of flow direction with kappa = 0 :::</span>
+<span class="go">Solving linear variational problem.</span>
+<span class="go">d_y &lt;min, max&gt; : &lt;-7.880e+03, 5.821e+03&gt;</span>
+<span class="go">::: calculating normalized flux direction from \nabla S:::</span>
+<span class="go">uhat &lt;min, max&gt; : &lt;-1.000e+00, 1.000e+00&gt;</span>
+<span class="go">vhat &lt;min, max&gt; : &lt;-1.000e+00, 1.000e+00&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bv</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+<span class="go">::: solving velocity balance magnitude :::</span>
+<span class="go">Solving linear variational problem.</span>
+<span class="go">Ubar &lt;min, max&gt; : &lt;-8.388e+10, 4.470e+10&gt;</span>
+<span class="go">::: removing negative values of balance velocity :::</span>
+<span class="go">Ubar &lt;min, max&gt; : &lt;0.000e+00, 4.470e+10&gt;</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="balancevelocity.BalanceVelocity.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.get_U" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="balancevelocity.BalanceVelocity.linear_solve_params">
+<code class="descname">linear_solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.linear_solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.linear_solve_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="balancevelocity.BalanceVelocity.shock_capture">
+<code class="descname">shock_capture</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.shock_capture"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.shock_capture" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="balancevelocity.BalanceVelocity.solve">
+<code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.solve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve the balance velocity magnitude 
+<span class="math notranslate nohighlight">\(\Vert \bar{\mathbf{u}} \Vert = \bar{u}\)</span> from</p>
+<div class="math notranslate nohighlight">
+\[\nabla \cdot \left( \bar{\mathbf{u}} H \right) = f,\]</div>
+<p>saved to <code class="docutils literal notranslate"><span class="pre">self.model.Ubar</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="balancevelocity.BalanceVelocity.solve_direction_of_flow">
+<code class="descname">solve_direction_of_flow</code><span class="sig-paren">(</span><em>d</em>, <em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.solve_direction_of_flow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.solve_direction_of_flow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Solve for the direction of flow, attained in two steps :</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> – a 2D vector of velocity direction from data 
+<span class="math notranslate nohighlight">\(\mathbf{d}^{\text{data}}\)</span>.</td>
+</tr>
+</tbody>
+</table>
+<p>Solve for the unit-vector direction of flow <span class="math notranslate nohighlight">\(\mathbf{d}\)</span>
+in two parts :</p>
+<ol class="arabic">
+<li><p class="first">Solve for the smoothed components of <span class="math notranslate nohighlight">\(\mathbf{d}^{\text{data}}\)</span> :</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{d} = \big( \kappa H \big)^2 \nabla \cdot \big( \nabla \mathbf{d} \big) + \mathbf{d}^{\text{data}},\]</div>
+<p>for components <span class="math notranslate nohighlight">\(d_x\)</span> and <span class="math notranslate nohighlight">\(d_y\)</span> saved respectively 
+to <code class="docutils literal notranslate"><span class="pre">self.model.d_x</span></code> and <code class="docutils literal notranslate"><span class="pre">self.model.d_y</span></code>.</p>
+</li>
+<li><p class="first">Calculate the normalized balance velocity direction :</p>
+<div class="math notranslate nohighlight">
+\[\hat{u} = \frac{d_x}{\Vert \mathbf{d} \Vert}, \hspace{10mm}
+\hat{v} = \frac{d_y}{\Vert \mathbf{d} \Vert},\]</div>
+<p>saved respectively to <code class="docutils literal notranslate"><span class="pre">self.model.uhat</span></code> and <code class="docutils literal notranslate"><span class="pre">self.model.vhat</span></code>.</p>
+</li>
+</ol>
+</dd></dl>
+
+<dl class="method">
+<dt id="balancevelocity.BalanceVelocity.solve_params">
+<code class="descname">solve_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.solve_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.solve_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a set of default solver parameters that yield good performance</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="stress.html" class="btn btn-neutral float-right" title="Stress balance" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="energy.html" class="btn btn-neutral" title="Energy balance" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Evan M. Cummings.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

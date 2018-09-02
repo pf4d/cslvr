@@ -10,6 +10,7 @@ from dolfin            import interpolate, Expression, Function, \
 from ufl               import indexed
 from pyproj            import Proj, transform
 from colored           import fg, attr
+import sys
 
 class DataInput(object):
   """
@@ -459,7 +460,7 @@ class DataInput(object):
     return CslvrExpression(element = self.element)
 
 
-def print_min_max(u, title, color='97'):
+def print_min_max(u, title, color='97', cls=None):
   """
   Print the minimum and maximum values of ``u``, a Vector, Function, or array.
 
@@ -474,40 +475,40 @@ def print_min_max(u, title, color='97'):
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
-    print_text(s, color)
+    print_text(s, color, cls=cls)
   elif isinstance(u, indexed.Indexed):
     dim = u.value_rank() + 1
     for i in range(u.value_rank()):
       uMin = u.vector().array()[i : u.vector().size() : dim].min()
       uMax = u.vector().array()[i : u.vector().size() : dim].max()
       s    = title + '_%i <min, max> : <%.3e, %.3e>' % (i, uMin, uMax)
-      print_text(s, color)
+      print_text(s, color, cls=cls)
   elif isinstance(u, ndarray):
     if u.dtype != float64:
       u = u.astype(float64)
     uMin = MPI.min(mpi_comm_world(), u.min())
     uMax = MPI.max(mpi_comm_world(), u.max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
-    print_text(s, color)
+    print_text(s, color, cls=cls)
   elif isinstance(u, Function):# \
     #   or isinstance(u, dolfin.functions.function.Function):
     uMin = MPI.min(mpi_comm_world(), u.vector().min())
     uMax = MPI.max(mpi_comm_world(), u.vector().max())
     s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
-    print_text(s, color)
+    print_text(s, color, cls=cls)
   elif isinstance(u, int) or isinstance(u, float):
     s    = title + ' : %.3e' % u
-    print_text(s, color)
+    print_text(s, color, cls=cls)
   elif isinstance(u, Constant):
     s    = title + ' : %.3e' % u(0)
-    print_text(s, color)
+    print_text(s, color, cls=cls)
   else:
     er = title + ": print_min_max function requires a Vector, Function" \
          + ", array, int or float, not %s." % type(u)
     print_text(er, 'red', 1)
 
 
-def get_text(text, color='white', atrb=0, cls=None):
+def get_text(text, color=None, atrb=0, cls=None):
   """
   Returns text ``text`` from calling class ``cls`` for printing at a later time.
 
@@ -522,15 +523,17 @@ def get_text(text, color='white', atrb=0, cls=None):
   """
   if cls is not None:
     color = cls.color()
-  if MPI.rank(mpi_comm_world())==0:
+  if color is None:
+    text = text
+  else:
     if atrb != 0:
       text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))
     else:
       text = ('%s' + text + '%s') % (fg(color), attr(0))
-    return text
+  return text
 
 
-def print_text(text, color='white', atrb=0, cls=None):
+def print_text(text, color=None, atrb=0, cls=None):
   """
   Print text ``text`` from calling class ``cls`` to the screen.
 
@@ -543,14 +546,8 @@ def print_text(text, color='white', atrb=0, cls=None):
   :type atrb: int
   :type cls: object
   """
-  if cls is not None:
-    color = cls.color()
   if MPI.rank(mpi_comm_world())==0:
-    if atrb != 0:
-      text = ('%s%s' + text + '%s') % (fg(color), attr(atrb), attr(0))
-    else:
-      text = ('%s' + text + '%s') % (fg(color), attr(0))
-    print text
+    print get_text(text, color, atrb, cls)
 
 
 

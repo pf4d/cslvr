@@ -15,7 +15,7 @@ class MomentumFirn(Momentum):
     """
     """
     s = "::: INITIALIZING FIRN MOMENTUM PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     if type(model) != D1Model:
       s = ">>> FirnDensity REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
@@ -159,7 +159,7 @@ class MomentumFirn(Momentum):
     """
     """
     s    = "::: solving firn compaction velocity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     w_delta = self.w_delta
     model   = self.model
@@ -172,7 +172,7 @@ class MomentumFirn(Momentum):
     """
     """
     s    = "::: solving firn density, overburden stress, and grain radius :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model   = self.model
 
@@ -205,7 +205,7 @@ class MomentumFirn(Momentum):
     print_min_max(model.r,     'r')
     
     s    = "::: solving firn densification rate :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     model.assign_variable(model.drhodt,  project(self.drhodt))
     print_min_max(model.drhodt, 'drho/dt')
   

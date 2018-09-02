@@ -41,14 +41,13 @@ class Model(object):
     s = "::: INITIALIZING BASE MODEL :::"
     print_text(s, cls=self.this)
     
-    parameters['form_compiler']['quadrature_degree']  = order + 1
+    #parameters['form_compiler']['quadrature_degree']  = order + 1
     parameters["std_out_all_processes"]               = False
-    parameters['form_compiler']['optimize']           = True
-    parameters['form_compiler']['cpp_optimize']       = True
-    parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
-    parameters["form_compiler"]["representation"]     = 'uflacs'
-
-    PETScOptions.set("mat_mumps_icntl_14", 100.0)
+    #parameters['form_compiler']['optimize']           = True
+    #parameters['form_compiler']['cpp_optimize']       = True
+    #parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
+    #parameters["form_compiler"]["representation"]     = 'uflacs'
+    #PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
     self.order        = order
     self.out_dir      = out_dir
@@ -67,6 +66,31 @@ class Model(object):
     :rtype: string
     """
     return '148'
+
+  def linear_solve_params(self):
+    """ 
+    Returns a set of linear solver parameters.
+    """
+    lparams  = {"linear_solver"            : "superlu_dist"}
+    #lparams  = {"linear_solver"            : "mumps"}
+    #lparams  = {"linear_solver"            : "cg",
+    #            "preconditioner"           : "default"}
+    return lparams
+
+  def nonlinear_solve_params(self):
+    """ 
+    Returns a set of linear and nonlinear solver parameters.
+    """
+    nparams = {'newton_solver' :
+              {
+                'linear_solver'            : 'cg',
+                'preconditioner'           : 'hypre_amg',
+                'relative_tolerance'       : 1e-9,
+                'relaxation_parameter'     : 1.0,
+                'maximum_iterations'       : 25,
+                'error_on_nonconvergence'  : False,
+              }}
+    return nparams
 
   def generate_constants(self):
     """
@@ -1401,7 +1425,9 @@ class Model(object):
     U_v[U_v < eps] = eps
     self.assign_variable(U_s, U_v)
     S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-    beta_0   = project((rhoi*g*H*S_mag) / U_s, Q, annotate=False)
+    beta_0   = project((rhoi*g*H*S_mag) / U_s, Q,
+                       solver_type='iterative',
+                       annotate=False)
     beta_0_v = beta_0.vector().get_local()
     beta_0_v[beta_0_v < 1e-2] = 1e-2
     self.betaSIA = Function(Q, name='betaSIA')
@@ -1414,7 +1440,7 @@ class Model(object):
       #self.assign_variable(self.beta, self.betaSIA)
     elif self.dim == 2:
       self.assign_variable(self.beta, self.betaSIA)
-    print_min_max(self.beta, 'beta')
+    print_min_max(self.beta, 'beta', cls=self)
       
   def init_beta_stats(self, mdl='Ubar', use_temp=False, mode='steady'):
     """
@@ -1671,7 +1697,7 @@ class Model(object):
                 1.55871983e-13]
    
     for xx,nam in zip(X, names[idx]):
-      print_min_max(xx, nam)
+      print_min_max(xx, nam, cls=self)
 
     X_i  = []
     X_i.extend(X)
@@ -1710,7 +1736,7 @@ class Model(object):
     elif mode == 'transient':
       self.assign_variable(self.beta, 200.0)
     
-    print_min_max(self.beta, 'beta_hat')
+    print_min_max(self.beta, 'beta_hat', cls=self)
  
   def update_stats_beta(self):
     """
@@ -2009,10 +2035,10 @@ class Model(object):
     print_text(s, cls=self.this)
     lg = LagrangeInterpolator()
     lg.interpolate(u_to, u_from)
-    print_min_max(u_from, 'u_from : ' + u_from.name())
-    print_min_max(u_to,   'u_to   : ' + u_to.name())
+    print_min_max(u_from, 'u_from : ' + u_from.name(), cls=self)
+    print_min_max(u_to,   'u_to   : ' + u_to.name(), cls=self)
   
-  def assign_variable(self, u, var, annotate=False):
+  def assign_variable(self, u, var, annotate=False, cls=None):
     """
     Manually assign the values from ``var`` to ``u``.  The parameter ``var``
     may be a string pointing to the location of an :class:`~dolfin.XDMFFile`, 
@@ -2028,6 +2054,7 @@ class Model(object):
                      :class:`~dolfin.Constant`, float, int
     :type annotate:  bool
     """
+    if cls is None: cls = self  # for printing
     if isinstance(var, float) or isinstance(var, int):
       if    isinstance(u, GenericVector) or isinstance(u, Function) \
          or isinstance(u, dolfin.functions.function.Function):
@@ -2066,7 +2093,7 @@ class Model(object):
            "*************************************************************"
       print_text(s % type(var) , 'red', 1)
       u = var
-    print_min_max(u, u.name())
+    print_min_max(u, u.name(), cls=cls)
 
   def save_hdf5(self, u, f, name=None):
     """
@@ -2105,10 +2132,10 @@ class Model(object):
     :type u:     :class:`~dolfin.Function` or :class:`~dolfin.GenericVector`
     :type t:     int or float
     """
-    if f != None:
+    if f is not None:
       s       = "::: saving %s.xdmf file :::" % name
       print_text(s, 'green')#cls=self.this)
-      f.write(u)
+      f.write(u, t)
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
       print_text(s, 'green')#cls=self.this)
@@ -2142,7 +2169,7 @@ class Model(object):
           fa[i,j] = f(x,y)
         except:
           fa[i,j] = val
-    print_min_max(fa, filename + 'matrix')
+    print_min_max(fa, filename + 'matrix', cls=self)
     outfile = self.out_dir + 'matlab/' + filename + '.mat'
     savemat(outfile, {'map_data'          : fa,
                       'continent'         : di.cont,
@@ -2418,7 +2445,7 @@ class Model(object):
     self.k_0.rename('k_0', 'k_0')
 
     # always initialize the bulk density :
-    self.assign_variable(self.rhob, self.rhoi)
+    self.assign_variable(self.rhob, self.rhoi, cls=self.this)
 
     # adjoint :
     self.control_opt   = Function(self.Q, name='control_opt')
@@ -2851,7 +2878,7 @@ class Model(object):
         s    = '::: initializing physics :::'
         print_text(s, cls=self.this)
         physics.reset()
-        self.assign_variable(control, control_ini)
+        self.assign_variable(control, control_ini, cls=self.this)
       
       # set the appropriate output directory :
       out_dir_n = 'alpha_%.1E/' % alpha
@@ -2897,6 +2924,17 @@ class Model(object):
     text = "time to complete L-curve procedure: %02d:%02d:%02d" % (h,m,s)
     print_text(text, 'red', 1)
 
+  def calculate_courant_number(self):
+    r"""
+    Calculates and returns the Courant number
+    
+    .. math::
+       c = \Delta t \frac{\Vert \underline{u} \Vert}{h}.
+
+    with ice velocity :math:`\underline{u}`, cell diameter :math:`h`, and timestep :math:`\Delta t`.
+    """
+    return self.time_step(0) * norm( project(self.U3 / self.h) )
+
   def thermo_solve(self, thermo_kwargs):
     """
     Perform thermo-mechanical coupling between momentum and energy.
@@ -2940,6 +2978,7 @@ class Model(object):
       sys.exit(1)
 
     self.init_time_step(time_step)
+    mass.model.init_time_step(time_step)
     t0             = time()    # starting time (for total time to compute)
     t              = t_start   # beginning time
     dt             = time_step # current time step
@@ -2947,9 +2986,9 @@ class Model(object):
 
     # history of the the total mass of the domain (iteration `k = 0`:
     self.step_time    = []                    # list of time steps (for adapt)
-    m_tot_k           = assemble(mass.M_tot)  # initial mass
-    print_min_max(m_tot_k, 'initial m_tot_k')
-    self.mass_history = [m_tot_k]             # mass history
+    #m_tot_k           = assemble(mass.M_tot)  # initial mass
+    #print_min_max(m_tot_k, 'initial m_tot_k')
+    #self.mass_history = [m_tot_k]             # mass history
     stars             = ("*") * 80            # stars for printing
    
     # Loop over all times
@@ -2964,37 +3003,38 @@ class Model(object):
       # thermo-mechanical couple if desired :
       if tmc_kwargs is not None: self.thermo_solve(**tmc_kwargs)
 
-      # calculate the total mass :
-      m_tot = assemble(mass.M_tot)
-      print_min_max(m_tot_k, 'm_tot_k')
+      ## calculate the total mass : FIXME: need to compute this some other way
+      #m_tot = assemble(mass.M_tot)
+      #print_min_max(m_tot_k, 'm_tot_k')
 
       # call a user-defined callback function!  useful!  solve age equation!
       if callback != None:
         print_text('::: calling callback function :::', cls=self.this)
-        callback()
+        callback(t = t + dt)
 
       # end the timer :
       tok = time()
 
       # calculate Courant number :
-      c   = dt * norm( project(self.U3 / self.h) )
+      if adaptive: c = self.calculate_courant_number()
+      else:        c = 0.0
  
       # print statistics :
       print_text(">>> iteration %i complete <<<" % len(self.step_time), 'red',1)
       stats = {"sim time [yr]           " : " %g" % (t + dt),
                "dt [yr]                 " : " %g" % dt,
                "CPU time [s]            " : " %g" % (tok - tic),
-               "courant number [--]     " : " %g" % c,
-               "mass m_t - m_{t-1} [kg] " : " %g" % (m_tot - m_tot_k)}
+               "courant number [--]     " : " %g" % c}
+      #         "mass m_t - m_{t-1} [kg] " : " %g" % (m_tot - m_tot_k)}
       s = json.dumps(stats, sort_keys=True, indent=2, separators=('',' : '))
       print_text(s, 'red', 1)
 
       # store information : 
-      self.mass_history.append(m_tot)
+      #self.mass_history.append(m_tot)
       self.step_time.append(tok - tic)
 
       # increment :
-      m_tot_k = m_tot
+      #m_tot_k = m_tot
       t      += dt
 
       # adjust the time step to obey the CFL condition, if desired :

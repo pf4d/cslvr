@@ -82,7 +82,7 @@ class Physics(object):
     """
     s  = "::: forming '%s' regularization functional for variable" + \
          " '%s' integrated over the %s :::"
-    print_text(s % (kind, c.name(), integral.description), self.color())
+    print_text(s % (kind, c.name(), integral.description), cls=self)
 
     dR = integral()
    
@@ -155,7 +155,7 @@ class Physics(object):
     :type eps:       float or int
     """
     s  = "::: forming '%s' objective functional integrated over %s :::"
-    print_text(s % (kind, integral.description), self.color())
+    print_text(s % (kind, integral.description), cls=self)
 
     dJ = integral()
 

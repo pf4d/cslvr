@@ -4,7 +4,10 @@ from cslvr.inputoutput import print_text, get_text, print_min_max
 from cslvr.model       import Model
 from cslvr.helper      import Boundary
 from scipy.spatial     import cKDTree
-import sys
+from copy              import copy
+import numpy               as np
+import matplotlib.pyplot   as plt
+import sys, os
 
 class D3Model(Model):
   """ 
@@ -203,6 +206,80 @@ class D3Model(Model):
 
     self.Q_dvd = FunctionSpace(self.dvdmesh, 'CG', 1)
 
+  def form_srf_mesh(self):
+    """
+    sets self.srfmesh, the surface boundary mesh for this model instance.
+    """
+    s = "::: extracting surface mesh :::"
+    print_text(s, cls=self)
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
+    for c in cells(bmesh):
+      if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)
+    self.srfmesh = submesh
+
+  def form_bed_mesh(self):
+    """
+    sets self.bedmesh, the basal boundary mesh for this model instance.
+    """
+    s = "::: extracting bed mesh :::"
+    print_text(s, cls=self)
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
+    for c in cells(bmesh):
+      if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)
+    self.bedmesh = submesh
+
+  def form_lat_mesh(self):
+    """
+    sets self.latmesh, the lateral boundary mesh for this model instance.
+    """
+    s = "::: extracting lateral mesh :::"
+    print_text(s, cls=self)
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
+    for c in cells(bmesh):
+      if abs(Facet(self.mesh, cellmap[c.index()]).normal().z()) < 1e-3:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)
+    self.latmesh = submesh
+
+  def form_dvd_mesh(self, contour):
+    """
+    sets self.dvdmesh, the lateral divide boundary mesh for this model instance.
+
+    :param contour: NumPy array of exterior points to exclude.
+    :type contour:  :class:`numpy.ndarray`
+    """
+    s = "::: extracting lateral divide mesh :::"
+    print_text(s, cls=self)
+      
+    tree = cKDTree(contour)
+
+    bmesh   = BoundaryMesh(self.mesh, 'exterior')
+    cellmap = bmesh.entity_map(2)
+    pb      = MeshFunction("size_t", bmesh, 2, 0)
+    for c in cells(bmesh):
+      f       = Facet(self.mesh, cellmap[c.index()])
+      n       = f.normal()
+      x_m     = f.midpoint().x()
+      y_m     = f.midpoint().y()
+      z_m     = f.midpoint().z()
+      if abs(n.z()) < 1e-3 and tree.query((x_m, y_m))[0] > 1000:
+        pb[c] = 1
+    submesh = SubMesh(bmesh, pb, 1)
+    self.dvdmesh = submesh
+
   def generate_function_spaces(self):
     """
     Generates the appropriate finite-element function spaces from parameters
@@ -252,6 +329,7 @@ class D3Model(Model):
     Assign the values from the variable ``u_sub`` defined on a submesh of 
     this :class:`~model.Model`'s mesh to the variable ``u``.
     """
+    # TODO: only the upper surface, need lower surface too.
     u_sub_a = u_sub.vector().get_local()
     u_a     = u.vector().get_local()
     dofmap  = self.submesh_map_dict['Q']
@@ -264,6 +342,7 @@ class D3Model(Model):
         u_a[i::3][dofmap] = u_sub_a[i::3]
     
     self.assign_variable(u, u_a)
+    self.assign_variable(u, self.vert_extrude(u, d='down'))
 
   def assign_to_submesh_variable(self, u, u_sub):
     r"""
@@ -603,80 +682,6 @@ class D3Model(Model):
       x[2] = x[2] + B(x[0], x[1], x[2])
     s = "    - done - "
     print_text(s, cls=self)
-
-  def form_srf_mesh(self):
-    """
-    sets self.srfmesh, the surface boundary mesh for this model instance.
-    """
-    s = "::: extracting surface mesh :::"
-    print_text(s, cls=self)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = MeshFunction("size_t", bmesh, 2, 0)
-    for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() > 1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    self.srfmesh = submesh
-
-  def form_bed_mesh(self):
-    """
-    sets self.bedmesh, the basal boundary mesh for this model instance.
-    """
-    s = "::: extracting bed mesh :::"
-    print_text(s, cls=self)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = MeshFunction("size_t", bmesh, 2, 0)
-    for c in cells(bmesh):
-      if Facet(self.mesh, cellmap[c.index()]).normal().z() < -1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    self.bedmesh = submesh
-
-  def form_lat_mesh(self):
-    """
-    sets self.latmesh, the lateral boundary mesh for this model instance.
-    """
-    s = "::: extracting lateral mesh :::"
-    print_text(s, cls=self)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = MeshFunction("size_t", bmesh, 2, 0)
-    for c in cells(bmesh):
-      if abs(Facet(self.mesh, cellmap[c.index()]).normal().z()) < 1e-3:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    self.latmesh = submesh
-
-  def form_dvd_mesh(self, contour):
-    """
-    sets self.dvdmesh, the lateral divide boundary mesh for this model instance.
-
-    :param contour: NumPy array of exterior points to exclude.
-    :type contour:  :class:`numpy.ndarray`
-    """
-    s = "::: extracting lateral divide mesh :::"
-    print_text(s, cls=self)
-      
-    tree = cKDTree(contour)
-
-    bmesh   = BoundaryMesh(self.mesh, 'exterior')
-    cellmap = bmesh.entity_map(2)
-    pb      = MeshFunction("size_t", bmesh, 2, 0)
-    for c in cells(bmesh):
-      f       = Facet(self.mesh, cellmap[c.index()])
-      n       = f.normal()
-      x_m     = f.midpoint().x()
-      y_m     = f.midpoint().y()
-      z_m     = f.midpoint().z()
-      if abs(n.z()) < 1e-3 and tree.query((x_m, y_m))[0] > 1000:
-        pb[c] = 1
-    submesh = SubMesh(bmesh, pb, 1)
-    self.dvdmesh = submesh
       
   def calc_thickness(self):
     """
@@ -692,7 +697,7 @@ class D3Model(Model):
     print_min_max(H, 'H', cls=self)
     return H
   
-  def solve_hydrostatic_pressure(self, annotate=True, cls=None):
+  def solve_hydrostatic_pressure(self, annotate=False, cls=None):
     """
     Solve for the hydrostatic pressure 'p'.
     """
@@ -703,12 +708,12 @@ class D3Model(Model):
     print_text(s, cls=cls)
     rhoi   = self.rhoi
     g      = self.g
-    p      = self.vert_integrate(rhoi*g, d='down')
+    p      = self.vert_integrate(rhoi*g, d='down', annotate=annotate)
     pv     = p.vector()
     pv[pv < 0] = 0.0
-    self.assign_variable(self.p, p)
+    self.assign_variable(self.p, p, annotate=annotate)
   
-  def vert_extrude(self, u, d='up', Q='self'):
+  def vert_extrude(self, u, d='up', Q='self', annotate=False):
     r"""
     This extrudes a function *u* vertically in the direction *d* = 'up' or
     'down'.  It does this by solving a variational problem:
@@ -732,36 +737,31 @@ class D3Model(Model):
     bcs  = []
     # extrude bed (ff = 3,5) 
     if d == 'up':
-      #if self.N_GAMMA_B_GND != 0:
-      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      #if self.N_GAMMA_B_FLT != 0:
-      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_B_FLT))  # shelves
     # extrude surface (ff = 2,6) 
     elif d == 'down':
-      #if self.N_GAMMA_S_GND != 0:
-      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      #if self.N_GAMMA_S_FLT != 0:
-      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      #if self.N_GAMMA_U_GND != 0:
-      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      #if self.N_GAMMA_U_FLT != 0:
-      #  bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, u, ff, self.GAMMA_U_FLT))  # shelves
     try:
       name = '%s extruded %s' % (u.name(), d)
     except AttributeError:
       name = 'extruded'
     v    = Function(Q, name=name)
-    solve(a == L, v, bcs, annotate=False)
+    solve(a == L, v, bcs, annotate=annotate,
+          solver_parameters=self.linear_solve_params())
     print_min_max(v, 'extruded function')
     return v
   
-  def vert_integrate(self, u, d='up', Q='self'):
+  def vert_integrate(self, u, d='up', Q='self', annotate=False):
     """
     Integrate <u> from the bed to the surface.
     """
@@ -777,36 +777,31 @@ class D3Model(Model):
     bcs = []
     # integral is zero on bed (ff = 3,5) 
     if d == 'up':
-      #if self.N_GAMMA_B_GND != 0:
-      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      #if self.N_GAMMA_B_FLT != 0:
-      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
+      if self.N_GAMMA_B_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_GND))  # grounded
+      if self.N_GAMMA_B_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_B_FLT))  # shelves
       a      = v.dx(2) * phi * dx
     # integral is zero on surface (ff = 2,6) 
     elif d == 'down':
-      #if self.N_GAMMA_S_GND != 0:
-      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      #if self.N_GAMMA_S_FLT != 0:
-      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      #if self.N_GAMMA_U_GND != 0:
-      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      #if self.N_GAMMA_U_FLT != 0:
-      #  bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
-      bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
+      if self.N_GAMMA_S_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_GND))  # grounded
+      if self.N_GAMMA_S_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_S_FLT))  # shelves
+      if self.N_GAMMA_U_GND != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_GND))  # grounded
+      if self.N_GAMMA_U_FLT != 0:
+        bcs.append(DirichletBC(Q, 0.0, ff, self.GAMMA_U_FLT))  # shelves
       a      = -v.dx(2) * phi * dx
     L      = u * phi * dx
     name   = 'value integrated %s' % d 
     v      = Function(Q, name=name)
-    solve(a == L, v, bcs, annotate=False)
+    solve(a == L, v, bcs, annotate=annotate,
+          solver_parameters=self.linear_solve_params())
     print_min_max(v, 'vertically integrated function')
     return v
 
-  def calc_vert_average(self, u):
+  def calc_vert_average(self, u, annotate=False):
     """
     Calculates the vertical average of a given function *u*.  
     
@@ -817,8 +812,8 @@ class D3Model(Model):
     print_text(s, cls=self)
 
     # vertically integrate the function up and then extrude that down :
-    ubar = self.vert_integrate(u,  d='up')
-    ubar = self.vert_extrude(ubar, d='down')
+    ubar = self.vert_integrate(u,  d='up',   annotate=annotate)
+    ubar = self.vert_extrude(ubar, d='down', annotate=annotate)
     
     try:
       name = 'vertical average of %s' % u.name()
@@ -827,8 +822,10 @@ class D3Model(Model):
     ubar.rename(name, '')
    
     # divide by the thickness for vertical average : 
-    ubar_v = ubar.vector().array()
-    H_v    = self.S.vector().array() - self.B.vector().array() + DOLFIN_EPS
+    ubar_v = ubar.vector().get_local()
+    S_v    = self.S.vector().get_local()
+    B_v    = self.B.vector().get_local()
+    H_v    = S_v - B_v + DOLFIN_EPS
     self.assign_variable(ubar, ubar_v / H_v)
     return ubar
  
@@ -886,6 +883,12 @@ class D3Model(Model):
 
     # mass :    
     self.mhat          = Function(self.Q, name='mhat')  # mesh velocity
+
+    # specical dof mapping for periodic spaces :
+    if self.use_periodic:
+      self.mhat_non = Function(self.Q_non_periodic)
+      self.assmhat  = FunctionAssigner(mhat.function_space(),
+                                       self.Q_non_periodic)
 
     # surface climate :
     # TODO: re-implent this (it was taken out somewhere)
@@ -1070,17 +1073,12 @@ class D3Model(Model):
         text5 = get_text(s5, 'red')
         text6 = get_text(s6, 'red', 1)
         print text0 + text1 + text2 + text3 + text4 + text5 + text6
-      
-      # update error stuff and increment iteration counter :
-      abs_error    = abs_error_n
-      U_prev       = self.theta.copy(True)
-      counter     += 1
 
       # call callback function if set :
       if callback != None:
         s    = '::: calling thermo-couple-callback function :::'
         print_text(s, cls=self.this)
-        callback()
+        callback(counter)
     
       # save state to unique hdf5 file :
       if isinstance(iter_save_vars, list):
@@ -1091,6 +1089,11 @@ class D3Model(Model):
         for var in iter_save_vars:
           self.save_hdf5(var, f=foutput)
         foutput.close()
+      
+      # update error stuff and increment iteration counter :
+      abs_error    = abs_error_n
+      U_prev       = self.theta.copy(True)
+      counter     += 1
     
     # reset the base directory ! :
     self.set_out_dir(out_dir_i)
@@ -1147,6 +1150,19 @@ class D3Model(Model):
       plt.savefig(d_hist + 'theta_norm.png', dpi=100)
       plt.close(fig)
 
+  def update_mesh(self):
+    """
+    This method will update the surface height ``self.S`` and vertices 
+    of deformed mesh ``self.mesh``.
+    """
+    print_text("    - updating mesh -", cls=self)
+    
+    # update the mesh :
+    sigma                        = self.sigma.compute_vertex_values()
+    S                            = self.S.compute_vertex_values()
+    B                            = self.B.compute_vertex_values()
+    self.mesh.coordinates()[:,2] = sigma*(S - B) + B  # only the z coordinate 
+
   def transient_iteration(self, momentum, mass, time_step, adaptive, annotate):
     r"""
     This function defines one interation of the transient solution, and is 
@@ -1159,29 +1175,48 @@ class D3Model(Model):
     mesh      = self.mesh
     dSdt      = self.dSdt
 
+    def f(S):
+      mass.model.init_S(S)
+      mass.solve_dSdt()
+      return mass.model.dSdt.vector().get_local()
+
     # calculate velocity :
     momentum.solve()
 
-    # initial surface :
+    # update the mass model's velocity field :
+    self.assign_to_submesh_variable(u = self.U3,   u_sub = mass.model.U3)
+
+    # save the initial surface :
     S_0     = self.S.vector().get_local()
 
     # calculate new surface :
-    mass.solve()
+    #mass.solve()
 
-    # update the surface :
+    # impose the thickness limit and update the model's surface :
+    S_a         = self.RK4(f, mass.model.S.vector().get_local(), dt)
+    B_a         = mass.model.B.vector().get_local()
+    thin        = (S_a - B_a) < mass.thklim
+    S_a[thin]   = B_a[thin] + mass.thklim
+    mass.model.init_S(S_a)
+
+    # update the 3D model's surface :
+    self.assign_from_submesh_variable(u = self.S,  u_sub = mass.model.S)
+
+    # save the new surface :
     S_1     = self.S.vector().get_local()
-    mass.update_mesh_and_surface(S_1)
+
+    # deform the mesh :
+    self.update_mesh()
 
     # calculate mesh velocity :
-    B_a       = self.B.vector().get_local()
     sigma_a   = self.sigma.vector().get_local()
     mhat_a    = (S_1 - S_0) / dt * sigma_a
 
     # set mesh velocity depending on periodicity due to the fact that 
     # the topography S and B are always not periodic :
     if self.use_periodic:
-      self.assign_variable(mass.mhat_non, mhat_a)
-      mass.assmhat.assign(self.mhat, mass.mhat_non, annotate=annotate)
+      self.assign_variable(self.mhat_non, mhat_a)
+      self.assmhat.assign(self.mhat, self.mhat_non, annotate=annotate)
     else:
       self.assign_variable(self.mhat, mhat_a)
 

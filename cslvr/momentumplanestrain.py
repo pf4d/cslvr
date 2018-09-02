@@ -16,7 +16,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     """ 
     """
     s = "::: INITIALIZING DUKOWICZ-PLANE-STRAIN PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     if type(model) != LatModel:
       s = ">>> MomentumDukowiczPlaneStrain REQUIRES A 'D2Model' INSTANCE, " \
@@ -89,7 +89,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
       s  = "    - using nonlinear form of momentum -"
       eta      = self.viscosity(U2)
       Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     # potential energy :
     Pe     = - rhoi * g * w
@@ -115,19 +115,19 @@ class MomentumDukowiczPlaneStrain(Momentum):
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       A -= Pb_w*dLat_t
     
     if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       A -= Pb_l*dLat_d
     
     # add lateral boundary conditions :  
     if use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       U3_c   = model.U3.copy(True)
       U3_2   = as_vector([U3_c[0], U3_c[1]])
       eta_l  = self.viscosity(U3_2)
@@ -186,7 +186,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     return the Cauchy stress tensor.
     """
     s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     I     = Identity(2)
     tau   = self.deviatoric_stress_tensor(U, eta)
@@ -199,7 +199,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     return the deviatoric stress tensor.
     """
     s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     epi = self.strain_rate_tensor(U)
     tau = 2 * eta * epi
@@ -278,7 +278,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
     s    = "::: solving plane-strain momentum equations" + \
            " with %i max iterations and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :

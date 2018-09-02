@@ -29,7 +29,7 @@ class Momentum(Physics):
     """
     """
     s = "::: INITIALIZING MOMENTUM :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     # save the starting values, as other algorithms might change the 
     # values to suit their requirements :
@@ -38,7 +38,7 @@ class Momentum(Physics):
     elif solve_params == None:
       solve_params    = self.default_solve_params()
       s = "::: using default parameters :::"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       s = json.dumps(solve_params, sort_keys=True, indent=2)
       print_text(s, '230')
     else:
@@ -71,10 +71,10 @@ class Momentum(Physics):
     reset the momentum to the original configuration.
     """
     s = "::: RE-INITIALIZING MOMENTUM PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     s = "::: restoring desired Newton solver parameters :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     s = json.dumps(self.solve_params_s, sort_keys=True, indent=2)
     print_text(s, '230')
     
@@ -89,7 +89,7 @@ class Momentum(Physics):
     linearize the viscosity using the velocity stored in ``model.U3``.
     """
     s = "::: RE-INITIALIZING MOMENTUM PHYSICS WITH LINEAR VISCOSITY :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
    
     # deepcopy the parameters so that we can change them without changing
     # the original values we started with :
@@ -108,7 +108,7 @@ class Momentum(Physics):
     new_params['error_on_nonconvergence'] = False
 
     s = "::: altering solver parameters for optimal convergence :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     s = json.dumps(mom_params, sort_keys=True, indent=2)
     print_text(s, '230')
 
@@ -116,7 +116,7 @@ class Momentum(Physics):
     # linear :
     if reset_orig_config:
       s = "::: reseting the original config to use linear viscosity :::"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       self.linear_s       = True
       self.solve_params_s = mom_params
 
@@ -198,7 +198,7 @@ class Momentum(Physics):
     vector ``U`` with components ``u``, ``v``, ``w``.
     """
     s  = "::: forming visosity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     model    = self.model
     n        = model.n
     A        = model.A
@@ -218,20 +218,21 @@ class Momentum(Physics):
     model    = self.model
     u,v,w    = model.U3.split(True)
 
-    beta_v   = model.beta.vector().array()
-    u_v      = u.vector().array()
-    v_v      = v.vector().array()
-    w_v      = w.vector().array()
-    Fb_v     = model.Fb.vector().array()
+    beta_v   = model.beta.vector().get_local()
+    u_v      = u.vector().get_local()
+    v_v      = v.vector().get_local()
+    w_v      = w.vector().get_local()
 
-    n     = project(grad(model.B))
-    n_x_v = n[0].vector().array()
-    n_y_v = n[1].vector().array()
-    n_z_v = n[2].vector().array()
-    UdotN = u_v*n_x_v + v_v*n_y_v + w_v*n_z_v
-    ut  = u_v - UdotN*n_x
-    vt  = v_v - UdotN*n_y
-    wt  = w_v - UdotN*n_z
+    dBdx_v = project(model.B.dx(0),solver_type='iterative').vector().get_local()
+    dBdy_v = project(model.B.dx(1),solver_type='iterative').vector().get_local()
+    B_mag  = np.sqrt(dBdx_v**2 + dBdy_v**2 + 1)
+    n_x_v  = dBdx_v / B_mag
+    n_y_v  = dBdy_v / B_mag
+    n_z_v  = -1 / B_mag
+    UdotN  = u_v*n_x_v + v_v*n_y_v + w_v*n_z_v
+    ut     = u_v - UdotN*n_x_v
+    vt     = v_v - UdotN*n_y_v
+    wt     = w_v - UdotN*n_z_v
     
     q_fric_v = beta_v * (ut**2 + vt**2 + wt**2)
 
@@ -242,7 +243,7 @@ class Momentum(Physics):
     Returns the Lagrangian of the momentum equations.
     """
     s  = "::: forming Lagrangian :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     R   = self.get_residual()
     Phi = self.get_Phi()
@@ -264,7 +265,7 @@ class Momentum(Physics):
 
     """
     s  = "::: forming dLdc :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     dU  = self.get_dU()
     Lam = self.get_Lam()
@@ -295,7 +296,7 @@ class Momentum(Physics):
     dI = derivative(H, U, Phi)
     
     s  = "::: solving adjoint momentum :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     aw = assemble(lhs(dI))
     Lw = assemble(rhs(dI))

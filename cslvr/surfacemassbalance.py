@@ -10,7 +10,7 @@ class SurfaceMassBalance(Physics):
     ``model.Mb``, and ice-sheet thickness ``model.H``.
     """ 
     s    = "::: INITIALIZING SURFACE-MASS-BALANCE PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
 
     self.model  = model
@@ -40,6 +40,6 @@ class SurfaceMassBalance(Physics):
     model = self.model
 
     s    = "::: solving for surface mass balance :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     solve(self.a == self.B, model.adot)
     print_min_max(model.adot, 'adot')

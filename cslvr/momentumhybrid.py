@@ -26,7 +26,7 @@ class MomentumHybrid(Momentum):
     memory allocation type stuff.
     """
     s = "::: INITIALIZING HYBRID MOMENTUM PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     if type(model) != D2Model:
       s = ">>> MomentumHybrid REQUIRES A 'D2Model' INSTANCE, NOT %s <<<"
@@ -273,9 +273,9 @@ class MomentumHybrid(Momentum):
           "'log', 'kinematic', OR 'log_L2_hybrid', NOT '%s' <<<" % kind
       print_text(s, 'red', 1)
       sys.exit(1)
-    print_text(s, self.color())
+    print_text(s, cls=self)
     s = "    - integrated over %s -" % model.boundaries[integral]
-    print_text(s, self.color())
+    print_text(s, cls=self)
     self.J  = J
     self.Jp = Jp
     
@@ -365,14 +365,14 @@ class MomentumHybrid(Momentum):
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
     s      = "::: solving 'MomentumHybrid' with %i max iterations" + \
              " and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
     
     # compute solution :
     #s = solve(self.mom_F == 0, self.U, J = self.mom_Jac,
     #      annotate = annotate, solver_parameters = params['solver'],
     #      form_compiler_parameters = params['ffc_params'])
     out = self.solver.solve(annotate=annotate)
-    print_min_max(self.U, 'U', self.color())
+    print_min_max(self.U, 'U', cls=self)
 
     model.U3.assign(self.U, annotate=annotate)
 
@@ -384,7 +384,7 @@ class MomentumHybrid(Momentum):
       self.assz.assign(model.w_s, project(self.w(0.0), model.Q,
                        annotate=annotate), annotate=annotate)
 
-      print_min_max(model.U3_s, 'U3_S', self.color())
+      print_min_max(model.U3_s, 'U3_S', cls=self)
 
       self.assx.assign(model.u_b, project(self.u(1.0), model.Q,
                        annotate=annotate), annotate=annotate)
@@ -393,7 +393,7 @@ class MomentumHybrid(Momentum):
       self.assz.assign(model.w_b, project(self.w(1.0), model.Q,
                        annotate=annotate), annotate=annotate)
 
-      print_min_max(model.U3_b, 'U3_B', self.color())
+      print_min_max(model.U3_b, 'U3_B', cls=self)
 
     return out
 

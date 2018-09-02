@@ -33,7 +33,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     self.linear       = linear
 
     s = "::: INITIALIZING DUKOWICZ REDUCED FULL-STOKES PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     # NOTE: not sure why this is ever changed, but the model.assimilate_data
     #       method throws an error if I don't do this :
@@ -127,7 +127,7 @@ class MomentumDukowiczStokesReduced(Momentum):
       s  = "    - using nonlinear form of momentum -"
       eta   = self.viscosity(U3)
       Vd    = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     # potential energy :
     Pe     = - rhoi * g * (u*S.dx(0) + v*S.dx(1))
@@ -144,7 +144,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       A -= Pb*dGamma_lt
     
     # add lateral boundary conditions :
@@ -152,7 +152,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     if use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       U3_c     = model.U3.copy(True)
       eta_l    = self.viscosity(U3_c)
       sig_l    = self.stress_tensor(U3_c, model.p, eta_l)
@@ -215,7 +215,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     return the BP Cauchy stress tensor.
     """
     s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     I     = Identity(3)
     tau   = self.deviatoric_stress_tensor(U, eta)
@@ -228,7 +228,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     return the Cauchy stress tensor.
     """
     s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     epi = self.strain_rate_tensor(U)
     tau = 2 * eta * epi
@@ -281,7 +281,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     Solve for vertical velocity w.
     """
     s    = "::: solving Dukowicz reduced vertical velocity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model    = self.model
     aw       = assemble(lhs(self.w_F))
@@ -315,7 +315,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     err_conv = params['solver']['newton_solver']['error_on_nonconvergence']
     s    = "::: solving Dukowicz full-Stokes reduced equations with %i max" + \
              " iterations and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
@@ -362,7 +362,7 @@ class MomentumDukowiczStokes(Momentum):
     memory allocation type stuff.
     """
     s = "::: INITIALIZING DUKOWICZ-STOKES PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     if type(model) != D3Model:
       s = ">>> MomentumDukowiczStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
@@ -439,7 +439,7 @@ class MomentumDukowiczStokes(Momentum):
       s  = "    - using nonlinear form of momentum -"
       eta  = self.viscosity(U3)
       Vd   = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     # potential energy :
     Pe     = - rhoi * g * w
@@ -471,19 +471,19 @@ class MomentumDukowiczStokes(Momentum):
 
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       A -= Pb_w*dGamma_ltu
 
     if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       A -= Pb_l*dGamma_ld
 
     # add lateral boundary conditions :  
     if use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       U3_c     = model.U3.copy(True)
       eta_l    = self.viscosity(U3_c)
       sig_l    = self.stress_tensor(U3_c, model.p, eta_l)
@@ -539,7 +539,7 @@ class MomentumDukowiczStokes(Momentum):
     return the Cauchy stress tensor.
     """
     s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     I     = Identity(3)
     tau   = self.deviatoric_stress_tensor(U, eta)
@@ -552,7 +552,7 @@ class MomentumDukowiczStokes(Momentum):
     return the deviatoric stress tensor.
     """
     s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     epi = self.strain_rate_tensor(U)
     tau = 2 * eta * epi
@@ -602,7 +602,7 @@ class MomentumDukowiczStokes(Momentum):
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
     s    = "::: solving Dukowicz-full-Stokes equations" + \
               " with %i max iterations and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
@@ -641,7 +641,7 @@ class MomentumNitscheStokes(Momentum):
     memory allocation type stuff.
     """
     s = "::: INITIALIZING NITSCHE-STOKES PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     if type(model) != D3Model:
       s = ">>> MomentumNitscheStokes REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
@@ -722,7 +722,7 @@ class MomentumNitscheStokes(Momentum):
                                     model.Q_non_periodic)
       self.assp  = FunctionAssigner(model.p.function_space(),
                                     model.Q_non_periodic)
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     # momenturm and adjoint :
     U      = Function(Q4, name = 'G')
@@ -745,7 +745,7 @@ class MomentumNitscheStokes(Momentum):
     else:
       s  = "    - using nonlinear form of momentum -"
       eta  = self.viscosity(u)
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     alpha = Constant(0.0)  # TODO: find the "best" value for this
     gamma = Constant(1e2)
@@ -789,19 +789,19 @@ class MomentumNitscheStokes(Momentum):
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       self.mom_F -= Pb_w*dGamma_ltu
     
     if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       self.mom_F -= Pb_l*dGamma_ld
     
     # add lateral boundary conditions :  
     if use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       U3_c    = model.U3.copy(True)
       eta     = self.viscosity(U3_c)
       sig_l   = self.stress_tensor(U3_c, model.p, eta_l)
@@ -856,7 +856,7 @@ class MomentumNitscheStokes(Momentum):
     return the Cauchy stress tensor.
     """
     s   = "::: forming the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     I     = Identity(3)
     tau   = self.deviatoric_stress_tensor(U, eta)
@@ -869,7 +869,7 @@ class MomentumNitscheStokes(Momentum):
     return the deviatoric stress tensor.
     """
     s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     epi = self.strain_rate_tensor(U)
     tau = 2 * eta * epi
@@ -919,7 +919,7 @@ class MomentumNitscheStokes(Momentum):
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
     s    = "::: solving Nitsche-full-Stokes equations" + \
               " with %i max iterations and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :

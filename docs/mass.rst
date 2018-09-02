@@ -1,7 +1,13 @@
 Mass balance
 ==============
 
-.. autoclass:: mass.FreeSurface
+.. autoclass:: mass.Mass
+   :members:
+
+.. autoclass:: mass.UpperFreeSurface
+   :members:
+
+.. autoclass:: mass.LowerFreeSurface
    :members:
 
 .. autoclass:: mass.MassHybrid

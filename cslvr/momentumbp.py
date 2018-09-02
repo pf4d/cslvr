@@ -20,7 +20,7 @@ class MomentumBP(Momentum):
     """
     #NOTE: experimental
     s = "::: INITIALIZING BP VELOCITY PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D3Model:
       s = ">>> MomentumBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
@@ -122,7 +122,7 @@ class MomentumBP(Momentum):
       s  = "    - using nonlinear form of momentum -"
       eta      = self.viscosity(U3)
       Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     # vertical velocity :
     dw        = TrialFunction(Q)
@@ -156,7 +156,7 @@ class MomentumBP(Momentum):
    
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       self.mom_F -= f_w * (N[0]*phi + N[1]*psi) * dGamma_lt
     
     # add lateral boundary conditions :  
@@ -164,7 +164,7 @@ class MomentumBP(Momentum):
     if use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       U3_c       = model.U3.copy(True)
       eta_l      = self.viscosity(U3_c)
       sig_l      = self.quasi_stress_tensor(U3_c, model.p, eta_l)
@@ -183,7 +183,7 @@ class MomentumBP(Momentum):
     # add lateral boundary conditions :  
     if use_lat_bcs:
       s = "    - using lateral boundary conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
 
       self.mom_bcs.append(DirichletBC(Q2.sub(0),
                           model.u_lat, model.ff, model.GAMMA_L_DVD))
@@ -206,7 +206,7 @@ class MomentumBP(Momentum):
 
   def get_U(self):
     """
-    Return the unknown Function.
+    Return the unknown :class:`dolfin.Function`.
     """
     return self.U
 
@@ -249,7 +249,7 @@ class MomentumBP(Momentum):
     return the BP Cauchy stress tensor.
     """
     s   = "::: forming the BP Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     U     = as_vector([self.U[0], self.U[1], self.wf])
     epi   = self.strain_rate_tensor(U)
     I     = Identity(3)
@@ -322,7 +322,7 @@ class MomentumBP(Momentum):
     
     # solve for vertical velocity :
     s  = "::: solving BP pressure :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     Q       = model.Q
     rhoi    = model.rhoi
@@ -330,11 +330,16 @@ class MomentumBP(Momentum):
     S       = model.S
     z       = model.x[2]
     eta     = self.eta
-    w       = self.wf
+    w       = model.w
 
-    p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2), annotate=annotate)
+    p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2),
+                      solver_type='iterative',
+                      annotate=annotate)
+
+    p_v            = p.vector().get_local()
+    p_v[p_v < 0.0] = 0.0
     
-    model.assign_variable(model.p, p, annotate=annotate)
+    model.assign_variable(model.p, p_v, annotate=annotate, cls=self)
 
   def solve_vert_velocity(self, annotate=False):
     """ 
@@ -344,21 +349,34 @@ class MomentumBP(Momentum):
     
     # solve for vertical velocity :
     s  = "::: solving BP vertical velocity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
-    aw       = assemble(lhs(self.w_F))
-    Lw       = assemble(rhs(self.w_F))
-    if self.bc_w != None:
-      self.bc_w.apply(aw, Lw)
-    w_solver = LUSolver(self.solve_params['vert_solve_method'])
-    w_solver.solve(aw, self.wf.vector(), Lw, annotate=annotate)
-    #solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
-    #      solver_parameters = {"linear_solver" : sm})#,
-    #                           "symmetric" : True},
-    #                           annotate=False)
+    #aw       = assemble(lhs(self.w_F))
+    #Lw       = assemble(rhs(self.w_F))
+    #if self.bc_w != None:
+    #  self.bc_w.apply(aw, Lw)
+    #w_solver = LUSolver(self.solve_params['vert_solve_method'])
+    #w_solver.solve(aw, self.wf.vector(), Lw, annotate=annotate)
+    ##solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
+    ##      solver_parameters = {"linear_solver" : sm})#,
+    ##                           "symmetric" : True},
+    ##                           annotate=False)
+    #
+    #self.assz.assign(model.w, self.wf, annotate=annotate)
+    #print_min_max(self.wf, 'w', cls=self)
     
-    self.assz.assign(model.w, self.wf, annotate=annotate)
-    print_min_max(self.wf, 'w')
+    # vertical velocity :
+    B         = model.B
+    Fb        = model.Fb
+    u,v,w     = split(model.U3)
+    n_b       = (grad(B) - as_vector([0,0,1])) / sqrt(1 + dot(grad(B), grad(B)))
+    integral  = model.vert_integrate(u.dx(0) + v.dx(1), d='up')
+    w_b       = - (u*n_b[0] + v*n_b[1] - Fb) / n_b[2]
+    w_f       = project(w_b - integral, model.Q,
+                       solver_type='iterative',
+                       annotate=annotate)
+    self.assz.assign(model.w, w_f, annotate=annotate)
+    print_min_max(w_f, 'w', cls=self)
     
   def solve(self, annotate=False):
     """ 
@@ -374,28 +392,30 @@ class MomentumBP(Momentum):
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
     s      = "::: solving BP horizontal velocity with %i max iterations" + \
              " and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
 
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate)
+    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate, cls=self)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
           annotate = annotate, solver_parameters = params['solver'])
     u, v = self.U.split()
 
-    #self.assign_variable(model.u, u)
-    #self.assign_variable(model.v, v)
+    #self.assign_variable(model.u, u, cls=self)
+    #self.assign_variable(model.v, v, cls=self)
     self.assx.assign(model.u, u, annotate=annotate)
     self.assy.assign(model.v, v, annotate=annotate)
 
-    print_min_max(self.U, 'U')
+    print_min_max(self.U, 'U', cls=self)
       
     if params['solve_vert_velocity']:
       self.solve_vert_velocity(annotate=annotate)
     if params['solve_pressure']:
       self.solve_pressure(annotate=annotate)
+
+
 
 
 class MomentumDukowiczBP(Momentum):
@@ -410,7 +430,7 @@ class MomentumDukowiczBP(Momentum):
     Initilize the residuals and Jacobian for the momentum equations.
     """
     s = "::: INITIALIZING DUKOWICZ BP VELOCITY PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D3Model:
       s = ">>> MomentumDukowiczBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
@@ -506,7 +526,7 @@ class MomentumDukowiczBP(Momentum):
       s  = "    - using nonlinear form of momentum -"
       eta      = self.viscosity(U3)
       Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-    print_text(s, self.color())
+    print_text(s, cls=self)
       
     # potential energy :
     Pe     = - rhoi * g * dot(U3, grad(S))
@@ -523,7 +543,7 @@ class MomentumDukowiczBP(Momentum):
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       A -= Pb*dGamma_lt
     
     # add lateral boundary conditions :  
@@ -531,7 +551,7 @@ class MomentumDukowiczBP(Momentum):
     if use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       U3_c       = model.U3.copy(True)
       eta_l      = self.viscosity(U3_c)
       sig_l      = self.quasi_stress_tensor(U3_c, model.p, eta_l)
@@ -609,7 +629,7 @@ class MomentumDukowiczBP(Momentum):
     return the BP Cauchy stress tensor.
     """
     s   = "::: forming the Dukowicz BP Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     U     = as_vector([self.U[0], self.U[1], self.w])
     epi   = self.strain_rate_tensor(U)
     I     = Identity(3)
@@ -638,7 +658,7 @@ class MomentumDukowiczBP(Momentum):
     return the deviatoric part of the Cauchy stress tensor.
     """
     s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     epi = self.strain_rate_tensor(U)
     tau = 2 * eta * epi
@@ -680,7 +700,7 @@ class MomentumDukowiczBP(Momentum):
     
     # solve for vertical velocity :
     s  = "::: solving Dukowicz BP pressure :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     Q       = model.Q
     rhoi    = model.rhoi
@@ -690,10 +710,14 @@ class MomentumDukowiczBP(Momentum):
     eta     = self.eta
     w       = self.w
 
-    p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2), annotate=annotate)
+    p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2),
+                      solver_type='iterative',
+                      annotate=annotate)
+
+    p_v            = p.vector().get_local()
+    p_v[p_v < 0.0] = 0.0
     
-    # unify the pressure over shelves and grounded ice : 
-    model.assign_variable(model.p, p, annotate=annotate)
+    model.assign_variable(model.p, p_v, annotate=annotate, cls=self)
 
   def solve_vert_velocity(self, annotate=False):
     """on.dumps(x, sort_keys=True, indent=2)
@@ -704,7 +728,7 @@ class MomentumDukowiczBP(Momentum):
     
     # solve for vertical velocity :
     s  = "::: solving Dukowicz BP vertical velocity :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     aw       = assemble(lhs(self.w_F))
     Lw       = assemble(rhs(self.w_F))
@@ -718,7 +742,7 @@ class MomentumDukowiczBP(Momentum):
     #                           annotate=False)
     
     self.assz.assign(model.w, self.w, annotate=annotate)
-    print_min_max(self.w, 'w')
+    print_min_max(self.w, 'w', cls=self)
     
   def solve(self, annotate=False):
     """ 
@@ -734,11 +758,11 @@ class MomentumDukowiczBP(Momentum):
     alpha  = params['solver']['newton_solver']['relaxation_parameter']
     s      = "::: solving Dukowicz BP horizontal velocity with %i max" + \
              " iterations and step size = %.1f :::"
-    print_text(s % (maxit, alpha), self.color())
+    print_text(s % (maxit, alpha), cls=self)
     
     # zero out self.velocity for good convergence for any subsequent solves,
     # e.g. model.L_curve() :
-    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate)
+    model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate, cls=self)
     
     # compute solution :
     solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
@@ -749,8 +773,8 @@ class MomentumDukowiczBP(Momentum):
     self.assy.assign(model.v, v, annotate=annotate)
 
     u,v,w = model.U3.split(True)
-    print_min_max(u, 'u')
-    print_min_max(v, 'v')
+    print_min_max(u, 'u', cls=self)
+    print_min_max(v, 'v', cls=self)
       
     if params['solve_vert_velocity']:
       self.solve_vert_velocity(annotate=annotate)

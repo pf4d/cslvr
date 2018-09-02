@@ -9,7 +9,7 @@ class StressBalance(Physics):
     """
     """
     s    = "::: INITIALIZING STRESS-BALANCE PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     # calculate viscosity in model.eta :
     U      = momentum.velocity()
@@ -116,7 +116,7 @@ class StressBalance(Physics):
     """
     """
     s    = "::: solving 'Stress_Balance' :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model = self.model
 

@@ -133,7 +133,7 @@ class D2Model(Model):
     if self.kind == 'submesh':
       pass
 
-    if self.kind == 'balance' and self.use_periodic:
+    elif self.kind == 'balance' and self.use_periodic:
       self.QTH2             = FunctionSpace(self.mesh, self.QTH2e,
                                             constrained_domain=self.pBC)
       self.BDM              = FunctionSpace(self.mesh, self.BDMMe,

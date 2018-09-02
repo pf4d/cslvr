@@ -26,7 +26,7 @@ class Age(Physics):
     Set up the equations 
     """
     s    = "::: INITIALIZING AGE PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D3Model:
       s = ">>> Age REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
@@ -49,7 +49,7 @@ class Age(Physics):
     # Steady state
     if not transient:
       s    = "    - using steady-state -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       
       # SUPG intrinsic time parameter :
       Unorm = sqrt(dot(U,U) + DOLFIN_EPS)
@@ -67,7 +67,7 @@ class Age(Physics):
     # FIXME: 3D model does not currently support mesh-movement. 
     else:
       s    = "    - using transient -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       
       # Time step
       dt     = model.time_step
@@ -99,12 +99,12 @@ class Age(Physics):
     # form the boundary conditions :
     if use_smb_for_ela:
       s    = "    - using adot (SMB) boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       self.bc_age = DirichletBC(model.Q, 0.0, model.ff_acc, 1)
     
     else:
       s    = "    - using ELA boundary condition -"
-      print_text(s, self.color())
+      print_text(s, cls=self)
       def above_ela(x,on_boundary):
         return x[2] > ela and on_boundary
       self.bc_age = DirichletBC(model.Q, 0.0, above_ela)
@@ -113,7 +113,7 @@ class Age(Physics):
     """ 
     Solve the system
     """
-    print_text("::: solving age :::", self.color())
+    print_text("::: solving age :::", cls=self)
     
     # Solve!
     #solve(lhs(self.F) == rhs(self.F), model.age, self.bc_age)
@@ -128,7 +128,7 @@ class FirnAge(Physics):
     """
     """
     s    = "::: INITIALIZING FIRN AGE PHYSICS :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
 
     if type(model) != D1Model:
       s = ">>> FirnAge REQUIRES A 'D1Model' INSTANCE, NOT %s <<<"
@@ -196,7 +196,7 @@ class FirnAge(Physics):
     """
     """
     s    = "::: solving FirnAge :::"
-    print_text(s, self.color())
+    print_text(s, cls=self)
     
     model  = self.model
 

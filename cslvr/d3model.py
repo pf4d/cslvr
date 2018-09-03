@@ -323,6 +323,13 @@ class D3Model(Model):
     Q_to_Qs_dofmap       = m[mesh_vertices]
 
     self.submesh_map_dict = {'Q' : Q_to_Qs_dofmap}
+    sub_model.assign_variable(sub_model.Q_to_Qs_dofmap, Q_to_Qs_dofmap)
+
+  def set_submesh_to_mesh_map(self, sub_model):
+    r"""
+    """
+    Q_to_Qs_dofmap = sub_model.Q_to_Qs_dofmap.vector().get_local().astype('int')
+    self.submesh_map_dict = {'Q' : Q_to_Qs_dofmap}
 
   def assign_from_submesh_variable(self, u, u_sub):
     r"""

@@ -845,7 +845,7 @@ class Enthalpy(Energy):
     if avg:
       PE = model.calc_vert_average(PE)
     else:
-      PE = project(PE, annotate=False)
+      PE = project(PE, solver_type='iterative', annotate=False)
     model.init_PE(PE)
 
   def calc_vert_avg_W(self):
@@ -1186,7 +1186,7 @@ class Enthalpy(Energy):
     counter = 1
 
     # maximum number of iterations :
-    max_iter = 50
+    max_iter = 20
 
     # L_2 erro norm between iterations :
     abs_error = np.inf
@@ -1648,7 +1648,7 @@ class EnergyHybrid(Energy):
 
     model   = self.model
     
-    T_melt  = project(self.Tm, annotate=annotate)
+    T_melt  = project(self.Tm, solver_type='iterative', annotate=annotate)
     
     Tb_m    = T_melt.split(True)[-1]  # deepcopy avoids projections
     model.assign_variable(model.T_melt, Tb_m)

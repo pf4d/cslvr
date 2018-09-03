@@ -401,9 +401,10 @@ class D2Model(Model):
     s = "::: initializing 2D variables :::"
     print_text(s, cls=self)
     
-    self.init_E(1.0)    # always use init. with no flow enhancement
+    if   self.kind == 'submesh':
+      self.Q_to_Qs_dofmap = Function(self.Q, name='Q_to_Qs_dofmap')
 
-    if self.kind == 'balance':
+    elif self.kind == 'balance':
       # Enthalpy model
       self.theta0        = Function(self.Q, name='theta0')
       self.W0            = Function(self.Q, name='W0')

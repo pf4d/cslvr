@@ -41,7 +41,6 @@ class Model(object):
     s = "::: INITIALIZING BASE MODEL :::"
     print_text(s, cls=self.this)
     
-    #parameters['form_compiler']['quadrature_degree']  = order + 1
     parameters["std_out_all_processes"]               = False
     #parameters['form_compiler']['optimize']           = True
     #parameters['form_compiler']['cpp_optimize']       = True
@@ -2408,6 +2407,8 @@ class Model(object):
     self.v_lat         = Function(self.Q, name='v_lat')
     self.w_lat         = Function(self.Q, name='w_lat')
     self.lam           = Function(self.Q, name='lam')
+    
+    self.E.vector()[:] = 1.0    # always use init. with no flow enhancement
 
     # mass :
     self.adot          = Function(self.Q, name='adot')  # upper smb
@@ -2992,7 +2993,7 @@ class Model(object):
     stars             = ("*") * 80            # stars for printing
    
     # Loop over all times
-    while t <= t_end:
+    while t < t_end:
 
       # start the timer :
       tic = time()

@@ -7,11 +7,11 @@ reg_typ = 'Tikhonov'#'TV'#
 opt_met = 'ipopt'#'l_bfgs_b'#
 alpha   = '1.0E-03'
 
-var_dir = './dump/vars/'
-out_dir = './dump/results/' + mdl_odr +'/'+ opt_met +'/'\
+var_dir = '../dump/vars/'
+out_dir = '../dump/results/cslvr/' + mdl_odr +'/'+ opt_met +'/'\
                                    + reg_typ +'/'+ 'alpha_' + alpha + '/'
-out_dir = './dump/results/BP/tmc/'                                  
-plt_dir = './dump/images/tmc/'
+out_dir = '../dump/results/cslvr/BP/tmc/'                                  
+plt_dir = '../dump/images/cslvr/tmc/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')

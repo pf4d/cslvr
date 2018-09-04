@@ -1183,7 +1183,7 @@ class D3Model(Model):
     dSdt      = self.dSdt
 
     def f(S):
-      mass.model.init_S(S)
+      mass.model.assign_variable(mass.model.S, S)
       mass.solve_dSdt()
       return mass.model.dSdt.vector().get_local()
 
@@ -1204,7 +1204,7 @@ class D3Model(Model):
     B_a         = mass.model.B.vector().get_local()
     thin        = (S_a - B_a) < mass.thklim
     S_a[thin]   = B_a[thin] + mass.thklim
-    mass.model.init_S(S_a)
+    mass.model.assign_variable(mass.model.S, S_a)
 
     # update the 3D model's surface :
     self.assign_from_submesh_variable(u = self.S,  u_sub = mass.model.S)

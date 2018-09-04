@@ -13,8 +13,8 @@ S = 1 - sqrt(X**2 + Y**2)
 
 m = MeshGenerator(x, y, msh_name, out_dir)
 
-m.create_contour(S, zero_cntr=0, skip_pts=20)
-m.check_dist(0.01)
+m.create_contour(S, zero_cntr=0, skip_pts=4)
+m.check_dist(0.015)
 #m.plot_contour()
 m.write_gmsh_contour(lc=1, boundary_extend=True)
 m.extrude(h=1, n_layers=5)

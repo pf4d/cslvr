@@ -781,6 +781,8 @@ def plot_variable(u, name, direc,
 
 
 def plotIce(di, u, name, direc, 
+            coords           = None,
+            cells            = None,
             u2               = None,
             u2_levels        = None,
             u2_color         = 'k',
@@ -858,8 +860,37 @@ def plotIce(di, u, name, direc,
   if isinstance(u, str):
     s = "::: plotting %s's \"%s\" field data directly :::" % (di.name, u)
     print_text(s, '242')
-    vx,vy   = np.meshgrid(di.x, di.y)
+    x, y    = np.meshgrid(di.x, di.y)
     v       = di.data[u]
+  
+  # if 'u' is a NumPy array and the cell arrays and coordinates are supplied :
+  elif (type(u) == np.ndarray or type(u) == list or type(u) == tuple) \
+    and len(coords) == 2:
+    x = coords[0]
+    y = coords[1]
+    v = u
+    
+    if type(cells) == np.ndarray:
+      fi = cells
+    else:
+      fi = []
+   
+    # if there are multiple components to 'u', it is a vector :
+    if len(np.shape(u)) > len(np.shape(x)):
+      vec = True  # used for plotting below
+      vx  = u[0]
+      vy  = u[1]
+      # compute norm :
+      v     = 0
+      for k in u:
+        v  += k**2
+      v     = np.sqrt(v + 1e-16)
+
+  # if 'u' is a NumPy array and cell/coordinate arrays are not supplied :
+  elif (type(u) == np.ndarray or type(u) == list or type(u) == tuple) \
+    and coords is None:
+    print_text(">>> numpy arrays require `coords' <<<", 'red', 1)
+    sys.exit(1)
 
   elif isinstance(u, Function) \
     or isinstance(u, dolfin.functions.function.Function):
@@ -869,16 +900,16 @@ def plotIce(di, u, name, direc,
     coord = mesh.coordinates()
     fi    = mesh.cells()
     v     = u.compute_vertex_values(mesh)
-    vx    = coord[:,0]
-    vy    = coord[:,1]
+    x     = coord[:,0]
+    y     = coord[:,1]
 
   # get the projection info :  
   if isinstance(di, dict) and 'pyproj_Proj' in di.keys() \
      and 'continent' in di.keys():
-    lon,lat = di['pyproj_Proj'](vx, vy, inverse=True)
+    lon,lat = di['pyproj_Proj'](x, y, inverse=True)
     cont    = di['continent']
   elif isinstance(di, DataInput):
-    lon,lat = di.proj(vx, vy, inverse=True)
+    lon,lat = di.proj(x, y, inverse=True)
     cont    = di.cont
   else:
     s = ">>> plotIce REQUIRES A 'DataFactory' DICTIONARY FOR " + \
@@ -1182,13 +1213,12 @@ def plotIce(di, u, name, direc,
  
     if drawcoastlines: 
       mn.drawcoastlines(linewidth=0.5, color = 'black')
-    
+
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
 
     axins.xaxis.set_ticks_position('none')
     axins.yaxis.set_ticks_position('none')
-
 
   if isinstance(u, str):
     #cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)
@@ -1224,9 +1254,10 @@ def plotIce(di, u, name, direc,
       ax.clabel(cs, inline=1, colors='k', fmt='%i')
       if zoom_box:
         axins.contour(x, y, v, levels=levels, colors='k', vmin=vmin, vmax=vmax) 
-  
+
   elif isinstance(u, Function) \
-    or isinstance(u, dolfin.functions.function.Function):
+    or isinstance(u, dolfin.functions.function.Function) \
+    or (type(u) == np.ndarray or type(u) == list or type(u) == tuple):
     #cs = ax.tripcolor(x, y, fi, v, shading='gouraud', 
     #                  cmap=get_cmap(cmap), norm=norm)
     if contour_type == 'filled':

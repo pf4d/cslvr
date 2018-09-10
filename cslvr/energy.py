@@ -576,6 +576,9 @@ class Enthalpy(Energy):
     # save the state of basal boundary flux :
     self.energy_flux_mode = energy_flux_mode
     
+    # create a facet function for temperate zone :
+    self.ff      = MeshFunction('size_t', model.mesh, 2, 0)
+    
     mesh          = model.mesh
     Q             = model.Q
     T             = model.T

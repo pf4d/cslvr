@@ -316,7 +316,7 @@ class Physics(object):
     """
     """
     s    = "::: solving optimal control to minimize ||u - u_ob|| with " + \
-           "control parameter%s :::"
+           "control parameter %s :::"
     if type(control) != list:
       control = [control]
     tx = 's '

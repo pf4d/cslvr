@@ -9,7 +9,6 @@ __all__ = []
 import pkgutil
 import inspect
 import matplotlib as mpl
-#mpl.use('Agg')
 mpl.rcParams['font.family']          = 'serif'
 mpl.rcParams['legend.fontsize']      = 'medium'
 mpl.rcParams['text.usetex']          = True

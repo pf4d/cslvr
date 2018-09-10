@@ -2,7 +2,7 @@ from gmsh_meshgenerator import MeshGenerator, MeshRefiner
 from pylab              import *
 
 msh_name = 'cylinder_mesh'
-out_dir  = 'meshes/'
+out_dir  = './dump/meshes/'
 
 x = linspace(-1.0, 1.0, 500)
 y = linspace(-1.0, 1.0, 500)

@@ -1,7 +1,7 @@
 from cslvr import *
     
 # use inexact integration :
-parameters['form_compiler']['quadrature_degree']  = 10
+parameters['form_compiler']['quadrature_degree']  = 4
 
 # directories for saving data :
 mdl_odr = 'BP'
@@ -10,7 +10,7 @@ opt_met = 'l_bfgs_b'#'ipopt'#
 
 var_dir = './dump/vars/'
 #out_dir = './dump/results/' + mdl_odr +'/'+ opt_met +'/'+ reg_typ +'/'
-out_dir = './dump/results/' + mdl_odr +'/tmc/'
+out_dir = './dump/results/' + mdl_odr +'/tmc_opt/'
 
 # create the output directory if it does not exist :
 d       = os.path.dirname(out_dir)
@@ -111,7 +111,7 @@ elif mdl_odr == 'FS_th':
 #momTMC = MomentumDukowiczStokes(d3model, linear=False)
 momTMC = mom
 nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True,
-                  energy_flux_mode='zero_energy')#'Fb')#
+                  energy_flux_mode='Fb')
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '02/u_opt.h5', 'r')
 #d3model.set_out_dir(out_dir + '02/')
@@ -119,21 +119,12 @@ nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True,
 #d3model.init_beta(frstrt)
 
 # thermo-solve callback function :
-U_file      = XDMFFile(out_dir + 'U.xdmf')
-T_file      = XDMFFile(out_dir + 'T.xdmf')
-W_file      = XDMFFile(out_dir + 'W.xdmf')
-theta_file  = XDMFFile(out_dir + 'theta.xdmf')
 def tmc_cb_ftn(counter):
   nrg.calc_PE()#avg=True)
   nrg.calc_vert_avg_strain_heat()
   nrg.calc_vert_avg_W()
   nrg.calc_temp_rat()
   nrg.solve_basal_melt_rate()
-  d3model.save_xdmf(d3model.U3,    'U3_tmc',    f = U_file,      t = counter)
-  d3model.save_xdmf(d3model.T,     'T_tmc',     f = T_file,      t = counter)
-  d3model.save_xdmf(d3model.W,     'W_tmc',     f = W_file,      t = counter)
-  d3model.save_xdmf(d3model.theta, 'theta_tmc', f = theta_file,  t = counter)
-
 
 # post-adjoint-iteration callback function :
 def adj_post_cb_ftn():
@@ -302,12 +293,6 @@ mom.solve_params['solve_pressure'] = False
 
 # or only thermo-mechanically couple :
 d3model.thermo_solve(**tmc_kwargs)
-
-U_file.close()
-T_file.close()
-W_file.close()
-theta_file.close()
-
 
 # thermo-mechanical data-assimilation (Cummings et al., 2016) !
 #d3model.assimilate_U_ob(**ass_kwargs) 

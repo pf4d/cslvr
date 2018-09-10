@@ -14,11 +14,11 @@ Written by Evan Cummings in his free time during May--August, 2018.
 from cslvr import *
 
 # directories for loading or saving data :
-var_dir = './vars/'    # directory where the ``gen_vars.py`` data are located
-out_dir = './A/'       # directory to save results
-mdl_odr = 'BP'         # the order of the momentum model
+var_dir = './dump/vars/' # directory where the ``gen_vars.py`` data are located
+out_dir = './dump/A/'    # directory to save results
+mdl_odr = 'BP'           # the order of the momentum model
 
-thklim  = 1.0          # [m] thickness limit
+thklim  = 1.0            # [m] thickness limit
 
 fdata   = HDF5File(mpi_comm_world(), var_dir + 'state.h5',  'r')
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'meshes.h5', 'r')
@@ -74,7 +74,7 @@ elif mdl_odr == 'FS_stab':
 elif mdl_odr == 'FS_th':
   mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=False)
 
-mom.solve_params['solver']['newton_solver']['relaxation_parameter'] = 1.0
+mom.solve_params['solver']['newton_solver']['relaxation_parameter'] = 0.7
 
 #nrg = Enthalpy(model, mom,
 #               transient  = True,
@@ -101,8 +101,8 @@ def cb_ftn(t):
 # run the transient simulation :
 model.transient_solve(mom, mass,
                       t_start    = 0.0,
-                      t_end      = 10000.0,
-                      time_step  = 10.0,
+                      t_end      = 5000.0,
+                      time_step  = 1.0,
                       tmc_kwargs = None,
                       adaptive   = False,
                       annotate   = False,

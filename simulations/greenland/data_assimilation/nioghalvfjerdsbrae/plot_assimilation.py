@@ -3,15 +3,16 @@ from fenics_viz import plot_variable
 
 # directories for saving data :
 mdl_odr = 'BP'
-reg_typ = 'Tikhonov'#'TV'#
-opt_met = 'ipopt'#'l_bfgs_b'#
+reg_typ = 'TV_Tik_hybrid'#'TV'#'Tikhonov'#
+opt_met = 'l_bfgs_b'#'ipopt'#
 alpha   = '1.0E-03'
 
-var_dir = '../dump/vars/'
-out_dir = '../dump/results/cslvr/' + mdl_odr +'/'+ opt_met +'/'\
+var_dir = './dump/vars/'
+out_dir = './dump/results/' + mdl_odr +'/'+ opt_met +'/'\
                                    + reg_typ +'/'+ 'alpha_' + alpha + '/'
-out_dir = '../dump/results/cslvr/BP/tmc/'                                  
-plt_dir = '../dump/images/cslvr/tmc/'
+#out_dir = './dump/results/BP/tmc/'                                  
+out_dir = './dump/results/' + mdl_odr +'/tmc/'
+plt_dir = './dump/images/tmc/'
 
 # create HDF5 files for saving and loading data :
 fmeshes = HDF5File(mpi_comm_world(), var_dir + 'submeshes.h5', 'r')
@@ -94,7 +95,7 @@ plot_variable(u                   = srfmodel.U3,
               extend              = 'neither',
               ext                 = '.pdf',
               normalize_vec       = True,
-              plot_quiver         = True,
+              plot_quiver         = False,
               quiver_kwargs       = quiver_kwargs,
               res                 = 150,
               cb                  = True,

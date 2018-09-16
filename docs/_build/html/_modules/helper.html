@@ -952,6 +952,8 @@
 
 
 <div class="viewcode-block" id="plotIce"><a class="viewcode-back" href="../output.html#helper.plotIce">[docs]</a><span class="k">def</span> <span class="nf">plotIce</span><span class="p">(</span><span class="n">di</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">direc</span><span class="p">,</span> 
+            <span class="n">coords</span>           <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">cells</span>            <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">u2</span>               <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">u2_levels</span>        <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">u2_color</span>         <span class="o">=</span> <span class="s1">&#39;k&#39;</span><span class="p">,</span>
@@ -1029,8 +1031,37 @@
   <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: plotting </span><span class="si">%s</span><span class="s2">&#39;s </span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s2"> field data directly :::&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;242&#39;</span><span class="p">)</span>
-    <span class="n">vx</span><span class="p">,</span><span class="n">vy</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">di</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">di</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
     <span class="n">v</span>       <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">u</span><span class="p">]</span>
+  
+  <span class="c1"># if &#39;u&#39; is a NumPy array and the cell arrays and coordinates are supplied :</span>
+  <span class="k">elif</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">)</span> \
+    <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">u</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+      <span class="n">fi</span> <span class="o">=</span> <span class="n">cells</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="n">fi</span> <span class="o">=</span> <span class="p">[]</span>
+   
+    <span class="c1"># if there are multiple components to &#39;u&#39;, it is a vector :</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">u</span><span class="p">))</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)):</span>
+      <span class="n">vec</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># used for plotting below</span>
+      <span class="n">vx</span>  <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">vy</span>  <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="c1"># compute norm :</span>
+      <span class="n">v</span>     <span class="o">=</span> <span class="mi">0</span>
+      <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">u</span><span class="p">:</span>
+        <span class="n">v</span>  <span class="o">+=</span> <span class="n">k</span><span class="o">**</span><span class="mi">2</span>
+      <span class="n">v</span>     <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mf">1e-16</span><span class="p">)</span>
+
+  <span class="c1"># if &#39;u&#39; is a NumPy array and cell/coordinate arrays are not supplied :</span>
+  <span class="k">elif</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">)</span> \
+    <span class="ow">and</span> <span class="n">coords</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&gt; numpy arrays require `coords&#39; &lt;&lt;&lt;&quot;</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
   <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">Function</span><span class="p">)</span> \
     <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">functions</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
@@ -1040,16 +1071,16 @@
     <span class="n">coord</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
     <span class="n">fi</span>    <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">cells</span><span class="p">()</span>
     <span class="n">v</span>     <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">compute_vertex_values</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-    <span class="n">vx</span>    <span class="o">=</span> <span class="n">coord</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">vy</span>    <span class="o">=</span> <span class="n">coord</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">x</span>     <span class="o">=</span> <span class="n">coord</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">y</span>     <span class="o">=</span> <span class="n">coord</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
 
   <span class="c1"># get the projection info :  </span>
   <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">di</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;pyproj_Proj&#39;</span> <span class="ow">in</span> <span class="n">di</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> \
      <span class="ow">and</span> <span class="s1">&#39;continent&#39;</span> <span class="ow">in</span> <span class="n">di</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-    <span class="n">lon</span><span class="p">,</span><span class="n">lat</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;pyproj_Proj&#39;</span><span class="p">](</span><span class="n">vx</span><span class="p">,</span> <span class="n">vy</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lon</span><span class="p">,</span><span class="n">lat</span> <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;pyproj_Proj&#39;</span><span class="p">](</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">cont</span>    <span class="o">=</span> <span class="n">di</span><span class="p">[</span><span class="s1">&#39;continent&#39;</span><span class="p">]</span>
   <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">di</span><span class="p">,</span> <span class="n">DataInput</span><span class="p">):</span>
-    <span class="n">lon</span><span class="p">,</span><span class="n">lat</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">vx</span><span class="p">,</span> <span class="n">vy</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lon</span><span class="p">,</span><span class="n">lat</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">cont</span>    <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">cont</span>
   <span class="k">else</span><span class="p">:</span>
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; plotIce REQUIRES A &#39;DataFactory&#39; DICTIONARY FOR &quot;</span> <span class="o">+</span> \
@@ -1353,13 +1384,12 @@
  
     <span class="k">if</span> <span class="n">drawcoastlines</span><span class="p">:</span> 
       <span class="n">mn</span><span class="o">.</span><span class="n">drawcoastlines</span><span class="p">(</span><span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span><span class="p">)</span>
-    
+
     <span class="n">axins</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
     <span class="n">axins</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">y1</span><span class="p">,</span> <span class="n">y2</span><span class="p">)</span>
 
     <span class="n">axins</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
     <span class="n">axins</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_ticks_position</span><span class="p">(</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
-
 
   <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
     <span class="c1">#cs = ax.pcolor(x, y, v, cmap=get_cmap(cmap), norm=norm)</span>
@@ -1395,9 +1425,10 @@
       <span class="n">ax</span><span class="o">.</span><span class="n">clabel</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%i</span><span class="s1">&#39;</span><span class="p">)</span>
       <span class="k">if</span> <span class="n">zoom_box</span><span class="p">:</span>
         <span class="n">axins</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="n">levels</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">)</span> 
-  
+
   <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">Function</span><span class="p">)</span> \
-    <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">functions</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
+    <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">dolfin</span><span class="o">.</span><span class="n">functions</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="n">Function</span><span class="p">)</span> \
+    <span class="ow">or</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">):</span>
     <span class="c1">#cs = ax.tripcolor(x, y, fi, v, shading=&#39;gouraud&#39;, </span>
     <span class="c1">#                  cmap=get_cmap(cmap), norm=norm)</span>
     <span class="k">if</span> <span class="n">contour_type</span> <span class="o">==</span> <span class="s1">&#39;filled&#39;</span><span class="p">:</span>

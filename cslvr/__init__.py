@@ -28,6 +28,11 @@ for loader, name, is_pkg in pkgutil.walk_packages(__path__):
     globals()[name] = value
     __all__.append(name)
 
+# use the namespace of ``dolfin_adjoint`` :
+from dolfin              import *
+from dolfin_adjoint      import *
+
+# cslvr classes :
 from age                 import *
 from balancevelocity     import *
 from d1model             import *

@@ -528,25 +528,27 @@ class D3Model(Model):
 
     The subdomains corresponding to FacetFunction ``self.ff`` are :
 
-    * ``self.dBed_g``  --  grounded bed
-    * ``self.dBed_f``  --  floating bed
-    * ``self.dBed``    --  bed
-    * ``self.dSrf_gu`` --  grounded with U observations
-    * ``self.dSrf_fu`` --  floating with U observations
-    * ``self.dSrf_u``  --  surface with U observations
-    * ``self.dSrf_g``  --  surface of grounded ice
-    * ``self.dSrf_f``  --  surface of floating ice
-    * ``self.dSrf``    --  surface
-    * ``self.dLat_d``  --  lateral divide
-    * ``self.dLat_to`` --  lateral terminus overwater
-    * ``self.dLat_tu`` --  lateral terminus underwater
-    * ``self.dLat_t``  --  lateral terminus
-    * ``self.dLat``    --  lateral
-
+    * ``self.dOmega``     --  entire interior
+    * ``self.dOmega_g``   --  internal above grounded
+    * ``self.dOmega_w``   --  internal above floating
+    
     The subdomains corresponding to CellFunction ``self.cf`` are :
-
-    * ``self.dx_g``    --  internal above grounded
-    * ``self.dx_f``    --  internal above floating
+    
+    * ``self.dGamma_s``   -- entire upper surface
+    * ``self.dGamma_b``   -- entire basal surface
+    * ``self.dGamma_l``   -- entire exterior and interior lateral surface
+    * ``self.dGamma_w``   -- exterior surface in contact with water
+    * ``self.dGamma_bg``  -- grounded basal surface
+    * ``self.dGamma_bw``  -- floating basal surface
+    * ``self.dGamma_sgu`` -- upper surface with U observations above grounded ice
+    * ``self.dGamma_swu`` -- upper surface with U observations above floating ice
+    * ``self.dGamma_su``  -- entire upper surface with U observations
+    * ``self.dGamma_sg``  -- upper surface above grounded ice
+    * ``self.dGamma_sw``  -- upper surface above floating ice
+    * ``self.dGamma_ld``  -- lateral interior surface
+    * ``self.dGamma_lto`` -- exterior lateral surface above water
+    * ``self.dGamma_ltu`` -- exterior lateral surface below water
+    * ``self.dGamma_lt``  -- entire exterior lateral surface
 
     This method will create a :py:class:`dict` called ``self.measures``
     containing all of the :class:`ufl.measure.Measure` instances for 
@@ -554,79 +556,81 @@ class D3Model(Model):
     """
     # calculate the number of cells and facets that are of a certain type
     # for determining Dirichlet boundaries :
-    self.N_OMEGA_GND   = sum(self.cf.array()     == self.OMEGA_GND)
-    self.N_OMEGA_FLT   = sum(self.cf.array()     == self.OMEGA_FLT)
-    self.N_GAMMA_S_GND = sum(self.ff.array()     == self.GAMMA_S_GND)
-    self.N_GAMMA_B_GND = sum(self.ff.array()     == self.GAMMA_B_GND)
-    self.N_GAMMA_S_FLT = sum(self.ff.array()     == self.GAMMA_S_FLT)
-    self.N_GAMMA_B_FLT = sum(self.ff.array()     == self.GAMMA_B_FLT)
-    self.N_GAMMA_L_DVD = sum(self.ff.array()     == self.GAMMA_L_DVD)
-    self.N_GAMMA_L_OVR = sum(self.ff.array()     == self.GAMMA_L_OVR)
-    self.N_GAMMA_L_UDR = sum(self.ff.array()     == self.GAMMA_L_UDR)
-    self.N_GAMMA_U_GND = sum(self.ff.array()     == self.GAMMA_U_GND)
-    self.N_GAMMA_U_FLT = sum(self.ff.array()     == self.GAMMA_U_FLT)
-    self.N_GAMMA_ACC   = sum(self.ff_acc.array() == self.GAMMA_ACC)
+    local_N_OMEGA_GND   = sum(self.cf.array()     == self.OMEGA_GND)
+    local_N_OMEGA_FLT   = sum(self.cf.array()     == self.OMEGA_FLT)
+    local_N_GAMMA_S_GND = sum(self.ff.array()     == self.GAMMA_S_GND)
+    local_N_GAMMA_B_GND = sum(self.ff.array()     == self.GAMMA_B_GND)
+    local_N_GAMMA_S_FLT = sum(self.ff.array()     == self.GAMMA_S_FLT)
+    local_N_GAMMA_B_FLT = sum(self.ff.array()     == self.GAMMA_B_FLT)
+    local_N_GAMMA_L_DVD = sum(self.ff.array()     == self.GAMMA_L_DVD)
+    local_N_GAMMA_L_OVR = sum(self.ff.array()     == self.GAMMA_L_OVR)
+    local_N_GAMMA_L_UDR = sum(self.ff.array()     == self.GAMMA_L_UDR)
+    local_N_GAMMA_U_GND = sum(self.ff.array()     == self.GAMMA_U_GND)
+    local_N_GAMMA_U_FLT = sum(self.ff.array()     == self.GAMMA_U_FLT)
+    local_N_GAMMA_ACC   = sum(self.ff_acc.array() == self.GAMMA_ACC)
+
+    # find out if any are marked over all processes :
+    self.N_OMEGA_GND   = MPI.sum(mpi_comm_world(), local_N_OMEGA_GND)
+    self.N_OMEGA_FLT   = MPI.sum(mpi_comm_world(), local_N_OMEGA_FLT)
+    self.N_GAMMA_S_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_S_GND)
+    self.N_GAMMA_B_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_B_GND)
+    self.N_GAMMA_S_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_S_FLT)
+    self.N_GAMMA_B_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_B_FLT)
+    self.N_GAMMA_L_DVD = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_DVD)
+    self.N_GAMMA_L_OVR = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_OVR)
+    self.N_GAMMA_L_UDR = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_UDR)
+    self.N_GAMMA_U_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_U_GND)
+    self.N_GAMMA_U_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_U_FLT)
+    self.N_GAMMA_ACC   = MPI.sum(mpi_comm_world(), local_N_GAMMA_ACC)
 
     # create new measures of integration :
     self.ds      = Measure('ds', subdomain_data=self.ff)
     self.dx      = Measure('dx', subdomain_data=self.cf)
-    
-    self.dx_g    = self.dx(0)                # internal above grounded
-    self.dx_f    = self.dx(1)                # internal above floating
-    self.dBed_g  = self.ds(3)                # grounded bed
-    self.dBed_f  = self.ds(5)                # floating bed
-    self.dBed    = self.ds(3) + self.ds(5)   # bed
-    self.dSrf_gu = self.ds(8)                # grounded with U observations
-    self.dSrf_fu = self.ds(9)                # floating with U observations
-    self.dSrf_u  = self.ds(8) + self.ds(9)   # surface with U observations
-    self.dSrf_g  = self.ds(2) + self.ds(8)   # surface of grounded ice
-    self.dSrf_f  = self.ds(6) + self.ds(9)   # surface of floating ice
-    self.dSrf    =   self.ds(6) + self.ds(2) \
-                   + self.ds(8) + self.ds(9) # surface
-    self.dLat_d  = self.ds(7)                # lateral divide
-    self.dLat_to = self.ds(4)                # lateral terminus overwater
-    self.dLat_tu = self.ds(10)               # lateral terminus underwater
-    self.dLat_t  = self.ds(4) + self.ds(10)  # lateral terminus
-    self.dLat    =   self.ds(4) + self.ds(7) \
-                   + self.ds(10)             # lateral
-    
-    self.dOmega     = Boundary(self.dx, [0,1],
+
+    # create subdomain boundaries :
+    self.dOmega     = Boundary(self.dx, [self.OMEGA_GND, self.OMEGA_FLT],
                       'entire interior')
-    self.dOmega_g   = Boundary(self.dx, [0],
+    self.dOmega_g   = Boundary(self.dx, [self.OMEGA_GND],
                       'interior above grounded ice')
-    self.dOmega_w   = Boundary(self.dx, [1],
+    self.dOmega_w   = Boundary(self.dx, [self.OMEGA_FLT],
                       'interior above floating ice')
-    self.dGamma     = Boundary(self.ds, [2,3,4,5,6,7,8,9,2,8,9,10],
+    self.dGamma     = Boundary(self.ds, [self.GAMMA_S_GND, self.GAMMA_S_FLT,
+                                         self.GAMMA_B_GND, self.GAMMA_B_FLT,
+                                         self.GAMMA_L_OVR, self.GAMMA_L_UDR,
+                                         self.GAMMA_U_GND, self.GAMMA_U_FLT,
+                                         self.GAMMA_L_DVD],
                       'entire exterior')
-    self.dGamma_bg  = Boundary(self.ds, [3],
+    self.dGamma_bg  = Boundary(self.ds, [self.GAMMA_B_GND],
                       'grounded basal surface')
-    self.dGamma_bw  = Boundary(self.ds, [5],
+    self.dGamma_bw  = Boundary(self.ds, [self.GAMMA_B_FLT],
                       'floating basal surface')
-    self.dGamma_b   = Boundary(self.ds, [3,5],
+    self.dGamma_b   = Boundary(self.ds, [self.GAMMA_B_GND, self.GAMMA_B_FLT],
                       'entire basal surface')
-    self.dGamma_sgu = Boundary(self.ds, [8],
+    self.dGamma_sgu = Boundary(self.ds, [self.GAMMA_U_GND],
                       'upper surface with U observations above grounded ice')
-    self.dGamma_swu = Boundary(self.ds, [9],
+    self.dGamma_swu = Boundary(self.ds, [self.GAMMA_U_FLT],
                       'upper surface with U observations above floating ice')
-    self.dGamma_su  = Boundary(self.ds, [8,9],
+    self.dGamma_su  = Boundary(self.ds, [self.GAMMA_U_GND, self.GAMMA_U_FLT],
                       'entire upper surface with U observations')
-    self.dGamma_sg  = Boundary(self.ds, [2,8],
+    self.dGamma_sg  = Boundary(self.ds, [self.GAMMA_S_GND, self.GAMMA_U_GND],
                       'upper surface above grounded ice')
-    self.dGamma_sw  = Boundary(self.ds, [6,9],
+    self.dGamma_sw  = Boundary(self.ds, [self.GAMMA_S_FLT, self.GAMMA_U_FLT],
                       'upper surface above floating ice')
-    self.dGamma_s   = Boundary(self.ds, [6,2,8,9],
+    self.dGamma_s   = Boundary(self.ds, [self.GAMMA_S_GND, self.GAMMA_S_FLT,
+                                         self.GAMMA_U_GND, self.GAMMA_U_FLT],
                       'entire upper surface')
-    self.dGamma_ld  = Boundary(self.ds, [7],
+    self.dGamma_ld  = Boundary(self.ds, [self.GAMMA_L_DVD],
                       'lateral interior surface')
-    self.dGamma_lto = Boundary(self.ds, [4],
+    self.dGamma_lto = Boundary(self.ds, [self.GAMMA_L_OVR],
                       'exterior lateral surface above water')
-    self.dGamma_ltu = Boundary(self.ds, [10],
+    self.dGamma_ltu = Boundary(self.ds, [self.GAMMA_L_UDR],
                       'exterior lateral surface below= water')
-    self.dGamma_lt  = Boundary(self.ds, [4,10],
+    self.dGamma_lt  = Boundary(self.ds, [self.GAMMA_L_OVR, self.GAMMA_L_UDR],
                       'entire exterior lateral surface')
-    self.dGamma_l   = Boundary(self.ds, [4,7,10],
+    self.dGamma_l   = Boundary(self.ds, [self.GAMMA_L_OVR, self.GAMMA_L_UDR,
+                                         self.GAMMA_L_DVD],
                       'entire exterior and interior lateral surface')
-    self.dGamma_w   = Boundary(self.ds, [4,10,5],
+    self.dGamma_w   = Boundary(self.ds, [self.GAMMA_L_UDR, self.GAMMA_B_FLT],
                       'exterior surface in contact with water')
 
     # save a dictionary of boundaries for later access by user :

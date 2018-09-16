@@ -58,14 +58,11 @@ class MomentumDukowiczStokesReduced(Momentum):
     D          = model.D
 
     dOmega     = model.dOmega()
-    dOmega_g   = model.dOmega_g()
-    dOmega_w   = model.dOmega_w()
     dGamma     = model.dGamma()
     dGamma_b   = model.dGamma_b()
     dGamma_bg  = model.dGamma_bg()
     dGamma_bw  = model.dGamma_bw()
     dGamma_ld  = model.dGamma_ld()
-    dGamma_lto = model.dGamma_lto()
     dGamma_ltu = model.dGamma_ltu()
     dGamma_lt  = model.dGamma_lt()
      
@@ -391,14 +388,11 @@ class MomentumDukowiczStokes(Momentum):
     D          = model.D
 
     dOmega     = model.dOmega()
-    dOmega_g   = model.dOmega_g()
-    dOmega_w   = model.dOmega_w()
     dGamma     = model.dGamma()
     dGamma_b   = model.dGamma_b()
     dGamma_bg  = model.dGamma_bg()
     dGamma_bw  = model.dGamma_bw()
     dGamma_ld  = model.dGamma_ld()
-    dGamma_lto = model.dGamma_lto()
     dGamma_ltu = model.dGamma_ltu()
 
     #===========================================================================
@@ -672,14 +666,11 @@ class MomentumNitscheStokes(Momentum):
     D          = model.D
 
     dOmega     = model.dOmega()
-    dOmega_g   = model.dOmega_g()
-    dOmega_w   = model.dOmega_w()
     dGamma     = model.dGamma()
     dGamma_b   = model.dGamma_b()
     dGamma_bg  = model.dGamma_bg()
     dGamma_bw  = model.dGamma_bw()
     dGamma_ld  = model.dGamma_ld()
-    dGamma_lto = model.dGamma_lto()
     dGamma_ltu = model.dGamma_ltu()
      
     # new constants :

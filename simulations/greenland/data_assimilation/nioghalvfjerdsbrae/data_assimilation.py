@@ -1,4 +1,5 @@
 from cslvr import *
+from dolfin_adjoint import *
     
 # use inexact integration :
 parameters['form_compiler']['quadrature_degree']  = 4
@@ -6,11 +7,11 @@ parameters['form_compiler']['quadrature_degree']  = 4
 # directories for saving data :
 mdl_odr = 'BP'
 reg_typ = 'TV_Tik_hybrid'#'TV'#'Tikhonov'#
-opt_met = 'l_bfgs_b'#'ipopt'#
+opt_met = 'ipopt'#'l_bfgs_b'#
 
 var_dir = './dump/vars/'
 #out_dir = './dump/results/' + mdl_odr +'/'+ opt_met +'/'+ reg_typ +'/'
-out_dir = './dump/results/' + mdl_odr +'/tmc_opt/'
+out_dir = './dump/results/' + mdl_odr + '/u_opt/'#'/tmc_opt/'
 
 # create the output directory if it does not exist :
 d       = os.path.dirname(out_dir)
@@ -49,7 +50,7 @@ d3model.init_T(d3model.T_surface)
 d3model.init_k_0(1e-3)
 d3model.solve_hydrostatic_pressure()
 d3model.form_energy_dependent_rate_factor()
-#d3model.init_A(1e-16)               # isothermal flow-rate factor
+#d3model.init_A(2e-17)               # isothermal flow-rate factor
 
 d3model.save_xdmf(d3model.U_ob,   'U_ob')
 d3model.save_xdmf(d3model.ff,     'ff')
@@ -93,6 +94,7 @@ d3model.init_Ubar(Ubar_e)
 
 # generate initial traction field :
 d3model.init_beta_SIA()
+#d3model.init_beta(5e5)
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
@@ -166,8 +168,8 @@ tmc_save_vars   = [d3model.T,
                    d3model.theta]
 
 # define the integral measure for functionals :
-J_measure = d3model.dGamma_sg     # cost measure
-R_measure = d3model.dGamma_bg     # regularization measure
+J_measure = d3model.dGamma_s     # cost measure
+R_measure = d3model.dGamma_b     # regularization measure
 
 # form the cost functional :
 J_log = mom.form_cost_ftn(u        = mom.get_U(),
@@ -199,6 +201,33 @@ elif reg_typ == 'TV_Tik_hybrid':
 elif reg_typ == 'None':
   R = 0.0
 
+# upper and lower friction bounds :
+beta_max = 1e7
+beta_min = DOLFIN_EPS
+
+# form bounds for friction :
+upper             = Function(d3model.Q)
+lower             = Function(d3model.Q)
+upper.vector()[:] = beta_max#1e-2
+lower.vector()[:] = beta_min
+
+#upper_v = upper.vector().get_local()
+#lower_v = lower.vector().get_local()
+#
+#m = vertex_to_dof_map(d3model.Q)
+#
+#for i in np.where(d3model.ff.array() == d3model.GAMMA_B_GND)[0]:
+#  v_i_dofs = m[Facet(d3model.mesh, i).entities(0)]
+#  if np.all(v_i_dofs < len(upper_v)):
+#    upper_v[v_i_dofs] = beta_max
+#    lower_v[v_i_dofs] = beta_min
+# 
+# FIXME: calling ``vector().set_local()`` breaks dolfin_adjoint :
+#upper.vector().set_local(upper_v)
+#upper.vector().apply('insert')
+#lower.vector().set_local(upper_v)
+#lower.vector().apply('insert')
+
 # form the objective functional for water-flux optimization :
 nrg.form_cost_ftn(kind='L2')
 
@@ -225,9 +254,9 @@ uop_kwargs = {'u'                   : mom.get_U(),
               'control'             : d3model.beta,
               'J_measure'           : J_measure,
               'R_measure'           : R_measure,
-              'bounds'              : (1e-5, 1e7),#(1e-16**2, 1e6**2),
+              'bounds'              : (lower, upper),
               'method'              : opt_met,
-              'max_iter'            : 3000,
+              'max_iter'            : 1000,#3000
               'adj_save_vars'       : adj_save_vars,
               'adj_callback'        : None,
               'post_adj_callback'   : adj_post_cb_ftn}
@@ -245,18 +274,25 @@ ass_kwargs = {'momentum'            : mom,
               'post_ini_callback'   : None,
               'starting_i'          : 1}
 
-## solving the incomplete adjoint is more efficient :
-#mom.solve()                 # first, initialize the velocity for viscosity
-#mom.linearize_viscosity()   # remove velocity dependence from the viscosity
-#
-## by not solving these varialbes, dolfin_adjoint will also not solve them
-## each interation of the DA algorithm :
-## NOTE: you might want to solve these, if you were going to perform an
-##       adjoint sensitivity analysis of the energy balance, or something like 
-##       that where the pressure would also be an important factor.
-#mom.solve_params['solve_vert_velocity'] = False
-#mom.solve_params['solve_pressure']      = False
-#
+# FIXME: the pressure goes wacky over very thin regions :
+mom.solve_params['solve_pressure'] = False
+
+# solving the incomplete adjoint is more efficient, so first derive the 
+# velocity-dependant viscosity :
+mom.solve()                 # first, initialize the velocity for viscosity
+mom.linearize_viscosity()   # remove velocity dependence from the viscosity
+
+# by not solving these variables, dolfin_adjoint will also not solve them
+# each interation of the DA algorithm :
+# NOTE: you might want to solve these, if you were going to perform an
+#       adjoint sensitivity analysis of the energy balance, or something like 
+#       that where the pressure would also be an important factor.
+mom.solve_params['solve_vert_velocity'] = False
+mom.solve_params['solve_pressure']      = False
+
+# optimize for beta :
+mom.optimize(**uop_kwargs)
+
 ## regularization parameters :
 #alphas = [1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
 #
@@ -273,26 +309,21 @@ ass_kwargs = {'momentum'            : mom,
 ## this function iterates through the directories and creates a plot :
 #ftnl_a = plot_l_curve(out_dir=out_dir, control='beta')
 #
-## optimize for beta :
-#mom.optimize(**uop_kwargs)
-#
 ## now re-solve for saving :
 #mom.solve_params['solve_vert_velocity'] = True
 #mom.solve_params['solve_pressure']      = True
 #mom.solve()
 #d3model.save_xdmf(d3model.U3,   'U3_opt')
 #d3model.save_xdmf(d3model.beta, 'beta_opt')
-
-# FIXME: the pressure goes wacky over very thin regions :
-mom.solve_params['solve_pressure'] = False
-
-#mom.solve()                 # first, initialize the velocity for viscosity
-#d3model.save_xdmf(d3model.U3,   'u')
-#d3model.save_xdmf(d3model.p,    'p')
-#import sys; sys.exit(0)
+#
+#mom.solve()
+#
+#fres = HDF5File(mpi_comm_world(), out_dir + 'momentum.h5', 'w')
+#d3model.save_list_to_hdf5([d3model.U3, d3model.p], fres)
+#fres.close()
 
 # or only thermo-mechanically couple :
-d3model.thermo_solve(**tmc_kwargs)
+#d3model.thermo_solve(**tmc_kwargs)
 
 # thermo-mechanical data-assimilation (Cummings et al., 2016) !
 #d3model.assimilate_U_ob(**ass_kwargs) 

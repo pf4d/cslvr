@@ -213,23 +213,23 @@ class Energy(Physics):
     s   = "::: forming water-optimization cost functional :::"
     print_text(s, cls=self)
 
-    model    = self.model
-    theta    = self.theta
-    thetam   = model.theta
-    dGnd     = model.dBed_g
-    theta_c  = model.theta_melt + model.Wc*model.L
+    model     = self.model
+    theta     = self.theta
+    thetam    = model.theta
+    dGamma_bg = model.dGamma_bg()
+    theta_c   = model.theta_melt + model.Wc*model.L
    
     if kind == 'TV': 
-      self.J   = sqrt((theta  - theta_c)**2 + 1e-15) * dGnd
-      self.Jp  = sqrt((thetam - theta_c)**2 + 1e-15) * dGnd
+      self.J   = sqrt((theta  - theta_c)**2 + 1e-15) * dGamma_bg
+      self.Jp  = sqrt((thetam - theta_c)**2 + 1e-15) * dGamma_bg
       s   = "    - using TV cost functional :::"
     elif kind == 'L2': 
-      self.J   = 0.5 * (theta  - theta_c)**2 * dGnd
-      self.Jp  = 0.5 * (thetam - theta_c)**2 * dGnd
+      self.J   = 0.5 * (theta  - theta_c)**2 * dGamma_bg
+      self.Jp  = 0.5 * (thetam - theta_c)**2 * dGamma_bg
       s   = "    - using L2 cost functional :::"
     elif kind == 'abs': 
-      self.J   = abs(theta  - theta_c) * dGnd
-      self.Jp  = abs(thetam - theta_c) * dGnd
+      self.J   = abs(theta  - theta_c) * dGamma_bg
+      self.Jp  = abs(thetam - theta_c) * dGamma_bg
       s   = "    - using absolute value objective functional :::"
     else:
       s = ">>> ADJOINT OBJECTIVE FUNCTIONAL MAY BE 'TV', 'L2' " + \
@@ -599,15 +599,8 @@ class Enthalpy(Energy):
     q_geo         = model.q_geo
     spy           = model.spy
     h             = model.h
-    ds            = model.ds
-    dSrf          = model.dSrf
-    dBed_g        = model.dBed_g
-    dBed_f        = model.dBed_f
-    dBed          = model.dBed
-    dLat_t        = model.dLat_t
-    dx            = model.dx
-    dx_f          = model.dx_f
-    dx_g          = model.dx_g
+    dOmega        = model.dOmega()
+    dGamma_bg     = model.dGamma_bg()
     
     # define test and trial functions : 
     psi    = TestFunction(Q)
@@ -713,14 +706,14 @@ class Enthalpy(Energy):
         LL     = lambda x: - L_star(x)
       print_text(s, cls=self)
 
-      self.theta_a = + rho * dot(U, grad(dtheta)) * psi * dx \
-                     + kappa/c * inner(grad(psi), grad(dtheta)) * dx \
-                     - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
-                     + inner(LL(psi), tau*Lu(dtheta)) * dx
+      self.theta_a = + rho * dot(U, grad(dtheta)) * psi * dOmega \
+                     + kappa/c * inner(grad(psi), grad(dtheta)) * dOmega \
+                     - dot(grad(kappa/c), grad(dtheta)) * psi * dOmega \
+                     + inner(LL(psi), tau*Lu(dtheta)) * dOmega
       
-      self.theta_L = + g_b * psi * dBed_g \
-                     + Q_s * psi * dx \
-                     + inner(LL(psi), tau*Q_s) * dx \
+      self.theta_L = + g_b * psi * dGamma_bg \
+                     + Q_s * psi * dOmega \
+                     + inner(LL(psi), tau*Q_s) * dOmega \
 
     # configure the module to run in transient mode :
     # FIXME: this stuff below is junk, we don't do transients with 3D models 
@@ -745,37 +738,37 @@ class Enthalpy(Energy):
       thetamid = nu*dtheta + (1 - nu)*theta0
       
       # implicit system (linearized) for energy at time theta_{n+1}
-      theta_a = + rho * (dtheta - theta0) / dt * psi * dx \
-                + rho * dot(U, grad(thetamid)) * psihat * dx \
-                - dot(grad(kappa/c), grad(thetamid)) * psi * dx \
-                + kappa/c * dot(grad(psi), grad(thetamid)) * dx \
+      theta_a = + rho * (dtheta - theta0) / dt * psi * dOmega \
+                + rho * dot(U, grad(thetamid)) * psihat * dOmega \
+                - dot(grad(kappa/c), grad(thetamid)) * psi * dOmega \
+                + kappa/c * dot(grad(psi), grad(thetamid)) * dOmega \
       
-      theta_L = + g_b * psi * dBed_g \
-                + Q_s * psi * dx
+      theta_L = + g_b * psi * dGamma_bg \
+                + Q_s * psi * dOmega
 
       self.theta_a = lhs(theta_a - theta_L)
       self.theta_L = rhs(theta_a - theta_L)
     
     # surface boundary condition : 
     self.theta_bc = []
-    if sum(model.ff.array() == model.GAMMA_S_GND) != 0:
+    if model.N_GAMMA_S_GND > 0:
       self.theta_bc.append( DirichletBC(Q, theta_surface, 
                                         model.ff, model.GAMMA_S_GND) )
-    if sum(model.ff.array() == model.GAMMA_U_GND) != 0:
+    if model.N_GAMMA_U_GND > 0:
       self.theta_bc.append( DirichletBC(Q, theta_surface, 
                                         model.ff, model.GAMMA_U_GND) )
-    if sum(model.ff.array() == model.GAMMA_S_FLT) != 0:
+    if model.N_GAMMA_S_FLT > 0:
       self.theta_bc.append( DirichletBC(Q, theta_surface,
                                         model.ff, model.GAMMA_S_FLT) )
-    if sum(model.ff.array() == model.GAMMA_U_FLT) != 0:
+    if model.N_GAMMA_U_FLT > 0:
       self.theta_bc.append( DirichletBC(Q, theta_surface,
                                         model.ff, model.GAMMA_U_FLT) )
     
     # apply T_melt conditions of portion of ice in contact with water :
-    if sum(model.ff.array() == model.GAMMA_B_FLT) != 0:
+    if model.N_GAMMA_B_FLT > 0:
       self.theta_bc.append( DirichletBC(Q, theta_float, 
                                         model.ff, model.GAMMA_B_FLT) )
-    if sum(model.ff.array() == model.GAMMA_L_UDR) != 0:
+    if model.N_GAMMA_L_UDR > 0:
       self.theta_bc.append( DirichletBC(Q, theta_float, 
                                         model.ff, model.GAMMA_L_UDR) )
     
@@ -783,7 +776,7 @@ class Enthalpy(Energy):
     if use_lat_bc:
       s = "    - using divide-lateral boundary conditions -"
       print_text(s, cls=self)
-      if sum(model.ff.array() == model.GAMMA_L_DVD) != 0:
+      if model.N_GAMMA_L_DVD > 0:
         self.theta_bc.append( DirichletBC(Q, model.theta_app,
                                           model.ff, model.GAMMA_L_DVD) )
   
@@ -973,7 +966,7 @@ class Enthalpy(Energy):
     alpha_v[W_v > 0] = 1
     self.model.init_alpha(alpha_v)
 
-  def calc_basal_temperature_flux(self):
+  def calc_basal_temperature_flux(self, annotate=False):
     """
     Solve for the basal temperature flux stored in model.gradT_B.
     """ 
@@ -981,32 +974,36 @@ class Enthalpy(Energy):
     s = "::: solving basal temperature flux k \\nabla T \\cdot n :::"
     print_text(s, cls=self)
     
-    model    = self.model
-    dBed_g   = model.dBed_g
-    T        = model.T
-    N        = model.N
-    B        = model.B
-    k        = self.k
+    model     = self.model
+    dGamma_bg = model.dGamma_bg()
+    T         = model.T
+    N         = model.N
+    B         = model.B
+    k         = self.k
+   
+    # variational problem : 
+    phi     = TestFunction(model.Q)
+    du      = TrialFunction(model.Q)
 
     # Mb is only valid on basal surface, needs extra matrix care :
-    phi  = TestFunction(model.Q)
-    du   = TrialFunction(model.Q)
-    #a_n  = du * phi * dBed_g
-    #L_n  = k * dot((grad(T)), N) * phi * dBed_g
+    a_n  = du * phi * dGamma_bg
+    L_n  = k * dot((grad(T)), N) * phi * dGamma_bg
    
-    #A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    #B_n  = assemble(L_n, annotate=False)
-    #A_n.ident_zeros()
-   
-    #solve(A_n, model.gradT_B.vector(), B_n, 'cg', 'amg', annotate=False)
-    n       = (grad(B) - as_vector([0, 0, 1])) / sqrt(1 + dot(grad(B), grad(B)))
-    gradT_B = project(k * dot(grad(T), n), model.Q,
-                      solver_type='iterative',
-                      annotate=annotate)
-    model.assign_variable(model.gradT_B, gradT_B)
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=annotate)
+    B_n  = assemble(L_n, annotate=annotate)
+    A_n.ident_zeros()
+
+    solve(A_n, model.gradT_B.vector(), B_n, 'cg', 'amg', annotate=annotate)
+  
+    # or solve over the whole domain : 
+    #n       = (grad(B) - as_vector([0, 0, 1])) / sqrt(1 + dot(grad(B), grad(B)))
+    #gradT_B = project(k * dot(grad(T), n), model.Q,
+    #                  solver_type='iterative',
+    #                  annotate=annotate)
+    #model.assign_variable(model.gradT_B, gradT_B)
     print_min_max(model.gradT_B, 'gradT_B')
 
-  def calc_basal_temperature_melting_flux(self):
+  def calc_basal_temperature_melting_flux(self, annotate=False):
     """
     Solve for the basal temperature melting flux stored in model.gradTm_B.
     """ 
@@ -1014,32 +1011,36 @@ class Enthalpy(Energy):
     s = "::: solving basal temperature flux k \\nabla T_m \\cdot n :::"
     print_text(s, cls=self)
     
-    model    = self.model
-    dBed_g   = model.dBed_g
-    Tm       = model.T_melt
-    N        = model.N
-    B        = model.B
-    k        = self.k
+    model     = self.model
+    dGamma_bg = model.dGamma_bg()
+    Tm        = model.T_melt
+    N         = model.N
+    B         = model.B
+    k         = self.k
+    
+    # variational problem : 
+    phi     = TestFunction(model.Q)
+    du      = TrialFunction(model.Q)
 
-    ## Mb is only valid on basal surface, needs extra matrix care :
-    #phi  = TestFunction(model.Q)
-    #du   = TrialFunction(model.Q)
-    #a_n  = du * phi * dBed_g
-    #L_n  = k * dot((grad(Tm)), N) * phi * dBed_g
+    # Mb is only valid on basal surface, needs extra matrix care :
+    a_n  = du * phi * dGamma_bg
+    L_n  = k * dot((grad(Tm)), N) * phi * dGamma_bg
    
-    #A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    #B_n  = assemble(L_n, annotate=False)
-    #A_n.ident_zeros()
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=annotate)
+    B_n  = assemble(L_n, annotate=annotate)
+    A_n.ident_zeros()
    
-    #solve(A_n, model.gradTm_B.vector(), B_n, 'cg', 'amg', annotate=False)
-    n       = (grad(B) - as_vector([0, 0, 1])) / sqrt(1 + dot(grad(B), grad(B)))
-    gradTm_B = project(k * dot(grad(Tm), n), model.Q,
-                      solver_type='iterative',
-                      annotate=annotate)
-    model.assign_variable(model.gradTm_B, gradTm_B)
+    solve(A_n, model.gradTm_B.vector(), B_n, 'cg', 'amg', annotate=annotate)
+    
+    # or solve over the whole domain : 
+    #n       = (grad(B) - as_vector([0, 0, 1])) / sqrt(1 + dot(grad(B), grad(B)))
+    #gradTm_B = project(k * dot(grad(Tm), n), model.Q,
+    #                  solver_type='iterative',
+    #                  annotate=annotate)
+    #model.assign_variable(model.gradTm_B, gradTm_B)
     print_min_max(model.gradTm_B, 'gradTm_B')
 
-  def solve_basal_melt_rate(self):
+  def solve_basal_melt_rate(self, annotate=False):
     """
     Solve for the basal melt rate stored in model.Mb.
     """ 
@@ -1047,29 +1048,29 @@ class Enthalpy(Energy):
     s = "::: solving basal-melt-rate :::"
     print_text(s, cls=self)
     
-    model    = self.model
-    dBed_g   = model.dBed_g
-    T_melt   = model.T_melt
-    T        = model.T
-    N        = model.N
-    L        = model.L(0)
-    rhoi     = model.rhoi(0)
-    rhow     = model.rhow(0)
-    k        = self.k
-    u,v,w    = model.U3.split(True)
+    model      = self.model
+    dGamma_bg  = model.dGamma_bg()
+    T_melt     = model.T_melt
+    T          = model.T
+    N          = model.N
+    L          = model.L(0)
+    rhoi       = model.rhoi(0)
+    rhow       = model.rhow(0)
+    k          = self.k
+    u,v,w      = model.U3.split(True)
 
     # Mb is only valid on basal surface, needs extra matrix care :
     phi  = TestFunction(model.Q)
     du   = TrialFunction(model.Q)
-    a_n  = du * phi * dBed_g
-    L_n  = k * dot((grad(T)), N) * phi * dBed_g
+    a_n  = du * phi * dGamma_bg
+    L_n  = k * dot((grad(T)), N) * phi * dGamma_bg
    
-    A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
-    B_n  = assemble(L_n, annotate=False)
+    A_n  = assemble(a_n, keep_diagonal=True, annotate=annoatate)
+    B_n  = assemble(L_n, annotate=annotate)
     A_n.ident_zeros()
    
     grad_n  = Function(model.Q)
-    solve(A_n, grad_n.vector(), B_n, 'cg', 'amg', annotate=False)
+    solve(A_n, grad_n.vector(), B_n, 'cg', 'amg', annotate=annotate)
     
     W_v      = model.W.vector().get_local()
     q_fric_v = model.q_fric.vector().get_local()
@@ -1085,9 +1086,9 @@ class Enthalpy(Energy):
     if model.N_OMEGA_FLT > 0:
       Mb_v[model.shf_dofs] = 0.0    # does apply over floating regions
 
-    model.init_Mb(Mb_v)
-    Mb_ext = model.vert_extrude(model.Mb, d='up')
-    model.init_Mb(Mb_ext)
+    model.assign_variable(model.Mb, Mb_v, annotate=annotate)
+    Mb_ext = model.vert_extrude(model.Mb, d='up', annotate=annotate)
+    model.assign_variable(model.Mb, Mb_ext, annotate=annotate)
 
   def solve(self, annotate=False):
     """ 
@@ -1261,52 +1262,48 @@ class Enthalpy(Energy):
     s    = "::: calculating energy over lateral boundaries :::"
     print_text(s, cls=self)
 
-    model   = self.model
-    
-    theta   = self.theta
-    c       = self.c
-    k       = self.k
-    rho     = self.rho
-    kappa   = self.kappa
-    Xi      = self.Xi
-    Q_s     = self.Q_s
+    model     = self.model
+    theta     = self.theta
+    c         = self.c
+    k         = self.k
+    rho       = self.rho
+    kappa     = self.kappa
+    Xi        = self.Xi
+    Q_s       = self.Q_s
 
-    theta_s = model.theta_surface
-    theta_f = model.theta_float
-    theta_m = model.theta_melt
-    L       = model.L
-    R       = model.R
-    n       = model.n
-    E       = model.E
-    T_m     = model.T_melt
-    T       = model.T
-    W       = model.W
-    gamma   = model.gamma
-    p       = model.p
-    dx      = model.dx
-    dBed_g  = model.dBed_g
-    dLat_d  = model.dLat_d
-    dLat_t  = model.dLat_t
-    dx      = model.dx
-    dx_f    = model.dx_f
-    dx_g    = model.dx_g
-    u       = model.u
-    v       = model.v
-    w       = model.w
-    q_geo   = model.q_geo
-    q_fric  = model.q_fric
-    beta    = model.beta
-    alpha   = model.alpha
-    h       = model.h
-    N       = model.N
-    U       = as_vector([u,v,w])
+    theta_s   = model.theta_surface
+    theta_f   = model.theta_float
+    theta_m   = model.theta_melt
+    L         = model.L
+    R         = model.R
+    n         = model.n
+    E         = model.E
+    T_m       = model.T_melt
+    T         = model.T
+    W         = model.W
+    gamma     = model.gamma
+    p         = model.p
+    u         = model.u
+    v         = model.v
+    w         = model.w
+    q_geo     = model.q_geo
+    q_fric    = model.q_fric
+    beta      = model.beta
+    alpha     = model.alpha
+    h         = model.h
+    N         = model.N
+    dOmega    = model.dOmega()
+    dGamma_bg = model.dGamma_bg()
+    dGamma_ld = model.dGamma_ld()
+    
+    U         = as_vector([u,v,w])
 
     # solve for tangential component of velocity over the 'divides' :
     phi  = TestFunction(model.V)
     du   = TrialFunction(model.V)
     U_t  = U - dot(U, N)*N
-    a_n  = inner(du,  phi) * dLat_d
-    L_n  = inner(U_t, phi) * dLat_d
+    a_n  = inner(du,  phi) * dGamma_ld
+    L_n  = inner(U_t, phi) * dGamma_ld
     A_n  = assemble(a_n, keep_diagonal=True, annotate=annotate)
     B_n  = assemble(L_n, annotate=annotate)
     A_n.ident_zeros()
@@ -1351,12 +1348,12 @@ class Enthalpy(Energy):
     psihat = psi + h*tau/(2*Unorm) * dot(U_t, grad(psi))
     
     # galerkin formulation :
-    theta_a = + rho * dot(U_t, grad(dtheta)) * psihat * dx \
-              - dot(grad(kappa/c), grad(dtheta)) * psi * dx \
-              + kappa/c * dot(grad(psi), grad(dtheta)) * dx \
+    theta_a = + rho * dot(U_t, grad(dtheta)) * psihat * dOmega \
+              - dot(grad(kappa/c), grad(dtheta)) * psi * dOmega \
+              + kappa/c * dot(grad(psi), grad(dtheta)) * dOmega \
     
-    theta_L = + g_b * psi * dBed_g \
-              + Q_s * psi * dx
+    theta_L = + g_b * psi * dGamma_bg \
+              + Q_s * psi * dOmega
 
     # surface boundary condition : 
     theta_bc = []

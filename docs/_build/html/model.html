@@ -2619,17 +2619,24 @@ the boundaries marked by FacetFunction <code class="docutils literal notranslate
 <li><code class="docutils literal notranslate"><span class="pre">self.N_OMEGA_U_GND</span></code> – number of cells marked <code class="docutils literal notranslate"><span class="pre">self.OMEGA_U_GND</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">self.N_OMEGA_U_FLT</span></code> – number of cells marked <code class="docutils literal notranslate"><span class="pre">self.OMEGA_U_FLT</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">self.N_GAMMA_L_DVD</span></code> – number of facets marked <code class="docutils literal notranslate"><span class="pre">self.GAMMA_L_DVD</span></code></li>
-</ul>
-<p>The subdomain corresponding to FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> is :</p>
-<ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">self.dLat_d</span></code>  –  lateral divide</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.N_GAMMA_L_GND</span></code> – number of facets marked <code class="docutils literal notranslate"><span class="pre">self.GAMMA_L_GND</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.N_GAMMA_L_FLT</span></code> – number of facets marked <code class="docutils literal notranslate"><span class="pre">self.GAMMA_L_FLT</span></code></li>
 </ul>
 <p>The subdomains corresponding to CellFunction <code class="docutils literal notranslate"><span class="pre">self.cf</span></code> are :</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">self.dx_g</span></code>    –  internal above grounded</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dx_f</span></code>    –  internal above floating</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dx_u_G</span></code>  –  grounded with U observations</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dx_u_f</span></code>  –  floating with U observations</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega</span></code>     –  entire interior</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_g</span></code>   –  internal above grounded</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_w</span></code>   –  internal above floating</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_gu</span></code>  –  grounded with U observations</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_wu</span></code>  –  floating with U observations</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_u</span></code>   –  entire interior with U observations</li>
+</ul>
+<p>The subdomain corresponding to FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> are:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma</span></code>    –  entire exterior</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_dl</span></code> –  lateral interior surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_wl</span></code> –  lateral exterior surface in contact with water</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_gl</span></code> –  lateral exterior surface not in contact with water</li>
 </ul>
 </dd></dl>
 
@@ -2885,25 +2892,27 @@ the boundaries marked by FacetFunction <code class="docutils literal notranslate
 </ul>
 <p>The subdomains corresponding to FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> are :</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">self.dBed_g</span></code>  –  grounded bed</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dBed_f</span></code>  –  floating bed</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dBed</span></code>    –  bed</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dSrf_gu</span></code> –  grounded with U observations</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dSrf_fu</span></code> –  floating with U observations</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dSrf_u</span></code>  –  surface with U observations</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dSrf_g</span></code>  –  surface of grounded ice</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dSrf_f</span></code>  –  surface of floating ice</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dSrf</span></code>    –  surface</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dLat_d</span></code>  –  lateral divide</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dLat_to</span></code> –  lateral terminus overwater</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dLat_tu</span></code> –  lateral terminus underwater</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dLat_t</span></code>  –  lateral terminus</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dLat</span></code>    –  lateral</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega</span></code>     –  entire interior</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_g</span></code>   –  internal above grounded</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dOmega_w</span></code>   –  internal above floating</li>
 </ul>
 <p>The subdomains corresponding to CellFunction <code class="docutils literal notranslate"><span class="pre">self.cf</span></code> are :</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">self.dx_g</span></code>    –  internal above grounded</li>
-<li><code class="docutils literal notranslate"><span class="pre">self.dx_f</span></code>    –  internal above floating</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_s</span></code>   – entire upper surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_b</span></code>   – entire basal surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_l</span></code>   – entire exterior and interior lateral surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_w</span></code>   – exterior surface in contact with water</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_bg</span></code>  – grounded basal surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_bw</span></code>  – floating basal surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_sgu</span></code> – upper surface with U observations above grounded ice</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_swu</span></code> – upper surface with U observations above floating ice</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_su</span></code>  – entire upper surface with U observations</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_sg</span></code>  – upper surface above grounded ice</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_sw</span></code>  – upper surface above floating ice</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_ld</span></code>  – lateral interior surface</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_lto</span></code> – exterior lateral surface above water</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_ltu</span></code> – exterior lateral surface below water</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dGamma_lt</span></code>  – entire exterior lateral surface</li>
 </ul>
 <p>This method will create a <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a> called <code class="docutils literal notranslate"><span class="pre">self.measures</span></code>
 containing all of the <code class="xref py py-class docutils literal notranslate"><span class="pre">ufl.measure.Measure</span></code> instances for 
@@ -2922,6 +2931,11 @@ this <a class="reference internal" href="#model.Model" title="model.Model"><code
 <code class="descname">set_srf_mesh</code><span class="sig-paren">(</span><em>srfmesh</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.set_srf_mesh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.set_srf_mesh" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set the surface boundary mesh.</p>
 </dd></dl>
+
+<dl class="method">
+<dt id="d3model.D3Model.set_submesh_to_mesh_map">
+<code class="descname">set_submesh_to_mesh_map</code><span class="sig-paren">(</span><em>sub_model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.set_submesh_to_mesh_map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.set_submesh_to_mesh_map" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="d3model.D3Model.solve_hydrostatic_pressure">

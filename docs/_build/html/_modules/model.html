@@ -212,7 +212,6 @@
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING BASE MODEL :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
     
-    <span class="c1">#parameters[&#39;form_compiler&#39;][&#39;quadrature_degree&#39;]  = order + 1</span>
     <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;std_out_all_processes&quot;</span><span class="p">]</span>               <span class="o">=</span> <span class="kc">False</span>
     <span class="c1">#parameters[&#39;form_compiler&#39;][&#39;optimize&#39;]           = True</span>
     <span class="c1">#parameters[&#39;form_compiler&#39;][&#39;cpp_optimize&#39;]       = True</span>
@@ -242,8 +241,10 @@
     <span class="sd">&quot;&quot;&quot; </span>
 <span class="sd">    Returns a set of linear solver parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">lparams</span>  <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear_solver&quot;</span>            <span class="p">:</span> <span class="s2">&quot;superlu_dist&quot;</span><span class="p">}</span>
-    <span class="c1">#lparams  = {&quot;linear_solver&quot;            : &quot;mumps&quot;}</span>
+    <span class="c1">#lparams  = {&quot;linear_solver&quot;            : &quot;default&quot;}</span>
+    <span class="c1">#lparams  = {&quot;linear_solver&quot;            : &quot;superlu_dist&quot;}</span>
+    <span class="n">lparams</span>  <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear_solver&quot;</span>            <span class="p">:</span> <span class="s2">&quot;mumps&quot;</span><span class="p">}</span>
+    <span class="c1">#lparams  = {&quot;linear_solver&quot;            : &quot;umfpack&quot;}</span>
     <span class="c1">#lparams  = {&quot;linear_solver&quot;            : &quot;cg&quot;,</span>
     <span class="c1">#            &quot;preconditioner&quot;           : &quot;default&quot;}</span>
     <span class="k">return</span> <span class="n">lparams</span></div>
@@ -2579,6 +2580,8 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">v_lat</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;v_lat&#39;</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">w_lat</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;w_lat&#39;</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">lam</span>           <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lam&#39;</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="o">.</span><span class="n">vector</span><span class="p">()[:]</span> <span class="o">=</span> <span class="mf">1.0</span>    <span class="c1"># always use init. with no flow enhancement</span>
 
     <span class="c1"># mass :</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">adot</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;adot&#39;</span><span class="p">)</span>  <span class="c1"># upper smb</span>
@@ -3163,7 +3166,7 @@
     <span class="n">stars</span>             <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">)</span> <span class="o">*</span> <span class="mi">80</span>            <span class="c1"># stars for printing</span>
    
     <span class="c1"># Loop over all times</span>
-    <span class="k">while</span> <span class="n">t</span> <span class="o">&lt;=</span> <span class="n">t_end</span><span class="p">:</span>
+    <span class="k">while</span> <span class="n">t</span> <span class="o">&lt;</span> <span class="n">t_end</span><span class="p">:</span>
 
       <span class="c1"># start the timer :</span>
       <span class="n">tic</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>

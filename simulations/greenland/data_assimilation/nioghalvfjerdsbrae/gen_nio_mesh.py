@@ -26,46 +26,31 @@ dmg.data['U_ob'] = U_ob
 # put the velocity values into bedmachine's DataInput object :
 dbm.interpolate_from_di(dmg, 'U_ob', 'U_ob', order=1)
 
-# get the gradient of the mask :
-mask      = dbm.data['mask'].copy()
-mask[mask < 2.0] = 0.0
-gradm     = np.gradient(mask)
-lat_mask  = gradm[0]**2 + gradm[1]**2
-lat_mask  = lat_mask > 0.0
+# form the lateral boundary mask :
+lat_mask                 = dbm.data['mask'].copy()
+lat_mask[lat_mask < 2.0] = 0.0
 
-#===============================================================================
+def grow_lat_mask(mask, n):
+  gradm                  = np.gradient(mask)
+  lat_mask               = gradm[0]**2 + gradm[1]**2
+  lat_mask[lat_mask > 0] = 1
+  if n > 0: grow_lat_mask(lat_mask, n-1)
+  else:     return lat_mask
+
+lat_mask = grow_lat_mask(lat_mask, 5)
+
 # form field from which to refine :
-dbm.rescale_field('U_ob', 'ref', umin=500.0, umax=300000.0, inverse=True)
-dbm.data['ref'][lat_mask]    = 500.0
+dbm.rescale_field('U_ob', 'ref', umin=1000.0, umax=300000.0, inverse=True)
+dbm.data['ref'][lat_mask == 1] = 500.0
 
-# eliminate just the edge of the mask so that we can properly interpolate
-# the geometry to the terminus :
-#L = dbm.data['lat_mask']
-#dbm.data['mask'][L > 0.0] = 0
-
-#===============================================================================
 # generate the contour :
 m = cs.MeshGenerator(dbm, mesh_name, out_dir)
 
-m.create_contour('mask', zero_cntr=0.001, skip_pts=8)
-m.eliminate_intersections(dist=100)               # eliminate intersecting lines
+m.create_contour('H', zero_cntr=15, skip_pts=10)  # 10 meter thick. contour
+m.eliminate_intersections(dist=10)                # eliminate interscting lines
 m.save_contour('contour.txt')                     # save the contour for later
 
-#===============================================================================
-# a box region :
-#x1 = -500000; y1 = -2190000
-#x2 = -150000; y2 = -2320000
-#
-#new_cont = np.array([[x1, y1],
-#                     [x2, y1],
-#                     [x2, y2],
-#                     [x1, y2],
-#                     [x1, y1]])
-#
-#m.intersection(new_cont)
-
-# or a basin :
-
+# get the basin :
 gb = cs.GetBasin(dbm, basin='2.1')
 gb.remove_skip_points(400)
 gb.extend_edge(10000)
@@ -82,7 +67,7 @@ m.eliminate_intersections(dist=200)              # eliminate interscting lines
 m.check_dist()                                   # remove points too close
 m.write_gmsh_contour(boundary_extend=False)      # create a .geo contour file
 #m.plot_contour()                                 # plot the contour
-m.extrude(h=100000, n_layers=20)                 # vertically extrude
+m.extrude(h=100000, n_layers=10)                 # vertically extrude
 m.close_file()                                   # close the files
 
 

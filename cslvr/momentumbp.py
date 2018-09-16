@@ -48,14 +48,6 @@ class MomentumBP(Momentum):
     D          = model.D
     Fb         = model.Fb
     
-    dx_f       = model.dx_f
-    dx_g       = model.dx_g
-    dx         = model.dx
-    dBed_g     = model.dBed_g
-    dBed_f     = model.dBed_f
-    dLat_t     = model.dLat_t
-    dBed       = model.dBed
-
     dOmega     = model.dOmega()
     dOmega_g   = model.dOmega_g()
     dOmega_w   = model.dOmega_w()
@@ -81,8 +73,6 @@ class MomentumBP(Momentum):
     M      = 0.0289644
     ci     = model.ci
 
-    dx     = model.dx
-    
     #===========================================================================
     # define variational problem :
     

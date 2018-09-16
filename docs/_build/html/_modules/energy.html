@@ -384,23 +384,23 @@
     <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;::: forming water-optimization cost functional :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">theta</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span>
-    <span class="n">thetam</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span>
-    <span class="n">dGnd</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">theta_c</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_melt</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">Wc</span><span class="o">*</span><span class="n">model</span><span class="o">.</span><span class="n">L</span>
+    <span class="n">model</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">theta</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span>
+    <span class="n">thetam</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta</span>
+    <span class="n">dGamma_bg</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bg</span><span class="p">()</span>
+    <span class="n">theta_c</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_melt</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">Wc</span><span class="o">*</span><span class="n">model</span><span class="o">.</span><span class="n">L</span>
    
     <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;TV&#39;</span><span class="p">:</span> 
-      <span class="bp">self</span><span class="o">.</span><span class="n">J</span>   <span class="o">=</span> <span class="n">sqrt</span><span class="p">((</span><span class="n">theta</span>  <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGnd</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span>  <span class="o">=</span> <span class="n">sqrt</span><span class="p">((</span><span class="n">thetam</span> <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGnd</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J</span>   <span class="o">=</span> <span class="n">sqrt</span><span class="p">((</span><span class="n">theta</span>  <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span>  <span class="o">=</span> <span class="n">sqrt</span><span class="p">((</span><span class="n">thetam</span> <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mf">1e-15</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
       <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;    - using TV cost functional :::&quot;</span>
     <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;L2&#39;</span><span class="p">:</span> 
-      <span class="bp">self</span><span class="o">.</span><span class="n">J</span>   <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">theta</span>  <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dGnd</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">thetam</span> <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dGnd</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J</span>   <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">theta</span>  <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span>  <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">thetam</span> <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
       <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;    - using L2 cost functional :::&quot;</span>
     <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;abs&#39;</span><span class="p">:</span> 
-      <span class="bp">self</span><span class="o">.</span><span class="n">J</span>   <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta</span>  <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGnd</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span>  <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">thetam</span> <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGnd</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">J</span>   <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta</span>  <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">Jp</span>  <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">thetam</span> <span class="o">-</span> <span class="n">theta_c</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
       <span class="n">s</span>   <span class="o">=</span> <span class="s2">&quot;    - using absolute value objective functional :::&quot;</span>
     <span class="k">else</span><span class="p">:</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; ADJOINT OBJECTIVE FUNCTIONAL MAY BE &#39;TV&#39;, &#39;L2&#39; &quot;</span> <span class="o">+</span> \
@@ -747,6 +747,9 @@
     <span class="c1"># save the state of basal boundary flux :</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">energy_flux_mode</span> <span class="o">=</span> <span class="n">energy_flux_mode</span>
     
+    <span class="c1"># create a facet function for temperate zone :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ff</span>      <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    
     <span class="n">mesh</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">mesh</span>
     <span class="n">Q</span>             <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
     <span class="n">T</span>             <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
@@ -767,15 +770,8 @@
     <span class="n">q_geo</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">q_geo</span>
     <span class="n">spy</span>           <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">spy</span>
     <span class="n">h</span>             <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
-    <span class="n">ds</span>            <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">ds</span>
-    <span class="n">dSrf</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dSrf</span>
-    <span class="n">dBed_g</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">dBed_f</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_f</span>
-    <span class="n">dBed</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed</span>
-    <span class="n">dLat_t</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_t</span>
-    <span class="n">dx</span>            <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx</span>
-    <span class="n">dx_f</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_f</span>
-    <span class="n">dx_g</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_g</span>
+    <span class="n">dOmega</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
+    <span class="n">dGamma_bg</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bg</span><span class="p">()</span>
     
     <span class="c1"># define test and trial functions : </span>
     <span class="n">psi</span>    <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
@@ -881,14 +877,14 @@
         <span class="n">LL</span>     <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="o">-</span> <span class="n">L_star</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-      <span class="bp">self</span><span class="o">.</span><span class="n">theta_a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span> \
-                     <span class="o">+</span> <span class="n">kappa</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">dx</span> \
-                     <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">kappa</span><span class="o">/</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span> \
-                     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">LL</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">Lu</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">dx</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">theta_a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                     <span class="o">+</span> <span class="n">kappa</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="n">inner</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                     <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">kappa</span><span class="o">/</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">LL</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">Lu</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>
       
-      <span class="bp">self</span><span class="o">.</span><span class="n">theta_L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">g_b</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dBed_g</span> \
-                     <span class="o">+</span> <span class="n">Q_s</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span> \
-                     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">LL</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">Q_s</span><span class="p">)</span> <span class="o">*</span> <span class="n">dx</span> \
+      <span class="bp">self</span><span class="o">.</span><span class="n">theta_L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">g_b</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dGamma_bg</span> \
+                     <span class="o">+</span> <span class="n">Q_s</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                     <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">LL</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">Q_s</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
 
     <span class="c1"># configure the module to run in transient mode :</span>
     <span class="c1"># FIXME: this stuff below is junk, we don&#39;t do transients with 3D models </span>
@@ -913,37 +909,37 @@
       <span class="n">thetamid</span> <span class="o">=</span> <span class="n">nu</span><span class="o">*</span><span class="n">dtheta</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="n">theta0</span>
       
       <span class="c1"># implicit system (linearized) for energy at time theta_{n+1}</span>
-      <span class="n">theta_a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="p">(</span><span class="n">dtheta</span> <span class="o">-</span> <span class="n">theta0</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span> \
-                <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">thetamid</span><span class="p">))</span> <span class="o">*</span> <span class="n">psihat</span> <span class="o">*</span> <span class="n">dx</span> \
-                <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">kappa</span><span class="o">/</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">thetamid</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span> \
-                <span class="o">+</span> <span class="n">kappa</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">thetamid</span><span class="p">))</span> <span class="o">*</span> <span class="n">dx</span> \
+      <span class="n">theta_a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="p">(</span><span class="n">dtheta</span> <span class="o">-</span> <span class="n">theta0</span><span class="p">)</span> <span class="o">/</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">thetamid</span><span class="p">))</span> <span class="o">*</span> <span class="n">psihat</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">kappa</span><span class="o">/</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">thetamid</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+                <span class="o">+</span> <span class="n">kappa</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">thetamid</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
       
-      <span class="n">theta_L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">g_b</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dBed_g</span> \
-                <span class="o">+</span> <span class="n">Q_s</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span>
+      <span class="n">theta_L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">g_b</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dGamma_bg</span> \
+                <span class="o">+</span> <span class="n">Q_s</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span>
 
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_a</span> <span class="o">=</span> <span class="n">lhs</span><span class="p">(</span><span class="n">theta_a</span> <span class="o">-</span> <span class="n">theta_L</span><span class="p">)</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_L</span> <span class="o">=</span> <span class="n">rhs</span><span class="p">(</span><span class="n">theta_a</span> <span class="o">-</span> <span class="n">theta_L</span><span class="p">)</span>
     
     <span class="c1"># surface boundary condition : </span>
     <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_S_GND</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_S_GND</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">theta_surface</span><span class="p">,</span> 
                                         <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_S_GND</span><span class="p">)</span> <span class="p">)</span>
-    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_U_GND</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_U_GND</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">theta_surface</span><span class="p">,</span> 
                                         <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_U_GND</span><span class="p">)</span> <span class="p">)</span>
-    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_S_FLT</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_S_FLT</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">theta_surface</span><span class="p">,</span>
                                         <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_S_FLT</span><span class="p">)</span> <span class="p">)</span>
-    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_U_FLT</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_U_FLT</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">theta_surface</span><span class="p">,</span>
                                         <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_U_FLT</span><span class="p">)</span> <span class="p">)</span>
     
     <span class="c1"># apply T_melt conditions of portion of ice in contact with water :</span>
-    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_B_FLT</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_B_FLT</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">theta_float</span><span class="p">,</span> 
                                         <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_B_FLT</span><span class="p">)</span> <span class="p">)</span>
-    <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_L_UDR</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_L_UDR</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">theta_float</span><span class="p">,</span> 
                                         <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_L_UDR</span><span class="p">)</span> <span class="p">)</span>
     
@@ -951,7 +947,7 @@
     <span class="k">if</span> <span class="n">use_lat_bc</span><span class="p">:</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using divide-lateral boundary conditions -&quot;</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-      <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_GAMMA_L_DVD</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">theta_bc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_app</span><span class="p">,</span>
                                           <span class="n">model</span><span class="o">.</span><span class="n">ff</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">)</span> <span class="p">)</span>
   
@@ -1016,7 +1012,7 @@
     <span class="k">if</span> <span class="n">avg</span><span class="p">:</span>
       <span class="n">PE</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calc_vert_average</span><span class="p">(</span><span class="n">PE</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-      <span class="n">PE</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">PE</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">PE</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">PE</span><span class="p">,</span> <span class="n">solver_type</span><span class="o">=</span><span class="s1">&#39;iterative&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">model</span><span class="o">.</span><span class="n">init_PE</span><span class="p">(</span><span class="n">PE</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Enthalpy.calc_vert_avg_W"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.calc_vert_avg_W">[docs]</a>  <span class="k">def</span> <span class="nf">calc_vert_avg_W</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1141,7 +1137,7 @@
     <span class="n">alpha_v</span><span class="p">[</span><span class="n">W_v</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">init_alpha</span><span class="p">(</span><span class="n">alpha_v</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Enthalpy.calc_basal_temperature_flux"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.calc_basal_temperature_flux">[docs]</a>  <span class="k">def</span> <span class="nf">calc_basal_temperature_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Enthalpy.calc_basal_temperature_flux"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.calc_basal_temperature_flux">[docs]</a>  <span class="k">def</span> <span class="nf">calc_basal_temperature_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Solve for the basal temperature flux stored in model.gradT_B.</span>
 <span class="sd">    &quot;&quot;&quot;</span> 
@@ -1149,32 +1145,36 @@
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: solving basal temperature flux k </span><span class="se">\\</span><span class="s2">nabla T </span><span class="se">\\</span><span class="s2">cdot n :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
     
-    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">dBed_g</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">T</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
-    <span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">B</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
-    <span class="n">k</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+    <span class="n">model</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">dGamma_bg</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bg</span><span class="p">()</span>
+    <span class="n">T</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">N</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+    <span class="n">B</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">k</span>         <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+   
+    <span class="c1"># variational problem : </span>
+    <span class="n">phi</span>     <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">du</span>      <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
 
     <span class="c1"># Mb is only valid on basal surface, needs extra matrix care :</span>
-    <span class="n">phi</span>  <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-    <span class="n">du</span>   <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-    <span class="c1">#a_n  = du * phi * dBed_g</span>
-    <span class="c1">#L_n  = k * dot((grad(T)), N) * phi * dBed_g</span>
+    <span class="n">a_n</span>  <span class="o">=</span> <span class="n">du</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
+    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">dot</span><span class="p">((</span><span class="n">grad</span><span class="p">(</span><span class="n">T</span><span class="p">)),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
    
-    <span class="c1">#A_n  = assemble(a_n, keep_diagonal=True, annotate=False)</span>
-    <span class="c1">#B_n  = assemble(L_n, annotate=False)</span>
-    <span class="c1">#A_n.ident_zeros()</span>
-   
-    <span class="c1">#solve(A_n, model.gradT_B.vector(), B_n, &#39;cg&#39;, &#39;amg&#39;, annotate=False)</span>
-    <span class="n">n</span>       <span class="o">=</span> <span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">)</span> <span class="o">-</span> <span class="n">as_vector</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span> <span class="o">/</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">)))</span>
-    <span class="n">gradT_B</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">T</span><span class="p">),</span> <span class="n">n</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
-                      <span class="n">solver_type</span><span class="o">=</span><span class="s1">&#39;iterative&#39;</span><span class="p">,</span>
-                      <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">gradT_B</span><span class="p">,</span> <span class="n">gradT_B</span><span class="p">)</span>
+    <span class="n">A_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">a_n</span><span class="p">,</span> <span class="n">keep_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">B_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">L_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">A_n</span><span class="o">.</span><span class="n">ident_zeros</span><span class="p">()</span>
+
+    <span class="n">solve</span><span class="p">(</span><span class="n">A_n</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">gradT_B</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">B_n</span><span class="p">,</span> <span class="s1">&#39;cg&#39;</span><span class="p">,</span> <span class="s1">&#39;amg&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+  
+    <span class="c1"># or solve over the whole domain : </span>
+    <span class="c1">#n       = (grad(B) - as_vector([0, 0, 1])) / sqrt(1 + dot(grad(B), grad(B)))</span>
+    <span class="c1">#gradT_B = project(k * dot(grad(T), n), model.Q,</span>
+    <span class="c1">#                  solver_type=&#39;iterative&#39;,</span>
+    <span class="c1">#                  annotate=annotate)</span>
+    <span class="c1">#model.assign_variable(model.gradT_B, gradT_B)</span>
     <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">gradT_B</span><span class="p">,</span> <span class="s1">&#39;gradT_B&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Enthalpy.calc_basal_temperature_melting_flux"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.calc_basal_temperature_melting_flux">[docs]</a>  <span class="k">def</span> <span class="nf">calc_basal_temperature_melting_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Enthalpy.calc_basal_temperature_melting_flux"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.calc_basal_temperature_melting_flux">[docs]</a>  <span class="k">def</span> <span class="nf">calc_basal_temperature_melting_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Solve for the basal temperature melting flux stored in model.gradTm_B.</span>
 <span class="sd">    &quot;&quot;&quot;</span> 
@@ -1182,32 +1182,36 @@
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: solving basal temperature flux k </span><span class="se">\\</span><span class="s2">nabla T_m </span><span class="se">\\</span><span class="s2">cdot n :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
     
-    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">dBed_g</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">Tm</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_melt</span>
-    <span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">B</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
-    <span class="n">k</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+    <span class="n">model</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">dGamma_bg</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bg</span><span class="p">()</span>
+    <span class="n">Tm</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_melt</span>
+    <span class="n">N</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+    <span class="n">B</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+    <span class="n">k</span>         <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+    
+    <span class="c1"># variational problem : </span>
+    <span class="n">phi</span>     <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+    <span class="n">du</span>      <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
 
-    <span class="c1">## Mb is only valid on basal surface, needs extra matrix care :</span>
-    <span class="c1">#phi  = TestFunction(model.Q)</span>
-    <span class="c1">#du   = TrialFunction(model.Q)</span>
-    <span class="c1">#a_n  = du * phi * dBed_g</span>
-    <span class="c1">#L_n  = k * dot((grad(Tm)), N) * phi * dBed_g</span>
+    <span class="c1"># Mb is only valid on basal surface, needs extra matrix care :</span>
+    <span class="n">a_n</span>  <span class="o">=</span> <span class="n">du</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
+    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">dot</span><span class="p">((</span><span class="n">grad</span><span class="p">(</span><span class="n">Tm</span><span class="p">)),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
    
-    <span class="c1">#A_n  = assemble(a_n, keep_diagonal=True, annotate=False)</span>
-    <span class="c1">#B_n  = assemble(L_n, annotate=False)</span>
-    <span class="c1">#A_n.ident_zeros()</span>
+    <span class="n">A_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">a_n</span><span class="p">,</span> <span class="n">keep_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">B_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">L_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">A_n</span><span class="o">.</span><span class="n">ident_zeros</span><span class="p">()</span>
    
-    <span class="c1">#solve(A_n, model.gradTm_B.vector(), B_n, &#39;cg&#39;, &#39;amg&#39;, annotate=False)</span>
-    <span class="n">n</span>       <span class="o">=</span> <span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">)</span> <span class="o">-</span> <span class="n">as_vector</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span> <span class="o">/</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">B</span><span class="p">)))</span>
-    <span class="n">gradTm_B</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">Tm</span><span class="p">),</span> <span class="n">n</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
-                      <span class="n">solver_type</span><span class="o">=</span><span class="s1">&#39;iterative&#39;</span><span class="p">,</span>
-                      <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">gradTm_B</span><span class="p">,</span> <span class="n">gradTm_B</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="n">A_n</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">gradTm_B</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">B_n</span><span class="p">,</span> <span class="s1">&#39;cg&#39;</span><span class="p">,</span> <span class="s1">&#39;amg&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    
+    <span class="c1"># or solve over the whole domain : </span>
+    <span class="c1">#n       = (grad(B) - as_vector([0, 0, 1])) / sqrt(1 + dot(grad(B), grad(B)))</span>
+    <span class="c1">#gradTm_B = project(k * dot(grad(Tm), n), model.Q,</span>
+    <span class="c1">#                  solver_type=&#39;iterative&#39;,</span>
+    <span class="c1">#                  annotate=annotate)</span>
+    <span class="c1">#model.assign_variable(model.gradTm_B, gradTm_B)</span>
     <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">gradTm_B</span><span class="p">,</span> <span class="s1">&#39;gradTm_B&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Enthalpy.solve_basal_melt_rate"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.solve_basal_melt_rate">[docs]</a>  <span class="k">def</span> <span class="nf">solve_basal_melt_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Enthalpy.solve_basal_melt_rate"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.solve_basal_melt_rate">[docs]</a>  <span class="k">def</span> <span class="nf">solve_basal_melt_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Solve for the basal melt rate stored in model.Mb.</span>
 <span class="sd">    &quot;&quot;&quot;</span> 
@@ -1215,29 +1219,29 @@
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: solving basal-melt-rate :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
     
-    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">dBed_g</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">T_melt</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_melt</span>
-    <span class="n">T</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
-    <span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">L</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">rhoi</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">rhow</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhow</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">k</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
-    <span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">model</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">dGamma_bg</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bg</span><span class="p">()</span>
+    <span class="n">T_melt</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_melt</span>
+    <span class="n">T</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">N</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+    <span class="n">L</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">rhoi</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">rhow</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rhow</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">k</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+    <span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># Mb is only valid on basal surface, needs extra matrix care :</span>
     <span class="n">phi</span>  <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
     <span class="n">du</span>   <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-    <span class="n">a_n</span>  <span class="o">=</span> <span class="n">du</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dBed_g</span>
-    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">dot</span><span class="p">((</span><span class="n">grad</span><span class="p">(</span><span class="n">T</span><span class="p">)),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dBed_g</span>
+    <span class="n">a_n</span>  <span class="o">=</span> <span class="n">du</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
+    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">dot</span><span class="p">((</span><span class="n">grad</span><span class="p">(</span><span class="n">T</span><span class="p">)),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma_bg</span>
    
-    <span class="n">A_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">a_n</span><span class="p">,</span> <span class="n">keep_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">B_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">L_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">A_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">a_n</span><span class="p">,</span> <span class="n">keep_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annoatate</span><span class="p">)</span>
+    <span class="n">B_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">L_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
     <span class="n">A_n</span><span class="o">.</span><span class="n">ident_zeros</span><span class="p">()</span>
    
     <span class="n">grad_n</span>  <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-    <span class="n">solve</span><span class="p">(</span><span class="n">A_n</span><span class="p">,</span> <span class="n">grad_n</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">B_n</span><span class="p">,</span> <span class="s1">&#39;cg&#39;</span><span class="p">,</span> <span class="s1">&#39;amg&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="n">A_n</span><span class="p">,</span> <span class="n">grad_n</span><span class="o">.</span><span class="n">vector</span><span class="p">(),</span> <span class="n">B_n</span><span class="p">,</span> <span class="s1">&#39;cg&#39;</span><span class="p">,</span> <span class="s1">&#39;amg&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
     
     <span class="n">W_v</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
     <span class="n">q_fric_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">q_fric</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
@@ -1253,9 +1257,9 @@
     <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">N_OMEGA_FLT</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
       <span class="n">Mb_v</span><span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">shf_dofs</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>    <span class="c1"># does apply over floating regions</span>
 
-    <span class="n">model</span><span class="o">.</span><span class="n">init_Mb</span><span class="p">(</span><span class="n">Mb_v</span><span class="p">)</span>
-    <span class="n">Mb_ext</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Mb</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">init_Mb</span><span class="p">(</span><span class="n">Mb_ext</span><span class="p">)</span></div>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Mb</span><span class="p">,</span> <span class="n">Mb_v</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">Mb_ext</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vert_extrude</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Mb</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Mb</span><span class="p">,</span> <span class="n">Mb_ext</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Enthalpy.solve"><a class="viewcode-back" href="../energy.html#energy.Enthalpy.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; </span>
@@ -1357,7 +1361,7 @@
     <span class="n">counter</span> <span class="o">=</span> <span class="mi">1</span>
 
     <span class="c1"># maximum number of iterations :</span>
-    <span class="n">max_iter</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">max_iter</span> <span class="o">=</span> <span class="mi">20</span>
 
     <span class="c1"># L_2 erro norm between iterations :</span>
     <span class="n">abs_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
@@ -1429,52 +1433,48 @@
     <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: calculating energy over lateral boundaries :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="n">model</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    
-    <span class="n">theta</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span>
-    <span class="n">c</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span>
-    <span class="n">k</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
-    <span class="n">rho</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>
-    <span class="n">kappa</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>
-    <span class="n">Xi</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Xi</span>
-    <span class="n">Q_s</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q_s</span>
+    <span class="n">model</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">theta</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span>
+    <span class="n">c</span>         <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span>
+    <span class="n">k</span>         <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+    <span class="n">rho</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>
+    <span class="n">kappa</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>
+    <span class="n">Xi</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Xi</span>
+    <span class="n">Q_s</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q_s</span>
 
-    <span class="n">theta_s</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_surface</span>
-    <span class="n">theta_f</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_float</span>
-    <span class="n">theta_m</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_melt</span>
-    <span class="n">L</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">L</span>
-    <span class="n">R</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">R</span>
-    <span class="n">n</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">n</span>
-    <span class="n">E</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">E</span>
-    <span class="n">T_m</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_melt</span>
-    <span class="n">T</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
-    <span class="n">W</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">W</span>
-    <span class="n">gamma</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">gamma</span>
-    <span class="n">p</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span>
-    <span class="n">dx</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx</span>
-    <span class="n">dBed_g</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">dLat_d</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_d</span>
-    <span class="n">dLat_t</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_t</span>
-    <span class="n">dx</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx</span>
-    <span class="n">dx_f</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_f</span>
-    <span class="n">dx_g</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_g</span>
-    <span class="n">u</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u</span>
-    <span class="n">v</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v</span>
-    <span class="n">w</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">w</span>
-    <span class="n">q_geo</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">q_geo</span>
-    <span class="n">q_fric</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">q_fric</span>
-    <span class="n">beta</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span>
-    <span class="n">alpha</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">alpha</span>
-    <span class="n">h</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
-    <span class="n">N</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">U</span>       <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span><span class="p">])</span>
+    <span class="n">theta_s</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_surface</span>
+    <span class="n">theta_f</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_float</span>
+    <span class="n">theta_m</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">theta_melt</span>
+    <span class="n">L</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">L</span>
+    <span class="n">R</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">R</span>
+    <span class="n">n</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">n</span>
+    <span class="n">E</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">E</span>
+    <span class="n">T_m</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T_melt</span>
+    <span class="n">T</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">W</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">W</span>
+    <span class="n">gamma</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">gamma</span>
+    <span class="n">p</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span>
+    <span class="n">u</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">u</span>
+    <span class="n">v</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">v</span>
+    <span class="n">w</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">w</span>
+    <span class="n">q_geo</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">q_geo</span>
+    <span class="n">q_fric</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">q_fric</span>
+    <span class="n">beta</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span>
+    <span class="n">alpha</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">alpha</span>
+    <span class="n">h</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">N</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+    <span class="n">dOmega</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
+    <span class="n">dGamma_bg</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bg</span><span class="p">()</span>
+    <span class="n">dGamma_ld</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_ld</span><span class="p">()</span>
+    
+    <span class="n">U</span>         <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span><span class="p">])</span>
 
     <span class="c1"># solve for tangential component of velocity over the &#39;divides&#39; :</span>
     <span class="n">phi</span>  <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">V</span><span class="p">)</span>
     <span class="n">du</span>   <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">V</span><span class="p">)</span>
     <span class="n">U_t</span>  <span class="o">=</span> <span class="n">U</span> <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span><span class="o">*</span><span class="n">N</span>
-    <span class="n">a_n</span>  <span class="o">=</span> <span class="n">inner</span><span class="p">(</span><span class="n">du</span><span class="p">,</span>  <span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dLat_d</span>
-    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">inner</span><span class="p">(</span><span class="n">U_t</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dLat_d</span>
+    <span class="n">a_n</span>  <span class="o">=</span> <span class="n">inner</span><span class="p">(</span><span class="n">du</span><span class="p">,</span>  <span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_ld</span>
+    <span class="n">L_n</span>  <span class="o">=</span> <span class="n">inner</span><span class="p">(</span><span class="n">U_t</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_ld</span>
     <span class="n">A_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">a_n</span><span class="p">,</span> <span class="n">keep_diagonal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
     <span class="n">B_n</span>  <span class="o">=</span> <span class="n">assemble</span><span class="p">(</span><span class="n">L_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
     <span class="n">A_n</span><span class="o">.</span><span class="n">ident_zeros</span><span class="p">()</span>
@@ -1519,12 +1519,12 @@
     <span class="n">psihat</span> <span class="o">=</span> <span class="n">psi</span> <span class="o">+</span> <span class="n">h</span><span class="o">*</span><span class="n">tau</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">Unorm</span><span class="p">)</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U_t</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">))</span>
     
     <span class="c1"># galerkin formulation :</span>
-    <span class="n">theta_a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U_t</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psihat</span> <span class="o">*</span> <span class="n">dx</span> \
-              <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">kappa</span><span class="o">/</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span> \
-              <span class="o">+</span> <span class="n">kappa</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">dx</span> \
+    <span class="n">theta_a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U_t</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psihat</span> <span class="o">*</span> <span class="n">dOmega</span> \
+              <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">kappa</span><span class="o">/</span><span class="n">c</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+              <span class="o">+</span> <span class="n">kappa</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">psi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">dtheta</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
     
-    <span class="n">theta_L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">g_b</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dBed_g</span> \
-              <span class="o">+</span> <span class="n">Q_s</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dx</span>
+    <span class="n">theta_L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">g_b</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dGamma_bg</span> \
+              <span class="o">+</span> <span class="n">Q_s</span> <span class="o">*</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">dOmega</span>
 
     <span class="c1"># surface boundary condition : </span>
     <span class="n">theta_bc</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1819,7 +1819,7 @@
 
     <span class="n">model</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
     
-    <span class="n">T_melt</span>  <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Tm</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">T_melt</span>  <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Tm</span><span class="p">,</span> <span class="n">solver_type</span><span class="o">=</span><span class="s1">&#39;iterative&#39;</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
     
     <span class="n">Tb_m</span>    <span class="o">=</span> <span class="n">T_melt</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># deepcopy avoids projections</span>
     <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">T_melt</span><span class="p">,</span> <span class="n">Tb_m</span><span class="p">)</span>

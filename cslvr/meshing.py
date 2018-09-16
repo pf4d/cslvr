@@ -51,10 +51,9 @@ class MeshGenerator(object):
 
     # create contour :
     field  = self.dd.data[var]
-    fig = plt.figure()
-    self.ax = fig.add_subplot(111)
-    self.ax.set_aspect('equal')
-    self.c = self.ax.contour(self.x, self.y, field, [zero_cntr])
+    fig    = plt.figure()
+    ax     = fig.add_subplot(111)
+    self.c = ax.contour(self.x, self.y, field, [zero_cntr])
 
     # Get longest contour:
     cl       = self.c.allsegs[0]
@@ -132,9 +131,6 @@ class MeshGenerator(object):
     """
     s = "::: manually setting contour with %s nodes:::"
     print_text(s % np.shape(cont_array)[0], self.color)
-    fig = plt.figure()
-    self.ax = fig.add_subplot(111)
-    self.ax.set_aspect('equal')
     self.longest_cont = cont_array
 
   def plot_contour(self):
@@ -143,8 +139,10 @@ class MeshGenerator(object):
     """
     s = "::: plotting contour :::"
     print_text(s, self.color)
-    ax = self.ax
-    lc = self.longest_cont
+    fig  = plt.figure()
+    ax   = fig.add_subplot(111)
+    ax.set_aspect('equal')
+    lc   = self.longest_cont
     ax.plot(lc[:,0], lc[:,1], 'r-', lw = 3.0)
     ax.set_title("contour")
     plt.show()

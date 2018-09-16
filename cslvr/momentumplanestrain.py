@@ -58,15 +58,11 @@ class MomentumDukowiczPlaneStrain(Momentum):
     eps_reg    = model.eps_reg
     Fb         = model.Fb
 
-    dx_f       = model.dx_f
-    dx_g       = model.dx_g
-    dx         = model.dx
-    dBed_g     = model.dBed_g
-    dBed_f     = model.dBed_f
-    dLat_t     = model.dLat_t
-    dLat_d     = model.dLat_d
-    dLat       = model.dLat
-    dBed       = model.dBed
+    dOmega     = model.dOmega()
+    dGamma_b   = model.dGamma_b()
+    dGamma_bw  = model.dGamma_bw()
+    dGamma_ltu = model.dGamma_ltu()
+    dGamma_ld  = model.dGamma_ld()
      
     #===========================================================================
     # define variational problem :
@@ -92,14 +88,14 @@ class MomentumDukowiczPlaneStrain(Momentum):
     print_text(s, cls=self)
 
     # potential energy :
-    Pe     = - rhoi * g * w
+    Pe   = - rhoi * g * w
 
     # dissipation by sliding :
-    Ut     = U2 - dot(U2,N)*N
-    Sl_gnd = - 0.5 * beta * dot(Ut, Ut)
+    Ut   = U2 - dot(U2,N)*N
+    Sl   = - 0.5 * beta * dot(Ut, Ut)
 
     # incompressibility constraint :
-    Pc     = p * div(U2) 
+    Pc   = p * div(U2) 
     
     # inpenetrability constraint :
     sig  = self.stress_tensor(U2, p, eta)
@@ -111,20 +107,20 @@ class MomentumDukowiczPlaneStrain(Momentum):
     Pb_l   = - rhoi*g*(S - z) * dot(U2,N)
 
     # action : 
-    A      = + (Vd - Pe - Pc)*dx - Nc*dBed - Sl_gnd*dBed_g - Pb_w*dBed_f
+    A      = (Vd - Pe - Pc)*dOmega - Nc*dGamma_b - Sl*dGamma_b - Pb_w*dGamma_bw
     
     if (not model.use_periodic and use_pressure_bc):
       s = "    - using water pressure lateral boundary condition -"
       print_text(s, cls=self)
-      A -= Pb_w*dLat_t
+      A -= Pb_w*dGamma_ltu
     
     if (not model.use_periodic and not use_lat_bcs):
       s = "    - using internal divide lateral pressure boundary condition -"
       print_text(s, cls=self)
-      A -= Pb_l*dLat_d
+      A -= Pb_l*dGamma_ld
     
     # add lateral boundary conditions :  
-    if use_lat_bcs:
+    elif use_lat_bcs:
       s = "    - using internal divide lateral stress natural boundary" + \
           " conditions -"
       print_text(s, cls=self)
@@ -132,7 +128,7 @@ class MomentumDukowiczPlaneStrain(Momentum):
       U3_2   = as_vector([U3_c[0], U3_c[1]])
       eta_l  = self.viscosity(U3_2)
       sig_l  = self.stress_tensor(U3_2, model.p, eta_l)
-      A     -= dot(dot(sig_l, N), U2) * dLat_d
+      A     -= dot(dot(sig_l, N), U2) * dGamma_ld
 
     # the first variation of the action in the direction of a
     # test function ; the extremum :
@@ -239,17 +235,15 @@ class MomentumDukowiczPlaneStrain(Momentum):
     s = "::: solving basal friction heat :::"
     print_text(s, cls=self)
     
-    model    = self.model
-    dBed_g   = model.dBed_g
-    N        = model.N
-    u,v,w    = model.U3.split(True)
+    model     = self.model
+    u,v,w     = model.U3.split(True)
+              
+    beta_v    = model.beta.vector().array()
+    u_v       = u.vector().array()
+    w_v       = w.vector().array()
+    Fb_v      = model.Fb.vector().array()
 
-    beta_v   = model.beta.vector().array()
-    u_v      = u.vector().array()
-    w_v      = w.vector().array()
-    Fb_v     = model.Fb.vector().array()
-
-    q_fric_v = beta_v * (u_v**2 + (w_v+Fb_v)**2)
+    q_fric_v  = beta_v * (u_v**2 + (w_v+Fb_v)**2)
     
     model.init_q_fric(q_fric_v)
 

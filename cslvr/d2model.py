@@ -284,41 +284,50 @@ class D2Model(Model):
     * ``self.N_OMEGA_U_GND`` -- number of cells marked ``self.OMEGA_U_GND``
     * ``self.N_OMEGA_U_FLT`` -- number of cells marked ``self.OMEGA_U_FLT``
     * ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``
-
-    The subdomain corresponding to FacetFunction ``self.ff`` is :
-
-    * ``self.dLat_d``  --  lateral divide
+    * ``self.N_GAMMA_L_GND`` -- number of facets marked ``self.GAMMA_L_GND``
+    * ``self.N_GAMMA_L_FLT`` -- number of facets marked ``self.GAMMA_L_FLT``
 
     The subdomains corresponding to CellFunction ``self.cf`` are :
 
-    * ``self.dx_g``    --  internal above grounded
-    * ``self.dx_f``    --  internal above floating
-    * ``self.dx_u_G``  --  grounded with U observations
-    * ``self.dx_u_f``  --  floating with U observations
+    * ``self.dOmega``     --  entire interior
+    * ``self.dOmega_g``   --  internal above grounded
+    * ``self.dOmega_w``   --  internal above floating
+    * ``self.dOmega_gu``  --  grounded with U observations
+    * ``self.dOmega_wu``  --  floating with U observations
+    * ``self.dOmega_u``   --  entire interior with U observations
+    
+    The subdomain corresponding to FacetFunction ``self.ff`` are:
+    
+    * ``self.dGamma``    --  entire exterior
+    * ``self.dGamma_dl`` --  lateral interior surface
+    * ``self.dGamma_wl`` --  lateral exterior surface in contact with water
+    * ``self.dGamma_gl`` --  lateral exterior surface not in contact with water
     """
     # calculate the number of cells and facets that are of a certain type
     # for determining Dirichlet boundaries :
-    self.N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
-    self.N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
-    self.N_OMEGA_U_GND = sum(self.cf.array() == self.OMEGA_U_GND)
-    self.N_OMEGA_U_FLT = sum(self.cf.array() == self.OMEGA_U_FLT)
-    self.N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
-    self.N_GAMMA_L_GND = sum(self.ff.array() == self.GAMMA_L_GND)
-    self.N_GAMMA_L_FLT = sum(self.ff.array() == self.GAMMA_L_FLT)
+    local_N_OMEGA_GND   = sum(self.cf.array() == self.OMEGA_GND)
+    local_N_OMEGA_FLT   = sum(self.cf.array() == self.OMEGA_FLT)
+    local_N_OMEGA_U_GND = sum(self.cf.array() == self.OMEGA_U_GND)
+    local_N_OMEGA_U_FLT = sum(self.cf.array() == self.OMEGA_U_FLT)
+    local_N_GAMMA_L_DVD = sum(self.ff.array() == self.GAMMA_L_DVD)
+    local_N_GAMMA_L_GND = sum(self.ff.array() == self.GAMMA_L_GND)
+    local_N_GAMMA_L_FLT = sum(self.ff.array() == self.GAMMA_L_FLT)
+   
+    # find out if any are marked over all processes :
+    self.N_OMEGA_GND   = MPI.sum(mpi_comm_world(), local_N_OMEGA_GND)
+    self.N_OMEGA_FLT   = MPI.sum(mpi_comm_world(), local_N_OMEGA_FLT)
+    self.N_GAMMA_U_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_U_GND)
+    self.N_GAMMA_U_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_U_FLT)
+    self.N_GAMMA_L_DVD = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_DVD)
+    self.N_GAMMA_L_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_GND)
+    self.N_GAMMA_L_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_FLT)
 
     # create new measures of integration :
     self.ds      = Measure('ds', subdomain_data=self.ff)
     self.dx      = Measure('dx', subdomain_data=self.cf)
     
-    self.dx_g    = self.dx(self.OMEGA_GND)   # above grounded
-    self.dx_f    = self.dx(self.OMEGA_FLT)   # above floating
-    self.dx_u_g  = self.dx(self.OMEGA_U_GND) # above grounded with U
-    self.dx_u_f  = self.dx(self.OMEGA_U_FLT) # above floating with U
-    self.dLat_d  = self.ds(self.GAMMA_L_DVD) # lateral divide
-    
-    self.dOmega     = Boundary(self.dx,
-                      [self.OMEGA_GND,   self.OMEGA_FLT,
-                       self.OMEGA_U_GND, self.OMEGA_U_FLT],
+    self.dOmega     = Boundary(self.dx, [self.OMEGA_GND,   self.OMEGA_FLT,
+                                         self.OMEGA_U_GND, self.OMEGA_U_FLT],
                       'entire interior')
     self.dOmega_g   = Boundary(self.dx, [self.OMEGA_GND, self.OMEGA_U_GND],
                       'interior above grounded ice')

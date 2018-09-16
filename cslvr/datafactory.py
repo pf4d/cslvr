@@ -1,6 +1,5 @@
 from tifffile           import TiffFile
-from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt, \
-                               gradient
+from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt
 from scipy.io           import loadmat, netcdf_file
 from netCDF4            import Dataset
 from scipy.interpolate  import griddata

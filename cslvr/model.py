@@ -70,8 +70,10 @@ class Model(object):
     """ 
     Returns a set of linear solver parameters.
     """
-    lparams  = {"linear_solver"            : "superlu_dist"}
-    #lparams  = {"linear_solver"            : "mumps"}
+    #lparams  = {"linear_solver"            : "default"}
+    #lparams  = {"linear_solver"            : "superlu_dist"}
+    lparams  = {"linear_solver"            : "mumps"}
+    #lparams  = {"linear_solver"            : "umfpack"}
     #lparams  = {"linear_solver"            : "cg",
     #            "preconditioner"           : "default"}
     return lparams

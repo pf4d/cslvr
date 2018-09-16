@@ -229,15 +229,11 @@
     <span class="n">eps_reg</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">eps_reg</span>
     <span class="n">Fb</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
 
-    <span class="n">dx_f</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_f</span>
-    <span class="n">dx_g</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx_g</span>
-    <span class="n">dx</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dx</span>
-    <span class="n">dBed_g</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">dBed_f</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_f</span>
-    <span class="n">dLat_t</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_t</span>
-    <span class="n">dLat_d</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat_d</span>
-    <span class="n">dLat</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dLat</span>
-    <span class="n">dBed</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed</span>
+    <span class="n">dOmega</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
+    <span class="n">dGamma_b</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_b</span><span class="p">()</span>
+    <span class="n">dGamma_bw</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_bw</span><span class="p">()</span>
+    <span class="n">dGamma_ltu</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_ltu</span><span class="p">()</span>
+    <span class="n">dGamma_ld</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma_ld</span><span class="p">()</span>
      
     <span class="c1">#===========================================================================</span>
     <span class="c1"># define variational problem :</span>
@@ -263,14 +259,14 @@
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="c1"># potential energy :</span>
-    <span class="n">Pe</span>     <span class="o">=</span> <span class="o">-</span> <span class="n">rhoi</span> <span class="o">*</span> <span class="n">g</span> <span class="o">*</span> <span class="n">w</span>
+    <span class="n">Pe</span>   <span class="o">=</span> <span class="o">-</span> <span class="n">rhoi</span> <span class="o">*</span> <span class="n">g</span> <span class="o">*</span> <span class="n">w</span>
 
     <span class="c1"># dissipation by sliding :</span>
-    <span class="n">Ut</span>     <span class="o">=</span> <span class="n">U2</span> <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="o">*</span><span class="n">N</span>
-    <span class="n">Sl_gnd</span> <span class="o">=</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Ut</span><span class="p">,</span> <span class="n">Ut</span><span class="p">)</span>
+    <span class="n">Ut</span>   <span class="o">=</span> <span class="n">U2</span> <span class="o">-</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="o">*</span><span class="n">N</span>
+    <span class="n">Sl</span>   <span class="o">=</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Ut</span><span class="p">,</span> <span class="n">Ut</span><span class="p">)</span>
 
     <span class="c1"># incompressibility constraint :</span>
-    <span class="n">Pc</span>     <span class="o">=</span> <span class="n">p</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">U2</span><span class="p">)</span> 
+    <span class="n">Pc</span>   <span class="o">=</span> <span class="n">p</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">U2</span><span class="p">)</span> 
     
     <span class="c1"># inpenetrability constraint :</span>
     <span class="n">sig</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stress_tensor</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
@@ -282,20 +278,20 @@
     <span class="n">Pb_l</span>   <span class="o">=</span> <span class="o">-</span> <span class="n">rhoi</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="p">(</span><span class="n">S</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">U2</span><span class="p">,</span><span class="n">N</span><span class="p">)</span>
 
     <span class="c1"># action : </span>
-    <span class="n">A</span>      <span class="o">=</span> <span class="o">+</span> <span class="p">(</span><span class="n">Vd</span> <span class="o">-</span> <span class="n">Pe</span> <span class="o">-</span> <span class="n">Pc</span><span class="p">)</span><span class="o">*</span><span class="n">dx</span> <span class="o">-</span> <span class="n">Nc</span><span class="o">*</span><span class="n">dBed</span> <span class="o">-</span> <span class="n">Sl_gnd</span><span class="o">*</span><span class="n">dBed_g</span> <span class="o">-</span> <span class="n">Pb_w</span><span class="o">*</span><span class="n">dBed_f</span>
+    <span class="n">A</span>      <span class="o">=</span> <span class="p">(</span><span class="n">Vd</span> <span class="o">-</span> <span class="n">Pe</span> <span class="o">-</span> <span class="n">Pc</span><span class="p">)</span><span class="o">*</span><span class="n">dOmega</span> <span class="o">-</span> <span class="n">Nc</span><span class="o">*</span><span class="n">dGamma_b</span> <span class="o">-</span> <span class="n">Sl</span><span class="o">*</span><span class="n">dGamma_b</span> <span class="o">-</span> <span class="n">Pb_w</span><span class="o">*</span><span class="n">dGamma_bw</span>
     
     <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span> <span class="ow">and</span> <span class="n">use_pressure_bc</span><span class="p">):</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using water pressure lateral boundary condition -&quot;</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-      <span class="n">A</span> <span class="o">-=</span> <span class="n">Pb_w</span><span class="o">*</span><span class="n">dLat_t</span>
+      <span class="n">A</span> <span class="o">-=</span> <span class="n">Pb_w</span><span class="o">*</span><span class="n">dGamma_ltu</span>
     
     <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">use_lat_bcs</span><span class="p">):</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using internal divide lateral pressure boundary condition -&quot;</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-      <span class="n">A</span> <span class="o">-=</span> <span class="n">Pb_l</span><span class="o">*</span><span class="n">dLat_d</span>
+      <span class="n">A</span> <span class="o">-=</span> <span class="n">Pb_l</span><span class="o">*</span><span class="n">dGamma_ld</span>
     
     <span class="c1"># add lateral boundary conditions :  </span>
-    <span class="k">if</span> <span class="n">use_lat_bcs</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">use_lat_bcs</span><span class="p">:</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using internal divide lateral stress natural boundary&quot;</span> <span class="o">+</span> \
           <span class="s2">&quot; conditions -&quot;</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
@@ -303,7 +299,7 @@
       <span class="n">U3_2</span>   <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">U3_c</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">U3_c</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
       <span class="n">eta_l</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">viscosity</span><span class="p">(</span><span class="n">U3_2</span><span class="p">)</span>
       <span class="n">sig_l</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stress_tensor</span><span class="p">(</span><span class="n">U3_2</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">eta_l</span><span class="p">)</span>
-      <span class="n">A</span>     <span class="o">-=</span> <span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">sig_l</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span> <span class="n">U2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dLat_d</span>
+      <span class="n">A</span>     <span class="o">-=</span> <span class="n">dot</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">sig_l</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span> <span class="n">U2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dGamma_ld</span>
 
     <span class="c1"># the first variation of the action in the direction of a</span>
     <span class="c1"># test function ; the extremum :</span>
@@ -410,17 +406,15 @@
     <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: solving basal friction heat :::&quot;</span>
     <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
     
-    <span class="n">model</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">dBed_g</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dBed_g</span>
-    <span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">model</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+    <span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">w</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+              
+    <span class="n">beta_v</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">u_v</span>       <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">w_v</span>       <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+    <span class="n">Fb_v</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
 
-    <span class="n">beta_v</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">beta</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
-    <span class="n">u_v</span>      <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
-    <span class="n">w_v</span>      <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
-    <span class="n">Fb_v</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
-
-    <span class="n">q_fric_v</span> <span class="o">=</span> <span class="n">beta_v</span> <span class="o">*</span> <span class="p">(</span><span class="n">u_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">w_v</span><span class="o">+</span><span class="n">Fb_v</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">q_fric_v</span>  <span class="o">=</span> <span class="n">beta_v</span> <span class="o">*</span> <span class="p">(</span><span class="n">u_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">w_v</span><span class="o">+</span><span class="n">Fb_v</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
     
     <span class="n">model</span><span class="o">.</span><span class="n">init_q_fric</span><span class="p">(</span><span class="n">q_fric_v</span><span class="p">)</span></div>
 

@@ -186,7 +186,7 @@
 <dt id="helper.download_file">
 <code class="descclassname">helper.</code><code class="descname">download_file</code><span class="sig-paren">(</span><em>url</em>, <em>direc</em>, <em>folder</em>, <em>extract=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/helper.html#download_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#helper.download_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Download a file with url string <code class="docutils literal notranslate"><span class="pre">url</span></code> into directory <code class="docutils literal notranslate"><span class="pre">direc/folder</span></code>.
-If <code class="docutils literal notranslate"><span class="pre">extract</span> <span class="pre">==</span> <span class="pre">True</span></code>, extract the .zip or tar.gz file into the directory 
+If <code class="docutils literal notranslate"><span class="pre">extract</span> <span class="pre">==</span> <span class="pre">True</span></code>, extract the .zip or tar.gz file into the directory
 and delete the .zip or tar.gz file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -211,10 +211,10 @@ and delete the .zip or tar.gz file.</p>
 <dt id="datafactory.DataFactory">
 <em class="property">class </em><code class="descclassname">datafactory.</code><code class="descname">DataFactory</code><a class="reference internal" href="_modules/datafactory.html#DataFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory" title="Permalink to this definition">¶</a></dt>
 <dd><p>This class contains several static methods that fetch and return raw data
-downloaded prevously by <a class="reference internal" href="#helper.download_file" title="helper.download_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">download_file()</span></code></a>.  These data are 
-located in the <code class="docutils literal notranslate"><span class="pre">data/continent</span></code> subdirectory of the CSLVR root directory, 
+downloaded prevously by <a class="reference internal" href="#helper.download_file" title="helper.download_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">download_file()</span></code></a>.  These data are
+located in the <code class="docutils literal notranslate"><span class="pre">data/continent</span></code> subdirectory of the CSLVR root directory,
 where <code class="docutils literal notranslate"><span class="pre">continent</span></code> is currently either <code class="docutils literal notranslate"><span class="pre">antarctica</span></code> or <code class="docutils literal notranslate"><span class="pre">greenland</span></code>.</p>
-<p>Each one of the static methods defined here return a <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a> of 
+<p>Each one of the static methods defined here return a <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a> of
 parameters needed by the <a class="reference internal" href="#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> class for conversion
 to the FEniCS code used by CSLVR.</p>
 <ul class="simple">
@@ -232,9 +232,9 @@ to the FEniCS code used by CSLVR.</p>
 <dt id="datafactory.DataFactory.get_ant_measures">
 <em class="property">static </em><code class="descname">get_ant_measures</code><span class="sig-paren">(</span><em>res=450</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_ant_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_ant_measures" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference external" href="https://nsidc.org/data/docs/measures/nsidc0484_rignot/">Antarctica Measures</a> surface velocity data.  This function creates a new data field with
-key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present and 
+key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present and
 0 where they are not.</p>
-<p>You will have to download the data and manually place it in the 
+<p>You will have to download the data and manually place it in the
 <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/antarctica</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -259,7 +259,7 @@ key <code class="docutils literal notranslate"><span class="pre">mask</span></co
 <dt id="datafactory.DataFactory.get_bamber">
 <em class="property">static </em><code class="descname">get_bamber</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bamber"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bamber" title="Permalink to this definition">¶</a></dt>
 <dd><p>Greenland <a class="reference external" href="https://nsidc.org/data/NSIDC-0092">Bamber</a> topography data.</p>
-<p>You will have to download the data from the authors and manually place 
+<p>You will have to download the data from the authors and manually place
 it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -289,7 +289,7 @@ it in the <code class="docutils literal notranslate"><span class="pre">cslvr_roo
 <dd><p>Greenland <a class="reference external" href="http://onlinelibrary.wiley.com/doi/10.1002/2017GL074954/full">Bedmachine</a> geometry.</p>
 <p>You will have to download the data and manually
 (from <a class="reference external" href="https://nsidc.org/data/idbmg4">here</a>)
-and place it in the 
+and place it in the
 <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -316,12 +316,12 @@ and place it in the
 <dt id="datafactory.DataFactory.get_bedmap1">
 <em class="property">static </em><code class="descname">get_bedmap1</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bedmap1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bedmap1" title="Permalink to this definition">¶</a></dt>
 <dd><p>Antarctica <a class="reference external" href="https://doi.pangaea.de/10.1594/PANGAEA.734145">Bedmap 1</a>
-data.  This function converts the geothermal-heat flux data from 
-J s<sup>-1</sup> m<sup>-2</sup> to that used by CSLVR, 
-J a<sup>-1</sup> m<sup>-2</sup>, and the surface temperature data from 
-degrees Celsius to degrees Kelvin.  The parameter <code class="docutils literal notranslate"><span class="pre">thklim</span></code> sets the 
+data.  This function converts the geothermal-heat flux data from
+J s<sup>-1</sup> m<sup>-2</sup> to that used by CSLVR,
+J a<sup>-1</sup> m<sup>-2</sup>, and the surface temperature data from
+degrees Celsius to degrees Kelvin.  The parameter <code class="docutils literal notranslate"><span class="pre">thklim</span></code> sets the
 minimum allowed ice thickness.</p>
-<p>This data is downloaded by executing the script 
+<p>This data is downloaded by executing the script
 <code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_antarctica_data.py</span></code></p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -350,7 +350,7 @@ minimum allowed ice thickness.</p>
 <em class="property">static </em><code class="descname">get_bedmap2</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_bedmap2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_bedmap2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Antarctica <a class="reference external" href="https://www.bas.ac.uk/project/bedmap-2/">Bedmap 2</a>
 topography data.</p>
-<p>This data is downloaded by executing the script 
+<p>This data is downloaded by executing the script
 <code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_antarctica_data.py</span></code></p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -380,7 +380,7 @@ topography data.</p>
 <em class="property">static </em><code class="descname">get_gimp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_gimp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_gimp" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference external" href="http://nsidc.org/data/NSIDC-0645/versions/1">Greenland Ice Mapping Project</a>
 surface topography data.</p>
-<p>You will have to download the data and manually place it in the 
+<p>You will have to download the data and manually place it in the
 <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -399,11 +399,11 @@ surface topography data.</p>
 <dl class="staticmethod">
 <dt id="datafactory.DataFactory.get_gre_measures">
 <em class="property">static </em><code class="descname">get_gre_measures</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_gre_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_gre_measures" title="Permalink to this definition">¶</a></dt>
-<dd><p><a class="reference external" href="https://nsidc.org/data/NSIDC-0478/versions/2#">Greenland Measures</a> 
-surface velocity data.  This function creates a new data field with 
-key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present 
+<dd><p><a class="reference external" href="https://nsidc.org/data/NSIDC-0478/versions/2#">Greenland Measures</a>
+surface velocity data.  This function creates a new data field with
+key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present
 and 0 where they are not.</p>
-<p>You will have to download the data from the authors and manually place 
+<p>You will have to download the data from the authors and manually place
 it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -426,10 +426,10 @@ it in the <code class="docutils literal notranslate"><span class="pre">cslvr_roo
 <dl class="staticmethod">
 <dt id="datafactory.DataFactory.get_gre_qgeo_fox_maule">
 <em class="property">static </em><code class="descname">get_gre_qgeo_fox_maule</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_gre_qgeo_fox_maule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_gre_qgeo_fox_maule" title="Permalink to this definition">¶</a></dt>
-<dd><p>Greenland <a class="reference external" href="http://websrv.cs.umt.edu/isis/index.php/Greenland_Basal_Heat_Flux">Fox Maule</a> geothermal-heat-flux data.  This function converts the 
-geothermal-heat flux data from J s<sup>-1</sup> m<sup>-2</sup> to that used 
+<dd><p>Greenland <a class="reference external" href="http://websrv.cs.umt.edu/isis/index.php/Greenland_Basal_Heat_Flux">Fox Maule</a> geothermal-heat-flux data.  This function converts the
+geothermal-heat flux data from J s<sup>-1</sup> m<sup>-2</sup> to that used
 by CSLVR, J a<sup>-1</sup> m<sup>-2</sup>.</p>
-<p>This data is downloaded by executing the script 
+<p>This data is downloaded by executing the script
 <code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_greenland_data.py</span></code></p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -450,7 +450,7 @@ by CSLVR, J a<sup>-1</sup> m<sup>-2</sup>.</p>
 <em class="property">static </em><code class="descname">get_mouginot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_mouginot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_mouginot" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference external" href="http://www.mdpi.com/2072-4292/9/4/364">Greenland</a> velocity mosiac.
 This function creates a new data field with
-key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present and 
+key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where velocity measurements are present and
 0 where they are not.</p>
 <p>You will have to contact the authors of that paper to get the data.
 When you download it from them, you can just put the .nc file named
@@ -476,7 +476,7 @@ directory.</p>
 <dt id="datafactory.DataFactory.get_noel">
 <em class="property">static </em><code class="descname">get_noel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_noel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_noel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Greenland <a class="reference external" href="https://www.the-cryosphere.net/10/2361/2016/">surface-mass balance</a> at 1km resolution averaged over the years (1958 – 2015).</p>
-<p>You will have to download the data from the authors and manually place 
+<p>You will have to download the data from the authors and manually place
 it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -499,10 +499,10 @@ it in the <code class="docutils literal notranslate"><span class="pre">cslvr_roo
 <dl class="staticmethod">
 <dt id="datafactory.DataFactory.get_rignot">
 <em class="property">static </em><code class="descname">get_rignot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_rignot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_rignot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Greenland <a class="reference external" href="http://www.ess.uci.edu/group/erignot/data/ice-flow-greenland-international-polar-year-2008%E2%80%932009">Rignot</a> surface velocity data. 
+<dd><p>Greenland <a class="reference external" href="http://www.ess.uci.edu/group/erignot/data/ice-flow-greenland-international-polar-year-2008%E2%80%932009">Rignot</a> surface velocity data.
 This function creates a new data field with key <code class="docutils literal notranslate"><span class="pre">mask</span></code> that is 1 where
 velocity measurements are present and 0 where they are not.</p>
-<p>You will have to download the data from the authors and manually place 
+<p>You will have to download the data from the authors and manually place
 it in the <code class="docutils literal notranslate"><span class="pre">cslvr_root_dir/data/greenland</span></code> directory.</p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">
@@ -526,7 +526,7 @@ it in the <code class="docutils literal notranslate"><span class="pre">cslvr_roo
 <em class="property">static </em><code class="descname">get_searise</code><span class="sig-paren">(</span><em>thklim=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datafactory.html#DataFactory.get_searise"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datafactory.DataFactory.get_searise" title="Permalink to this definition">¶</a></dt>
 <dd><p>Greenland <a class="reference external" href="http://websrv.cs.umt.edu/isis/index.php/Present_Day_Greenland">Searise</a> data.</p>
 <p>This function converts the geothermal-heat flux data from J s<sup>-1</sup> m<sup>-2</sup> to that used by CSLVR, J a<sup>-1</sup> m<sup>-2</sup>, and the surface temperature data from degrees Celsius to degrees Kelvin.</p>
-<p>This data is downloaded by executing the script 
+<p>This data is downloaded by executing the script
 <code class="docutils literal notranslate"><span class="pre">cslvr_root/scripts/download_greenland_data.py</span></code></p>
 <p>The keys of the dictionary returned by this function are :</p>
 <ul class="simple">

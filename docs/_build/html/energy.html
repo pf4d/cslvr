@@ -236,9 +236,15 @@ model.theta_melt.</p>
 <dl class="method">
 <dt id="energy.Enthalpy.derive_temperate_zone">
 <code class="descname">derive_temperate_zone</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.derive_temperate_zone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.derive_temperate_zone" title="Permalink to this definition">¶</a></dt>
-<dd><p>Solve the steady-state energy equation, saving enthalpy to model.theta, 
-temperature to model.T, and water content to model.W such that the 
+<dd><p>Solve the steady-state energy equation, saving enthalpy to model.theta,
+temperature to model.T, and water content to model.W such that the
 regions with overlying temperate ice are properly marked by model.alpha.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the unknown <code class="xref py py-class docutils literal notranslate"><span class="pre">dolfin.Function</span></code>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -262,7 +268,7 @@ regions with overlying temperate ice are properly marked by model.alpha.</p>
 <dl class="method">
 <dt id="energy.Enthalpy.solve">
 <code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.solve" title="Permalink to this definition">¶</a></dt>
-<dd><p>Solve the energy equations, saving enthalpy to model.theta, temperature 
+<dd><p>Solve the energy equations, saving enthalpy to model.theta, temperature
 to model.T, and water content to model.W.</p>
 </dd></dl>
 
@@ -276,6 +282,13 @@ to model.T, and water content to model.W.</p>
 <dt id="energy.Enthalpy.solve_divide">
 <code class="descname">solve_divide</code><span class="sig-paren">(</span><em>init=False</em>, <em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.solve_divide"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.solve_divide" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="method">
+<dt id="energy.Enthalpy.update_model_var">
+<code class="descname">update_model_var</code><span class="sig-paren">(</span><em>u</em>, <em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/energy.html#Enthalpy.update_model_var"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#energy.Enthalpy.update_model_var" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the two horizontal components of velocity in <code class="docutils literal notranslate"><span class="pre">self.model.U3</span></code>
+to those given by <code class="docutils literal notranslate"><span class="pre">u</span></code>.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="energy.Enthalpy.update_thermal_parameters">

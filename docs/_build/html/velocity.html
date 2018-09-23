@@ -182,10 +182,10 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Model:</th><td class="field-body">a <a class="reference internal" href="model.html#d2model.D2Model" title="d2model.D2Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D2Model</span></code></a> instance holding all pertinent 
+<tr class="field-odd field"><th class="field-name">Model:</th><td class="field-body">a <a class="reference internal" href="model.html#d2model.D2Model" title="d2model.D2Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">D2Model</span></code></a> instance holding all pertinent
 variables, saved to <code class="docutils literal notranslate"><span class="pre">self.model</span></code>.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Kappa:</th><td class="field-body">a floating-point value representing direction smoothing 
+<tr class="field-even field"><th class="field-name">Kappa:</th><td class="field-body">a floating-point value representing direction smoothing
 radius in units of ice thickness <span class="math notranslate nohighlight">\(H = S-B\)</span>, where
 <span class="math notranslate nohighlight">\(H\)</span> is given by <code class="docutils literal notranslate"><span class="pre">self.model.H</span></code>, surface height
 <span class="math notranslate nohighlight">\(S\)</span> is given by <code class="docutils literal notranslate"><span class="pre">self.model.S</span></code> and bed height
@@ -234,7 +234,7 @@ radius in units of ice thickness <span class="math notranslate nohighlight">\(H 
 <dl class="method">
 <dt id="balancevelocity.BalanceVelocity.solve">
 <code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/balancevelocity.html#BalanceVelocity.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#balancevelocity.BalanceVelocity.solve" title="Permalink to this definition">¶</a></dt>
-<dd><p>Solve the balance velocity magnitude 
+<dd><p>Solve the balance velocity magnitude
 <span class="math notranslate nohighlight">\(\Vert \bar{\mathbf{u}} \Vert = \bar{u}\)</span> from</p>
 <div class="math notranslate nohighlight">
 \[\nabla \cdot \left( \bar{\mathbf{u}} H \right) = f,\]</div>
@@ -249,7 +249,7 @@ radius in units of ice thickness <span class="math notranslate nohighlight">\(H 
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> – a 2D vector of velocity direction from data 
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> – a 2D vector of velocity direction from data
 <span class="math notranslate nohighlight">\(\mathbf{d}^{\text{data}}\)</span>.</td>
 </tr>
 </tbody>
@@ -260,7 +260,7 @@ in two parts :</p>
 <li><p class="first">Solve for the smoothed components of <span class="math notranslate nohighlight">\(\mathbf{d}^{\text{data}}\)</span> :</p>
 <div class="math notranslate nohighlight">
 \[\mathbf{d} = \big( \kappa H \big)^2 \nabla \cdot \big( \nabla \mathbf{d} \big) + \mathbf{d}^{\text{data}},\]</div>
-<p>for components <span class="math notranslate nohighlight">\(d_x\)</span> and <span class="math notranslate nohighlight">\(d_y\)</span> saved respectively 
+<p>for components <span class="math notranslate nohighlight">\(d_x\)</span> and <span class="math notranslate nohighlight">\(d_y\)</span> saved respectively
 to <code class="docutils literal notranslate"><span class="pre">self.model.d_x</span></code> and <code class="docutils literal notranslate"><span class="pre">self.model.d_y</span></code>.</p>
 </li>
 <li><p class="first">Calculate the normalized balance velocity direction :</p>

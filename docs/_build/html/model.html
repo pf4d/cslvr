@@ -288,7 +288,7 @@ to assign from</li>
 <dt id="model.Model.assign_variable">
 <code class="descname">assign_variable</code><span class="sig-paren">(</span><em>u</em>, <em>var</em>, <em>annotate=False</em>, <em>cls=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.assign_variable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.assign_variable" title="Permalink to this definition">¶</a></dt>
 <dd><p>Manually assign the values from <code class="docutils literal notranslate"><span class="pre">var</span></code> to <code class="docutils literal notranslate"><span class="pre">u</span></code>.  The parameter <code class="docutils literal notranslate"><span class="pre">var</span></code>
-may be a string pointing to the location of an <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code>, 
+may be a string pointing to the location of an <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code>,
 <code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>, or an xml file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -319,9 +319,9 @@ string, <code class="xref py py-class docutils literal notranslate"><span class=
 <dd><p>Calculates viscosity <span class="math notranslate nohighlight">\(\eta\)</span>, set to <code class="docutils literal notranslate"><span class="pre">self.eta</span></code>, given by</p>
 <div class="math notranslate nohighlight">
 \[\eta(\theta, \mathbf{u}) = \frac{1}{2}A(\theta)^{-\frac{1}{n}} (\dot{\varepsilon}_e(\mathbf{u}) + \dot{\varepsilon}_0)^{\frac{1-n}{n}},\]</div>
-<p>for energy <span class="math notranslate nohighlight">\(\theta\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.theta</span></code>, flow-rate factor 
+<p>for energy <span class="math notranslate nohighlight">\(\theta\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.theta</span></code>, flow-rate factor
 <span class="math notranslate nohighlight">\(A\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.A</span></code>, strain-rate regularization
-<span class="math notranslate nohighlight">\(\dot{\varepsilon}_0\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.eps_reg</span></code>, and Glen’s flow 
+<span class="math notranslate nohighlight">\(\dot{\varepsilon}_0\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.eps_reg</span></code>, and Glen’s flow
 parameter <span class="math notranslate nohighlight">\(n\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.n</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -412,9 +412,9 @@ by calling <a class="reference internal" href="#model.Model.set_measures" title=
 <dd><p>formulates energy-dependent rate factor <span class="math notranslate nohighlight">\(A\)</span>, <code class="docutils literal notranslate"><span class="pre">self.A</span></code>, from</p>
 <div class="math notranslate nohighlight">
 \[A(\theta) = a_T E \left( 1 + 181.5 W_f \right) \exp\left(-\frac{Q_T}{RT'} \right),\]</div>
-<p>with energy <span class="math notranslate nohighlight">\(\theta\)</span> defined by <code class="docutils literal notranslate"><span class="pre">self.theta</span></code>, enhancement 
-factor <span class="math notranslate nohighlight">\(E\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.E</span></code>, universal gas constant 
-<span class="math notranslate nohighlight">\(R\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.R</span></code>, empirically-constrained water 
+<p>with energy <span class="math notranslate nohighlight">\(\theta\)</span> defined by <code class="docutils literal notranslate"><span class="pre">self.theta</span></code>, enhancement
+factor <span class="math notranslate nohighlight">\(E\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.E</span></code>, universal gas constant
+<span class="math notranslate nohighlight">\(R\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.R</span></code>, empirically-constrained water
 content <span class="math notranslate nohighlight">\(W_f = \min\{W, 0.01\}\)</span>, energy-dependent flow-parameter</p>
 <div class="math notranslate nohighlight">
 \[\begin{split}a_T &amp;= \begin{cases}
@@ -598,10 +598,10 @@ temperature <span class="math notranslate nohighlight">\(T'\)</span> given by <c
 <dl class="method">
 <dt id="model.Model.get_norm">
 <code class="descname">get_norm</code><span class="sig-paren">(</span><em>U</em>, <em>kind='l2'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.get_norm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.get_norm" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate and return the norm of and the normalized vector 
-<span class="math notranslate nohighlight">\(\hat{\mathbf{u}}\)</span>, of the vector <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> 
+<dd><p>Calculate and return the norm of and the normalized vector
+<span class="math notranslate nohighlight">\(\hat{\mathbf{u}}\)</span>, of the vector <span class="math notranslate nohighlight">\(\mathbf{u}\)</span>
 given by parameter <code class="docutils literal notranslate"><span class="pre">U</span></code>.
-The parameter <code class="docutils literal notranslate"><span class="pre">kind</span></code> may be either <code class="docutils literal notranslate"><span class="pre">l2</span></code> for the <span class="math notranslate nohighlight">\(L^2\)</span> 
+The parameter <code class="docutils literal notranslate"><span class="pre">kind</span></code> may be either <code class="docutils literal notranslate"><span class="pre">l2</span></code> for the <span class="math notranslate nohighlight">\(L^2\)</span>
 norm or <code class="docutils literal notranslate"><span class="pre">linf</span></code> for the <span class="math notranslate nohighlight">\(L^{\infty}\)</span> norm</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -625,7 +625,7 @@ components</li>
 <dl class="method">
 <dt id="model.Model.get_xy_velocity_angle">
 <code class="descname">get_xy_velocity_angle</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.get_xy_velocity_angle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.get_xy_velocity_angle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the angle in radians of the horizontal velocity vector 
+<dd><p>Calculates the angle in radians of the horizontal velocity vector
 <span class="math notranslate nohighlight">\(\mathbf{u}_h = [u\ v]^\intercal\)</span> from the x-axis.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -642,7 +642,7 @@ components</li>
 <dl class="method">
 <dt id="model.Model.get_xz_velocity_angle">
 <code class="descname">get_xz_velocity_angle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.get_xz_velocity_angle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.get_xz_velocity_angle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the angle in radians of the vertical velocity vector 
+<dd><p>Calculates the angle in radians of the vertical velocity vector
 <span class="math notranslate nohighlight">\(\mathbf{u}_v = [u\ w]^\intercal\)</span> from the x-axis.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -762,7 +762,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_Fb_bounds">
 <code class="descname">init_Fb_bounds</code><span class="sig-paren">(</span><em>Fb_min</em>, <em>Fb_max</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_Fb_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_Fb_bounds" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set upper and lower bounds for basal-water discharge <span class="math notranslate nohighlight">\(F_b^{\max}\)</span> 
+<dd><p>Set upper and lower bounds for basal-water discharge <span class="math notranslate nohighlight">\(F_b^{\max}\)</span>
 and <span class="math notranslate nohighlight">\(F_b^{\min}\)</span>,``self.Fb_max``, <code class="docutils literal notranslate"><span class="pre">self.Fb_min</span></code>, respectively,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1220,7 +1220,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <code class="descname">init_U_mask</code><span class="sig-paren">(</span><em>U_mask</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_U_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_U_mask" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set velocity observation mask <code class="docutils literal notranslate"><span class="pre">self.U_mask</span></code>
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
-<p>This in turn generates a vector of indices corresponding with grounded 
+<p>This in turn generates a vector of indices corresponding with grounded
 and shelf vertices:</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">self.Uob_dofs</span></code> –  observations <span class="math notranslate nohighlight">\(\mathbf{u}_{ob}\)</span> present dofs</li>
@@ -1240,7 +1240,7 @@ and shelf vertices:</p>
 <dt id="model.Model.init_U_ob">
 <code class="descname">init_U_ob</code><span class="sig-paren">(</span><em>u_ob</em>, <em>v_ob</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_U_ob"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_U_ob" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set horizontal velocity observation vector <span class="math notranslate nohighlight">\(\mathbf{u}_{ob}\)</span>,
-<code class="docutils literal notranslate"><span class="pre">self.U_ob</span></code>, and horizontal components <span class="math notranslate nohighlight">\(u_{ob}\)</span> and <span class="math notranslate nohighlight">\(v_{ob}\)</span>, 
+<code class="docutils literal notranslate"><span class="pre">self.U_ob</span></code>, and horizontal components <span class="math notranslate nohighlight">\(u_{ob}\)</span> and <span class="math notranslate nohighlight">\(v_{ob}\)</span>,
 <code class="docutils literal notranslate"><span class="pre">self.u_ob</span></code> and <code class="docutils literal notranslate"><span class="pre">self.v_ob</span></code>, respectively,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1351,7 +1351,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_alpha_int">
 <code class="descname">init_alpha_int</code><span class="sig-paren">(</span><em>alpha_int</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_alpha_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_alpha_int" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set vertical integral of temperate zone marking coefficient 
+<dd><p>Set vertical integral of temperate zone marking coefficient
 <span class="math notranslate nohighlight">\(\int \alpha dz\)</span>, <code class="docutils literal notranslate"><span class="pre">self.alpha_int</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1385,7 +1385,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dd><p>Init basal-traction <span class="math notranslate nohighlight">\(\beta\)</span>, <code class="docutils literal notranslate"><span class="pre">self.beta</span></code>, from</p>
 <div class="math notranslate nohighlight">
 \[\beta \Vert \mathbf{u}_B \Vert = \rho g H \Vert \nabla S \Vert,\]</div>
-<p>the shallow ice approximation, using the observed surface velocity 
+<p>the shallow ice approximation, using the observed surface velocity
 <code class="docutils literal notranslate"><span class="pre">U_mag</span></code> as approximate basal velocity,</p>
 <div class="math notranslate nohighlight">
 \[\beta_{\text{SIA}} = \frac{\rho g H \Vert \nabla S \Vert}{\Vert \mathbf{u}_B \Vert + \epsilon}\]</div>
@@ -1395,17 +1395,17 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>U_mag</strong> – basal-velocity <span class="math notranslate nohighlight">\(\mathbf{u}_B\)</span> magnitude.</li>
-<li><strong>eps</strong> – minimum velocity <span class="math notranslate nohighlight">\(\epsilon\)</span> introduced 
+<li><strong>eps</strong> – minimum velocity <span class="math notranslate nohighlight">\(\epsilon\)</span> introduced
 to prevent singularity, default is 0.5 m/a.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<p>If <code class="docutils literal notranslate"><span class="pre">U_mag</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, the basal velocity <span class="math notranslate nohighlight">\(\mathbf{u}_B\)</span> is 
-defined from <span class="math notranslate nohighlight">\(\mathbf{u}_{ob}\)</span> as given by <code class="docutils literal notranslate"><span class="pre">self.U_ob</span></code>.  Any 
-gaps in obervation data defined by <code class="docutils literal notranslate"><span class="pre">self.Uob_missing_dofs</span></code> 
-(see <a class="reference internal" href="#model.Model.init_U_mask" title="model.Model.init_U_mask"><code class="xref py py-func docutils literal notranslate"><span class="pre">init_U_mask()</span></code></a>) are set to values defined by balance-velocity 
+<p>If <code class="docutils literal notranslate"><span class="pre">U_mag</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, the basal velocity <span class="math notranslate nohighlight">\(\mathbf{u}_B\)</span> is
+defined from <span class="math notranslate nohighlight">\(\mathbf{u}_{ob}\)</span> as given by <code class="docutils literal notranslate"><span class="pre">self.U_ob</span></code>.  Any
+gaps in obervation data defined by <code class="docutils literal notranslate"><span class="pre">self.Uob_missing_dofs</span></code>
+(see <a class="reference internal" href="#model.Model.init_U_mask" title="model.Model.init_U_mask"><code class="xref py py-func docutils literal notranslate"><span class="pre">init_U_mask()</span></code></a>) are set to values defined by balance-velocity
 magnitude <span class="math notranslate nohighlight">\(\bar{u}\)</span> as given by <code class="docutils literal notranslate"><span class="pre">self.Ubar</span></code>.</p>
 </dd></dl>
 
@@ -1478,7 +1478,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_gradT_B">
 <code class="descname">init_gradT_B</code><span class="sig-paren">(</span><em>gradT_B</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_gradT_B"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_gradT_B" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set basal temperature gradient 
+<dd><p>Set basal temperature gradient
 <span class="math notranslate nohighlight">\(\left( k \nabla T \right) \cdot \mathbf{n}\)</span>, <code class="docutils literal notranslate"><span class="pre">self.gradT_B</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1494,7 +1494,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_gradTm_B">
 <code class="descname">init_gradTm_B</code><span class="sig-paren">(</span><em>gradTm_B</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_gradTm_B"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_gradTm_B" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set basal temperature melting gradient 
+<dd><p>Set basal temperature melting gradient
 <span class="math notranslate nohighlight">\(\left( k \nabla T_m \right) \cdot \mathbf{n}\)</span>, <code class="docutils literal notranslate"><span class="pre">self.gradTm_B</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1540,7 +1540,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_lam_basal_pressure">
 <code class="descname">init_lam_basal_pressure</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_lam_basal_pressure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_lam_basal_pressure" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the basal normal stress <code class="docutils literal notranslate"><span class="pre">self.lam</span></code> to cryostatic pressure 
+<dd><p>Initialize the basal normal stress <code class="docutils literal notranslate"><span class="pre">self.lam</span></code> to cryostatic pressure
 <span class="math notranslate nohighlight">\(\rho g (S - B)\)</span>.</p>
 </dd></dl>
 
@@ -1579,7 +1579,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <code class="descname">init_mask</code><span class="sig-paren">(</span><em>mask</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_mask" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set shelf mask <code class="docutils literal notranslate"><span class="pre">self.mask</span></code>
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
-<p>This in turn generates a vector of indices corresponding with grounded 
+<p>This in turn generates a vector of indices corresponding with grounded
 and shelf vertices:</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">self.shf_dofs</span></code> – shelf dofs</li>
@@ -1672,7 +1672,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_temp_rat">
 <code class="descname">init_temp_rat</code><span class="sig-paren">(</span><em>temp_rat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_temp_rat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_temp_rat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set ratio of temperate ice <span class="math notranslate nohighlight">\(\frac{1}{H}\int \alpha dz\)</span>, 
+<dd><p>Set ratio of temperate ice <span class="math notranslate nohighlight">\(\frac{1}{H}\int \alpha dz\)</span>,
 <code class="docutils literal notranslate"><span class="pre">self.temp_rat</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1794,7 +1794,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_ubar">
 <code class="descname">init_ubar</code><span class="sig-paren">(</span><em>ubar</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_ubar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_ubar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set vertically averaged x-component of velocity <span class="math notranslate nohighlight">\(\bar{u}\)</span>, 
+<dd><p>Set vertically averaged x-component of velocity <span class="math notranslate nohighlight">\(\bar{u}\)</span>,
 <code class="docutils literal notranslate"><span class="pre">self.ubar</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1810,7 +1810,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_uhat">
 <code class="descname">init_uhat</code><span class="sig-paren">(</span><em>uhat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_uhat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_uhat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set normalized x-component of lateral velocity 
+<dd><p>Set normalized x-component of lateral velocity
 <span class="math notranslate nohighlight">\(\hat{u}\)</span>, <code class="docutils literal notranslate"><span class="pre">self.uhat</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1872,7 +1872,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.init_vhat">
 <code class="descname">init_vhat</code><span class="sig-paren">(</span><em>vhat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.init_vhat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.init_vhat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set normalized y-component of lateral velocity 
+<dd><p>Set normalized y-component of lateral velocity
 <span class="math notranslate nohighlight">\(\hat{v}\)</span>, <code class="docutils literal notranslate"><span class="pre">self.vhat</span></code>,
 by calling <a class="reference internal" href="#model.Model.assign_variable" title="model.Model.assign_variable"><code class="xref py py-func docutils literal notranslate"><span class="pre">assign_variable()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1934,7 +1934,7 @@ by calling <a class="reference internal" href="#model.Model.assign_variable" tit
 <dl class="method">
 <dt id="model.Model.initialize_variables">
 <code class="descname">initialize_variables</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.initialize_variables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.initialize_variables" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the model variables to default values.  The variables 
+<dd><p>Initialize the model variables to default values.  The variables
 defined here are:</p>
 <p>Coordinates of various types :</p>
 <ul class="simple">
@@ -2062,7 +2062,7 @@ defined here are:</p>
 <dl class="method">
 <dt id="model.Model.normalize_vector">
 <code class="descname">normalize_vector</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.normalize_vector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.normalize_vector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a normalized vector of the vector <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> 
+<dd><p>Create a normalized vector of the vector <span class="math notranslate nohighlight">\(\mathbf{u}\)</span>
 given by parameter <code class="docutils literal notranslate"><span class="pre">U</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2093,7 +2093,7 @@ components</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>M</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">Matrix</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code> to be 
+<li><strong>M</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">Matrix</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code> to be
 rotated</li>
 <li><strong>R</strong> – rotation <code class="xref py py-class docutils literal notranslate"><span class="pre">Matrix</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">Tensor</span></code></li>
 </ul>
@@ -2109,15 +2109,15 @@ rotated</li>
 <dl class="method">
 <dt id="model.Model.save_hdf5">
 <code class="descname">save_hdf5</code><span class="sig-paren">(</span><em>u</em>, <em>f</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_hdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.save_hdf5" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the .h5 file <code class="docutils literal notranslate"><span class="pre">f</span></code> in the 
-<code class="docutils literal notranslate"><span class="pre">hdf5</span></code> subdirectory of <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.  If <code class="docutils literal notranslate"><span class="pre">name</span></code> = <code class="docutils literal notranslate"><span class="pre">None</span></code>, 
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the .h5 file <code class="docutils literal notranslate"><span class="pre">f</span></code> in the
+<code class="docutils literal notranslate"><span class="pre">hdf5</span></code> subdirectory of <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.  If <code class="docutils literal notranslate"><span class="pre">name</span></code> = <code class="docutils literal notranslate"><span class="pre">None</span></code>,
 this will save the flie under <code class="docutils literal notranslate"><span class="pre">u.name()</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, or 
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, or
 <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – the function to save</li>
 <li><strong>f</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>) – the file to save to</li>
 </ul>
@@ -2148,14 +2148,14 @@ this will save the flie under <code class="docutils literal notranslate"><span c
 <dl class="method">
 <dt id="model.Model.save_matlab">
 <code class="descname">save_matlab</code><span class="sig-paren">(</span><em>u</em>, <em>di</em>, <em>filename</em>, <em>val=2.718281828459045</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_matlab"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.save_matlab" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create Matlab version 4 file output of regular gridded data contained by 
+<dd><p>Create Matlab version 4 file output of regular gridded data contained by
 <code class="docutils literal notranslate"><span class="pre">f</span></code>.  Currently, this function only works for 2D <span class="math notranslate nohighlight">\(x,y\)</span>-plane data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, to be mapped onto the regular 
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, to be mapped onto the regular
 grid used by <code class="docutils literal notranslate"><span class="pre">di</span></code></li>
 <li><strong>di</strong> – a <a class="reference internal" href="input.html#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> object</li>
 <li><strong>filename</strong> (<em>string</em>) – filename to save as</li>
@@ -2187,7 +2187,7 @@ grid used by <code class="docutils literal notranslate"><span class="pre">di</sp
 <dl class="method">
 <dt id="model.Model.save_subdomain_data">
 <code class="descname">save_subdomain_data</code><span class="sig-paren">(</span><em>h5File</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_subdomain_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.save_subdomain_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save the subdomain <code class="docutils literal notranslate"><span class="pre">self.ff</span></code>, <code class="docutils literal notranslate"><span class="pre">self.ff_acc</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.cf</span></code> 
+<dd><p>Save the subdomain <code class="docutils literal notranslate"><span class="pre">self.ff</span></code>, <code class="docutils literal notranslate"><span class="pre">self.ff_acc</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.cf</span></code>
 to hd5f file <code class="docutils literal notranslate"><span class="pre">h5File</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2202,8 +2202,8 @@ to hd5f file <code class="docutils literal notranslate"><span class="pre">h5File
 <dl class="method">
 <dt id="model.Model.save_xdmf">
 <code class="descname">save_xdmf</code><span class="sig-paren">(</span><em>u</em>, <em>name</em>, <em>f=None</em>, <em>t=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_xdmf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.save_xdmf" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the 
-<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by 
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by
 <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.</p>
 <p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> object, save to this instead.</p>
 <p>If <code class="docutils literal notranslate"><span class="pre">t</span></code> is a float or an int, mark the file with the timestep <code class="docutils literal notranslate"><span class="pre">t</span></code>.</p>
@@ -2227,9 +2227,9 @@ to hd5f file <code class="docutils literal notranslate"><span class="pre">h5File
 <dt id="model.Model.set_measures">
 <code class="descname">set_measures</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.set_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.set_measures" title="Permalink to this definition">¶</a></dt>
 <dd><p>set the new measure space for facets <code class="docutils literal notranslate"><span class="pre">self.ds</span></code> and cells <code class="docutils literal notranslate"><span class="pre">self.dx</span></code> for
-the boundaries marked by FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> and CellFunction 
+the boundaries marked by FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> and CellFunction
 <code class="docutils literal notranslate"><span class="pre">self.cf</span></code>, respectively.</p>
-<p>Also, the number of facets marked by 
+<p>Also, the number of facets marked by
 <a class="reference internal" href="#model.Model.calculate_boundaries" title="model.Model.calculate_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_boundaries()</span></code></a> :</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">self.N_OMEGA_GND</span></code>   – number of cells marked <code class="docutils literal notranslate"><span class="pre">self.OMEGA_GND</span></code></li>
@@ -2283,7 +2283,7 @@ file with a mesh saved with name <code class="docutils literal notranslate"><spa
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>out_dir</strong> (<em>string</em>) – the output directory for any output generated by 
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>out_dir</strong> (<em>string</em>) – the output directory for any output generated by
 <a class="reference internal" href="#model.Model.save_hdf5" title="model.Model.save_hdf5"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_hdf5()</span></code></a>, <a class="reference internal" href="#model.Model.save_xdmf" title="model.Model.save_xdmf"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_xdmf()</span></code></a>, <code class="xref py py-func docutils literal notranslate"><span class="pre">save_pvd()</span></code>,
 <a class="reference internal" href="#model.Model.save_list_to_hdf5" title="model.Model.save_list_to_hdf5"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_list_to_hdf5()</span></code></a>, <a class="reference internal" href="#model.Model.save_subdomain_data" title="model.Model.save_subdomain_data"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_subdomain_data()</span></code></a>,
 and <a class="reference internal" href="#model.Model.save_mesh" title="model.Model.save_mesh"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_mesh()</span></code></a>.</td>
@@ -2303,8 +2303,8 @@ MeshFunctions saved in an .h5 file &lt;f&gt;.</p>
 <dl class="method">
 <dt id="model.Model.solve_hydrostatic_pressure">
 <code class="descname">solve_hydrostatic_pressure</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.solve_hydrostatic_pressure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.solve_hydrostatic_pressure" title="Permalink to this definition">¶</a></dt>
-<dd><p>Solve for the hydrostatic pressure <span class="math notranslate nohighlight">\(p = f_c = \rho g (S - z)\)</span> to 
-<code class="docutils literal notranslate"><span class="pre">self.p</span></code>, with surface height <span class="math notranslate nohighlight">\(S\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.S</span></code>, ice 
+<dd><p>Solve for the hydrostatic pressure <span class="math notranslate nohighlight">\(p = f_c = \rho g (S - z)\)</span> to
+<code class="docutils literal notranslate"><span class="pre">self.p</span></code>, with surface height <span class="math notranslate nohighlight">\(S\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.S</span></code>, ice
 density <span class="math notranslate nohighlight">\(\rho\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.rho</span></code>, and <span class="math notranslate nohighlight">\(z\)</span>-coordinate
 given by <code class="docutils literal notranslate"><span class="pre">self.x[2]</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2327,9 +2327,9 @@ given by <code class="docutils literal notranslate"><span class="pre">self.x[2]<
 <dl class="method">
 <dt id="model.Model.transient_iteration">
 <code class="descname">transient_iteration</code><span class="sig-paren">(</span><em>momentum</em>, <em>mass</em>, <em>time_step</em>, <em>adaptive</em>, <em>annotate</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.transient_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.transient_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function defines one interation of the transient solution, and is 
+<dd><p>This function defines one interation of the transient solution, and is
 called by the function <code class="xref py py-func docutils literal notranslate"><span class="pre">transient_solve()</span></code>.</p>
-<p>This must be implemented by the child classes for 
+<p>This must be implemented by the child classes for
 <code class="xref py py-func docutils literal notranslate"><span class="pre">transient_solve()</span></code> to work.</p>
 </dd></dl>
 
@@ -2347,7 +2347,7 @@ called by the function <code class="xref py py-func docutils literal notranslate
 <dl class="method">
 <dt id="model.Model.y_rotation_matrix">
 <code class="descname">y_rotation_matrix</code><span class="sig-paren">(</span><em>theta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.y_rotation_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.y_rotation_matrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>Form the rotation matrix <span class="math notranslate nohighlight">\(R_y\)</span> about the <span class="math notranslate nohighlight">\(y\)</span> axes 
+<dd><p>Form the rotation matrix <span class="math notranslate nohighlight">\(R_y\)</span> about the <span class="math notranslate nohighlight">\(y\)</span> axes
 by angle <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2364,7 +2364,7 @@ by angle <code class="docutils literal notranslate"><span class="pre">theta</spa
 <dl class="method">
 <dt id="model.Model.z_rotation_matrix">
 <code class="descname">z_rotation_matrix</code><span class="sig-paren">(</span><em>theta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.z_rotation_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.z_rotation_matrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>Form the rotation matrix <span class="math notranslate nohighlight">\(R_z\)</span> about the <span class="math notranslate nohighlight">\(z\)</span> axes 
+<dd><p>Form the rotation matrix <span class="math notranslate nohighlight">\(R_z\)</span> about the <span class="math notranslate nohighlight">\(z\)</span> axes
 by angle <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2609,9 +2609,9 @@ by the individually created model.</p>
 <dt id="d2model.D2Model.set_measures">
 <code class="descname">set_measures</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/d2model.html#D2Model.set_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d2model.D2Model.set_measures" title="Permalink to this definition">¶</a></dt>
 <dd><p>set the new measure space for facets <code class="docutils literal notranslate"><span class="pre">self.ds</span></code> and cells <code class="docutils literal notranslate"><span class="pre">self.dx</span></code> for
-the boundaries marked by FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> and CellFunction 
+the boundaries marked by FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> and CellFunction
 <code class="docutils literal notranslate"><span class="pre">self.cf</span></code>, respectively.</p>
-<p>Also, the number of cells or facets marked by 
+<p>Also, the number of cells or facets marked by
 <a class="reference internal" href="#d2model.D2Model.calculate_boundaries" title="d2model.D2Model.calculate_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_boundaries()</span></code></a> :</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">self.N_OMEGA_GND</span></code>   – number of cells marked <code class="docutils literal notranslate"><span class="pre">self.OMEGA_GND</span></code></li>
@@ -2650,8 +2650,8 @@ the boundaries marked by FacetFunction <code class="docutils literal notranslate
 <dl class="method">
 <dt id="d2model.D2Model.solve_hydrostatic_pressure">
 <code class="descname">solve_hydrostatic_pressure</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d2model.html#D2Model.solve_hydrostatic_pressure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d2model.D2Model.solve_hydrostatic_pressure" title="Permalink to this definition">¶</a></dt>
-<dd><p>Solve for the hydrostatic pressure <span class="math notranslate nohighlight">\(p = f_c = \rho g (S - z)\)</span> to 
-<code class="docutils literal notranslate"><span class="pre">self.p</span></code>, with surface height <span class="math notranslate nohighlight">\(S\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.S</span></code>, ice 
+<dd><p>Solve for the hydrostatic pressure <span class="math notranslate nohighlight">\(p = f_c = \rho g (S - z)\)</span> to
+<code class="docutils literal notranslate"><span class="pre">self.p</span></code>, with surface height <span class="math notranslate nohighlight">\(S\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.S</span></code>, ice
 density <span class="math notranslate nohighlight">\(\rho\)</span> given by <code class="docutils literal notranslate"><span class="pre">self.rho</span></code>, and <span class="math notranslate nohighlight">\(z\)</span>-coordinate
 given by <code class="docutils literal notranslate"><span class="pre">self.x[2]</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2685,7 +2685,7 @@ given by <code class="docutils literal notranslate"><span class="pre">self.x[2]<
 <dl class="method">
 <dt id="d2model.D2Model.transient_iteration">
 <code class="descname">transient_iteration</code><span class="sig-paren">(</span><em>momentum</em>, <em>mass</em>, <em>time_step</em>, <em>adaptive</em>, <em>annotate</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d2model.html#D2Model.transient_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d2model.D2Model.transient_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function defines one interation of the transient solution, and is 
+<dd><p>This function defines one interation of the transient solution, and is
 called by the function <code class="docutils literal notranslate"><span class="pre">model.transient_solve</span></code>.</p>
 </dd></dl>
 
@@ -2700,7 +2700,7 @@ called by the function <code class="docutils literal notranslate"><span class="p
 <dd><dl class="method">
 <dt id="d3model.D3Model.assign_from_submesh_variable">
 <code class="descname">assign_from_submesh_variable</code><span class="sig-paren">(</span><em>u</em>, <em>u_sub</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.assign_from_submesh_variable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.assign_from_submesh_variable" title="Permalink to this definition">¶</a></dt>
-<dd><p>Assign the values from the variable <code class="docutils literal notranslate"><span class="pre">u_sub</span></code> defined on a submesh of 
+<dd><p>Assign the values from the variable <code class="docutils literal notranslate"><span class="pre">u_sub</span></code> defined on a submesh of
 this <a class="reference internal" href="#model.Model" title="model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></a>’s mesh to the variable <code class="docutils literal notranslate"><span class="pre">u</span></code>.</p>
 </dd></dl>
 
@@ -2714,7 +2714,7 @@ with a <code class="xref py py-class docutils literal notranslate"><span class="
 <dl class="method">
 <dt id="d3model.D3Model.calc_thickness">
 <code class="descname">calc_thickness</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.calc_thickness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.calc_thickness" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate the continuous thickness field which increases from 0 at the 
+<dd><p>Calculate the continuous thickness field which increases from 0 at the
 surface to the actual thickness at the bed.</p>
 </dd></dl>
 
@@ -2757,7 +2757,7 @@ surface to the actual thickness at the bed.</p>
 <dl class="method">
 <dt id="d3model.D3Model.deform_mesh_to_geometry">
 <code class="descname">deform_mesh_to_geometry</code><span class="sig-paren">(</span><em>S</em>, <em>B</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.deform_mesh_to_geometry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.deform_mesh_to_geometry" title="Permalink to this definition">¶</a></dt>
-<dd><p>Deforms the 3D mesh to the geometry from FEniCS Expressions for the 
+<dd><p>Deforms the 3D mesh to the geometry from FEniCS Expressions for the
 surface &lt;S&gt; and bed &lt;B&gt;.</p>
 </dd></dl>
 
@@ -2873,9 +2873,9 @@ by the individually created model.</p>
 <dt id="d3model.D3Model.set_measures">
 <code class="descname">set_measures</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.set_measures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.set_measures" title="Permalink to this definition">¶</a></dt>
 <dd><p>set the new measure space for facets <code class="docutils literal notranslate"><span class="pre">self.ds</span></code> and cells <code class="docutils literal notranslate"><span class="pre">self.dx</span></code> for
-the boundaries marked by FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> and CellFunction 
+the boundaries marked by FacetFunction <code class="docutils literal notranslate"><span class="pre">self.ff</span></code> and CellFunction
 <code class="docutils literal notranslate"><span class="pre">self.cf</span></code>, respectively.</p>
-<p>Also, the number of facets marked by 
+<p>Also, the number of facets marked by
 <a class="reference internal" href="#d3model.D3Model.calculate_boundaries" title="d3model.D3Model.calculate_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_boundaries()</span></code></a> :</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">self.N_OMEGA_GND</span></code>   – number of cells marked <code class="docutils literal notranslate"><span class="pre">self.OMEGA_GND</span></code></li>
@@ -2915,7 +2915,7 @@ the boundaries marked by FacetFunction <code class="docutils literal notranslate
 <li><code class="docutils literal notranslate"><span class="pre">self.dGamma_lt</span></code>  – entire exterior lateral surface</li>
 </ul>
 <p>This method will create a <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a> called <code class="docutils literal notranslate"><span class="pre">self.measures</span></code>
-containing all of the <code class="xref py py-class docutils literal notranslate"><span class="pre">ufl.measure.Measure</span></code> instances for 
+containing all of the <code class="xref py py-class docutils literal notranslate"><span class="pre">ufl.measure.Measure</span></code> instances for
 this <a class="reference internal" href="#model.Model" title="model.Model"><code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code></a>.</p>
 </dd></dl>
 
@@ -2954,21 +2954,21 @@ this <a class="reference internal" href="#model.Model" title="model.Model"><code
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>momentum</strong> (<a class="reference internal" href="physics.html#momentum.Momentum" title="momentum.Momentum"><code class="xref py py-class docutils literal notranslate"><span class="pre">Momentum</span></code></a>) – momentum instance to couple with <code class="docutils literal notranslate"><span class="pre">energy</span></code>.</li>
 <li><strong>energy</strong> (<a class="reference internal" href="physics.html#energy.Energy" title="energy.Energy"><code class="xref py py-class docutils literal notranslate"><span class="pre">Energy</span></code></a>) – energy instance to couple with <code class="docutils literal notranslate"><span class="pre">momentum</span></code>.
-Currently, the only 3D energy implementation is 
+Currently, the only 3D energy implementation is
 <a class="reference internal" href="energy.html#energy.Enthalpy" title="energy.Enthalpy"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enthalpy</span></code></a>.</li>
 <li><strong>wop_kwargs</strong> – a <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a> of arguments for
-water-optimization method 
+water-optimization method
 <a class="reference internal" href="physics.html#energy.Energy.optimize_water_flux" title="energy.Energy.optimize_water_flux"><code class="xref py py-func docutils literal notranslate"><span class="pre">optimize_water_flux()</span></code></a></li>
-<li><strong>callback</strong> – a function that is called back at the end of each 
+<li><strong>callback</strong> – a function that is called back at the end of each
 iteration</li>
-<li><strong>atol</strong> – absolute stopping tolerance 
+<li><strong>atol</strong> – absolute stopping tolerance
 <span class="math notranslate nohighlight">\(a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert\)</span></li>
 <li><strong>rtol</strong> – relative stopping tolerance
 <span class="math notranslate nohighlight">\(r_{tol} \leq \Vert r_n - r_{n-1} \Vert\)</span></li>
 <li><strong>max_iter</strong> – maximum number of iterations to perform</li>
-<li><strong>iter_save_vars</strong> – python <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a> containing functions to 
+<li><strong>iter_save_vars</strong> – python <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a> containing functions to
 save each iteration</li>
-<li><strong>starting_i</strong> – if you are restarting this process, you may start 
+<li><strong>starting_i</strong> – if you are restarting this process, you may start
 it at a later iteration.</li>
 </ul>
 </td>
@@ -2980,7 +2980,7 @@ it at a later iteration.</li>
 <dl class="method">
 <dt id="d3model.D3Model.transient_iteration">
 <code class="descname">transient_iteration</code><span class="sig-paren">(</span><em>momentum</em>, <em>mass</em>, <em>time_step</em>, <em>adaptive</em>, <em>annotate</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.transient_iteration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.transient_iteration" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function defines one interation of the transient solution, and is 
+<dd><p>This function defines one interation of the transient solution, and is
 called by the function <code class="xref py py-func docutils literal notranslate"><span class="pre">transient_solve()</span></code>.</p>
 <p>Currently, the dolfin-adjoint <code class="docutils literal notranslate"><span class="pre">annotate</span></code> is not supported.</p>
 </dd></dl>
@@ -2988,7 +2988,7 @@ called by the function <code class="xref py py-func docutils literal notranslate
 <dl class="method">
 <dt id="d3model.D3Model.update_mesh">
 <code class="descname">update_mesh</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/d3model.html#D3Model.update_mesh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#d3model.D3Model.update_mesh" title="Permalink to this definition">¶</a></dt>
-<dd><p>This method will update the surface height <code class="docutils literal notranslate"><span class="pre">self.S</span></code> and vertices 
+<dd><p>This method will update the surface height <code class="docutils literal notranslate"><span class="pre">self.S</span></code> and vertices
 of deformed mesh <code class="docutils literal notranslate"><span class="pre">self.mesh</span></code>.</p>
 </dd></dl>
 

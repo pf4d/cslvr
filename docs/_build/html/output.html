@@ -211,15 +211,15 @@
 <dl class="method">
 <dt>
 <code class="descname">save_hdf5</code><span class="sig-paren">(</span><em>u</em>, <em>f</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_hdf5"><span class="viewcode-link">[source]</span></a></dt>
-<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the .h5 file <code class="docutils literal notranslate"><span class="pre">f</span></code> in the 
-<code class="docutils literal notranslate"><span class="pre">hdf5</span></code> subdirectory of <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.  If <code class="docutils literal notranslate"><span class="pre">name</span></code> = <code class="docutils literal notranslate"><span class="pre">None</span></code>, 
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the .h5 file <code class="docutils literal notranslate"><span class="pre">f</span></code> in the
+<code class="docutils literal notranslate"><span class="pre">hdf5</span></code> subdirectory of <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.  If <code class="docutils literal notranslate"><span class="pre">name</span></code> = <code class="docutils literal notranslate"><span class="pre">None</span></code>,
 this will save the flie under <code class="docutils literal notranslate"><span class="pre">u.name()</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, or 
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, or
 <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – the function to save</li>
 <li><strong>f</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>) – the file to save to</li>
 </ul>
@@ -250,14 +250,14 @@ this will save the flie under <code class="docutils literal notranslate"><span c
 <dl class="method">
 <dt>
 <code class="descname">save_matlab</code><span class="sig-paren">(</span><em>u</em>, <em>di</em>, <em>filename</em>, <em>val=2.718281828459045</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_matlab"><span class="viewcode-link">[source]</span></a></dt>
-<dd><p>Create Matlab version 4 file output of regular gridded data contained by 
+<dd><p>Create Matlab version 4 file output of regular gridded data contained by
 <code class="docutils literal notranslate"><span class="pre">f</span></code>.  Currently, this function only works for 2D <span class="math notranslate nohighlight">\(x,y\)</span>-plane data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, to be mapped onto the regular 
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – a <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, to be mapped onto the regular
 grid used by <code class="docutils literal notranslate"><span class="pre">di</span></code></li>
 <li><strong>di</strong> – a <a class="reference internal" href="input.html#inputoutput.DataInput" title="inputoutput.DataInput"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataInput</span></code></a> object</li>
 <li><strong>filename</strong> (<em>string</em>) – filename to save as</li>
@@ -289,7 +289,7 @@ grid used by <code class="docutils literal notranslate"><span class="pre">di</sp
 <dl class="method">
 <dt>
 <code class="descname">save_subdomain_data</code><span class="sig-paren">(</span><em>h5File</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_subdomain_data"><span class="viewcode-link">[source]</span></a></dt>
-<dd><p>Save the subdomain <code class="docutils literal notranslate"><span class="pre">self.ff</span></code>, <code class="docutils literal notranslate"><span class="pre">self.ff_acc</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.cf</span></code> 
+<dd><p>Save the subdomain <code class="docutils literal notranslate"><span class="pre">self.ff</span></code>, <code class="docutils literal notranslate"><span class="pre">self.ff_acc</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.cf</span></code>
 to hd5f file <code class="docutils literal notranslate"><span class="pre">h5File</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -304,8 +304,8 @@ to hd5f file <code class="docutils literal notranslate"><span class="pre">h5File
 <dl class="method">
 <dt>
 <code class="descname">save_xdmf</code><span class="sig-paren">(</span><em>u</em>, <em>name</em>, <em>f=None</em>, <em>t=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.save_xdmf"><span class="viewcode-link">[source]</span></a></dt>
-<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the 
-<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by 
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by
 <code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.</p>
 <p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> object, save to this instead.</p>
 <p>If <code class="docutils literal notranslate"><span class="pre">t</span></code> is a float or an int, mark the file with the timestep <code class="docutils literal notranslate"><span class="pre">t</span></code>.</p>

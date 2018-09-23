@@ -211,6 +211,7 @@
     <span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;adjoint&quot;</span><span class="p">][</span><span class="s2">&quot;stop_annotating&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="n">Q</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
+    <span class="n">Q2</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q2</span>
     <span class="n">S</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
     <span class="n">B</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
     <span class="n">Fb</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
@@ -244,13 +245,6 @@
     
     <span class="c1">#===========================================================================</span>
     <span class="c1"># define variational problem :</span>
-    
-    <span class="c1"># system unknown function space is created now if periodic boundaries </span>
-    <span class="c1"># are not used (see model.generate_function_space()) :</span>
-    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span><span class="p">:</span>
-      <span class="n">Q2</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q2</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="n">Q2</span>   <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">QM2e</span><span class="p">)</span>
 
     <span class="c1"># momenturm and adjoint :</span>
     <span class="n">U</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q2</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
@@ -489,31 +483,33 @@
     <span class="c1"># e.g. model.L_curve() :</span>
     <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">cb_ftn</span><span class="p">():</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">solve_vert_velocity</span><span class="p">(</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">cb_ftn</span><span class="p">():</span>  <span class="bp">self</span><span class="o">.</span><span class="n">solve_vert_velocity</span><span class="p">(</span><span class="n">annotate</span><span class="p">)</span>
     
     <span class="c1"># compute solution :</span>
     <span class="c1">#solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,</span>
     <span class="c1">#      annotate = annotate, solver_parameters = params[&#39;solver&#39;])</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">home_rolled_newton_method</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> 
+    <span class="n">model</span><span class="o">.</span><span class="n">home_rolled_newton_method</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> 
                                     <span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="n">rtol</span><span class="p">,</span>
                                     <span class="n">relaxation_param</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="n">maxit</span><span class="p">,</span>
                                     <span class="n">method</span><span class="o">=</span><span class="n">lin_slv</span><span class="p">,</span> <span class="n">preconditioner</span><span class="o">=</span><span class="n">precon</span><span class="p">,</span>
                                     <span class="n">cb_ftn</span><span class="o">=</span><span class="n">cb_ftn</span><span class="p">)</span>
-    <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-  
-    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="c1"># solve for pressure if desired :</span>
-    <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solve_pressure&#39;</span><span class="p">]:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">solve_pressure</span><span class="p">(</span><span class="n">annotate</span><span class="p">)</span>
-    
-    <span class="n">U3</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solve_pressure&#39;</span><span class="p">]:</span>    <span class="bp">self</span><span class="o">.</span><span class="n">solve_pressure</span><span class="p">(</span><span class="n">annotate</span><span class="p">)</span>
 
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;u&#39;</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;v&#39;</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span></div></div>
+    <span class="c1"># update the model&#39;s momentum container :    </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczStokesReduced.update_model_var"><a class="viewcode-back" href="../momentum.html#momentumstokes.MomentumDukowiczStokesReduced.update_model_var">[docs]</a>  <span class="k">def</span> <span class="nf">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the two horizontal components of velocity in ``self.model.U3``</span>
+<span class="sd">    to those given by ``u``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">u_x</span><span class="p">,</span> <span class="n">u_y</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u_x</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">v_x</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="s1">&#39;model.U3&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div></div>
 
 
 
@@ -541,6 +537,7 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span> <span class="o">=</span> <span class="n">solve_params</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">linear</span>       <span class="o">=</span> <span class="n">linear</span>
 
+    <span class="n">Q4</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q4</span>
     <span class="n">S</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
     <span class="n">B</span>          <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
     <span class="n">Fb</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
@@ -568,13 +565,6 @@
 
     <span class="c1">#===========================================================================</span>
     <span class="c1"># define variational problem :</span>
-      
-    <span class="c1"># system unknown function space is created now if periodic boundaries </span>
-    <span class="c1"># are not used (see model.generate_function_space()) :</span>
-    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span><span class="p">:</span>
-      <span class="n">Q4</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q4</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="n">Q4</span>   <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">QM4e</span><span class="p">)</span>
 
     <span class="c1"># momenturm and adjoint :</span>
     <span class="n">U</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q4</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;G&#39;</span><span class="p">)</span>
@@ -774,21 +764,24 @@
     <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
     
     <span class="c1"># compute solution :</span>
-    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> <span class="n">bcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span><span class="p">,</span>
-          <span class="n">annotate</span> <span class="o">=</span> <span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span>
-    <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-    
-    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assp</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    
-    <span class="n">U3</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">J</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span><span class="p">,</span>
+          <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span>
 
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>   <span class="s1">&#39;u&#39;</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>   <span class="s1">&#39;v&#39;</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">U3</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>   <span class="s1">&#39;w&#39;</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">)</span></div></div>
+    <span class="c1"># update the model&#39;s momentum container :    </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MomentumDukowiczStokes.update_model_var"><a class="viewcode-back" href="../momentum.html#momentumstokes.MomentumDukowiczStokes.update_model_var">[docs]</a>  <span class="k">def</span> <span class="nf">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the two horizontal components of velocity in ``self.model.U3``</span>
+<span class="sd">    to those given by ``u``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">u_x</span><span class="p">,</span> <span class="n">u_y</span><span class="p">,</span> <span class="n">u_z</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u_x</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">u_y</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">u_z</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">assp</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span>   <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="s1">&#39;model.U3&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span>  <span class="s1">&#39;model.p&#39;</span><span class="p">,</span>  <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div></div>
 
 
 
@@ -858,24 +851,19 @@
       <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;    - using stabilized elements -&quot;</span>
       <span class="c1"># system unknown function space is created now if periodic boundaries </span>
       <span class="c1"># are not used (see model.generate_function_space()) :</span>
-      <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span><span class="p">:</span>
-        <span class="n">Q4</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q4</span>
-      <span class="k">else</span><span class="p">:</span>
-        <span class="n">Q4</span>   <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">QM4e</span><span class="p">)</span>
+      <span class="n">Q4</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q4</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assx</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">Q4</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assy</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">Q4</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assz</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">Q4</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assp</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span> <span class="n">Q4</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
-      <span class="c1"># FIXME: Taylor-Hood does not work, the periodic bcs are not enforced properly.</span>
-      <span class="c1">#        I have not tested TH with non-periodic bcs.</span>
+      <span class="c1"># FIXME: Taylor-Hood does not work, the periodic bcs are not enforced</span>
+      <span class="c1">#        properly.</span>
+      <span class="c1"># NOTE:  I have not tested TH with non-periodic bcs.</span>
       <span class="n">s</span>  <span class="o">=</span> <span class="s2">&quot;    - using Taylor-Hood elements -&quot;</span>
       <span class="c1"># system unknown function space is created now if periodic boundaries </span>
       <span class="c1"># are not used (see model.generate_function_space()) :</span>
-      <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">use_periodic</span><span class="p">:</span>
-        <span class="n">Q4</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">QTH3</span>
-      <span class="k">else</span><span class="p">:</span>
-        <span class="n">Q4</span>   <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">QTH3e</span><span class="p">)</span>
+      <span class="n">Q4</span>         <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">QTH3</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assx</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span>
                                     <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">)</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assy</span>  <span class="o">=</span> <span class="n">FunctionAssigner</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">function_space</span><span class="p">(),</span>
@@ -1088,8 +1076,8 @@
     <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
     
     <span class="c1"># compute solution :</span>
-    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> <span class="n">bcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span><span class="p">,</span>
-          <span class="n">annotate</span> <span class="o">=</span> <span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span>
+    <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_F</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">J</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_Jac</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mom_bcs</span><span class="p">,</span>
+          <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">,</span> <span class="n">solver_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">])</span>
     <span class="c1">#params[&#39;solver&#39;][&#39;newton_solver&#39;][&#39;linear_solver&#39;] = &#39;gmres&#39;</span>
     <span class="c1">#precond = &#39;fieldsplit&#39;</span>
     <span class="c1">#model.home_rolled_newton_method(self.mom_F, self.U, self.mom_Jac, </span>
@@ -1098,34 +1086,36 @@
     <span class="c1">#                                method=params[&#39;solver&#39;][&#39;newton_solver&#39;][&#39;linear_solver&#39;], preconditioner=precond,</span>
     <span class="c1">#                                bp_Jac=self.bp_Jac,</span>
     <span class="c1">#                                bp_R=self.bp_R)</span>
-      
+
+    <span class="c1"># update the model&#39;s momentum containers :    </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the two horizontal components of velocity in ``self.model.U3``</span>
+<span class="sd">    to those given by ``u``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stabilized</span><span class="p">:</span>
-      <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">assp</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="n">u_x</span><span class="p">,</span> <span class="n">u_y</span><span class="p">,</span> <span class="n">u_z</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u_x</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">u_y</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">u_z</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">assp</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span>   <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
     
     <span class="k">else</span><span class="p">:</span>
-      <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">)</span>
-      <span class="n">u_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">v_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">w_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">p_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="n">u_x</span><span class="p">,</span> <span class="n">u_y</span><span class="p">,</span> <span class="n">u_z</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">split</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+      <span class="n">u_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">u_x</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="n">v_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">u_y</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="n">w_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">u_z</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+      <span class="n">p_n</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">p</span><span class="p">,</span>   <span class="n">model</span><span class="o">.</span><span class="n">Q_non_periodic</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
       
       <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assy</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">v_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assz</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">w_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assp</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">p_n</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
 
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="s1">&#39;U3&#39;</span><span class="p">)</span>
-    
-    <span class="c1">#U3 = model.U3.split(True)</span>
-
-    <span class="c1">#print_min_max(U3[0],   &#39;u&#39;)</span>
-    <span class="c1">#print_min_max(U3[1],   &#39;v&#39;)</span>
-    <span class="c1">#print_min_max(U3[2],   &#39;w&#39;)</span>
-    <span class="c1">#print_min_max(model.p, &#39;p&#39;)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="s1">&#39;model.U3&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span>  <span class="s1">&#39;model.p&#39;</span><span class="p">,</span>  <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
 
 

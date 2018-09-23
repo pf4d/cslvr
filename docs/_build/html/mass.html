@@ -229,6 +229,12 @@ S &lt;min, max&gt; : &lt;1.000e+00, 6.065e+02&gt;
 <li><code class="docutils literal notranslate"><span class="pre">S</span></code> is the surface height <span class="math notranslate nohighlight">\(S\)</span> saved to <code class="docutils literal notranslate"><span class="pre">model.S</span></code></li>
 </ul>
 <dl class="method">
+<dt id="mass.UpperFreeSurface.get_U">
+<code class="descname">get_U</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#UpperFreeSurface.get_U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.UpperFreeSurface.get_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the unknown Function.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="mass.UpperFreeSurface.solve">
 <code class="descname">solve</code><span class="sig-paren">(</span><em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#UpperFreeSurface.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.UpperFreeSurface.solve" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method solves the free-surface equation for the upper-surface height <span class="math notranslate nohighlight">\(S\)</span>, updating <code class="docutils literal notranslate"><span class="pre">self.model.S</span></code>.</p>
@@ -242,6 +248,13 @@ S &lt;min, max&gt; : &lt;1.000e+00, 6.065e+02&gt;
 <p>Currently does not support dolfin-adjoint annotation.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="mass.UpperFreeSurface.update_model_var">
+<code class="descname">update_model_var</code><span class="sig-paren">(</span><em>u</em>, <em>annotate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#UpperFreeSurface.update_model_var"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.UpperFreeSurface.update_model_var" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the two horizontal components of velocity in <code class="docutils literal notranslate"><span class="pre">self.model.U3</span></code>
+to those given by <code class="docutils literal notranslate"><span class="pre">u</span></code>.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
@@ -249,8 +262,11 @@ S &lt;min, max&gt; : &lt;1.000e+00, 6.065e+02&gt;
 <em class="property">class </em><code class="descclassname">mass.</code><code class="descname">LowerFreeSurface</code><span class="sig-paren">(</span><em>model</em>, <em>thklim=1.0</em>, <em>lump_mass_matrix=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#LowerFreeSurface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.LowerFreeSurface" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>This class defines the physics and solution to the lower free-surface equation.</dt>
-<dd><div class="first last math notranslate nohighlight">
-\[\frac{\partial B}{\partial t} - u_z + \underline{u} \cdot \nabla B = - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}.\]</div>
+<dd><blockquote class="first">
+<div><div class="math notranslate nohighlight">
+\[\]</div>
+</div></blockquote>
+<p class="last">frac{partial B}{partial t} - u_z + underline{u} cdot nabla B = - Vert nabla B - underline{hat{k}} Vert mathring{B}.</p>
 </dd>
 </dl>
 <p>When the <code class="xref py py-func docutils literal notranslate"><span class="pre">solve()</span></code> method is executed, something similar to the following output will be displayed:</p>
@@ -307,7 +323,7 @@ S &lt;min, max&gt; : &lt;1.000e+00, 6.065e+02&gt;
 <dd><dl class="method">
 <dt id="mass.FirnMass.solve">
 <code class="descname">solve</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mass.html#FirnMass.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mass.FirnMass.solve" title="Permalink to this definition">¶</a></dt>
-<dd><p>If conserving the mass of the firn column, calculate height of each 
+<dd><p>If conserving the mass of the firn column, calculate height of each
 interval :</p>
 </dd></dl>
 

@@ -275,6 +275,7 @@
           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_facets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">)</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">element</span> <span class="o">=</span> <span class="n">FiniteElement</span><span class="p">(</span><span class="s2">&quot;CG&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - not using a mesh - &quot;</span>
       <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
 

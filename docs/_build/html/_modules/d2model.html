@@ -178,553 +178,549 @@
 <span class="kn">import</span> <span class="nn">sys</span>
 
 <div class="viewcode-block" id="D2Model"><a class="viewcode-back" href="../model.html#d2model.D2Model">[docs]</a><span class="k">class</span> <span class="nc">D2Model</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
-  <span class="sd">&quot;&quot;&quot; </span>
-<span class="sd">  &quot;&quot;&quot;</span>
-  <span class="n">OMEGA_GND</span>   <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># internal cells over bedrock</span>
-  <span class="n">OMEGA_FLT</span>   <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># internal cells over water</span>
-  <span class="n">OMEGA_ACC</span>   <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># internal cells with positive accumulation on surface</span>
-  <span class="n">OMEGA_U_GND</span> <span class="o">=</span> <span class="mi">8</span>   <span class="c1"># grounded surface with U observations</span>
-  <span class="n">OMEGA_U_FLT</span> <span class="o">=</span> <span class="mi">9</span>   <span class="c1"># shelf surface with U observations</span>
-  <span class="n">GAMMA_L_DVD</span> <span class="o">=</span> <span class="mi">7</span>   <span class="c1"># basin divides</span>
-  <span class="n">GAMMA_L_GND</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># terminus not in contact with water</span>
-  <span class="n">GAMMA_L_FLT</span> <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># terminus in contact with water</span>
-  
-  <span class="c1"># external boundaries :</span>
-  <span class="n">ext_b</span> <span class="o">=</span> <span class="p">{</span><span class="n">GAMMA_L_DVD</span> <span class="p">:</span> <span class="s1">&#39;interior lateral suface&#39;</span><span class="p">,</span>
-           <span class="n">GAMMA_L_FLT</span> <span class="p">:</span> <span class="s1">&#39;exterior lateral surface in contact with water&#39;</span><span class="p">,</span>
-           <span class="n">GAMMA_L_GND</span> <span class="p">:</span> <span class="s1">&#39;exterior lateral surface not in contact with water&#39;</span><span class="p">},</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="n">OMEGA_GND</span>   <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># internal cells over bedrock</span>
+	<span class="n">OMEGA_FLT</span>   <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># internal cells over water</span>
+	<span class="n">OMEGA_ACC</span>   <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># internal cells with positive accumulation on surface</span>
+	<span class="n">OMEGA_U_GND</span> <span class="o">=</span> <span class="mi">8</span>   <span class="c1"># grounded surface with U observations</span>
+	<span class="n">OMEGA_U_FLT</span> <span class="o">=</span> <span class="mi">9</span>   <span class="c1"># shelf surface with U observations</span>
+	<span class="n">GAMMA_L_DVD</span> <span class="o">=</span> <span class="mi">7</span>   <span class="c1"># basin divides</span>
+	<span class="n">GAMMA_L_GND</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># terminus not in contact with water</span>
+	<span class="n">GAMMA_L_FLT</span> <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># terminus in contact with water</span>
 
-  <span class="c1"># internal boundaries :</span>
-  <span class="n">int_b</span> <span class="o">=</span> <span class="p">{</span><span class="n">OMEGA_GND</span>   <span class="p">:</span> <span class="s1">&#39;interior over bedrock&#39;</span><span class="p">,</span>
-           <span class="n">OMEGA_FLT</span>   <span class="p">:</span> <span class="s1">&#39;interior over water&#39;</span><span class="p">,</span>
-           <span class="n">OMEGA_ACC</span>   <span class="p">:</span> <span class="s1">&#39;interior cells with positive accumulation&#39;</span><span class="p">,</span>
-           <span class="n">OMEGA_U_FLT</span> <span class="p">:</span> <span class="s1">&#39;interior over water with U observations&#39;</span><span class="p">,</span>
-           <span class="n">OMEGA_U_GND</span> <span class="p">:</span> <span class="s1">&#39;interior over bedrock with U observations&#39;</span><span class="p">}</span>
-  
-  <span class="c1"># union :</span>
-  <span class="n">boundaries</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;OMEGA&#39;</span> <span class="p">:</span> <span class="n">int_b</span><span class="p">,</span>
-                <span class="s1">&#39;GAMMA&#39;</span> <span class="p">:</span> <span class="n">ext_b</span><span class="p">}</span>
+	<span class="c1"># external boundaries :</span>
+	<span class="n">ext_b</span> <span class="o">=</span> <span class="p">{</span><span class="n">GAMMA_L_DVD</span> <span class="p">:</span> <span class="s1">&#39;interior lateral suface&#39;</span><span class="p">,</span>
+	         <span class="n">GAMMA_L_FLT</span> <span class="p">:</span> <span class="s1">&#39;exterior lateral surface in contact with water&#39;</span><span class="p">,</span>
+	         <span class="n">GAMMA_L_GND</span> <span class="p">:</span> <span class="s1">&#39;exterior lateral surface not in contact with water&#39;</span><span class="p">},</span>
 
-  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="s1">&#39;./results/&#39;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-               <span class="n">use_periodic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;submesh&#39;</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Create and instance of a 2D model.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING 2D MODEL OF TYPE &#39;</span><span class="si">%s</span><span class="s2">&#39; :::&quot;</span> <span class="o">%</span> <span class="n">kind</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+	<span class="c1"># internal boundaries :</span>
+	<span class="n">int_b</span> <span class="o">=</span> <span class="p">{</span><span class="n">OMEGA_GND</span>   <span class="p">:</span> <span class="s1">&#39;interior over bedrock&#39;</span><span class="p">,</span>
+	         <span class="n">OMEGA_FLT</span>   <span class="p">:</span> <span class="s1">&#39;interior over water&#39;</span><span class="p">,</span>
+	         <span class="n">OMEGA_ACC</span>   <span class="p">:</span> <span class="s1">&#39;interior cells with positive accumulation&#39;</span><span class="p">,</span>
+	         <span class="n">OMEGA_U_FLT</span> <span class="p">:</span> <span class="s1">&#39;interior over water with U observations&#39;</span><span class="p">,</span>
+	         <span class="n">OMEGA_U_GND</span> <span class="p">:</span> <span class="s1">&#39;interior over bedrock with U observations&#39;</span><span class="p">}</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="n">kind</span>
-    
-    <span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">use_periodic</span><span class="p">)</span>
-   
-    <span class="c1"># default integration measures : </span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega</span> <span class="o">=</span> <span class="n">dx</span><span class="c1">#Boundary(dx, [0], &#39;entire interior&#39;)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dGamma</span> <span class="o">=</span> <span class="n">ds</span><span class="c1">#Boundary(ds, [0], &#39;entire exterior&#39;)</span>
-  
-<div class="viewcode-block" id="D2Model.color"><a class="viewcode-back" href="../model.html#d2model.D2Model.color">[docs]</a>  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="k">return</span> <span class="s1">&#39;150&#39;</span></div>
+	<span class="c1"># union :</span>
+	<span class="n">boundaries</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;OMEGA&#39;</span> <span class="p">:</span> <span class="n">int_b</span><span class="p">,</span>
+	              <span class="s1">&#39;GAMMA&#39;</span> <span class="p">:</span> <span class="n">ext_b</span><span class="p">}</span>
 
-<div class="viewcode-block" id="D2Model.generate_pbc"><a class="viewcode-back" href="../model.html#d2model.D2Model.generate_pbc">[docs]</a>  <span class="k">def</span> <span class="nf">generate_pbc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    return a SubDomain of periodic lateral boundaries.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using 2D periodic boundaries -&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="s1">&#39;./results/&#39;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+		           <span class="n">use_periodic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;submesh&#39;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Create and instance of a 2D model.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING 2D MODEL OF TYPE &#39;</span><span class="si">%s</span><span class="s2">&#39; :::&quot;</span> <span class="o">%</span> <span class="n">kind</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="n">xmin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
-    <span class="n">xmax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
-    <span class="n">ymin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
-    <span class="n">ymax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
-    
-    <span class="k">class</span> <span class="nc">PeriodicBoundary</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
-      
-      <span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return True if on left or bottom boundary AND NOT on one </span>
-<span class="sd">        of the two corners (0, 1) and (1, 0).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">bool</span><span class="p">((</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmin</span><span class="p">)</span> <span class="ow">or</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymin</span><span class="p">))</span> <span class="ow">and</span> \
-                    <span class="p">(</span><span class="ow">not</span> <span class="p">((</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmin</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymax</span><span class="p">))</span> \
-                     <span class="ow">or</span> <span class="p">(</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymin</span><span class="p">))))</span> \
-                     <span class="ow">and</span> <span class="n">on_boundary</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="n">kind</span>
 
-      <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Remap the values on the top and right sides to the bottom and left</span>
-<span class="sd">        sides.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymax</span><span class="p">):</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmax</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ymax</span>
-        <span class="k">elif</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">):</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmax</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">elif</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymax</span><span class="p">):</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ymax</span>
-        <span class="k">else</span><span class="p">:</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-          <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">use_periodic</span><span class="p">)</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">pBC</span> <span class="o">=</span> <span class="n">PeriodicBoundary</span><span class="p">()</span></div>
-  
-<div class="viewcode-block" id="D2Model.set_mesh"><a class="viewcode-back" href="../model.html#d2model.D2Model.set_mesh">[docs]</a>  <span class="k">def</span> <span class="nf">set_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Sets the mesh.</span>
-<span class="sd">    </span>
-<span class="sd">    :param mesh : Dolfin mesh to be written</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-    
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: setting 2D mesh :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; 2D MODEL REQUIRES A 2D MESH, EXITING &lt;&lt;&lt;&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">num_edges</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_edges</span><span class="p">()</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_cells</span><span class="p">()</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - </span><span class="si">%i</span><span class="s2">D mesh set, </span><span class="si">%i</span><span class="s2"> cells, </span><span class="si">%i</span><span class="s2"> edges, </span><span class="si">%i</span><span class="s2"> vertices - &quot;</span> \
-        <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">)</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
+		<span class="c1"># default integration measures :</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega</span> <span class="o">=</span> <span class="n">dx</span><span class="c1">#Boundary(dx, [0], &#39;entire interior&#39;)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dGamma</span> <span class="o">=</span> <span class="n">ds</span><span class="c1">#Boundary(ds, [0], &#39;entire exterior&#39;)</span>
 
-<div class="viewcode-block" id="D2Model.generate_function_spaces"><a class="viewcode-back" href="../model.html#d2model.D2Model.generate_function_spaces">[docs]</a>  <span class="k">def</span> <span class="nf">generate_function_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Generates the appropriate finite-element function spaces from parameters</span>
-<span class="sd">    specified in the config file for the model.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">generate_function_spaces</span><span class="p">()</span>
+<div class="viewcode-block" id="D2Model.color"><a class="viewcode-back" href="../model.html#d2model.D2Model.color">[docs]</a>	<span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">return</span> <span class="s1">&#39;150&#39;</span></div>
 
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: generating 2D function spaces :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+<div class="viewcode-block" id="D2Model.generate_pbc"><a class="viewcode-back" href="../model.html#d2model.D2Model.generate_pbc">[docs]</a>	<span class="k">def</span> <span class="nf">generate_pbc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		return a SubDomain of periodic lateral boundaries.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - using 2D periodic boundaries -&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;submesh&#39;</span><span class="p">:</span>
-      <span class="k">pass</span>
+		<span class="n">xmin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+		<span class="n">xmax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+		<span class="n">ymin</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+		<span class="n">ymax</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
 
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_periodic</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">QTH2</span>             <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">QTH2e</span><span class="p">,</span>
-                                            <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">BDM</span>              <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">BDMMe</span><span class="p">,</span>
-                                            <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">DG1</span>              <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DG1e</span><span class="p">,</span>
-                                            <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_periodic</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">QTH2</span>             <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">QTH2e</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">BDM</span>              <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">BDMMe</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">DG1</span>              <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DG1e</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span>
-      <span class="c1"># default values if not provided : </span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">poly_deg</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;poly_deg&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">N_T</span>      <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;N_T&#39;</span><span class="p">,</span>      <span class="mi">8</span><span class="p">)</span>
+		<span class="k">class</span> <span class="nc">PeriodicBoundary</span><span class="p">(</span><span class="n">SubDomain</span><span class="p">):</span>
 
-      <span class="c1"># velocity space :</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">HVe</span>  <span class="o">=</span> <span class="n">MixedElement</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">Q1e</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">poly_deg</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">HV</span>   <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">HVe</span><span class="p">)</span>
-     
-      <span class="c1"># temperature space :</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Ze</span>   <span class="o">=</span> <span class="n">MixedElement</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">Q1e</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">N_T</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Z</span>    <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ze</span><span class="p">)</span>   
-    
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - 2D function spaces created - &quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
+			<span class="k">def</span> <span class="nf">inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">on_boundary</span><span class="p">):</span>
+				<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">				Return True if on left or bottom boundary AND NOT on one</span>
+<span class="sd">				of the two corners (0, 1) and (1, 0).</span>
+<span class="sd">				&quot;&quot;&quot;</span>
+				<span class="k">return</span> <span class="nb">bool</span><span class="p">((</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmin</span><span class="p">)</span> <span class="ow">or</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymin</span><span class="p">))</span> <span class="ow">and</span> \
+				            <span class="p">(</span><span class="ow">not</span> <span class="p">((</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmin</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymax</span><span class="p">))</span> \
+				             <span class="ow">or</span> <span class="p">(</span><span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymin</span><span class="p">))))</span> \
+				             <span class="ow">and</span> <span class="n">on_boundary</span><span class="p">)</span>
 
-<div class="viewcode-block" id="D2Model.calculate_boundaries"><a class="viewcode-back" href="../model.html#d2model.D2Model.calculate_boundaries">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_boundaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
-                           <span class="n">mask</span>        <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                           <span class="n">adot</span>        <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                           <span class="n">U_mask</span>      <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-                           <span class="n">mark_divide</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-                           <span class="n">contour</span>     <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Determines the boundaries of the current model mesh</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: calculating boundaries :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+			<span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+				<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">				Remap the values on the top and right sides to the bottom and left</span>
+<span class="sd">				sides.</span>
+<span class="sd">				&quot;&quot;&quot;</span>
+				<span class="k">if</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymax</span><span class="p">):</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmax</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ymax</span>
+				<span class="k">elif</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xmax</span><span class="p">):</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmax</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+				<span class="k">elif</span> <span class="n">near</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ymax</span><span class="p">):</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ymax</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+					<span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
-    <span class="k">if</span>    <span class="p">(</span><span class="n">contour</span> <span class="ow">is</span>     <span class="kc">None</span> <span class="ow">and</span>     <span class="n">mark_divide</span><span class="p">)</span> \
-       <span class="ow">or</span> <span class="p">(</span><span class="n">contour</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">mark_divide</span><span class="p">):</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; IF PARAMETER &lt;mark_divide&gt; OF calculate_boundaries() IS &quot;</span> <span class="o">+</span> \
-          <span class="s2">&quot;TRUE, PARAMETER &lt;contour&gt; MUST BE A NUMPY ARRAY OF COORDINATES &quot;</span> <span class="o">+</span> \
-          <span class="s2">&quot;OF THE ICE-SHEET EXTERIOR BOUNDARY &lt;&lt;&lt;&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">contour</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">mark_divide</span><span class="p">:</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - marking the interior facets for incomplete meshes -&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-      <span class="n">tree</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
-     
-    <span class="c1"># this function contains markers which may be applied to facets of the mesh</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">ff</span>      <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">ff_acc</span>  <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">cf</span>      <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-    <span class="n">dofmap</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">dofmap</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">pBC</span> <span class="o">=</span> <span class="n">PeriodicBoundary</span><span class="p">()</span></div>
 
-    <span class="n">S</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span>
-    <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span>
-    
-    <span class="c1"># default to all grounded ice :</span>
-    <span class="k">if</span> <span class="n">mask</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="n">mask</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
-    
-    <span class="c1"># default to all positive accumulation :</span>
-    <span class="k">if</span> <span class="n">adot</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="n">adot</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
-    
-    <span class="c1"># default to U observations everywhere :</span>
-    <span class="k">if</span> <span class="n">U_mask</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
-      <span class="n">U_mask</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
+<div class="viewcode-block" id="D2Model.set_mesh"><a class="viewcode-back" href="../model.html#d2model.D2Model.set_mesh">[docs]</a>	<span class="k">def</span> <span class="nf">set_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mesh</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Sets the mesh.</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">init_adot</span><span class="p">(</span><span class="n">adot</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">init_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">init_U_mask</span><span class="p">(</span><span class="n">U_mask</span><span class="p">)</span>
+<span class="sd">		:param mesh : Dolfin mesh to be written</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">adot</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">U_mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-    
-    <span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-6</span>
-    
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - marking boundaries - &quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> edges - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_edges</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">facets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">):</span>
-      <span class="n">x_m</span>      <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
-      <span class="n">y_m</span>      <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
-      <span class="n">mask_xy</span>  <span class="o">=</span> <span class="n">mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
-      
-      <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">exterior</span><span class="p">():</span>
-        <span class="c1"># if we want to use a basin, we need to mark the interior facets :</span>
-        <span class="k">if</span> <span class="n">mark_divide</span><span class="p">:</span>
-          <span class="k">if</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">((</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span>
-          <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-              <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span>
-            <span class="k">else</span><span class="p">:</span>
-              <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span>
-        <span class="c1"># otherwise just mark for in contact with or without water :</span>
-        <span class="k">else</span><span class="p">:</span>
-          <span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span>
-          <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - done - &quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> cells - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">):</span>
-      <span class="n">x_m</span>       <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
-      <span class="n">y_m</span>       <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
-      <span class="n">mask_xy</span>   <span class="o">=</span> <span class="n">mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
-      <span class="n">U_mask_xy</span> <span class="o">=</span> <span class="n">U_mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
-      <span class="n">adot_xy</span>   <span class="o">=</span> <span class="n">adot</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: setting 2D mesh :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-      <span class="k">if</span> <span class="n">adot_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ff_acc</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_ACC</span>
-      <span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">U_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span>
-        <span class="k">else</span><span class="p">:</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span>
-      <span class="k">else</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">U_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span>
-        <span class="k">else</span><span class="p">:</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - done - &quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="bp">self</span><span class="o">.</span><span class="n">set_measures</span><span class="p">()</span></div>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; 2D MODEL REQUIRES A 2D MESH, EXITING &lt;&lt;&lt;&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">num_edges</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_edges</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_cells</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">()</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - </span><span class="si">%i</span><span class="s2">D mesh set, </span><span class="si">%i</span><span class="s2"> cells, </span><span class="si">%i</span><span class="s2"> edges, </span><span class="si">%i</span><span class="s2"> vertices - &quot;</span> \
+		    <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_edges</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_vertices</span><span class="p">)</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="D2Model.set_measures"><a class="viewcode-back" href="../model.html#d2model.D2Model.set_measures">[docs]</a>  <span class="k">def</span> <span class="nf">set_measures</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    set the new measure space for facets ``self.ds`` and cells ``self.dx`` for</span>
-<span class="sd">    the boundaries marked by FacetFunction ``self.ff`` and CellFunction </span>
-<span class="sd">    ``self.cf``, respectively.</span>
+<div class="viewcode-block" id="D2Model.generate_function_spaces"><a class="viewcode-back" href="../model.html#d2model.D2Model.generate_function_spaces">[docs]</a>	<span class="k">def</span> <span class="nf">generate_function_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Generates the appropriate finite-element function spaces from parameters</span>
+<span class="sd">		specified in the config file for the model.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">generate_function_spaces</span><span class="p">()</span>
 
-<span class="sd">    Also, the number of cells or facets marked by </span>
-<span class="sd">    :func:`calculate_boundaries` :</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: generating 2D function spaces :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-<span class="sd">    * ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``  </span>
-<span class="sd">    * ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``  </span>
-<span class="sd">    * ``self.N_OMEGA_U_GND`` -- number of cells marked ``self.OMEGA_U_GND``</span>
-<span class="sd">    * ``self.N_OMEGA_U_FLT`` -- number of cells marked ``self.OMEGA_U_FLT``</span>
-<span class="sd">    * ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``</span>
-<span class="sd">    * ``self.N_GAMMA_L_GND`` -- number of facets marked ``self.GAMMA_L_GND``</span>
-<span class="sd">    * ``self.N_GAMMA_L_FLT`` -- number of facets marked ``self.GAMMA_L_FLT``</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;submesh&#39;</span><span class="p">:</span>
+			<span class="k">pass</span>
 
-<span class="sd">    The subdomains corresponding to CellFunction ``self.cf`` are :</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">QTH2</span>             <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">QTH2e</span><span class="p">,</span>
+			                                      <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">BDM</span>              <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">BDMMe</span><span class="p">,</span>
+			                                      <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">DG1</span>              <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DG1e</span><span class="p">,</span>
+			                                      <span class="n">constrained_domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pBC</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span>
+			<span class="c1"># default values if not provided :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">poly_deg</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;poly_deg&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_T</span>      <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;N_T&#39;</span><span class="p">,</span>      <span class="mi">8</span><span class="p">)</span>
 
-<span class="sd">    * ``self.dOmega``     --  entire interior</span>
-<span class="sd">    * ``self.dOmega_g``   --  internal above grounded</span>
-<span class="sd">    * ``self.dOmega_w``   --  internal above floating</span>
-<span class="sd">    * ``self.dOmega_gu``  --  grounded with U observations</span>
-<span class="sd">    * ``self.dOmega_wu``  --  floating with U observations</span>
-<span class="sd">    * ``self.dOmega_u``   --  entire interior with U observations</span>
-<span class="sd">    </span>
-<span class="sd">    The subdomain corresponding to FacetFunction ``self.ff`` are:</span>
-<span class="sd">    </span>
-<span class="sd">    * ``self.dGamma``    --  entire exterior</span>
-<span class="sd">    * ``self.dGamma_dl`` --  lateral interior surface</span>
-<span class="sd">    * ``self.dGamma_wl`` --  lateral exterior surface in contact with water</span>
-<span class="sd">    * ``self.dGamma_gl`` --  lateral exterior surface not in contact with water</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># calculate the number of cells and facets that are of a certain type</span>
-    <span class="c1"># for determining Dirichlet boundaries :</span>
-    <span class="n">local_N_OMEGA_GND</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">)</span>
-    <span class="n">local_N_OMEGA_FLT</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">)</span>
-    <span class="n">local_N_OMEGA_U_GND</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">)</span>
-    <span class="n">local_N_OMEGA_U_FLT</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">)</span>
-    <span class="n">local_N_GAMMA_L_DVD</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">)</span>
-    <span class="n">local_N_GAMMA_L_GND</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span><span class="p">)</span>
-    <span class="n">local_N_GAMMA_L_FLT</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span><span class="p">)</span>
-   
-    <span class="c1"># find out if any are marked over all processes :</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_OMEGA_GND</span>   <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_OMEGA_GND</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_OMEGA_FLT</span>   <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_OMEGA_FLT</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_GND</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_U_GND</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_FLT</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_U_FLT</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_L_DVD</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_L_DVD</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_L_GND</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_L_GND</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_L_FLT</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_L_FLT</span><span class="p">)</span>
+			<span class="c1"># velocity space :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">HVe</span>  <span class="o">=</span> <span class="n">MixedElement</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">Q1e</span><span class="p">]</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">poly_deg</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">HV</span>   <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">HVe</span><span class="p">)</span>
 
-    <span class="c1"># create new measures of integration :</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">ds</span>      <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s1">&#39;ds&#39;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dx</span>      <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s1">&#39;dx&#39;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">)</span>
-    
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega</span>     <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">,</span>   <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">,</span>
-                                         <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">],</span>
-                      <span class="s1">&#39;entire interior&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega_g</span>   <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">],</span>
-                      <span class="s1">&#39;interior above grounded ice&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega_w</span>   <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">],</span>
-                      <span class="s1">&#39;interior above floating ice&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega_gu</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">],</span>
-                      <span class="s1">&#39;interior with U observations above grounded ice&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega_wu</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">],</span>
-                      <span class="s1">&#39;interior with U observations above floating ice&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dOmega_u</span>   <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">],</span>
-                      <span class="s1">&#39;entire interior with U observations&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dGamma</span>     <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span>
-                      <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span><span class="p">],</span>
-                      <span class="s1">&#39;entire exterior&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dGamma_dl</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">],</span>
-                      <span class="s1">&#39;lateral interior surface&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dGamma_wl</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span><span class="p">],</span>
-                      <span class="s1">&#39;lateral exterior surface in contact with water&#39;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">dGamma_gl</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span><span class="p">],</span>
-                      <span class="s1">&#39;lateral exterior surface not in contact with water&#39;</span><span class="p">)</span></div>
+			<span class="c1"># temperature space :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Ze</span>   <span class="o">=</span> <span class="n">MixedElement</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">Q1e</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">N_T</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Z</span>    <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ze</span><span class="p">)</span>
 
-<div class="viewcode-block" id="D2Model.init_T_T0"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_T_T0">[docs]</a>  <span class="k">def</span> <span class="nf">init_T_T0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing temperature in model.Q space to model.Z space :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="n">T</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">as_vector</span><span class="p">([</span><span class="n">T</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">N_T</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T_</span><span class="p">,</span>  <span class="n">T</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T0_</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span></div>
-    
-<div class="viewcode-block" id="D2Model.init_H_H0"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_H_H0">[docs]</a>  <span class="k">def</span> <span class="nf">init_H_H0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing thickness :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">,</span>  <span class="n">H</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span></div>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - 2D function spaces created - &quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="D2Model.init_H_bounds"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_H_bounds">[docs]</a>  <span class="k">def</span> <span class="nf">init_H_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H_min</span><span class="p">,</span> <span class="n">H_max</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing bounds on thickness :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H_min</span><span class="p">,</span> <span class="n">H_min</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H_max</span><span class="p">,</span> <span class="n">H_max</span><span class="p">)</span></div>
+<div class="viewcode-block" id="D2Model.calculate_boundaries"><a class="viewcode-back" href="../model.html#d2model.D2Model.calculate_boundaries">[docs]</a>	<span class="k">def</span> <span class="nf">calculate_boundaries</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+	                         <span class="n">mask</span>        <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+	                         <span class="n">adot</span>        <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+	                         <span class="n">U_mask</span>      <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+	                         <span class="n">mark_divide</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+	                         <span class="n">contour</span>     <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Determines the boundaries of the current model mesh</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: calculating boundaries :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-<div class="viewcode-block" id="D2Model.init_U"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_U">[docs]</a>  <span class="k">def</span> <span class="nf">init_U</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span><span class="p">:</span>
-      <span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">init_U</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span>
-      <span class="c1"># NOTE: this overides model.init_U</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing velocity :::&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="n">U</span><span class="p">)</span></div>
+		<span class="k">if</span>    <span class="p">(</span><span class="n">contour</span> <span class="ow">is</span>     <span class="kc">None</span> <span class="ow">and</span>     <span class="n">mark_divide</span><span class="p">)</span> \
+			 <span class="ow">or</span> <span class="p">(</span><span class="n">contour</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">mark_divide</span><span class="p">):</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; IF PARAMETER &lt;mark_divide&gt; OF calculate_boundaries() IS &quot;</span> <span class="o">+</span> \
+			    <span class="s2">&quot;TRUE, PARAMETER &lt;contour&gt; MUST BE A NUMPY ARRAY OF COORDINATES &quot;</span> <span class="o">+</span> \
+			    <span class="s2">&quot;OF THE ICE-SHEET EXTERIOR BOUNDARY &lt;&lt;&lt;&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="n">contour</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">mark_divide</span><span class="p">:</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - marking the interior facets for incomplete meshes -&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+			<span class="n">tree</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span>
 
-<div class="viewcode-block" id="D2Model.solve_hydrostatic_pressure"><a class="viewcode-back" href="../model.html#d2model.D2Model.solve_hydrostatic_pressure">[docs]</a>  <span class="k">def</span> <span class="nf">solve_hydrostatic_pressure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Solve for the hydrostatic pressure :math:`p = f_c = \rho g (S - z)` to </span>
-<span class="sd">    ``self.p``, with surface height :math:`S` given by ``self.S``, ice </span>
-<span class="sd">    density :math:`\rho` given by ``self.rho``, and :math:`z`-coordinate</span>
-<span class="sd">    given by ``self.x[2]``.</span>
+		<span class="c1"># this function contains markers which may be applied to facets of the mesh</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ff</span>      <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ff_acc</span>  <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cf</span>      <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s1">&#39;size_t&#39;</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+		<span class="n">dofmap</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">dofmap</span><span class="p">()</span>
 
-<span class="sd">    :param annotate: allow Dolfin-Adjoint annotation of this procedure.</span>
-<span class="sd">    :type annotate: bool</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">rhoi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">g</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">H</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">rhoi</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="n">H</span><span class="p">)</span></div>
-    
-<div class="viewcode-block" id="D2Model.initialize_variables"><a class="viewcode-back" href="../model.html#d2model.D2Model.initialize_variables">[docs]</a>  <span class="k">def</span> <span class="nf">initialize_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Initializes the class&#39;s variables to default values that are then set</span>
-<span class="sd">    by the individually created model.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">initialize_variables</span><span class="p">()</span>
+		<span class="n">S</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span>
+		<span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span>
 
-    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing 2D variables :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="k">if</span>   <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;submesh&#39;</span><span class="p">:</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Q_to_Qs_dofmap</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Q_to_Qs_dofmap&#39;</span><span class="p">)</span>
+		<span class="c1"># default to all grounded ice :</span>
+		<span class="k">if</span> <span class="n">mask</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">mask</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
 
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span><span class="p">:</span>
-      <span class="c1"># Enthalpy model</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">theta0</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;theta0&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">W0</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;W0&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">thetahat</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;thetahat&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">uhat</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;uhat&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">vhat</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vhat&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">what</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;what&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">mhat</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;mhat&#39;</span><span class="p">)</span>
-      
-      <span class="c1"># Surface climate model</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">precip</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;precip&#39;</span><span class="p">)</span>
-    
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span> 
-      <span class="c1"># hybrid mass-balance :</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">H</span>             <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">H0</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H0&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">ubar_c</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ubar_c&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">vbar_c</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vbar_c&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">H_min</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H_min&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">H_max</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H_max&#39;</span><span class="p">)</span>
-      
-      <span class="c1"># hybrid energy-balance :</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">deltax</span>        <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N_T</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">sigmas</span>        <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_T</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Tm</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Tm&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">T_</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;T_&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">T0_</span>           <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;T0_&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Ts</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Ts&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Tb</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Tb&#39;</span><span class="p">)</span>
-      
-      <span class="bp">self</span><span class="o">.</span><span class="n">U3</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">HV</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U3&#39;</span><span class="p">)</span>
-      <span class="n">u_</span>                 <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>   <span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
-      <span class="n">v_</span>                 <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>   <span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span>
-      <span class="n">coef</span>               <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.</span><span class="o">/</span><span class="mf">4.</span><span class="o">*</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">4</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)]</span>
-      <span class="n">dcoef</span>              <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">3</span><span class="p">]</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">u</span>             <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">u_</span><span class="p">,</span>  <span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">v</span>             <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">v_</span><span class="p">,</span>  <span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
-      
-      <span class="c1"># basal velocity :</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">U3_b</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U3_b&#39;</span><span class="p">)</span>
-      <span class="n">u_b</span><span class="p">,</span> <span class="n">v_b</span><span class="p">,</span> <span class="n">w_b</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U3_b</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-      <span class="n">u_b</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;u_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-      <span class="n">v_b</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;v_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-      <span class="n">w_b</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;w_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">u_b</span>           <span class="o">=</span> <span class="n">u_b</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">v_b</span>           <span class="o">=</span> <span class="n">v_b</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">w_b</span>           <span class="o">=</span> <span class="n">w_b</span>
-      
-      <span class="c1"># surface velocity :</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">U3_s</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U3_s&#39;</span><span class="p">)</span>
-      <span class="n">u_s</span><span class="p">,</span> <span class="n">v_s</span><span class="p">,</span> <span class="n">w_s</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U3_s</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-      <span class="n">u_s</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;u_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-      <span class="n">v_s</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;v_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-      <span class="n">w_s</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;w_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">u_s</span>           <span class="o">=</span> <span class="n">u_s</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">v_s</span>           <span class="o">=</span> <span class="n">v_s</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">w_s</span>           <span class="o">=</span> <span class="n">w_s</span></div>
+		<span class="c1"># default to all positive accumulation :</span>
+		<span class="k">if</span> <span class="n">adot</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">adot</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
 
-<div class="viewcode-block" id="D2Model.thermo_solve"><a class="viewcode-back" href="../model.html#d2model.D2Model.thermo_solve">[docs]</a>  <span class="k">def</span> <span class="nf">thermo_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Perform thermo-mechanical coupling between momentum and energy.</span>
-<span class="sd">    </span>
-<span class="sd">    :param momentum: momentum instance to couple with ``energy``.</span>
-<span class="sd">    :param energy:   energy instance to couple with ``momentum``.</span>
-<span class="sd">    :type momentum:  :class:`~momentum.Momentum`</span>
-<span class="sd">    :type energy:    :class:`~energy.Energy`</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    
-    <span class="kn">from</span> <span class="nn">cslvr</span> <span class="k">import</span> <span class="n">Momentum</span>
-    <span class="kn">from</span> <span class="nn">cslvr</span> <span class="k">import</span> <span class="n">Energy</span>
+		<span class="c1"># default to U observations everywhere :</span>
+		<span class="k">if</span> <span class="n">U_mask</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">U_mask</span> <span class="o">=</span> <span class="n">Expression</span><span class="p">(</span><span class="s1">&#39;1.0&#39;</span><span class="p">,</span> <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">ufl_element</span><span class="p">())</span>
 
-    <span class="c1"># TODO: also make sure these are D2Model momentum and energy classes. </span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">momentum</span><span class="p">,</span> <span class="n">Momentum</span><span class="p">):</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; thermo_solve REQUIRES A &#39;Momentum&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">momentum</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy</span><span class="p">,</span> <span class="n">Energy</span><span class="p">):</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; thermo_solve REQUIRES AN &#39;Energy&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">energy</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">init_adot</span><span class="p">(</span><span class="n">adot</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">init_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">init_U_mask</span><span class="p">(</span><span class="n">U_mask</span><span class="p">)</span>
 
-    <span class="c1"># this is the simplest thing!</span>
-    <span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="n">energy</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div>
+		<span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">adot</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">U_mask</span><span class="o">.</span><span class="n">set_allow_extrapolation</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
 
-<div class="viewcode-block" id="D2Model.transient_iteration"><a class="viewcode-back" href="../model.html#d2model.D2Model.transient_iteration">[docs]</a>  <span class="k">def</span> <span class="nf">transient_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">time_step</span><span class="p">,</span> <span class="n">adaptive</span><span class="p">,</span> <span class="n">annotate</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    This function defines one interation of the transient solution, and is </span>
-<span class="sd">    called by the function ``model.transient_solve``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">stars</span> <span class="o">=</span> <span class="s2">&quot;*****************************************************************&quot;</span>
-    
-    <span class="c1"># TODO: this adaptive interation should be altered to include CFL.</span>
-    <span class="c1"># do solve adaptively :</span>
-    <span class="k">if</span> <span class="n">adaptive</span><span class="p">:</span>
-    
-      <span class="c1"># solve momentum equation, lower alpha on failure :</span>
-      <span class="n">solved_u</span> <span class="o">=</span> <span class="kc">False</span>
-      <span class="n">par</span>      <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">solve_params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">]</span>
-      <span class="k">while</span> <span class="ow">not</span> <span class="n">solved_u</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">par</span><span class="p">[</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.2</span><span class="p">:</span>
-          <span class="n">status_u</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">]</span>
-          <span class="k">break</span>
-        <span class="c1"># always reset velocity for good convergence :</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">momentum</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
-        <span class="n">status_u</span> <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-        <span class="n">solved_u</span> <span class="o">=</span> <span class="n">status_u</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="c1"># TODO: rewind the dolfin-adjoint tape too!</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">solved_u</span><span class="p">:</span>
-          <span class="n">par</span><span class="p">[</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="mf">1.43</span>
-          <span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-          <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; WARNING: newton relaxation parameter lowered to </span><span class="si">%g</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
-          <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">par</span><span class="p">[</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">],</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-          <span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="n">tol</span> <span class="o">=</span> <span class="mf">1e-6</span>
 
-      <span class="c1"># solve mass equation, lowering time step on failure :</span>
-      <span class="n">solved_h</span> <span class="o">=</span> <span class="kc">False</span>
-      <span class="n">dt</span>       <span class="o">=</span> <span class="n">time_step</span>
-      <span class="k">while</span> <span class="ow">not</span> <span class="n">solved_h</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">dt</span> <span class="o">&lt;</span> <span class="n">DOLFIN_EPS</span><span class="p">:</span>
-          <span class="n">status_h</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span><span class="kc">False</span><span class="p">]</span>
-          <span class="k">break</span>
-        <span class="n">H</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">status_h</span> <span class="o">=</span> <span class="n">mass</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-        <span class="n">solved_h</span> <span class="o">=</span> <span class="n">status_h</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="c1"># TODO: rewind the dolfin-adjoint tape too!</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">solved_h</span><span class="p">:</span>
-          <span class="n">dt</span> <span class="o">/=</span> <span class="mf">2.0</span>
-          <span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-          <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; WARNING: time step lowered to </span><span class="si">%g</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
-          <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">dt</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">init_time_step</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
-          <span class="bp">self</span><span class="o">.</span><span class="n">init_H_H0</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
-          <span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - marking boundaries - &quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="c1"># do not solve adaptively :</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">mass</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div></div>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> edges - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_edges</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">facets</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">):</span>
+			<span class="n">x_m</span>      <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+			<span class="n">y_m</span>      <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+			<span class="n">mask_xy</span>  <span class="o">=</span> <span class="n">mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">exterior</span><span class="p">():</span>
+				<span class="c1"># if we want to use a basin, we need to mark the interior facets :</span>
+				<span class="k">if</span> <span class="n">mark_divide</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">((</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span>
+					<span class="k">else</span><span class="p">:</span>
+						<span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+							<span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span>
+						<span class="k">else</span><span class="p">:</span>
+							<span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span>
+				<span class="c1"># otherwise just mark for in contact with or without water :</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span>
+					<span class="k">else</span><span class="p">:</span>
+						<span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - done - &quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - iterating through </span><span class="si">%i</span><span class="s2"> cells - &quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh</span><span class="p">):</span>
+			<span class="n">x_m</span>       <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">()</span>
+			<span class="n">y_m</span>       <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">midpoint</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span>
+			<span class="n">mask_xy</span>   <span class="o">=</span> <span class="n">mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+			<span class="n">U_mask_xy</span> <span class="o">=</span> <span class="n">U_mask</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+			<span class="n">adot_xy</span>   <span class="o">=</span> <span class="n">adot</span><span class="p">(</span><span class="n">x_m</span><span class="p">,</span> <span class="n">y_m</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="n">adot_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">ff_acc</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_ACC</span>
+			<span class="k">if</span> <span class="n">mask_xy</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">U_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">U_mask_xy</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;    - done - &quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">set_measures</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="D2Model.set_measures"><a class="viewcode-back" href="../model.html#d2model.D2Model.set_measures">[docs]</a>	<span class="k">def</span> <span class="nf">set_measures</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		set the new measure space for facets ``self.ds`` and cells ``self.dx`` for</span>
+<span class="sd">		the boundaries marked by FacetFunction ``self.ff`` and CellFunction</span>
+<span class="sd">		``self.cf``, respectively.</span>
+
+<span class="sd">		Also, the number of cells or facets marked by</span>
+<span class="sd">		:func:`calculate_boundaries` :</span>
+
+<span class="sd">		* ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``</span>
+<span class="sd">		* ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``</span>
+<span class="sd">		* ``self.N_OMEGA_U_GND`` -- number of cells marked ``self.OMEGA_U_GND``</span>
+<span class="sd">		* ``self.N_OMEGA_U_FLT`` -- number of cells marked ``self.OMEGA_U_FLT``</span>
+<span class="sd">		* ``self.N_GAMMA_L_DVD`` -- number of facets marked ``self.GAMMA_L_DVD``</span>
+<span class="sd">		* ``self.N_GAMMA_L_GND`` -- number of facets marked ``self.GAMMA_L_GND``</span>
+<span class="sd">		* ``self.N_GAMMA_L_FLT`` -- number of facets marked ``self.GAMMA_L_FLT``</span>
+
+<span class="sd">		The subdomains corresponding to CellFunction ``self.cf`` are :</span>
+
+<span class="sd">		* ``self.dOmega``     --  entire interior</span>
+<span class="sd">		* ``self.dOmega_g``   --  internal above grounded</span>
+<span class="sd">		* ``self.dOmega_w``   --  internal above floating</span>
+<span class="sd">		* ``self.dOmega_gu``  --  grounded with U observations</span>
+<span class="sd">		* ``self.dOmega_wu``  --  floating with U observations</span>
+<span class="sd">		* ``self.dOmega_u``   --  entire interior with U observations</span>
+
+<span class="sd">		The subdomain corresponding to FacetFunction ``self.ff`` are:</span>
+
+<span class="sd">		* ``self.dGamma``    --  entire exterior</span>
+<span class="sd">		* ``self.dGamma_dl`` --  lateral interior surface</span>
+<span class="sd">		* ``self.dGamma_wl`` --  lateral exterior surface in contact with water</span>
+<span class="sd">		* ``self.dGamma_gl`` --  lateral exterior surface not in contact with water</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c1"># calculate the number of cells and facets that are of a certain type</span>
+		<span class="c1"># for determining Dirichlet boundaries :</span>
+		<span class="n">local_N_OMEGA_GND</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">)</span>
+		<span class="n">local_N_OMEGA_FLT</span>   <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">)</span>
+		<span class="n">local_N_OMEGA_U_GND</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">)</span>
+		<span class="n">local_N_OMEGA_U_FLT</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">)</span>
+		<span class="n">local_N_GAMMA_L_DVD</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">)</span>
+		<span class="n">local_N_GAMMA_L_GND</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span><span class="p">)</span>
+		<span class="n">local_N_GAMMA_L_FLT</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span><span class="p">)</span>
+
+		<span class="c1"># find out if any are marked over all processes :</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_OMEGA_GND</span>   <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_OMEGA_GND</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_OMEGA_FLT</span>   <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_OMEGA_FLT</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_GND</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_U_GND</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_U_FLT</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_U_FLT</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_L_DVD</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_L_DVD</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_L_GND</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_L_GND</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_GAMMA_L_FLT</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mpi_comm_world</span><span class="p">(),</span> <span class="n">local_N_GAMMA_L_FLT</span><span class="p">)</span>
+
+		<span class="c1"># create new measures of integration :</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ds</span>      <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s1">&#39;ds&#39;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ff</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dx</span>      <span class="o">=</span> <span class="n">Measure</span><span class="p">(</span><span class="s1">&#39;dx&#39;</span><span class="p">,</span> <span class="n">subdomain_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cf</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega</span>     <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">,</span>   <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">,</span>
+		                                     <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">],</span>
+		                  <span class="s1">&#39;entire interior&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega_g</span>   <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_GND</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">],</span>
+		                  <span class="s1">&#39;interior above grounded ice&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega_w</span>   <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_FLT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">],</span>
+		                  <span class="s1">&#39;interior above floating ice&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega_gu</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">],</span>
+		                  <span class="s1">&#39;interior with U observations above grounded ice&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega_wu</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">],</span>
+		                  <span class="s1">&#39;interior with U observations above floating ice&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dOmega_u</span>   <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_FLT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMEGA_U_GND</span><span class="p">],</span>
+		                  <span class="s1">&#39;entire interior with U observations&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dGamma</span>     <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span>
+		                  <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span><span class="p">],</span>
+		                  <span class="s1">&#39;entire exterior&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dGamma_dl</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_DVD</span><span class="p">],</span>
+		                  <span class="s1">&#39;lateral interior surface&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dGamma_wl</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_FLT</span><span class="p">],</span>
+		                  <span class="s1">&#39;lateral exterior surface in contact with water&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">dGamma_gl</span>  <span class="o">=</span> <span class="n">Boundary</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">GAMMA_L_GND</span><span class="p">],</span>
+		                  <span class="s1">&#39;lateral exterior surface not in contact with water&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.init_T_T0"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_T_T0">[docs]</a>	<span class="k">def</span> <span class="nf">init_T_T0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing temperature in model.Q space to model.Z space :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">T</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">as_vector</span><span class="p">([</span><span class="n">T</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">N_T</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T_</span><span class="p">,</span>  <span class="n">T</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T0_</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.init_H_H0"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_H_H0">[docs]</a>	<span class="k">def</span> <span class="nf">init_H_H0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing thickness :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">,</span>  <span class="n">H</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.init_H_bounds"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_H_bounds">[docs]</a>	<span class="k">def</span> <span class="nf">init_H_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H_min</span><span class="p">,</span> <span class="n">H_max</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing bounds on thickness :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H_min</span><span class="p">,</span> <span class="n">H_min</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">H_max</span><span class="p">,</span> <span class="n">H_max</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.init_U"><a class="viewcode-back" href="../model.html#d2model.D2Model.init_U">[docs]</a>	<span class="k">def</span> <span class="nf">init_U</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span><span class="p">:</span>
+			<span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">init_U</span><span class="p">(</span><span class="n">U</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span>
+			<span class="c1"># NOTE: this overides model.init_U</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing velocity :::&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="n">U</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.solve_hydrostatic_pressure"><a class="viewcode-back" href="../model.html#d2model.D2Model.solve_hydrostatic_pressure">[docs]</a>	<span class="k">def</span> <span class="nf">solve_hydrostatic_pressure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+		<span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Solve for the hydrostatic pressure :math:`p = f_c = \rho g (S - z)` to</span>
+<span class="sd">		``self.p``, with surface height :math:`S` given by ``self.S``, ice</span>
+<span class="sd">		density :math:`\rho` given by ``self.rho``, and :math:`z`-coordinate</span>
+<span class="sd">		given by ``self.x[2]``.</span>
+
+<span class="sd">		:param annotate: allow Dolfin-Adjoint annotation of this procedure.</span>
+<span class="sd">		:type annotate: bool</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">rhoi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoi</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="n">g</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="n">H</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">rhoi</span><span class="o">*</span><span class="n">g</span><span class="o">*</span><span class="n">H</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.initialize_variables"><a class="viewcode-back" href="../model.html#d2model.D2Model.initialize_variables">[docs]</a>	<span class="k">def</span> <span class="nf">initialize_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Initializes the class&#39;s variables to default values that are then set</span>
+<span class="sd">		by the individually created model.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">D2Model</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">initialize_variables</span><span class="p">()</span>
+
+		<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: initializing 2D variables :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+		<span class="k">if</span>   <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;submesh&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Q_to_Qs_dofmap</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Q_to_Qs_dofmap&#39;</span><span class="p">)</span>
+
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;balance&#39;</span><span class="p">:</span>
+			<span class="c1"># Enthalpy model</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">theta0</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;theta0&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">W0</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;W0&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">thetahat</span>      <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;thetahat&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">uhat</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;uhat&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">vhat</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vhat&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">what</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;what&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">mhat</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;mhat&#39;</span><span class="p">)</span>
+
+			<span class="c1"># Surface climate model</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">precip</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;precip&#39;</span><span class="p">)</span>
+
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span>
+			<span class="c1"># hybrid mass-balance :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">H</span>             <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">H0</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H0&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">ubar_c</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ubar_c&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">vbar_c</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vbar_c&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">H_min</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H_min&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">H_max</span>         <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H_max&#39;</span><span class="p">)</span>
+
+			<span class="c1"># hybrid energy-balance :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">deltax</span>        <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N_T</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">sigmas</span>        <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N_T</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Tm</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Tm&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">T_</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;T_&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">T0_</span>           <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;T0_&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Ts</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Ts&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Tb</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Tb&#39;</span><span class="p">)</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">U3</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">HV</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U3&#39;</span><span class="p">)</span>
+			<span class="n">u_</span>                 <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>   <span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">2</span><span class="p">]]</span>
+			<span class="n">v_</span>                 <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>   <span class="bp">self</span><span class="o">.</span><span class="n">U3</span><span class="p">[</span><span class="mi">3</span><span class="p">]]</span>
+			<span class="n">coef</span>               <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">1.</span><span class="o">/</span><span class="mf">4.</span><span class="o">*</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">4</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)]</span>
+			<span class="n">dcoef</span>              <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="mi">5</span><span class="o">*</span><span class="n">s</span><span class="o">**</span><span class="mi">3</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">u</span>             <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">u_</span><span class="p">,</span>  <span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">v</span>             <span class="o">=</span> <span class="n">VerticalBasis</span><span class="p">(</span><span class="n">v_</span><span class="p">,</span>  <span class="n">coef</span><span class="p">,</span> <span class="n">dcoef</span><span class="p">)</span>
+
+			<span class="c1"># basal velocity :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">U3_b</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U3_b&#39;</span><span class="p">)</span>
+			<span class="n">u_b</span><span class="p">,</span> <span class="n">v_b</span><span class="p">,</span> <span class="n">w_b</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U3_b</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+			<span class="n">u_b</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;u_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+			<span class="n">v_b</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;v_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+			<span class="n">w_b</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;w_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">u_b</span>           <span class="o">=</span> <span class="n">u_b</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">v_b</span>           <span class="o">=</span> <span class="n">v_b</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">w_b</span>           <span class="o">=</span> <span class="n">w_b</span>
+
+			<span class="c1"># surface velocity :</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">U3_s</span>          <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;U3_s&#39;</span><span class="p">)</span>
+			<span class="n">u_s</span><span class="p">,</span> <span class="n">v_s</span><span class="p">,</span> <span class="n">w_s</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U3_s</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+			<span class="n">u_s</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;u_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+			<span class="n">v_s</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;v_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+			<span class="n">w_s</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;w_b&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">u_s</span>           <span class="o">=</span> <span class="n">u_s</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">v_s</span>           <span class="o">=</span> <span class="n">v_s</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">w_s</span>           <span class="o">=</span> <span class="n">w_s</span></div>
+
+<div class="viewcode-block" id="D2Model.thermo_solve"><a class="viewcode-back" href="../model.html#d2model.D2Model.thermo_solve">[docs]</a>	<span class="k">def</span> <span class="nf">thermo_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Perform thermo-mechanical coupling between momentum and energy.</span>
+
+<span class="sd">		:param momentum: momentum instance to couple with ``energy``.</span>
+<span class="sd">		:param energy:   energy instance to couple with ``momentum``.</span>
+<span class="sd">		:type momentum:  :class:`~momentum.Momentum`</span>
+<span class="sd">		:type energy:    :class:`~energy.Energy`</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="kn">from</span> <span class="nn">cslvr</span> <span class="k">import</span> <span class="n">Momentum</span>
+		<span class="kn">from</span> <span class="nn">cslvr</span> <span class="k">import</span> <span class="n">Energy</span>
+
+		<span class="c1"># TODO: also make sure these are D2Model momentum and energy classes.</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">momentum</span><span class="p">,</span> <span class="n">Momentum</span><span class="p">):</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; thermo_solve REQUIRES A &#39;Momentum&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">momentum</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">energy</span><span class="p">,</span> <span class="n">Energy</span><span class="p">):</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; thermo_solve REQUIRES AN &#39;Energy&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">energy</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="c1"># this is the simplest thing!</span>
+		<span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+		<span class="n">energy</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="D2Model.transient_iteration"><a class="viewcode-back" href="../model.html#d2model.D2Model.transient_iteration">[docs]</a>	<span class="k">def</span> <span class="nf">transient_iteration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">momentum</span><span class="p">,</span> <span class="n">mass</span><span class="p">,</span> <span class="n">time_step</span><span class="p">,</span> <span class="n">adaptive</span><span class="p">,</span> <span class="n">annotate</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		This function defines one interation of the transient solution, and is</span>
+<span class="sd">		called by the function ``model.transient_solve``.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">stars</span> <span class="o">=</span> <span class="s2">&quot;*****************************************************************&quot;</span>
+
+		<span class="c1"># TODO: this adaptive interation should be altered to include CFL.</span>
+		<span class="c1"># do solve adaptively :</span>
+		<span class="k">if</span> <span class="n">adaptive</span><span class="p">:</span>
+
+			<span class="c1"># solve momentum equation, lower alpha on failure :</span>
+			<span class="n">solved_u</span> <span class="o">=</span> <span class="kc">False</span>
+			<span class="n">par</span>      <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">solve_params</span><span class="p">[</span><span class="s1">&#39;solver&#39;</span><span class="p">][</span><span class="s1">&#39;newton_solver&#39;</span><span class="p">]</span>
+			<span class="k">while</span> <span class="ow">not</span> <span class="n">solved_u</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">par</span><span class="p">[</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.2</span><span class="p">:</span>
+					<span class="n">status_u</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">]</span>
+					<span class="k">break</span>
+				<span class="c1"># always reset velocity for good convergence :</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">momentum</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+				<span class="n">status_u</span> <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+				<span class="n">solved_u</span> <span class="o">=</span> <span class="n">status_u</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+				<span class="c1"># TODO: rewind the dolfin-adjoint tape too!</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">solved_u</span><span class="p">:</span>
+					<span class="n">par</span><span class="p">[</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="mf">1.43</span>
+					<span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+					<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; WARNING: newton relaxation parameter lowered to </span><span class="si">%g</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+					<span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">par</span><span class="p">[</span><span class="s1">&#39;relaxation_parameter&#39;</span><span class="p">],</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+					<span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+			<span class="c1"># solve mass equation, lowering time step on failure :</span>
+			<span class="n">solved_h</span> <span class="o">=</span> <span class="kc">False</span>
+			<span class="n">dt</span>       <span class="o">=</span> <span class="n">time_step</span>
+			<span class="k">while</span> <span class="ow">not</span> <span class="n">solved_h</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">dt</span> <span class="o">&lt;</span> <span class="n">DOLFIN_EPS</span><span class="p">:</span>
+					<span class="n">status_h</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span><span class="kc">False</span><span class="p">]</span>
+					<span class="k">break</span>
+				<span class="n">H</span>        <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+				<span class="n">status_h</span> <span class="o">=</span> <span class="n">mass</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+				<span class="n">solved_h</span> <span class="o">=</span> <span class="n">status_h</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+				<span class="c1"># TODO: rewind the dolfin-adjoint tape too!</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">solved_h</span><span class="p">:</span>
+					<span class="n">dt</span> <span class="o">/=</span> <span class="mf">2.0</span>
+					<span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+					<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; WARNING: time step lowered to </span><span class="si">%g</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+					<span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="n">dt</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">init_time_step</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">init_H_H0</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+					<span class="n">print_text</span><span class="p">(</span><span class="n">stars</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+		<span class="c1"># do not solve adaptively :</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">momentum</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+			<span class="n">mass</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span></div></div>
 
 
 

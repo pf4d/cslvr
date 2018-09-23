@@ -181,378 +181,378 @@
 
 
 <div class="viewcode-block" id="BalanceVelocity"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity">[docs]</a><span class="k">class</span> <span class="nc">BalanceVelocity</span><span class="p">(</span><span class="n">Physics</span><span class="p">):</span>
-  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">  Class representing balance velocity physics.</span>
+	<span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Class representing balance velocity physics.</span>
 
-<span class="sd">  :model: a :class:`~d2model.D2Model` instance holding all pertinent </span>
-<span class="sd">          variables, saved to ``self.model``.</span>
+<span class="sd">	:model: a :class:`~d2model.D2Model` instance holding all pertinent</span>
+<span class="sd">	        variables, saved to ``self.model``.</span>
 
-<span class="sd">  :kappa: a floating-point value representing direction smoothing </span>
-<span class="sd">          radius in units of ice thickness :math:`H = S-B`, where</span>
-<span class="sd">          :math:`H` is given by ``self.model.H``, surface height</span>
-<span class="sd">          :math:`S` is given by ``self.model.S`` and bed height</span>
-<span class="sd">          :math:`B` is given by ``self.model.B``.</span>
+<span class="sd">	:kappa: a floating-point value representing direction smoothing</span>
+<span class="sd">	        radius in units of ice thickness :math:`H = S-B`, where</span>
+<span class="sd">	        :math:`H` is given by ``self.model.H``, surface height</span>
+<span class="sd">	        :math:`S` is given by ``self.model.S`` and bed height</span>
+<span class="sd">	        :math:`B` is given by ``self.model.B``.</span>
 
-<span class="sd">  Use like this:</span>
-<span class="sd"> </span>
-<span class="sd">  &gt;&gt;&gt; d = (-model.S.dx(0), -model.S.dx(1))</span>
-<span class="sd">  &gt;&gt;&gt; bv = BalanceVelocity(model, kappa=5.0, stabilization_method=&#39;SUPG&#39;)</span>
-<span class="sd">  ::: INITIALIZING VELOCITY-BALANCE PHYSICS :::</span>
-<span class="sd">      - using streamline-upwind/Petrov-Galerkin stabilization -</span>
-<span class="sd">  &gt;&gt;&gt; bv.solve_direction_of_flow(d)</span>
-<span class="sd">  ::: solving for smoothed x-component of flow direction with kappa = 0 :::</span>
-<span class="sd">  Solving linear variational problem.</span>
-<span class="sd">  d_x &lt;min, max&gt; : &lt;-1.127e+04, 9.275e+03&gt;</span>
-<span class="sd">  ::: solving for smoothed y-component of flow direction with kappa = 0 :::</span>
-<span class="sd">  Solving linear variational problem.</span>
-<span class="sd">  d_y &lt;min, max&gt; : &lt;-7.880e+03, 5.821e+03&gt;</span>
-<span class="sd">  ::: calculating normalized flux direction from \nabla S:::</span>
-<span class="sd">  uhat &lt;min, max&gt; : &lt;-1.000e+00, 1.000e+00&gt;</span>
-<span class="sd">  vhat &lt;min, max&gt; : &lt;-1.000e+00, 1.000e+00&gt;</span>
-<span class="sd">  &gt;&gt;&gt; bv.solve()</span>
-<span class="sd">  ::: solving velocity balance magnitude :::</span>
-<span class="sd">  Solving linear variational problem.</span>
-<span class="sd">  Ubar &lt;min, max&gt; : &lt;-8.388e+10, 4.470e+10&gt;</span>
-<span class="sd">  ::: removing negative values of balance velocity :::</span>
-<span class="sd">  Ubar &lt;min, max&gt; : &lt;0.000e+00, 4.470e+10&gt;</span>
-<span class="sd">  &quot;&quot;&quot;</span> 
-  
-  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">kappa</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">stabilization_method</span><span class="o">=</span><span class="s1">&#39;SUPG&#39;</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    balance velocity init.</span>
-<span class="sd">    &quot;&quot;&quot;</span> 
-    <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>                <span class="o">=</span> <span class="n">kappa</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">stabilization_method</span> <span class="o">=</span> <span class="n">stabilization_method</span>
-    
-    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING VELOCITY-BALANCE PHYSICS :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D2Model</span><span class="p">:</span>
-      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; BalanceVelocity REQUIRES A &#39;D2Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
-      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="sd">	Use like this:</span>
 
-    <span class="n">S</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
-    <span class="n">B</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
-    <span class="n">H</span>        <span class="o">=</span> <span class="n">S</span> <span class="o">-</span> <span class="n">B</span>
-    <span class="n">h</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
-    <span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">uhat</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">uhat</span>
-    <span class="n">vhat</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vhat</span>
-    <span class="n">adot</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">adot</span>
-    <span class="n">ubarm</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Ubar</span>
-    <span class="n">Fb</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
-    <span class="n">dOmega</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
-    <span class="n">dGamma</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma</span><span class="p">()</span>
-      
+<span class="sd">	&gt;&gt;&gt; d = (-model.S.dx(0), -model.S.dx(1))</span>
+<span class="sd">	&gt;&gt;&gt; bv = BalanceVelocity(model, kappa=5.0, stabilization_method=&#39;SUPG&#39;)</span>
+<span class="sd">	::: INITIALIZING VELOCITY-BALANCE PHYSICS :::</span>
+<span class="sd">	    - using streamline-upwind/Petrov-Galerkin stabilization -</span>
+<span class="sd">	&gt;&gt;&gt; bv.solve_direction_of_flow(d)</span>
+<span class="sd">	::: solving for smoothed x-component of flow direction with kappa = 0 :::</span>
+<span class="sd">	Solving linear variational problem.</span>
+<span class="sd">	d_x &lt;min, max&gt; : &lt;-1.127e+04, 9.275e+03&gt;</span>
+<span class="sd">	::: solving for smoothed y-component of flow direction with kappa = 0 :::</span>
+<span class="sd">	Solving linear variational problem.</span>
+<span class="sd">	d_y &lt;min, max&gt; : &lt;-7.880e+03, 5.821e+03&gt;</span>
+<span class="sd">	::: calculating normalized flux direction from \nabla S:::</span>
+<span class="sd">	uhat &lt;min, max&gt; : &lt;-1.000e+00, 1.000e+00&gt;</span>
+<span class="sd">	vhat &lt;min, max&gt; : &lt;-1.000e+00, 1.000e+00&gt;</span>
+<span class="sd">	&gt;&gt;&gt; bv.solve()</span>
+<span class="sd">	::: solving velocity balance magnitude :::</span>
+<span class="sd">	Solving linear variational problem.</span>
+<span class="sd">	Ubar &lt;min, max&gt; : &lt;-8.388e+10, 4.470e+10&gt;</span>
+<span class="sd">	::: removing negative values of balance velocity :::</span>
+<span class="sd">	Ubar &lt;min, max&gt; : &lt;0.000e+00, 4.470e+10&gt;</span>
+<span class="sd">	&quot;&quot;&quot;</span>
 
-    <span class="c1">#===========================================================================</span>
-    <span class="c1"># form to calculate direction of flow (down driving stress gradient) :</span>
-    <span class="k">if</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;BDM&#39;</span><span class="p">:</span>
-      <span class="n">Q</span>                  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">BDM</span>
-      <span class="n">Phi</span>                <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-      <span class="n">U</span>                  <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">U_s</span>           <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-      <span class="n">phi_x</span><span class="p">,</span> <span class="n">phi_y</span><span class="p">,</span> <span class="n">psi</span>  <span class="o">=</span> <span class="n">Phi</span>
-      <span class="n">j_x</span><span class="p">,</span>   <span class="n">j_y</span><span class="p">,</span>   <span class="n">ubar</span> <span class="o">=</span> <span class="n">U</span>
-      <span class="n">phi</span>                <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">phi_x</span><span class="p">,</span>  <span class="n">phi_y</span> <span class="p">])</span>
-      <span class="n">j</span>                  <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">j_x</span><span class="p">,</span>    <span class="n">j_y</span>   <span class="p">])</span>
-    <span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;DG&#39;</span><span class="p">:</span>
-      <span class="n">Q</span>                  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">DG1</span>
-      <span class="n">Phi</span>                <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-      <span class="n">ubar</span>               <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>                
-      <span class="n">Q</span>                  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
-      <span class="n">Phi</span>                <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-      <span class="n">ubar</span>               <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">uv</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">vv</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">U_vert</span>        <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">uv</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vv</span><span class="p">])</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Constant</span><span class="p">(</span><span class="mf">1e16</span><span class="p">))</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">Ubar</span> <span class="o">=</span> <span class="n">ubar</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">kappa</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">stabilization_method</span><span class="o">=</span><span class="s1">&#39;SUPG&#39;</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		balance velocity init.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>                <span class="o">=</span> <span class="n">kappa</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">stabilization_method</span> <span class="o">=</span> <span class="n">stabilization_method</span>
 
-    <span class="n">kappa</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">kappa</span><span class="p">)</span>
-    <span class="n">gamma</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="c1">#Constant(10000)</span>
+		<span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING VELOCITY-BALANCE PHYSICS :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="c1"># stabilization test space :</span>
-    <span class="k">if</span>   <span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>    <span class="n">Uhat</span> <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">uhat</span><span class="p">,</span> <span class="n">vhat</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
-    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>    <span class="n">Uhat</span> <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">uhat</span><span class="p">,</span> <span class="n">vhat</span><span class="p">])</span>
-    <span class="n">Ut</span>      <span class="o">=</span> <span class="n">H</span><span class="o">*</span><span class="n">Uhat</span>
-    <span class="n">Unorm</span>   <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">Ut</span><span class="p">,</span> <span class="n">Ut</span><span class="p">)</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
-    <span class="n">PE</span>      <span class="o">=</span> <span class="n">Unorm</span><span class="o">*</span><span class="n">h</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">gamma</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">!=</span> <span class="n">D2Model</span><span class="p">:</span>
+			<span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; BalanceVelocity REQUIRES A &#39;D2Model&#39; INSTANCE, NOT </span><span class="si">%s</span><span class="s2"> &lt;&lt;&lt;&quot;</span>
+			<span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">R</span>        <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">div</span><span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">Uhat</span><span class="p">))</span>
-    <span class="c1">#mk       = 1/3.</span>
-    <span class="c1">#pe_1     = 2 * gamma/(mk*R*h**2)</span>
-    <span class="c1">#pe_2     = mk*H/h</span>
-    <span class="c1">#tau      = h**2 / (R*h**2 + 2*gamma/mk*pe_2)</span>
-    <span class="c1">#xi       = 1/tanh(PE) - 1/PE</span>
-    <span class="c1">#tau      = h*xi / (2 * Unorm)</span>
-    <span class="n">tau</span>      <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span><span class="o">*</span><span class="n">gamma</span><span class="o">/</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">H</span><span class="o">/</span><span class="n">h</span> <span class="o">+</span> <span class="n">R</span><span class="p">)</span>
-    <span class="n">phihat</span>   <span class="o">=</span> <span class="n">Phi</span> <span class="o">+</span> <span class="n">tau</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> 
+		<span class="n">S</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
+		<span class="n">B</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+		<span class="n">H</span>        <span class="o">=</span> <span class="n">S</span> <span class="o">-</span> <span class="n">B</span>
+		<span class="n">h</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">h</span>
+		<span class="n">N</span>        <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+		<span class="n">uhat</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">uhat</span>
+		<span class="n">vhat</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vhat</span>
+		<span class="n">adot</span>     <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">adot</span>
+		<span class="n">ubarm</span>    <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Ubar</span>
+		<span class="n">Fb</span>       <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Fb</span>
+		<span class="n">dOmega</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
+		<span class="n">dGamma</span>   <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma</span><span class="p">()</span>
 
-    <span class="c1"># the Peclet number : </span>
-    <span class="c1">#tnorm    = sqrt(dot(grad(ubarm), grad(ubarm)) + DOLFIN_EPS)</span>
-    <span class="c1">#U_vert   = H*dot(Uhat, grad(ubarm)) * grad(ubarm) / tnorm </span>
-    <span class="c1">#Uvnorm   = sqrt(dot(U_vert, U_vert) + DOLFIN_EPS)</span>
-    <span class="c1">#tau_2    = h / (2 * Uvnorm)</span>
-    <span class="c1">##tau_2    = dot(Uhat, grad(ubarm)) * tau</span>
-    <span class="n">tau_2</span>    <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">ubarm</span><span class="p">))</span> <span class="o">*</span>  <span class="n">h</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="p">)</span>
-      
-    <span class="c1"># the linear-differential operator : </span>
-    <span class="c1">#def L(u):      return div(u*H*Uhat)</span>
-    <span class="c1">#def L(u):      return + u*H*div(Uhat) \</span>
-    <span class="c1">#                      + dot(grad(u*H), Uhat)</span>
-    <span class="k">def</span> <span class="nf">L_adv</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">):</span>  <span class="k">return</span> <span class="o">+</span> <span class="n">H</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
-    <span class="k">def</span> <span class="nf">L_dis</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>    <span class="k">return</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U_vert</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
-    <span class="k">def</span> <span class="nf">L</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">):</span>      <span class="k">return</span> <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">Uhat</span><span class="p">)</span> \
-                            <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">H</span><span class="p">),</span> <span class="n">Uhat</span><span class="p">)</span> \
-                            <span class="o">+</span> <span class="n">L_adv</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">L_star</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">):</span> <span class="k">return</span> <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">Uhat</span><span class="p">)</span> \
-                            <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">H</span><span class="p">),</span> <span class="n">Uhat</span><span class="p">)</span> \
-                            <span class="o">-</span> <span class="n">L_adv</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">)</span>
 
-    <span class="c1"># inverse permeability tensor :</span>
-    <span class="k">def</span> <span class="nf">B_inv</span><span class="p">():</span>
-      <span class="n">B_inv_xx</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">uhat</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
-      <span class="n">B_inv_yy</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">vhat</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
-      <span class="n">B_v</span> <span class="o">=</span> <span class="n">as_matrix</span><span class="p">([[</span><span class="n">B_inv_xx</span><span class="p">,</span> <span class="mf">0.0</span>     <span class="p">],</span>
-                       <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>      <span class="n">B_inv_yy</span><span class="p">]])</span>
-      <span class="k">return</span> <span class="n">B_v</span>
-   
-    <span class="n">Nb</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">B</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> 
-    <span class="n">Ns</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">f</span>  <span class="o">=</span> <span class="n">Ns</span><span class="o">*</span><span class="n">adot</span> <span class="o">-</span> <span class="n">Nb</span><span class="o">*</span><span class="n">Fb</span>
+		<span class="c1">#===========================================================================</span>
+		<span class="c1"># form to calculate direction of flow (down driving stress gradient) :</span>
+		<span class="k">if</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;BDM&#39;</span><span class="p">:</span>
+			<span class="n">Q</span>                  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">BDM</span>
+			<span class="n">Phi</span>                <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+			<span class="n">U</span>                  <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">U_s</span>           <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+			<span class="n">phi_x</span><span class="p">,</span> <span class="n">phi_y</span><span class="p">,</span> <span class="n">psi</span>  <span class="o">=</span> <span class="n">Phi</span>
+			<span class="n">j_x</span><span class="p">,</span>   <span class="n">j_y</span><span class="p">,</span>   <span class="n">ubar</span> <span class="o">=</span> <span class="n">U</span>
+			<span class="n">phi</span>                <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">phi_x</span><span class="p">,</span>  <span class="n">phi_y</span> <span class="p">])</span>
+			<span class="n">j</span>                  <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">j_x</span><span class="p">,</span>    <span class="n">j_y</span>   <span class="p">])</span>
+		<span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;DG&#39;</span><span class="p">:</span>
+			<span class="n">Q</span>                  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">DG1</span>
+			<span class="n">Phi</span>                <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+			<span class="n">ubar</span>               <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">Q</span>                  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
+			<span class="n">Phi</span>                <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+			<span class="n">ubar</span>               <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">uv</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">vv</span>            <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">U_vert</span>        <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">uv</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vv</span><span class="p">])</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span>        <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Constant</span><span class="p">(</span><span class="mf">1e16</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">Ubar</span> <span class="o">=</span> <span class="n">ubar</span>
 
-    <span class="k">if</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;BDM&#39;</span><span class="p">:</span>
-      <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using Brezzi-Douglas-Marini elements -&quot;</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">B_inv</span><span class="p">()</span><span class="o">*</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">ubar</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="n">f</span><span class="o">*</span><span class="n">psi</span><span class="o">*</span><span class="n">dOmega</span>
+		<span class="n">kappa</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="n">kappa</span><span class="p">)</span>
+		<span class="n">gamma</span> <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="c1">#Constant(10000)</span>
 
-    <span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;DG&#39;</span><span class="p">:</span>
-      <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using discontinuous-Galerkin elements -&quot;</span>
-      <span class="n">u</span>      <span class="o">=</span> <span class="n">H</span><span class="o">*</span><span class="n">Uhat</span>
-      <span class="n">un</span>     <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">N</span><span class="p">)))</span>
-      <span class="n">h_avg</span>  <span class="o">=</span> <span class="p">(</span><span class="n">h</span><span class="p">(</span><span class="s1">&#39;+&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">h</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">))</span><span class="o">/</span><span class="mi">2</span>
-      <span class="n">alpha</span>  <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>
-      <span class="c1">#self.a = + ubar*H * div(Uhat) * Phi * dOmega \</span>
-      <span class="c1">#         - ubar*H * dot(Uhat, grad(Phi)) * dOmega \</span>
-      <span class="c1">#         + gamma * dot(grad(ubar), grad(Phi)) * dOmega \</span>
-      <span class="c1">#         + dot(jump(Phi), jump(un*ubar))*dS \</span>
-      <span class="c1">#         + gamma*(alpha/h(&#39;+&#39;))*dot(jump(Phi, N), jump(ubar, N))*dS \</span>
-      <span class="c1">#         - gamma*dot(avg(grad(Phi)), jump(ubar, N))*dS \</span>
-      <span class="c1">#         - gamma*dot(jump(Phi, N), avg(grad(ubar)))*dS \</span>
-      <span class="c1">#         + dot(Phi, un*ubar)*dGamma</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">ubar</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">Uhat</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">ubar</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">H</span><span class="p">),</span> <span class="n">Uhat</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span>  \
-               <span class="o">-</span> <span class="n">ubar</span><span class="o">*</span><span class="n">H</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>  \
-               <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">jump</span><span class="p">(</span><span class="n">Phi</span><span class="p">),</span> <span class="n">jump</span><span class="p">(</span><span class="n">un</span><span class="o">*</span><span class="n">ubar</span><span class="p">))</span><span class="o">*</span><span class="n">dS</span> \
-               <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span> <span class="n">un</span><span class="o">*</span><span class="n">ubar</span><span class="p">)</span><span class="o">*</span><span class="n">dGamma</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span>
+		<span class="c1"># stabilization test space :</span>
+		<span class="k">if</span>   <span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>    <span class="n">Uhat</span> <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">uhat</span><span class="p">,</span> <span class="n">vhat</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+		<span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>    <span class="n">Uhat</span> <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">uhat</span><span class="p">,</span> <span class="n">vhat</span><span class="p">])</span>
+		<span class="n">Ut</span>      <span class="o">=</span> <span class="n">H</span><span class="o">*</span><span class="n">Uhat</span>
+		<span class="n">Unorm</span>   <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">Ut</span><span class="p">,</span> <span class="n">Ut</span><span class="p">)</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+		<span class="n">PE</span>      <span class="o">=</span> <span class="n">Unorm</span><span class="o">*</span><span class="n">h</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">gamma</span><span class="p">)</span>
 
-    <span class="c1"># use streamline-upwind/Petrov-Galerkin :</span>
-    <span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;SUPG&#39;</span><span class="p">:</span>
-      <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using streamline-upwind/Petrov-Galerkin stabilization -&quot;</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_adv</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_dis</span><span class="p">(</span><span class="n">Phi</span><span class="p">),</span> <span class="n">tau_2</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="c1">#+ gamma * dot(grad(ubar), grad(Phi)) * dOmega \</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_adv</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_dis</span><span class="p">(</span><span class="n">Phi</span><span class="p">),</span> <span class="n">tau_2</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
+		<span class="n">R</span>        <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">div</span><span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">Uhat</span><span class="p">))</span>
+		<span class="c1">#mk       = 1/3.</span>
+		<span class="c1">#pe_1     = 2 * gamma/(mk*R*h**2)</span>
+		<span class="c1">#pe_2     = mk*H/h</span>
+		<span class="c1">#tau      = h**2 / (R*h**2 + 2*gamma/mk*pe_2)</span>
+		<span class="c1">#xi       = 1/tanh(PE) - 1/PE</span>
+		<span class="c1">#tau      = h*xi / (2 * Unorm)</span>
+		<span class="n">tau</span>      <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span><span class="o">*</span><span class="n">gamma</span><span class="o">/</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">H</span><span class="o">/</span><span class="n">h</span> <span class="o">+</span> <span class="n">R</span><span class="p">)</span>
+		<span class="n">phihat</span>   <span class="o">=</span> <span class="n">Phi</span> <span class="o">+</span> <span class="n">tau</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span>
 
-    <span class="c1"># use Galerkin/least-squares</span>
-    <span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;GLS&#39;</span><span class="p">:</span>
-      <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using Galerkin/least-squares stabilization -&quot;</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span>
+		<span class="c1"># the Peclet number :</span>
+		<span class="c1">#tnorm    = sqrt(dot(grad(ubarm), grad(ubarm)) + DOLFIN_EPS)</span>
+		<span class="c1">#U_vert   = H*dot(Uhat, grad(ubarm)) * grad(ubarm) / tnorm</span>
+		<span class="c1">#Uvnorm   = sqrt(dot(U_vert, U_vert) + DOLFIN_EPS)</span>
+		<span class="c1">#tau_2    = h / (2 * Uvnorm)</span>
+		<span class="c1">##tau_2    = dot(Uhat, grad(ubarm)) * tau</span>
+		<span class="n">tau_2</span>    <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">ubarm</span><span class="p">))</span> <span class="o">*</span>  <span class="n">h</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="p">)</span>
 
-    <span class="c1"># use subgrid-scale-model :</span>
-    <span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;SSM&#39;</span><span class="p">:</span>
-      <span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using subgrid-scale-model stabilization -&quot;</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">-</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_star</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>
-      <span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-               <span class="o">-</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_star</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span>
-    
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="c1"># the linear-differential operator :</span>
+		<span class="c1">#def L(u):      return div(u*H*Uhat)</span>
+		<span class="c1">#def L(u):      return + u*H*div(Uhat) \</span>
+		<span class="c1">#                      + dot(grad(u*H), Uhat)</span>
+		<span class="k">def</span> <span class="nf">L_adv</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">):</span>  <span class="k">return</span> <span class="o">+</span> <span class="n">H</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+		<span class="k">def</span> <span class="nf">L_dis</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>    <span class="k">return</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U_vert</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+		<span class="k">def</span> <span class="nf">L</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">):</span>      <span class="k">return</span> <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">Uhat</span><span class="p">)</span> \
+		                        <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">H</span><span class="p">),</span> <span class="n">Uhat</span><span class="p">)</span> \
+		                        <span class="o">+</span> <span class="n">L_adv</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">)</span>
+		<span class="k">def</span> <span class="nf">L_star</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">):</span> <span class="k">return</span> <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">Uhat</span><span class="p">)</span> \
+		                        <span class="o">+</span> <span class="n">u</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">H</span><span class="p">),</span> <span class="n">Uhat</span><span class="p">)</span> \
+		                        <span class="o">-</span> <span class="n">L_adv</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">H</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BalanceVelocity.solve_direction_of_flow"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.solve_direction_of_flow">[docs]</a>  <span class="k">def</span> <span class="nf">solve_direction_of_flow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Solve for the direction of flow, attained in two steps :</span>
+		<span class="c1"># inverse permeability tensor :</span>
+		<span class="k">def</span> <span class="nf">B_inv</span><span class="p">():</span>
+			<span class="n">B_inv_xx</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">uhat</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+			<span class="n">B_inv_yy</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">H</span><span class="o">*</span><span class="n">vhat</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+			<span class="n">B_v</span> <span class="o">=</span> <span class="n">as_matrix</span><span class="p">([[</span><span class="n">B_inv_xx</span><span class="p">,</span> <span class="mf">0.0</span>     <span class="p">],</span>
+			                 <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>      <span class="n">B_inv_yy</span><span class="p">]])</span>
+			<span class="k">return</span> <span class="n">B_v</span>
 
-<span class="sd">    :param d: a 2D vector of velocity direction from data </span>
-<span class="sd">              :math:`\mathbf{d}^{\text{data}}`.</span>
+		<span class="n">Nb</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">B</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="n">Ns</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">S</span><span class="o">.</span><span class="n">dx</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="n">f</span>  <span class="o">=</span> <span class="n">Ns</span><span class="o">*</span><span class="n">adot</span> <span class="o">-</span> <span class="n">Nb</span><span class="o">*</span><span class="n">Fb</span>
 
-<span class="sd">    Solve for the unit-vector direction of flow :math:`\mathbf{d}`</span>
-<span class="sd">    in two parts :</span>
+		<span class="k">if</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;BDM&#39;</span><span class="p">:</span>
+			<span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using Brezzi-Douglas-Marini elements -&quot;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">B_inv</span><span class="p">()</span><span class="o">*</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">ubar</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">psi</span> <span class="o">*</span> <span class="n">div</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="n">f</span><span class="o">*</span><span class="n">psi</span><span class="o">*</span><span class="n">dOmega</span>
 
-<span class="sd">    1. Solve for the smoothed components of :math:`\mathbf{d}^{\text{data}}` :</span>
+		<span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;DG&#39;</span><span class="p">:</span>
+			<span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using discontinuous-Galerkin elements -&quot;</span>
+			<span class="n">u</span>      <span class="o">=</span> <span class="n">H</span><span class="o">*</span><span class="n">Uhat</span>
+			<span class="n">un</span>     <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">N</span><span class="p">)))</span>
+			<span class="n">h_avg</span>  <span class="o">=</span> <span class="p">(</span><span class="n">h</span><span class="p">(</span><span class="s1">&#39;+&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">h</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">))</span><span class="o">/</span><span class="mi">2</span>
+			<span class="n">alpha</span>  <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>
+			<span class="c1">#self.a = + ubar*H * div(Uhat) * Phi * dOmega \</span>
+			<span class="c1">#         - ubar*H * dot(Uhat, grad(Phi)) * dOmega \</span>
+			<span class="c1">#         + gamma * dot(grad(ubar), grad(Phi)) * dOmega \</span>
+			<span class="c1">#         + dot(jump(Phi), jump(un*ubar))*dS \</span>
+			<span class="c1">#         + gamma*(alpha/h(&#39;+&#39;))*dot(jump(Phi, N), jump(ubar, N))*dS \</span>
+			<span class="c1">#         - gamma*dot(avg(grad(Phi)), jump(ubar, N))*dS \</span>
+			<span class="c1">#         - gamma*dot(jump(Phi, N), avg(grad(ubar)))*dS \</span>
+			<span class="c1">#         + dot(Phi, un*ubar)*dGamma</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">ubar</span><span class="o">*</span><span class="n">H</span><span class="o">*</span><span class="n">div</span><span class="p">(</span><span class="n">Uhat</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">ubar</span><span class="o">*</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">H</span><span class="p">),</span> <span class="n">Uhat</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span>  \
+			         <span class="o">-</span> <span class="n">ubar</span><span class="o">*</span><span class="n">H</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">Uhat</span><span class="p">,</span> <span class="n">grad</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>  \
+			         <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">jump</span><span class="p">(</span><span class="n">Phi</span><span class="p">),</span> <span class="n">jump</span><span class="p">(</span><span class="n">un</span><span class="o">*</span><span class="n">ubar</span><span class="p">))</span><span class="o">*</span><span class="n">dS</span> \
+			         <span class="o">+</span> <span class="n">dot</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span> <span class="n">un</span><span class="o">*</span><span class="n">ubar</span><span class="p">)</span><span class="o">*</span><span class="n">dGamma</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span>
 
-<span class="sd">       .. math::</span>
-<span class="sd">       </span>
-<span class="sd">          \mathbf{d} = \big( \kappa H \big)^2 \nabla \cdot \big( \nabla \mathbf{d} \big) + \mathbf{d}^{\text{data}},</span>
-<span class="sd"> </span>
-<span class="sd">       for components :math:`d_x` and :math:`d_y` saved respectively </span>
-<span class="sd">       to ``self.model.d_x`` and ``self.model.d_y``. </span>
-<span class="sd">    </span>
-<span class="sd">    2. Calculate the normalized balance velocity direction :</span>
-<span class="sd">       </span>
-<span class="sd">       .. math::</span>
-<span class="sd">       </span>
-<span class="sd">          \hat{u} = \frac{d_x}{\Vert \mathbf{d} \Vert}, \hspace{10mm}</span>
-<span class="sd">          \hat{v} = \frac{d_y}{\Vert \mathbf{d} \Vert},</span>
-<span class="sd"> </span>
-<span class="sd">       saved respectively to ``self.model.uhat`` and ``self.model.vhat``. </span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">Q</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
-    <span class="n">S</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
-    <span class="n">B</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
-    <span class="n">H</span>      <span class="o">=</span> <span class="n">S</span> <span class="o">-</span> <span class="n">B</span>
-    <span class="n">N</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
-    <span class="n">phi</span>    <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-    <span class="n">d_x</span>    <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-    <span class="n">d_y</span>    <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
-    <span class="n">kappa</span>  <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kappa</span><span class="p">)</span>
-    <span class="n">dOmega</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
-    <span class="n">dGamma</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma</span><span class="p">()</span>
+		<span class="c1"># use streamline-upwind/Petrov-Galerkin :</span>
+		<span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;SUPG&#39;</span><span class="p">:</span>
+			<span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using streamline-upwind/Petrov-Galerkin stabilization -&quot;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_adv</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_dis</span><span class="p">(</span><span class="n">Phi</span><span class="p">),</span> <span class="n">tau_2</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="c1">#+ gamma * dot(grad(ubar), grad(Phi)) * dOmega \</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_adv</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_dis</span><span class="p">(</span><span class="n">Phi</span><span class="p">),</span> <span class="n">tau_2</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span> \
 
-    <span class="c1"># horizontally smoothed direction of flow :</span>
-    <span class="n">a_dSdx</span> <span class="o">=</span> <span class="o">+</span> <span class="n">d_x</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-             <span class="o">+</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">d_x</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
-             <span class="o">-</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">d_x</span><span class="p">),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma</span>
-    <span class="n">L_dSdx</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dOmega</span>
-    
-    <span class="n">a_dSdy</span> <span class="o">=</span> <span class="o">+</span> <span class="n">d_y</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
-             <span class="o">+</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">d_y</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
-             <span class="o">-</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">d_y</span><span class="p">),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma</span>
-    <span class="n">L_dSdy</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">phi</span><span class="o">*</span><span class="n">dOmega</span>
+		<span class="c1"># use Galerkin/least-squares</span>
+		<span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;GLS&#39;</span><span class="p">:</span>
+			<span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using Galerkin/least-squares stabilization -&quot;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">+</span> <span class="n">inner</span><span class="p">(</span><span class="n">L</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span>
 
-    <span class="c1"># update velocity direction :</span>
-    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving for smoothed x-component of flow direction &quot;</span> <span class="o">+</span> \
-           <span class="s2">&quot;with kappa = </span><span class="si">%g</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="n">solve</span><span class="p">(</span><span class="n">a_dSdx</span> <span class="o">==</span> <span class="n">L_dSdx</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">d_x</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-          <span class="c1">#solver_parameters=self.linear_solve_params(), annotate=annotate)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">d_x</span><span class="p">,</span> <span class="s1">&#39;d_x&#39;</span><span class="p">)</span>
-    
-    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving for smoothed y-component of flow direction &quot;</span> <span class="o">+</span> \
-           <span class="s2">&quot;with kappa = </span><span class="si">%g</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="n">solve</span><span class="p">(</span><span class="n">a_dSdy</span> <span class="o">==</span> <span class="n">L_dSdy</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">d_y</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-          <span class="c1">#solver_parameters=self.linear_solve_params(), annotate=annotate)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">d_y</span><span class="p">,</span> <span class="s1">&#39;d_y&#39;</span><span class="p">)</span>
-      
-    <span class="c1"># normalize the direction vector :</span>
-    <span class="n">s</span>    <span class="o">=</span>  <span class="sa">r</span><span class="s2">&quot;::: normalizing flow direction :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    <span class="n">d_x_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">d_x</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
-    <span class="n">d_y_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">d_y</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
-    <span class="n">d_n_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d_x_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">d_y_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">init_uhat</span><span class="p">(</span><span class="n">d_x_v</span> <span class="o">/</span> <span class="n">d_n_v</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">init_vhat</span><span class="p">(</span><span class="n">d_y_v</span> <span class="o">/</span> <span class="n">d_n_v</span><span class="p">)</span></div>
+		<span class="c1"># use subgrid-scale-model :</span>
+		<span class="k">elif</span> <span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;SSM&#39;</span><span class="p">:</span>
+			<span class="n">s</span>      <span class="o">=</span> <span class="s2">&quot;    - using subgrid-scale-model stabilization -&quot;</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">+</span> <span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">)</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">-</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_star</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">L</span><span class="p">(</span><span class="n">ubar</span><span class="p">,</span><span class="n">H</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L</span> <span class="o">=</span> <span class="o">+</span> <span class="n">f</span> <span class="o">*</span> <span class="n">Phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+			         <span class="o">-</span> <span class="n">inner</span><span class="p">(</span><span class="n">L_star</span><span class="p">(</span><span class="n">Phi</span><span class="p">,</span><span class="n">H</span><span class="p">),</span> <span class="n">tau</span><span class="o">*</span><span class="n">f</span><span class="p">)</span> <span class="o">*</span> <span class="n">dOmega</span>
 
-<div class="viewcode-block" id="BalanceVelocity.linear_solve_params"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.linear_solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">linear_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear_solver&quot;</span>  <span class="p">:</span> <span class="s2">&quot;cg&quot;</span><span class="p">,</span>
-              <span class="s2">&quot;preconditioner&quot;</span> <span class="p">:</span> <span class="s2">&quot;hypre_amg&quot;</span><span class="p">}</span>
-    <span class="k">return</span> <span class="n">params</span></div>
-  
-<div class="viewcode-block" id="BalanceVelocity.solve_params"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.solve_params">[docs]</a>  <span class="k">def</span> <span class="nf">solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; </span>
-<span class="sd">    Returns a set of default solver parameters that yield good performance</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;newton_solver&#39;</span> <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span>            <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">,</span>
-                                 <span class="s1">&#39;preconditioner&#39;</span>           <span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span>
-                                 <span class="s1">&#39;relative_tolerance&#39;</span>       <span class="p">:</span> <span class="mf">1e-13</span><span class="p">,</span>
-                                 <span class="s1">&#39;relaxation_parameter&#39;</span>     <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
-                                 <span class="s1">&#39;maximum_iterations&#39;</span>       <span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-                                 <span class="s1">&#39;error_on_nonconvergence&#39;</span>  <span class="p">:</span> <span class="kc">False</span><span class="p">}}</span>
-    <span class="k">return</span> <span class="n">params</span></div>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BalanceVelocity.shock_capture"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.shock_capture">[docs]</a>  <span class="k">def</span> <span class="nf">shock_capture</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">model</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    <span class="n">Uvn_a</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
-    <span class="n">gub</span>         <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">V</span><span class="p">)</span>
-    <span class="n">gu</span><span class="p">,</span> <span class="n">tnorm_a</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_norm</span><span class="p">(</span><span class="n">gub</span><span class="p">,</span> <span class="s1">&#39;l2&#39;</span><span class="p">)</span>
-    <span class="n">H_a</span>         <span class="o">=</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">())</span>
-    <span class="n">uhat_a</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">uhat</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
-    <span class="n">vhat_a</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vhat</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+<div class="viewcode-block" id="BalanceVelocity.solve_direction_of_flow"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.solve_direction_of_flow">[docs]</a>	<span class="k">def</span> <span class="nf">solve_direction_of_flow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+		<span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Solve for the direction of flow, attained in two steps :</span>
 
-    <span class="n">uv_a</span>     <span class="o">=</span> <span class="n">H_a</span> <span class="o">*</span> <span class="p">(</span><span class="n">uhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">vhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">gu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">tnorm_a</span>
-    <span class="n">vv_a</span>     <span class="o">=</span> <span class="n">H_a</span> <span class="o">*</span> <span class="p">(</span><span class="n">uhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">vhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">gu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">tnorm_a</span>
-    <span class="n">Uvnorm_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">uv_a</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">vv_a</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uv</span><span class="p">,</span> <span class="n">uv_a</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vv</span><span class="p">,</span> <span class="n">vv_a</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="p">,</span> <span class="n">Uvnorm_a</span><span class="p">)</span></div>
+<span class="sd">		:param d: a 2D vector of velocity direction from data</span>
+<span class="sd">		          :math:`\mathbf{d}^{\text{data}}`.</span>
 
-<div class="viewcode-block" id="BalanceVelocity.solve"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.solve">[docs]</a>  <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Solve the balance velocity magnitude </span>
-<span class="sd">    :math:`\Vert \bar{\mathbf{u}} \Vert = \bar{u}` from</span>
+<span class="sd">		Solve for the unit-vector direction of flow :math:`\mathbf{d}`</span>
+<span class="sd">		in two parts :</span>
 
-<span class="sd">    .. math::</span>
+<span class="sd">		1. Solve for the smoothed components of :math:`\mathbf{d}^{\text{data}}` :</span>
 
-<span class="sd">       \nabla \cdot \left( \bar{\mathbf{u}} H \right) = f,</span>
+<span class="sd">		   .. math::</span>
 
-<span class="sd">    saved to ``self.model.Ubar``.</span>
+<span class="sd">		      \mathbf{d} = \big( \kappa H \big)^2 \nabla \cdot \big( \nabla \mathbf{d} \big) + \mathbf{d}^{\text{data}},</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
-    
-    <span class="c1"># calculate balance-velocity :</span>
-    <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving velocity balance magnitude :::&quot;</span>
-    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
-    
-    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear_solver&quot;</span>  <span class="p">:</span> <span class="s2">&quot;mumps&quot;</span><span class="p">}</span>
-    
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;BDM&#39;</span><span class="p">:</span>
-      <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U_s</span><span class="p">,</span>
-            <span class="n">solver_parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">(),</span>
-            <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">j_xn</span><span class="p">,</span> <span class="n">j_yn</span><span class="p">,</span> <span class="n">ubarn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U_s</span>
-      <span class="n">jn</span> <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">j_xn</span><span class="p">,</span> <span class="n">j_yn</span><span class="p">])</span>
-      <span class="n">print_min_max</span><span class="p">(</span><span class="n">ubarn</span><span class="p">,</span> <span class="s1">&#39;ubarn&#39;</span><span class="p">)</span>
-      <span class="n">ubarn</span>    <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">ubarn</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">ubarn</span>    <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">ubarn</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">ubarn</span><span class="p">))</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">),</span>
-                         <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">j_xn</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">j_xn</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-      <span class="n">j_yn</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">j_yn</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-      <span class="c1">#ubarn = project(sqrt(dot(grad(ubarn), grad(ubarn))), model.Q)</span>
-      <span class="n">model</span><span class="o">.</span><span class="n">init_Ubar</span><span class="p">(</span><span class="n">ubarn</span><span class="p">)</span>
-      <span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">j_xn</span><span class="p">)</span>
-      <span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">j_yn</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;DG&#39;</span><span class="p">:</span>
-      <span class="n">Ubar</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">DG1</span><span class="p">)</span>
-      <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">Ubar</span><span class="p">,</span>
-            <span class="n">solver_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-      <span class="n">Ubarn</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">Ubar</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
-      <span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Ubarn</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-      <span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">,</span>
-            <span class="n">solver_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">,</span> <span class="s1">&#39;Ubar&#39;</span><span class="p">)</span></div>
-    
-    <span class="c1">## enforce positivity of balance-velocity :</span>
-    <span class="c1">#s    = &quot;::: removing negative values of balance velocity :::&quot;</span>
-    <span class="c1">#print_text(s, cls=self)</span>
-    <span class="c1">#Ubar_v = model.Ubar.vector().array()</span>
-    <span class="c1">#Ubar_v[Ubar_v &lt; 0] = 0</span>
-    <span class="c1">#model.assign_variable(model.Ubar, Ubar_v)</span>
+<span class="sd">		   for components :math:`d_x` and :math:`d_y` saved respectively</span>
+<span class="sd">		   to ``self.model.d_x`` and ``self.model.d_y``.</span>
 
-<div class="viewcode-block" id="BalanceVelocity.get_U"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.get_U">[docs]</a>  <span class="k">def</span> <span class="nf">get_U</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span></div></div>
+<span class="sd">		2. Calculate the normalized balance velocity direction :</span>
+
+<span class="sd">		   .. math::</span>
+
+<span class="sd">		      \hat{u} = \frac{d_x}{\Vert \mathbf{d} \Vert}, \hspace{10mm}</span>
+<span class="sd">		      \hat{v} = \frac{d_y}{\Vert \mathbf{d} \Vert},</span>
+
+<span class="sd">		   saved respectively to ``self.model.uhat`` and ``self.model.vhat``.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">model</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+		<span class="n">Q</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span>
+		<span class="n">S</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">S</span>
+		<span class="n">B</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span>
+		<span class="n">H</span>      <span class="o">=</span> <span class="n">S</span> <span class="o">-</span> <span class="n">B</span>
+		<span class="n">N</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">N</span>
+		<span class="n">phi</span>    <span class="o">=</span> <span class="n">TestFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+		<span class="n">d_x</span>    <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+		<span class="n">d_y</span>    <span class="o">=</span> <span class="n">TrialFunction</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
+		<span class="n">kappa</span>  <span class="o">=</span> <span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kappa</span><span class="p">)</span>
+		<span class="n">dOmega</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dOmega</span><span class="p">()</span>
+		<span class="n">dGamma</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">dGamma</span><span class="p">()</span>
+
+		<span class="c1"># horizontally smoothed direction of flow :</span>
+		<span class="n">a_dSdx</span> <span class="o">=</span> <span class="o">+</span> <span class="n">d_x</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+		         <span class="o">+</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">d_x</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
+		         <span class="o">-</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">d_x</span><span class="p">),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma</span>
+		<span class="n">L_dSdx</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dOmega</span>
+
+		<span class="n">a_dSdy</span> <span class="o">=</span> <span class="o">+</span> <span class="n">d_y</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dOmega</span> \
+		         <span class="o">+</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">d_y</span><span class="p">))</span> <span class="o">*</span> <span class="n">dOmega</span> \
+		         <span class="o">-</span> <span class="p">(</span><span class="n">kappa</span><span class="o">*</span><span class="n">H</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">d_y</span><span class="p">),</span> <span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">dGamma</span>
+		<span class="n">L_dSdy</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">phi</span><span class="o">*</span><span class="n">dOmega</span>
+
+		<span class="c1"># update velocity direction :</span>
+		<span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving for smoothed x-component of flow direction &quot;</span> <span class="o">+</span> \
+		       <span class="s2">&quot;with kappa = </span><span class="si">%g</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">solve</span><span class="p">(</span><span class="n">a_dSdx</span> <span class="o">==</span> <span class="n">L_dSdx</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">d_x</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+		      <span class="c1">#solver_parameters=self.linear_solve_params(), annotate=annotate)</span>
+		<span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">d_x</span><span class="p">,</span> <span class="s1">&#39;d_x&#39;</span><span class="p">)</span>
+
+		<span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving for smoothed y-component of flow direction &quot;</span> <span class="o">+</span> \
+		       <span class="s2">&quot;with kappa = </span><span class="si">%g</span><span class="s2"> :::&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kappa</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">solve</span><span class="p">(</span><span class="n">a_dSdy</span> <span class="o">==</span> <span class="n">L_dSdy</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">d_y</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+		      <span class="c1">#solver_parameters=self.linear_solve_params(), annotate=annotate)</span>
+		<span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">d_y</span><span class="p">,</span> <span class="s1">&#39;d_y&#39;</span><span class="p">)</span>
+
+		<span class="c1"># normalize the direction vector :</span>
+		<span class="n">s</span>    <span class="o">=</span>  <span class="sa">r</span><span class="s2">&quot;::: normalizing flow direction :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+		<span class="n">d_x_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">d_x</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+		<span class="n">d_y_v</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">d_y</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">()</span>
+		<span class="n">d_n_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d_x_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">d_y_v</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">)</span>
+		<span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">uhat</span><span class="p">,</span> <span class="n">d_x_v</span> <span class="o">/</span> <span class="n">d_n_v</span><span class="p">)</span>
+		<span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">vhat</span><span class="p">,</span> <span class="n">d_y_v</span> <span class="o">/</span> <span class="n">d_n_v</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BalanceVelocity.linear_solve_params"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.linear_solve_params">[docs]</a>	<span class="k">def</span> <span class="nf">linear_solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear_solver&quot;</span>  <span class="p">:</span> <span class="s2">&quot;cg&quot;</span><span class="p">,</span>
+		          <span class="s2">&quot;preconditioner&quot;</span> <span class="p">:</span> <span class="s2">&quot;hypre_amg&quot;</span><span class="p">}</span>
+		<span class="k">return</span> <span class="n">params</span></div>
+
+<div class="viewcode-block" id="BalanceVelocity.solve_params"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.solve_params">[docs]</a>	<span class="k">def</span> <span class="nf">solve_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Returns a set of default solver parameters that yield good performance</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;newton_solver&#39;</span> <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;linear_solver&#39;</span>            <span class="p">:</span> <span class="s1">&#39;mumps&#39;</span><span class="p">,</span>
+		                             <span class="s1">&#39;preconditioner&#39;</span>           <span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span>
+		                             <span class="s1">&#39;relative_tolerance&#39;</span>       <span class="p">:</span> <span class="mf">1e-13</span><span class="p">,</span>
+		                             <span class="s1">&#39;relaxation_parameter&#39;</span>     <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+		                             <span class="s1">&#39;maximum_iterations&#39;</span>       <span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+		                             <span class="s1">&#39;error_on_nonconvergence&#39;</span>  <span class="p">:</span> <span class="kc">False</span><span class="p">}}</span>
+		<span class="k">return</span> <span class="n">params</span></div>
+
+<div class="viewcode-block" id="BalanceVelocity.shock_capture"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.shock_capture">[docs]</a>	<span class="k">def</span> <span class="nf">shock_capture</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">model</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+		<span class="n">Uvn_a</span>       <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+		<span class="n">gub</span>         <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">V</span><span class="p">)</span>
+		<span class="n">gu</span><span class="p">,</span> <span class="n">tnorm_a</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_norm</span><span class="p">(</span><span class="n">gub</span><span class="p">,</span> <span class="s1">&#39;l2&#39;</span><span class="p">)</span>
+		<span class="n">H_a</span>         <span class="o">=</span> <span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span> <span class="o">-</span> <span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">())</span>
+		<span class="n">uhat_a</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">uhat</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+		<span class="n">vhat_a</span>      <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vhat</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+
+		<span class="n">uv_a</span>     <span class="o">=</span> <span class="n">H_a</span> <span class="o">*</span> <span class="p">(</span><span class="n">uhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">vhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">gu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">tnorm_a</span>
+		<span class="n">vv_a</span>     <span class="o">=</span> <span class="n">H_a</span> <span class="o">*</span> <span class="p">(</span><span class="n">uhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">vhat_a</span><span class="o">*</span><span class="n">gu</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">gu</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">tnorm_a</span>
+		<span class="n">Uvnorm_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">uv_a</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">vv_a</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
+		<span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uv</span><span class="p">,</span> <span class="n">uv_a</span><span class="p">)</span>
+		<span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vv</span><span class="p">,</span> <span class="n">vv_a</span><span class="p">)</span>
+		<span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Uvnorm</span><span class="p">,</span> <span class="n">Uvnorm_a</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BalanceVelocity.solve"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.solve">[docs]</a>	<span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+		<span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Solve the balance velocity magnitude</span>
+<span class="sd">		:math:`\Vert \bar{\mathbf{u}} \Vert = \bar{u}` from</span>
+
+<span class="sd">		.. math::</span>
+
+<span class="sd">		   \nabla \cdot \left( \bar{\mathbf{u}} H \right) = f,</span>
+
+<span class="sd">		saved to ``self.model.Ubar``.</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+		<span class="c1"># calculate balance-velocity :</span>
+		<span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: solving velocity balance magnitude :::&quot;</span>
+		<span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+		<span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;linear_solver&quot;</span>  <span class="p">:</span> <span class="s2">&quot;mumps&quot;</span><span class="p">}</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;BDM&#39;</span><span class="p">:</span>
+			<span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">U_s</span><span class="p">,</span>
+			      <span class="n">solver_parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_params</span><span class="p">(),</span>
+			      <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+			<span class="n">j_xn</span><span class="p">,</span> <span class="n">j_yn</span><span class="p">,</span> <span class="n">ubarn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">U_s</span>
+			<span class="n">jn</span> <span class="o">=</span> <span class="n">as_vector</span><span class="p">([</span><span class="n">j_xn</span><span class="p">,</span> <span class="n">j_yn</span><span class="p">])</span>
+			<span class="n">print_min_max</span><span class="p">(</span><span class="n">ubarn</span><span class="p">,</span> <span class="s1">&#39;ubarn&#39;</span><span class="p">)</span>
+			<span class="n">ubarn</span>    <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">ubarn</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+			<span class="n">ubarn</span>    <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dot</span><span class="p">(</span><span class="n">grad</span><span class="p">(</span><span class="n">ubarn</span><span class="p">),</span> <span class="n">grad</span><span class="p">(</span><span class="n">ubarn</span><span class="p">))</span> <span class="o">+</span> <span class="n">DOLFIN_EPS</span><span class="p">),</span>
+			                   <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+			<span class="n">j_xn</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">j_xn</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+			<span class="n">j_yn</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">j_yn</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+			<span class="c1">#ubarn = project(sqrt(dot(grad(ubarn), grad(ubarn))), model.Q)</span>
+			<span class="n">model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">,</span> <span class="n">ubarn</span><span class="p">)</span>
+			<span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">j_xn</span><span class="p">)</span>
+			<span class="n">model</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">j_yn</span><span class="p">)</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">stabilization_method</span> <span class="o">==</span> <span class="s1">&#39;DG&#39;</span><span class="p">:</span>
+			<span class="n">Ubar</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">DG1</span><span class="p">)</span>
+			<span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">Ubar</span><span class="p">,</span>
+			      <span class="n">solver_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+			<span class="n">Ubarn</span> <span class="o">=</span> <span class="n">project</span><span class="p">(</span><span class="n">Ubar</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+			<span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Ubarn</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">solve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">,</span>
+			      <span class="n">solver_parameters</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+		<span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span><span class="p">,</span> <span class="s1">&#39;Ubar&#39;</span><span class="p">)</span></div>
+
+		<span class="c1">## enforce positivity of balance-velocity :</span>
+		<span class="c1">#s    = &quot;::: removing negative values of balance velocity :::&quot;</span>
+		<span class="c1">#print_text(s, cls=self)</span>
+		<span class="c1">#Ubar_v = model.Ubar.vector().array()</span>
+		<span class="c1">#Ubar_v[Ubar_v &lt; 0] = 0</span>
+		<span class="c1">#model.assign_variable(model.Ubar, Ubar_v)</span>
+
+<div class="viewcode-block" id="BalanceVelocity.get_U"><a class="viewcode-back" href="../velocity.html#balancevelocity.BalanceVelocity.get_U">[docs]</a>	<span class="k">def</span> <span class="nf">get_U</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">Ubar</span></div></div>
 
 
 

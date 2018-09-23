@@ -543,10 +543,11 @@
     <span class="c1">#      annotate = annotate, solver_parameters = params[&#39;solver&#39;],</span>
     <span class="c1">#      form_compiler_parameters = params[&#39;ffc_params&#39;])</span>
     <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
-    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="c1"># update the model&#39;s momentum container :    </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_U</span><span class="p">(),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
 
+    <span class="c1"># this is usefull for plotting :</span>
     <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;project_boundary&#39;</span><span class="p">]:</span>
       <span class="bp">self</span><span class="o">.</span><span class="n">assx</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">u_s</span><span class="p">,</span> <span class="n">project</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span>
                        <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">),</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
@@ -566,7 +567,15 @@
 
       <span class="n">print_min_max</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U3_b</span><span class="p">,</span> <span class="s1">&#39;U3_B&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">out</span></div></div>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+<div class="viewcode-block" id="MomentumHybrid.update_model_var"><a class="viewcode-back" href="../momentum.html#momentumhybrid.MomentumHybrid.update_model_var">[docs]</a>  <span class="k">def</span> <span class="nf">update_model_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the two horizontal components of velocity in ``self.model.U3``</span>
+<span class="sd">    to those given by ``u``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">annotate</span><span class="o">=</span><span class="n">annotate</span><span class="p">)</span>
+    <span class="n">print_min_max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">U3</span><span class="p">,</span> <span class="s1">&#39;model.U3&#39;</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span></div></div>
 
 
 

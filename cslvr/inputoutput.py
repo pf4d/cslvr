@@ -104,6 +104,7 @@ class DataInput(object):
           % (self.dim, self.num_cells, self.num_facets, self.num_vertices)
       print_text(s, self.color)
     else:
+      self.element = FiniteElement("CG", None, 1)
       s = "    - not using a mesh - "
       print_text(s, self.color)
 

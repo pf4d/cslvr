@@ -10,7 +10,7 @@ alpha   = '1.0E-03'
 var_dir = './dump/vars/'
 out_dir = './dump/results/' + mdl_odr +'/'+ opt_met +'/'\
                                    + reg_typ +'/'+ 'alpha_' + alpha + '/'
-#out_dir = './dump/results/BP/tmc/'                                  
+#out_dir = './dump/results/BP/tmc/'
 out_dir = './dump/results/' + mdl_odr + '/u_opt/'#'/tmc_opt/'
 plt_dir = './dump/images/tmc/'
 
@@ -30,9 +30,10 @@ d3model.set_srf_mesh(fmeshes)
 d3model.set_bed_mesh(fmeshes)
 
 # initialize the optimized variables :
-d3model.init_beta(f_opt)
-d3model.init_U(f_opt)
-d3model.init_p(f_opt)
+d3model.assign_variable(d3model.beta, f_opt)
+d3model.assign_variable(d3model.U3,   f_opt)
+d3model.init_U_mag(d3model.U3)
+#d3model.assign_variable(d3model.p,    f_opt)
 
 # create 2D models :
 bedmodel = D2Model(d3model.bedmesh, out_dir)
@@ -66,11 +67,11 @@ quiver_kwargs = {'pivot'          : 'middle',
                  'scale'          : 100,
                  'alpha'          : 1.0,
                  'width'          : 0.001,
-                 'headwidth'      : 3.0, 
-                 'headlength'     : 3.0, 
+                 'headwidth'      : 3.0,
+                 'headlength'     : 3.0,
                  'headaxislength' : 3.0}
 
-plt_kwargs  =  {'direc'              : plt_dir, 
+plt_kwargs  =  {'direc'              : plt_dir,
                 'coords'             : None,
                 'cells'              : None,
                 'figsize'            : (5.6,8),
@@ -102,23 +103,24 @@ plt_kwargs  =  {'direc'              : plt_dir,
                 'cb'                 : True,
                 'cb_format'          : '%g'}
 
-U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, U_max])
-#U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3, 
+#U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, U_max])
+U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, 5e2, 1e3, U_max])
+#U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3,
 #                   1.2e3, 2e3, U_max])
 plt_kwargs['name']        = 'U'
 plt_kwargs['title']       = r'$\underline{u} |_S^{\mathrm{CSLVR}}$'
 plt_kwargs['levels']      = U_lvls
-plt_kwargs['scale']       = 'lin'
+#plt_kwargs['scale']       = 'log'
 plt_kwargs['cmap']        = 'viridis'
 #plt_kwargs['plot_quiver'] = True
 plt_kwargs['plot_tp']     = False
 plot_variable(u=srfmodel.U3, **plt_kwargs)
 
-beta_lvls = np.array([beta_min, 1e1, 1e2, 1e3, 1e4, beta_max])
+beta_lvls = np.array([beta_min, 1e-3, 1e1, 1e2, 1e3, 5e3, 1e4, beta_max])
 plt_kwargs['name']        = 'beta'
 plt_kwargs['title']       = r'$\beta^* |_S^{\mathrm{CSLVR}}$'
 plt_kwargs['levels']      = beta_lvls
-plt_kwargs['scale']       = 'lin'
+#plt_kwargs['scale']       = 'lin'
 plt_kwargs['cmap']        = 'viridis'
 plt_kwargs['plot_tp']     = False
 plot_variable(u=bedmodel.beta, **plt_kwargs)
@@ -172,18 +174,19 @@ plt_params = {'direc'            : plt_dir,
               'drawcoastlines'   : True,
               'box_params'       : None}
 
-#U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3, 
+#U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3,
 #                   1.2e3, 2e3, U_max])
 plotIce(bedmach,
-        u      = srfmodel.U_mag, 
+        u      = srfmodel.U_mag,
         name   = 'U_nio',
         levels = U_lvls,
         title  = r'$\underline{u}^* |_S^{\mathrm{CSLVR}}$',
         **plt_params)
 
-beta_lvls = np.array([beta_min, 1e-2, 2e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4, 6.5e4, beta_max])
+beta_lvls = np.array([beta_min, 1e-4, 5e-4, 1e-3, 5e-3, 1e1, 1e2, 1e3, 5e3, beta_max])
+plt_params['scale'] = 'lin'
 plotIce(bedmach,
-        u      = bedmodel.beta, 
+        u      = bedmodel.beta,
         name   = 'beta_nio',
         levels = beta_lvls,
         title  = r'$\beta^* |_S^{\mathrm{CSLVR}}$',

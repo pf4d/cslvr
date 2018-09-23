@@ -279,19 +279,24 @@ class MomentumDukowiczPlaneStrain(Momentum):
     model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
-    solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
-          annotate = annotate, solver_parameters = params['solver'])
-    u, w, p = self.U.split()
-    
-    self.assx.assign(model.u, u, annotate=False)
-    self.assz.assign(model.v, w, annotate=False)
-    self.assp.assign(model.p, p, annotate=False)
-    
-    U3 = model.U3.split(True)
+    solve(self.mom_F == 0, self.get_U(), J=self.mom_Jac, bcs=self.mom_bcs,
+          annotate=annotate, solver_parameters=params['solver'])
 
-    print_min_max(U3[0],   'u')
-    print_min_max(U3[1],   'w')
-    print_min_max(model.p, 'p')
+    # update the model's momentum container :    
+    self.update_model_var(self.get_U(), annotate=annotate)
+
+  def update_model_var(self, u, annotate=False):
+    """
+    Update the two horizontal components of velocity in ``self.model.U3``
+    to those given by ``u``.
+    """
+    u_x, u_y, p = u.split()
+    self.assx.assign(self.model.u, u_x, annotate=False)
+    self.assz.assign(self.model.v, u_y, annotate=False)
+    self.assp.assign(self.model.p, p,   annotate=False)
+
+    print_min_max(self.model.U3, 'model.U3', cls=self)
+    print_min_max(self.model.p,  'model.p',  cls=self)
 
 
 

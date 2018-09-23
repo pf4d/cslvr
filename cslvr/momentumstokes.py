@@ -40,6 +40,7 @@ class MomentumDukowiczStokesReduced(Momentum):
     parameters["adjoint"]["stop_annotating"] = False
 
     Q          = model.Q
+    Q2         = model.Q2
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -73,13 +74,6 @@ class MomentumDukowiczStokesReduced(Momentum):
     
     #===========================================================================
     # define variational problem :
-    
-    # system unknown function space is created now if periodic boundaries 
-    # are not used (see model.generate_function_space()) :
-    if model.use_periodic:
-      Q2   = model.Q2
-    else:
-      Q2   = FunctionSpace(mesh, model.QM2e)
 
     # momenturm and adjoint :
     U      = Function(Q2, name = 'G')
@@ -318,31 +312,33 @@ class MomentumDukowiczStokesReduced(Momentum):
     # e.g. model.L_curve() :
     model.assign_variable(self.get_U(), DOLFIN_EPS)
 
-    def cb_ftn():
-      self.solve_vert_velocity(annotate)
+    def cb_ftn():  self.solve_vert_velocity(annotate)
     
     # compute solution :
     #solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
     #      annotate = annotate, solver_parameters = params['solver'])
-    model.home_rolled_newton_method(self.mom_F, self.U, self.mom_Jac, 
+    model.home_rolled_newton_method(self.mom_F, self.get_U(), self.mom_Jac, 
                                     self.mom_bcs, atol=1e-6, rtol=rtol,
                                     relaxation_param=alpha, max_iter=maxit,
                                     method=lin_slv, preconditioner=precon,
                                     cb_ftn=cb_ftn)
-    u, v = self.U.split()
-  
-    self.assx.assign(model.u, u, annotate=False)
-    self.assy.assign(model.v, v, annotate=False)
 
     # solve for pressure if desired :
-    if params['solve_pressure']:
-      self.solve_pressure(annotate)
-    
-    U3 = model.U3.split(True)
+    if params['solve_pressure']:    self.solve_pressure(annotate)
 
-    print_min_max(U3[0], 'u')
-    print_min_max(U3[1], 'v')
-    print_min_max(U3[2], 'w')
+    # update the model's momentum container :    
+    self.update_model_var(self.get_U(), annotate=annotate)
+
+  def update_model_var(self, u, annotate=False):
+    """
+    Update the two horizontal components of velocity in ``self.model.U3``
+    to those given by ``u``.
+    """
+    u_x, u_y = u.split()
+    self.assx.assign(self.model.u, u_x, annotate=annotate)
+    self.assy.assign(self.model.v, v_x, annotate=annotate)
+
+    print_min_max(self.model.U3, 'model.U3', cls=self)
 
 
 
@@ -370,6 +366,7 @@ class MomentumDukowiczStokes(Momentum):
     self.solve_params = solve_params
     self.linear       = linear
 
+    Q4         = model.Q4
     S          = model.S
     B          = model.B
     Fb         = model.Fb
@@ -397,13 +394,6 @@ class MomentumDukowiczStokes(Momentum):
 
     #===========================================================================
     # define variational problem :
-      
-    # system unknown function space is created now if periodic boundaries 
-    # are not used (see model.generate_function_space()) :
-    if model.use_periodic:
-      Q4   = model.Q4
-    else:
-      Q4   = FunctionSpace(model.mesh, model.QM4e)
 
     # momenturm and adjoint :
     U      = Function(Q4, name = 'G')
@@ -603,21 +593,24 @@ class MomentumDukowiczStokes(Momentum):
     model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
-    solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
-          annotate = annotate, solver_parameters = params['solver'])
-    u, v, w, p = self.U.split()
-    
-    self.assx.assign(model.u, u, annotate=annotate)
-    self.assy.assign(model.v, v, annotate=annotate)
-    self.assz.assign(model.w, w, annotate=annotate)
-    self.assp.assign(model.p, p, annotate=annotate)
-    
-    U3 = model.U3.split(True)
+    solve(self.mom_F == 0, self.get_U(), J=self.mom_Jac, bcs=self.mom_bcs,
+          annotate=annotate, solver_parameters=params['solver'])
 
-    print_min_max(U3[0],   'u')
-    print_min_max(U3[1],   'v')
-    print_min_max(U3[2],   'w')
-    print_min_max(model.p, 'p')
+    # update the model's momentum container :    
+    self.update_model_var(self.get_U(), annotate=annotate)
+
+  def update_model_var(self, u, annotate=False):
+    """
+    Update the two horizontal components of velocity in ``self.model.U3``
+    to those given by ``u``.
+    """
+    u_x, u_y, u_z, p = u.split()
+    self.assx.assign(self.model.u, u_x, annotate=annotate)
+    self.assy.assign(self.model.v, u_y, annotate=annotate)
+    self.assz.assign(self.model.w, u_z, annotate=annotate)
+    self.assp.assign(self.model.p, p,   annotate=annotate)
+    print_min_max(self.model.U3, 'model.U3', cls=self)
+    print_min_max(self.model.p,  'model.p',  cls=self)
 
 
 
@@ -687,24 +680,19 @@ class MomentumNitscheStokes(Momentum):
       s  = "    - using stabilized elements -"
       # system unknown function space is created now if periodic boundaries 
       # are not used (see model.generate_function_space()) :
-      if model.use_periodic:
-        Q4   = model.Q4
-      else:
-        Q4   = FunctionSpace(model.mesh, model.QM4e)
+      Q4         = model.Q4
       self.assx  = FunctionAssigner(model.u.function_space(), Q4.sub(0))
       self.assy  = FunctionAssigner(model.v.function_space(), Q4.sub(1))
       self.assz  = FunctionAssigner(model.w.function_space(), Q4.sub(2))
       self.assp  = FunctionAssigner(model.p.function_space(), Q4.sub(3))
     else:
-      # FIXME: Taylor-Hood does not work, the periodic bcs are not enforced properly.
-      #        I have not tested TH with non-periodic bcs.
+      # FIXME: Taylor-Hood does not work, the periodic bcs are not enforced
+      #        properly.
+      # NOTE:  I have not tested TH with non-periodic bcs.
       s  = "    - using Taylor-Hood elements -"
       # system unknown function space is created now if periodic boundaries 
       # are not used (see model.generate_function_space()) :
-      if model.use_periodic:
-        Q4   = model.QTH3
-      else:
-        Q4   = FunctionSpace(model.mesh, model.QTH3e)
+      Q4         = model.QTH3
       self.assx  = FunctionAssigner(model.u.function_space(),
                                     model.Q_non_periodic)
       self.assy  = FunctionAssigner(model.v.function_space(),
@@ -917,8 +905,8 @@ class MomentumNitscheStokes(Momentum):
     model.assign_variable(self.get_U(), DOLFIN_EPS)
     
     # compute solution :
-    solve(self.mom_F == 0, self.U, J = self.mom_Jac, bcs = self.mom_bcs,
-          annotate = annotate, solver_parameters = params['solver'])
+    solve(self.mom_F == 0, self.get_U(), J=self.mom_Jac, bcs=self.mom_bcs,
+          annotate=annotate, solver_parameters=params['solver'])
     #params['solver']['newton_solver']['linear_solver'] = 'gmres'
     #precond = 'fieldsplit'
     #model.home_rolled_newton_method(self.mom_F, self.U, self.mom_Jac, 
@@ -927,34 +915,36 @@ class MomentumNitscheStokes(Momentum):
     #                                method=params['solver']['newton_solver']['linear_solver'], preconditioner=precond,
     #                                bp_Jac=self.bp_Jac,
     #                                bp_R=self.bp_R)
-      
+
+    # update the model's momentum containers :    
+    self.update_model_var(self.get_U(), annotate=annotate)
+
+  def update_model_var(self, u, annotate=False):
+    """
+    Update the two horizontal components of velocity in ``self.model.U3``
+    to those given by ``u``.
+    """
     if self.stabilized:
-      u, v, w, p = self.U.split()
-      self.assx.assign(model.u, u, annotate=annotate)
-      self.assy.assign(model.v, v, annotate=annotate)
-      self.assz.assign(model.w, w, annotate=annotate)
-      self.assp.assign(model.p, p, annotate=annotate)
+      u_x, u_y, u_z, p = u.split()
+      self.assx.assign(self.model.u, u_x, annotate=annotate)
+      self.assy.assign(self.model.v, u_y, annotate=annotate)
+      self.assz.assign(self.model.w, u_z, annotate=annotate)
+      self.assp.assign(self.model.p, p,   annotate=annotate)
     
     else:
-      u, v, w, p = split(self.U)
-      u_n = project(u, model.Q_non_periodic, annotate=annotate)
-      v_n = project(v, model.Q_non_periodic, annotate=annotate)
-      w_n = project(w, model.Q_non_periodic, annotate=annotate)
-      p_n = project(p, model.Q_non_periodic, annotate=annotate)
+      u_x, u_y, u_z, p = split(u)
+      u_n = project(u_x, model.Q_non_periodic, annotate=annotate)
+      v_n = project(u_y, model.Q_non_periodic, annotate=annotate)
+      w_n = project(u_z, model.Q_non_periodic, annotate=annotate)
+      p_n = project(p,   model.Q_non_periodic, annotate=annotate)
       
       self.assx.assign(model.u, u_n, annotate=annotate)
       self.assy.assign(model.v, v_n, annotate=annotate)
       self.assz.assign(model.w, w_n, annotate=annotate)
       self.assp.assign(model.p, p_n, annotate=annotate)
 
-    print_min_max(model.U3, 'U3')
-    
-    #U3 = model.U3.split(True)
-
-    #print_min_max(U3[0],   'u')
-    #print_min_max(U3[1],   'v')
-    #print_min_max(U3[2],   'w')
-    #print_min_max(model.p, 'p')
+    print_min_max(self.model.U3, 'model.U3', cls=self)
+    print_min_max(self.model.p,  'model.p',  cls=self)
 
 
 

@@ -372,10 +372,11 @@ class MomentumHybrid(Momentum):
     #      annotate = annotate, solver_parameters = params['solver'],
     #      form_compiler_parameters = params['ffc_params'])
     out = self.solver.solve(annotate=annotate)
-    print_min_max(self.U, 'U', cls=self)
 
-    model.U3.assign(self.U, annotate=annotate)
+    # update the model's momentum container :    
+    self.update_model_var(self.get_U(), annotate=annotate)
 
+    # this is usefull for plotting :
     if params['project_boundary']:
       self.assx.assign(model.u_s, project(self.u(0.0), model.Q,
                        annotate=annotate), annotate=annotate)
@@ -396,6 +397,14 @@ class MomentumHybrid(Momentum):
       print_min_max(model.U3_b, 'U3_B', cls=self)
 
     return out
+
+  def update_model_var(self, u, annotate=False):
+    """
+    Update the two horizontal components of velocity in ``self.model.U3``
+    to those given by ``u``.
+    """
+    self.model.U3.assign(u, annotate=annotate)
+    print_min_max(self.model.U3, 'model.U3', cls=self)
 
 
 

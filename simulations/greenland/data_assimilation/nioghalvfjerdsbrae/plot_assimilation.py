@@ -103,10 +103,12 @@ plt_kwargs  =  {'direc'              : plt_dir,
                 'cb'                 : True,
                 'cb_format'          : '%g'}
 
-#U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, U_max])
-U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, 5e2, 1e3, U_max])
+U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, U_max])
+#U_lvls = np.array([U_min, 1e0, 5e0, 1e1, 5e1, 1e2, 5e2, 1e3, U_max])
 #U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3,
 #                   1.2e3, 2e3, U_max])
+#U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3,
+#                   1.2e3, 1.3e3, U_max])
 plt_kwargs['name']        = 'U'
 plt_kwargs['title']       = r'$\underline{u} |_S^{\mathrm{CSLVR}}$'
 plt_kwargs['levels']      = U_lvls

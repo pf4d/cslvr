@@ -1,5 +1,5 @@
 from cslvr import *
- 
+
 # use inexact integration (for full stokes) :
 #parameters['form_compiler']['quadrature_degree']  = 4
 
@@ -8,8 +8,8 @@ L     = 14000               # width of domain (also 8000, 10000, 14000)
 
 # create a genreic box mesh, we'll fit it to geometry below :
 p1    = Point(0.0, 0.0, 0.0)          # origin
-p2    = Point(L,   L,   1)            # x, y, z corner 
-mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void 
+p2    = Point(L,   L,   1)            # x, y, z corner
+mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void
 
 # output directiories :
 mdl_odr = 'BP'
@@ -38,21 +38,21 @@ model.init_A(1e-16)                       # warm isothermal flow-rate factor
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
-  mom = MomentumBP(model)
+	mom = MomentumBP(model)
 elif mdl_odr == 'BP_duk':
-  mom = MomentumDukowiczBP(model)
+	mom = MomentumDukowiczBP(model)
 elif mdl_odr == 'RS':
-  mom = MomentumDukowiczStokesReduced(model)
+	mom = MomentumDukowiczStokesReduced(model)
 elif mdl_odr == 'FS_duk':
-  mom = MomentumDukowiczStokes(model)
+	mom = MomentumDukowiczStokes(model)
 elif mdl_odr == 'FS_stab':
-  mom = MomentumNitscheStokes(model, stabilized=True)
+	mom = MomentumNitscheStokes(model, stabilized=True)
 elif mdl_odr == 'FS_th':
-  mom = MomentumNitscheStokes(model, stabilized=False)
+	mom = MomentumNitscheStokes(model, stabilized=False)
 mom.solve()
 
 # let's investigate the velocity divergence :
-u,v    = mom.get_U()
+(u,v)  = mom.get_U()
 w      = mom.wf
 drhodt = project(model.rhoi*div(as_vector([u,v,w])), model.Q)
 
@@ -72,14 +72,14 @@ model.form_srf_mesh()
 bedmodel = D2Model(model.bedmesh, out_dir)
 srfmodel = D2Model(model.srfmesh, out_dir)
 
-# we don't have a function for this included in the `model' instance, 
+# we don't have a function for this included in the `model' instance,
 # so we have to make one ourselves :
 drhodt_b = Function(bedmodel.Q, name='drhodt')
 
 # function allows Lagrange interpolation between different meshes :
 bedmodel.assign_submesh_variable(drhodt_b, drhodt)
 srfmodel.assign_submesh_variable(srfmodel.U3, model.U3)
-srfmodel.init_U_mag(srfmodel.U3)  # calculates the velocity magnitude 
+srfmodel.init_U_mag(srfmodel.U3)  # calculates the velocity magnitude
 bedmodel.assign_submesh_variable(bedmodel.p,  model.p)
 
 # figure out some nice-looking contour levels :
@@ -94,10 +94,10 @@ p_lvls = array([4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 1e7, 1.1e7, 1.2e7, p_max])
 
 d_min  = drhodt_b.vector().min()
 d_max  = drhodt_b.vector().max()
-d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3, 
+d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3,
                 1e-3, 2.5e-3, 5e-3, d_max])
 
-# these functions allow the plotting of an arbitrary FEniCS function or 
+# these functions allow the plotting of an arbitrary FEniCS function or
 # vector that reside on a two-dimensional mesh (hence the D2Model
 # instantiations above.
 plot_variable(u = srfmodel.U3, name = 'U_mag', direc = plt_dir,

@@ -4,8 +4,8 @@ EISMINT model intercomparison:
 
 http://homepages.vub.ac.be/~phuybrec/eismint.html
 
-Solves the thermo-mechanically-coupled three-dimensional model and 
-upper-free-surface equation.
+Solves the thermo-mechanically-coupled three-dimensional model and
+upper-free-surface equation
 
 Written by Evan Cummings in his free time during May--August, 2018.
 
@@ -49,11 +49,9 @@ model.assign_variable(model.W,         0.0)
 model.assign_variable(model.k_0,       1e-3)
 model.assign_variable(model.beta,      1e9)
 model.assign_variable(model.A,         1e-16)
-#model.init_beta_stats()               
+#model.init_beta_stats()
 #model.solve_hydrostatic_pressure()
 #model.form_energy_dependent_rate_factor()
-srfmodel.assign_variable(srfmodel.Q_to_Qs_dofmap, fdata)
-model.set_submesh_to_mesh_map(sub_model = srfmodel)
 
 # update the 2D model variables that we'll need to compute the mass balance :
 model.assign_to_submesh_variable(u = model.S,      u_sub = srfmodel.S)
@@ -62,17 +60,17 @@ model.assign_to_submesh_variable(u = model.adot,   u_sub = srfmodel.adot)
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
-  mom = MomentumBP(model, use_pressure_bc=False)
+	mom = MomentumBP(model, use_pressure_bc=False)
 elif mdl_odr == 'BP_duk':
-  mom = MomentumDukowiczBP(model, use_pressure_bc=False)
+	mom = MomentumDukowiczBP(model, use_pressure_bc=False)
 elif mdl_odr == 'RS':
-  mom = MomentumDukowiczStokesReduced(model, use_pressure_bc=False)
+	mom = MomentumDukowiczStokesReduced(model, use_pressure_bc=False)
 elif mdl_odr == 'FS_duk':
-  mom = MomentumDukowiczStokes(model, use_pressure_bc=False)
+	mom = MomentumDukowiczStokes(model, use_pressure_bc=False)
 elif mdl_odr == 'FS_stab':
-  mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=True)
+	mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=True)
 elif mdl_odr == 'FS_th':
-  mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=False)
+	mom = MomentumNitscheStokes(model, use_pressure_bc=False, stabilized=False)
 
 mom.solve_params['solver']['newton_solver']['relaxation_parameter'] = 0.7
 
@@ -91,17 +89,17 @@ dS_file = XDMFFile(out_dir + 'dSdt.xdmf')
 #T_file  = XDMFFile(out_dir + 'T.xdmf')
 
 def cb_ftn(t):
-  #nrg.solve()                               # quasi-thermo-mechanical couple
-  model.save_xdmf(model.U3,         'U3',    f = U_file,  t = t)
-  model.save_xdmf(model.p,          'p',     f = p_file,  t = t)
-  srfmodel.save_xdmf(srfmodel.S,    'S',     f = S_file,  t = t)
-  srfmodel.save_xdmf(srfmodel.dSdt, 'dSdt',  f = dS_file, t = t)
-  #model.save_xdmf(model.T,  'T',  f = T_file)
+	#nrg.solve()                               # quasi-thermo-mechanical couple
+	model.save_xdmf(model.U3,         'U3',    f = U_file,  t = t)
+	model.save_xdmf(model.p,          'p',     f = p_file,  t = t)
+	srfmodel.save_xdmf(srfmodel.S,    'S',     f = S_file,  t = t)
+	srfmodel.save_xdmf(srfmodel.dSdt, 'dSdt',  f = dS_file, t = t)
+	#model.save_xdmf(model.T,  'T',  f = T_file)
 
 # run the transient simulation :
 model.transient_solve(mom, mass,
                       t_start    = 0.0,
-                      t_end      = 5000.0,
+                      t_end      = 10.0,#5000.0
                       time_step  = 1.0,
                       tmc_kwargs = None,
                       adaptive   = False,

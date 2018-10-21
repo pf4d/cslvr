@@ -1,30 +1,69 @@
-from __future__ import print_function
-from dolfin import *
-import ufl
-from six.moves import xrange as range
-import os
-
-from cslvr import *
+from cslvr                   import *
 from sympy.utilities.codegen import ccode
-from sympy import symbols
-import sympy as sp
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import axes3d
+import sympy                     as sp
 
 parameters['form_compiler']['quadrature_degree'] = 4
 
-x, y = symbols('x[0], x[1]')
+a       = 0.5 * sp.pi / 180     # surface slope in radians
+L       = 40000.0               # width of domain (also 8000, 10000, 14000)
+b_bar   = 1000.0                # average ice thickness
+amp     = 0.5                   # surface modulation amplitude
+lam     = 2                     # deformation parameter in x direction
+u_mag   = 1.0                   # average x component of velocity at the surf.
+u_x_amp = 0.5                   # x-velocity modulation amplitude
+L       = 1.0                   # width of domain (also 8000, 10000, 14000)
+b_bar   = 0.5                   # average ice thickness
+amp     = 0.1                   # surface modulation amplitude
+lam     = 2                     # deformation parameter in x direction
+u_mag   = 1.0                   # average x component of velocity at the surf.
+u_x_amp = 0.5                   # x-velocity modulation amplitude
 
-a     = 0.5 * pi / 180     # surface slope in radians
-L     = 40000              # width of domain (also 8000, 10000, 14000)
-D     = 1000               # average ice thickness
-amp   = 0.5
+# upper surface :
+def s(x,y):
+	return amp * sp.sin(3*sp.pi*x/L)
+	#return -x*sp.tan(a)
+	#return sp.Rational(0.0)
+
+# lower surface
+def b(x,y):
+	#return s(x,y) - b_bar
+	return s(x,y) - b_bar + amp * sp.sin(2*sp.pi*x/L)# * sp.sin(2*sp.pi*y/L)
+
+# rate of change of upper surface :
+def dsdt(x,y):
+	return 3 * ((y - L/2)**2 - (x - L/2)**2)
+
+# rate of change of lower surface :
+def dbdt(x,y):
+	return sp.sin(sp.pi*x/L) * sp.sin(sp.pi*y/L)
+
+# upper-surface-mass balance :
+def ring_s(x,y):
+	#return sp.Rational(1.0)
+	return sp.sin(4*sp.pi*x/L) * sp.sin(4*sp.pi*y/L)
+
+# lower-surface-mass balance :
+def ring_b(x,y):
+	return sp.sin(2*sp.pi*x/L) * sp.sin(2*sp.pi*y/L)
+
+# x-component of velocity at the upper surface :
+def u_xs(x,y):
+	return u_mag - u_x_amp * sp.sin(2*sp.pi*x/L) * sp.sin(2*sp.pi*y/L)
+
+# x-component of velocity at the lower surface :
+def u_xb(x,y):
+	#return 0.5 * u_xs(x,y)
+	return 0.5*(u_mag - u_x_amp * sp.sin(3*sp.pi*x/L) * sp.sin(3*sp.pi*y/L))
+
+ver = Verification(s, b, u_xs, u_xb, dsdt, dbdt, ring_s, ring_b, lam)
+ver.verify_analytic_solution(nx=1000, ny=1000, Lx=L, Ly=L)
+
+import sys; sys.exit(0)
 
 # create a genreic box mesh, we'll fit it to geometry below :
 p1    = Point(0.0, 0.0, 0.0)          # origin
 p2    = Point(L,   L,   1)            # x, y, z corner
-mesh  = BoxMesh(p1, p2, 15, 15, 5)   # a box to fill the void
+mesh  = BoxMesh(p1, p2, 15, 15, 5)    # a box to fill the void
 
 # output directiories :
 mdl_odr = 'FS'
@@ -32,17 +71,12 @@ out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 
 # we have a three-dimensional problem here, with periodic lateral boundaries :
-model = D3Model(mesh, out_dir = out_dir, use_periodic = True, order=1)
+model   = D3Model(mesh, out_dir = out_dir, use_periodic = True, order=1)
 
-s     = -x*sp.tan(a)
-#s     = -x*sp.tan(a) + amp * D * sp.sin(2*sp.pi*x/L) * sp.sin(2*sp.pi*y/L)
-sx_s  = s.diff(x, 1)
-
-b     = s - D + amp * D * sp.sin(2*sp.pi*x/L) * sp.sin(2*sp.pi*y/L)
 
 # the ISMIP-HOM experiment A geometry :
-surface = Expression(ccode(s).replace('M_PI', 'pi'), degree=2)
-bed     = Expression(ccode(b).replace('M_PI', 'pi'), a=a, L=L, D=D, degree=2)
+surface = Expression(ccode(ver.s), degree=2)
+bed     = Expression(ccode(ver.b), degree=2)
 
 # mark the exterior facets and interior cells appropriately :
 model.calculate_boundaries()
@@ -65,11 +99,6 @@ if mdl_odr == 'BP':
 elif mdl_odr == 'RS':
 	mom = MomentumDukowiczStokesReduced(model)
 elif mdl_odr == 'FS':
-	#mom = MomentumBP(model)
-	#mom = MomentumDukowiczBP(model)
-	#mom = MomentumDukowiczStokesReduced(model)
-	#mom = MomentumDukowiczStokes(model)
-	#mom = MomentumDukowiczStokesOpt(model)
 	mom = MomentumNitscheStokes(model, stabilized=True)
 mom.solve()
 
@@ -142,7 +171,7 @@ plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
               cmap        = 'viridis',
               tp          = True,
               show        = False,
-              extend      = 'min',
+              extend      = 'neither',
               cb_format   = '%.1e')
 
 plot_variable(u = drhodt_b, name = 'drhodt', direc = plt_dir,

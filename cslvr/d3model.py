@@ -130,21 +130,8 @@ class D3Model(Model):
 		    % (self.dim, self.num_cells, self.num_facets, self.num_vertices)
 		print_text(s, cls=self)
 
-	def set_flat_mesh(self, flat_mesh):
-		"""
-		Sets the flat_mesh for 3D free-surface.
-
-		:param flat_mesh : Dolfin mesh to be written
-		"""
-		s = "::: setting 3D ``flat'' mesh :::"
-		print_text(s, cls=self)
-
-		self.flat_mesh = flat_mesh
-		self.flat_dim  = self.flat_mesh.ufl_cell().topological_dimension()
-		if self.flat_dim != 3:
-			s = ">>> 3D MODEL REQUIRES A 3D FLAT_MESH, EXITING <<<"
-			print_text(s, 'red', 1)
-			sys.exit(1)
+		# create a copy of the non-deformed mesh :
+		self.flat_mesh = Mesh(self.mesh)
 
 	def set_srf_mesh(self, srfmesh):
 		"""
@@ -290,84 +277,66 @@ class D3Model(Model):
 		s = "::: generating 3D function spaces :::"
 		print_text(s, cls=self)
 
-		self.Q4    = FunctionSpace(self.mesh, self.QM4e,
-		                           constrained_domain=self.pBC)
-		self.QTH3  = FunctionSpace(self.mesh, self.QTH3e,
-		                           constrained_domain=self.pBC)
+		self.Q_flat  = FunctionSpace(self.flat_mesh, self.Q1e,
+		                             constrained_domain=self.pBC)
+		self.Q2_flat = FunctionSpace(self.flat_mesh, self.QM2e,
+		                             constrained_domain=self.pBC)
+		self.Q3_flat = FunctionSpace(self.flat_mesh, self.QM3e,
+		                             constrained_domain=self.pBC)
+
+		self.Q4     = FunctionSpace(self.mesh, self.QM4e,
+		                            constrained_domain=self.pBC)
+		self.QTH3   = FunctionSpace(self.mesh, self.QTH3e,
+		                            constrained_domain=self.pBC)
 
 		s = "    - 3D function spaces created - "
 		print_text(s, cls=self)
 
-	def generate_submesh_to_mesh_map(self, sub_model):
-		r"""
-		Create a map from each of the functionspaces defined in this model with the
-		submesh model ``sub_model``.
-		"""
-		# TODO: for now, only works for linear elements.
-
-		bmesh   = BoundaryMesh(self.mesh, "exterior") # surface boundary mesh
-		vertmap = bmesh.entity_map(0)                 # map from bmesh to mesh
-		submesh = sub_model.mesh                      # get the submesh
-		m       = vertex_to_dof_map(self.Q)
-		si      = dof_to_vertex_map(sub_model.Q)
-		t       = submesh.data().array('parent_vertex_indices', 0)
-
-		# form the map from submesh dof to mesh dof :
-		mesh_vertices = []
-		for sub_dof in range(sub_model.Q.dim()):
-			submesh_vertex     = si[sub_dof]
-			boundary_vertex    = t[submesh_vertex]
-			mesh_vertex        = vertmap[int(boundary_vertex)] # np.uint not accepted
-			mesh_vertices.append(mesh_vertex)
-		Q_to_Qs_dofmap       = m[mesh_vertices]
-
-		self.submesh_map_dict = {'Q' : Q_to_Qs_dofmap}
-		sub_model.assign_variable(sub_model.Q_to_Qs_dofmap, Q_to_Qs_dofmap)
-
-	def set_submesh_to_mesh_map(self, sub_model):
-		r"""
-		"""
-		Q_to_Qs_dofmap = sub_model.Q_to_Qs_dofmap.vector().get_local().astype('int')
-		self.submesh_map_dict = {'Q' : Q_to_Qs_dofmap}
-
-	def assign_from_submesh_variable(self, u, u_sub):
+	def assign_from_submesh_variable(self, u, u_sub, surface="upper"):
 		r"""
 		Assign the values from the variable ``u_sub`` defined on a submesh of
 		this :class:`~model.Model`'s mesh to the variable ``u``.
 		"""
-		# TODO: only the upper surface, need lower surface too.
-		u_sub_a = u_sub.vector().get_local()
-		u_a     = u.vector().get_local()
-		dofmap  = self.submesh_map_dict['Q']
-		n       = len(u.function_space().split())
+		n = len(u.function_space().split())
 
-		if n == 0:
-			u_a[dofmap] = u_sub_a
-		else:
-			for i in range(n):
-				u_a[i::3][dofmap] = u_sub_a[i::3]
+		# TODO: make this work for arbitrary function spaces
+		# pick the right function :
+		if   n == 0:    u_flat = self.u_flat
+		elif n == 2:    u_flat = self.u2_flat
+		elif n == 3:    u_flat = self.u3_flat
 
-		self.assign_variable(u, u_a)
-		self.assign_variable(u, self.vert_extrude(u, d='down'))
+		# first, Lagrange interpolate the submesh data onto the flat mesh :
+		self.Lg.interpolate(u_flat, u_sub)
+
+		# then update the 3D variable :
+		u.vector().set_local(u_flat.vector().get_local())
+		u.vector().apply('insert')
+
+		# finally, extrude the function throughout the domain :
+		if   surface == 'upper':
+			self.assign_variable(u, self.vert_extrude(u, d='down'))
+		elif surface == 'lower':
+			self.assign_variable(u, self.vert_extrude(u, d='up'))
 
 	def assign_to_submesh_variable(self, u, u_sub):
 		r"""
 		Assign the values from the variable ``u`` defined on a 3D mesh used
 		with a :class:`~model.D3Model` to the submesh variable ``u_sub``.
 		"""
-		u_sub_a = u_sub.vector().get_local()
-		u_a     = u.vector().get_local()
-		dofmap  = self.submesh_map_dict['Q']
-		n       = len(u.function_space().split())
+		n = len(u.function_space().split())
 
-		if n == 0:
-			u_sub_a = u_a[dofmap]
-		else:
-			for i in range(n):
-				u_sub_a[i::3] = u_a[i::3][dofmap]
+		# TODO: make this work for arbitrary function spaces
+		# pick the right function :
+		if   n == 0:    u_flat = self.u_flat
+		elif n == 2:    u_flat = self.u2_flat
+		elif n == 3:    u_flat = self.u3_flat
 
-		self.assign_variable(u_sub, u_sub_a)
+		# first, update the flat-mesh variable :
+		u_flat.vector().set_local(u.vector().get_local())
+		u_flat.vector().apply('insert')
 
+		# then, simply interpolate it onto the submesh variable :
+		self.Lg.interpolate(u_sub, u_flat)
 
 	def calculate_boundaries(self,
 	                         mask        = None,
@@ -886,6 +855,12 @@ class D3Model(Model):
 			def eval(self, values, x):
 				values[0] = -min(0, x[2])
 		self.D = Depth(element=self.Q.ufl_element())
+
+		# only need one flat-mesh variable in order to transfer data between the
+		# 3D mesh and 2D mesh :
+		self.u_flat        = Function(self.Q_flat,  name='u_flat')
+		self.u2_flat       = Function(self.Q2_flat, name='u2_flat')
+		self.u3_flat       = Function(self.Q3_flat, name='u3_flat')
 
 		# age  :
 		self.age           = Function(self.Q, name='age')

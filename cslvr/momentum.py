@@ -22,7 +22,7 @@ class Momentum(Physics):
     """
     instance = Physics.__new__(self, model)
     return instance
-  
+
   def __init__(self, model, solve_params=None,
                linear=False, use_lat_bcs=False,
                use_pressure_bc=True, **kwargs):
@@ -31,7 +31,7 @@ class Momentum(Physics):
     s = "::: INITIALIZING MOMENTUM :::"
     print_text(s, cls=self)
 
-    # save the starting values, as other algorithms might change the 
+    # save the starting values, as other algorithms might change the
     # values to suit their requirements :
     if isinstance(solve_params, dict):
       pass
@@ -46,26 +46,26 @@ class Momentum(Physics):
           "PARAMETERS, NOT %s <<<"
       print_text(s % type(solve_params) , 'red', 1)
       sys.exit(1)
-    
+
     self.solve_params_s    = deepcopy(solve_params)
     self.linear_s          = linear
     self.use_lat_bcs_s     = use_lat_bcs
     self.use_pressure_bc_s = use_pressure_bc
     self.kwargs            = kwargs
-    
+
     self.initialize(model, solve_params, linear,
                     use_lat_bcs, use_pressure_bc, **kwargs)
-  
+
   def initialize(self, model, solve_params=None,
                  linear=False, use_lat_bcs=False,
                  use_pressure_bc=True, **kwargs):
-    """ 
+    """
     Here we set up the problem, and do all of the differentiation and
     memory allocation type stuff.  Note that any Momentum object *must*
     call this method.  See the existing child Momentum objects for reference.
     """
     raiseNotDefined()
-  
+
   def reset(self):
     """
     reset the momentum to the original configuration.
@@ -77,10 +77,10 @@ class Momentum(Physics):
     print_text(s, cls=self)
     s = json.dumps(self.solve_params_s, sort_keys=True, indent=2)
     print_text(s, '230')
-    
+
     self.initialize(self.model, solve_params=self.solve_params_s,
                     linear=self.linear_s,
-                    use_lat_bcs=self.use_lat_bcs_s, 
+                    use_lat_bcs=self.use_lat_bcs_s,
                     use_pressure_bc=self.use_pressure_bc_s,
                     **self.kwargs)
 
@@ -90,11 +90,11 @@ class Momentum(Physics):
     """
     s = "::: RE-INITIALIZING MOMENTUM PHYSICS WITH LINEAR VISCOSITY :::"
     print_text(s, cls=self)
-   
+
     # deepcopy the parameters so that we can change them without changing
     # the original values we started with :
     mom_params = deepcopy(self.solve_params_s)
-      
+
     # adjust the parameters for incomplete-adjoint :
     new_params = mom_params['solver']['newton_solver']
 
@@ -122,10 +122,10 @@ class Momentum(Physics):
 
     self.initialize(self.model, solve_params=mom_params,
                     linear=True,
-                    use_lat_bcs=self.use_lat_bcs_s, 
+                    use_lat_bcs=self.use_lat_bcs_s,
                     use_pressure_bc=self.use_pressure_bc_s,
                     **self.kwargs)
-  
+
   def color(self):
     """
     return the default color for this class.
@@ -165,9 +165,9 @@ class Momentum(Physics):
     Return the adjoint function for ``self.U``.
     """
     raiseNotDefined()
-  
+
   def default_solve_params(self):
-    """ 
+    """
     Returns a set of default solver parameters that yield good performance
     """
     nparams = {'newton_solver' : {'linear_solver'            : 'cg',
@@ -179,22 +179,22 @@ class Momentum(Physics):
     m_params  = {'solver'         : nparams,
                  'solve_pressure' : True}
     return m_params
-  
+
   def solve_pressure(self, annotate=False):
     """
     Solve for the hydrostatic pressure 'p'.
     """
     self.model.solve_hydrostatic_pressure(annotate)
-  
+
   def solve(self, annotate=False, params=None):
-    """ 
-    Perform the Newton solve of the momentum equations 
+    """
+    Perform the Newton solve of the momentum equations
     """
     raiseNotDefined()
 
   def viscosity(self, U):
     r"""
-    calculates and returns the viscosity :math:`\eta` using velocity 
+    calculates and returns the viscosity :math:`\eta` using velocity
     vector ``U`` with components ``u``, ``v``, ``w``.
     """
     s  = "::: forming visosity :::"
@@ -210,11 +210,11 @@ class Momentum(Physics):
   def calc_q_fric(self):
     r"""
     Solve for the friction heat term stored in ``model.q_fric``.
-    """ 
-    # calculate melt-rate : 
+    """
+    # calculate melt-rate :
     s = "::: solving basal friction heat :::"
     print_text(s, cls=self)
-    
+
     model    = self.model
     u,v,w    = model.U3.split(True)
 
@@ -233,18 +233,18 @@ class Momentum(Physics):
     ut     = u_v - UdotN*n_x_v
     vt     = v_v - UdotN*n_y_v
     wt     = w_v - UdotN*n_z_v
-    
+
     q_fric_v = beta_v * (ut**2 + vt**2 + wt**2)
 
     model.init_q_fric(q_fric_v)
-    
+
   def Lagrangian(self):
     """
     Returns the Lagrangian of the momentum equations.
     """
     s  = "::: forming Lagrangian :::"
     print_text(s, cls=self)
-    
+
     R   = self.get_residual()
     Phi = self.get_Phi()
     dU  = self.get_dU()
@@ -252,10 +252,10 @@ class Momentum(Physics):
     # this is the adjoint of the momentum residual, the Lagrangian :
     return self.J + replace(R, {Phi : dU})
 
-  def dLdc(self, L, c): 
+  def dLdc(self, L, c):
     r"""
     Returns the derivative of the Lagrangian consisting of adjoint-computed
-    self.Lam values w.r.t. the control variable ``c``, i.e., 
+    self.Lam values w.r.t. the control variable ``c``, i.e.,
 
     .. math::
 
@@ -266,23 +266,23 @@ class Momentum(Physics):
     """
     s  = "::: forming dLdc :::"
     print_text(s, cls=self)
-    
+
     dU  = self.get_dU()
     Lam = self.get_Lam()
 
     # we need to evaluate the Lagrangian with the values of Lam computed from
-    # self.dI in order to get the derivative of the Lagrangian w.r.t. the 
-    # control variables.  Hence we need a new Lagrangian with the trial 
+    # self.dI in order to get the derivative of the Lagrangian w.r.t. the
+    # control variables.  Hence we need a new Lagrangian with the trial
     # functions replaced with the computed Lam values.
     L_lam  = replace(L, {dU : Lam})
 
     # the Lagrangian with unknowns replaced with computed Lam :
     H_lam  = self.J + L_lam
 
-    # the derivative of the Hamiltonian w.r.t. the control variables in the 
+    # the derivative of the Hamiltonian w.r.t. the control variables in the
     # direction of a test function :
     return derivative(H_lam, c, TestFunction(self.model.Q))
-    
+
   def solve_adjoint_momentum(self, H):
     """
     Solves for the adjoint variables ``self.Lam`` from the Hamiltonian <H>.
@@ -294,13 +294,13 @@ class Momentum(Physics):
     # we desire the derivative of the Lagrangian w.r.t. the model state U
     # in the direction of the test function Phi to vanish :
     dI = derivative(H, U, Phi)
-    
+
     s  = "::: solving adjoint momentum :::"
     print_text(s, cls=self)
-    
+
     aw = assemble(lhs(dI))
     Lw = assemble(rhs(dI))
-    
+
     a_solver = KrylovSolver('cg', 'hypre_amg')
     a_solver.solve(aw, Lam.vector(), Lw, annotate=False)
 

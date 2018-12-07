@@ -27,7 +27,7 @@ plotIce(dbm, 'M', name='M', direc='greenland/', title='$M$',
         cmap='gist_yarg',  scale='lin', umin=None, umax=None,
         numLvls=3, tp=False, tpAlpha=0.5, extend='neither', show=False)
 
-#plotIce(dsr, 'adot', name='adot', direc='greenland/', title='$\dot{a}$',
+#plotIce(dsr, 'S_ring', name='S_ring', direc='greenland/', title='$\dot{a}$',
 #        cmap='gist_yarg',  scale='lin', umin=None, umax=None,
 #        numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=True)
 #

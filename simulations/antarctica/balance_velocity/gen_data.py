@@ -23,13 +23,13 @@ S     = db2.get_expression("S",        near=False)
 B     = db2.get_expression("B",        near=False)
 B_err = db2.get_expression('b_uncert', near=False)
 M     = db2.get_expression("mask",     near=True)
-adot  = db1.get_expression("acca",     near=False)
+S_ring  = db1.get_expression("acca",     near=False)
 u_ob  = dbm.get_expression("vx",       near=False)
 v_ob  = dbm.get_expression("vy",       near=False)
 U_msk = dbm.get_expression("mask",     near=True)
 
 model = D2Model(mesh, out_dir = 'results/')
-model.calculate_boundaries(mask=M, U_mask=U_msk, adot=adot) 
+model.calculate_boundaries(mask=M, U_mask=U_msk, S_ring=S_ring) 
 
 model.init_S(S)
 model.init_B(B)
@@ -39,7 +39,7 @@ model.init_U_ob(u_ob, v_ob)
 lst = [model.S,
        model.B,
        model.B_err,
-       model.adot,
+       model.S_ring,
        model.mask,
        model.u_ob,
        model.v_ob,

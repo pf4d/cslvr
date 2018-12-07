@@ -28,7 +28,7 @@ d3model.init_B(fdata)
 d3model.init_mask(fdata)
 d3model.init_q_geo(d3model.ghf)
 d3model.init_T_surface(fdata)
-d3model.init_adot(fdata)
+d3model.init_S_ring(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
@@ -43,7 +43,7 @@ d3model.form_energy_dependent_rate_factor()
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted.h5', 'r')
 #d3model.init_T(frstrt)
 #d3model.init_W(frstrt)
-#d3model.init_Fb(frstrt)
+#d3model.init_B_ring(frstrt)
 #d3model.init_alpha(frstrt)
 #d3model.init_U(frstrt)
 #d3model.init_p(frstrt)
@@ -54,7 +54,7 @@ bedmodel = D2Model(d3model.bedmesh, out_dir)
 
 bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
-bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
+bedmodel.assign_submesh_variable(bedmodel.S_ring,   d3model.S_ring)
 
 # solve the balance velocity :
 bv = BalanceVelocity(bedmodel, kappa=5.0)
@@ -103,7 +103,7 @@ def adj_post_cb_ftn():
 # after every completed adjoining, save the state of these functions :
 adj_save_vars = [d3model.T,
                  d3model.W,
-                 d3model.Fb,
+                 d3model.B_ring,
                  d3model.Mb,
                  d3model.alpha,
                  d3model.alpha_int,
@@ -111,13 +111,13 @@ adj_save_vars = [d3model.T,
                  d3model.Wbar,
                  d3model.Qbar,
                  d3model.temp_rat,
-                 d3model.U3,
+                 d3model.u,
                  d3model.p,
                  d3model.beta,
                  d3model.theta]
 
-u_opt_save_vars = [d3model.beta, d3model.U3]
-w_opt_save_vars = [d3model.Fb,   d3model.theta]
+u_opt_save_vars = [d3model.beta, d3model.u]
+w_opt_save_vars = [d3model.B_ring,   d3model.theta]
 
 # form the cost functional :
 mom.form_obj_ftn(integral=d3model.GAMMA_U_GND, kind='log_L2_hybrid', 

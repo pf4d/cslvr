@@ -157,14 +157,14 @@ class D1Model(Model):
 		self.assign_variable(self.rho, rho)
 		print_min_max(self.rho, 'rho')
 
-	def init_adot(self, adot):
+	def init_S_ring(self, S_ring):
 		"""
 		"""
 		s = "::: initializing accumulation :::"
 		print_text(s, self.D1Model_color)
-		self.assign_variable(self.adot, adot)
-		self.assign_variable(self.bdot, self.rhoi(0) * adot / self.spy(0))
-		print_min_max(self.adot, 'adot')
+		self.assign_variable(self.S_ring, S_ring)
+		self.assign_variable(self.bdot, self.rho_i(0) * S_ring / self.spy(0))
+		print_min_max(self.S_ring, 'S_ring')
 		print_min_max(self.bdot, 'bdot')
 
 	def init_r(self, r):
@@ -196,11 +196,11 @@ class D1Model(Model):
 		# sigma suface condition (always zero at surface) :
 		self.sigma_S = Constant(0.0)
 
-		L       = self.L(0)
+		L       = self.L_f(0)
 		thetasp = self.thetasp(0)
 		Tw      = self.Tw(0)
-		rhoi    = self.rhoi(0)
-		rhow    = self.rhow(0)
+		rho_i    = self.rho_i(0)
+		rho_w    = self.rho_w(0)
 		g       = self.g(0)
 		etaw    = self.etaw(0)
 
@@ -211,7 +211,7 @@ class D1Model(Model):
 				self.cps  = cps
 				self.rhos = rhos
 			def eval(self, values, x):
-				#psis  = 1 - self.rhos/rhoi
+				#psis  = 1 - self.rhos/rho_i
 				#Wmi   = 0.0057 / (1 - psis) + 0.017         # irr. water content
 				#if self.thetas > thetasp:
 				#  values[0] = Wmi + (self.thetas - self.cps*Tw) / L
@@ -229,9 +229,9 @@ class D1Model(Model):
 			def eval(self, values, x):
 				rhos  = self.rhos
 				rs    = self.rs
-				#ks    = 0.077 * (1.0/100)**2 * rs * exp(-7.8*rhos/rhow)
+				#ks    = 0.077 * (1.0/100)**2 * rs * exp(-7.8*rhos/rho_w)
 				ks    = 0.0602 * exp(-0.00957 * rhos)
-				psis  = 1 - rhos/rhoi
+				psis  = 1 - rhos/rho_i
 				Wmi = 0.0057 / (1 - psis) + 0.017         # irr. water content
 				if self.thetas > thetasp:
 					omg_s = (self.thetas - self.cps*Tw) / L
@@ -239,7 +239,7 @@ class D1Model(Model):
 					omg_s = Wmi
 				Wes   = (omg_s - Wmi) / (psis - Wmi)
 				kws   = ks * Wes**3.0
-				Ks    = kws * rhow * g / etaw
+				Ks    = kws * rho_w * g / etaw
 				print "::::::::::::::::::::::::KS", Ks, rs, rhos, omg_s
 				values[0] = Ks
 		self.W_S = BCW(0.0, 0.0, 0.0)
@@ -325,7 +325,7 @@ class D1Model(Model):
 		self.u       = Function(self.Q, name='u')
 		self.ql      = Function(self.Q, name='ql')
 		self.Smi     = Function(self.Q, name='Smi')
-		self.adot    = Function(self.Q, name='adot')
+		self.S_ring  = Function(self.Q, name='S_ring')
 
 		self.assign_variable(self.rhoCoef, self.kcHh)
 
@@ -346,7 +346,7 @@ class D1Model(Model):
 		print_text(s, self.D1Model_color)
 		self.w_surface.t    = self.t
 		self.w_surface.rhos = self.rhop[0]
-		bdotNew             = (self.w_surface.adot * self.rhoi(0)) / self.spy(0)
+		bdotNew             = (self.w_surface.S_ring * self.rho_i(0)) / self.spy(0)
 		self.assign_variable(self.bdot, bdotNew)
 
 	def update_rhoBc(self):
@@ -358,10 +358,10 @@ class D1Model(Model):
 		#dW_s = self.dW[self.index][-1]
 		#if self.Ts > self.Tw:
 		#  if dW_s > 0:
-		#    if self.rho_surface.rhon < self.rhoi(0):
-		#      self.rho_surface.rhon += dW_s*self.rhow(0)
+		#    if self.rho_surface.rhon < self.rho_i(0):
+		#      self.rho_surface.rhon += dW_s*self.rho_w(0)
 		#  else:
-		#    self.rho_surface.rhon += dW_s*self.rhow(0)#83.0
+		#    self.rho_surface.rhon += dW_s*self.rho_w(0)#83.0
 		#else:
 		#  self.rho_surface.rhon = self.rhos
 		self.rho_surface.t = self.t
@@ -424,8 +424,8 @@ class D1Model(Model):
 		"""
 		ex = str(ex)
 
-		self.rhoin = genfromtxt("data/fmic/initial/initial" + ex + "/rho.txt")
-		self.rho   = self.rhoin
+		self.rho_in = genfromtxt("data/fmic/initial/initial" + ex + "/rho.txt")
+		self.rho   = self.rho_in
 		self.w     = genfromtxt("data/fmic/initial/initial" + ex + "/w.txt")
 		self.z     = genfromtxt("data/fmic/initial/initial" + ex + "/z.txt")
 		self.a     = genfromtxt("data/fmic/initial/initial" + ex + "/a.txt")

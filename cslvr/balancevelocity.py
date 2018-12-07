@@ -68,9 +68,9 @@ class BalanceVelocity(Physics):
 		N        = model.N
 		uhat     = model.uhat
 		vhat     = model.vhat
-		adot     = model.adot
+		S_ring   = model.S_ring
 		ubarm    = model.Ubar
-		Fb       = model.Fb
+		B_ring   = model.B_ring
 		dOmega   = model.dOmega()
 		dGamma   = model.dGamma()
 
@@ -152,7 +152,7 @@ class BalanceVelocity(Physics):
 
 		Nb = sqrt(B.dx(0)**2 + B.dx(1)**2 + 1)
 		Ns = sqrt(S.dx(0)**2 + S.dx(1)**2 + 1)
-		f  = Ns*adot - Nb*Fb
+		f  = Ns*S_ring + Nb*B_ring
 
 		if stabilization_method == 'BDM':
 			s      = "    - using Brezzi-Douglas-Marini elements -"
@@ -312,13 +312,13 @@ class BalanceVelocity(Physics):
 		model       = self.model
 		Uvn_a       = self.Uvnorm.vector().array()
 		gub         = project(grad(model.Ubar), model.V)
-		gu, tnorm_a = model.get_norm(gub, 'l2')
+		tnorm_a     = model.get_norm(gub, 'l2')
 		H_a         = (model.S.vector().array() - model.B.vector().array())
 		uhat_a      = model.uhat.vector().array()
 		vhat_a      = model.vhat.vector().array()
 
-		uv_a     = H_a * (uhat_a*gu[0] + vhat_a*gu[1]) * gu[0] / tnorm_a
-		vv_a     = H_a * (uhat_a*gu[0] + vhat_a*gu[1]) * gu[1] / tnorm_a
+		uv_a     = H_a * (uhat_a*gu[0] + vhat_a*gu[1]) * gub[0] / tnorm_a
+		vv_a     = H_a * (uhat_a*gu[0] + vhat_a*gu[1]) * gub[1] / tnorm_a
 		Uvnorm_a = np.sqrt(uv_a**2 + vv_a**2 + 1e-8)
 		model.assign_variable(self.uv, uv_a)
 		model.assign_variable(self.vv, vv_a)
@@ -358,7 +358,7 @@ class BalanceVelocity(Physics):
 			j_yn = project(j_yn, model.Q)
 			#ubarn = project(sqrt(dot(grad(ubarn), grad(ubarn))), model.Q)
 			model.assign_variable(model.Ubar, ubarn)
-			model.u.assign(j_xn)
+			model.u_x.assign(j_xn)
 			model.v.assign(j_yn)
 		elif self.stabilization_method == 'DG':
 			Ubar = Function(model.DG1)
@@ -378,7 +378,7 @@ class BalanceVelocity(Physics):
 		#Ubar_v[Ubar_v < 0] = 0
 		#model.assign_variable(model.Ubar, Ubar_v)
 
-	def get_U(self):
+	def get_unknown(self):
 		"""
 		"""
 		return self.model.Ubar

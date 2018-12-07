@@ -12,7 +12,7 @@ class StressBalance(Physics):
 		print_text(s, cls=self)
 
 		# calculate viscosity in model.eta :
-		U      = momentum.velocity()
+		U      = momentum.get_velocity()
 		epsdot = momentum.effective_strain_rate(U) + model.eps_reg
 		model.calc_eta(epsdot)
 

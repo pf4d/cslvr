@@ -10,14 +10,14 @@ res     = 25
 mesh  = generate_mesh(Circle(Point(0,0), r), res)
 model = D2Model(mesh, out_dir=out_dir, use_periodic=False, kind='hybrid')
 
-# surface mass balance : 
-class Adot(Expression):
+# surface mass balance :
+class S_ring(Expression):
   Rel = 450000
   s   = 1e-5
   def eval(self,values,x):
     #values[0] = 0.3
     values[0] = min(0.5,self.s*(self.Rel-sqrt(x[0]**2 + x[1]**2)))
-adot = Adot(element=model.Q.ufl_element())
+s_ring = S_ring(element=model.Q.ufl_element())
 
 # surface temperature :
 class SurfaceTemperature(Expression):
@@ -29,7 +29,7 @@ T_s = SurfaceTemperature(element=model.Q.ufl_element())
 
 model.init_S(thklim)
 model.init_B(0.0)
-model.init_adot(adot)
+model.init_S_ring(s_ring)
 model.init_beta(1e9)
 model.init_T_surface(T_s)
 model.init_T_T0(268.0)
@@ -50,7 +50,7 @@ Tb_file = XDMFFile(out_dir + 'Tb.xdmf')
 Ts_file = XDMFFile(out_dir + 'Ts.xdmf')
 def cb_ftn():
   nrg.solve()
-  model.save_xdmf(model.U3, 'U3', U_file)
+  model.save_xdmf(model.u, 'U3', U_file)
   model.save_xdmf(model.Tb, 'Tb', Tb_file)
   model.save_xdmf(model.Ts, 'Ts', Ts_file)
   model.save_xdmf(model.S,  'S',  S_file)

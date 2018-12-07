@@ -46,11 +46,11 @@ dbm.data['Bo'][Bm] = 0
 # interpolate from the dbm grid to the dsr grid and make areas of ocean very
 # high negative accumulation to simulate a `calving frount' :
 dbm.interpolate_to_di(dsr, fn='M', fo='M')
-dsr.data['adot'][dsr.data['M'] == 0] = -1.0
+dsr.data['S_ring'][dsr.data['M'] == 0] = -1.0
 
 # get the data :
 B     = dbm.get_expression("Bo",    near=False)
-adot  = dsr.get_expression("adot",  near=False)
+S_ring  = dsr.get_expression("S_ring",  near=False)
 lat   = dsr.get_expression("lat",   near=False)
 lon   = dsr.get_expression("lon",   near=False)
 #Hmax  = dbm.get_expression("Hmax",  near=True)
@@ -62,7 +62,7 @@ model = D2Model(mesh, out_dir = 'dump/results/')
 model.init_B(B)
 model.init_S(model.B.vector() + thklim)
 model.init_mask(1.0)
-model.init_adot(adot)
+model.init_S_ring(S_ring)
 model.init_lat(lat)
 model.init_lon(lon)
 model.init_beta(1e9)
@@ -81,7 +81,7 @@ mas = MassHybrid(model, isothermal=False)
 
 # initialize temperature from lapse rate :
 nrg.solve_surface_climate()
-#nrg.adjust_adot()
+#nrg.adjust_S_ring()
 model.init_T_T0(model.T_surface)
 
 model.save_xdmf(model.T_surface, 'T_surface')
@@ -94,11 +94,11 @@ def cb_ftn():
   model.save_xdmf(model.Ts,   'Ts')
   model.save_xdmf(model.Tb,   'Tb')
   model.save_xdmf(model.Mb,   'Mb')
-  model.save_xdmf(model.U3,   'Us')
-  model.save_xdmf(model.adot, 'adot')
+  model.save_xdmf(model.u,   'Us')
+  model.save_xdmf(model.S_ring, 'S_ring')
   #model.save_xdmf(model.beta, 'beta')
   nrg.solve_surface_climate()
-  #nrg.adjust_adot()
+  #nrg.adjust_S_ring()
 
 model.transient_solve(mom, nrg, mas,
                       t_start=0.0, t_end=35000.0, time_step=25.0,

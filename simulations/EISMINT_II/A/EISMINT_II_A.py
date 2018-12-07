@@ -41,7 +41,7 @@ model.assign_variable(model.B,         fdata)
 model.assign_variable(model.sigma,     fdata)
 model.assign_variable(model.mask,      fdata)
 model.assign_variable(model.U_mask,    fdata)
-model.assign_variable(model.adot,      fdata)
+model.assign_variable(model.S_ring,    fdata)
 model.assign_variable(model.T_surface, fdata)
 model.assign_variable(model.T,         model.T_surface)
 model.assign_variable(model.q_geo,     fdata)
@@ -56,7 +56,7 @@ model.assign_variable(model.A,         1e-16)
 # update the 2D model variables that we'll need to compute the mass balance :
 model.assign_to_submesh_variable(u = model.S,      u_sub = srfmodel.S)
 model.assign_to_submesh_variable(u = model.B,      u_sub = srfmodel.B)
-model.assign_to_submesh_variable(u = model.adot,   u_sub = srfmodel.adot)
+model.assign_to_submesh_variable(u = model.S_ring, u_sub = srfmodel.S_ring)
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
@@ -90,7 +90,7 @@ dS_file = XDMFFile(out_dir + 'dSdt.xdmf')
 
 def cb_ftn(t):
 	#nrg.solve()                               # quasi-thermo-mechanical couple
-	model.save_xdmf(model.U3,         'U3',    f = U_file,  t = t)
+	model.save_xdmf(model.u,         'U3',    f = U_file,  t = t)
 	model.save_xdmf(model.p,          'p',     f = p_file,  t = t)
 	srfmodel.save_xdmf(srfmodel.S,    'S',     f = S_file,  t = t)
 	srfmodel.save_xdmf(srfmodel.dSdt, 'dSdt',  f = dS_file, t = t)

@@ -898,8 +898,8 @@ class DataFactory(object):
 		y       = array(data.variables['y1'][:])
 		b       = array(data.variables['lsrf'][:])
 		h       = array(data.variables['usrf'][:])
-		adota   = array(data.variables['acca'][:])
-		adotr   = array(data.variables['accr'][:])
+		S_ringa = array(data.variables['acca'][:])
+		S_ringr = array(data.variables['accr'][:])
 		mask    = array(data.variables['mask'][:])
 		srfTemp = array(data.variables['temp'][:]) + 273.15
 		q_geo_f = array(data.variables['ghffm'][:]) * 60 * 60 * 24 * 365 / 1000
@@ -909,11 +909,11 @@ class DataFactory(object):
 		h[H < thklim] = b[H < thklim] + thklim
 		H[H < thklim] = thklim
 
-		adota[adota < -1000] = 0
-		adotr[adotr < -1000] = 0
+		S_ringa[S_ringa < -1000] = 0
+		S_ringr[S_ringr < -1000] = 0
 
 		names = ['B','S','H','acca','accr','ghffm','ghfsr','temp']
-		ftns  = [b, h, H, adota, adotr, q_geo_f, q_geo_s, srfTemp]
+		ftns  = [b, h, H, S_ringa, S_ringr, q_geo_f, q_geo_s, srfTemp]
 
 		# extents of domain :
 		east    = max(x)
@@ -1192,7 +1192,7 @@ class DataFactory(object):
 		* ``T`` -- surface temperature
 		* ``lat`` -- grid latitude
 		* ``lon`` -- grid longitude
-		* ``adot``  -- accumulation/ablation function
+		* ``S_ring``  -- accumulation/ablation function
 		* ``q_geo`` -- geothermal-heat flux
 		* ``dhdt`` -- suface height rate of change
 		* ``U_sar`` -- surface velocity magnitude
@@ -1214,7 +1214,7 @@ class DataFactory(object):
 		               'surftemp'   : 'T',
 		               'lat'        : 'lat',
 		               'lon'        : 'lon',
-		               'smb'        : 'adot',
+		               'smb'        : 'S_ring',
 		               'bheatflx'   : 'q_geo',
 		               'dhdt'       : 'dhdt',
 		               'surfvelmag' : 'U_sar'}
@@ -1230,17 +1230,17 @@ class DataFactory(object):
 
 
 		# retrieve data :
-		x     = array(data.variables['x1'][:])
-		y     = array(data.variables['y1'][:])
-		S     = array(data.variables['usrf'][:][0])
-		adot  = array(data.variables['smb'][:][0])
-		B     = array(data.variables['topg'][:][0])
-		T     = array(data.variables['surftemp'][:][0]) + 273.15
-		q_geo = array(data.variables['bheatflx'][:][0]) * 60 * 60 * 24 * 365
-		lat   = array(data.variables['lat'][:][0])
-		lon   = array(data.variables['lon'][:][0])
-		U_sar = array(data.variables['surfvelmag'][:][0])
-		dhdt  = array(data.variables['dhdt'][:][0])
+		x      = array(data.variables['x1'][:])
+		y      = array(data.variables['y1'][:])
+		S      = array(data.variables['usrf'][:][0])
+		S_ring = array(data.variables['smb'][:][0])
+		B      = array(data.variables['topg'][:][0])
+		T      = array(data.variables['surftemp'][:][0]) + 273.15
+		q_geo  = array(data.variables['bheatflx'][:][0]) * 60 * 60 * 24 * 365
+		lat    = array(data.variables['lat'][:][0])
+		lon    = array(data.variables['lon'][:][0])
+		U_sar  = array(data.variables['surfvelmag'][:][0])
+		dhdt   = array(data.variables['dhdt'][:][0])
 
 		H             = S - B
 		S[H < thklim] = B[H < thklim] + thklim
@@ -1276,9 +1276,9 @@ class DataFactory(object):
 		vara['ny']                = len(y)
 		vara['dx']                = 5000.0
 
-		names = ['S', 'adot', 'B', 'T', 'q_geo','U_sar', \
+		names = ['S', 'S_ring', 'B', 'T', 'q_geo','U_sar', \
 		         'lat', 'lon', 'dhdt']
-		ftns  = [S, adot, B, T, q_geo,U_sar, lat, lon, dhdt]
+		ftns  = [S, S_ring, B, T, q_geo,U_sar, lat, lon, dhdt]
 
 		vara['dataset']   = 'Searise'
 		vara['continent'] = 'greenland'

@@ -24,7 +24,7 @@ model.init_B(fdata)
 model.init_mask(fdata)
 model.init_q_geo(model.ghf)
 model.init_T_surface(fdata)
-model.init_adot(fdata)
+model.init_S_ring(fdata)
 model.init_U_ob(fdata, fdata)
 model.init_U_mask(fdata)
 model.init_time_step(1e-6)
@@ -51,7 +51,7 @@ def post_cb():
 # after every completed adjoining, save the state of these functions :
 itr_save_vars = [model.T,
                  model.W,
-                 model.Fb,
+                 model.B_ring,
                  model.Mb,
                  model.alpha,
                  model.W_int,

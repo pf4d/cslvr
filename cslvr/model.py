@@ -48,15 +48,31 @@ class Model(object):
 		#parameters["form_compiler"]["representation"]     = 'uflacs'
 		#PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
-		self.order        = order
-		self.out_dir      = out_dir
-		self.MPI_rank     = MPI.rank(mpi_comm_world())
-		self.use_periodic = use_periodic
-		self.pBC          = None  # this will hold constrained domains if periodic
+		self.order        = order                        # order of basis
+		self.out_dir      = out_dir                      # base output dir.
+		self.MPI_rank     = MPI.rank(mpi_comm_world())   # rank of this process
+		self.use_periodic = use_periodic                 # periodic bcs?
 
+		# this will hold constrained domains if periodic :
+		self.pBC          = None
+
+		# this is set by self.form_energy_dependent_rate_factor() and is used to
+		# set solver parameters in momentum.default_solve_params() :
+		self.energy_dependent_rate_factor = False
+
+		# initialize all the constants we use :
 		self.generate_constants()
+
+		# set the mesh and dimension of this model :
 		self.set_mesh(mesh)
+
+		# if periodic boundaries are used, initialize them "
+		if use_periodic: self.generate_pbc()
+
+		# generate the basic function spaces used :
 		self.generate_function_spaces(**kwargs)
+
+		# initialize all the variables on the FE mesh :
 		self.initialize_variables()
 
 	def color(self):
@@ -117,9 +133,9 @@ class Model(object):
 		+------------------+---------------+----------------------------------+
 		| ``self.spy``     | 31556926.0    | seconds per year                 |
 		+------------------+---------------+----------------------------------+
-		| ``self.rhoi``    | 910.0         | ice density                      |
+		| ``self.rho_i``   | 910.0         | ice density                      |
 		+------------------+---------------+----------------------------------+
-		| ``self.rhow``    | 1000.0        | water density                    |
+		| ``self.rho_w``   | 1000.0        | water density                    |
 		+------------------+---------------+----------------------------------+
 		| ``self.rhosw``   | 1028.0        | sea-water density                |
 		+------------------+---------------+----------------------------------+
@@ -135,15 +151,15 @@ class Model(object):
 		+------------------+---------------+----------------------------------+
 		| ``self.R``       | 8.3144621     | universal gas constant           |
 		+------------------+---------------+----------------------------------+
-		| ``self.ki``      | 2.1           | thermal conductivity of ice      |
+		| ``self.k_i``     | 2.1           | thermal conductivity of ice      |
 		+------------------+---------------+----------------------------------+
-		| ``self.kw``      | 0.561         | thermal conductivity of water    |
+		| ``self.k_w``     | 0.561         | thermal conductivity of water    |
 		+------------------+---------------+----------------------------------+
-		| ``self.ci``      | 2009.0        | heat capacity of ice             |
+		| ``self.c_i``     | 2009.0        | heat capacity of ice             |
 		+------------------+---------------+----------------------------------+
-		| ``self.cw``      | 4217.6        | Heat capacity of water at Tw     |
+		| ``self.c_w``     | 4217.6        | Heat capacity of water at Tw     |
 		+------------------+---------------+----------------------------------+
-		| ``self.L``       | 3.3355e5      | latent heat of ice               |
+		| ``self.L_f``     | 3.3355e5      | latent heat of ice               |
 		+------------------+---------------+----------------------------------+
 		| ``self.ghf``     | 0.042 * spy   | geothermal heat flux             |
 		+------------------+---------------+----------------------------------+
@@ -196,11 +212,11 @@ class Model(object):
 		self.spy     = Constant(spy)
 		self.spy.rename('spy', 'seconds per year')
 
-		self.rhoi    = Constant(910.0)
-		self.rhoi.rename('rhoi', 'ice density')
+		self.rho_i   = Constant(910.0)
+		self.rho_i.rename('rho_i', 'ice density')
 
-		self.rhow    = Constant(1000.0)
-		self.rhow.rename('rhow', 'water density')
+		self.rho_w   = Constant(1000.0)
+		self.rho_w.rename('rho_w', 'water density')
 
 		self.rhosw   = Constant(1028.0)
 		self.rhosw.rename('rhosw', 'sea-water density')
@@ -223,20 +239,20 @@ class Model(object):
 		self.R       = Constant(8.3144621)
 		self.R.rename('R', 'universal gas constant')
 
-		self.ki      = Constant(2.1)
-		self.ki.rename('ki', 'thermal conductivity of ice')
+		self.k_i     = Constant(2.1)
+		self.k_i.rename('k_i', 'thermal conductivity of ice')
 
-		self.kw      = Constant(0.561)
-		self.kw.rename('kw', 'thermal conductivity of water')
+		self.k_w     = Constant(0.561)
+		self.k_w.rename('k_w', 'thermal conductivity of water')
 
-		self.ci      = Constant(2009.0)
-		self.ci.rename('ci', 'heat capacity of ice')
+		self.c_i     = Constant(2009.0)
+		self.c_i.rename('c_i', 'heat capacity of ice')
 
-		self.cw      = Constant(4217.6)
-		self.cw.rename('cw', 'Heat capacity of water at Tw')
+		self.c_w     = Constant(4217.6)
+		self.c_w.rename('c_w', 'Heat capacity of water at Tw')
 
-		self.L       = Constant(3.3355e5)
-		self.L.rename('L', 'latent heat of ice')
+		self.L_f     = Constant(3.3355e5)
+		self.L_f.rename('L_f', 'latent heat of ice')
 
 		self.ghf     = Constant(ghf)
 		self.ghf.rename('ghf', 'geothermal heat flux')
@@ -316,8 +332,8 @@ class Model(object):
 		* ``self.GAMMA_L_DVD`` -- basin divides
 		* ``self.GAMMA_L_OVR`` -- terminus over water
 		* ``self.GAMMA_L_UDR`` -- terminus under water
-		* ``self.GAMMA_U_GND`` -- grounded upper surface with :math:`\mathbf{u}_{ob}`
-		* ``self.GAMMA_U_FLT`` -- shelf upper surface with :math:`\mathbf{u}_{ob}`
+		* ``self.GAMMA_U_GND`` -- grounded upper surface with :math:`\underline{u}_{ob}`
+		* ``self.GAMMA_U_FLT`` -- shelf upper surface with :math:`\underline{u}_{ob}`
 
 		Internal boundaries :
 
@@ -325,7 +341,7 @@ class Model(object):
 		* ``self.OMEGA_FLT``   -- internal cells located over water
 
 		These are then used to define the measures used for integration by FEniCS
-		by calling :func:`set_measures`.
+		by calling :func:`~model.Model.set_measures`.
 		"""
 		raiseNotDefined()
 
@@ -336,7 +352,7 @@ class Model(object):
 		``self.cf``, respectively.
 
 		Also, the number of facets marked by
-		:func:`calculate_boundaries` :
+		:func:`~model.Model.calculate_boundaries` :
 
 		* ``self.N_OMEGA_GND``   -- number of cells marked ``self.OMEGA_GND``
 		* ``self.N_OMEGA_FLT``   -- number of cells marked ``self.OMEGA_FLT``
@@ -379,9 +395,12 @@ class Model(object):
 		Set the output directory to string ``out_dir``.
 
 		:param out_dir: the output directory for any output generated by
-		                :func:`save_hdf5`, :func:`save_xdmf`, :func:`save_pvd`,
-		                :func:`save_list_to_hdf5`, :func:`save_subdomain_data`,
-		                and :func:`save_mesh`.
+		                :func:`~model.Model.save_hdf5`,
+		                :func:`~model.Model.save_xdmf`,
+		                :func:`~model.Model.save_pvd`,
+		                :func:`~model.Model.save_list_to_hdf5`,
+		                :func:`~model.Model.save_subdomain_data`, and
+		                :func:`~model.Model.save_mesh`.
 		:type out_dir:  string
 		"""
 		self.out_dir = out_dir
@@ -396,54 +415,64 @@ class Model(object):
 		The element shape-functions available from this method are :
 
 		* ``self.Q``  -- :math:`\mathcal{H}^k(\Omega)`
-		* ``self.Q2`` -- :math:`\mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega)`
-		* ``self.Q3`` -- :math:`\mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega)`
-		* ``self.Q4`` -- :math:`\mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega) \times \mathcal{H}^k(\Omega)`
+		* ``self.V`` -- :math:`\left( \mathcal{H}^k(\Omega) \right)^d` formed using :class:`~dolfin.VectorFunctionSpace`
+		* ``self.QM2`` -- :math:`\left( \mathcal{H}^k(\Omega) \right)^2`
+		* ``self.STAB`` -- :math:`\left( \mathcal{H}^k(\Omega) \right)^d \times \mathcal{H}^k(\Omega) `: stabilized full-Stokes space.
 		* ``self.Q_non_periodic`` -- same as ``self.Q``, but without periodic constraints
-		* ``self.Q3_non_periodic`` -- same as ``self.Q3``, but without periodic constraints
-		* ``self.V`` -- same as ``self.Q3`` but formed using :class:`~dolfin.VectorFunctionSpace`
+		* ``self.V_non_periodic`` -- same as ``self.V``, but without periodic constraints
 
 		"""
 		order = self.order
+		mesh  = self.mesh
 
-		s = "::: generating fundamental function spaces of order %i :::" % order
+		s = "::: generating O(%i) fundamental function spaces :::" % order
 		print_text(s, cls=self.this)
 
-		# define elements that may or may not be used :
-		self.Q1e    = FiniteElement("CG", self.mesh.ufl_cell(), order)
-		self.V1e    = VectorElement("CG", self.mesh.ufl_cell(), order)
-		self.Q2e    = FiniteElement("CG", self.mesh.ufl_cell(), order+1)
-		self.QM2e   = MixedElement([self.Q1e]*2)
-		self.QM3e   = MixedElement([self.Q1e]*3)
-		self.QM4e   = MixedElement([self.Q1e]*4)
-		self.QTH3e  = MixedElement([self.Q2e,self.Q2e,self.Q2e,self.Q1e])
-		self.BDMe   = FiniteElement("BDM", self.mesh.ufl_cell(), 1)
-		self.DGe    = FiniteElement("DG",  self.mesh.ufl_cell(), 0)
-		self.DG1e   = FiniteElement("DG",  self.mesh.ufl_cell(), 1)
-		self.QTH2e  = MixedElement([self.Q2e,self.Q2e,self.Q1e])
-		self.BDMMe  = MixedElement([self.BDMe, self.DGe])
+		# create fundamental function spaces :
+		self.Qe    = FiniteElement("CG", mesh.ufl_cell(), order)
+		self.Ve    = VectorElement("CG", mesh.ufl_cell(), order)
+		self.Q     = FunctionSpace(mesh, self.Qe,   constrained_domain=self.pBC)
+		self.V     = FunctionSpace(mesh, self.Ve,   constrained_domain=self.pBC)
 
-		# NOTE: generate periodic function spaces if required
+		# create BP and stabilized-full-Stokes function spaces :
+		self.QM2e  = MixedElement([self.Qe]*2)
+		self.STABe = self.Ve * self.Qe
+		self.QM2   = FunctionSpace(mesh, self.QM2e,  constrained_domain=self.pBC)
+		self.STAB  = FunctionSpace(mesh, self.STABe, constrained_domain=self.pBC)
+
+		# define other elements that likely will not be used :
+		self.BDMe  = FiniteElement("BDM", mesh.ufl_cell(), 1)
+		self.DGe   = FiniteElement("DG",  mesh.ufl_cell(), 0)
+		self.DG1e  = FiniteElement("DG",  mesh.ufl_cell(), 1)
+		self.BDMMe = MixedElement([self.BDMe, self.DGe])
+
+		# create Taylor-Hood full-Stokes function spaces :
+		if self.order > 1:
+			self.Pe   = FiniteElement("CG", mesh.ufl_cell(), order - 1)
+			self.THe  = self.Ve * self.Pe
+			self.TH   = FunctionSpace(mesh, self.THe, constrained_domain=self.pBC)
+
+		# guarantee we have a bilinear FunctionSpace :
+		if order != 1:
+			self.Q1e = FiniteElement("CG", mesh.ufl_cell(), 1)
+			self.V1e = VectorElement("CG", mesh.ufl_cell(), 1)
+			self.Q1  = FunctionSpace(mesh, self.Q1e, constrained_domain=self.pBC)
+			self.V1  = FunctionSpace(mesh, self.V1e, constrained_domain=self.pBC)
+		else:
+			self.Q1e = self.Qe
+			self.V1e = self.Ve
+			self.Q1  = self.Q
+			self.V1  = self.V
+
+		# generate periodic function spaces if required.
 		# the functionspaces must be initialized with constrained domains prior
-		# to mesh deformation.  If periodic boundary conditions are not used, the
-		# individual "Physics" classes will initialize the FunctionSpaces to
-		# conserve CPU time and especially memory :
+		# to mesh deformation (e.g. ``d3model::deform_mesh_to_geometry()``) :
 		if self.use_periodic:
-			self.generate_pbc()
-		self.Q                = FunctionSpace(self.mesh, self.Q1e,
-		                                      constrained_domain=self.pBC)
-		self.Q2               = FunctionSpace(self.mesh, self.QM2e,
-		                                      constrained_domain=self.pBC)
-		self.Q3               = FunctionSpace(self.mesh, self.QM3e,
-		                                      constrained_domain=self.pBC)
-		self.Q_non_periodic   = FunctionSpace(self.mesh, self.Q1e)
-		self.Q3_non_periodic  = FunctionSpace(self.mesh, self.QM3e)
-
-		# NOTE: the function spaces "_non_periodic" are needed as some
-		# functions must be defined as non-periodic for the solution to make sense
-		# see (self.initialize_variables()).
-
-		self.V  = FunctionSpace(self.mesh, self.V1e)
+			self.Q_non_periodic = FunctionSpace(mesh, self.Qe)
+			self.V_non_periodic = FunctionSpace(mesh, self.Ve)
+		else:
+			self.Q_non_periodic = self.Q
+			self.V_non_periodic = self.V
 
 		s = "    - fundamental function spaces created - "
 		print_text(s, cls=self.this)
@@ -451,7 +480,7 @@ class Model(object):
 	def init_S(self, S):
 		r"""
 		Set surface topography :math:`S`, ``self.S``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param S:   surface topography
 		"""
@@ -462,7 +491,7 @@ class Model(object):
 	def init_B(self, B):
 		r"""
 		Set basal topography :math:`B`, ``self.B``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param B:   basal topography
 		"""
@@ -470,9 +499,55 @@ class Model(object):
 		print_text(s, cls=self.this)
 		self.assign_variable(self.B, B)
 
+	def init_S_ring(self, S_ring):
+		r"""
+		Set accumulation/ablation :math:`\dot{a}`, ``self.S_ring``,
+		by calling :func:`~model.Model.assign_variable`.
+
+		:param S_ring:   accumulation/ablation :math:`\dot{a}`
+		"""
+		s = "::: initializing accumulation/ablation function :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.S_ring, S_ring)
+
+	def init_B_ring(self, B_ring):
+		r"""
+		Set basal-water discharge :math:`F_b`, ``self.B_ring``,
+		by calling :func:`~model.Model.assign_variable`.
+
+		:param B_ring:   basal-water discharge
+		"""
+		s = "::: initializing basal-water discharge :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.B_ring, B_ring)
+
+	def init_dSdt(self, dSdt):
+		r"""
+		Set upper-surface height time rate of change
+		:math:`\frac{\partial S}{\partial t}`, ``self.dSdt``,
+		by calling :func:`~model.Model.assign_variable`.
+
+		:param dSdt:   :math:`\frac{\partial S}{\partial t}`
+		"""
+		s = "::: initializing dSdt :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.dSdt, dSdt)
+
+	def init_dBdt(self, dBdt):
+		r"""
+		Set lower-surface height time rate of change
+		:math:`\frac{\partial B}{\partial t}`, ``self.dBdt``,
+		by calling :func:`~model.Model.assign_variable`.
+
+		:param dBdt:   :math:`\frac{\partial B}{\partial t}`
+		"""
+		s = "::: initializing dBdt :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.dBdt, dBdt)
+
 	def init_sigma(self, sigma):
 		r"""
-		Set sigma coordinate by calling :func:`assign_variable`.
+		Set sigma coordinate by calling :func:`~model.Model.assign_variable`.
 
 		:param sigma:   sigma coordinate
 		"""
@@ -483,7 +558,7 @@ class Model(object):
 	def init_B_err(self, B_err):
 		r"""
 		Set basal topography uncertainty :math:`B_{\epsilon}`, ``self.B_err``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param B_err:   basal topography uncertainty
 		"""
@@ -494,7 +569,7 @@ class Model(object):
 	def init_p(self, p):
 		r"""
 		Set pressure :math:`p`, ``self.p``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param p:   pressure
 		"""
@@ -505,7 +580,7 @@ class Model(object):
 	def init_theta(self, theta):
 		r"""
 		Set internal energy :math:`\theta`, ``self.theta``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param theta:   internal energy
 		"""
@@ -522,7 +597,7 @@ class Model(object):
 		r"""
 		Set the internal energy approximation :math:`\theta_{app}`,
 		``self.theta_app``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param theta_app:   internal energy approximation
 		"""
@@ -533,7 +608,7 @@ class Model(object):
 	def init_theta_surface(self, theta_surface):
 		r"""
 		Set the surface internal energy :math:`\theta_S`, ``self.theta_surface``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param theta_surface:   surface internal energy
 		"""
@@ -544,7 +619,7 @@ class Model(object):
 	def init_theta_float(self, theta_float):
 		r"""
 		Set the floating ice internal energy :math:`\theta_{sea}`,
-		``self.theta_float``, by calling :func:`assign_variable`.
+		``self.theta_float``, by calling :func:`~model.Model.assign_variable`.
 
 		:param theta_float:   internal energy in contact with water
 		"""
@@ -555,7 +630,7 @@ class Model(object):
 	def init_T(self, T):
 		r"""
 		Set temperature :math:`T`, ``self.T``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param T: temperature
 		"""
@@ -566,7 +641,7 @@ class Model(object):
 	def init_Tp(self, Tp):
 		r"""
 		Set pressure-adjusted temperature :math:`T_p = T + \gamma p`, ``self.Tp``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param Tp:   pressure-adjusted temperature :math:`T_p = T + \gamma p`
 		"""
@@ -577,7 +652,7 @@ class Model(object):
 	def init_W(self, W):
 		r"""
 		Set water content :math:`W`, ``self.W``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param W:  water content
 		"""
@@ -588,7 +663,7 @@ class Model(object):
 	def init_Wc(self, Wc):
 		r"""
 		Set maximum observed water content :math:`W_c`, ``self.Wc``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param Wc:   maximum allowed water content
 		"""
@@ -599,7 +674,7 @@ class Model(object):
 	def init_Mb(self, Mb):
 		r"""
 		Set basal melting rate :math:`M_b`, ``self.Mb``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param Mb:   basal-melt rate
 		"""
@@ -607,21 +682,10 @@ class Model(object):
 		print_text(s, cls=self.this)
 		self.assign_variable(self.Mb, Mb)
 
-	def init_adot(self, adot):
-		r"""
-		Set accumulation/ablation :math:`\dot{a}`, ``self.adot``,
-		by calling :func:`assign_variable`.
-
-		:param adot:   accumulation/ablation :math:`\dot{a}`
-		"""
-		s = "::: initializing accumulation/ablation function :::"
-		print_text(s, cls=self.this)
-		self.assign_variable(self.adot, adot)
-
 	def init_beta(self, beta):
 		r"""
 		Set basal traction :math:`\beta`, ``self.beta``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param beta:  basal traction :math:`\beta`
 		"""
@@ -632,7 +696,7 @@ class Model(object):
 	def init_lam(self, lam):
 		r"""
 		Set basal normal stress magnitude :math:`\underline{n} \cdot \underline{\underline{\sigma}} \cdot \underline{n}`, ``self.lam``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param lam:  basal normal stress magnitude :math:`\underline{n} \cdot \underline{\underline{\sigma}} \cdot \underline{n}`
 		"""
@@ -643,7 +707,7 @@ class Model(object):
 	def init_A(self, A):
 		r"""
 		Set flow-rate factor :math:`A`, ``self.A``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param A:  flow-rate factor
 		"""
@@ -654,7 +718,7 @@ class Model(object):
 	def init_E(self, E):
 		r"""
 		Set flow-enhancement factor :math:`E`, ``self.E``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param E:  enhancement factor
 		"""
@@ -665,7 +729,7 @@ class Model(object):
 	def init_eta(self, eta):
 		r"""
 		Set viscosity :math:`\eta`, ``self.eta``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param eta:   viscosity
 		"""
@@ -676,7 +740,7 @@ class Model(object):
 	def init_etabar(self, etabar):
 		r"""
 		Set vertically averaged viscosity :math:`\bar{\eta}`, ``self.etabar``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param etabar:   vertically-averaged viscosity
 		"""
@@ -684,46 +748,46 @@ class Model(object):
 		print_text(s, cls=self.this)
 		self.assign_variable(self.etabar, etabar)
 
-	def init_ubar(self, ubar):
+	def init_u_x_bar(self, u_x_bar):
 		r"""
 		Set vertically averaged x-component of velocity :math:`\bar{u}`,
-		``self.ubar``,
-		by calling :func:`assign_variable`.
+		``self.u_x_bar``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param ubar:   vertically-averaged x-component of velocity
+		:param u_x_bar:   vertically-averaged x-component of velocity
 		"""
 		s = "::: initializing vertically averaged x-component of velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.ubar, ubar)
+		self.assign_variable(self.u_x_bar, u_x_bar)
 
-	def init_vbar(self, vbar):
+	def init_u_y_bar(self, u_y_bar):
 		r"""
 		Set vertically averaged y-component of velocity :math:`\bar{v}`,
-		``self.vbar``,
-		by calling :func:`assign_variable`.
+		``self.u_y_bar``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param vbar:   vertically-averaged y-component of velocity
+		:param u_y_bar:   vertically-averaged y-component of velocity
 		"""
 		s = "::: initializing vertically averaged y-component of velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.vbar, vbar)
+		self.assign_variable(self.u_y_bar, u_y_bar)
 
-	def init_wbar(self, wbar):
+	def init_u_z_bar(self, u_z_bar):
 		r"""
 		Set vertically averaged z-component of velocity :math:`\bar{w}`,
-		``self.wbar``,
-		by calling :func:`assign_variable`.
+		``self.u_z_bar``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param wbar:   vertically-averaged z-component of velocity
+		:param u_z_bar:   vertically-averaged z-component of velocity
 		"""
 		s = "::: initializing vertically averaged z-component of velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.wbar, wbar)
+		self.assign_variable(self.u_z_bar, u_z_bar)
 
 	def init_T_surface(self, T_surface):
 		r"""
 		Set surface temperature :math:`T_S`, ``self.T_surface``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param T_surface:   surface temperature
 		"""
@@ -734,7 +798,7 @@ class Model(object):
 	def init_q_geo(self, q_geo):
 		r"""
 		Set geothermal heat flux :math:`q_{geo}`, ``self.q_geo``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param q_geo:   geothermal heat flux
 		"""
@@ -745,7 +809,7 @@ class Model(object):
 	def init_q_fric(self, q_fric):
 		r"""
 		Set traction heat flux :math:`q_{fric}`, ``self.q_fric``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param q_fric:  friction heat flux
 		"""
@@ -756,8 +820,8 @@ class Model(object):
 	def init_gradT_B(self, gradT_B):
 		r"""
 		Set basal temperature gradient
-		:math:`\left( k \nabla T \right) \cdot \mathbf{n}`, ``self.gradT_B``,
-		by calling :func:`assign_variable`.
+		:math:`\left( k \nabla T \right) \cdot \underline{n}`, ``self.gradT_B``,
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param gradT_B:   basal temperature gradient
 		"""
@@ -768,8 +832,8 @@ class Model(object):
 	def init_gradTm_B(self, gradTm_B):
 		r"""
 		Set basal temperature melting gradient
-		:math:`\left( k \nabla T_m \right) \cdot \mathbf{n}`, ``self.gradTm_B``,
-		by calling :func:`assign_variable`.
+		:math:`\left( k \nabla T_m \right) \cdot \underline{n}`, ``self.gradTm_B``,
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param gradTm_B:   basal temperature melting gradient
 		"""
@@ -779,140 +843,134 @@ class Model(object):
 
 	def init_u(self, u):
 		r"""
-		Set x-component of velocity :math:`u`, ``self.u``,
-		by calling :func:`assign_variable`.
+		Set velocity vector :math:`\underline{u}`, ``self.u``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param u:  x-component of velocity
-		"""
-		s = "::: initializing x-component of velocity :::"
-		print_text(s, cls=self.this)
-		u_t = Function(self.Q_non_periodic, name='u_t')
-		self.assign_variable(u_t, u)
-		self.assx.assign(self.u, u_t, annotate=False)
-
-	def init_v(self, v):
-		r"""
-		Set y-component of velocity :math:`v`, ``self.v``,
-		by calling :func:`assign_variable`.
-
-		:param v:  y-component of velocity
-		"""
-		s = "::: initializing y-component of velocity :::"
-		print_text(s, cls=self.this)
-		v_t = Function(self.Q_non_periodic, name='v_t')
-		self.assign_variable(v_t, v)
-		self.assy.assign(self.v, v_t, annotate=False)
-
-	def init_w(self, w):
-		r"""
-		Set z-component of velocity :math:`w`, ``self.w``,
-		by calling :func:`assign_variable`.
-
-		:param w:  z-component of velocity
-		"""
-		s = "::: initializing z-component of velocity :::"
-		print_text(s, cls=self.this)
-		w_t = Function(self.Q_non_periodic, name='w_t')
-		self.assign_variable(w_t, w)
-		self.assz.assign(self.w, w_t, annotate=False)
-
-	def init_U(self, U):
-		r"""
-		Set velocity vector :math:`\mathbf{u}`, ``self.U3``,
-		by calling :func:`assign_variable`.
-
-		:param U: velocity vector
+		:param u: velocity vector
 		"""
 		s = "::: initializing velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.U3, U)
-		self.init_U_mag(self.U3)
+		self.assign_variable(self.u, u)
+		self.init_u_mag(self.u)
 
-	def init_U_mag(self, U):
+	def init_u_mag(self, u):
 		r"""
-		Set velocity vector magnitude :math:`\Vert \mathbf{u} \Vert`,
-		``self.U_mag``,
-		by calling :func:`assign_variable`.
+		Set velocity vector magnitude :math:`\Vert \underline{u} \Vert`,
+		``self.u_mag``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param U:   velocity vector
+		:param u:   velocity vector
 		"""
 		s = "::: initializing velocity magnitude :::"
 		print_text(s, cls=self.this)
 		# dolfin issue #405 bug workaround :
 		if self.use_periodic:
-			u      = Function(self.Q)
-			v      = Function(self.Q)
-			w      = Function(self.Q)
-			assign(u, U.sub(0))
-			assign(v, U.sub(1))
-			assign(w, U.sub(2))
+			u_n = []
+			for i in range(len(u)):
+				u_i = Function(self.Q)
+				assign(u_i, u.sub(i))
+				u_n.append(u_i)
+			u = u_n
 		else:
-			u,v,w  = U.split(True)
-		u_v      = u.vector().get_local()
-		v_v      = v.vector().get_local()
-		w_v      = w.vector().get_local()
-		U_mag_v  = np.sqrt(u_v**2 + v_v**2 + w_v**2 + DOLFIN_EPS)
-		self.assign_variable(self.U_mag, U_mag_v)
+		  u = u.split(True)
+		u_mag = DOLFIN_EPS
+		for u_i in u:
+			u_mag += u_i.vector().get_local()**2
+		u_mag  = np.sqrt(u_mag)
+		self.assign_variable(self.u_mag, u_mag)
 
-	def init_U_ob(self, u_ob, v_ob):
+	def init_u_ob(self, u_x_ob, u_y_ob):
 		r"""
-		Set horizontal velocity observation vector :math:`\mathbf{u}_{ob}`,
-		``self.U_ob``, and horizontal components :math:`u_{ob}` and :math:`v_{ob}`,
-		``self.u_ob`` and ``self.v_ob``, respectively,
-		by calling :func:`assign_variable`.
+		Set horizontal velocity observation vector :math:`\underline{u}_{ob}`,
+		``self.u_ob``, and horizontal components :math:`u_x^{ob}` and
+		:math:`u_y^{ob}`, ``self.u_x_ob`` and ``self.u_y_ob``, respectively,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param u_ob: x-component of observed velocity
-		:param v_ob: y-component of observed velocity
+		:param u_x_ob: x-component of observed velocity
+		:param u_y_ob: y-component of observed velocity
 		"""
-		s = "::: initializing surface velocity :::"
+		s = "::: initializing observed velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.u_ob, u_ob)
-		self.assign_variable(self.v_ob, v_ob)
-		u_v      = self.u_ob.vector().get_local()
-		v_v      = self.v_ob.vector().get_local()
-		U_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
-		self.assign_variable(self.U_ob, U_mag_v)
+		self.init_u_x_ob(u_x_ob)
+		self.init_u_y_ob(u_y_ob)
+		u_v      = self.u_x_ob.vector().get_local()
+		v_v      = self.u_y_ob.vector().get_local()
+		u_mag_v  = np.sqrt(u_v**2 + v_v**2 + 1e-16)
+		self.assign_variable(self.u_ob, u_mag_v)
 
-	def init_Ubar(self, Ubar):
+	def init_u_x_ob(self, u_x_ob):
 		r"""
-		Set balance velocity :math:`\Vert \bar{\mathbf{u}} \Vert = \bar{u}`,
-		``self.Ubar``,
-		by calling :func:`assign_variable`.
+		Set :math:`x`-axis velocity observation component :math:`u_{ob}` to
+		``self.u_x_ob`` by calling :func:`~model.Model.assign_variable`.
 
-		:param Ubar:  balance velocity magnitude
+		:param u_x_ob: x-component of observed velocity
+		"""
+		s = "::: initializing x-component of observed velocity :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.u_x_ob, u_x_ob)
+
+	def init_u_y_ob(self, u_y_ob):
+		r"""
+		Set :math:`y`-axis velocity observation component :math:`v_{ob}` to
+		``self.u_y_ob`` by calling :func:`~model.Model.assign_variable`.
+
+		:param u_y_ob: y-component of observed velocity
+		"""
+		s = "::: initializing y-component of observed velocity :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.u_y_ob, u_y_ob)
+
+	def init_u_z_ob(self, u_z_ob):
+		r"""
+		Set :math:`z`-axis velocity observation component :math:`w_{ob}` to
+		``self.u_z_ob`` by calling :func:`~model.Model.assign_variable`.
+
+		:param u_z_ob: z-component of observed velocity
+		"""
+		s = "::: initializing z-component of observed velocity :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.u_z_ob, u_z_ob)
+
+	def init_u_bar(self, u_bar):
+		r"""
+		Set balance velocity :math:`\Vert \bar{\underline{u}} \Vert = \bar{u}`,
+		``self.u_bar``,
+		by calling :func:`~model.Model.assign_variable`.
+
+		:param u_bar:  balance velocity magnitude
 		"""
 		s = "::: initializing balance velocity magnitude :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.Ubar, Ubar)
+		self.assign_variable(self.u_bar, u_bar)
 
-	def init_uhat(self, uhat):
+	def init_u_x_hat(self, u_x_hat):
 		r"""
 		Set normalized x-component of lateral velocity
-		:math:`\hat{u}`, ``self.uhat``,
-		by calling :func:`assign_variable`.
+		:math:`\hat{u}`, ``self.u_x_hat``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param uhat:   normalized x-component of velocity
+		:param u_x_hat:   normalized x-component of velocity
 		"""
 		s = "::: initializing normalized x-component of velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.uhat, uhat)
+		self.assign_variable(self.u_x_hat, u_x_hat)
 
-	def init_vhat(self, vhat):
+	def init_u_y_hat(self, u_y_hat):
 		r"""
 		Set normalized y-component of lateral velocity
-		:math:`\hat{v}`, ``self.vhat``,
-		by calling :func:`assign_variable`.
+		:math:`\hat{v}`, ``self.u_y_hat``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param vhat:   normalized y-component of velocity
+		:param u_y_hat:   normalized y-component of velocity
 		"""
 		s = "::: initializing normalized y-component of velocity :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.vhat, vhat)
+		self.assign_variable(self.u_y_hat, u_y_hat)
 
 	def init_u_lat(self, u_lat):
 		r"""
 		Set x-component of lateral velocity :math:`u_{g_D}`, ``self.u_lat``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param u_lat:   x-component of velocity essential condition
 		"""
@@ -920,32 +978,32 @@ class Model(object):
 		print_text(s, cls=self.this)
 		self.assign_variable(self.u_lat, u_lat)
 
-	def init_v_lat(self, v_lat):
+	def init_u_y_lat(self, u_y_lat):
 		r"""
-		Set y-component of lateral velocity :math:`v_{g_D}`, ``self.v_lat``,
-		by calling :func:`assign_variable`.
+		Set y-component of lateral velocity :math:`v_{g_D}`, ``self.u_y_lat``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param v_lat:   y-component of velocity essential condition
+		:param u_y_lat:   y-component of velocity essential condition
 		"""
 		s = "::: initializing v lateral boundary condition :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.v_lat, v_lat)
+		self.assign_variable(self.u_y_lat, u_y_lat)
 
-	def init_w_lat(self, w_lat):
+	def init_u_z_lat(self, u_z_lat):
 		r"""
-		Set z-component of lateral velocity :math:`w_{g_D}`, ``self.w_lat``,
-		by calling :func:`assign_variable`.
+		Set z-component of lateral velocity :math:`w_{g_D}`, ``self.u_z_lat``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param w_lat:   w-component of velocity essential condition
+		:param u_z_lat:   w-component of velocity essential condition
 		"""
 		s = "::: initializing w lateral boundary condition :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.w_lat, w_lat)
+		self.assign_variable(self.u_z_lat, u_z_lat)
 
 	def init_mask(self, mask):
 		r"""
 		Set shelf mask ``self.mask``
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		This in turn generates a vector of indices corresponding with grounded
 		and shelf vertices:
@@ -964,13 +1022,13 @@ class Model(object):
 	def init_U_mask(self, U_mask):
 		r"""
 		Set velocity observation mask ``self.U_mask``
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		This in turn generates a vector of indices corresponding with grounded
 		and shelf vertices:
 
-		* ``self.Uob_dofs`` --  observations :math:`\mathbf{u}_{ob}` present dofs
-		* ``self.Uob_missing_dofs`` -- observations :math:`\mathbf{u}_{ob}` missing dofs
+		* ``self.Uob_dofs`` --  observations :math:`\underline{u}_{ob}` present dofs
+		* ``self.Uob_missing_dofs`` -- observations :math:`\underline{u}_{ob}` missing dofs
 
 		:param U_mask:   surface-velocity-oberservations mask (1 has observations, 0 does not)
 		"""
@@ -983,7 +1041,7 @@ class Model(object):
 	def init_d_x(self, d_x):
 		r"""
 		Set x-component of flow-direction :math:`d_x`, ``self.d_x``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param d_x:   x-component of flow direction
 		"""
@@ -994,7 +1052,7 @@ class Model(object):
 	def init_d_y(self, d_y):
 		r"""
 		Set y-component of flow-direction :math:`d_y`, ``self.d_y``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param d_y:   y-component of flow direction
 		"""
@@ -1005,7 +1063,7 @@ class Model(object):
 	def init_time_step(self, dt):
 		r"""
 		Set time step :math:`\Delta t`, ``self.dt``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param dt:   time step
 		"""
@@ -1016,7 +1074,7 @@ class Model(object):
 	def init_lat(self, lat):
 		r"""
 		Set grid latitude ``self.lat``
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param lat:   grid latitude values
 		"""
@@ -1027,7 +1085,7 @@ class Model(object):
 	def init_lon(self, lon):
 		r"""
 		Set grid longitude ``self.lon``
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param lon:   grid longitude values
 		"""
@@ -1038,7 +1096,7 @@ class Model(object):
 	def init_M_ii(self, M_ii):
 		r"""
 		Set membrane-stress balance :math:`M_{ii}`, ``self.M_ii``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_ii:   membrane-stress balance :math:`M_{ii}`
 		"""
@@ -1049,7 +1107,7 @@ class Model(object):
 	def init_M_ij(self, M_ij):
 		r"""
 		Set membrane-stress balance :math:`M_{ij}`, ``self.M_ij``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_ij:   membrane-stress balance :math:`M_{ij}`
 		"""
@@ -1060,7 +1118,7 @@ class Model(object):
 	def init_M_iz(self, M_iz):
 		r"""
 		Set membrane-stress balance :math:`M_{iz}`, ``self.M_iz``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_iz:   membrane-stress balance :math:`M_{iz}`
 		"""
@@ -1071,7 +1129,7 @@ class Model(object):
 	def init_M_ji(self, M_ji):
 		r"""
 		Set membrane-stress balance :math:`M_{ji}`, ``self.M_ji``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_ji:   membrane-stress balance :math:`M_{ji}`
 		"""
@@ -1082,7 +1140,7 @@ class Model(object):
 	def init_M_jj(self, M_jj):
 		r"""
 		Set membrane-stress balance :math:`M_{jj}`, ``self.M_jj``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_jj:   membrane-stress balance :math:`M_{jj}`
 		"""
@@ -1093,7 +1151,7 @@ class Model(object):
 	def init_M_jz(self, M_jz):
 		r"""
 		Set membrane-stress balance :math:`M_{jz}`, ``self.M_jz``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_jz:   membrane-stress balance :math:`M_{jz}`
 		"""
@@ -1104,7 +1162,7 @@ class Model(object):
 	def init_M_zi(self, M_zi):
 		r"""
 		Set membrane-stress balance :math:`M_{zi}`, ``self.M_zi``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_zi:   membrane-stress balance :math:`M_{zi}`
 		"""
@@ -1115,7 +1173,7 @@ class Model(object):
 	def init_M_zj(self, M_zj):
 		r"""
 		Set membrane-stress balance :math:`M_{zj}`, ``self.M_zj``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_zj:   membrane-stress balance :math:`M_{zj}`
 		"""
@@ -1126,7 +1184,7 @@ class Model(object):
 	def init_M_zz(self, M_zz):
 		r"""
 		Set membrane-stress balance :math:`M_{zz}`, ``self.M_zz``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param M_zz:   membrane-stress balance :math:`M_{zz}`
 		"""
@@ -1137,7 +1195,7 @@ class Model(object):
 	def init_N_ii(self, N_ii):
 		r"""
 		Set membrane stress :math:`N_{ii}`, ``self.N_ii``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_ii:   membrane-stress :math:`N_{ii}`
 		"""
@@ -1148,7 +1206,7 @@ class Model(object):
 	def init_N_ij(self, N_ij):
 		r"""
 		Set membrane stress :math:`N_{ij}`, ``self.N_ij``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_ij:   membrane-stress :math:`N_{ij}`
 		"""
@@ -1159,7 +1217,7 @@ class Model(object):
 	def init_N_iz(self, N_iz):
 		r"""
 		Set membrane stress :math:`N_{iz}`, ``self.N_iz``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_iz:   membrane-stress :math:`N_{iz}`
 		"""
@@ -1170,7 +1228,7 @@ class Model(object):
 	def init_N_ji(self, N_ji):
 		r"""
 		Set membrane stress :math:`N_{ji}`, ``self.N_ji``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_ji:   membrane-stress :math:`N_{ji}`
 		"""
@@ -1181,7 +1239,7 @@ class Model(object):
 	def init_N_jj(self, N_jj):
 		r"""
 		Set membrane stress :math:`N_{jj}`, ``self.N_jj``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_jj:   membrane-stress :math:`N_{jj}`
 		"""
@@ -1192,7 +1250,7 @@ class Model(object):
 	def init_N_jz(self, N_jz):
 		r"""
 		Set membrane stress :math:`N_{jz}`, ``self.N_jz``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_jz:   membrane-stress :math:`N_{jz}`
 		"""
@@ -1203,7 +1261,7 @@ class Model(object):
 	def init_N_zi(self, N_zi):
 		r"""
 		Set membrane stress :math:`N_{zi}`, ``self.N_zi``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_zi:   membrane-stress :math:`N_{zi}`
 		"""
@@ -1214,7 +1272,7 @@ class Model(object):
 	def init_N_zj(self, N_zj):
 		r"""
 		Set membrane stress :math:`N_{zj}`, ``self.N_zj``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_zj:   membrane-stress :math:`N_{zj}`
 		"""
@@ -1225,7 +1283,7 @@ class Model(object):
 	def init_N_zz(self, N_zz):
 		r"""
 		Set membrane stress :math:`N_{zz}`, ``self.N_zz``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param N_zz:   membrane-stress :math:`N_{zz}`
 		"""
@@ -1236,7 +1294,7 @@ class Model(object):
 	def init_alpha(self, alpha):
 		r"""
 		Set temperate-zone-marking coefficient :math:`\alpha`, ``self.alpha``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param alpha:  temperate-zone-marking coefficient
 		"""
@@ -1248,7 +1306,7 @@ class Model(object):
 		r"""
 		Set vertical integral of temperate zone marking coefficient
 		:math:`\int \alpha dz`, ``self.alpha_int``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param alpha_int:  vertical integral of temperate-zone-marking coefficient
 		"""
@@ -1256,21 +1314,10 @@ class Model(object):
 		print_text(s, cls=self.this)
 		self.assign_variable(self.alpha_int, alpha_int)
 
-	def init_Fb(self, Fb):
-		r"""
-		Set basal-water discharge :math:`F_b`, ``self.Fb``,
-		by calling :func:`assign_variable`.
-
-		:param Fb:   basal-water discharge
-		"""
-		s = "::: initializing basal-water discharge :::"
-		print_text(s, cls=self.this)
-		self.assign_variable(self.Fb, Fb)
-
 	def init_Wbar(self, Wbar):
 		r"""
 		Set vertically-averaged water content :math:`\bar{W}`, ``self.Wbar``.
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param Wbar:   vertically-averaged water content
 		"""
@@ -1282,7 +1329,7 @@ class Model(object):
 		r"""
 		Set ratio of temperate ice :math:`\frac{1}{H}\int \alpha dz`,
 		``self.temp_rat``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param temp_rat:   ratio of column that is temperate
 		"""
@@ -1293,7 +1340,7 @@ class Model(object):
 	def init_Qbar(self, Qbar):
 		r"""
 		Set vertically-averaged strain heat :math:`\bar{Q}`, ``self.Qbar``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param Qbar:   vertically-averaged strain heat
 		"""
@@ -1301,68 +1348,79 @@ class Model(object):
 		print_text(s, cls=self.this)
 		self.assign_variable(self.Qbar, Qbar)
 
-	def init_PE(self, PE):
+	def init_Pe(self, Pe):
 		r"""
-		Set element Peclet number :math:`P_e`, ``self.PE``,
-		by calling :func:`assign_variable`.
+		Set element Peclet number :math:`P_e`, ``self.Pe``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param PE:   grid Peclet number
+		:param Pe:   grid Peclet number
 		"""
 		s = "::: initializing grid Peclet number :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.PE, PE)
+		self.assign_variable(self.Pe, Pe)
 
-	def init_n_f(self, n_f):
+	def init_n_s(self, n_s):
 		r"""
-		Set outward-normal vector array :math:`\mathbf{n}``, ``self.n_f``,
-		by calling :func:`assign_variable`.
+		Set outward-normal vector array :math:`\underline{n}``, ``self.n_s``,
+		on the upper surface by calling :func:`~model.Model.assign_variable`.
 
-		:param n_f:   vector of outward-pointing normal values
+		:param n_s:   vector of outward-pointing normal values at upper surface
 		"""
-		s = "::: initializing outward-normal-vector function n_f :::"
+		s = "::: initializing outward-normal-vector function n_s :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.n_f, n)
+		self.assign_variable(self.n_s, n_s)
 
-	def init_Fb_bounds(self, Fb_min, Fb_max):
+	def init_n_b(self, n_b):
+		r"""
+		Set outward-normal vector array :math:`\underline{n}``, ``self.n_b``,
+		on the lower surface by calling :func:`~model.Model.assign_variable`.
+
+		:param n_b:   vector of outward-pointing normal values at lower surface
+		"""
+		s = "::: initializing outward-normal-vector function n_b :::"
+		print_text(s, cls=self.this)
+		self.assign_variable(self.n_b, n_b)
+
+	def init_B_ring_bounds(self, B_ring_min, B_ring_max):
 		r"""
 		Set upper and lower bounds for basal-water discharge :math:`F_b^{\max}`
-		and :math:`F_b^{\min}`,``self.Fb_max``, ``self.Fb_min``, respectively,
-		by calling :func:`assign_variable`.
+		and :math:`F_b^{\min}`,``self.B_ring_max``, ``self.B_ring_min``, respectively,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param Fb_min: lower bound for basal-water discharge ``self.Fb``
-		:param Fb_max: upper bound for basal-water discharge ``self.Fb``
+		:param B_ring_min: lower bound for basal-water discharge ``self.B_ring``
+		:param B_ring_max: upper bound for basal-water discharge ``self.B_ring``
 		"""
-		s = "::: initializing bounds for basal-water discharge Fb :::"
+		s = "::: initializing bounds for basal-water discharge B_ring :::"
 		print_text(s, cls=self.this)
-		self.init_Fb_min(Fb_min, cls)
-		self.init_Fb_max(Fb_max, cls)
+		self.init_B_ring_min(B_ring_min, cls)
+		self.init_B_ring_max(B_ring_max, cls)
 
-	def init_Fb_min(self, Fb_min):
+	def init_B_ring_min(self, B_ring_min):
 		r"""
-		Set lower bound of basal water discharge :math:`F_b`, ``self.Fb_min``,
-		by calling :func:`assign_variable`.
+		Set lower bound of basal water discharge :math:`F_b`, ``self.B_ring_min``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param Fb_min: lower bound for basal-water discharge ``self.Fb``
+		:param B_ring_min: lower bound for basal-water discharge ``self.B_ring``
 		"""
-		s = "::: initializing lower bound for basal water flux Fb :::"
+		s = "::: initializing lower bound for basal water flux B_ring :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.Fb_min, Fb_min)
+		self.assign_variable(self.B_ring_min, B_ring_min)
 
-	def init_Fb_max(self, Fb_max):
+	def init_B_ring_max(self, B_ring_max):
 		r"""
-		Set upper bound of basal-water discharge :math:`F_b`, ``self.Fb_max``,
-		by calling :func:`assign_variable`.
+		Set upper bound of basal-water discharge :math:`F_b`, ``self.B_ring_max``,
+		by calling :func:`~model.Model.assign_variable`.
 
-		:param Fb_max: upper bound for basal-water discharge ``self.Fb``
+		:param B_ring_max: upper bound for basal-water discharge ``self.B_ring``
 		"""
-		s = "::: initializing upper bound for basal water flux Fb :::"
+		s = "::: initializing upper bound for basal water flux B_ring :::"
 		print_text(s, cls=self.this)
-		self.assign_variable(self.Fb_max, Fb_max)
+		self.assign_variable(self.B_ring_max, B_ring_max)
 
 	def init_k_0(self, k_0):
 		r"""
 		Set non-advective water-flux coefficient :math:`k_0`, ``self.k_0``,
-		by calling :func:`assign_variable`.
+		by calling :func:`~model.Model.assign_variable`.
 
 		:param k_0:   non-advective water-flux coefficient
 		"""
@@ -1375,53 +1433,53 @@ class Model(object):
 		Initialize the basal normal stress ``self.lam`` to cryostatic pressure
 		:math:`\rho g (S - B)`.
 		"""
-		p = project(self.rhoi * self.g * (self.S - self.B), self.Q)
+		p = project(self.rho_i * self.g * (self.S - self.B), self.Q)
 		self.init_lam(p)
 
-	def init_beta_SIA(self, U_mag=None, eps=0.5):
+	def init_beta_SIA(self, u_mag=None, eps=0.5):
 		r"""
 		Init basal-traction :math:`\beta`, ``self.beta``, from
 
 		.. math::
 
-		   \beta \Vert \mathbf{u}_B \Vert = \rho g H \Vert \nabla S \Vert,
+		   \beta \Vert \underline{u}_B \Vert = \rho g H \Vert \nabla S \Vert,
 
 		the shallow ice approximation, using the observed surface velocity
-		``U_mag`` as approximate basal velocity,
+		``u_mag`` as approximate basal velocity,
 
 		.. math::
 
-		   \beta_{\text{SIA}} = \frac{\rho g H \Vert \nabla S \Vert}{\Vert \mathbf{u}_B \Vert + \epsilon}
+		   \beta_{\text{SIA}} = \frac{\rho g H \Vert \nabla S \Vert}{\Vert \underline{u}_B \Vert + \epsilon}
 
-		:param U_mag: basal-velocity :math:`\mathbf{u}_B` magnitude.
+		:param u_mag: basal-velocity :math:`\underline{u}_B` magnitude.
 		:param eps:   minimum velocity :math:`\epsilon` introduced
 		              to prevent singularity, default is 0.5 m/a.
 
-		If ``U_mag`` is ``None``, the basal velocity :math:`\mathbf{u}_B` is
-		defined from :math:`\mathbf{u}_{ob}` as given by ``self.U_ob``.  Any
+		If ``u_mag`` is ``None``, the basal velocity :math:`\underline{u}_B` is
+		defined from :math:`\underline{u}_{ob}` as given by ``self.u_ob``.  Any
 		gaps in obervation data defined by ``self.Uob_missing_dofs``
-		(see :func:`init_U_mask`) are set to values defined by balance-velocity
-		magnitude :math:`\bar{u}` as given by ``self.Ubar``.
+		(see :func:`~model.Model.init_U_mask`) are set to values defined by balance-velocity
+		magnitude :math:`\bar{u}` as given by ``self.u_bar``.
 
 		"""
 		s = "::: initializing beta from SIA :::"
 		print_text(s, cls=self.this)
 		Q        = self.Q
-		rhoi     = self.rhoi
+		rho_i     = self.rho_i
 		g        = self.g
 		gradS    = grad(self.S)
 		H        = self.S - self.B
 		U_s      = Function(Q, name='U_s')
-		if U_mag == None:
-			U_v                        = self.U_ob.vector().get_local()
-			Ubar_v                     = self.Ubar.vector().get_local()
-			U_v[self.Uob_missing_dofs] = Ubar_v[self.Uob_missing_dofs]
+		if u_mag == None:
+			U_v                        = self.u_ob.vector().get_local()
+			u_bar_v                     = self.u_bar.vector().get_local()
+			U_v[self.Uob_missing_dofs] = u_bar_v[self.Uob_missing_dofs]
 		else:
-			U_v = U_mag.vector().get_local()
+			U_v = u_mag.vector().get_local()
 		U_v[U_v < eps] = eps
 		self.assign_variable(U_s, U_v)
 		S_mag    = sqrt(inner(gradS, gradS) + DOLFIN_EPS)
-		beta_0   = project((rhoi*g*H*S_mag) / U_s, Q,
+		beta_0   = project((rho_i*g*H*S_mag) / U_s, Q,
 		                   solver_type='iterative',
 		                   annotate=False)
 		beta_0_v = beta_0.vector().get_local()
@@ -1438,7 +1496,7 @@ class Model(object):
 			self.assign_variable(self.beta, self.betaSIA)
 		print_min_max(self.beta, 'beta', cls=self)
 
-	def init_beta_stats(self, mdl='Ubar', use_temp=False, mode='steady'):
+	def init_beta_stats(self, mdl='u_bar', use_temp=False, mode='steady'):
 		"""
 		It's complicated.
 		"""
@@ -1447,21 +1505,21 @@ class Model(object):
 
 		q_geo  = self.q_geo
 		T_s    = self.T_surface
-		adot   = self.adot
+		S_ring = self.S_ring
 		Mb     = self.Mb
-		Ubar   = self.Ubar
+		u_bar   = self.u_bar
 		Q      = self.Q
 		B      = self.B
 		S      = self.S
 		T      = self.T
 		T_s    = self.T_surface
-		rho    = self.rhoi
+		rho    = self.rho_i
 		g      = self.g
 		H      = S - B
 
-		Ubar_v = Ubar.vector().get_local()
-		Ubar_v[Ubar_v < 1e-10] = 1e-10
-		self.assign_variable(Ubar, Ubar_v)
+		u_bar_v = u_bar.vector().get_local()
+		u_bar_v[u_bar_v < 1e-10] = 1e-10
+		self.assign_variable(u_bar, u_bar_v)
 
 		D      = Function(Q, name='D')
 		B_v    = B.vector().get_local()
@@ -1477,16 +1535,16 @@ class Model(object):
 		nB   = sqrt(inner(gradB, gradB) + DOLFIN_EPS)
 		nH   = sqrt(inner(gradH, gradH) + DOLFIN_EPS)
 
-		#if mdl == 'Ubar':
+		#if mdl == 'u_bar':
 		#  u_x    = -rho * g * H * S.dx(0)
 		#  v_x    = -rho * g * H * S.dx(1)
 		#  U_i    = as_vector([u_x,  v_x, 0.0])
 		#  U_j    = as_vector([v_x, -u_x, 0.0])
-		#elif mdl == 'U' or mdl == 'U_Ubar':
-		#  U_i    = as_vector([self.u,  self.v, 0.0])
-		#  U_j    = as_vector([self.v, -self.u, 0.0])
-		U_i    = as_vector([self.u,  self.v, 0.0])
-		U_j    = as_vector([self.v, -self.u, 0.0])
+		#elif mdl == 'U' or mdl == 'U_u_bar':
+		#  U_i    = as_vector([self.u_x,  self.u_y, 0.0])
+		#  U_j    = as_vector([self.u_y, -self.u_x, 0.0])
+		U_i    = as_vector([self.u_x,  self.u_y, 0.0])
+		U_j    = as_vector([self.u_y, -self.u_x, 0.0])
 		Umag   = sqrt(inner(U_i,U_i) + DOLFIN_EPS)
 		Uhat_i = U_i / Umag
 		Uhat_j = U_j / Umag
@@ -1507,13 +1565,13 @@ class Model(object):
 		x4   = nB
 		x5   = H
 		x6   = q_geo
-		x7   = adot
+		x7   = S_ring
 		x8   = T
 		x9   = Mb
-		x10  = self.u
-		x11  = self.v
-		x12  = self.w
-		x13  = ln(Ubar + DOLFIN_EPS)
+		x10  = self.u_x
+		x11  = self.u_y
+		x12  = self.u_z
+		x13  = ln(u_bar + DOLFIN_EPS)
 		x14  = ln(Umag + DOLFIN_EPS)
 		x15  = ini
 		x16  = dBdi
@@ -1528,13 +1586,13 @@ class Model(object):
 		x25  = self.tau_ji
 		x26  = self.tau_jj
 
-		names = ['S', 'T_s', 'gradS', 'D', 'gradB', 'H', 'q_geo', 'adot', 'T',
-		         'Mb', 'u', 'v', 'w', 'ln(Ubar)', 'ln(Umag)', 'ini',
+		names = ['S', 'T_s', 'gradS', 'D', 'gradB', 'H', 'q_geo', 'S_ring', 'T',
+		         'Mb', 'u', 'v', 'w', 'ln(u_bar)', 'ln(Umag)', 'ini',
 		         'dBdi', 'dBdj', 'dSdi', 'dSdj', 'nablaH', 'tau_id', 'tau_jd',
 		         'tau_ii', 'tau_ij', 'tau_ji', 'tau_jj']
 		names = np.array(names)
 
-		if mdl == 'Ubar':
+		if mdl == 'u_bar':
 			if not use_temp:
 				X    = [x0,x1,x5,x7,x13,x16,x18]
 				idx  = [ 0, 1, 5, 7, 13, 16, 18]
@@ -1619,7 +1677,7 @@ class Model(object):
 				          8.27529346e+01,   6.60448755e-03,   2.42989633e+00,
 				         -4.31461210e+01]
 
-		elif mdl == 'U_Ubar':
+		elif mdl == 'U_u_bar':
 			if not use_temp:
 				X    = [x0,x1,x5,x7,x13,x14,x16,x18]
 				idx  = [ 0, 1, 5, 7, 13, 14, 16, 18]
@@ -1699,7 +1757,7 @@ class Model(object):
 		X_i.extend(X)
 
 		for i,xx in enumerate(X):
-			if mdl == 'Ubar' or mdl == 'U' and not use_temp:
+			if mdl == 'u_bar' or mdl == 'U' and not use_temp:
 				k = i
 			else:
 				k = i+1
@@ -1783,6 +1841,8 @@ class Model(object):
 		s = "::: formulating energy-dependent rate-factor :::"
 		print_text(s, cls=self.this)
 
+		self.energy_dependent_rate_factor = True
+
 		Tp          = self.Tp
 		W           = self.W
 		R           = self.R
@@ -1798,14 +1858,14 @@ class Model(object):
 
 		.. math::
 
-		  \eta(\theta, \mathbf{u}) = \frac{1}{2}A(\theta)^{-\frac{1}{n}} (\dot{\varepsilon}_e(\mathbf{u}) + \dot{\varepsilon}_0)^{\frac{1-n}{n}},
+		  \eta(\theta, \underline{u}) = \frac{1}{2}A(\theta)^{-\frac{1}{n}} (\dot{\varepsilon}_e(\underline{u}) + \dot{\varepsilon}_0)^{\frac{1-n}{n}},
 
 		for energy :math:`\theta` given by ``self.theta``, flow-rate factor
 		:math:`A` given by ``self.A``, strain-rate regularization
 		:math:`\dot{\varepsilon}_0` given by ``self.eps_reg``, and Glen's flow
 		parameter :math:`n` given by ``self.n``.
 
-		:param epsdot: effective-strain rate :math:`\dot{\varepsilon}_e(\mathbf{u})`
+		:param epsdot: effective-strain rate :math:`\dot{\varepsilon}_e(\underline{u})`
 		"""
 		s     = "::: calculating viscosity :::"
 		print_text(s, cls=self.this)
@@ -1832,38 +1892,88 @@ class Model(object):
 		"""
 		Calculates the outward-pointing normal vector as a FEniCS function.
 		This could then be used in any :class:`~dolfin.DirichletBC`.
-		Saved to ``self.n_f``.
+		Saved to upper and lower surface vectors ``self.n_s`` and ``self.n_b``
+		respectively.
 		"""
 		s     = "::: calculating normal-vector function :::"
 		print_text(s, cls=self.this)
 
-		n       = self.N
-		n_trial = TrialFunction(self.V)
-		n_test  = TestFunction(self.V)
+		n       = self.N                  # outward-directed normal
+		n_trial = TrialFunction(self.V1)
+		n_test  = TestFunction(self.V1)
 
-		a = inner(n_trial, n_test)*dx
-		L = inner(n,       n_test)*ds
+		# upper and lower surface boundary measure :
+		dGamma_sb = self.dGamma_b() + self.dGamma_s()
+		dOmega    = self.dOmega()
 
+		# vector of ones :
+		one = interpolate(Constant(1.0), self.Q1)
+
+		# variational problem :
+		a = inner(n_trial, n_test)*dOmega
+		L = inner(n,       n_test)*dGamma_sb
+
+		# assemble the system Ax = b only over the upper and lower surfaces :
 		A = assemble(a, keep_diagonal=True)
-		A.ident_zeros() # Regularize the matrix
 		b = assemble(L)
+		x = Function(self.V1, name='n')
+		A.ident_zeros()              # Regularize the matrix
 
-		n = Function(self.V)
-		solve(A, n.vector(), b, 'cg', 'amg')
+		# solve the system for the normal vector at the nodes ``x`` :
+		solve(A, x.vector(), b, 'cg', 'hypre_amg')
 
-		area = assemble(Constant(1.0)*ds(self.mesh))
-		nds  = assemble(inner(n, n)*ds)
-		s = "    - average value of normal on boundary: %.3f - " % (nds / area)
+		# ensure the outward-normal is a unit vector :
+		n_sb = self.normalize_vector(x)
+
+		# create a Dirichlet boundary condition for the components of the n. vec. :
+		bc_s = DirichletBC(self.V1, n_sb, self.ff, self.GAMMA_U_GND)
+		bc_b = DirichletBC(self.V1, n_sb, self.ff, self.GAMMA_B_GND)
+
+		# initialize the normal vector at the nodes :
+		bc_s.apply(self.n_s.vector())
+		bc_b.apply(self.n_b.vector())
+
+		# print the values to be sure :
+		print_min_max(self.n_s, 'n_s', cls=self)
+		print_min_max(self.n_b, 'n_b', cls=self)
+
+		# calculate the area and ensure the average value of the vector is 1 :
+		area = assemble(one*dGamma_sb)
+		nds  = assemble(inner(n_sb, n_sb)*dGamma_sb)
+		s    = "    - average value of normal on boundary: %.3f - " % (nds / area)
 		print_text(s, cls=self.this)
 
-		self.init_n_f(n)
+	def get_basal_surface_normal_vector(self):
+		"""
+		Returns the outward-pointing unit-normal vector on the basal surface.
+		"""
+		B       = self.B                           # lower surface height
+		k_hat   = self.unit_vectors[-1]            # z-coord. unit vector
+		n_b_mag = sqrt(1 + dot(grad(B), grad(B)))  # outward normal mag. on B
+		return (grad(B) - k_hat) / n_b_mag
+
+	def calc_basal_surface_normal_vector(self, annotate=False):
+		"""
+		Calculates the outward-pointing unit-normal vector on the basal surface.
+		This could then be used in any :class:`~dolfin.DirichletBC`.
+		Saved to upper and lower surface vectors ``self.n_s`` and ``self.n_b``
+		respectively.
+		"""
+		s     = "::: calculating basal-surface unit-normal-vector function :::"
+		print_text(s, cls=self.this)
+		n_b = project(self.get_basal_surface_normal_vector(), self.V,
+		              solver_type='iterative',
+		              annotate=annotate)
+		self.assign_variable(self.n_b, n_b, annotate=annotate)
+		#n_b = self.normalize_vector(n_b)
+		#self.assign_variable(self.n_b, n_b, annotate=annotate)
 
 	def get_xy_velocity_angle(self, U):
 		r"""
 		Calculates the angle in radians of the horizontal velocity vector
-		:math:`\mathbf{u}_h = [u\ v]^\intercal` from the x-axis.
+		:math:`\underline{u}_h = [u\ v]^\intercal` from the x-axis.
 
-		:param U: horizontal velocity vector :math:`\mathbf{u}_h = [u\ v]^\intercal`
+		:param U: horizontal velocity vector :math:`\underline{u}_h = [u\ v]^\intercal`
 		:rtype:  :class:`~dolfin.Function` of angle values.
 		"""
 		u,v,w   = U.split(True)
@@ -1878,12 +1988,12 @@ class Model(object):
 	def get_xz_velocity_angle(self):
 		"""
 		Calculates the angle in radians of the vertical velocity vector
-		:math:`\mathbf{u}_v = [u\ w]^\intercal` from the x-axis.
+		:math:`\underline{u}_v = [u\ w]^\intercal` from the x-axis.
 
-		:param U: vertical velocity vector :math:`\mathbf{u}_v = [u\ w]^\intercal`
+		:param U: vertical velocity vector :math:`\underline{u}_v = [u\ w]^\intercal`
 		:rtype:  :class:`~dolfin.Function` of angle values.
 		"""
-		u,v,w   = self.U3.split(True)
+		u,v,w   = self.u_x.split(True)
 		u_v     = u.vector().get_local()
 		w_v     = w.vector().get_local()
 		theta_v = np.arctan2(w_v, u_v)
@@ -1955,67 +2065,81 @@ class Model(object):
 	def get_norm(self, U, kind='l2'):
 		"""
 		Calculate and return the norm of and the normalized vector
-		:math:`\hat{\mathbf{u}}`, of the vector :math:`\mathbf{u}`
+		:math:`\hat{\underline{u}}`, of the vector :math:`\underline{u}`
 		given by parameter ``U``.
 		The parameter ``kind`` may be either ``l2`` for the :math:`L^2`
 		norm or ``linf`` for the :math:`L^{\infty}` norm
 
 		:param U:    :class:`~fencics.GenericVector`, list, or tuple of vector
-		             components
+		             components :math:`\underline{u}`
 		:param kind: string
-		:rtype:      tuple containing (:math:`\hat{\mathbf{u}}`,
-		                               :math:`\Vert \mathbf{u} \Vert`)
+		:rtype:      :class:`~fencics.GenericVector`
+		             :math:`\Vert \underline{u} \Vert`
 		"""
-		# iterate through each component and convert to array :
-		U_v = []
-		# TODO: this can be done without split :
-		if type(U[0]) == indexed.Indexed:
-			U = U.split(True)
-		for u in U:
-			# convert to array and normailze the components of U :
-			u_v = u.vector().get_local()
-			U_v.append(u_v)
-		U_v = np.array(U_v)
+		# get the dimension of the vector :
+		d   = len(U)
 
-		# calculate the norm :
-		if kind == 'l2':
-			norm_u = np.sqrt(np.sum(U_v**2,axis=0))
-		elif kind == 'linf':
-			norm_u = np.amax(U_v,axis=0)
+		# get the numpy array :
+		U_v = U.vector().get_local()
 
-		return U_v, norm_u
+		# convert to array and normailze the components of U :
+		U_n = []
+		for i,u in enumerate(U):
+			if type(u) == indexed.Indexed: u_v = U_v[i::d]
+			else:                          u_v = u.vector().get_local()
+			U_n.append(u_v)
+		U_n = np.array(U_n)
+
+		# calculate the desired norm :
+		if kind == 'l2':      norm_u = np.sqrt(np.sum(U_n**2, axis=0))
+		elif kind == 'linf':  norm_u = np.amax(U_n, axis=0)
+
+		return norm_u
 
 	def normalize_vector(self, U):
 		"""
-		Create a normalized vector of the vector :math:`\mathbf{u}`
+		Create a normalized vector of the vector :math:`\underline{u}`
 		given by parameter ``U``.
 
 		:param U:    :class:`~fencics.GenericVector`, list, or tuple of vector
 		             components
 		:rtype:      normalized :class:`~dolfin.GenericVector`
-		             :math:`\hat{\mathbf{u}}` of :math:`\mathbf{u}`
+		             :math:`\hat{\underline{u}}` of :math:`\underline{u}`
 		"""
-		s   = "::: normalizing vector :::"
+		# get the dimension of the vector :
+		d   = len(U)
+
+		s   = "::: normalizing %i-dimensional vector :::" % d
 		print_text(s, cls=self.this)
 
-		Q = U[0].function_space()
+		# get the numpy array :
+		U_v = U.vector().get_local()
 
-		U_v, norm_u = self.get_norm(U)
+		# convert to array and normailze the components of U :
+		U_n = []
+		for i,u in enumerate(U):
+			if type(u) == indexed.Indexed: u_v = U_v[i::d]
+			else:                          u_v = u.vector().get_local()
+			U_n.append(u_v)
+		U_n = np.array(U_n)
 
-		norm_u[norm_u <= 0.0] = 1e-15
+		# calculate the norm :
+		norm_u = np.sqrt(np.sum(U_n**2, axis=0))
+
+		# ensure the norm is not zero :
+		norm_u[norm_u <= DOLFIN_EPS] = DOLFIN_EPS
 
 		# normalize the vector :
-		U_v /= norm_u
+		U_n /= norm_u
 
 		# convert back to dolfin :
-		U_f = []
-		for u_v in U_v:
-			u_f = Function(Q, name='u_f')
-			self.assign_variable(u_f, u_v)
-			U_f.append(u_f)
+		for i,u_n in enumerate(U_n):
+			U_v[i::d] = u_n
 
-		# return a UFL vector :
-		return as_vector(U_f)
+		U_n = Function(U.function_space(), name='u_n')
+		self.assign_variable(U_n, U_v)
+
+		return U_n
 
 	def assign_submesh_variable(self, u_to, u_from):
 		"""
@@ -2245,7 +2369,10 @@ class Model(object):
 		* ``self.N``   -- :class:`~dolfin.FacetNormal` for ``self.mesh``
 		* ``self.lat`` -- latitude :class:`~dolfin.Function`
 		* ``self.lon`` -- longitude :class:`~dolfin.Function`
-		* ``self.n_f`` -- outward-pointing normal :class:`~dolfin.Function`
+		* ``self.n_s`` -- nodal outward-pointing normal on upper surface
+		                                     :class:`~dolfin.Function`
+		* ``self.n_b`` -- nodal outward-pointing normal on lower surface
+		                                     :class:`~dolfin.Function`
 
 		Time step :
 
@@ -2263,17 +2390,17 @@ class Model(object):
 
 		Velocity observations :
 
-		* ``self.U_ob``      -- observed horizontal velocity vector
-		* ``self.u_ob``      -- :math:`x`-compoenent of observed velocity
-		* ``self.v_ob``      -- :math:`y`-compoenent of observed velocity
+		* ``self.u_ob``      -- observed horizontal velocity vector
+		* ``self.u_x_ob``      -- :math:`x`-compoenent of observed velocity
+		* ``self.u_y_ob``      -- :math:`y`-compoenent of observed velocity
 
 		Modeled velocity :
 
-		* ``self.U_mag``     -- velocity vector magnitude
-		* ``self.U3``        -- velocity vector
-		* ``self.u``         -- :math:`x`-component of velocity vector
-		* ``self.v``         -- :math:`y`-component of velocity vector
-		* ``self.w``         -- :math:`z`-component of velocity vector
+		* ``self.u_mag``     -- velocity vector magnitude
+		* ``self.u``        -- velocity vector
+		* ``self.u_x``         -- :math:`x`-component of velocity vector
+		* ``self.u_y``         -- :math:`y`-component of velocity vector
+		* ``self.u_z``         -- :math:`z`-component of velocity vector
 
 		Momentum :
 
@@ -2282,9 +2409,9 @@ class Model(object):
 		* ``self.beta``      -- basal traction
 		* ``self.E``         -- enhancement factor
 		* ``self.A``         -- flow-rate factor
-		* ``self.u_lat``     -- :math:`x`-component velocity lateral b.c.
-		* ``self.v_lat``     -- :math:`y`-component velocity lateral b.c.
-		* ``self.w_lat``     -- :math:`z`-component velocity lateral b.c.
+		* ``self.u_x_lat``     -- :math:`x`-component velocity lateral b.c.
+		* ``self.u_y_lat``     -- :math:`y`-component velocity lateral b.c.
+		* ``self.u_z_lat``     -- :math:`z`-component velocity lateral b.c.
 
 		Energy :
 
@@ -2304,11 +2431,11 @@ class Model(object):
 		* ``self.T_surface`` -- surface temperature b.c.
 		* ``self.alpha``     -- temperate zone marker
 		* ``self.alpha_int`` -- vertically integrated temperate zone marker
-		* ``self.Fb``        -- basal-water discharge
-		* ``self.PE``        -- grid Peclet number
+		* ``self.B_ring``        -- basal-water discharge
+		* ``self.Pe``        -- grid Peclet number
 		* ``self.Wbar``      -- vertical average of water content
-		* ``self.Fb_min``    -- lower bound on ``self.Fb``
-		* ``self.Fb_max``    -- upper bound on ``self.Fb``
+		* ``self.B_ring_min``    -- lower bound on ``self.B_ring``
+		* ``self.B_ring_max``    -- upper bound on ``self.B_ring``
 		* ``self.Qbar``      -- vertically-integrated strain heat
 		* ``self.temp_rat``  -- ratio of column that is temperate
 		* ``self.k_0``       -- non-advective water-flux coefficient
@@ -2319,12 +2446,12 @@ class Model(object):
 
 		Balance Velocity :
 
-		* ``self.adot``      -- accumulation/ablation function
+		* ``self.S_ring``      -- accumulation/ablation function
 		* ``self.d_x``       -- :math:`x`-component of flow direction
 		* ``self.d_y``       -- :math:`y`-component of flow direction
-		* ``self.Ubar``      -- balance velocity magnitude
-		* ``self.uhat``      -- :math:`x`-component of normalized flow direction
-		* ``self.vhat``      -- :math:`y`-component of normalized flow direction
+		* ``self.u_bar``      -- balance velocity magnitude
+		* ``self.u_x_hat``      -- :math:`x`-component of normalized flow direction
+		* ``self.u_y_hat``      -- :math:`y`-component of normalized flow direction
 
 		Stress-balance :
 
@@ -2357,13 +2484,15 @@ class Model(object):
 		self.x             = SpatialCoordinate(self.mesh)
 		self.h             = CellDiameter(self.mesh)
 		self.N             = FacetNormal(self.mesh)
-		self.lat           = Function(self.Q, name='lat')
-		self.lon           = Function(self.Q, name='lon')
-		self.n_f           = Function(self.V, name='n_f')
-		self.sigma         = Function(self.Q, name='sigma')
+		self.lat           = Function(self.Q,  name='lat')
+		self.lon           = Function(self.Q,  name='lon')
+		self.n_s           = Function(self.V1, name='n_s')
+		self.n_b           = Function(self.V1, name='n_b')
+		self.sigma         = Function(self.Q1, name='sigma')
+		self.unit_vectors  = unit_vectors(self.dim)
 
 		# time step :
-		self.time_step = Constant(100.0)
+		self.time_step = Constant(1)
 		self.time_step.rename('time_step', 'time step')
 
 		# shelf mask (2 if shelf) :
@@ -2378,40 +2507,32 @@ class Model(object):
 		self.B_err         = Function(self.Q_non_periodic, name='B_err')
 
 		# velocity observations :
-		self.U_ob          = Function(self.Q, name='U_ob')
 		self.u_ob          = Function(self.Q, name='u_ob')
-		self.v_ob          = Function(self.Q, name='v_ob')
+		self.u_x_ob        = Function(self.Q, name='u_x_ob')
+		self.u_y_ob        = Function(self.Q, name='u_y_ob')
+		self.u_z_ob        = Function(self.Q, name='u_z_ob')
 
 		# unified velocity (non-periodic because it is always known everywhere) :
-		self.U_mag         = Function(self.Q,               name='U_mag')
-		self.U3            = Function(self.Q3_non_periodic, name='U3')
-		u,v,w              = self.U3.split()
-		u.rename('u', '')
-		v.rename('v', '')
-		w.rename('w', '')
-		self.u             = u
-		self.v             = v
-		self.w             = w
-		self.assx  = FunctionAssigner(u.function_space(), self.Q_non_periodic)
-		self.assy  = FunctionAssigner(v.function_space(), self.Q_non_periodic)
-		self.assz  = FunctionAssigner(w.function_space(), self.Q_non_periodic)
+		self.u_mag         = Function(self.Q, name='u_mag')
+		self.u             = Function(self.V, name='u')
 
 		# momentum :
 		self.eta           = Function(self.Q, name='eta')
-		self.p             = Function(self.Q_non_periodic, name='p')
+		self.p             = Function(self.Q, name='p')
 		self.beta          = Function(self.Q, name='beta')
 		self.E             = Function(self.Q, name='E')
 		self.A             = Function(self.Q, name='A')
-		self.u_lat         = Function(self.Q, name='u_lat')
-		self.v_lat         = Function(self.Q, name='v_lat')
-		self.w_lat         = Function(self.Q, name='w_lat')
+		self.u_x_lat       = Function(self.Q, name='u_x_lat')
+		self.u_y_lat       = Function(self.Q, name='u_y_lat')
+		self.u_z_lat       = Function(self.Q, name='u_z_lat')
 		self.lam           = Function(self.Q, name='lam')
 
 		self.E.vector()[:] = 1.0    # always use init. with no flow enhancement
 
 		# mass :
-		self.adot          = Function(self.Q, name='adot')  # upper smb
+		self.S_ring        = Function(self.Q, name='S_ring')  # upper smb
 		self.dSdt          = Function(self.Q, name='dSdt')
+		self.dBdt          = Function(self.Q, name='dBdt')
 
 		# energy :
 		self.T             = Function(self.Q, name='T')
@@ -2434,18 +2555,18 @@ class Model(object):
 		self.theta_app     = Function(self.Q, name='theta_app')
 		self.alpha         = Function(self.Q, name='alpha')
 		self.alpha_int     = Function(self.Q, name='alpha_int')
-		self.Fb            = Function(self.Q, name='Fb')
-		self.PE            = Function(self.Q, name='PE')
+		self.B_ring        = Function(self.Q, name='B_ring')
+		self.Pe            = Function(self.Q, name='Pe')
 		self.Wbar          = Function(self.Q, name='Wbar')
-		self.Fb_min        = Function(self.Q, name='Fb_min')
-		self.Fb_max        = Function(self.Q, name='Fb_max')
+		self.B_ring_min    = Function(self.Q, name='B_ring_min')
+		self.B_ring_max    = Function(self.Q, name='B_ring_max')
 		self.Qbar          = Function(self.Q, name='Qbar')
 		self.temp_rat      = Function(self.Q, name='temp_rat')
 		self.k_0           = Constant(1.0,    name='k_0')
 		self.k_0.rename('k_0', 'k_0')
 
 		# always initialize the bulk density :
-		self.assign_variable(self.rhob, self.rhoi, cls=self.this)
+		self.assign_variable(self.rhob, self.rho_i, cls=self.this)
 
 		# adjoint :
 		self.control_opt   = Function(self.Q, name='control_opt')
@@ -2453,9 +2574,12 @@ class Model(object):
 		# balance Velocity :
 		self.d_x           = Function(self.Q, name='d_x')
 		self.d_y           = Function(self.Q, name='d_y')
-		self.Ubar          = Function(self.Q, name='Ubar')
-		self.uhat          = Function(self.Q, name='uhat')
-		self.vhat          = Function(self.Q, name='vhat')
+		self.u_bar         = Function(self.Q, name='u_bar')
+		self.u_x_bar       = Function(self.Q, name='u_x_bar')
+		self.u_y_bar       = Function(self.Q, name='u_y_bar')
+		self.u_z_bar       = Function(self.Q, name='u_z_bar')
+		self.u_x_hat       = Function(self.Q, name='u_x_hat')
+		self.u_y_hat       = Function(self.Q, name='u_y_hat')
 
 		# Stress-balance (this is always non-periodic) :
 		self.M_ii          = Function(self.Q_non_periodic, name='M_ii')
@@ -2657,7 +2781,7 @@ class Model(object):
 		return  y_0 + 1.0 / 6.0 * (k_1 + 2*k_2 + 2*k_3 + k_4)
 
 
-	def assimilate_U_ob(self, momentum, beta_i, max_iter,
+	def assimilate_u_ob(self, momentum, beta_i, max_iter,
 	                    tmc_kwargs, uop_kwargs,
 	                    atol                = 1e2,
 	                    rtol                = 1e0,
@@ -2715,7 +2839,7 @@ class Model(object):
 
 			# call the post function if set :
 			if post_ini_callback is not None:
-				s    = '::: calling post-initialization assimilate_U_ob ' + \
+				s    = '::: calling post-initialization assimilate_u_ob ' + \
 				       'callback function :::'
 				print_text(s, cls=self.this)
 				post_ini_callback()
@@ -2725,7 +2849,7 @@ class Model(object):
 			s    = '    - skipping initialization step -'
 			print_text(s, cls=self.this)
 
-		# save the w_opt bounds on Fb :
+		# save the w_opt bounds on B_ring :
 		bounds = copy(tmc_kwargs['wop_kwargs']['bounds'])
 
 		# assimilate the data :
@@ -2747,7 +2871,7 @@ class Model(object):
 			if counter > starting_i: self.init_beta(beta_i)
 
 			# optimize the velocity :
-			momentum.optimize_U_ob(**uop_kwargs)
+			momentum.optimize_u_ob(**uop_kwargs)
 
 			# reset the momentum to the original configuration :
 			if not momentum.linear_s and momentum.linear: momentum.reset()
@@ -2780,7 +2904,7 @@ class Model(object):
 			# print info to screen :
 			if self.MPI_rank == 0:
 				s0    = '>>> '
-				s1    = 'U_ob assimilation iteration %i (max %i) done: ' \
+				s1    = 'u_ob assimilation iteration %i (max %i) done: ' \
 				        % (counter, max_iter)
 				s2    = 'r (abs) = %.2e ' % abs_error
 				s3    = '(tol %.2e), '    % atol
@@ -2933,23 +3057,272 @@ class Model(object):
 
 		with ice velocity :math:`\underline{u}`, cell diameter :math:`h`, and timestep :math:`\Delta t`.
 		"""
-		return self.time_step(0) * norm( project(self.U3 / self.h) )
+		return self.time_step(0) * norm( project(self.u / self.h) )
 
-	def thermo_solve(self, thermo_kwargs):
-		"""
+	#def thermo_solve(self, thermo_kwargs):
+	#	"""
+	#	Perform thermo-mechanical coupling between momentum and energy.
+
+	#	This needs be implemented by children of the :class:`~model.Model` class.
+	#	"""
+	#	raiseNotDefined()
+
+	def thermo_solve(self, momentum, energy, wop_kwargs,
+		               callback           = None,
+		               atol               = 1e2,
+		               rtol               = 1e0,
+		               max_iter           = 50,
+		               iter_save_vars     = None,
+		               post_tmc_save_vars = None,
+		               starting_i         = 1):
+		r"""
 		Perform thermo-mechanical coupling between momentum and energy.
 
-		This needs be implemented by children of the :class:`~model.Model` class.
+		:param momentum:       momentum instance to couple with ``energy``.
+		:param energy:         energy instance to couple with ``momentum``.
+		                       Currently, the only 3D energy implementation is
+		                       :class:`~energy.Enthalpy`.
+		:param wop_kwargs:     a :py:class:`~dict` of arguments for
+		                       water-optimization method
+		                       :func:`~energy.Energy.optimize_water_flux`
+		:param callback:       a function that is called back at the end of each
+		                       iteration
+		:param atol:           absolute stopping tolerance
+		                       :math:`a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert`
+		:param rtol:           relative stopping tolerance
+		                       :math:`r_{tol} \leq \Vert r_n - r_{n-1} \Vert`
+		:param max_iter:       maximum number of iterations to perform
+		:param iter_save_vars: python :py:class:`~list` containing functions to
+		                       save each iteration
+		:param starting_i:     if you are restarting this process, you may start
+		                       it at a later iteration.
+
+		:type momentum:        :class:`~momentum.Momentum`
+		:type energy:          :class:`~energy.Energy`
 		"""
-		raiseNotDefined()
+		s    = '::: performing thermo-mechanical coupling with atol = %.2e, ' + \
+		       'rtol = %.2e, and max_iter = %i :::'
+		print_text(s % (atol, rtol, max_iter), cls=self.this)
+
+		from cslvr import Momentum
+		from cslvr import Energy
+
+		# TODO: also make sure these are D3Model momentum and energy classes.
+		if not isinstance(momentum, Momentum):
+			s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
+			print_text(s % type(momentum) , 'red', 1)
+			sys.exit(1)
+
+		if not isinstance(energy, Energy):
+			s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
+			print_text(s % type(energy) , 'red', 1)
+			sys.exit(1)
+
+		# mark starting time :
+		t0   = time()
+
+		# ensure that we have a steady-state form :
+		if energy.transient:
+			energy.make_steady_state()
+
+		# retain base install directory :
+		out_dir_i = self.out_dir
+
+		# directory for saving convergence history :
+		d_hist   = self.out_dir + 'tmc/convergence_history/'
+		if not os.path.exists(d_hist) and self.MPI_rank == 0:
+			os.makedirs(d_hist)
+
+		# number of digits for saving variables :
+		n_i  = len(str(max_iter))
+
+		# get the bounds of B_ring, the max will be updated based on temp. zones :
+		if energy.energy_flux_mode == 'B_ring':
+			bounds = copy(wop_kwargs['bounds'])
+			self.init_B_ring_min(bounds[0])
+			self.init_B_ring_max(bounds[1])
+			wop_kwargs['bounds']  = (self.B_ring_min, self.B_ring_max)
+
+		# L_2 erro norm between iterations :
+		abs_error = np.inf
+		rel_error = np.inf
+
+		# number of iterations, from a starting point (useful for restarts) :
+		if starting_i <= 1:
+			counter = 1
+		else:
+			counter = starting_i
+
+		# previous velocity for norm calculation
+		U_prev    = self.theta.copy(True)
+
+		# perform a fixed-point iteration until the L_2 norm of error
+		# is less than tolerance :
+		while abs_error > atol and rel_error > rtol and counter <= max_iter:
+
+			# set a new unique output directory :
+			out_dir_n = 'tmc/%0*d/' % (n_i, counter)
+			self.set_out_dir(out_dir_i + out_dir_n)
+
+			# solve velocity :
+			momentum.solve(annotate=False)
+
+			# update pressure-melting point :
+			energy.calc_T_melt(annotate=False)
+
+			# solve energy steady-state equations to derive temperate zone :
+			energy.derive_temperate_zone(annotate=False)
+
+			# fixed-point interation for thermal parameters and discontinuous
+			# properties :
+			energy.update_thermal_parameters(annotate=False)
+
+			# calculate the basal-melting rate :
+			energy.calc_basal_melting_rate()
+
+			# always initialize B_ring to the zero-energy-flux bc :
+			B_ring_v = - self.Mb.vector().get_local() * self.rho_i(0) / self.rho_w(0)
+			self.init_B_ring(B_ring_v)
+
+			# update bounds based on temperate zone :
+			if energy.energy_flux_mode == 'B_ring':
+				B_ring_m_v                 = self.B_ring_max.vector().get_local()
+				alpha_v                    = self.alpha.vector().get_local()
+				B_ring_m_v[:]              = DOLFIN_EPS
+				B_ring_m_v[alpha_v == 1.0] = bounds[1]
+				self.init_B_ring_max(B_ring_m_v)
+
+			# optimize the flux of water to remove abnormally high water :
+			if energy.energy_flux_mode == 'B_ring':
+				energy.optimize_water_flux(**wop_kwargs)
+
+			# solve the energy-balance and partition T and W from theta :
+			energy.solve(annotate=False)
+
+			# calculate L_2 norms :
+			abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
+			tht_nrm      = norm(self.theta.vector(), 'l2')
+
+			# save convergence history :
+			if counter == 1:
+				rel_error  = abs_error_n
+				if self.MPI_rank == 0:
+					err_a = np.array([abs_error_n])
+					nrm_a = np.array([tht_nrm])
+					np.savetxt(d_hist + 'abs_err.txt',    err_a)
+					np.savetxt(d_hist + 'theta_norm.txt', nrm_a)
+			else:
+				rel_error = abs(abs_error - abs_error_n)
+				if self.MPI_rank == 0:
+					err_n = np.loadtxt(d_hist + 'abs_err.txt')
+					nrm_n = np.loadtxt(d_hist + 'theta_norm.txt')
+					err_a = np.append(err_n, np.array([abs_error_n]))
+					nrm_a = np.append(nrm_n, np.array([tht_nrm]))
+					np.savetxt(d_hist + 'abs_err.txt',     err_a)
+					np.savetxt(d_hist + 'theta_norm.txt',  nrm_a)
+
+			# print info to screen :
+			if self.MPI_rank == 0:
+				s0    = '>>> '
+				s1    = 'TMC fixed-point iteration %i (max %i) done: ' \
+				         % (counter, max_iter)
+				s2    = 'r (abs) = %.2e ' % abs_error
+				s3    = '(tol %.2e), '    % atol
+				s4    = 'r (rel) = %.2e ' % rel_error
+				s5    = '(tol %.2e)'      % rtol
+				s6    = ' <<<'
+				text0 = get_text(s0, 'red', 1)
+				text1 = get_text(s1, 'red')
+				text2 = get_text(s2, 'red', 1)
+				text3 = get_text(s3, 'red')
+				text4 = get_text(s4, 'red', 1)
+				text5 = get_text(s5, 'red')
+				text6 = get_text(s6, 'red', 1)
+				print text0 + text1 + text2 + text3 + text4 + text5 + text6
+
+			# call callback function if set :
+			if callback != None:
+				s    = '::: calling thermo-couple-callback function :::'
+				print_text(s, cls=self.this)
+				callback(counter)
+
+			# save state to unique hdf5 file :
+			if isinstance(iter_save_vars, list):
+				s    = '::: saving variables in list arg iter_save_vars :::'
+				print_text(s, cls=self.this)
+				out_file = self.out_dir + 'tmc.h5'
+				foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+				for var in iter_save_vars:
+					self.save_hdf5(var, f=foutput)
+				foutput.close()
+
+			# update error stuff and increment iteration counter :
+			abs_error    = abs_error_n
+			U_prev       = self.theta.copy(True)
+			counter     += 1
+
+		# reset the base directory ! :
+		self.set_out_dir(out_dir_i)
+
+		# reset the bounds on B_ring :
+		if energy.energy_flux_mode == 'B_ring':  wop_kwargs['bounds'] = bounds
+
+		# save state to unique hdf5 file :
+		if isinstance(post_tmc_save_vars, list):
+			s    = '::: saving variables in list arg post_tmc_save_vars :::'
+			print_text(s, cls=self.this)
+			out_file = self.out_dir + 'tmc.h5'
+			foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+			for var in post_tmc_save_vars:
+				self.save_hdf5(var, f=foutput)
+			foutput.close()
+
+		# calculate total time to compute
+		tf = time()
+		s  = tf - t0
+		m  = s / 60.0
+		h  = m / 60.0
+		s  = s % 60
+		m  = m % 60
+		text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
+		print_text(text, 'red', 1)
+
+		# plot the convergence history :
+		s    = "::: convergence info saved to \'%s\' :::"
+		print_text(s % d_hist, cls=self.this)
+		if self.MPI_rank == 0:
+			np.savetxt(d_hist + 'time.txt', np.array([tf - t0]))
+
+			err_a = np.loadtxt(d_hist + 'abs_err.txt')
+			nrm_a = np.loadtxt(d_hist + 'theta_norm.txt')
+
+			# plot iteration error :
+			fig   = plt.figure()
+			ax    = fig.add_subplot(111)
+			ax.set_ylabel(r'$\Vert \theta_{n-1} - \theta_n \Vert$')
+			ax.set_xlabel(r'iteration')
+			ax.plot(err_a, 'k-', lw=2.0)
+			plt.grid()
+			plt.savefig(d_hist + 'abs_err.png', dpi=100)
+			plt.close(fig)
+
+			# plot theta norm :
+			fig = plt.figure()
+			ax  = fig.add_subplot(111)
+			ax.set_ylabel(r'$\Vert \theta_n \Vert$')
+			ax.set_xlabel(r'iteration')
+			ax.plot(nrm_a, 'k-', lw=2.0)
+			plt.grid()
+			plt.savefig(d_hist + 'theta_norm.png', dpi=100)
+			plt.close(fig)
 
 	def transient_iteration(self, momentum, mass, time_step, adaptive, annotate):
 		"""
 		This function defines one interation of the transient solution, and is
-		called by the function :func:`~model.transient_solve`.
+		called by the function :func:`~model.Model.transient_solve`.
 
 		This must be implemented by the child classes for
-		:func:`~model.transient_solve` to work.
+		:func:`~model.Model.transient_solve` to work.
 		"""
 		raiseNotDefined()
 

@@ -57,24 +57,24 @@ for i in range(10):
   mom = MomentumDukowiczPlaneStrain(model)
   mom.solve()
 
-  model.save_xdmf(model.U3,  'U3')
+  model.save_xdmf(model.u,  'U3')
 
   # keep the solution for error calculation : 
   if i == 0:
-    old_u = model.U3
+    old_u = model.u
     mesh = refine(mesh)
 
   if i > 0:
     # interpolate the old solution onto the current mesh :
     old_u_int = Function(model.Q3)
     lg.interpolate(old_u_int, old_u)
-    old_u     = model.U3
+    old_u     = model.u
     
     model.save_xdmf(old_u_int, 'old_u_int')
     
     # first, calculate the error in velocities :
     u_o,w_o,x_x  = old_u_int.split(True)
-    u,w,x        = model.U3.split(True)
+    u,w,x        = model.u.split(True)
     u_o_v        = u_o.vector().array()
     w_o_v        = w_o.vector().array()
     u_v          = u.vector().array()

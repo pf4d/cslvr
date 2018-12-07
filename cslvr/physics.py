@@ -40,6 +40,128 @@ class Physics(object):
 		params  = {'solver' : 'mumps'}
 		return params
 
+	def get_solve_params(self):
+		"""
+		Returns the solve parameters.
+		"""
+		return self.solve_params
+
+	def get_residual(self):
+		"""
+		Returns the residual of this instance ``self.resid``.
+		"""
+		return self.resid
+
+	def set_residual(self, resid):
+		"""
+		Replaces the residual ``self.resid`` with parameter ``resid``.
+		If the physics are non-linear as set my ``self.linear``, this will also
+		re-calculate the Jacobian for use with the Newton solver.
+		"""
+		self.resid = resid
+
+		# if linear, separate the left- and right-hand sides :
+		if self.linear:
+			self.lhs = lhs(resid)
+			self.rhs = rhs(resid)
+
+		# re-define the momentum Jacobian :
+		else:
+			self.Jac = derivative(self.get_residual(),
+			                      self.get_unknown(),
+			                      self.get_trial_function())
+
+	def get_jacobian(self):
+		"""
+		Returns the Jacobian of this problem set by called
+		:func:`~physics.Physics.set_residual`.
+		"""
+		err_msg = "this problem is linear; there is no Jacobian."
+		assert not self.linear, err_msg
+		return self.Jac
+
+	def set_boundary_conditions(self, bc_list):
+		"""
+		Set the Dirichlet boundary conditions of this problem to those of the
+		list ``bc_list``.
+		"""
+		self.bcs = bc_list
+
+	def get_boundary_conditions(self):
+		"""
+		Returns the list of Dirichlet boundary conditions for this problem.
+		"""
+		return self.bcs
+
+	def get_lhs(self):
+		"""
+		Returns the left-hand side of this problem.
+		"""
+		err_msg = "this problem is non-linear; there is no left-hand side."
+		assert self.linear, err_msg
+		return self.lhs
+
+	def get_rhs(self):
+		"""
+		Returns the right-hand side of this problem.
+		"""
+		err_msg = "this problem is non-linear; there is no right-hand side."
+		assert self.linear, err_msg
+		return self.rhs
+
+	def get_unknown(self):
+		"""
+		Return the unkonwn :dolfin:`~function.Function` set by ``self.u``.
+		"""
+		return self.u
+
+	def set_unknown(self, u):
+		"""
+		Sets the unkonwn :dolfin:`~function.Function` ``self.u`` to
+		parameter ``u``.
+		"""
+		self.u = u
+
+	def get_trial_function(self):
+		"""
+		Return the :dolfin:`~function.TrialFunction` for the unknown
+		``self.u`` set by ``self.trial_function``.
+		"""
+		return self.trial_function
+
+	def set_trial_function(self, trial_function):
+		"""
+		Sets the :dolfin:`~function.TrialFunction` for the unknown
+		``self.u`` given by ``self.trial_function`` to parameter ``trial_function``.
+		"""
+		self.trial_function = trial_function
+
+	def get_test_function(self):
+		"""
+		Return the :dolfin:`~function.TestFunction` for the unknown
+		``self.u`` set by ``self.test_function``.
+		"""
+		return self.test_function
+
+	def set_test_function(self, test_function):
+		"""
+		Sets the :dolfin:`~function.TestFunction` for the unknown
+		``self.u`` given by ``self.test_function`` to parameter ``test_function``.
+		"""
+		self.test_function = test_function
+
+	def get_Lam(self):
+		"""
+		Return the adjoint function for ``self.U``.
+		"""
+		raiseNotDefined()
+
+	def get_velocity(self):
+		"""
+		Return the velocity :math:`\underline{u}`.
+		"""
+		raiseNotDefined()
+
 	def form_reg_ftn(self, c, integral, kind='TV', verbose=True):
 		r"""
 		Formulates a regularization functional for use
@@ -514,11 +636,54 @@ class Physics(object):
 		# save a rudimentary plot of functionals
 		self.plot_ftnls(t0, tf, J_a, R_a, control)
 
-	def solve(self):
+	def solve(self, annotate=False):
 		"""
 		Solves the physics calculation.
 		"""
-		raiseNotDefined()
+		model  = self.model
+		params = self.solve_params
+
+    # starting time (for total time to compute)
+		t0 = time()
+
+		# solve linear system :
+		if self.linear:
+			print_text("::: solving linear equations :::", cls=self)
+			solve(self.get_lhs() == self.get_rhs(), \
+			      self.get_unknown(), \
+			      bcs               = self.get_boundary_conditions(), \
+			      annotate          = annotate, \
+			      solver_parameters = params['solver'])
+
+		# or solve non-linear system :
+		else:
+			rtol   = params['solver']['newton_solver']['relative_tolerance']
+			maxit  = params['solver']['newton_solver']['maximum_iterations']
+			alpha  = params['solver']['newton_solver']['relaxation_parameter']
+			s      = "::: solving nonlinear system with %i max iterations " + \
+			         "and step size = %.1f :::"
+			print_text(s % (maxit, alpha), cls=self)
+
+			# compute solution :
+			solve(self.get_residual() == 0, \
+			      self.get_unknown(), \
+			      J                 = self.get_jacobian(), \
+			      bcs               = self.get_boundary_conditions(), \
+			      annotate          = annotate, \
+			      solver_parameters = params['solver'])
+
+		# calculate total time to compute
+		t_tot = time() - t0
+		m     = t_tot / 60.0
+		h     = m / 60.0
+		m     = m % 60
+		s     = t_tot % 60
+		ms    = (s % 1) * 1000
+
+		print_text("time to solve: %02d:%02d:%02d:%03d" % (h,m,s,ms), 'red', 1)
+
+		# update the unknown container in self.model :
+		self.update_model_var(self.get_unknown(), annotate=annotate)
 
 	def update_model_var(self, u, annotate=False):
 		"""

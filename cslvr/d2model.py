@@ -158,7 +158,7 @@ class D2Model(Model):
 
 	def calculate_boundaries(self,
 	                         mask        = None,
-	                         adot        = None,
+	                         S_ring      = None,
 	                         U_mask      = None,
 	                         mark_divide = False,
 	                         contour     = None):
@@ -194,19 +194,19 @@ class D2Model(Model):
 			mask = Expression('1.0', element=self.Q.ufl_element())
 
 		# default to all positive accumulation :
-		if adot == None:
-			adot = Expression('1.0', element=self.Q.ufl_element())
+		if S_ring == None:
+			S_ring = Expression('1.0', element=self.Q.ufl_element())
 
 		# default to U observations everywhere :
 		if U_mask == None:
 			U_mask = Expression('1.0', element=self.Q.ufl_element())
 
-		self.init_adot(adot)
+		self.init_S_ring(S_ring)
 		self.init_mask(mask)
 		self.init_U_mask(U_mask)
 
 		self.mask.set_allow_extrapolation(True)
-		self.adot.set_allow_extrapolation(True)
+		self.S_ring.set_allow_extrapolation(True)
 		self.U_mask.set_allow_extrapolation(True)
 
 		tol = 1e-6
@@ -247,9 +247,9 @@ class D2Model(Model):
 			y_m       = c.midpoint().y()
 			mask_xy   = mask(x_m, y_m)
 			U_mask_xy = U_mask(x_m, y_m)
-			adot_xy   = adot(x_m, y_m)
+			S_ring_xy = S_ring(x_m, y_m)
 
-			if adot_xy > 0:
+			if S_ring_xy > 0:
 				self.ff_acc[c] = self.OMEGA_ACC
 			if mask_xy > 1:
 				if U_mask_xy > 0:
@@ -379,7 +379,7 @@ class D2Model(Model):
 			# NOTE: this overides model.init_U
 			s = "::: initializing velocity :::"
 			print_text(s, cls=self)
-			self.assign_variable(self.U3, U)
+			self.assign_variable(self.u, U)
 
 	def solve_hydrostatic_pressure(self, annotate=False):
 		r"""
@@ -391,10 +391,10 @@ class D2Model(Model):
 		:param annotate: allow Dolfin-Adjoint annotation of this procedure.
 		:type annotate: bool
 		"""
-		rhoi = self.rhoi(0)
+		rho_i = self.rho_i(0)
 		g    = self.g(0)
 		H    = self.S.vector().get_local() - self.B.vector().get_local()
-		self.assign_variable(self.p, rhoi*g*H)
+		self.assign_variable(self.p, rho_i*g*H)
 
 	def initialize_variables(self):
 		"""
@@ -449,7 +449,7 @@ class D2Model(Model):
 			self.v             = VerticalBasis(v_,  coef, dcoef)
 
 			# basal velocity :
-			self.U3_b          = Function(self.Q3, name='U3_b')
+			self.u_b          = Function(self.Q3, name='U3_b')
 			u_b, v_b, w_b      = self.U3_b.split()
 			u_b.rename('u_b', '')
 			v_b.rename('v_b', '')
@@ -515,7 +515,7 @@ class D2Model(Model):
 					status_u = [False, False]
 					break
 				# always reset velocity for good convergence :
-				self.assign_variable(momentum.get_U(), DOLFIN_EPS)
+				self.assign_variable(momentum.get_unknown(), DOLFIN_EPS)
 				status_u = momentum.solve(annotate=annotate)
 				solved_u = status_u[1]
 				# TODO: rewind the dolfin-adjoint tape too!

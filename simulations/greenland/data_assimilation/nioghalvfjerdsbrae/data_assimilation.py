@@ -39,7 +39,7 @@ d3model.init_sigma(fdata)
 d3model.init_mask(fdata)
 d3model.init_q_geo(d3model.ghf)
 d3model.init_T_surface(fdata)
-d3model.init_adot(fdata)
+d3model.init_S_ring(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 #d3model.init_time_step(1e-6)
@@ -58,7 +58,7 @@ d3model.save_xdmf(d3model.ff,     'ff')
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '01/inverted.h5', 'r')
 #d3model.init_T(frstrt)
 #d3model.init_W(frstrt)
-#d3model.init_Fb(frstrt)
+#d3model.init_B_ring(frstrt)
 #d3model.init_alpha(frstrt)
 #d3model.init_U(frstrt)
 #d3model.init_p(frstrt)
@@ -69,7 +69,7 @@ bedmodel = D2Model(d3model.bedmesh, out_dir, kind='balance')
 
 bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
-bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
+bedmodel.assign_submesh_variable(bedmodel.S_ring,   d3model.S_ring)
 
 # solve the balance velocity :
 bv = BalanceVelocity(bedmodel, kappa=5.0, stabilization_method='GLS')
@@ -113,7 +113,7 @@ elif mdl_odr == 'FS_th':
 #momTMC = MomentumDukowiczStokes(d3model, linear=False)
 momTMC = mom
 nrg    = Enthalpy(d3model, momTMC, transient=False, use_lat_bc=True,
-                  energy_flux_mode='Fb')
+                  energy_flux_mode='B_ring')
 
 #frstrt = HDF5File(mpi_comm_world(), out_dir + '02/u_opt.h5', 'r')
 #d3model.set_out_dir(out_dir + '02/')
@@ -136,7 +136,7 @@ def adj_post_cb_ftn():
 # after every completed adjoining, save the state of these functions :
 adj_save_vars = [d3model.T,
                  d3model.W,
-                 d3model.Fb,
+                 d3model.B_ring,
                  d3model.Mb,
                  d3model.alpha,
                  d3model.alpha_int,
@@ -144,17 +144,17 @@ adj_save_vars = [d3model.T,
                  d3model.Wbar,
                  d3model.Qbar,
                  d3model.temp_rat,
-                 d3model.U3,
+                 d3model.u,
                  d3model.p,
                  d3model.beta,
                  d3model.theta]
 
-u_opt_save_vars = [d3model.beta, d3model.U3]
-w_opt_save_vars = [d3model.Fb,   d3model.theta]
+u_opt_save_vars = [d3model.beta, d3model.u]
+w_opt_save_vars = [d3model.B_ring,   d3model.theta]
 
 tmc_save_vars   = [d3model.T,
                    d3model.W,
-                   d3model.Fb,
+                   d3model.B_ring,
                    d3model.Mb,
                    d3model.alpha,
                    d3model.alpha_int,
@@ -162,7 +162,7 @@ tmc_save_vars   = [d3model.T,
                    d3model.Wbar,
                    d3model.Qbar,
                    d3model.temp_rat,
-                   d3model.U3,
+                   d3model.u,
                    d3model.p,
                    d3model.beta,
                    d3model.theta]
@@ -172,25 +172,25 @@ J_measure = d3model.dGamma_s     # cost measure
 R_measure = d3model.dGamma_b     # regularization measure
 
 # form the cost functional :
-J_log = mom.form_cost_ftn(u        = mom.get_U(),
+J_log = mom.form_cost_ftn(u        = mom.get_unknown(),
                           u_ob     = [d3model.u_ob,  d3model.v_ob],
                           integral = J_measure,
                           kind     = 'log')
 
 # form the cost functional :
-J_l2  = mom.form_cost_ftn(u        = mom.get_U(),
+J_l2  = mom.form_cost_ftn(u        = mom.get_unknown(),
                           u_ob     = [d3model.u_ob,  d3model.v_ob],
                           integral = J_measure,
                           kind     = 'l2')
 
 # form the cost functional :
-J_l1  = mom.form_cost_ftn(u        = mom.get_U(),
+J_l1  = mom.form_cost_ftn(u        = mom.get_unknown(),
                           u_ob     = [d3model.u_ob,  d3model.v_ob],
                           integral = J_measure,
                           kind     = 'l1')
 
 # form the cost functional :
-J_rat = mom.form_cost_ftn(u        = mom.get_U(),
+J_rat = mom.form_cost_ftn(u        = mom.get_unknown(),
                           u_ob     = [d3model.u_ob,  d3model.v_ob],
                           integral = J_measure,
                           kind     = 'ratio')
@@ -260,7 +260,7 @@ tmc_kwargs = {'momentum'            : momTMC,
               'post_tmc_save_vars'  : tmc_save_vars,
               'starting_i'          : 1}
 
-uop_kwargs = {'u'                   : mom.get_U(),
+uop_kwargs = {'u'                   : mom.get_unknown(),
               'u_ob'                : [d3model.u_ob, d3model.v_ob],
               'I'                   : J + R,
               'control'             : d3model.beta,
@@ -325,13 +325,13 @@ mom.optimize(**uop_kwargs)
 #mom.solve_params['solve_vert_velocity'] = True
 #mom.solve_params['solve_pressure']      = True
 #mom.solve()
-#d3model.save_xdmf(d3model.U3,   'U3_opt')
+#d3model.save_xdmf(d3model.u,   'U3_opt')
 #d3model.save_xdmf(d3model.beta, 'beta_opt')
 #
 #mom.solve()
 #
 #fres = HDF5File(mpi_comm_world(), out_dir + 'momentum.h5', 'w')
-#d3model.save_list_to_hdf5([d3model.U3, d3model.p], fres)
+#d3model.save_list_to_hdf5([d3model.u, d3model.p], fres)
 #fres.close()
 
 # or only thermo-mechanically couple :

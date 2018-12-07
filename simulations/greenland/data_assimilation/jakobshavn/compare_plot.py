@@ -36,15 +36,15 @@ fdata    = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 f_1      = HDF5File(mpi_comm_world(), in_dir_1  + 'tmc.h5', 'r')
 f_2      = HDF5File(mpi_comm_world(), in_dir_2  + 'tmc.h5', 'r')
 
-Fb_1     = Function(d3model.Q,  name='Fb')
-Fb_2     = Function(d3model.Q,  name='Fb')
+B_ring_1     = Function(d3model.Q,  name='B_ring')
+B_ring_2     = Function(d3model.Q,  name='B_ring')
 beta_1   = Function(d3model.Q,  name='beta')
 beta_2   = Function(d3model.Q,  name='beta')
 U_1      = Function(d3model.Q3, name='U3')
 U_2      = Function(d3model.Q3, name='U3')
 
-Fb_1_b   = Function(bedmodel.Q)
-Fb_2_b   = Function(bedmodel.Q)
+B_ring_1_b   = Function(bedmodel.Q)
+B_ring_2_b   = Function(bedmodel.Q)
 beta_1_b = Function(bedmodel.Q)
 beta_2_b = Function(bedmodel.Q)
 U_1_s    = Function(srfmodel.Q3)
@@ -55,23 +55,23 @@ b_d = Function(bedmodel.Q)
 u_d = Function(srfmodel.Q)
 
 # initialize the variables :
-d3model.assign_variable(Fb_1,   f_1)
-d3model.assign_variable(Fb_2,   f_2)
+d3model.assign_variable(B_ring_1,   f_1)
+d3model.assign_variable(B_ring_2,   f_2)
 d3model.assign_variable(beta_1, f_1)
 d3model.assign_variable(beta_2, f_2)
 d3model.assign_variable(U_1,    f_1)
 d3model.assign_variable(U_2,    f_2)
 
 # 2D model gets balance-velocity appropriate variables initialized :
-bedmodel.assign_submesh_variable(Fb_1_b,   Fb_1)
-bedmodel.assign_submesh_variable(Fb_2_b,   Fb_2)
+bedmodel.assign_submesh_variable(B_ring_1_b,   B_ring_1)
+bedmodel.assign_submesh_variable(B_ring_2_b,   B_ring_2)
 bedmodel.assign_submesh_variable(beta_1_b, beta_1)
 bedmodel.assign_submesh_variable(beta_2_b, beta_2)
 srfmodel.assign_submesh_variable(U_1_s,    U_1)
 srfmodel.assign_submesh_variable(U_2_s,    U_2)
 
-a_1_v  = Fb_1_b.vector().array()
-a_2_v  = Fb_2_b.vector().array()
+a_1_v  = B_ring_1_b.vector().array()
+a_2_v  = B_ring_2_b.vector().array()
 a_d_v  = a_1_v - a_2_v
 a_d.vector().set_local(a_d_v)
 a_d.vector().apply('insert')
@@ -145,7 +145,7 @@ u_d_lvls  = np.array([0.95,  0.97, 0.99, 0.995, 0.9975,
 #===============================================================================
 # plot :
 
-plotIce(drg, a_d, name='delta_Fb', direc=out_dir, 
+plotIce(drg, a_d, name='delta_B_ring', direc=out_dir, 
         title=r'$\Delta F_b$', cmap='RdGy',  scale='lin',
         levels=a_d_lvls, tp=True, tpAlpha=0.2,
         extend='neither', show=False, ext='.pdf',

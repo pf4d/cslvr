@@ -28,7 +28,7 @@ model.init_B(fdata)
 model.init_mask(fdata)
 model.init_q_geo(model.ghf)
 model.init_T_surface(fdata)
-model.init_adot(fdata)
+model.init_S_ring(fdata)
 model.init_U_ob(fdata, fdata)
 model.init_U_mask(fdata)
 model.init_time_step(1e-6)
@@ -42,7 +42,7 @@ model.init_W(fini)
 model.init_U(fini)
 model.init_p(fini)
 model.init_alpha(fini)
-model.init_Fb(fini)
+model.init_B_ring(fini)
 model.init_k_0(1e-3)
 #model.solve_hydrostatic_pressure()
 model.form_energy_dependent_rate_factor()
@@ -83,14 +83,14 @@ def adj_post_cb_ftn():
 # after every completed adjoining, save the state of these functions :
 tmc_save_vars = [model.T,
                  model.W,
-                 model.Fb,
+                 model.B_ring,
                  model.Mb,
                  model.q_fric,
                  model.alpha,
                  model.PE,
                  model.W_int,
                  model.Q_int,
-                 model.U3,
+                 model.u,
                  model.p,
                  model.beta,
                  model.theta]
@@ -99,7 +99,7 @@ tmc_save_vars = [model.T,
 nrg.form_cost_ftn(kind='L2')
 
 ## form regularization for water-flux :
-#nrg.form_reg_ftn(model.Fb, integral=model.GAMMA_B_GND,
+#nrg.form_reg_ftn(model.B_ring, integral=model.GAMMA_B_GND,
 #                 kind='TV', alpha=2.5e7)
 
 wop_kwargs = {'max_iter'            : 350,

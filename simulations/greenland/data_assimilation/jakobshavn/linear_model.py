@@ -171,7 +171,7 @@ d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_mask(fdata)
 d3model.init_T_surface(fdata)
-d3model.init_adot(fdata)
+d3model.init_S_ring(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_beta(finv)
@@ -180,7 +180,7 @@ d3model.init_T(finv)
 d3model.init_W(finv)
 d3model.init_theta(finv)
 d3model.init_Mb(finv)
-d3model.init_Fb(finv)
+d3model.init_B_ring(finv)
 
 d3model.init_tau_ii(fstress)
 d3model.init_tau_ij(fstress)
@@ -215,17 +215,17 @@ d2model = D2Model(d3model.bedmesh, out_dir)
 d2model.assign_submesh_variable(d2model.S,         d3model.S)
 d2model.assign_submesh_variable(d2model.B,         d3model.B)
 d2model.assign_submesh_variable(d2model.T_surface, d3model.T_surface)
-d2model.assign_submesh_variable(d2model.adot,      d3model.adot)
+d2model.assign_submesh_variable(d2model.S_ring,      d3model.S_ring)
 d2model.assign_submesh_variable(d2model.u_ob,      d3model.u_ob)
 d2model.assign_submesh_variable(d2model.v_ob,      d3model.v_ob)
 d2model.assign_submesh_variable(d2model.U_ob,      d3model.U_ob)
 d2model.assign_submesh_variable(d2model.beta,      d3model.beta)
-d2model.assign_submesh_variable(d2model.U3,        d3model.U3)
-d2model.assign_submesh_variable(d2model.U_mag,     d3model.U_mag)
+d2model.assign_submesh_variable(d2model.u,        d3model.u)
+d2model.assign_submesh_variable(d2model.u_mag,     d3model.u_mag)
 d2model.assign_submesh_variable(d2model.T,         d3model.T)
 d2model.assign_submesh_variable(d2model.W,         d3model.W)
 d2model.assign_submesh_variable(d2model.Mb,        d3model.Mb)
-d2model.assign_submesh_variable(d2model.Fb,        d3model.Fb)
+d2model.assign_submesh_variable(d2model.B_ring,        d3model.B_ring)
 d2model.assign_submesh_variable(d2model.tau_ii,    d3model.tau_ii)
 d2model.assign_submesh_variable(d2model.tau_ij,    d3model.tau_ij)
 d2model.assign_submesh_variable(d2model.tau_ik,    d3model.tau_ik)
@@ -242,8 +242,8 @@ d2model.assign_submesh_variable(d2model.N_jk,      d3model.N_jk)
 srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 # put the velocity on it :
-d2model.assign_submesh_variable(srfmodel.U3,        d3model.U3)
-d2model.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
+d2model.assign_submesh_variable(srfmodel.u,        d3model.u)
+d2model.assign_submesh_variable(srfmodel.u_mag,     d3model.u_mag)
 
 # solve the balance velocity :
 bv = BalanceVelocity(d2model, kappa=5.0)
@@ -272,14 +272,14 @@ d2model.Ubar20.rename('Ubar20', '')
 
 Q      = d2model.Q
 
-u,v,w  = d2model.U3.split(True)
+u,v,w  = d2model.u.split(True)
 S      = d2model.S 
 B      = d2model.B
-adot   = d2model.adot
+S_ring   = d2model.S_ring
 qgeo   = d2model.q_geo
 beta   = d2model.beta
 Mb     = d2model.Mb
-Fb     = d2model.Fb
+B_ring     = d2model.B_ring
 Tb     = d2model.T
 Ts     = d2model.T_surface
 Ubar5  = d2model.Ubar5
@@ -312,10 +312,10 @@ dHdy   = project((S - B).dx(1), Q)
 beta_v   = beta.vector().array()
 S_v      = S.vector().array()
 B_v      = B.vector().array()
-adot_v   = adot.vector().array()
+S_ring_v   = S_ring.vector().array()
 qgeo_v   = qgeo.vector().array()
 Mb_v     = Mb.vector().array()
-Fb_v     = Fb.vector().array()
+B_ring_v     = B_ring.vector().array()
 Tb_v     = Tb.vector().array()
 Ts_v     = Ts.vector().array()
 u_v      = u.vector().array()
@@ -342,7 +342,7 @@ H_v    = S_v - B_v
 dHdx_v = dHdx.vector().array()
 dHdy_v = dHdy.vector().array()
 gradH  = sqrt(dHdx_v**2 + dHdy_v**2 + 1e-16)
-U_mag  = sqrt(u_v**2 + v_v**2 + 1e-16)
+u_mag  = sqrt(u_v**2 + v_v**2 + 1e-16)
 dSdx_v = dSdx.vector().array()
 dSdy_v = dSdy.vector().array()
 gradS  = sqrt(dSdx_v**2 + dSdy_v**2 + 1e-16)
@@ -361,10 +361,10 @@ tau_mag = sqrt(taux**2 + tauy**2 + 1e-16)
 #  vhat = tauy / tau_mag
 #
 #elif mdl == 'U' or mdl == 'stress' or mdl == 'U_temp':
-#  uhat = u_v / U_mag
-#  vhat = v_v / U_mag
-uhat = u_v / U_mag
-vhat = v_v / U_mag
+#  uhat = u_v / u_mag
+#  vhat = v_v / u_mag
+uhat = u_v / u_mag
+vhat = v_v / u_mag
 
 dBdi = dBdx_v * uhat + dBdy_v * vhat
 dBdj = dBdx_v * vhat - dBdy_v * uhat
@@ -383,8 +383,8 @@ if mdl == 'Ubar' or mdl == 'Ubar_temp':
   ini_j    = 917.0 * 9.8 * H_v * dSdj / (Ubar5_v + 0.1)
 
 elif mdl == 'U' or mdl == 'stress' or mdl == 'U_temp':
-  ini_i    = 917.0 * 9.8 * H_v * dSdi / (U_mag + 0.1)
-  ini_j    = 917.0 * 9.8 * H_v * dSdj / (U_mag + 0.1)
+  ini_i    = 917.0 * 9.8 * H_v * dSdi / (u_mag + 0.1)
+  ini_j    = 917.0 * 9.8 * H_v * dSdj / (u_mag + 0.1)
 
 # areas of cells for weighting :
 h_v  = project(CellSize(d2model.mesh), Q).vector().array()
@@ -399,20 +399,20 @@ valid  = intersect1d(valid, where(S_v > 0.0)[0])
 #valid  = intersect1d(valid, where(beta_v < 1000)[0])
 #valid  = intersect1d(valid, where(beta_v > 1e-4)[0])
 if typ == 'limited':
-  valid  = intersect1d(valid, where(U_mag > 20)[0])
+  valid  = intersect1d(valid, where(u_mag > 20)[0])
 else:
-  valid  = intersect1d(valid, where(U_mag > 0)[0])
+  valid  = intersect1d(valid, where(u_mag > 0)[0])
 valid  = intersect1d(valid, where(U_ob_v > 1e-9)[0])
 valid  = intersect1d(valid, where(Ts_v > 100)[0])
 valid  = intersect1d(valid, where(h_v > 0)[0])
 valid  = intersect1d(valid, where(S_v - B_v > 60)[0])
-valid  = intersect1d(valid, where(adot_v > -100)[0])
+valid  = intersect1d(valid, where(S_ring_v > -100)[0])
 #valid  = intersect1d(valid, where(gradS < 0.05)[0])
 #valid  = intersect1d(valid, where(gradB < 0.2)[0])
 #valid  = intersect1d(valid, where(Mb_v < 0.04)[0])
 #valid  = intersect1d(valid, where(Mb_v > 0.0)[0])
-#valid  = intersect1d(valid, where(adot_v < 1.2)[0])
-#valid  = intersect1d(valid, where(adot_v > -1.0)[0])
+#valid  = intersect1d(valid, where(S_ring_v < 1.2)[0])
+#valid  = intersect1d(valid, where(S_ring_v > -1.0)[0])
 
 #===============================================================================
 # individual regions for plotting :
@@ -526,9 +526,9 @@ wt     = n * h_v / A
 
 #===============================================================================
 data = [beta_v,  S_v,     B_v,      gradS,   
-        gradB,   H_v,     adot_v,   Ts_v,   
-        Tb_v,    Mb_v,    Fb_v,     Ubar5_v,
-        u_v,     v_v,     w_v,      U_mag]
+        gradB,   H_v,     S_ring_v,   Ts_v,   
+        Tb_v,    Mb_v,    B_ring_v,     Ubar5_v,
+        u_v,     v_v,     w_v,      u_mag]
 names = [r'$\beta$',
          r'$S$',
          r'$D$',
@@ -575,17 +575,17 @@ v3   = D
 v4   = gradB
 v5   = H_v
 v6   = qgeo_v
-v7   = adot_v
+v7   = S_ring_v
 v8   = Tb_v
 v9   = Mb_v
-v10  = Fb_v
+v10  = B_ring_v
 v11  = u_v
 v12  = v_v
 v13  = w_v
 v14  = log(Ubar5_v + DOLFIN_EPS)
 v15  = log(Ubar10_v + DOLFIN_EPS)
 v16  = log(Ubar20_v + DOLFIN_EPS)
-v17  = log(U_mag + DOLFIN_EPS)
+v17  = log(u_mag + DOLFIN_EPS)
 v18  = tau_ii_v
 v19  = tau_ij_v
 v20  = tau_ik_v

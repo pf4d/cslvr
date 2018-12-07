@@ -29,7 +29,7 @@ dsr.change_projection(dbm)
 S     = dbm.get_expression('S',        near=False)
 B     = dbm.get_expression('B',        near=False)
 M     = dbm.get_expression('mask',     near=True)
-adot  = dsr.get_expression('adot',     near=False)
+S_ring  = dsr.get_expression('S_ring',     near=False)
 q_geo = dsr.get_expression('q_geo',    near=False)
 T_s   = dsr.get_expression('T',        near=False)
 u_ob  = dmg.get_expression('vx',       near=False)
@@ -38,7 +38,7 @@ U_msk = dmg.get_expression('mask',     near=True)
 
 model = D3Model(mesh=mesh, out_dir=out_dir)
 model.deform_mesh_to_geometry(S, B)
-model.calculate_boundaries(mask=M, U_mask=U_msk, adot=adot,
+model.calculate_boundaries(mask=M, U_mask=U_msk, S_ring=S_ring,
                            mark_divide=True, contour=contour)
 
 model.save_xdmf(model.ff, 'ff')
@@ -53,7 +53,7 @@ lst = [model.S,
        model.mask,
        model.q_geo,
        model.T_surface,
-       model.adot,
+       model.S_ring,
        model.u_ob,
        model.v_ob,
        model.U_mask]

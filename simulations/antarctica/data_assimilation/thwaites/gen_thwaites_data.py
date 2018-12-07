@@ -21,7 +21,7 @@ S     = d2.get_expression("S",        near=False)
 B     = d2.get_expression("B",        near=False)
 M     = d2.get_expression("mask",     near=True)
 L     = d2.get_expression('lat_mask', near=True)
-adot  = d1.get_expression("acca",     near=False)
+S_ring  = d1.get_expression("acca",     near=False)
 T_s   = d1.get_expression("temp",     near=False)
 q_geo = d1.get_expression("ghfsr",    near=False)
 u_ob  = dm.get_expression("vx",       near=False)
@@ -30,7 +30,7 @@ U_msk = dm.get_expression("mask",     near=True)
 
 model = D3Model(mesh=mesh, out_dir=out_dir)
 model.deform_mesh_to_geometry(S, B)
-model.calculate_boundaries(mask=M, lat_mask=L, U_mask=U_msk, adot=adot, 
+model.calculate_boundaries(mask=M, lat_mask=L, U_mask=U_msk, S_ring=S_ring, 
                            mark_divide=True)
 
 model.init_T_surface(T_s)
@@ -42,7 +42,7 @@ lst = [model.S,
        model.mask,
        model.q_geo,
        model.T_surface,
-       model.adot,
+       model.S_ring,
        model.u_ob,
        model.v_ob,
        model.U_mask,

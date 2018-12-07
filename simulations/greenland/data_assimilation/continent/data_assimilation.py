@@ -29,7 +29,7 @@ d3model.init_B(fdata)
 d3model.init_mask(fdata)
 d3model.init_q_geo(d3model.ghf)
 d3model.init_T_surface(fdata)
-d3model.init_adot(fdata)
+d3model.init_S_ring(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_time_step(1e-6)
@@ -45,7 +45,7 @@ bedmodel = D2Model(d3model.bedmesh, out_dir)
 
 bedmodel.assign_submesh_variable(bedmodel.S,      d3model.S)
 bedmodel.assign_submesh_variable(bedmodel.B,      d3model.B)
-bedmodel.assign_submesh_variable(bedmodel.adot,   d3model.adot)
+bedmodel.assign_submesh_variable(bedmodel.S_ring,   d3model.S_ring)
 
 # solve the balance velocity :
 bv = BalanceVelocity(bedmodel, kappa=5.0)
@@ -147,13 +147,13 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #  mom.solve(annotate=False)
 #
 #  # save the optimal velocity and beta fields for viewing with paraview :
-#  d3model.assign_submesh_variable(Us,     d3model.U3)
+#  d3model.assign_submesh_variable(Us,     d3model.u)
 #  d3model.assign_submesh_variable(beta_b, d3model.beta)
 #  d3model.save_xdmf(Us,     'U_opt')
 #  d3model.save_xdmf(beta_b, 'beta_opt')
 #
 ## after every completed adjoining, save the state of these functions :
-#adj_save_vars = [d3model.beta, d3model.U3]
+#adj_save_vars = [d3model.beta, d3model.u]
 #
 ## form the cost functional :
 #mom.form_obj_ftn(integral=d3model.dSrf_gu, kind='log_L2_hybrid', 
@@ -167,7 +167,7 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 ##def tmc_cb_ftn():
 ##  nrg.solve_basal_melt_rate()
 ##  d3model.assign_submesh_variable(Tb,   d3model.T)
-##  d3model.assign_submesh_variable(Us,   d3model.U3)
+##  d3model.assign_submesh_variable(Us,   d3model.u)
 ##  d3model.assign_submesh_variable(Wb,   d3model.W)
 ##  d3model.assign_submesh_variable(Mb,   d3model.Mb)
 ##  d3model.save_xdmf(Tb,   'Tb')
@@ -194,7 +194,7 @@ nrg = Enthalpy(d3model, transient=False, use_lat_bc=True,
 #===============================================================================
 #d3model.thermo_solve(mom, nrg, callback=None, max_iter=1)
 #fU   = HDF5File(mpi_comm_world(), out_dir + 'U3.h5', 'w')
-#d3model.save_hdf5(d3model.U3, fU)
+#d3model.save_hdf5(d3model.u, fU)
 #fU.close()
 #sys.exit(0)
 #nrg.solve_divide(annotate=False)
@@ -265,7 +265,7 @@ sys.exit(0)
 #  mom.solve(annotate=False)
 #
 #  # save the optimal velocity and beta fields for viewing with paraview :
-#  d3model.save_xdmf(d3model.U3,   'U_opt')
+#  d3model.save_xdmf(d3model.u,   'U_opt')
 #  d3model.save_xdmf(d3model.beta, 'beta_opt')
 #
 ## form the cost functional :
@@ -278,7 +278,7 @@ sys.exit(0)
 #n_i        = len(str(iterations))
 #
 ## after every completed adjoining, save the state of these functions :
-#adj_save_vars = [d3model.beta, d3model.U3]
+#adj_save_vars = [d3model.beta, d3model.u]
 #
 #uop_kwargs = {'control'           : d3model.beta,
 #              'bounds'            : (1e-5, 1e7),
@@ -331,14 +331,14 @@ def adj_post_cb_ftn():
   mom.solve(annotate=False)
 
   # save the optimal velocity and beta fields for viewing with paraview :
-  d3model.assign_submesh_variable(Us,     d3model.U3)
+  d3model.assign_submesh_variable(Us,     d3model.u)
   d3model.assign_submesh_variable(beta_b, d3model.beta)
   d3model.save_xdmf(Us,    'U_opt')
   d3model.save_xdmf(betab, 'beta_opt')
 
 # after every completed adjoining, save the state of these functions :
 adj_save_vars = [d3model.beta,
-                 d3model.U3,
+                 d3model.u,
                  d3model.T,
                  d3model.W,
                  d3model.theta,

@@ -25,7 +25,7 @@ model.calculate_boundaries()
 rhos  = 360.                   # initial density at surface ..... kg/m^3
 rhoin = model.rhoi(0)          # initial density at surface ..... kg/m^3
 rin   = 0.0005                 # initial grain radius ........... m^2
-adot  = 0.01                   # accumulation rate .............. m/a
+S_ring  = 0.01                   # accumulation rate .............. m/a
 Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
 
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
@@ -49,8 +49,8 @@ rho_exp = Expression('rhon', rhon=rhos)
 #rho_exp = Constant(rhos)
 
 # velocity of surface (-acc / rhos) [m/s] :
-code    = '- rhoi/rhos * adot / spy'
-w_exp   = Expression(code, rhoi=model.rhoi(0), adot=adot, 
+code    = '- rhoi/rhos * S_ring / spy'
+w_exp   = Expression(code, rhoi=model.rhoi(0), S_ring=S_ring, 
                      spy=model.spy(0), rhos=rhos)
 
 # grain radius of surface [m^2] :
@@ -65,7 +65,7 @@ model.init_sigma_surface(0.0)
 model.init_T(T_i)
 model.init_rho(rhoin)
 model.init_r(rin)
-model.init_adot(adot)
+model.init_S_ring(S_ring)
 model.init_time_step(dt1)
 
 # load initialization data :
@@ -102,7 +102,7 @@ def cb():
   theta_exp.t = model.t
   rho_exp.t   = model.t
   w_exp.t     = model.t
-  #bdotNew     = (w_exp.adot * model.rhoi(0)) / model.spy(0)
+  #bdotNew     = (w_exp.S_ring * model.rhoi(0)) / model.spy(0)
   #model.assign_variable(model.bdot, bdotNew)
   plt.update()
 

@@ -43,7 +43,7 @@ d3model.init_B(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_T(f)
 d3model.init_W(f)
-d3model.init_Fb(f)
+d3model.init_B_ring(f)
 d3model.init_Mb(f)
 d3model.init_alpha(f)
 d3model.init_PE(f)
@@ -58,11 +58,11 @@ d3model.init_Qbar(f)
 
 #d3model.save_xdmf(d3model.theta, 'theta')
 #d3model.save_xdmf(d3model.W, 'W')
-d3model.save_xdmf(d3model.U3, 'U')
+d3model.save_xdmf(d3model.u, 'U')
 sys.exit(0)
 
-u3,v3,w3 = d3model.U3.split(True)
-u,v,w    = srfmodel.U3.split(True)
+u3,v3,w3 = d3model.u.split(True)
+u,v,w    = srfmodel.u.split(True)
 srfmodel.assign_submesh_variable(u, u3)
 srfmodel.assign_submesh_variable(v, v3)
 
@@ -74,12 +74,12 @@ bedmodel.assign_submesh_variable(bedmodel.B,         d3model.B)
 bedmodel.assign_submesh_variable(bedmodel.T,         d3model.T)
 bedmodel.assign_submesh_variable(bedmodel.W,         d3model.W)
 bedmodel.assign_submesh_variable(bedmodel.Wbar,      d3model.Wbar)
-bedmodel.assign_submesh_variable(bedmodel.Fb,        d3model.Fb)
+bedmodel.assign_submesh_variable(bedmodel.B_ring,        d3model.B_ring)
 bedmodel.assign_submesh_variable(bedmodel.Mb,        d3model.Mb)
 bedmodel.assign_submesh_variable(bedmodel.alpha,     d3model.alpha)
 bedmodel.assign_submesh_variable(bedmodel.PE,        d3model.PE)
 srfmodel.assign_submesh_variable(srfmodel.B,         d3model.B)
-srfmodel.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
+srfmodel.assign_submesh_variable(srfmodel.u_mag,     d3model.u_mag)
 srfmodel.assign_submesh_variable(srfmodel.U_ob,      d3model.U_ob)
 srfmodel.assign_submesh_variable(srfmodel.u_ob,      d3model.u_ob)
 srfmodel.assign_submesh_variable(srfmodel.v_ob,      d3model.v_ob)
@@ -172,8 +172,8 @@ amin  = bedmodel.alpha.vector().min()
 Mbmax = bedmodel.Mb.vector().max()
 Mbmin = bedmodel.Mb.vector().min()
 
-Fbmax = bedmodel.Fb.vector().max()
-Fbmin = bedmodel.Fb.vector().min()
+B_ringmax = bedmodel.B_ring.vector().max()
+B_ringmin = bedmodel.B_ring.vector().min()
 
 Wmax  = bedmodel.W.vector().max()
 Wmin  = bedmodel.W.vector().min()
@@ -184,8 +184,8 @@ Wbarmin  = bedmodel.Wbar.vector().min()
 betamax  = int(bedmodel.beta.vector().max())
 betamin  = round(bedmodel.beta.vector().min(), 4)
 
-Umax  = srfmodel.U_mag.vector().max()
-Umin  = srfmodel.U_mag.vector().min()
+Umax  = srfmodel.u_mag.vector().max()
+Umin  = srfmodel.u_mag.vector().min()
 
 Uobmax  = srfmodel.U_ob.vector().max()
 Uobmin  = srfmodel.U_ob.vector().min()
@@ -217,8 +217,8 @@ a_lvls        = np.array([0.0, 1e-2, 1e-1, 0.5, amax])
 #Mb_lvls       = np.array([Mbmin, -1e-2, -5e-3, -1e-3, -1e-4, -1e-5,
 #                        1e-5, 1e-2, 1e-1, 2e-1, 0.5, Mbmax])
 Mb_lvls       = np.array([0.0, 1e-5, 1e-2, 1e-1, 2e-1, 5e-1, Mbmax])
-#Fb_lvls       = np.array([0.0, 1e-3, 1e-2, 1e-1, 2e-1, 3e-1, 6e-1, Fbmax])
-Fb_lvls       = np.array([0.0, 1e-3, 1e-2, 1e-1, 2e-1, 3e-1, 5e-1, Fbmax])
+#B_ring_lvls       = np.array([0.0, 1e-3, 1e-2, 1e-1, 2e-1, 3e-1, 6e-1, B_ringmax])
+B_ring_lvls       = np.array([0.0, 1e-3, 1e-2, 1e-1, 2e-1, 3e-1, 5e-1, B_ringmax])
 #b_lvls        = np.array([betamin, 1, 1e2, 1e3, 2.5e3, 5e3, betamax])
 #b_lvls        = np.array([betamin, 1e-2, 1, 1e2, 2.5e2, 5e2, 1e3, betamax])
 b_lvls        = np.array([betamin, 1e-2, 1e1, 2e2, 2.5e2,
@@ -474,9 +474,9 @@ plotIce(drg, bedmodel.temp_rat, name='temp_rat', direc=out_dir,
 #        u2=bedmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
 #
 #
-#plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+#plotIce(drg, bedmodel.B_ring, name='B_ring', direc=out_dir, 
 #        title=r'$F_b$', cmap='gist_yarg',  scale='lin',
-#        levels=Fb_lvls, tp=True, tpAlpha=0.2,
+#        levels=B_ring_lvls, tp=True, tpAlpha=0.2,
 #        extend='neither', show=False, ext='.pdf',
 #        zoom_box=False, zoom_box_kwargs=zoom_box_kwargs,
 #        params=params, plot_pts=None,
@@ -514,7 +514,7 @@ plotIce(drg, bedmodel.temp_rat, name='temp_rat', direc=out_dir,
 #        params=params, plot_pts=None,
 #        u2=srfmodel.B, u2_levels=u2_lvls, u2_color=u2_c)
 #
-#plotIce(drg, srfmodel.U_mag, name='U_mag', direc=out_dir, 
+#plotIce(drg, srfmodel.u_mag, name='u_mag', direc=out_dir, 
 #        title=r'$\Vert \mathbf{u}_S \Vert$', cmap='gist_yarg',  scale='lin',
 #        levels=U_lvls, tp=True, tpAlpha=0.2, cb_format='%i',
 #        extend='neither', show=False, ext='.pdf',

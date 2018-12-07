@@ -6,7 +6,7 @@ out_dir = './dump/vars/'    # directory to save initialization
 
 thklim  = 1.0          # [m] thickness limit
 L       = 500000.0     # [m] mesh radius
-Rel     = 450000       # [m] radial distance at which adot becomes negative
+Rel     = 450000       # [m] radial distance at which S_ring becomes negative
 s       = 1e-5         # [a^{-1}] accumulation/ablation coefficient
 Tmin    = 238.15       # [K] minimum temperature (located at divide)
 St      = 1.67e-5      # [K m^{-1}] lapse rate
@@ -48,14 +48,11 @@ srfmodel = D2Model(model.srfmesh,
 # set the model geometry and deform the mesh z coordinate to match :
 model.deform_mesh_to_geometry(S=thklim, B=0)
 
-# iterate through and color each facet and cell of the mesh :
-model.calculate_boundaries()
-
 # define the surface mass balance :
-class Adot(Expression):
+class S_ring(Expression):
 	def eval(self, values, x):
 		values[0] = min(0.5, s * (Rel - sqrt(x[0]**2 + x[1]**2)))
-adot = Adot(element=model.Q.ufl_element())
+s_ring = S_ring(element=model.Q.ufl_element())
 
 # define the surface temperature :
 class SurfaceTemperature(Expression):
@@ -64,7 +61,7 @@ class SurfaceTemperature(Expression):
 T_s = SurfaceTemperature(element=model.Q.ufl_element())
 
 # initialize the 3D model variables :
-model.init_adot(adot)           # upper surface-mass balance
+model.init_S_ring(s_ring)       # upper surface-mass balance
 model.init_T_surface(T_s)       # upper surface temperature
 model.init_q_geo(model.ghf)     # geothermal heat flux
 
@@ -74,7 +71,7 @@ lst = [model.S,
        model.mask,
        model.q_geo,
        model.T_surface,
-       model.adot,
+       model.S_ring,
        model.U_mask]
 
 f  = HDF5File(mpi_comm_world(), out_dir + 'state.h5',  'w')

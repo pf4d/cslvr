@@ -29,7 +29,7 @@ f     = HDF5File(mpi_comm_world(), in_dir  + 'Mb.h5',    'r')
 fdata = HDF5File(mpi_comm_world(), var_dir + 'state.h5', 'r')
 
 # initialize the variables :
-d3model.init_Fb(f)
+d3model.init_B_ring(f)
 d3model.init_Mb(f)
 d3model.init_PE(f)
 d3model.init_p(f)
@@ -43,7 +43,7 @@ d3model.assign_variable(divU, f)
 divU_b = Function(bedmodel.Q, name='divU')
 
 # 2D model gets balance-velocity appropriate variables initialized :
-bedmodel.assign_submesh_variable(bedmodel.Fb,   d3model.Fb)
+bedmodel.assign_submesh_variable(bedmodel.B_ring,   d3model.B_ring)
 bedmodel.assign_submesh_variable(bedmodel.Mb,   d3model.Mb)
 bedmodel.assign_submesh_variable(bedmodel.PE,   d3model.PE)
 bedmodel.assign_submesh_variable(bedmodel.p,    d3model.p)
@@ -76,8 +76,8 @@ zoom_box_kwargs_3['scale_font_color'] = 'r'
 Mbmax = bedmodel.Mb.vector().max()
 Mbmin = bedmodel.Mb.vector().min()
 
-Fbmax = bedmodel.Fb.vector().max()
-Fbmin = bedmodel.Fb.vector().min()
+B_ringmax = bedmodel.B_ring.vector().max()
+B_ringmin = bedmodel.B_ring.vector().min()
 
 Pmax  = bedmodel.PE.vector().max()
 Pmin  = bedmodel.PE.vector().min()
@@ -96,7 +96,7 @@ divU_lvls = np.array([divUmin, -1, -1e-1, -1e-3, 1e-3, 1e-1, 1, divUmax])
 #                    1e-5, 1e-2, 1e-1, 0.5, Mbmax])
 Mb_lvls = np.array([-7.2, -0.5, -1e-1, -1e-2, -1e-5,
                     1e-5, 1e-2, 1e-1, 0.5, 7.2])
-Fb_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, Fbmax])
+B_ring_lvls = np.array([0.0, 1e-5, 1e-2, 1e-1, 0.5, B_ringmax])
 Pe_lvls = np.array([1e2, 1e3, 5e3, 1e4, 2.5e4, 5e4, Pmax])
 
 
@@ -108,7 +108,7 @@ plotIce(drg, bedmodel.Mb, name='Mb', direc=out_dir,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',
         zoom_box=True, zoom_box_kwargs=zoom_box_kwargs_3)
 
-plotIce(drg, bedmodel.Fb, name='Fb', direc=out_dir, 
+plotIce(drg, bedmodel.B_ring, name='B_ring', direc=out_dir, 
         title=r'$F_b$', cmap='RdGy',  scale='lin',
         levels=Mb_lvls, tp=False, tpAlpha=0.2,
         basin='jakobshavn', extend='neither', show=False, ext='.pdf',

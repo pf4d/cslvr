@@ -41,7 +41,7 @@ model.init_B(fdata)
 model.init_mask(fdata)
 model.init_q_geo(model.ghf)
 model.init_T_surface(fdata)
-model.init_adot(fdata)
+model.init_S_ring(fdata)
 model.init_U_ob(fdata, fdata)
 model.init_U_mask(fdata)
 model.init_E(1.0)
@@ -150,11 +150,11 @@ m_params['solve_vert_velocity'] = True
 mom.solve(annotate=False)
 
 # save the optimal velocity and beta fields :
-model.save_xdmf(model.U3,   'U_opt')
+model.save_xdmf(model.u,   'U_opt')
 model.save_xdmf(model.beta, 'beta_opt')
 
 # save the state for thermo_solve.py to update temperature :
-model.save_hdf5(model.U3)
+model.save_hdf5(model.u)
 model.save_hdf5(model.beta)
 
 foutput.close()

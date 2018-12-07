@@ -4,10 +4,288 @@ from cslvr.inputoutput    import print_text, print_min_max
 from cslvr.d3model        import D3Model
 from cslvr.physics        import Physics
 from cslvr.momentum       import Momentum
+from cslvr.helper         import raiseNotDefined
 import sys
 
 
-class MomentumBP(Momentum):
+
+
+class MomentumBPBase(Momentum):
+	"""
+	"""
+
+	def __init__(self, model, solve_params=None,
+	             linear=False, use_lat_bcs=False,
+	             use_pressure_bc=True):
+		"""
+		Initializes the class's variables to default values that are then set
+		by the individually created model.
+
+		Initilize the residuals and Jacobian for the momentum equations.
+		"""
+		s = "::: INITIALIZING BP VELOCITY BASE PHYSICS :::"
+		print_text(s, cls=self)
+
+		if type(model) != D3Model:
+			s = ">>> MomentumBPBase REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
+			print_text(s % type(model) , 'red', 1)
+			sys.exit(1)
+
+		#===========================================================================
+		# define function spaces :
+
+		# finite element used :
+		self.Qe    = model.QM2e
+
+		# function space is available for later use :
+		self.Q     = model.QM2
+
+		# function assigner goes from the U function solve to u vector
+		# function used to save :
+		self.assz  = FunctionAssigner(model.V.sub(2),  model.Q)
+		self.assu  = FunctionAssigner([model.V.sub(0), model.V.sub(1)], self.Q)
+		self.assp  = FunctionAssigner(model.Q, model.Q)
+
+		# momenturm functions :
+		self.set_unknown(Function(self.Q, name='u_h'))
+		self.set_trial_function(TrialFunction(self.Q))
+		self.set_test_function(TestFunction(self.Q))
+
+		# horizontal velocity :
+		u_x, u_y  = self.get_unknown()
+		v_x, v_y  = self.get_trial_function()
+
+		# vertical velocity :
+		u_z      = TrialFunction(model.Q)
+		v_z      = TestFunction(model.Q)
+		self.u_z = Function(model.Q, name='u_z')
+
+		#model.calc_normal_vector()
+		#n_b       = model.n_b
+		dGamma_b   = model.dGamma_b()
+		B          = model.B
+		B_ring     = model.B_ring
+		n_b_mag    = sqrt(1 + dot(grad(B), grad(B)))
+		k_hat      = as_vector([0,0,1])
+		n_b        = (grad(B) - k_hat) / n_b_mag
+		self.u_z_b = (- B_ring - u_x*n_b[0] - u_y*n_b[1]) / n_b[2]
+		self.u_z_b_f = Function(model.Q, name='u_z_b_f')
+
+		self.u_z_F = + (u_x.dx(0) + u_y.dx(1) + u_z.dx(2))*v_z*dx \
+		#             + 1e17*(u_x*n_b[0] + u_y*n_b[1] + u_z*n_b[2])*v_z*dGamma_b
+
+		# generate vertical velocity boundary conditions :
+		self.u_z_bcs = []
+		if model.N_GAMMA_B_GND != 0:
+			self.u_z_bcs.append(DirichletBC(model.Q, self.u_z_b_f, model.ff, \
+			                                model.GAMMA_B_GND))
+		if model.N_GAMMA_B_FLT != 0:
+			self.u_z_bcs.append(DirichletBC(model.Q, self.u_z_b_f, model.ff, \
+			                                model.GAMMA_B_FLT))
+
+		# viscous dissipation :
+		u       = self.get_velocity()
+		epsdot  = self.effective_strain_rate(u)
+		if linear:
+			s  = "    - using linear form of momentum using model.u in epsdot -"
+			self.eta  = self.get_viscosity(model.u)
+			self.Vd   = 2 * self.eta * epsdot
+		else:
+			s  = "    - using nonlinear form of momentum -"
+			self.eta  = self.get_viscosity(u)
+			self.Vd   = self.get_viscous_dissipation(u)
+		print_text(s, cls=self)
+
+		# add lateral boundary conditions :
+		mom_bcs  = []
+		if not model.use_periodic and model.mark_divide and use_lat_bcs:
+			s = "    - using Dirichlet lateral boundary conditions -"
+			print_text(s, cls=self)
+
+			mom_bcs.append(DirichletBC(self.Q.sub(0), model.u_x_lat, model.ff, \
+			                           model.GAMMA_L_DVD))
+			mom_bcs.append(DirichletBC(self.Q.sub(1), model.u_y_lat, model.ff, \
+			                           model.GAMMA_L_DVD))
+			self.u_z_bcs.append(DirichletBC(model.Q, model.u_z_lat, model.ff, \
+			                           model.GAMMA_L_DVD))
+		self.set_boundary_conditions(mom_bcs)
+
+		# finally, set up all the other variables and call the child class's
+		# ``initialize`` method :
+		super(MomentumBPBase, self).__init__(model           = model,
+		                                     solve_params    = solve_params,
+		                                     linear          = linear,
+		                                     use_lat_bcs     = use_lat_bcs,
+		                                     use_pressure_bc = use_pressure_bc)
+
+	def strain_rate_tensor(self, u):
+		"""
+		return the 'Blatter-Pattyn' simplified strain-rate tensor of velocity
+		vector ``u``.
+		"""
+		print_text("    - forming Blatter-Pattyn strain-rate tensor -", cls=self)
+		u_x, u_y, u_z  = u
+		epi    = 0.5 * (grad(u) + grad(u).T)
+		epi02  = 0.5*u_x.dx(2)
+		epi12  = 0.5*u_y.dx(2)
+		epi22  = -u_x.dx(0) - u_y.dx(1)  # incompressibility
+		return as_matrix([[epi[0,0],  epi[0,1],  epi02],
+		                  [epi[1,0],  epi[1,1],  epi12],
+		                  [epi02,     epi12,     epi22]])
+
+	def quasi_strain_rate_tensor(self, u):
+		"""
+		return the Dukowicz 2011 quasi-strain tensor.
+		"""
+		u_x, u_y = u
+		epi_ii   = 2*u_x.dx(0) + u_y.dx(1)
+		epi_ij   = 0.5 * (u_x.dx(1) + u_y.dx(0))
+		epi_ik   = 0.5 * u_x.dx(2)
+		epi_jj   = 2*u_y.dx(1) + u_x.dx(0)
+		epi_jk   = 0.5 * u_y.dx(2)
+		return as_matrix([[epi_ii, epi_ij, epi_ik], \
+		                  [epi_ij, epi_jj, epi_jk]])
+
+	def quasi_stress_tensor(self, u, eta):
+		"""
+		return the Dukowicz 2011 quasi-stress tensor.
+		"""
+		return 2 * eta * self.quasi_strain_rate_tensor(u)
+
+	def get_velocity(self):
+		"""
+		Return the velocity :math:`\underline{u} = [u_x\ u_y\ u_z]^{\intercal}`
+		with horizontal compoents taken from the unknown function returned by
+		:func:`~momentumbp.MomentumBPBase.get_unknown` and zero vertical component.
+		"""
+		u_x, u_y = self.get_unknown()
+		return as_vector([u_x, u_y, 0.0])
+
+	def default_solve_params(self):
+		"""
+		Returns a set of default solver parameters that yield good performance
+		"""
+		if (   self.model.energy_dependent_rate_factor == False \
+		    or (self.model.energy_dependent_rate_factor == True \
+		       and np.unique(self.model.T.vector().get_local()).size == 1)) \
+		   and self.model.use_periodic:
+			relax = 1.0
+		else:
+			relax = 0.7
+
+		if self.linear:
+			params  = {'linear_solver'       : 'cg',
+			           'preconditioner'      : 'hypre_amg'}
+
+		else:
+			params = {'newton_solver' :
+			         {
+			           'linear_solver'            : 'cg',
+			           'preconditioner'           : 'hypre_amg',
+			           'relative_tolerance'       : 1e-9,
+			           'relaxation_parameter'     : relax,
+			           'maximum_iterations'       : 25,
+			           'error_on_nonconvergence'  : False,
+			           'krylov_solver'            :
+			           {
+			             'monitor_convergence'   : False,
+			             #'preconditioner' :
+			             #{
+			             #  'structure' : 'same'
+			             #}
+			           }
+			         }}
+		m_params  = {'solver'               : params,
+		             'solve_vert_velocity'  : True,
+		             'solve_pressure'       : True,
+		             'vert_solve_method'    : 'mumps'}
+		return m_params
+
+	def solve_pressure(self, annotate=False):
+		"""
+		Solve for the BP pressure 'p'.
+		"""
+		model  = self.model
+
+		# solve for vertical velocity :
+		s  = "::: solving BP pressure :::"
+		print_text(s, cls=self)
+
+		rho_i     = model.rho_i
+		g        = model.g
+		S        = model.S
+		z        = model.x[2]
+		eta      = self.eta
+		u_x, u_y = self.get_unknown()
+
+		p_f   = rho_i*g*(S - z) - 2*eta*(u_x.dx(0) + u_y.dx(1))
+		p     = project(p_f, model.Q, annotate=annotate)
+
+		#p_v   = p.vector().get_local()
+		#p_v[p_v < 0.0] = 0.0
+
+		self.assp.assign(model.p, p, annotate=annotate)
+		print_min_max(model.p, 'p', cls=self)
+
+	def solve_vert_velocity(self, annotate=False):
+		"""
+		Solve for the vertical component of velocity :math:`u_z`.
+		"""
+		s    = "::: solving BP vertical velocity :::"
+		print_text(s, cls=self)
+
+		# first, derive the z component of velocity :
+		# TODO: avoid projection by wrapping this within an ``Expression``.
+		u_z_b = project(self.u_z_b, self.model.Q, annotate=annotate)
+		self.model.assign_variable(self.u_z_b_f, u_z_b, cls=self, annotate=annotate)
+
+		model    = self.model
+		A        = assemble(lhs(self.u_z_F))
+		b        = assemble(rhs(self.u_z_F))
+		if len(self.u_z_bcs) > 0:
+			for bc in self.u_z_bcs:
+				bc.apply(A, b)
+		solver = LUSolver(self.solve_params['vert_solve_method'])
+		solver.solve(A, self.u_z.vector(), b, annotate=annotate)
+
+		self.assz.assign(model.u.sub(2), self.u_z, annotate=annotate)
+		print_min_max(self.u_z, 'w')
+
+	def solve(self, annotate=False):
+		"""
+		Perform the Newton solve of the first order equations
+		"""
+
+		model  = self.model
+		params = self.solve_params
+
+		# zero out self.velocity for good convergence for any subsequent solves,
+		# e.g. model.L_curve() :
+		model.assign_variable(self.get_unknown(), DOLFIN_EPS, \
+		                      annotate=annotate, cls=self)
+
+		# solve as defined in ``physics.Physics.solve()`` :
+		super(MomentumBPBase, self).solve(annotate)
+
+		# now solve the other parts too :
+		if params['solve_vert_velocity']: self.solve_vert_velocity(annotate)
+		if params['solve_pressure']:      self.solve_pressure(annotate)
+
+	def update_model_var(self, u, annotate=False):
+		"""
+		Update the two horizontal components of velocity in ``self.model.u_x``
+		to those given by ``u``.
+		"""
+		self.assu.assign([self.model.u.sub(0), self.model.u.sub(1)], u, \
+		                 annotate=annotate)
+		print_min_max(self.model.u, 'model.u', cls=self)
+
+
+
+
+
+
+class MomentumBP(MomentumBPBase):
 	"""
 	"""
 	def initialize(self, model, solve_params=None,
@@ -18,38 +296,20 @@ class MomentumBP(Momentum):
 
 		Initilize the residuals and Jacobian for the momentum equations.
 		"""
-		#NOTE: experimental
 		s = "::: INITIALIZING BP VELOCITY PHYSICS :::"
 		print_text(s, cls=self)
 
-		if type(model) != D3Model:
-			s = ">>> MomentumBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
-			print_text(s % type(model) , 'red', 1)
-			sys.exit(1)
-
-		# save the solver parameters :
-		self.solve_params = solve_params
-		self.linear       = linear
-
 		mesh       = model.mesh
-		eps_reg    = model.eps_reg
-		n          = model.n
-		Q          = model.Q
-		Q2         = model.Q2
 		S          = model.S
-		B          = model.B
 		z          = model.x[2]
-		p          = model.p
 		rhob       = model.rhob  #TODO: implement ``bulk`` density effects.
-		rhoi       = model.rhoi
+		rho_i       = model.rho_i
 		rhosw      = model.rhosw
-		R          = model.R
 		g          = model.g
 		beta       = model.beta
-		A          = model.A
-		N          = model.N
+		n          = model.N
 		D          = model.D
-		Fb         = model.Fb
+		B_ring     = model.B_ring
 
 		dOmega     = model.dOmega()
 		dOmega_g   = model.dOmega_g()
@@ -75,67 +335,49 @@ class MomentumBP(Momentum):
 		p0     = 101325
 		T0     = 288.15
 		M      = 0.0289644
-		ci     = model.ci
+		c_i    = model.c_i
+		p      = model.p
+		R      = model.R
 
 		#===========================================================================
 		# define variational problem :
 
 		# momenturm and adjoint :
-		U      = Function(Q2, name = 'U')
-		wf     = Function(Q,  name = 'w')
-		Lam    = Function(Q2, name = 'Lam')
-		dU     = TrialFunction(Q2)
-		Phi    = TestFunction(Q2)
+		u_h    = self.get_unknown()
+		du_h   = self.get_trial_function()
+		v_h    = self.get_test_function()
+		eta    = self.get_viscosity(linear)
 
-		# function assigner goes from the U function solve to U3 vector
-		# function used to save :
-		self.assx  = FunctionAssigner(model.u.function_space(), Q2.sub(0))
-		self.assy  = FunctionAssigner(model.v.function_space(), Q2.sub(1))
-		self.assz  = FunctionAssigner(model.w.function_space(), Q)
-
-		# horizontal velocity :
-		u, v      = U
-		phi, psi  = Phi
-
-		# viscosity :
-		U3      = as_vector([u,v,0])
-		epsdot  = self.effective_strain_rate(U3)
-		if linear:
-			s  = "    - using linear form of momentum using model.U3 in epsdot -"
-			U3_c     = model.U3.copy(True)
-			eta      = self.viscosity(U3_c)
-			Vd       = 2 * eta * epsdot
-		else:
-			s  = "    - using nonlinear form of momentum -"
-			eta      = self.viscosity(U3)
-			Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-		print_text(s, cls=self)
+		# components of horizontal velocity :
+		u_x, u_y = u_h
+		v_x, v_y = v_h
 
 		# the third dimension has been integrated out :
-		gradS_h  = as_vector([S.dx(0), S.dx(1)])
-		N_h      = as_vector([N[0],    N[1]])
+		grad_S_h = as_vector([S.dx(0), S.dx(1)])
+		n_h      = as_vector([n[0],    n[1]])
 
 		# boundary integral terms :
-		p_d    = - 2*eta*(u.dx(0) + v.dx(1))          # BP dynamic pressure
-		p_c    = + rhoi*g*(S - z)                     # cryostatic pressure
+		p_d    = - 2*eta*(u_x.dx(0) + u_y.dx(1))      # BP dynamic pressure
+		p_c    = + rho_i*g*(S - z)                     # cryostatic pressure
 		p_i    = + p_c# + p_d                          # ice pressure
 		p_w    = + rhosw*g*D                          # water pressure
-		p_a    = + p0 * (1 - g*z/(ci*T0))**(ci*M/R)   # air pressure
+		p_a    = + p0 * (1 - g*z/(c_i*T0))**(c_i*M/R)  # air pressure
 		p_e    = + p_i - p_w# - p_a                   # total exterior pressure
 
 		# collect the quasi-first-order stress tensor :
-		sigma  = self.quasi_stress_tensor(U, eta)
+		sigma  = self.quasi_stress_tensor(u_h, eta)
 
 		# residual :
-		self.mom_F = + inner(sigma, grad(Phi)) * dOmega \
-		             + rhoi * g * dot(gradS_h, Phi) * dOmega \
-		             + beta * dot(U, Phi) * dGamma_b \
-		             - p_e * dot(N_h, Phi) * dGamma_bw
+		resid = + inner(sigma, grad(v_h)) * dOmega \
+		        + rho_i * g * dot(grad_S_h, v_h) * dOmega \
+		        + beta * dot(u_h, v_h) * dGamma_b \
+		        - p_e * dot(n_h, v_h) * dGamma_bw
 
+		# apply water pressure if desired :
 		if (not model.use_periodic and use_pressure_bc):
 			s = "    - using water pressure lateral boundary condition -"
 			print_text(s, cls=self)
-			self.mom_F -= p_e * dot(N_h, Phi) * dGamma_lt
+			resid -= p_e * dot(n_h, v_h) * dGamma_lt
 
 		# add lateral boundary conditions :
 		# FIXME (maybe): need correct BP treatment here
@@ -144,252 +386,23 @@ class MomentumBP(Momentum):
 			s = "    - using internal divide lateral stress natural boundary" + \
 			    " conditions -"
 			print_text(s, cls=self)
-			U3_c       = model.U3.copy(True)
-			eta_l      = self.viscosity(U3_c)
-			sig_l      = self.quasi_stress_tensor(U3_c, model.p, eta_l)
-			self.mom_F += dot(sig_l, N) * dGamma_ld
+			eta_l      = self.get_viscosity(linear=True)
+			sig_l      = self.quasi_stress_tensor(model.u, model.p, eta_l)
+			self.resid += dot(sig_l, n_h) * dGamma_ld
 		"""
 
-		# vertical velocity :
-		dw        = TrialFunction(Q)
-		chi       = TestFunction(Q)
+		# if the model is linear, replace the ``Function`` with a ``TrialFunction``:
+		if linear: resid = replace(resid, {u_h : du_h})
 
-		self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2)) * chi * dOmega \
-		           + (u*N[0] + v*N[1] + dw*N[2] - Fb) * chi * dGamma_b \
-
-		#self.w_F = + (u.dx(0) + v.dx(1)) * chi * dOmega \
-		#           - dw * chi.dx(2) * dOmega \
-		#           + dw * chi * N[2] * (dGamma_l + dGamma_s) \
-		#           - (u*N[0] + v*N[1]) * chi * dGamma_b
-
-		# Jacobian :
-		self.mom_Jac = derivative(self.mom_F, U, dU)
-
-		# list of boundary conditions
-		self.mom_bcs  = []
-		self.bc_w     = None
-
-		# add lateral boundary conditions :
-		if use_lat_bcs:
-			s = "    - using lateral boundary conditions -"
-			print_text(s, cls=self)
-
-			self.mom_bcs.append(DirichletBC(Q2.sub(0),
-			                    model.u_lat, model.ff, model.GAMMA_L_DVD))
-			self.mom_bcs.append(DirichletBC(Q2.sub(1),
-			                    model.v_lat, model.ff, model.GAMMA_L_DVD))
-			#self.bc_w = DirichletBC(Q, model.w_lat, model.ff, model.GAMMA_L_DVD)
-
-		self.eta     = eta
-		self.U       = U
-		self.wf      = wf
-		self.dU      = dU
-		self.Phi     = Phi
-		self.Lam     = Lam
-
-	def get_residual(self):
-		"""
-		Returns the momentum residual.
-		"""
-		return self.mom_F
-
-	def get_U(self):
-		"""
-		Return the unknown :class:`dolfin.Function`.
-		"""
-		return self.U
-
-	def velocity(self):
-		"""
-		return the velocity.
-		"""
-		return self.model.U3
-
-	def get_solve_params(self):
-		"""
-		Returns the solve parameters.
-		"""
-		return self.solve_params
-
-	def strain_rate_tensor(self, U):
-		"""
-		return the 'Blatter-Pattyn' simplified strain-rate tensor of <U>.
-		"""
-		u,v,w  = U
-		epi    = 0.5 * (grad(U) + grad(U).T)
-		epi02  = 0.5*u.dx(2)
-		epi12  = 0.5*v.dx(2)
-		epi22  = -u.dx(0) - v.dx(1)  # incompressibility
-		epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02],
-		                    [epi[1,0],  epi[1,1],  epi12],
-		                    [epi02,     epi12,     epi22]])
-		return epsdot
-
-	def effective_strain_rate(self, U):
-		"""
-		return the BP effective strain rate squared.
-		"""
-		epi    = self.strain_rate_tensor(U)
-		epsdot = 0.5 * tr(dot(epi, epi))
-		return epsdot
-
-	def stress_tensor(self):
-		"""
-		return the BP Cauchy stress tensor.
-		"""
-		s   = "::: forming the BP Cauchy stress tensor :::"
-		print_text(s, cls=self)
-		U     = as_vector([self.U[0], self.U[1], self.wf])
-		epi   = self.strain_rate_tensor(U)
-		I     = Identity(3)
-
-		sigma = 2*self.eta*epi - model.p*I
-		return sigma
-
-	def quasi_strain_rate_tensor(self, U):
-		"""
-		return the Dukowicz 2011 quasi-strain tensor.
-		"""
-		u,v    = U
-		epi_ii = 2*u.dx(0) + v.dx(1)
-		epi_ij = 0.5 * (u.dx(1) + v.dx(0))
-		epi_ik = 0.5 * u.dx(2)
-		epi_jj = 2*v.dx(1) + u.dx(0)
-		epi_jk = 0.5 * v.dx(2)
-		epi    = as_matrix([[epi_ii, epi_ij, epi_ik],
-		                    [epi_ij, epi_jj, epi_jk]])
-		return epi
-
-	def quasi_stress_tensor(self, U, eta):
-		"""
-		return the Dukowicz 2011 quasi-stress tensor.
-		"""
-		epsdot = self.quasi_strain_rate_tensor(U)
-		return 2*eta*epsdot
-
-	def default_solve_params(self):
-		"""
-		Returns a set of default solver parameters that yield good performance
-		"""
-		nparams = {'newton_solver' :
-		          {
-		            'linear_solver'            : 'cg',
-		            'preconditioner'           : 'hypre_amg',
-		            'relative_tolerance'       : 1e-9,
-		            'relaxation_parameter'     : 0.7,
-		            'maximum_iterations'       : 25,
-		            'error_on_nonconvergence'  : False,
-		            'krylov_solver'            :
-		            {
-		              'monitor_convergence'   : False,
-		              #'preconditioner' :
-		              #{
-		              #  'structure' : 'same'
-		              #}
-		            }
-		          }}
-		m_params  = {'solver'               : nparams,
-		             'solve_vert_velocity'  : True,
-		             'solve_pressure'       : True,
-		             'vert_solve_method'    : 'mumps'}
-		return m_params
-
-	def solve_pressure(self, annotate=False):
-		"""
-		Solve for the BP pressure 'p'.
-		"""
-		model  = self.model
-
-		# solve for vertical velocity :
-		s  = "::: solving BP pressure :::"
-		print_text(s, cls=self)
-
-		Q       = model.Q
-		rhoi    = model.rhoi
-		g       = model.g
-		S       = model.S
-		z       = model.x[2]
-		eta     = self.eta
-		w       = model.w
-
-		p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2),
-		                  annotate=annotate)
-
-		p_v            = p.vector().get_local()
-		#p_v[p_v < 0.0] = 0.0
-
-		model.assign_variable(model.p, p_v, annotate=annotate, cls=self)
-
-	def solve_vert_velocity(self, annotate=False):
-		"""
-		Perform the Newton solve of the first order equations
-		"""
-		model  = self.model
-
-		# solve for vertical velocity :
-		s  = "::: solving BP vertical velocity :::"
-		print_text(s, cls=self)
-
-		aw       = assemble(lhs(self.w_F))
-		Lw       = assemble(rhs(self.w_F))
-		if self.bc_w != None:
-			self.bc_w.apply(aw, Lw)
-		w_solver = LUSolver(self.solve_params['vert_solve_method'])
-		w_solver.solve(aw, self.wf.vector(), Lw, annotate=annotate)
-		#solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
-		#      solver_parameters = {"linear_solver" : sm})#,
-		#                           "symmetric" : True},
-		#                           annotate=False)
-
-		self.assz.assign(model.w, self.wf, annotate=annotate)
-		print_min_max(self.wf, 'w', cls=self)
-
-	def solve(self, annotate=False):
-		"""
-		Perform the Newton solve of the first order equations
-		"""
-
-		model  = self.model
-		params = self.solve_params
-
-		# solve nonlinear system :
-		rtol   = params['solver']['newton_solver']['relative_tolerance']
-		maxit  = params['solver']['newton_solver']['maximum_iterations']
-		alpha  = params['solver']['newton_solver']['relaxation_parameter']
-		s      = "::: solving BP horizontal velocity with %i max iterations" + \
-		         " and step size = %.1f :::"
-		print_text(s % (maxit, alpha), cls=self)
-
-		# zero out self.velocity for good convergence for any subsequent solves,
-		# e.g. model.L_curve() :
-		model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate, cls=self)
-
-		# compute solution :
-		solve(self.mom_F == 0, self.get_U(), J = self.mom_Jac, bcs = self.mom_bcs,
-		      annotate = annotate, solver_parameters = params['solver'])
-
-		# update the model's velocity container :
-		self.update_model_var(self.get_U(), annotate=annotate)
-
-		if params['solve_vert_velocity']:
-			self.solve_vert_velocity(annotate=annotate)
-		if params['solve_pressure']:
-			self.solve_pressure(annotate=annotate)
-
-	def update_model_var(self, u, annotate=False):
-		"""
-		Update the two horizontal components of velocity in ``self.model.U3``
-		to those given by ``u``.
-		"""
-		u_x, u_y = u.split()
-		self.assx.assign(self.model.u, u_x, annotate=annotate)
-		self.assy.assign(self.model.v, u_y, annotate=annotate)
-		print_min_max(self.model.U3, 'model.U3', cls=self)
+		# set this Physics instance's residual :
+		self.set_residual(resid)
 
 
 
 
-class MomentumDukowiczBP(Momentum):
+
+
+class MomentumDukowiczBP(MomentumBPBase):
 	"""
 	"""
 	def initialize(self, model, solve_params=None,
@@ -403,33 +416,14 @@ class MomentumDukowiczBP(Momentum):
 		s = "::: INITIALIZING DUKOWICZ BP VELOCITY PHYSICS :::"
 		print_text(s, cls=self)
 
-		if type(model) != D3Model:
-			s = ">>> MomentumDukowiczBP REQUIRES A 'D3Model' INSTANCE, NOT %s <<<"
-			print_text(s % type(model) , 'red', 1)
-			sys.exit(1)
-
-		# save the solver parameters :
-		self.solve_params = solve_params
-		self.linear       = linear
-
 		mesh       = model.mesh
-		Q          = model.Q
-		Q2         = model.Q2
 		S          = model.S
-		B          = model.B
-		Fb         = model.Fb
 		z          = model.x[2]
-		W          = model.W
-		R          = model.R
-		rhoi       = model.rhoi
+		rho_i       = model.rho_i
 		rhosw      = model.rhosw
 		g          = model.g
 		beta       = model.beta
-		A          = model.A
-		eps_reg    = model.eps_reg
-		n          = model.n
-		h          = model.h
-		N          = model.N
+		n          = model.N
 		D          = model.D
 
 		dOmega     = model.dOmega()
@@ -459,49 +453,28 @@ class MomentumDukowiczBP(Momentum):
 		# define variational problem :
 
 		# momenturm and adjoint :
-		U      = Function(Q2, name = 'G')
-		Lam    = Function(Q2, name = 'Lam')
-		dU     = TrialFunction(Q2)
-		Phi    = TestFunction(Q2)
-		Lam    = Function(Q2)
+		u_h    = self.get_unknown()
+		v_h    = self.get_test_function()
+		du_h   = self.get_trial_function()
+		Vd     = self.get_viscous_dissipation(linear)
 
-		# vertical velocity :
-		dw     = TrialFunction(Q)
-		chi    = TestFunction(Q)
-		w      = Function(Q, name='w_f')
+		u_x, u_y = u_h
+		u_z      = self.u_z
+		u        = as_vector([u_x, u_y, u_z])
 
-		# function assigner goes from the U function solve to U3 vector
-		# function used to save :
-		self.assx  = FunctionAssigner(model.u.function_space(), Q2.sub(0))
-		self.assy  = FunctionAssigner(model.v.function_space(), Q2.sub(1))
-		self.assz  = FunctionAssigner(model.w.function_space(), Q)
-		phi, psi = Phi
-		du,  dv  = dU
-		u,   v   = U
-
-		# viscous dissipation :
-		U3      = as_vector([u,v,0])
-		epsdot  = self.effective_strain_rate(U3)
-		if linear:
-			s  = "    - using linear form of momentum using model.U3 in epsdot -"
-			U3_c     = model.U3.copy(True)
-			eta      = self.viscosity(U3_c)
-			Vd       = 2 * eta * epsdot
-		else:
-			s  = "    - using nonlinear form of momentum -"
-			eta      = self.viscosity(U3)
-			Vd       = (2*n)/(n+1) * A**(-1/n) * (epsdot + eps_reg)**((n+1)/(2*n))
-		print_text(s, cls=self)
+		# upper surface gradient and lower surface normal :
+		grad_S_h = as_vector([S.dx(0), S.dx(1)])
+		n_h      = as_vector([n[0],    n[1]])
 
 		# potential energy :
-		Pe     = - rhoi * g * dot(U3, grad(S))
+		Pe     = - rho_i * g * dot(u_h, grad_S_h)
 
 		# dissipation by sliding :
-		Sl     = - 0.5 * beta * dot(U3, U3)
+		Sl     = - 0.5 * beta * dot(u_h, u_h)
 
 		# pressure boundary :
-		f_w    = rhoi*g*(S - z) - rhosw*g*D
-		Pb     = f_w * dot(U3, N)
+		f_w    = rho_i*g*(S - z) - rhosw*g*D
+		Pb     = f_w * dot(u_h, n_h)
 
 		# action :
 		A      = (Vd - Pe)*dOmega - Sl*dGamma_b - Pb*dGamma_bw
@@ -517,244 +490,19 @@ class MomentumDukowiczBP(Momentum):
 			s = "    - using internal divide lateral stress natural boundary" + \
 			    " conditions -"
 			print_text(s, cls=self)
-			U3_c       = model.U3.copy(True)
-			eta_l      = self.viscosity(U3_c)
-			sig_l      = self.quasi_stress_tensor(U3_c, model.p, eta_l)
-			A -= dot(dot(sig_l, N), U3) * dGamma_ld
+			eta_l      = self.get_viscosity(linear=True)
+			sig_l      = self.quasi_stress_tensor(model.u, model.p, eta_l)
+			A         -= dot(dot(sig_l, n), u) * dGamma_ld
 
 		# the first variation of the action in the direction of a
-		# test function ; the extremum :
-		self.mom_F = derivative(A, U, Phi)
+		# test function; the extremum :
+		resid = derivative(A, u_h, v_h)
 
-		# the first variation of the extremum in the direction
-		# a tril function ; the Jacobian :
-		self.mom_Jac = derivative(self.mom_F, U, dU)
+		# if the model is linear, replace the ``Function`` with a ``TrialFunction``:
+		if linear: resid = replace(resid, {u_h : du_h})
 
-		self.mom_bcs = []
-
-		self.w_F = + (u.dx(0) + v.dx(1) + dw.dx(2))*chi*dOmega \
-		           + (u*N[0] + v*N[1] + dw*N[2] - Fb)*chi*dGamma_b
-
-		self.eta     = eta
-		self.A       = A
-		self.U       = U
-		self.w       = w
-		self.dU      = dU
-		self.Phi     = Phi
-		self.Lam     = Lam
-
-	def get_residual(self):
-		"""
-		Returns the momentum residual.
-		"""
-		return self.mom_F
-
-	def get_U(self):
-		"""
-		Return the unknown Function.
-		"""
-		return self.U
-
-	def velocity(self):
-		"""
-		return the velocity.
-		"""
-		return self.model.U3
-
-	def get_solve_params(self):
-		"""
-		Returns the solve parameters.
-		"""
-		return self.solve_params
-
-	def strain_rate_tensor(self, U):
-		"""
-		return the Dukowicz 'Blatter-Pattyn' simplified strain-rate tensor of <U>.
-		"""
-		u,v,w  = U
-		epi    = 0.5 * (grad(U) + grad(U).T)
-		epi02  = 0.5*u.dx(2)
-		epi12  = 0.5*v.dx(2)
-		epi22  = -u.dx(0) - v.dx(1)  # incompressibility
-		epsdot = as_matrix([[epi[0,0],  epi[0,1],  epi02],
-		                    [epi[1,0],  epi[1,1],  epi12],
-		                    [epi02,     epi12,     epi22]])
-		return epsdot
-
-	def effective_strain_rate(self, U):
-		"""
-		return the Dukowicz BP effective strain rate squared.
-		"""
-		epi    = self.strain_rate_tensor(U)
-		epsdot = 0.5 * tr(dot(epi, epi))
-		return epsdot
-
-	def stress_tensor(self):
-		"""
-		return the BP Cauchy stress tensor.
-		"""
-		s   = "::: forming the Dukowicz BP Cauchy stress tensor :::"
-		print_text(s, cls=self)
-		U     = as_vector([self.U[0], self.U[1], self.w])
-		epi   = self.strain_rate_tensor(U)
-		I     = Identity(3)
-
-		sigma = 2*self.eta*epi - model.p*I
-		return sigma
-
-	def quasi_strain_rate_tensor(self, U):
-		"""
-		return the Dukowicz 2011 quasi-strain tensor.
-		"""
-		u,v    = U
-		epi_ii = 2*u.dx(0) + v.dx(1)
-		epi_ij = 0.5 * (u.dx(1) + v.dx(0))
-		epi_ik = 0.5 * u.dx(2)
-		epi_jj = 2*v.dx(1) + u.dx(0)
-		epi_jk = 0.5 * v.dx(2)
-		epi    = as_matrix([[epi_ii, epi_ij, epi_ik],
-		                    [epi_ij, epi_jj, epi_jk]])
-		return epi
-
-	def quasi_stress_tensor(self, U, eta):
-		"""
-		return the Dukowicz 2011 quasi-stress tensor.
-		"""
-		epsdot = self.quasi_strain_rate_tensor(U)
-		return 2*eta*epsdot
-
-	def deviatoric_stress_tensor(self, U, eta):
-		"""
-		return the deviatoric part of the Cauchy stress tensor.
-		"""
-		s   = "::: forming the deviatoric part of the Cauchy stress tensor :::"
-		print_text(s, cls=self)
-
-		epi = self.strain_rate_tensor(U)
-		tau = 2 * eta * epi
-		return tau
-
-
-	def default_solve_params(self):
-		"""
-		Returns a set of default solver parameters that yield good performance
-		"""
-		nparams = {'newton_solver' :
-		          {
-		            'linear_solver'            : 'cg',
-		            'preconditioner'           : 'hypre_amg',
-		            'relative_tolerance'       : 1e-9,
-		            'relaxation_parameter'     : 0.7,
-		            'maximum_iterations'       : 25,
-		            'error_on_nonconvergence'  : False,
-		            'krylov_solver'            :
-		            {
-		              'monitor_convergence'   : False,
-		              #'preconditioner' :
-		              #{
-		              #  'structure' : 'same'
-		              #}
-		            }
-		          }}
-		m_params  = {'solver'               : nparams,
-		             'solve_vert_velocity'  : True,
-		             'solve_pressure'       : True,
-		             'vert_solve_method'    : 'mumps'}
-		return m_params
-
-	def solve_pressure(self, annotate=False):
-		"""
-		Solve for the Dukowicz BP pressure to model.p.
-		"""
-		model  = self.model
-
-		# solve for vertical velocity :
-		s  = "::: solving Dukowicz BP pressure :::"
-		print_text(s, cls=self)
-
-		Q       = model.Q
-		rhoi    = model.rhoi
-		g       = model.g
-		S       = model.S
-		z       = model.x[2]
-		eta     = self.eta
-		w       = self.w
-
-		p       = project(rhoi*g*(S - z) + 2*eta*w.dx(2),
-		                  solver_type='iterative',
-		                  annotate=annotate)
-
-		p_v            = p.vector().get_local()
-		p_v[p_v < 0.0] = 0.0
-
-		model.assign_variable(model.p, p_v, annotate=annotate, cls=self)
-
-	def solve_vert_velocity(self, annotate=False):
-		"""on.dumps(x, sort_keys=True, indent=2)
-
-		Perform the Newton solve of the first order equations
-		"""
-		model  = self.model
-
-		# solve for vertical velocity :
-		s  = "::: solving Dukowicz BP vertical velocity :::"
-		print_text(s, cls=self)
-
-		aw       = assemble(lhs(self.w_F))
-		Lw       = assemble(rhs(self.w_F))
-		#if self.bc_w != None:
-		#  self.bc_w.apply(aw, Lw)
-		w_solver = LUSolver(self.solve_params['vert_solve_method'])
-		w_solver.solve(aw, self.w.vector(), Lw, annotate=annotate)
-		#solve(lhs(self.R2) == rhs(self.R2), self.w, bcs = self.bc_w,
-		#      solver_parameters = {"linear_solver" : sm})#,
-		#                           "symmetric" : True},
-		#                           annotate=False)
-
-		self.assz.assign(model.w, self.w, annotate=annotate)
-		print_min_max(self.w, 'w', cls=self)
-
-	def solve(self, annotate=False):
-		"""
-		Perform the Newton solve of the first order equations
-		"""
-
-		model  = self.model
-		params = self.solve_params
-
-		# solve nonlinear system :
-		rtol   = params['solver']['newton_solver']['relative_tolerance']
-		maxit  = params['solver']['newton_solver']['maximum_iterations']
-		alpha  = params['solver']['newton_solver']['relaxation_parameter']
-		s      = "::: solving Dukowicz BP horizontal velocity with %i max" + \
-		         " iterations and step size = %.1f :::"
-		print_text(s % (maxit, alpha), cls=self)
-
-		# zero out self.velocity for good convergence for any subsequent solves,
-		# e.g. model.L_curve() :
-		model.assign_variable(self.get_U(), DOLFIN_EPS, annotate=annotate, cls=self)
-
-		# compute solution :
-		solve(self.mom_F == 0, self.get_U(), J=self.mom_Jac, bcs=self.mom_bcs,
-		      annotate=annotate, solver_parameters=params['solver'])
-
-		# update the model's velocity container :
-		self.update_model_var(self.get_U(), annotate=annotate)
-
-		if params['solve_vert_velocity']:
-			self.solve_vert_velocity(annotate=annotate)
-		if params['solve_pressure']:
-			self.solve_pressure(annotate=annotate)
-
-	def update_model_var(self, u, annotate=False):
-		"""
-		Update the two horizontal components of velocity in ``self.model.U3``
-		to those given by ``u``.
-		"""
-		u_x, u_y = u.split()
-		self.assx.assign(self.model.u, u_x, annotate=annotate)
-		self.assy.assign(self.model.v, u_y, annotate=annotate)
-		print_min_max(self.model.U3, 'model.U3', cls=self)
+		# set this Physics instance's residual :
+		self.set_residual(resid)
 
 
 

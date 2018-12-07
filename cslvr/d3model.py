@@ -281,13 +281,8 @@ class D3Model(Model):
 		                             constrained_domain=self.pBC)
 		self.Q2_flat = FunctionSpace(self.flat_mesh, self.QM2e,
 		                             constrained_domain=self.pBC)
-		self.Q3_flat = FunctionSpace(self.flat_mesh, self.QM3e,
+		self.V_flat  = FunctionSpace(self.flat_mesh, self.Ve,
 		                             constrained_domain=self.pBC)
-
-		self.Q4     = FunctionSpace(self.mesh, self.QM4e,
-		                            constrained_domain=self.pBC)
-		self.QTH3   = FunctionSpace(self.mesh, self.QTH3e,
-		                            constrained_domain=self.pBC)
 
 		s = "    - 3D function spaces created - "
 		print_text(s, cls=self)
@@ -340,7 +335,7 @@ class D3Model(Model):
 
 	def calculate_boundaries(self,
 	                         mask        = None,
-	                         adot        = None,
+	                         S_ring      = None,
 	                         U_mask      = None,
 	                         mark_divide = False,
 	                         contour     = None):
@@ -349,6 +344,9 @@ class D3Model(Model):
 		"""
 		s = "::: calculating boundaries :::"
 		print_text(s, cls=self)
+
+		# save this for physics (momentum classes) :
+		self.mark_divide = mark_divide
 
 		if    (contour is     None and     mark_divide) \
 		   or (contour is not None and not mark_divide):
@@ -375,18 +373,20 @@ class D3Model(Model):
 			mask = Expression('1.0', element=self.Q.ufl_element())
 
 		# default to zero accumulation :
-		if adot == None:
-			adot = Expression('0.0', element=self.Q.ufl_element())
+		if S_ring == None:
+			S_ring = Expression('0.0', element=self.Q.ufl_element())
 
 		# convert constants to expressions that can be evaluated at (x,y,z) :
-		elif type(adot) == Constant or type(adot) == float or type(adot) == int:
-			adot = Expression('adot', adot=adot, degree=0)
+		elif    type(S_ring) == Constant \
+		     or type(S_ring) == float \
+		     or type(S_ring) == int:
+			S_ring = Expression('S_ring', S_ring=S_ring, degree=0)
 
 		# default to U observations everywhere :
 		if U_mask == None:
 			U_mask = Expression('1.0', element=self.Q.ufl_element())
 
-		self.init_adot(adot)
+		self.init_S_ring(S_ring)
 		self.init_mask(mask)
 		self.init_U_mask(U_mask)
 
@@ -403,7 +403,7 @@ class D3Model(Model):
 		#
 		# facet for accumulation :
 		#
-		#   1 = high slope, upward facing ................ positive adot
+		#   1 = high slope, upward facing ................ positive S_ring
 		s = "    - iterating through %i facets - " % self.num_facets
 		print_text(s, cls=self)
 		for f in facets(self.mesh):
@@ -414,9 +414,9 @@ class D3Model(Model):
 			mask_xy  = mask(x_m, y_m, z_m)
 
 			if   n.z() >=  tol and f.exterior():
-				adot_xy   = adot(x_m, y_m, z_m)
+				S_ring_xy   = S_ring(x_m, y_m, z_m)
 				U_mask_xy = U_mask(x_m, y_m, z_m)
-				if adot_xy > 0:
+				if S_ring_xy > 0:
 					self.ff_acc[f] = self.GAMMA_ACC
 				if mask_xy > 1:
 					if U_mask_xy > 0:
@@ -651,7 +651,7 @@ class D3Model(Model):
 		mesh_height = max_height - min_height
 
 		# sigma coordinate :
-		self.init_sigma( project((self.x[2] - min_height) / mesh_height, self.Q) )
+		self.init_sigma( project((self.x[2] - min_height) / mesh_height, self.Q1) )
 
 		s = "    - iterating through %i vertices - " % self.num_vertices
 		print_text(s, cls=self)
@@ -661,6 +661,9 @@ class D3Model(Model):
 			x[2] = x[2] + B(x[0], x[1], x[2])
 		s = "    - done - "
 		print_text(s, cls=self)
+
+		# mark the exterior facets and interior cells appropriately :
+		self.calculate_boundaries()
 
 	def calc_thickness(self):
 		"""
@@ -685,9 +688,9 @@ class D3Model(Model):
 		# solve for vertical velocity :
 		s  = "::: solving hydrostatic pressure :::"
 		print_text(s, cls=cls)
-		rhoi   = self.rhoi
+		rho_i   = self.rho_i
 		g      = self.g
-		p      = self.vert_integrate(rhoi*g, d='down', annotate=annotate)
+		p      = self.vert_integrate(rho_i*g, d='down', annotate=annotate)
 		pv     = p.vector()
 		pv[pv < 0] = 0.0
 		self.assign_variable(self.p, p, annotate=annotate)
@@ -706,8 +709,8 @@ class D3Model(Model):
 		s = "::: extruding function %swards :::" % d
 		print_text(s, cls=self)
 		if type(Q) != FunctionSpace:
-			#Q  = self.Q_non_periodic
-			Q = u.function_space()
+			Q  = self.Q_non_periodic
+			#Q = u.function_space()
 		ff   = self.ff
 		phi  = TestFunction(Q)
 		v    = TrialFunction(Q)
@@ -860,7 +863,7 @@ class D3Model(Model):
 		# 3D mesh and 2D mesh :
 		self.u_flat        = Function(self.Q_flat,  name='u_flat')
 		self.u2_flat       = Function(self.Q2_flat, name='u2_flat')
-		self.u3_flat       = Function(self.Q3_flat, name='u3_flat')
+		self.u3_flat       = Function(self.V_flat,  name='u3_flat')
 
 		# age  :
 		self.age           = Function(self.Q, name='age')
@@ -878,262 +881,6 @@ class D3Model(Model):
 		# surface climate :
 		# TODO: re-implent this (it was taken out somewhere)
 		self.precip        = Function(self.Q, name='precip')
-
-	def thermo_solve(self, momentum, energy, wop_kwargs,
-		               callback           = None,
-		               atol               = 1e2,
-		               rtol               = 1e0,
-		               max_iter           = 50,
-		               iter_save_vars     = None,
-		               post_tmc_save_vars = None,
-		               starting_i         = 1):
-		r"""
-		Perform thermo-mechanical coupling between momentum and energy.
-
-		:param momentum:       momentum instance to couple with ``energy``.
-		:param energy:         energy instance to couple with ``momentum``.
-		                       Currently, the only 3D energy implementation is
-		                       :class:`~energy.Enthalpy`.
-		:param wop_kwargs:     a :py:class:`~dict` of arguments for
-		                       water-optimization method
-		                       :func:`~energy.Energy.optimize_water_flux`
-		:param callback:       a function that is called back at the end of each
-		                       iteration
-		:param atol:           absolute stopping tolerance
-		                       :math:`a_{tol} \leq r = \Vert \theta_n - \theta_{n-1} \Vert`
-		:param rtol:           relative stopping tolerance
-		                       :math:`r_{tol} \leq \Vert r_n - r_{n-1} \Vert`
-		:param max_iter:       maximum number of iterations to perform
-		:param iter_save_vars: python :py:class:`~list` containing functions to
-		                       save each iteration
-		:param starting_i:     if you are restarting this process, you may start
-		                       it at a later iteration.
-
-		:type momentum:        :class:`~momentum.Momentum`
-		:type energy:          :class:`~energy.Energy`
-		"""
-		s    = '::: performing thermo-mechanical coupling with atol = %.2e, ' + \
-		       'rtol = %.2e, and max_iter = %i :::'
-		print_text(s % (atol, rtol, max_iter), cls=self.this)
-
-		from cslvr import Momentum
-		from cslvr import Energy
-
-		# TODO: also make sure these are D3Model momentum and energy classes.
-		if not isinstance(momentum, Momentum):
-			s = ">>> thermo_solve REQUIRES A 'Momentum' INSTANCE, NOT %s <<<"
-			print_text(s % type(momentum) , 'red', 1)
-			sys.exit(1)
-
-		if not isinstance(energy, Energy):
-			s = ">>> thermo_solve REQUIRES AN 'Energy' INSTANCE, NOT %s <<<"
-			print_text(s % type(energy) , 'red', 1)
-			sys.exit(1)
-
-		# mark starting time :
-		t0   = time()
-
-		# ensure that we have a steady-state form :
-		if energy.transient:
-			energy.make_steady_state()
-
-		# retain base install directory :
-		out_dir_i = self.out_dir
-
-		# directory for saving convergence history :
-		d_hist   = self.out_dir + 'tmc/convergence_history/'
-		if not os.path.exists(d_hist) and self.MPI_rank == 0:
-			os.makedirs(d_hist)
-
-		# number of digits for saving variables :
-		n_i  = len(str(max_iter))
-
-		# get the bounds of Fb, the max will be updated based on temperate zones :
-		if energy.energy_flux_mode == 'Fb':
-			bounds = copy(wop_kwargs['bounds'])
-			self.init_Fb_min(bounds[0])
-			self.init_Fb_max(bounds[1])
-			wop_kwargs['bounds']  = (self.Fb_min, self.Fb_max)
-
-		# L_2 erro norm between iterations :
-		abs_error = np.inf
-		rel_error = np.inf
-
-		# number of iterations, from a starting point (useful for restarts) :
-		if starting_i <= 1:
-			counter = 1
-		else:
-			counter = starting_i
-
-		# previous velocity for norm calculation
-		U_prev    = self.theta.copy(True)
-
-		# perform a fixed-point iteration until the L_2 norm of error
-		# is less than tolerance :
-		while abs_error > atol and rel_error > rtol and counter <= max_iter:
-
-			# set a new unique output directory :
-			out_dir_n = 'tmc/%0*d/' % (n_i, counter)
-			self.set_out_dir(out_dir_i + out_dir_n)
-
-			# solve velocity :
-			momentum.solve(annotate=False)
-
-			# update pressure-melting point :
-			energy.calc_T_melt(annotate=False)
-
-			# calculate basal friction heat flux :
-			momentum.calc_q_fric()
-
-			# derive temperature and temperature-melting flux terms :
-			energy.calc_basal_temperature_flux()
-			energy.calc_basal_temperature_melting_flux()
-
-			# solve energy steady-state equations to derive temperate zone :
-			energy.derive_temperate_zone(annotate=False)
-
-			# fixed-point interation for thermal parameters and discontinuous
-			# properties :
-			energy.update_thermal_parameters(annotate=False)
-
-			# calculate the basal-melting rate :
-			energy.solve_basal_melt_rate()
-
-			# always initialize Fb to the zero-energy-flux bc :
-			Fb_v = self.Mb.vector().get_local() * self.rhoi(0) / self.rhow(0)
-			self.init_Fb(Fb_v)
-
-			# update bounds based on temperate zone :
-			if energy.energy_flux_mode == 'Fb':
-				Fb_m_v                 = self.Fb_max.vector().get_local()
-				alpha_v                = self.alpha.vector().get_local()
-				Fb_m_v[:]              = DOLFIN_EPS
-				Fb_m_v[alpha_v == 1.0] = bounds[1]
-				self.init_Fb_max(Fb_m_v)
-
-			# optimize the flux of water to remove abnormally high water :
-			if energy.energy_flux_mode == 'Fb':
-				energy.optimize_water_flux(**wop_kwargs)
-
-			# solve the energy-balance and partition T and W from theta :
-			energy.solve(annotate=False)
-
-			# calculate L_2 norms :
-			abs_error_n  = norm(U_prev.vector() - self.theta.vector(), 'l2')
-			tht_nrm      = norm(self.theta.vector(), 'l2')
-
-			# save convergence history :
-			if counter == 1:
-				rel_error  = abs_error_n
-				if self.MPI_rank == 0:
-					err_a = np.array([abs_error_n])
-					nrm_a = np.array([tht_nrm])
-					np.savetxt(d_hist + 'abs_err.txt',    err_a)
-					np.savetxt(d_hist + 'theta_norm.txt', nrm_a)
-			else:
-				rel_error = abs(abs_error - abs_error_n)
-				if self.MPI_rank == 0:
-					err_n = np.loadtxt(d_hist + 'abs_err.txt')
-					nrm_n = np.loadtxt(d_hist + 'theta_norm.txt')
-					err_a = np.append(err_n, np.array([abs_error_n]))
-					nrm_a = np.append(nrm_n, np.array([tht_nrm]))
-					np.savetxt(d_hist + 'abs_err.txt',     err_a)
-					np.savetxt(d_hist + 'theta_norm.txt',  nrm_a)
-
-			# print info to screen :
-			if self.MPI_rank == 0:
-				s0    = '>>> '
-				s1    = 'TMC fixed-point iteration %i (max %i) done: ' \
-				         % (counter, max_iter)
-				s2    = 'r (abs) = %.2e ' % abs_error
-				s3    = '(tol %.2e), '    % atol
-				s4    = 'r (rel) = %.2e ' % rel_error
-				s5    = '(tol %.2e)'      % rtol
-				s6    = ' <<<'
-				text0 = get_text(s0, 'red', 1)
-				text1 = get_text(s1, 'red')
-				text2 = get_text(s2, 'red', 1)
-				text3 = get_text(s3, 'red')
-				text4 = get_text(s4, 'red', 1)
-				text5 = get_text(s5, 'red')
-				text6 = get_text(s6, 'red', 1)
-				print text0 + text1 + text2 + text3 + text4 + text5 + text6
-
-			# call callback function if set :
-			if callback != None:
-				s    = '::: calling thermo-couple-callback function :::'
-				print_text(s, cls=self.this)
-				callback(counter)
-
-			# save state to unique hdf5 file :
-			if isinstance(iter_save_vars, list):
-				s    = '::: saving variables in list arg iter_save_vars :::'
-				print_text(s, cls=self.this)
-				out_file = self.out_dir + 'tmc.h5'
-				foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-				for var in iter_save_vars:
-					self.save_hdf5(var, f=foutput)
-				foutput.close()
-
-			# update error stuff and increment iteration counter :
-			abs_error    = abs_error_n
-			U_prev       = self.theta.copy(True)
-			counter     += 1
-
-		# reset the base directory ! :
-		self.set_out_dir(out_dir_i)
-
-		# reset the bounds on Fb :
-		if energy.energy_flux_mode == 'Fb':  wop_kwargs['bounds'] = bounds
-
-		# save state to unique hdf5 file :
-		if isinstance(post_tmc_save_vars, list):
-			s    = '::: saving variables in list arg post_tmc_save_vars :::'
-			print_text(s, cls=self.this)
-			out_file = self.out_dir + 'tmc.h5'
-			foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
-			for var in post_tmc_save_vars:
-				self.save_hdf5(var, f=foutput)
-			foutput.close()
-
-		# calculate total time to compute
-		tf = time()
-		s  = tf - t0
-		m  = s / 60.0
-		h  = m / 60.0
-		s  = s % 60
-		m  = m % 60
-		text = "time to thermo-couple: %02d:%02d:%02d" % (h,m,s)
-		print_text(text, 'red', 1)
-
-		# plot the convergence history :
-		s    = "::: convergence info saved to \'%s\' :::"
-		print_text(s % d_hist, cls=self.this)
-		if self.MPI_rank == 0:
-			np.savetxt(d_hist + 'time.txt', np.array([tf - t0]))
-
-			err_a = np.loadtxt(d_hist + 'abs_err.txt')
-			nrm_a = np.loadtxt(d_hist + 'theta_norm.txt')
-
-			# plot iteration error :
-			fig   = plt.figure()
-			ax    = fig.add_subplot(111)
-			ax.set_ylabel(r'$\Vert \theta_{n-1} - \theta_n \Vert$')
-			ax.set_xlabel(r'iteration')
-			ax.plot(err_a, 'k-', lw=2.0)
-			plt.grid()
-			plt.savefig(d_hist + 'abs_err.png', dpi=100)
-			plt.close(fig)
-
-			# plot theta norm :
-			fig = plt.figure()
-			ax  = fig.add_subplot(111)
-			ax.set_ylabel(r'$\Vert \theta_n \Vert$')
-			ax.set_xlabel(r'iteration')
-			ax.plot(nrm_a, 'k-', lw=2.0)
-			plt.grid()
-			plt.savefig(d_hist + 'theta_norm.png', dpi=100)
-			plt.close(fig)
 
 	def update_mesh(self):
 		"""
@@ -1169,7 +916,7 @@ class D3Model(Model):
 		momentum.solve()
 
 		# update the mass model's velocity field :
-		self.assign_to_submesh_variable(u = self.U3,   u_sub = mass.model.U3)
+		self.assign_to_submesh_variable(u = self.u,   u_sub = mass.model.u)
 
 		# save the initial surface :
 		S_0     = self.S.vector().get_local()

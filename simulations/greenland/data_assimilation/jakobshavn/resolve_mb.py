@@ -50,7 +50,7 @@ model.assign_variable(dp, p_v - ph_v)
 phi  = TestFunction(model.Q)
 du   = TrialFunction(model.Q)
 a_n  = du * phi * model.dBed_g
-L_n  = div(model.U3) * phi * model.dBed_g
+L_n  = div(model.u) * phi * model.dBed_g
 
 A_n  = assemble(a_n, keep_diagonal=True, annotate=False)
 B_n  = assemble(L_n, annotate=False)
@@ -66,7 +66,7 @@ nrg.solve_basal_melt_rate()
 nrg.solve_basal_water_flux()
 
 # after every completed adjoining, save the state of these functions :
-tmc_save_vars = [model.Fb,
+tmc_save_vars = [model.B_ring,
                  model.Mb,
                  model.PE,
                  model.p,

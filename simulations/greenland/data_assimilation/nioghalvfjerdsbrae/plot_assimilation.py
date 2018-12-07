@@ -31,8 +31,8 @@ d3model.set_bed_mesh(fmeshes)
 
 # initialize the optimized variables :
 d3model.assign_variable(d3model.beta, f_opt)
-d3model.assign_variable(d3model.U3,   f_opt)
-d3model.init_U_mag(d3model.U3)
+d3model.assign_variable(d3model.u,   f_opt)
+d3model.init_u_mag(d3model.u)
 #d3model.assign_variable(d3model.p,    f_opt)
 
 # create 2D models :
@@ -41,17 +41,17 @@ srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 #d3model.generate_submesh_to_mesh_map(sub_model=srfmodel)
 #d3model.assign_to_submesh_variable(u=d3model.beta,  u_sub=bedmodel.beta)
-#d3model.assign_to_submesh_variable(u=d3model.U3,    u_sub=srfmodel.U3)
-#d3model.assign_to_submesh_variable(u=d3model.U_mag, u_sub=srfmodel.U_mag)
+#d3model.assign_to_submesh_variable(u=d3model.u,    u_sub=srfmodel.u)
+#d3model.assign_to_submesh_variable(u=d3model.u_mag, u_sub=srfmodel.u_mag)
 
 d3model.assign_submesh_variable(bedmodel.beta,  d3model.beta)
-d3model.assign_submesh_variable(srfmodel.U3,    d3model.U3)
-d3model.assign_submesh_variable(srfmodel.U_mag, d3model.U_mag)
+d3model.assign_submesh_variable(srfmodel.u,    d3model.u)
+d3model.assign_submesh_variable(srfmodel.u_mag, d3model.u_mag)
 d3model.assign_submesh_variable(srfmodel.p,     d3model.p)
 
 # figure out some nice-looking contour levels :
-U_min    = srfmodel.U_mag.vector().min()
-U_max    = srfmodel.U_mag.vector().max()
+U_min    = srfmodel.u_mag.vector().min()
+U_max    = srfmodel.u_mag.vector().max()
 beta_min = bedmodel.beta.vector().min()
 beta_max = bedmodel.beta.vector().max()
 
@@ -116,7 +116,7 @@ plt_kwargs['levels']      = U_lvls
 plt_kwargs['cmap']        = 'viridis'
 #plt_kwargs['plot_quiver'] = True
 plt_kwargs['plot_tp']     = False
-plot_variable(u=srfmodel.U3, **plt_kwargs)
+plot_variable(u=srfmodel.u, **plt_kwargs)
 
 beta_lvls = np.array([beta_min, 1e-3, 1e1, 1e2, 1e3, 5e3, 1e4, beta_max])
 plt_kwargs['name']        = 'beta'
@@ -179,7 +179,7 @@ plt_params = {'direc'            : plt_dir,
 #U_lvls = np.array([U_min, 1e1, 1e2, 2.5e2, 4e2, 5e2, 7.5e2, 1e3,
 #                   1.2e3, 2e3, U_max])
 plotIce(bedmach,
-        u      = srfmodel.U_mag,
+        u      = srfmodel.u_mag,
         name   = 'U_nio',
         levels = U_lvls,
         title  = r'$\underline{u}^* |_S^{\mathrm{CSLVR}}$',

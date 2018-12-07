@@ -27,7 +27,7 @@ d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_mask(fdata)
 d3model.init_T_surface(fdata)
-d3model.init_adot(fdata)
+d3model.init_S_ring(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_beta(fthermo)
@@ -50,13 +50,13 @@ d2model = D2Model(bedmesh, out_dir)
 d2model.assign_submesh_variable(d2model.S,         d3model.S)
 d2model.assign_submesh_variable(d2model.B,         d3model.B)
 d2model.assign_submesh_variable(d2model.T_surface, d3model.T_surface)
-d2model.assign_submesh_variable(d2model.adot,      d3model.adot)
+d2model.assign_submesh_variable(d2model.S_ring,      d3model.S_ring)
 d2model.assign_submesh_variable(d2model.u_ob,      d3model.u_ob)
 d2model.assign_submesh_variable(d2model.v_ob,      d3model.v_ob)
 d2model.assign_submesh_variable(d2model.U_ob,      d3model.U_ob)
 d2model.assign_submesh_variable(d2model.beta,      d3model.beta)
-d2model.assign_submesh_variable(d2model.U3,        d3model.U3)
-d2model.assign_submesh_variable(d2model.U_mag,     d3model.U_mag)
+d2model.assign_submesh_variable(d2model.u,        d3model.u)
+d2model.assign_submesh_variable(d2model.u_mag,     d3model.u_mag)
 d2model.assign_submesh_variable(d2model.T,         d3model.T)
 d2model.assign_submesh_variable(d2model.W,         d3model.W)
 d2model.assign_submesh_variable(d2model.Mb,        d3model.Mb)
@@ -65,8 +65,8 @@ d2model.assign_submesh_variable(d2model.Mb,        d3model.Mb)
 srfmodel = D2Model(srfmesh, out_dir)
 
 # put the velocity on it :
-d2model.assign_submesh_variable(srfmodel.U3,        d3model.U3)
-d2model.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
+d2model.assign_submesh_variable(srfmodel.u,        d3model.u)
+d2model.assign_submesh_variable(srfmodel.u_mag,     d3model.u_mag)
 
 ## solve the balance velocity :
 #bv = BalanceVelocity(d2model, kappa=5.0)
@@ -88,7 +88,7 @@ plotIce(drg, d2model.Mb, name='Mb', direc=out_dir,
         cmap=cmap,  scale='log', umin=0.03, umax=4,
         numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)
 
-plotIce(drg, srfmodel.U_mag, name='U', direc=out_dir,
+plotIce(drg, srfmodel.u_mag, name='U', direc=out_dir,
         title=r'$\Vert \mathbf{u}_S \Vert$', basin='jakobshavn',
         cmap=cmap,  scale='log', umin=30.0, umax=1e4,
         numLvls=12, tp=False, tpAlpha=0.5, extend='neither', show=False)

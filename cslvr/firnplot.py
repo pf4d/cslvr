@@ -83,7 +83,7 @@ class FirnPlot(object):
 		r      = rp * 1000
 		Ts     = Ts - 273.15
 		rhos   = rho[0]
-		adot   = model.adot.vector().array()[0]
+		S_ring = model.S_ring.vector().array()[0]
 
 		# y-value :
 		z      = model.z
@@ -165,7 +165,7 @@ class FirnPlot(object):
 			self.rhoax.grid()
 
 			# surface density text :
-			text = r'$\dot{a}$: %.1E i.e.$\frac{\mathrm{m}}{\mathrm{a}}$' % adot
+			text = r'$\mathring{S}$: %.1E i.e.$\frac{\mathrm{m}}{\mathrm{a}}$' % S_ring
 			self.rhoSurf  = self.rhoax.text(rhoh, Tz, text)
 
 			# density profile :
@@ -295,7 +295,7 @@ class FirnPlot(object):
 		Smi    = Smip
 		r      = rp * 1000
 		Ts     = Ts - T_w
-		adot   = model.adot.vector().array()[0]
+		S_ring = model.S_ring.vector().array()[0]
 		t      = model.t / model.spy(0)
 		phi    = 1 - rho/917.0
 		Smi    = 0.0057 / (1 - phi) + 0.017
@@ -338,8 +338,8 @@ class FirnPlot(object):
 			self.phr_dot.set_ydata(zs)
 
 		if config['velocity']:
-			text = r'$\dot{a}$: %.1E i.e.$\frac{\mathrm{m}}{\mathrm{a}}$'
-			self.wSurf.set_text(text % adot)
+			text = r'$\ring{S}$: %.1E i.e.$\frac{\mathrm{m}}{\mathrm{a}}$'
+			self.wSurf.set_text(text % S_ring)
 			self.phw.set_xdata(w)
 			self.phw.set_ydata(z)
 			self.phu.set_xdata(u)

@@ -19,7 +19,7 @@ searise = DataFactory.get_searise()
 
 model.init_S(f)
 model.init_B(f)
-model.init_adot(f)
+model.init_S_ring(f)
 model.init_mask(f)
 model.init_U_ob(f,f)
 model.init_U_mask(f)

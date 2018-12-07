@@ -16,15 +16,12 @@ mesh  = BoxMesh(p1, p2, 15, 15, 5)
 
 model = D3Model(mesh, out_dir = out_dir, use_periodic = True)
 
-surface = Expression('- x[0] * tan(a)', a=a, 
+surface = Expression('- x[0] * tan(a)', a=a,
                      element=model.Q.ufl_element())
-bed     = Expression('- x[0] * tan(a) - 1000.0', a=a, 
+bed     = Expression('- x[0] * tan(a) - 1000.0', a=a,
                      element=model.Q.ufl_element())
 beta    = Expression('bmax/2 + bmax/2 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
                      bmax=bmax, L=L, element=model.Q.ufl_element())
-
-# calculate the boundaries for integration :
-model.calculate_boundaries()
 
 # deform the mesh to the desired geometry :
 model.deform_mesh_to_geometry(surface, bed)
@@ -40,15 +37,15 @@ mom.solve(annotate=False)
 snr   = 100.0
 u     = Function(model.Q)
 v     = Function(model.Q)
-assign(u, model.U3.sub(0))
-assign(v, model.U3.sub(1))
+assign(u, model.u.sub(0))
+assign(v, model.u.sub(1))
 u_o   = u.vector().array()
 v_o   = v.vector().array()
 n     = len(u_o)
-sig   = model.get_norm(as_vector([u, v]), 'linf')[1] / snr
+sig   = model.get_norm(as_vector([u, v]), 'linf') / snr
 print_min_max(snr, 'SNR')
 print_min_max(sig, 'sigma')
-  
+
 u_error = sig * random.randn(n)
 v_error = sig * random.randn(n)
 u_ob    = u_o + u_error
@@ -71,32 +68,32 @@ R_measure = model.dGamma_bg
 control   = model.beta
 
 # form the log cost functional :
-J_log = mom.form_obj_ftn(u        = mom.get_U(),
+J_log = mom.form_obj_ftn(u        = mom.get_unknown(),
                          u_ob     = [model.u_ob,  model.v_ob],
                          integral = J_measure,
-                         kind     = 'log') 
+                         kind     = 'log')
 
 # form the L2 cost functional :
-J_l2  = mom.form_obj_ftn(u        = mom.get_U(),
+J_l2  = mom.form_obj_ftn(u        = mom.get_unknown(),
                          u_ob     = [model.u_ob,  model.v_ob],
                          integral = J_measure,
-                         kind     = 'l2') 
+                         kind     = 'l2')
 
 # total cost functional :
 J = 1e5*J_log + J_l2
 
 # form the regularization functional :
 if reg_typ == 'TV':
-  R = mom.form_reg_ftn(control, integral=R_measure, kind='TV')
+	R = mom.form_reg_ftn(control, integral=R_measure, kind='TV')
 
 elif reg_typ == 'Tikhonov':
-  R = mom.form_reg_ftn(control, integral=R_measure, kind='Tikhonov')
+	R = mom.form_reg_ftn(control, integral=R_measure, kind='Tikhonov')
 
 # regularization parameters :
 alphas = [1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
 
 # optimize for beta :
-adj_kwargs = {'u'                 : mom.get_U(),
+adj_kwargs = {'u'                 : mom.get_unknown(),
               'u_ob'              : [model.u_ob, model.v_ob],
               'I'                 : None,
               'control'           : control,

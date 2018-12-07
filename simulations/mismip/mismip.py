@@ -39,7 +39,7 @@ Hini   =  100.0       # [m] initial ice thickness
 Tm     =  273.15      # [K] melting temperature of ice
 A      =  2e-17       # [Pa^{-n} s^{-1}] flow 
 beta   =  1e8         # [Pa m^{-1/n} a^{-1/n}] friction coefficient
-adot   =  0.3         # [m a^{-a}] surface-mass balance
+S_ring   =  0.3         # [m a^{-a}] surface-mass balance
 tf     =  200.0       # [a] final time
 dt     =  100.0         # [a] time step
 dt_sav =  1.0         # [a] time interval to save data
@@ -47,7 +47,7 @@ cfl    =  0.5         # [--] CFL coefficient
 
 thklim  = 1.0          # [m] thickness limit
 L       = 800000.0     # [m] mesh radius
-Rel     = 450000       # [m] radial distance at which adot becomes negative
+Rel     = 450000       # [m] radial distance at which S_ring becomes negative
 s       = 1e-5         # [a^{-1}] accumulation/ablation coefficient
 Tmin    = 238.15       # [K] minimum temperature (located at divide)
 St      = 1.67e-5      # [K m^{-1}] lapse rate
@@ -115,7 +115,7 @@ model.deform_mesh_to_geometry(S, B)
 
 # mark the exterior facets and interior cells appropriately :
 model.calculate_boundaries(mask        = mask,
-                           adot        = adot,
+                           S_ring        = S_ring,
                            U_mask      = None,
                            mark_divide = True,
                            contour     = ice_front)
@@ -136,7 +136,7 @@ model.init_A(A)                 # constant flow-rate factor
 # update the 2D model variables that we'll need to compute the mass balance :
 model.assign_to_submesh_variable(u = model.S,      u_sub = srfmodel.S)
 model.assign_to_submesh_variable(u = model.B,      u_sub = srfmodel.B)
-model.assign_to_submesh_variable(u = model.adot,   u_sub = srfmodel.adot)
+model.assign_to_submesh_variable(u = model.S_ring,   u_sub = srfmodel.S_ring)
 
 # we can choose any of these to solve our 3D-momentum problem :
 if mdl_odr == 'BP':
@@ -164,7 +164,7 @@ mass = FreeSurface(srfmodel,
 U_file  = XDMFFile(out_dir + 'U.xdmf')
 S_file  = XDMFFile(out_dir + 'S.xdmf')
 def cb_ftn():
-  model.save_xdmf(model.U3, 'U3', U_file)
+  model.save_xdmf(model.u, 'U3', U_file)
   model.save_xdmf(model.S,  'S',  S_file)
 
 # run the transient simulation :

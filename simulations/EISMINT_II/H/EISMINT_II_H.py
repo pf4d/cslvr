@@ -52,13 +52,13 @@ class Beta(Expression):
     values[0] = sqrt(1e9)
 beta = Beta(element=model.Q.ufl_element())
 
-class Adot(Expression):
+class S_ring(Expression):
   Rel = 450000
   s   = 1e-5
   def eval(self,values,x):
     #values[0] = 0.3
     values[0] = min(0.5,self.s*(self.Rel-sqrt(x[0]**2 + x[1]**2)))
-adot = Adot(element=model.Q.ufl_element())
+s_ring = S_ring(element=model.Q.ufl_element())
 
 class SurfaceTemperature(Expression):
   Tmin = 238.15
@@ -70,7 +70,7 @@ T_s = SurfaceTemperature(element=model.Q.ufl_element())
 model.set_geometry(S, B, deform=False)
 model.initialize_variables()
 
-model.init_adot(adot)
+model.init_S_ring(s_ring)
 model.init_beta(beta)
 model.init_T_surface(T_s)
 model.init_H(thklim)

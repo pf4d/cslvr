@@ -17,7 +17,7 @@ model.set_subdomains(f)
 model.init_S(f)
 model.init_B(f)
 model.init_B_err(f)
-model.init_adot(f)
+model.init_S_ring(f)
 model.init_mask(f)
 model.init_U_ob(f,f)
 model.init_U_mask(f)
@@ -34,17 +34,17 @@ Bmin.vector()[:] = model.B.vector()[:] - model.B_err.vector()[:]#1e-323
 #Bmax.vector()[gnd_dofs] += model.B_err.vector()[gnd_dofs]
 #Bmin.vector()[gnd_dofs] -= model.B_err.vector()[gnd_dofs]
 
-Fbmax = Function(model.Q)
-Fbmin = Function(model.Q)
+B_ringmax = Function(model.Q)
+B_ringmin = Function(model.Q)
 
-#Fbmax.vector()[gnd_dofs] = 0
-#Fbmin.vector()[gnd_dofs] = 0
+#B_ringmax.vector()[gnd_dofs] = 0
+#B_ringmin.vector()[gnd_dofs] = 0
 
-#Fbmax.vector()[shf_dofs] = + 1e4
-#Fbmin.vector()[shf_dofs] = - 1e4
+#B_ringmax.vector()[shf_dofs] = + 1e4
+#B_ringmin.vector()[shf_dofs] = - 1e4
 
-Fbmax.vector()[:] = + 1e4
-Fbmin.vector()[:] = - 1e4
+B_ringmax.vector()[:] = + 1e4
+B_ringmin.vector()[:] = - 1e4
 
 # the imposed direction of flow :
 d = (model.u_ob, model.v_ob)
@@ -60,22 +60,22 @@ ubar_opt_save_vars = [model.B, model.Ubar]
 #J_integral = [model.GAMMA_U_GND, model.GAMMA_U_FLT]
 #R_integral = [model.GAMMA_S_GND, model.GAMMA_S_FLT]
 #
-#controls   = [model.B,      model.Fb]
-#bounds     = [(Bmin, Bmax), (Fbmin, Fbmax)]
+#controls   = [model.B,      model.B_ring]
+#bounds     = [(Bmin, Bmax), (B_ringmin, B_ringmax)]
 
 J_measure  = model.dOmega_u
 R_measures = model.dOmega#[model.dOmega_w, model.dOmega_g]
-controls   = model.B#[model.Fb,       model.B]
-bounds     = (Bmin, Bmax)#[(Fbmin, Fbmax), (Bmin, Bmax)]
+controls   = model.B#[model.B_ring,       model.B]
+bounds     = (Bmin, Bmax)#[(B_ringmin, B_ringmax), (Bmin, Bmax)]
 
 # form the cost functional :
-J = bv.form_obj_ftn(u        = bv.get_U(),
+J = bv.form_obj_ftn(u        = bv.get_unknown(),
                     u_ob     = model.U_ob,
                     integral = model.dOmega,
                     kind     = 'l2')
 
 # form the regularization functional :
-R_Fb = bv.form_reg_ftn(c        = model.Fb,
+R_B_ring = bv.form_reg_ftn(c        = model.B_ring,
                        integral = model.dOmega_w,
                        kind     = 'Tikhonov')
 R_B  = bv.form_reg_ftn(c        = model.B,
@@ -83,10 +83,10 @@ R_B  = bv.form_reg_ftn(c        = model.B,
                        kind     = 'Tikhonov')
 
 # this is the objective functional :
-I = J# + 1e1*R_Fb + 1e1*R_B
+I = J# + 1e1*R_B_ring + 1e1*R_B
 
 # perform the optimization :
-bv.optimize(u                 = bv.get_U(),
+bv.optimize(u                 = bv.get_unknown(),
             u_ob              = model.U_ob,
             I                 = I,
             control           = controls,
@@ -100,7 +100,7 @@ bv.optimize(u                 = bv.get_U(),
             post_adj_callback = None)
 
 model.save_xdmf(model.B,    'B_opt')
-model.save_xdmf(model.Fb,   'Fb_opt')
+model.save_xdmf(model.B_ring,   'B_ring_opt')
 model.save_xdmf(model.Ubar, 'Ubar_opt')
 model.save_xdmf(model.U_ob, 'U_ob')
 

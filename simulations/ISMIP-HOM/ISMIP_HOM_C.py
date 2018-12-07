@@ -31,10 +31,10 @@ mom = MomentumDukowiczStokesReduced(model)
 #mom = MomentumDukowiczBrinkerhoffStokes(model)
 mom.solve()
 
-divU = project(div(model.U3))
+divU = project(div(model.u))
 
 model.save_xdmf(model.p,  'p')
-model.save_xdmf(model.U3, 'U')
+model.save_xdmf(model.u, 'U')
 model.save_xdmf(divU,     'divU')
 
 

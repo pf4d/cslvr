@@ -1,12 +1,15 @@
 from cslvr import *
 
+# use inexact integration (for full stokes) :
+parameters['form_compiler']['quadrature_degree']  = 3
+
 # this problem has a few more constants than the last :
 l       = 400000            # width of the domain
 Hmax    = 3000              # thickness at the divide
-S0      = 100               # terminus height above water 
+S0      = 100               # terminus height above water
 B0      = -200              # terminus depth below water
 nb      = 25                # number of basal bumps
-b       = 50                # amplitude of basal bumps 
+b       = 50                # amplitude of basal bumps
 betaMax = 1000              # maximum traction coefficient
 betaMin = 100               # minimum traction coefficient
 Tmin    = 273.15 - 45       # temperature at divide
@@ -18,10 +21,13 @@ p2      = Point( l/2, 1.0)  # upper-right corner
 kx      = 150               # number of x-divisions
 kz      = 50                # number of z-divisions
 mesh    = RectangleMesh(p1, p2, kx, kz)
+order   = 1
+if order == 1: stabilized = True
+else:          stabilized = False
 
 # these control the basal-boundary condition :
-#e_mode  = 'zero_energy'
-e_mode  = 'Fb'
+e_mode  = 'zero_energy'
+#e_mode  = 'B_ring'
 
 # the output directories :
 out_dir = 'ps_results_new/' + e_mode + '/'
@@ -29,7 +35,7 @@ plt_dir = '../../images/tmc/plane_strain_new/' + e_mode + '/'
 
 # this is a lateral mesh problem, defined in the x,z plane.  Here we use
 # linear-Lagrange elements corresponding with order=1 :
-model = LatModel(mesh, out_dir=out_dir, order=1)
+model = LatModel(mesh, out_dir=out_dir, order=order)
 
 # the expressions for out data :
 S = Expression('(Hmax+B0-S0)/2*cos(2*pi*x[0]/l) + (Hmax+B0+S0)/2',
@@ -51,6 +57,8 @@ model.deform_mesh_to_geometry(S, B)
 # mark the facets and cells for proper integration :
 model.calculate_boundaries(mask=None)
 
+model.calc_basal_surface_normal_vector()
+
 # initialize the variables :
 model.init_beta(b)                             # traction
 model.init_T(T)                                # internal temperature
@@ -58,36 +66,36 @@ model.init_T_surface(T)                        # atmospheric temperature
 model.init_Wc(0.03)                            # max basal water content
 model.init_k_0(5e-3)                           # non-advective flux coef.
 model.init_q_geo(model.ghf)                    # geothermal flux
-model.solve_hydrostatic_pressure()             # for pressure-melting 
-model.form_energy_dependent_rate_factor()      # thermo-mech coupling      
+model.solve_hydrostatic_pressure()             # for pressure-melting
+model.form_energy_dependent_rate_factor()      # thermo-mech coupling
 
 # the momentum and energy physics :
-mom = MomentumDukowiczPlaneStrain(model)
+mom = MomentumDukowiczPlaneStrain(model, stabilized=stabilized)
 
-# the energy physics using the chosen basal energy flux mode and 
+# the energy physics using the chosen basal energy flux mode and
 # Galerkin/least-squares stabilization :
 nrg = Enthalpy(model, mom, energy_flux_mode = e_mode,
                stabilization_method = 'GLS')
 
 # thermo-solve callback function, at the end of each TMC iteration :
-def tmc_cb_ftn():
-  nrg.calc_PE()                      # calculate grid Peclet number
-  nrg.calc_vert_avg_strain_heat()    # calc vert. avg. of Q
-  nrg.calc_vert_avg_W()              # calv vert. avg. of W
-  nrg.calc_temp_rat()                # calc ratio of H that is temperate
+def tmc_cb_ftn(counter):
+	nrg.calc_Pe()                      # calculate grid Peclet number
+	nrg.calc_vert_avg_strain_heat()    # calc vert. avg. of Q
+	nrg.calc_vert_avg_W()              # calv vert. avg. of W
+	nrg.calc_temp_rat()                # calc ratio of H that is temperate
 
 # at the end of the TMC procedure, save the state of these functions :
 tmc_save_vars = [model.T,
                  model.W,
-                 model.Fb,
+                 model.B_ring,
                  model.Mb,
                  model.alpha,
                  model.alpha_int,
-                 model.PE,
+                 model.Pe,
                  model.Wbar,
                  model.Qbar,
                  model.temp_rat,
-                 model.U3,
+                 model.u,
                  model.p,
                  model.beta,
                  model.theta]
@@ -100,7 +108,7 @@ wop_kwargs = {'max_iter'            : 25,
               'bounds'              : (DOLFIN_EPS, 100.0),
               'method'              : 'ipopt',
               'adj_callback'        : None}
- 
+
 # thermo-mechanical coupling args :
 tmc_kwargs = {'momentum'            : mom,
               'energy'              : nrg,
@@ -112,7 +120,7 @@ tmc_kwargs = {'momentum'            : mom,
               'iter_save_vars'      : None,
               'post_tmc_save_vars'  : tmc_save_vars,
               'starting_i'          : 1}
-                                    
+
 # thermo_solve :
 model.thermo_solve(**tmc_kwargs)
 
@@ -125,13 +133,13 @@ f.close()
 #===============================================================================
 # plotting :
 
-figsize = (10,2.2)
+figsize = (8,3)
 
-model.init_U_mag(model.U3)
-U_min  = model.U_mag.vector().min()
-U_max  = model.U_mag.vector().max()
+model.init_u_mag(model.u)
+U_min  = model.u_mag.vector().min()
+U_max  = model.u_mag.vector().max()
 U_lvls = array([U_min, 1e2, 1e3, 1e4, 1.5e4, U_max])
-plot_variable(u = model.U_mag, name = 'U_mag', direc = plt_dir,
+plot_variable(u = model.u_mag, name = 'u_mag', direc = plt_dir,
               figsize             = figsize,
               title               = r'$\Vert \mathbf{u} \Vert$',
               cmap                = 'viridis',
@@ -220,14 +228,14 @@ plot_variable(u = model.Mb, name = 'Mb', direc = plt_dir,
               extend              = 'both',
               cb_format           = '%.1f')
 
-Fb_min  = model.Fb.vector().min()
-Fb_max  = model.Fb.vector().max()
-Fb_lvls = array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, Fb_max])
-plot_variable(u = model.Fb, name = 'Fb', direc = plt_dir,
+B_ring_min  = model.B_ring.vector().min()
+B_ring_max  = model.B_ring.vector().max()
+B_ring_lvls = array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, B_ring_max])
+plot_variable(u = model.B_ring, name = 'B_ring', direc = plt_dir,
               figsize             = figsize,
               title               = r'$F_b$',
               cmap                = 'viridis',
-              levels              = None,#Fb_lvls,
+              levels              = None,#B_ring_lvls,
               show                = False,
               ylabel              = r'$z$',
               equal_axes          = False,

@@ -18,7 +18,7 @@ d2 = DataInput(bedmap2,  mesh=mesh)
 S     = d2.get_expression("S",      near=False)
 B     = d2.get_expression("B",      near=False)
 M     = d2.get_expression("mask",   near=True)
-adot  = d1.get_expression("acca",   near=False)
+S_ring  = d1.get_expression("acca",   near=False)
 T_s   = d1.get_expression("temp",   near=False)
 q_geo = d1.get_expression("ghfsr",  near=False)
 u_ob  = dm.get_expression("vx",     near=False)
@@ -26,7 +26,7 @@ v_ob  = dm.get_expression("vy",     near=False)
 U_msk = dm.get_expression("mask",   near=True)
 
 model = D3Model(mesh=mesh, out_dir=out_dir)
-model.calculate_boundaries(mask=M, U_mask=U_msk, adot=adot) 
+model.calculate_boundaries(mask=M, U_mask=U_msk, S_ring=S_ring) 
 model.deform_mesh_to_geometry(S, B)
 
 model.init_T_surface(T_s)
@@ -36,7 +36,7 @@ model.init_U_ob(u_ob, v_ob)
 lst = [model.S,
        model.B,
        model.mask,
-       model.adot,
+       model.S_ring,
        model.T_surface,
        model.q_geo,
        model.u_ob,

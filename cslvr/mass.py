@@ -110,8 +110,8 @@ class UpperFreeSurface(Mass):
 		# interpolate if the function spaces differ :
 		Q       = model.Q
 		S_0     = model.S
-		ring_S  = model.adot
-		u       = model.u
+		S_ring  = model.S_ring
+		u       = model.u_x
 		v       = model.v
 		w       = model.w
 		h       = model.h
@@ -161,7 +161,7 @@ class UpperFreeSurface(Mass):
 		dSdt = (S_f - S_0) / dt
 
 		# LHS of dSdt + Lu(S_mid) = f :
-		f    = w + ring_S#gS*ring_S
+		f    = w + S_ring#gS*S_ring
 
 		# variational residual :
 		self.delta_S  = + (dSdt + Lu(S_mid) - f) * phi * dx \
@@ -179,7 +179,7 @@ class UpperFreeSurface(Mass):
 		self.Lu          = Lu
 		self.f           = f
 
-	def get_U(self):
+	def get_unknown(self):
 		"""
 		Return the unknown Function.
 		"""
@@ -201,11 +201,11 @@ class UpperFreeSurface(Mass):
 
 		# solve the non-linear system :
 		model.assign_variable(self.S_f, DOLFIN_EPS, annotate=annotate, cls=self)
-		solve(self.delta_S == 0, self.get_U(), J=self.mass_Jac,
+		solve(self.delta_S == 0, self.get_unknown(), J=self.mass_Jac,
 		      annotate=annotate, solver_parameters=self.solve_params['nparams'])
 
 		# update the model surface :
-		self.update_model_var(self.get_U(), annotate=annotate)
+		self.update_model_var(self.get_unknown(), annotate=annotate)
 
 		# calculate the surface height time derivative :
 		self.solve_dSdt(annotate=annotate)
@@ -241,7 +241,7 @@ class UpperFreeSurface(Mass):
 
 	def update_model_var(self, u, annotate=False):
 		"""
-		Update the two horizontal components of velocity in ``self.model.U3``
+		Update the two horizontal components of velocity in ``self.model.u``
 		to those given by ``u``.
 		"""
 		# impose the thickness limit and update the model's surface :
@@ -266,9 +266,9 @@ class LowerFreeSurface(Mass):
 	Here,
 
 	* ``B`` is the surface height :math:`B` saved to ``model.B``
-	* ``K_source`` is the tensor corresponding to the source term :math:`f = u_z - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}` with lower-surface accumulation/ablation function located (currently) at ``model.ring_B`` and vertical velocity :math:`u_z`.
+	* ``K_source`` is the tensor corresponding to the source term :math:`f = u_z - \Vert \nabla B - \underline{\hat{k}} \Vert \mathring{B}` with lower-surface accumulation/ablation function located (currently) at ``model.B_ring`` and vertical velocity :math:`u_z`.
 	* ``K_advection`` is the tensor corresponding to the advective part of the free-surface equation :math:`\underline{u} \cdot \nabla B`
-	* ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in stabilization term the direction of velocity located (currently) at ``model.U3``
+	* ``K_stab_u`` is the tensor corresponding to the streamline/Petrov-Galerkin in stabilization term the direction of velocity located (currently) at ``model.u``
 
 	"""
 	def __init__(self, model,
@@ -298,8 +298,8 @@ class LowerFreeSurface(Mass):
 		Q       = model.Q
 		rhob    = model.rhob
 		B_0     = model.B
-		ring_B  = model.Fb
-		u       = model.u
+		B_ring  = model.B_ring
+		u       = model.u_x
 		v       = model.v
 		w       = model.w
 		h       = model.h
@@ -335,7 +335,7 @@ class LowerFreeSurface(Mass):
 		dBdt = (B - B_0) / dt
 
 		# LHS of dSdt + Lu(S_mid) = f :
-		f  = w - gB*ring_B
+		f  = w - gB*B_ring
 
 		# bilinear form :
 		self.delta_B = + (dBdt + Lu(B_mid) - f) * phi * dx \
@@ -408,14 +408,14 @@ class MassHybrid(Mass):
 			self.solve_params = solve_params
 
 		# CONSTANTS
-		rho    = model.rhoi
+		rho    = model.rho_i
 		g      = model.g
 		n      = model.n(0)
 
 		Q      = model.Q
 		B      = model.B
 		beta   = model.beta
-		ring_S = model.adot
+		S_ring = model.S_ring
 		ubar_c = model.ubar_c
 		vbar_c = model.vbar_c
 		H      = model.H
@@ -484,7 +484,7 @@ class MassHybrid(Mass):
 		self.R_thick = + (H-H0) / dt * xsi * dx \
 		               + D * dot(grad(S), grad(xsi)) * dx \
 		               + (Dx(ubar_c*H,0) + Dx(vbar_c*H,1)) * xsi * dx \
-		               - ring_S * xsi * dx
+		               - S_ring * xsi * dx
 
 		# Jacobian :
 		self.J_thick = derivative(self.R_thick, H, dH)
@@ -610,7 +610,7 @@ class FirnMass(Mass):
 		model  = self.model
 
 		zOld   = model.z
-		lnew   = append(0, model.lini) * model.rhoin / model.rhop
+		lnew   = append(0, model.lini) * model.rho_in / model.rhop
 		zSum   = model.B
 		zNew   = zeros(model.n)
 		for i in range(model.n):

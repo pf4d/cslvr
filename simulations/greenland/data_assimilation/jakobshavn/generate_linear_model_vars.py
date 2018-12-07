@@ -31,7 +31,7 @@ d3model.init_S(fdata)
 d3model.init_B(fdata)
 d3model.init_mask(fdata)
 d3model.init_T_surface(fdata)
-d3model.init_adot(fdata)
+d3model.init_S_ring(fdata)
 d3model.init_U_ob(fdata, fdata)
 d3model.init_U_mask(fdata)
 d3model.init_beta(finv)
@@ -64,13 +64,13 @@ d2model = D2Model(d3model.bedmesh, out_dir)
 d2model.assign_submesh_variable(d2model.S,         d3model.S)
 d2model.assign_submesh_variable(d2model.B,         d3model.B)
 d2model.assign_submesh_variable(d2model.T_surface, d3model.T_surface)
-d2model.assign_submesh_variable(d2model.adot,      d3model.adot)
+d2model.assign_submesh_variable(d2model.S_ring,      d3model.S_ring)
 d2model.assign_submesh_variable(d2model.u_ob,      d3model.u_ob)
 d2model.assign_submesh_variable(d2model.v_ob,      d3model.v_ob)
 d2model.assign_submesh_variable(d2model.U_ob,      d3model.U_ob)
 d2model.assign_submesh_variable(d2model.beta,      d3model.beta)
-d2model.assign_submesh_variable(d2model.U3,        d3model.U3)
-d2model.assign_submesh_variable(d2model.U_mag,     d3model.U_mag)
+d2model.assign_submesh_variable(d2model.u,        d3model.u)
+d2model.assign_submesh_variable(d2model.u_mag,     d3model.u_mag)
 d2model.assign_submesh_variable(d2model.T,         d3model.T)
 d2model.assign_submesh_variable(d2model.W,         d3model.W)
 d2model.assign_submesh_variable(d2model.Mb,        d3model.Mb)
@@ -85,8 +85,8 @@ d2model.assign_submesh_variable(d2model.tau_jk,    d3model.tau_jk)
 srfmodel = D2Model(d3model.srfmesh, out_dir)
 
 # put the velocity on it :
-d2model.assign_submesh_variable(srfmodel.U3,        d3model.U3)
-d2model.assign_submesh_variable(srfmodel.U_mag,     d3model.U_mag)
+d2model.assign_submesh_variable(srfmodel.u,        d3model.u)
+d2model.assign_submesh_variable(srfmodel.u_mag,     d3model.u_mag)
 
 # solve the balance velocity :
 bv = BalanceVelocity(d2model, kappa=5.0)
@@ -111,10 +111,10 @@ d2model.Ubar20.rename('Ubar20', '')
 
 # collect the data :
 Q      = d2model.Q
-u,v,w  = d2model.U3.split(True)
+u,v,w  = d2model.u.split(True)
 S      = d2model.S 
 B      = d2model.B
-adot   = d2model.adot
+S_ring   = d2model.S_ring
 qgeo   = d2model.q_geo
 beta   = d2model.beta
 Mb     = d2model.Mb
@@ -145,7 +145,7 @@ dHdy   = project((S - B).dx(1), Q)
 beta_v   = beta.vector().array()
 S_v      = S.vector().array()
 B_v      = B.vector().array()
-adot_v   = adot.vector().array()
+S_ring_v   = S_ring.vector().array()
 qgeo_v   = qgeo.vector().array()
 Mb_v     = Mb.vector().array()
 Tb_v     = Tb.vector().array()
@@ -169,7 +169,7 @@ H_v    = S_v - B_v
 dHdx_v = dHdx.vector().array()
 dHdy_v = dHdy.vector().array()
 gradH  = sqrt(dHdx_v**2 + dHdy_v**2 + 1e-16)
-U_mag  = sqrt(u_v**2 + v_v**2 + 1e-16)
+u_mag  = sqrt(u_v**2 + v_v**2 + 1e-16)
 dSdx_v = dSdx.vector().array()
 dSdy_v = dSdy.vector().array()
 gradS  = sqrt(dSdx_v**2 + dSdy_v**2 + 1e-16)
@@ -183,8 +183,8 @@ taux = -917.0 * 9.8 * H_v * dSdx_v
 tauy = -917.0 * 9.8 * H_v * dSdy_v
 tau_mag = sqrt(taux**2 + tauy**2 + 1e-16)
 
-uhat = u_v / U_mag
-vhat = v_v / U_mag
+uhat = u_v / u_mag
+vhat = v_v / u_mag
 
 dBdi = dBdx_v * uhat + dBdy_v * vhat
 dBdj = dBdx_v * vhat - dBdy_v * uhat
@@ -218,7 +218,7 @@ v3   = D
 v4   = gradB
 v5   = H_v
 v6   = qgeo_v
-v7   = adot_v
+v7   = S_ring_v
 v8   = Tb_v
 v9   = Mb_v
 v10  = u_v
@@ -227,7 +227,7 @@ v12  = w_v
 v13  = log(Ubar5_v + DOLFIN_EPS)
 v14  = log(Ubar10_v + DOLFIN_EPS)
 v15  = log(Ubar20_v + DOLFIN_EPS)
-v16  = log(U_mag + DOLFIN_EPS)
+v16  = log(u_mag + DOLFIN_EPS)
 v17  = tau_ii_v
 v18  = tau_ij_v
 v19  = tau_ik_v

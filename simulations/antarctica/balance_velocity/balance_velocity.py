@@ -26,7 +26,7 @@ bm1  = DataFactory.get_bedmap1()
 
 model.init_S(f)
 model.init_B(f)
-model.init_adot(f)
+model.init_S_ring(f)
 model.init_mask(f)
 model.init_U_ob(f,f)
 model.init_U_mask(f)

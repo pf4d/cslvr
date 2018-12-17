@@ -7,7 +7,7 @@ import numpy                      as np
 parameters['form_compiler']['quadrature_degree'] = 2
 
 # this should be obvious what this does :
-plot_analytic_solution = True
+plot_analytic_solution = False
 
 # output directiories :
 mdl_odr = 'FS'

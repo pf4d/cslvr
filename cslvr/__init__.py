@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 __version__    = '2017.2.0'
 __author__     = 'Evan Cummings, Douglas Brinkerhoff, Jesse Johnson, Aaron St. George'
 __license__    = 'LGPL-3'
@@ -33,24 +34,24 @@ from dolfin              import *
 from dolfin_adjoint      import *
 
 # cslvr classes :
-from age                 import *
-from balancevelocity     import *
-from d1model             import *
-from d2model             import *
-from d3model             import *
-from datafactory         import *
-from energy              import *
-from helper              import *
-from inputoutput         import *
-from mass                import *
-from meshing             import *
-from model               import *
-from momentumbp          import *
-from momentumfirn        import *
-from momentumhybrid      import *
-from momentumplanestrain import *
-from momentumstokes      import *
-from momentum            import *
-from physics             import *
-from stressbalance       import *
-from surfacemassbalance  import *
+from .age                 import *
+from .balancevelocity     import *
+from .d1model             import *
+from .d2model             import *
+from .d3model             import *
+from .datafactory         import *
+from .energy              import *
+from .helper              import *
+from .inputoutput         import *
+from .mass                import *
+from .meshing             import *
+from .model               import *
+from .momentumbp          import *
+from .momentumfirn        import *
+from .momentumhybrid      import *
+from .momentumplanestrain import *
+from .momentumstokes      import *
+from .momentum            import *
+from .physics             import *
+from .stressbalance       import *
+from .surfacemassbalance  import *

@@ -1,3 +1,6 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import range
 from dolfin                 import *
 from dolfin_adjoint         import *
 from cslvr.inputoutput      import get_text, print_text, print_min_max
@@ -506,7 +509,7 @@ class Energy(Physics):
 				text1 = get_text(s1 % (counter, max_iter), 'red')
 				text2 = get_text(s2, 'red', 1)
 				if MPI.rank(mpi_comm_world())==0:
-					print text0 + text1 + text2
+					print(text0 + text1 + text2)
 				counter += 1
 			s    = '::: adjoint obj. gradient post callback function :::'
 			print_text(s, cls=self)
@@ -1209,7 +1212,7 @@ class Enthalpy(Energy):
 				text4 = get_text(s4, 'red', 1)
 				text5 = get_text(s5, 'red')
 				text6 = get_text(s6, 'red', 1)
-				print text0 + text1 + text2 + text3 + text4 + text5 + text6
+				print(text0 + text1 + text2 + text3 + text4 + text5 + text6)
 
 			# update error stuff and increment iteration counter :
 			abs_error    = abs_error_n

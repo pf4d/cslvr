@@ -1,3 +1,4 @@
+from __future__        import division
 from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.physics     import Physics

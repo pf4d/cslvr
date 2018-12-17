@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import zip
+from builtins import object
 from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
 from pylab import *
 

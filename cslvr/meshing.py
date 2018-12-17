@@ -1,3 +1,9 @@
+from __future__ import division
+from builtins import input
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 from PIL               import Image
 from gmshpy            import GModel, GmshSetOption# FlGui
 from scipy.interpolate import RectBivariateSpline
@@ -156,7 +162,7 @@ class MeshGenerator(object):
 		s    = "::: eliminating intersections :::"
 		print_text(s, self.color)
 
-		class Point:
+		class Point(object):
 			def __init__(self,x,y):
 				self.x = x
 				self.y = y
@@ -431,8 +437,8 @@ class MeshGenerator(object):
 		"""
 		contour = self.longest_cont
 
-		p1 = Polygon(zip(contour[:,0],     contour[:,1]))
-		p2 = Polygon(zip(new_contour[:,0], new_contour[:,1]))
+		p1 = Polygon(list(zip(contour[:,0],     contour[:,1])))
+		p2 = Polygon(list(zip(new_contour[:,0], new_contour[:,1])))
 
 		intersection = p1.intersection(p2)
 
@@ -444,7 +450,7 @@ class MeshGenerator(object):
 		else:
 			p3 = intersection
 
-		contour_intersect = zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1])
+		contour_intersect = list(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
 		self.longest_cont = np.array(contour_intersect)[1:]
 		s    = "::: intersection contour created, length %s nodes :::"
 		print_text(s % np.shape(self.longest_cont)[0], self.color)
@@ -464,7 +470,7 @@ class MeshGenerator(object):
 		p1 = cascaded_union(polygons)
 		p3 = cascaded_union(p1)
 
-		xycoords_buf = np.array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+		xycoords_buf = np.array(list(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1])))
 		self.longest_cont = xycoords_buf
 
 	def convert_msh_to_xml(self, mshfile, xmlfile):
@@ -918,7 +924,7 @@ class GetBasin(object):
 		print_text(self.imagefile, self.color)
 		image = Image.open(self.imagefile)
 		image.show()
-		self.basin = raw_input("Input the numerical code of the basin.\n")
+		self.basin = eval(input("Input the numerical code of the basin.\n"))
 
 	def retrive_basin_latlong(self):
 		"""
@@ -1068,10 +1074,10 @@ class GetBasin(object):
 
 		# union of our original polygon and convex hull
 		p1 = cascaded_union(polygons)
-		p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+		p2 = Polygon(list(zip(xycoords[:,0],xycoords[:,1])))
 		p3 = cascaded_union([p1,p2])
 
-		xycoords_buf = np.array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+		xycoords_buf = np.array(list(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1])))
 		self.plot_coords["xycoords_buf"] = xycoords_buf
 		self.xycoords = xycoords_buf
 		s    = "::: extended contour created of length %i :::" % len(self.xycoords)
@@ -1096,10 +1102,10 @@ class GetBasin(object):
 
 		# union of our original polygon and convex hull
 		p1 = cascaded_union(polygons)
-		p2 = Polygon(zip(xycoords[:,0],xycoords[:,1]))
+		p2 = Polygon(list(zip(xycoords[:,0],xycoords[:,1])))
 		p3 = cascaded_union([p1,p2])
 
-		xycoords_buf = np.array(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1]))
+		xycoords_buf = np.array(list(zip(p3.exterior.xy[:][0], p3.exterior.xy[:][1])))
 		self.plot_coords["xycoords_buf"] = xycoords_buf
 		self.xycoords = xycoords_buf
 
@@ -1117,8 +1123,8 @@ class GetBasin(object):
 
 		xycoords = self.xycoords
 
-		p1 = Polygon( zip(xycoords[:,0], xycoords[:,1]) )
-		p2 = Polygon( zip(other[:,0],    other[:,1]   ) )
+		p1 = Polygon( list(zip(xycoords[:,0], xycoords[:,1])) )
+		p2 = Polygon( list(zip(other[:,0],    other[:,1]   )) )
 
 		intersection = p1.intersection(p2)
 
@@ -1130,8 +1136,8 @@ class GetBasin(object):
 		else:
 			p3 = intersection
 
-		xycoords_intersect = np.array(zip(p3.exterior.xy[:][0], \
-		                               p3.exterior.xy[:][1]))
+		xycoords_intersect = np.array(list(zip(p3.exterior.xy[:][0], \
+		                               p3.exterior.xy[:][1])))
 
 		self.plot_coords["xycoords_intersect"] = xycoords_intersect
 		self.xycoords = xycoords_intersect

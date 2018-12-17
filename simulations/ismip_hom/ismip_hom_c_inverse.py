@@ -1,5 +1,6 @@
-from cslvr  import *
-from scipy  import random
+from __future__ import division
+from cslvr      import *
+from scipy      import random
 
 # out directories for saving data and images :
 reg_typ = 'TV'

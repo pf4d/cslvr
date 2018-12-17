@@ -1,3 +1,7 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
 from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.inputoutput import print_text, get_text, print_min_max
@@ -240,7 +244,7 @@ class D1Model(Model):
 				Wes   = (omg_s - Wmi) / (psis - Wmi)
 				kws   = ks * Wes**3.0
 				Ks    = kws * rho_w * g / etaw
-				print "::::::::::::::::::::::::KS", Ks, rs, rhos, omg_s
+				print("::::::::::::::::::::::::KS", Ks, rs, rhos, omg_s)
 				values[0] = Ks
 		self.W_S = BCW(0.0, 0.0, 0.0)
 		#self.W_S = BCWFlux(0.0, 0.0, 0.0, 0.0)

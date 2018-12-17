@@ -1,3 +1,9 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from dolfin               import *
 from dolfin_adjoint       import *
 from copy                 import copy
@@ -2714,7 +2720,7 @@ class Model(object):
 			if self.MPI_rank == 0:
 				string = "Newton iteration %d: r (abs) = %.3e (tol = %.3e) " \
 				         +"r (rel) = %.3e (tol = %.3e)"
-				print string % (nIter, residual, atol, rel_res, rtol)
+				print(string % (nIter, residual, atol, rel_res, rtol))
 
 			# call the callback function, if desired :
 			if cb_ftn is not None:
@@ -2918,7 +2924,7 @@ class Model(object):
 				text4 = get_text(s4, 'red', 1)
 				text5 = get_text(s5, 'red')
 				text6 = get_text(s6, 'red', 1)
-				print text0 + text1 + text2 + text3 + text4 + text5 + text6
+				print(text0 + text1 + text2 + text3 + text4 + text5 + text6)
 
 			# save state to unique hdf5 file :
 			if isinstance(post_iter_save_vars, list):
@@ -3238,7 +3244,7 @@ class Model(object):
 				text4 = get_text(s4, 'red', 1)
 				text5 = get_text(s5, 'red')
 				text6 = get_text(s6, 'red', 1)
-				print text0 + text1 + text2 + text3 + text4 + text5 + text6
+				print(text0 + text1 + text2 + text3 + text4 + text5 + text6)
 
 			# call callback function if set :
 			if callback != None:

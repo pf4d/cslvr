@@ -1,3 +1,7 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from scipy.io          import loadmat
 from scipy.interpolate import RectBivariateSpline, griddata, interp2d, interp1d
 from numpy             import array, linspace, ones, isnan, all, zeros, shape, \
@@ -344,7 +348,7 @@ class DataInput(object):
 		self.nx    = len(self.x)
 		self.ny    = len(self.y)
 
-		for i in self.data.keys():
+		for i in list(self.data.keys()):
 			self.data[i] = self.data[i][self.good_y, :          ]
 			self.data[i] = self.data[i][:,           self.good_x]
 
@@ -548,7 +552,7 @@ def print_text(text, color=None, atrb=0, cls=None):
 	:type cls: object
 	"""
 	if MPI.rank(mpi_comm_world())==0:
-		print get_text(text, color, atrb, cls)
+		print(get_text(text, color, atrb, cls))
 
 
 

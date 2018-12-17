@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import zip
+from builtins import range
 from dolfin               import *
 from dolfin_adjoint       import *
 from copy                 import deepcopy
@@ -188,9 +191,9 @@ class MomentumStokesBase(Momentum):
 		m_y_bc = DirichletBC(self.Q.sub(0).sub(1), 2, model.ff, model.GAMMA_B_GND)
 		m_z_bc = DirichletBC(self.Q.sub(0).sub(2), 3, model.ff, model.GAMMA_B_GND)
 
-		b_x_dofs = np.array(m_x_bc.get_boundary_values().keys(), dtype=np.intc)
-		b_y_dofs = np.array(m_y_bc.get_boundary_values().keys(), dtype=np.intc)
-		b_z_dofs = np.array(m_z_bc.get_boundary_values().keys(), dtype=np.intc)
+		b_x_dofs = np.array(list(m_x_bc.get_boundary_values().keys()), dtype=np.intc)
+		b_y_dofs = np.array(list(m_y_bc.get_boundary_values().keys()), dtype=np.intc)
+		b_z_dofs = np.array(list(m_z_bc.get_boundary_values().keys()), dtype=np.intc)
 
 		b_x_dofs.sort()
 		b_y_dofs.sort()

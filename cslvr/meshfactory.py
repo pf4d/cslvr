@@ -1,3 +1,4 @@
+from builtins import object
 from dolfin import Mesh
 import inspect
 import os

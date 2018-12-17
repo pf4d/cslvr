@@ -1,3 +1,13 @@
+from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import str
+from builtins import chr
+from builtins import zip
+from builtins import range
+from builtins import object
 from dolfin                  import *
 from dolfin_adjoint          import *
 from pyproj                  import *
@@ -22,7 +32,7 @@ def raiseNotDefined():
 	method   = inspect.stack()[1][3]
 
 	text = "*** Method not implemented: %s at line %s of %s"
-	print text % (method, line, fileName)
+	print(text % (method, line, fileName))
 	sys.exit(1)
 
 
@@ -59,7 +69,7 @@ def download_file(url, direc, folder, extract=False):
 	:type folder:   string
 	:type extract:  bool
 	"""
-	import urllib2
+	import urllib.request, urllib.error, urllib.parse
 	import sys
 	import os
 	import zipfile
@@ -74,13 +84,13 @@ def download_file(url, direc, folder, extract=False):
 	# url file info :
 	fn   = url.split('/')[-1]
 	fn   = fn.split('?')[0]
-	u    = urllib2.urlopen(url)
+	u    = urllib.request.urlopen(url)
 	f    = open(direc + fn, 'wb')
 	meta = u.info()
 	fs   = int(meta.getheaders("Content-Length")[0])
 
 	s    = "Downloading: %s Bytes: %s" % (fn, fs)
-	print s
+	print(s)
 
 	fs_dl  = 0
 	blk_sz = 8192
@@ -143,7 +153,7 @@ class IsotropicMeshRefiner(object):
 		  :hmax:         Maximum diameter of the cells
 
 		"""
-		print "refining %.2f%% of max error" % (REFINE_RATIO * 100)
+		print("refining %.2f%% of max error" % (REFINE_RATIO * 100))
 		mesh = self.mesh
 
 		V    = FunctionSpace(mesh, "CG", 1)
@@ -200,7 +210,7 @@ class IsotropicMeshRefiner(object):
 
 		idx   = int(len(e_list_calc) * REFINE_RATIO)
 		e_mid = sorted(e_list, reverse=True)[idx]
-		print "error midpoint :", e_mid
+		print("error midpoint :", e_mid)
 
 		cell_markers = MeshFunction("bool", mesh, mesh.topology().dim())
 		for c in cells(mesh):
@@ -234,7 +244,7 @@ class IsotropicMeshRefiner(object):
 		output.write("Merge \"2dmesh.msh\";\n")
 		output.write("Extrude {0,0,1} {Surface{0}; Layers{" + layers + "};}")
 		output.close()
-		print "Extruding mesh (This could take a while)."
+		print("Extruding mesh (This could take a while).")
 
 		string = "mpirun -np {0:d} gmsh " + workspace_path + "/2dmesh.geo -3 -o " \
 		         + workspace_path + "/3dmesh.msh -format msh -v 0"
@@ -299,7 +309,7 @@ class AnisotropicMeshRefiner(object):
 			exterior_point[vert[0]] = ext
 			exterior_point[vert[1]] = ext
 
-		for item in adjacent_points.iteritems():
+		for item in list(adjacent_points.items()):
 			index, data = item
 			x       = coord[index,0]
 			y       = coord[index,1]
@@ -500,7 +510,7 @@ class AnisotropicMeshRefiner(object):
 		output.write("Merge \"2dmesh.msh\";\n")
 		output.write("Extrude {0,0,1} {Surface{0}; Layers{" + layers + "};}")
 		output.close()
-		print "Extruding mesh (This could take a while)."
+		print("Extruding mesh (This could take a while).")
 
 		string = "mpirun -np {0:d} gmsh " + workspace_path + "/2dmesh.geo -3 -o " \
 		         + workspace_path + "/3dmesh.msh -format msh -v 0"
@@ -558,7 +568,7 @@ def write_gmsh(mesh,path):
 		#elif cell_type == 3:
 		#  output.write("{0:d} 4 0 {1:d} {2:d} {3:d} {4:d}\n".format(ii+1,int(cell[0]+1),int(cell[1]+1),int(cell[2]+1),int(cell[3]+1)))
 		else:
-			print "Unknown cell type"
+			print("Unknown cell type")
 
 	output.write("$EndElements\n")
 	output.close()
@@ -904,8 +914,8 @@ def plotIce(di, u, name, direc,
 		y     = coord[:,1]
 
 	# get the projection info :
-	if isinstance(di, dict) and 'pyproj_Proj' in di.keys() \
-		 and 'continent' in di.keys():
+	if isinstance(di, dict) and 'pyproj_Proj' in list(di.keys()) \
+		 and 'continent' in list(di.keys()):
 		lon,lat = di['pyproj_Proj'](x, y, inverse=True)
 		cont    = di['continent']
 	elif isinstance(di, DataInput):

@@ -1,3 +1,8 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.helper      import raiseNotDefined
@@ -510,7 +515,7 @@ class Physics(object):
 				text1 = get_text(s1 % (counter, max_iter), 'red')
 				text2 = get_text(s2, 'red', 1)
 				if MPI.rank(mpi_comm_world())==0:
-					print text0 + text1 + text2
+					print(text0 + text1 + text2)
 				counter += 1
 
 				# print functional values :
@@ -554,7 +559,7 @@ class Physics(object):
 				text1 = get_text(s1 % (counter, max_iter), 'red')
 				text2 = get_text(s2, 'red', 1)
 				if MPI.rank(mpi_comm_world())==0:
-					print text0 + text1 + text2
+					print(text0 + text1 + text2)
 				counter += 1
 
 				# NOTE: the variables ``u_opt`` and ``control`` were updated by the

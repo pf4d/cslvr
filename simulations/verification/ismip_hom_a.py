@@ -1,3 +1,4 @@
+from __future__               import division
 from cslvr                    import *
 from fenics_viz               import plot_variable
 from sympy.utilities.lambdify import lambdify, implemented_function
@@ -7,7 +8,7 @@ import numpy                      as np
 parameters['form_compiler']['quadrature_degree'] = 2
 
 # this should be obvious what this does :
-plot_analytic_solution = False
+plot_analytic_solution = True
 
 # output directiories :
 mdl_odr = 'FS'
@@ -15,7 +16,7 @@ out_dir = './results/' + mdl_odr + '/'
 plt_dir = './images/'  + mdl_odr + '/'
 
 order  = 2
-linear = False
+linear = True
 if order > 1:  stab = False
 else:          stab = True
 
@@ -46,8 +47,8 @@ def s(x,y):
 
 # lower surface
 def b(x,y):
-	return s(x,y) - b_bar + amp * sp.sin(2*pi*x/L)# * sp.sin(2*pi*y/L)
-	#return s(x,y) - b_bar
+	#return s(x,y) - b_bar + amp * sp.sin(2*pi*x/L)# * sp.sin(2*pi*y/L)
+	return s(x,y) - b_bar
 
 # rate of change of upper surface :
 def dsdt(x,y):
@@ -109,7 +110,7 @@ L     = float(L)                     # convert back to float
 hx    = L / n                        # horizontal spacing
 p1    = Point(0.0, 0.0, 0.0)         # origin
 p2    = Point(L,   L,   1)           # x, y, z corner
-mesh  = BoxMesh(p1, p2, n, n, n/4)   # a box to fill the void
+mesh  = BoxMesh(p1, p2, n, n, n//4)  # a box to fill the void
 
 # we have a three-dimensional problem here, with periodic lateral boundaries :
 model   = D3Model(mesh, out_dir = out_dir, use_periodic = False, order=order)
@@ -155,12 +156,12 @@ elif mdl_odr == 'FS':
 	#mom = MomentumNitscheStokes(model, use_pressure_bc=False,
 	#                            stabilized=stab,
 	#                            linear=linear)
-	mom = MomentumDukowiczStokes(model, use_pressure_bc=False,
-	                             stabilized=stab,
-	                             linear=linear)
-	#mom = MomentumStokes(model, use_pressure_bc=False, stabilized=False,
-	#                     stabilized=stab,
-	#                     linear=linear)
+	#mom = MomentumDukowiczStokes(model, use_pressure_bc=False,
+	#                             stabilized=stab,
+	#                             linear=linear)
+	mom = MomentumStokes(model, use_pressure_bc=False,
+	                     stabilized=stab,
+	                     linear=linear)
 
 # save the facet markers :
 #model.save_xdmf(mom.ff, 'mom.ff')
@@ -181,10 +182,11 @@ V     = assemble(Constant(1) * dx(domain=model.mesh))  # volume
 u_err = norm(u_ob.vector() - model.u.vector()) / V
 p_err = norm(p_ob.vector() - model.p.vector()) / V
 
+print_text("for n = %i :\t u error = %.4e :\t p error = %.4e " \
+           % (n, u_err, p_err), 'red')
+
 # Plot the result:
 if MPI.rank(mpi_comm_world()) == 0:
-	print "for n = %i :\t u error = %.4e :\t p error = %.4e " \
-	      % (n, u_err, p_err)
 
 	data_i = np.array([hx, model.V.dim(), model.Q1.dim(), u_err, p_err])
 	if not first: data = np.vstack((data, data_i))

@@ -1,4 +1,5 @@
-from cslvr import *
+from __future__ import division
+from cslvr      import *
 
 # use inexact integration (for full stokes) :
 parameters['form_compiler']['quadrature_degree']  = 3

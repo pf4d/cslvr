@@ -1,5 +1,6 @@
-from cslvr  import *
-from scipy  import random
+from __future__ import division
+from cslvr      import *
+from scipy      import random
 
 reg_typ = 'TV'
 #reg_typ = 'Tikhonov'

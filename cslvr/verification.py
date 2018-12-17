@@ -1,3 +1,5 @@
+from __future__ import division
+from builtins import object
 from sympy.utilities.lambdify import lambdify, implemented_function
 from sympy.utilities.codegen  import ccode
 from cslvr.inputoutput        import print_text, print_min_max

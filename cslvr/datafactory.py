@@ -1,3 +1,7 @@
+from __future__ import print_function
+from __future__ import division
+from builtins import zip
+from builtins import object
 from tifffile           import TiffFile
 from numpy              import array, sqrt, shape, arange, meshgrid, loadtxt
 from scipy.io           import loadmat, netcdf_file
@@ -39,15 +43,15 @@ class DataFactory(object):
 	@staticmethod
 	def print_dim(rg):
 
-		for i in rg.variables.keys():
+		for i in list(rg.variables.keys()):
 
 			dim = " ".join(rg.variables[i].dimensions)
-			print i + "\n dimensons: " + dim
+			print(i + "\n dimensons: " + dim)
 
 			if dim != "":
-				print " Length of time: %d \n" % (len(rg.variables[i]), )
+				print(" Length of time: %d \n" % (len(rg.variables[i]), ))
 			else:
-				print "\n"
+				print("\n")
 
 
 	@staticmethod
@@ -82,7 +86,7 @@ class DataFactory(object):
 		elif res == 450:
 			direc = home + '/antarctica/antarctica_ice_velocity_450m_v2.nc'
 		else:
-			print "get_ant_measures() 'res' arg must be either 900 or 450"
+			print("get_ant_measures() 'res' arg must be either 900 or 450")
 			exit(0)
 
 		data     = Dataset(direc, mode = 'r')
@@ -216,7 +220,7 @@ class DataFactory(object):
 			data_new.description = "CSLVR data generated for use with bedmachine."
 
 			# copy the dimensions :
-			for name, dimension in data.dimensions.iteritems():
+			for name, dimension in list(data.dimensions.items()):
 				data_new.createDimension(name,
 				                    len(dimension) if not dimension.isunlimited()
 				                                     else None)

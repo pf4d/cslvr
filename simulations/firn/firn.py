@@ -1,9 +1,10 @@
+from __future__      import division
 from fenics          import *
 from dolfin_adjoint  import *
 from cslvr           import *
 import sys
 import pylab as p
-    
+
 n     =  100                   # num of z-positions
 zs    =  0.0                   # surface start .................. m
 zb    = -100.0                 # depth .......................... m
@@ -12,9 +13,9 @@ mesh  = IntervalMesh(100, zb, zs)      # interval from bed to surface
 
 model = D1Model(mesh, out_dir = 'results')
 
-model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
-model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
-model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
+model.refine_mesh(divs=2, i=1/4, k=1/5)
+model.refine_mesh(divs=2, i=1/4, k=1/5)
+model.refine_mesh(divs=2, i=1/4, k=1/5)
 #model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
 #model.refine_mesh(divs=2, i=1/4.0, k=1/5.)
 
@@ -22,14 +23,14 @@ model.calculate_boundaries()
 
 #===============================================================================
 # model variables :
-rhos  = 360.                   # initial density at surface ..... kg/m^3
+rhos  = 360.0                  # initial density at surface ..... kg/m^3
 rhoin = model.rhoi(0)          # initial density at surface ..... kg/m^3
 rin   = 0.0005                 # initial grain radius ........... m^2
 S_ring  = 0.01                   # accumulation rate .............. m/a
 Tavg  = 273.15 - 15.0          # average temperature ............ degrees K
 
 dt1   = 10.0*model.spy(0)      # time-step ...................... s
-dt2   = 0.1/365.0*model.spy(0) # time-step ...................... s
+dt2   = 0.1/365*model.spy(0)   # time-step ...................... s
 t0    = 0.0                    # begin time ..................... s
 tf    = 1001                   # end-time ....................... a
 tf    = tf*model.spy(0)        # end-time ....................... s
@@ -39,7 +40,7 @@ tm    = 1000.0 * model.spy(0)
 #===============================================================================
 # enthalpy BC :
 code      = 'c*(Tavg + 10*(sin(2*omega*t) + 5*sin(4*omega*t)))'
-theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0), 
+theta_exp = Expression(code, Tavg=Tavg, omega=pi/model.spy(0),
                        t=t0, c=model.ci(0))
 
 T_i = theta_exp(zs) / model.ci(0)
@@ -50,7 +51,7 @@ rho_exp = Expression('rhon', rhon=rhos)
 
 # velocity of surface (-acc / rhos) [m/s] :
 code    = '- rhoi/rhos * S_ring / spy'
-w_exp   = Expression(code, rhoi=model.rhoi(0), S_ring=S_ring, 
+w_exp   = Expression(code, rhoi=model.rhoi(0), S_ring=S_ring,
                      spy=model.spy(0), rhos=rhos)
 
 # grain radius of surface [m^2] :
@@ -86,7 +87,7 @@ plot_cfg = {  'on'       : bp,
               'Tmax'     : 5.0,
               'ageMin'   : 0.0,
               'ageMax'   : 100,
-              'WMin'     : -0.05, 
+              'WMin'     : -0.05,
               'WMax'     : 0.25,
               'enthalpy' : True,
               'density'  : True,
@@ -107,10 +108,10 @@ def cb():
   plt.update()
 
 dt_list = [dt1,dt2]
-#dt_list = None 
+#dt_list = None
 
 model.transient_solve(mom, nrg, t0, tm, tf, dt1, dt_list=dt_list, callback=cb)
-  
+
 p.ioff()
 p.show()
 

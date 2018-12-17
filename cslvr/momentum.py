@@ -263,7 +263,7 @@ class Momentum(Physics):
 		print_text("::: adding compensatory forcing terms:::", cls=self)
 
 		# initialize the appropriate compensatary forcing terms :
-		verification.init_r3_stress_balance(self)
+		verification.init_r3_stress_balance(momentum=self)
 
 		# get the interior compensatory forcing terms :
 		f_int  = verification.get_compensatory_interior_rhs()

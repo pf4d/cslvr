@@ -7,7 +7,7 @@ import numpy                      as np
 parameters['form_compiler']['quadrature_degree'] = 2
 
 # this should be obvious what this does :
-plot_analytic_solution = False
+plot_analytic_solution = True
 
 # output directiories :
 mdl_odr = 'FS'
@@ -19,19 +19,9 @@ linear = False
 if order > 1:  stab = False
 else:          stab = True
 
-# create a genreic box mesh, we'll fit it to geometry below :
-#L     = 40000.0                       # width of domain
-L     = 1.0                           # width of domain
-p1    = Point(0.0, 0.0, 0.0)          # origin
-p2    = Point(L,   L,   1)            # x, y, z corner
-nx    = 25
-nz    = 25
-mesh  = BoxMesh(p1, p2, nx, nx, nz)   # a box to fill the void
-
-# we have a three-dimensional problem here, with periodic lateral boundaries :
-model   = D3Model(mesh, out_dir = out_dir, use_periodic = False, order=order)
-
 # define constants :
+#L       = 40000.0                       # width of domain
+L       = 1.0                           # width of domain
 a       = np.float128(0.5 * pi / 180) # surface slope in radians
 #L       = np.float128(L)              # width of domain
 #b_bar   = np.float128(1000.0)         # average ice thickness
@@ -46,7 +36,6 @@ amp     = np.float128(1e-1)           # surface modulation amplitude
 #lam     = 2                           # deformation parameter in x direction
 u_mag   = np.float128(1.0)            # avg x component of vel. at the surf.
 u_x_amp = np.float128(0.5)            # x-velocity modulation amplitude
-
 lam     = 1                           # deformation parameter in x direction
 
 # upper surface :
@@ -57,8 +46,8 @@ def s(x,y):
 
 # lower surface
 def b(x,y):
-	#return s(x,y) - b_bar + amp * sp.sin(2*pi*x/L)# * sp.sin(2*pi*y/L)
-	return s(x,y) - b_bar
+	return s(x,y) - b_bar + amp * sp.sin(2*pi*x/L)# * sp.sin(2*pi*y/L)
+	#return s(x,y) - b_bar
 
 # rate of change of upper surface :
 def dsdt(x,y):
@@ -101,13 +90,34 @@ def beta(x,y):
 def T(x,y,z):
 	return sp.Rational(268.0)
 
-ver = Verification(model)
+ver = Verification()
 ver.init_expressions(s, b, u_xs, u_xb, dsdt, dbdt, s_ring, b_ring, lam)
 ver.init_beta(beta)
 ver.init_T(T)
 ver.verify_analytic_solution(nx=1000, ny=1000, Lx=L, Ly=L)
 
-#===============================================================================
+# get the convergence data :
+try:
+	data  = np.loadtxt(out_dir + 'verification_data.txt')
+	first = False
+except IOError:
+	first = True
+
+# create a genreic box mesh, we'll fit it to geometry below :
+n     = int(sys.argv[1])
+L     = float(L)                     # convert back to float
+hx    = L / n                        # horizontal spacing
+p1    = Point(0.0, 0.0, 0.0)         # origin
+p2    = Point(L,   L,   1)           # x, y, z corner
+mesh  = BoxMesh(p1, p2, n, n, n/4)   # a box to fill the void
+
+# we have a three-dimensional problem here, with periodic lateral boundaries :
+model   = D3Model(mesh, out_dir = out_dir, use_periodic = False, order=order)
+
+# set the model within the verifaction object :
+ver.set_model(model)
+
+#=============================================================================
 # solve FEM :
 
 # deform the mesh to match our desired geometry :
@@ -123,7 +133,7 @@ u_ob = interpolate(ver.get_u(), model.V)
 u_ob_x, u_ob_y, u_ob_z = u_ob.split(True)
 
 # initialize all the pertinent variables :
-model.init_beta(ver.get_beta())             # friction coefficent on l.s.
+model.init_beta(ver.get_beta())
 model.init_T(ver.get_T())
 model.init_Tp(model.T)
 model.init_u_x_ob(u_ob_x)
@@ -166,6 +176,22 @@ model.init_p(p_ob)
 # solve the momentum :
 mom.solve()
 
+# calculate the error :
+V     = assemble(Constant(1) * dx(domain=model.mesh))  # volume
+u_err = norm(u_ob.vector() - model.u.vector()) / V
+p_err = norm(p_ob.vector() - model.p.vector()) / V
+
+# Plot the result:
+if MPI.rank(mpi_comm_world()) == 0:
+	print "for n = %i :\t u error = %.4e :\t p error = %.4e " \
+	      % (n, u_err, p_err)
+
+	data_i = np.array([hx, model.V.dim(), model.Q1.dim(), u_err, p_err])
+	if not first: data = np.vstack((data, data_i))
+	else:         data = data_i
+
+	np.savetxt(out_dir + 'verification_data.txt', data)
+
 # let's investigate the velocity divergence :
 if mdl_odr == 'BP':
 	u_x,u_y  = mom.get_unknown()
@@ -177,9 +203,8 @@ drhodt   = project(model.rho_i*div(as_vector([u_x,u_y,u_z])), model.Q,
 div_u    = project(div(model.u), model.Q, solver_type='iterative')
 div_u_ob = interpolate(ver.get_div_u(), model.Q)
 
-
-# the purpose for everything below this line is data visualization :
-#===============================================================================
+drhodt.rename('drhodt', '')
+div_u.rename('div_u', '')
 
 # save these files with a name that makes sense for use with paraview :
 model.save_xdmf(model.p,  'p')
@@ -190,120 +215,19 @@ model.save_xdmf(u_ob,     'u_ob')
 model.save_xdmf(div_u_ob, 'div_u_ob')
 model.save_xdmf(p_ob,     'p_ob')
 
-plt_kwargs = {'direc'               : plt_dir,
-              'cells'               : None,
-              'figsize'             : (3,3),
-              'cmap'                : 'viridis',#'RdGy',
-              'scale'               : 'lin',
-              'numLvls'             : 10,
-              'levels_2'            : None,
-              'umin'                : None,
-              'umax'                : None,
-              'normalize_vec'       : False,
-              'plot_tp'             : False,
-              'tp_kwargs'           : {'linestyle'      : '-',
-                                       'lw'             : 1.0,
-                                       'color'          : 'k',
-                                       'alpha'          : 0.5},
-              'show'                : False,
-              'hide_x_tick_labels'  : True,
-              'hide_y_tick_labels'  : True,
-              'vertical_y_labels'   : False,
-              'vertical_y_label'    : True,
-              'xlabel'              : '',#r'$x$',
-              'ylabel'              : '',#r'$y$',
-              'equal_axes'          : True,
-              'title'               : None,
-              'hide_axis'           : False,
-              'colorbar_loc'        : 'right',
-              'contour_type'        : 'lines',
-              'extend'              : 'neither',
-              'ext'                 : '.pdf',
-              'plot_quiver'         : False,
-              'quiver_kwargs'       : {'pivot'          : 'middle',
-                                       'color'          : 'k',
-                                       'alpha'          : 0.8,
-                                       'width'          : 0.004,
-                                       'headwidth'      : 4.0,
-                                       'headlength'     : 4.0,
-                                       'headaxislength' : 4.0},
-              'res'                 : 150,
-              'cb'                  : False,
-              'cb_format'           : '%.1f'}
+# save the data such that it can be re-loaded :
+f = HDF5File(mpi_comm_world(), out_dir + 'model_momentum.h5', 'w')
+model.save_list_to_hdf5([model.u, model.p, drhodt, div_u], f)
 
+# save the mesh and subdomains too :
+model.save_subdomain_data(f)
+model.save_mesh(f)
 
-# remove the coordinates :
-plt_kwargs['coords'] = None
+# close the file :
+f.close()
 
-# create the bed and surface meshes :
-model.form_bed_mesh()
-model.form_srf_mesh()
-
-# create 2D models :
-bedmodel = D2Model(model.bedmesh, out_dir, order=order)
-srfmodel = D2Model(model.srfmesh, out_dir, order=order)
-
-# we don't have a function for this included in the `model' instance,
-# so we have to make one ourselves :
-drhodt_b = Function(bedmodel.Q, name='drhodt')
-
-# function allows Lagrange interpolation between different meshes :
-bedmodel.assign_submesh_variable(drhodt_b, drhodt)
-srfmodel.assign_submesh_variable(srfmodel.u, model.u)
-srfmodel.init_u_mag(srfmodel.u)  # calculates the velocity magnitude
-bedmodel.assign_submesh_variable(bedmodel.u, model.u)
-bedmodel.init_u_mag(bedmodel.u)  # calculates the velocity magnitude
-bedmodel.assign_submesh_variable(bedmodel.p,  model.p)
-
-## figure out some nice-looking contour levels :
-#U_min  = srfmodel.u_mag.vector().min()
-#U_max  = srfmodel.u_mag.vector().max()
-##U_lvls = array([84, 86, 88, 90, 92, 94, 96, 98, 100])  # momentum comparison
-#U_lvls = array([U_min, 87, 88, 89, 90, 91, 92, U_max])
-#
-#p_min  = bedmodel.p.vector().min()
-#p_max  = bedmodel.p.vector().max()
-#p_lvls = array([4e6, 5e6, 6e6, 7e6, 8e6, 9e6, 1e7, 1.1e7, 1.2e7, p_max])
-#
-#d_min  = drhodt_b.vector().min()
-#d_max  = drhodt_b.vector().max()
-#d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3,
-#                1e-3, 2.5e-3, 5e-3, d_max])
-
-u_s = srfmodel.u
-u_x_s, u_y_s, u_z_s = srfmodel.u.split(True)
-u_b = srfmodel.u
-u_x_b, u_y_b, u_z_b = bedmodel.u.split(True)
-
-# this time, let's plot the topography like a topographic map :
-plt_kwargs['name']      = 'u_model_mag_s'
-plot_variable(u=u_s,   **plt_kwargs)
-
-plt_kwargs['name']      = 'u_model_x_s'
-plot_variable(u=u_x_s, **plt_kwargs)
-
-plt_kwargs['name']      = 'u_model_x_b'
-plot_variable(u=u_x_b, **plt_kwargs)
-
-plt_kwargs['name']      = 'u_model_y_s'
-plot_variable(u=u_y_s, **plt_kwargs)
-
-plt_kwargs['name']      = 'u_model_y_b'
-plot_variable(u=u_y_b, **plt_kwargs)
-
-plt_kwargs['name']      = 'u_model_z_s'
-plot_variable(u=u_z_s, **plt_kwargs)
-
-plt_kwargs['name']      = 'u_model_z_b'
-plot_variable(u=u_z_b, **plt_kwargs)
-
-plt_kwargs['name']      = 'p_model_b'
-plot_variable(u=bedmodel.p,   **plt_kwargs)
-
-#plt_kwargs['name']      = 'drho_dt'
-#plot_variable(u=drhodt_b, **plt_kwargs)
-
-if plot_analytic_solution:
+# plot the analytic solution, if you want (only on one cpu) :
+if plot_analytic_solution and MPI.rank(mpi_comm_world()) == 0:
 
 	# calculate vertically-integrated variables :
 	ver.init_r2_stress_balance()
@@ -349,6 +273,46 @@ if plot_analytic_solution:
 
 	#=============================================================================
 	# plot :
+	plt_kwargs = {'direc'               : plt_dir,
+	              'cells'               : None,
+	              'figsize'             : (3,3),
+	              'cmap'                : 'viridis',#'RdGy',
+	              'scale'               : 'lin',
+	              'numLvls'             : 10,
+	              'levels_2'            : None,
+	              'umin'                : None,
+	              'umax'                : None,
+	              'normalize_vec'       : False,
+	              'plot_tp'             : False,
+	              'tp_kwargs'           : {'linestyle'      : '-',
+	                                       'lw'             : 1.0,
+	                                       'color'          : 'k',
+	                                       'alpha'          : 0.5},
+	              'show'                : False,
+	              'hide_x_tick_labels'  : True,
+	              'hide_y_tick_labels'  : True,
+	              'vertical_y_labels'   : False,
+	              'vertical_y_label'    : True,
+	              'xlabel'              : '',#r'$x$',
+	              'ylabel'              : '',#r'$y$',
+	              'equal_axes'          : True,
+	              'title'               : None,
+	              'hide_axis'           : False,
+	              'colorbar_loc'        : 'right',
+	              'contour_type'        : 'lines',
+	              'extend'              : 'neither',
+	              'ext'                 : '.pdf',
+	              'plot_quiver'         : False,
+	              'quiver_kwargs'       : {'pivot'          : 'middle',
+	                                       'color'          : 'k',
+	                                       'alpha'          : 0.8,
+	                                       'width'          : 0.004,
+	                                       'headwidth'      : 4.0,
+	                                       'headlength'     : 4.0,
+	                                       'headaxislength' : 4.0},
+	              'res'                 : 150,
+	              'cb'                  : False,
+	              'cb_format'           : '%.1f'}
 
 	# set the coordinates :
 	plt_kwargs['coords'] = (X,Y)
@@ -425,43 +389,5 @@ if plot_analytic_solution:
 
 	plt_kwargs['name']      = 'div_sigma_z_s'
 	plot_variable(u=div_sigma_z(X,Y,S(X,Y)),    **plt_kwargs)
-
-
-"""
-# these functions allow the plotting of an arbitrary FEniCS function or
-# vector that reside on a two-dimensional mesh (hence the D2Model
-# instantiations above.
-plot_variable(u = srfmodel.u, name = 'u_mag', direc = plt_dir,
-              ext           = '.pdf',
-              title         = r'$\underline{u} |_S$',
-              levels        = None,#U_lvls,
-              cmap          = 'viridis',
-              normalize_vec = True,
-              plot_tp       = True,
-              show          = False,
-              extend        = 'neither',
-              cb_format     = '%g')
-
-plot_variable(u = bedmodel.p, name = 'p_model', direc = plt_dir,
-              ext         = '.pdf',
-              title       = r'$p |_B$',
-              levels      = None,#p_lvls,
-              cmap        = 'viridis',
-              plot_tp     = True,
-              show        = False,
-              extend      = 'neither',
-              cb_format   = '%.1e')
-
-plot_variable(u = drhodt_b, name = 'drhodt_model', direc = plt_dir,
-              ext         = '.pdf',
-              title       = r'$\left. \frac{\partial \rho}{\partial t} \right|_B$',
-              cmap        = 'RdGy',
-              levels      = None,#d_lvls,
-              plot_tp     = True,
-              show        = False,
-              extend      = 'neither',
-              cb_format   = '%.1e')
-"""
-
 
 

@@ -1,7 +1,7 @@
 from cslvr    import *
 from fenics   import Point, BoxMesh, Expression, sqrt, pi
 
-alpha = 0.1 * pi / 180 
+alpha = 0.1 * pi / 180
 L     = 10000
 
 p1    = Point(0.0, 0.0, 0.0)
@@ -10,9 +10,9 @@ mesh  = BoxMesh(p1, p2, 15, 15, 10)
 
 model = D3Model(mesh, out_dir = './ISMIP_HOM_C_results/', use_periodic = True)
 
-surface = Expression('- x[0] * tan(alpha)', alpha=alpha, 
+surface = Expression('- x[0] * tan(alpha)', alpha=alpha,
                      element=model.Q.ufl_element())
-bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha, 
+bed     = Expression('- x[0] * tan(alpha) - 1000.0', alpha=alpha,
                      element=model.Q.ufl_element())
 beta    = Expression('1000 + 1000 * sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
                      alpha=alpha, L=L, element=model.Q.ufl_element())

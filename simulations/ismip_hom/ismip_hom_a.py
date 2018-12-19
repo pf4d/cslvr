@@ -1,4 +1,5 @@
-from cslvr import *
+from cslvr      import *
+from fenics_viz import plot_variable
 
 a      = 0.5 * pi / 180     # surface slope in radians
 L      = 14000               # width of domain (also 8000, 10000, 14000)
@@ -21,10 +22,10 @@ out_dir = './ISMIP_HOM_A_results/' + mdl_odr + '/'
 plt_dir = '../../images/momentum/ISMIP_HOM_A/' + mdl_odr + '/'
 
 # we have a three-dimensional problem here, with periodic lateral boundaries :
-model = D3Model(mesh, out_dir=out_dir, use_periodic=True, order=order)
+model = D3Model(mesh, out_dir=out_dir, use_periodic=False, order=order)
 
 # the ISMIP-HOM experiment A geometry :
-surface = Expression('- x[0] * tan(a)', a=a,
+surface = Expression('500 - x[0] * tan(a)', a=a,
                      element=model.Q.ufl_element())
 bed     = Expression(  'S - 1000.0 + 500.0 * ' \
                      + ' sin(2*pi*x[0]/L) * sin(2*pi*x[1]/L)',
@@ -63,6 +64,36 @@ elif mdl_odr == 'FS_th':
 if linear:
 	momNL = MomentumDukowiczStokes(model, linear=False, stabilized=False)
 	momNL.solve()
+	model.save_xdmf(model.p, 'p_true')
+	model.save_xdmf(model.u, 'u_true')
+
+"""
+A_n    = Matrix(PETScMatrix(A_n))
+B_n    = Matrix(PETScMatrix(B_n))
+BT_n   = Matrix(PETScMatrix(BT_n))
+S_n    = Matrix(PETScMatrix(S_n))
+f_n    = Vector(PETScVector(f_n))
+
+plt.imshow(A_n.array())
+plt.colorbar()
+plt.tight_layout()
+plt.show()
+
+plt.imshow(B_n.array())
+plt.colorbar()
+plt.tight_layout()
+plt.show()
+
+plt.imshow(BT_n.array())
+plt.colorbar()
+plt.tight_layout()
+plt.show()
+
+plt.imshow(S_n.array())
+plt.colorbar()
+plt.tight_layout()
+plt.show()
+"""
 
 mom.solve()
 
@@ -123,48 +154,52 @@ d_max  = drhodt_b.vector().max()
 d_lvls = array([d_min, -5e-3, -2.5e-3, -1e-3,
                 1e-3, 2.5e-3, 5e-3, d_max])
 
+cmap = 'inferno'
+
+quiver_kwargs = {'pivot'          : 'middle',
+                 'color'          : '0.8',
+                 'alpha'          : 1.0,
+                 'width'          : 0.004,
+                 'headwidth'      : 4.0,
+                 'headlength'     : 4.0,
+                 'headaxislength' : 4.0}
+
+plt_kwargs =    {"direc"          : plt_dir,
+                 "ext"            : '.pdf',
+                 "levels"         : None,
+                 "cmap"           : cmap,
+                 "plot_tp"        : True,
+                 "show"           : False,
+                 "normalize_vec"  : True,
+                 "quiver_kwargs"  : quiver_kwargs,
+                 "extend"         : 'neither'}
+
 # these functions allow the plotting of an arbitrary FEniCS function or
 # vector that reside on a two-dimensional mesh (hence the D2Model
 # instantiations above.
-plot_variable(u = srfmodel.u, name = 'u_s', direc = plt_dir,
-              ext         = '.pdf',
-              title       = r'$\underline{u} |_S$',
-              levels      = None,#U_lvls,
-              cmap        = 'viridis',
-              tp          = True,
-              show        = False,
-              extend      = 'neither',
-              cb_format   = '%g')
+plot_variable(u         = srfmodel.u,
+              name      = 'u_s',
+              title     = r'$\underline{u} |_S$',
+              cb_format = '%g',
+              **plt_kwargs)
 
-plot_variable(u = bedmodel.u, name = 'u_b', direc = plt_dir,
-              ext         = '.pdf',
-              title       = r'$\underline{u} |_B$',
-              levels      = None,#U_lvls,
-              cmap        = 'viridis',
-              tp          = True,
-              show        = False,
-              extend      = 'neither',
-              cb_format   = '%g')
+plot_variable(u         = bedmodel.u,
+              name      = 'u_b',
+              title     = r'$\underline{u} |_B$',
+              cb_format = '%g',
+              **plt_kwargs)
 
-plot_variable(u = bedmodel.p, name = 'p', direc = plt_dir,
-              ext         = '.pdf',
-              title       = r'$p |_B$',
-              levels      = None,#p_lvls,
-              cmap        = 'viridis',
-              tp          = True,
-              show        = False,
-              extend      = 'min',
-              cb_format   = '%.1e')
+plot_variable(u         = bedmodel.p,
+              name      = 'p',
+              title     = r'$p |_B$',
+              cb_format = '%.1e',
+              **plt_kwargs)
 
-plot_variable(u = drhodt_b, name = 'drhodt', direc = plt_dir,
-              ext         = '.pdf',
-              title       = r'$\left. \frac{\partial \rho}{\partial t} \right|_B$',
-              cmap        = 'RdGy',
-              levels      = None,#d_lvls,
-              tp          = True,
-              show        = False,
-              extend      = 'neither',
-              cb_format   = '%.1e')
+plot_variable(u         = drhodt_b,
+              name      = 'drhodt',
+              title     = r'$\left.\frac{\partial \rho}{\partial t}\right|_B$',
+              cb_format = '%.1e',
+              **plt_kwargs)
 
 
 

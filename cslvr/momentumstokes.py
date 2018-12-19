@@ -191,9 +191,9 @@ class MomentumStokesBase(Momentum):
 		m_y_bc = DirichletBC(self.Q.sub(0).sub(1), 2, model.ff, model.GAMMA_B_GND)
 		m_z_bc = DirichletBC(self.Q.sub(0).sub(2), 3, model.ff, model.GAMMA_B_GND)
 
-		b_x_dofs = np.array(list(m_x_bc.get_boundary_values().keys()), dtype=np.intc)
-		b_y_dofs = np.array(list(m_y_bc.get_boundary_values().keys()), dtype=np.intc)
-		b_z_dofs = np.array(list(m_z_bc.get_boundary_values().keys()), dtype=np.intc)
+		b_x_dofs = np.array(list(m_x_bc.get_boundary_values().keys()),dtype=np.intc)
+		b_y_dofs = np.array(list(m_y_bc.get_boundary_values().keys()),dtype=np.intc)
+		b_z_dofs = np.array(list(m_z_bc.get_boundary_values().keys()),dtype=np.intc)
 
 		b_x_dofs.sort()
 		b_y_dofs.sort()
@@ -248,6 +248,15 @@ class MomentumStokesBase(Momentum):
 		"""
 		u_x, u_y, u_z, p = self.get_unknown()
 		return as_vector([u_x, u_y, u_z])
+
+	def picard_solve(self):
+		"""
+		"""
+		model = self.model
+		nIter = 0
+
+		while nIter < 5:
+			sadf
 
 	def solve(self, annotate=False):
 		"""
@@ -760,8 +769,6 @@ class MomentumStokes(MomentumStokesBase):
 
 		S          = model.S
 		B          = model.B
-		dBdt       = model.dBdt
-		B_ring     = model.B_ring
 		z          = model.x[2]
 		rho_i      = model.rho_i
 		rhosw      = model.rhosw
@@ -806,8 +813,6 @@ class MomentumStokes(MomentumStokesBase):
 		# form essential parts :
 		f     = Constant((0.0, 0.0, -rho_i * g))
 		I     = Identity(3)
-		n_mag = sqrt(1 + dot(grad(B), grad(B)))    # outward normal vector mag
-		u_n   = - dBdt / n_mag - B_ring            # normal component of velocity
 
 		# pressure boundary :
 		ut    = u - dot(u,n)*n                     # tang. component of velocity
@@ -827,8 +832,8 @@ class MomentumStokes(MomentumStokesBase):
 		self.A     = inner(tau(u), grad(v)) * dOmega
 		self.S     = beta * dot(ut, v) * dGamma_b
 		self.P     = p * dot(v,n) * dGamma_b
-		self.B     = - p * div(v) * dOmega
-		self.BT    = - q * div(u) * dOmega
+		self.B     = - q * div(u) * dOmega
+		self.BT    = - p * div(v) * dOmega
 		self.f     = dot(f,v) * dOmega
 
 		# define the residual :
@@ -875,48 +880,41 @@ class MomentumStokes(MomentumStokesBase):
 		model  = self.model
 		params = self.solve_params
 
-		self.assemble_transformation_tensor()
-
 		# zero out self.velocity for good convergence for any subsequent solves,
 		# e.g. model.L_curve() :
 		model.assign_variable(self.get_unknown(), DOLFIN_EPS)
 
-		A      = assemble(self.A)
-		B      = assemble(self.B)
-		BT     = assemble(self.B)
-		S      = assemble(self.S)
-		f      = assemble(self.f)
+		# form the transformation tensor to obey impenetrability and mass
+		# conservation on the basal surface :
+		self.assemble_transformation_tensor()
 
+		# assemble transformation tensor :
 		T      = as_backend_type(self.T).mat()
-		A      = as_backend_type(A).mat()
-		B      = as_backend_type(B).mat()
-		BT     = as_backend_type(BT).mat()
-		S      = as_backend_type(S).mat()
-		f      = as_backend_type(f).vec()
 
-		A_n    = T.matMult(A).matTransposeMult(T)
-		B_n    = T.matMult(B).matTransposeMult(T)
-		BT_n   = T.transposeMatMult(BT).matMult(T)
-		S_n    = T.matMult(S).matTransposeMult(T)
-		f_n    = T * f
+		# set up right-hand side :
+		b      = as_backend_type(assemble(self.f)).vec()
+		b      = Vector(PETScVector(T * b))
 
-		self.A_n  = A_n
-		self.B_n  = B_n
-		self.BT_n = BT_n
-		self.S_n  = S_n
-		self.f_n  = f_n
+		# apply boundary condition to right-hand side :
+		self.u_dot_n_bc_b.apply(b)
 
-		F      = Matrix(PETScMatrix(A_n + B_n + S_n + BT_n))
-		f      = Vector(PETScVector(f_n))
+		# set up stiffness matrix :
+		A      = as_backend_type(assemble(self.A + self.S + self.B + self.BT)).mat()
+		A      = T.matMult(A).matTransposeMult(T)
 
-		self.u_dot_n_bc_b.apply(f)
+		# apply boundary condition manually (DirichletBC will not work here) :
+		A.zeroRowsColumns(self.b_x_dofs, 1.0)
+		A.assemblyBegin()
+		A.assemblyEnd()
 
-		as_backend_type(F).mat().zeroRowsColumns(self.b_x_dofs, 1.0)
-		as_backend_type(F).mat().assemblyBegin()
-		as_backend_type(F).mat().assemblyEnd()
-		self.u_dot_n_bc_b.apply(f)
+		# convert to dolfin :
+		A      = Matrix(PETScMatrix(A))
 
-		solve(F, self.get_unknown().vector(), f, annotate=False)
+		# get the unknown :
+		x      = self.get_unknown().vector()
+
+		# solve the system :
+		solve(A, x, b, annotate=False)
 
 		#params['solver']['newton_solver']['linear_solver'] = 'gmres'
 		#precond = 'fieldsplit'
@@ -934,9 +932,9 @@ class MomentumStokes(MomentumStokesBase):
 		Update the two horizontal components of velocity in ``self.model.u``
 		to those given by ``u``.
 		"""
-		Tm  = as_backend_type(self.T).mat()
+		T   = as_backend_type(self.T).mat()
 		uv  = as_backend_type(u.vector()).vec()
-		u_n = Tm.transpose() * uv
+		u_n = T.transpose() * uv
 		u_n = Vector(PETScVector(u_n))
 
 		u.vector().set_local(u_n.get_local())

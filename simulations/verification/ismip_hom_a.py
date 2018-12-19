@@ -8,7 +8,7 @@ import numpy                      as np
 parameters['form_compiler']['quadrature_degree'] = 2
 
 # this should be obvious what this does :
-plot_analytic_solution = True
+plot_analytic_solution = False
 
 # output directiories :
 mdl_odr = 'FS'
@@ -156,12 +156,12 @@ elif mdl_odr == 'FS':
 	#mom = MomentumNitscheStokes(model, use_pressure_bc=False,
 	#                            stabilized=stab,
 	#                            linear=linear)
-	#mom = MomentumDukowiczStokes(model, use_pressure_bc=False,
-	#                             stabilized=stab,
-	#                             linear=linear)
-	mom = MomentumStokes(model, use_pressure_bc=False,
-	                     stabilized=stab,
-	                     linear=linear)
+	mom = MomentumDukowiczStokes(model, use_pressure_bc=False,
+	                             stabilized=stab,
+	                             linear=linear)
+	#mom = MomentumStokes(model, use_pressure_bc=False,
+	#                     stabilized=stab,
+	#                     linear=linear)
 
 # save the facet markers :
 #model.save_xdmf(mom.ff, 'mom.ff')

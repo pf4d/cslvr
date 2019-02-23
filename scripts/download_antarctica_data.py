@@ -2,23 +2,23 @@ from cslvr import download_file
 import os
 import inspect
 
- 
-def convert_measures_projection(direc, var):
-  """
-  convert the measures .tif files to _new.tif files with the projection we 
-  require using gdalwarp.
-  """
-  proj    = '\"+units=m  +proj=stere +lat_0=90 +lat_ts=71 +lon_0=-39 +k=1 ' \
-            + '+x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563 ' \
-            + '+towgs84=0.000,0.000,0.000 +to_meter=1\"'
-  te      = '-645000.0 -3370000.0 860000.0 -640000.0'
-  infile  = direc + '/greenland_vel_mosaic500_2008_2009_' + var + '.tif'
-  outfile = direc + '/greenland_vel_mosaic500_2008_2009_' + var + '_new.tif'
 
-  cmd = 'gdalwarp ' + infile + ' ' + outfile + ' -t_srs ' + proj + ' -te ' + te
-  
-  print "\nExecuting :\n\n\t", cmd, "\n\n"
-  os.system(cmd)
+def convert_measures_projection(direc, var):
+	"""
+	convert the measures .tif files to _new.tif files with the projection we
+	require using gdalwarp.
+	"""
+	proj    = '\"+units=m  +proj=stere +lat_0=90 +lat_ts=71 +lon_0=-39 +k=1 ' \
+	          + '+x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257223563 ' \
+	          + '+towgs84=0.000,0.000,0.000 +to_meter=1\"'
+	te      = '-645000.0 -3370000.0 860000.0 -640000.0'
+	infile  = direc + '/greenland_vel_mosaic500_2008_2009_' + var + '.tif'
+	outfile = direc + '/greenland_vel_mosaic500_2008_2009_' + var + '_new.tif'
+
+	cmd = 'gdalwarp ' + infile + ' ' + outfile + ' -t_srs ' + proj + ' -te ' + te
+
+	print "\nExecuting :\n\n\t", cmd, "\n\n"
+	os.system(cmd)
 
 
 #===============================================================================

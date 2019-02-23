@@ -87,7 +87,7 @@ def download_file(url, direc, folder, extract=False):
 	u    = urllib.request.urlopen(url)
 	f    = open(direc + fn, 'wb')
 	meta = u.info()
-	fs   = int(meta.getheaders("Content-Length")[0])
+	fs   = int(meta.get_all("Content-Length")[0])
 
 	s    = "Downloading: %s Bytes: %s" % (fn, fs)
 	print(s)

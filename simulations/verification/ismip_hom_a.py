@@ -1,3 +1,17 @@
+"""
+Program which verifies the numerical solution.
+
+for n = 10 :	 u error = 2.8910e+03 :	 p error = 5.2131e+04
+	- 3D mesh set, 1200 cells, 2680 facets, 363 vertices
+	- time to solve: 00:00:00:421
+for n = 20 :	 u error = 9.6241e+00 :	 p error = 1.6879e+04;
+	time to solve: 00:00:03:634
+for n = 40 :	 u error = 1.9062e+00 :	 p error = 5.9260e+03
+	time to solve: 00:00:48:207
+
+"""
+
+
 from __future__               import division
 from cslvr                    import *
 from fenics_viz               import plot_variable
@@ -5,24 +19,25 @@ from sympy.utilities.lambdify import lambdify, implemented_function
 import sympy                      as sp
 import numpy                      as np
 
+# set the numerical quadrature degree here :
 parameters['form_compiler']['quadrature_degree'] = 2
-
-# this should be obvious what this does :
-plot_analytic_solution = False
 
 # output directiories :
 mdl_odr = 'FS'
 out_dir = './results/' + mdl_odr + '/'
 plt_dir = './images/'  + mdl_odr + '/'
 
-order  = 2
-linear = True
+# model variables :
+order  = 2                             # order of the approximation
+linear = True                          # linearize the momentum equation ?
+
+# use stabilization only for O(1) approximation :
 if order > 1:  stab = False
 else:          stab = True
 
 # define constants :
-#L       = 40000.0                       # width of domain
-L       = 1.0                           # width of domain
+#L       = 40000.0                     # width of domain
+L       = 1.0                         # width of domain
 a       = np.float128(0.5 * pi / 180) # surface slope in radians
 #L       = np.float128(L)              # width of domain
 #b_bar   = np.float128(1000.0)         # average ice thickness
@@ -34,10 +49,9 @@ a       = np.float128(0.5 * pi / 180) # surface slope in radians
 L       = np.float128(L)              # width of domain
 b_bar   = np.float128(1.0)            # average ice thickness
 amp     = np.float128(1e-1)           # surface modulation amplitude
-#lam     = 2                           # deformation parameter in x direction
 u_mag   = np.float128(1.0)            # avg x component of vel. at the surf.
 u_x_amp = np.float128(0.5)            # x-velocity modulation amplitude
-lam     = 1                           # deformation parameter in x direction
+lam     = 1 # 2                       # deformation parameter in x direction
 
 # upper surface :
 def s(x,y):
@@ -91,6 +105,7 @@ def beta(x,y):
 def T(x,y,z):
 	return sp.Rational(268.0)
 
+# initialize the analytic solution and numerically verify it :
 ver = Verification()
 ver.init_expressions(s, b, u_xs, u_xb, dsdt, dbdt, s_ring, b_ring, lam)
 ver.init_beta(beta)
@@ -105,21 +120,21 @@ except IOError:
 	first = True
 
 # create a genreic box mesh, we'll fit it to geometry below :
-n     = int(sys.argv[1])
+n     = int(sys.argv[1])             # get the number of cells from arg
 L     = float(L)                     # convert back to float
 hx    = L / n                        # horizontal spacing
 p1    = Point(0.0, 0.0, 0.0)         # origin
 p2    = Point(L,   L,   1)           # x, y, z corner
 mesh  = BoxMesh(p1, p2, n, n, n//4)  # a box to fill the void
 
-# we have a three-dimensional problem here, with periodic lateral boundaries :
-model   = D3Model(mesh, out_dir = out_dir, use_periodic = False, order=order)
+# we have a three-dimensional problem, without periodic lateral boundaries :
+model = D3Model(mesh, out_dir=out_dir, use_periodic=False, order=order)
 
-# set the model within the verifaction object :
+# send the model instance to the verifaction object :
 ver.set_model(model)
 
-#=============================================================================
-# solve FEM :
+#===============================================================================
+# set up the geometry and variables  :
 
 # deform the mesh to match our desired geometry :
 model.deform_mesh_to_geometry(ver.get_S(), ver.get_B())
@@ -174,6 +189,7 @@ mom.add_compensatory_forcing_terms(ver)
 p_ob = interpolate(ver.get_p(), model.Q)
 model.init_p(p_ob)
 
+#===============================================================================
 # solve the momentum :
 mom.solve()
 
@@ -229,7 +245,7 @@ model.save_mesh(f)
 f.close()
 
 # plot the analytic solution, if you want (only on one cpu) :
-if plot_analytic_solution and MPI.rank(mpi_comm_world()) == 0:
+if first and MPI.rank(mpi_comm_world()) == 0:
 
 	# calculate vertically-integrated variables :
 	ver.init_r2_stress_balance()

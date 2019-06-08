@@ -13,7 +13,7 @@ import matplotlib as mpl
 mpl.rcParams['font.family']          = 'serif'
 mpl.rcParams['legend.fontsize']      = 'medium'
 mpl.rcParams['text.usetex']          = True
-mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
+mpl.rcParams['text.latex.preamble']  = ['\\usepackage[mathscr]{euscript}']
 #mpl.rcParams['contour.negative_linestyle']   = 'solid'
 
 # conditional fix (issue #107) :

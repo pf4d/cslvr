@@ -144,7 +144,7 @@ class Momentum(Physics):
 		return 'cyan'
 
 	def get_velocity(self):
-		"""
+		r"""
 		Return the velocity :math:`\underline{u}`.
 		"""
 		raiseNotDefined()

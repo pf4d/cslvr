@@ -1,7 +1,7 @@
 from __future__ import division
 from builtins import object
 from sympy.utilities.lambdify import lambdify, implemented_function
-from sympy.utilities.codegen  import ccode
+from sympy                    import ccode
 from cslvr.inputoutput        import print_text, print_min_max
 from cslvr.momentumbp         import MomentumBP, MomentumDukowiczBP
 from cslvr.momentumstokes     import MomentumNitscheStokes, MomentumStokes, \

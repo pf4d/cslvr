@@ -25,23 +25,23 @@ class LatModel(Model):
 	GAMMA_ACC   = 1   # areas with positive surface accumulation
 
 	# external boundaries :
-	ext_boundaries = {GAMMA_S_GND : 'grounded upper surface',
-	                  GAMMA_B_GND : 'grounded lower surface (bedrock)',
-	                  GAMMA_S_FLT : 'shelf upper surface',
-	                  GAMMA_B_FLT : 'shelf lower surface',
-	                  GAMMA_L_DVD : 'basin divides',
-	                  GAMMA_L_OVR : 'terminus over water',
-	                  GAMMA_L_UDR : 'terminus under water',
-	                  GAMMA_U_GND : 'grounded upper surface with U observations',
-	                  GAMMA_U_FLT : 'shelf upper surface with U observations',
-	                  GAMMA_ACC   : 'upper surface with accumulation'}
+	ext_boundaries = {GAMMA_S_GND : "grounded upper surface",
+	                  GAMMA_B_GND : "grounded lower surface (bedrock)",
+	                  GAMMA_S_FLT : "shelf upper surface",
+	                  GAMMA_B_FLT : "shelf lower surface",
+	                  GAMMA_L_DVD : "basin divides",
+	                  GAMMA_L_OVR : "terminus over water",
+	                  GAMMA_L_UDR : "terminus under water",
+	                  GAMMA_U_GND : "grounded upper surface with U observations",
+	                  GAMMA_U_FLT : "shelf upper surface with U observations",
+	                  GAMMA_ACC   : "upper surface with accumulation"}
 
 	# internal boundaries :
-	int_boundaries = {OMEGA_GND   : 'internal cells located over bedrock',
-	                  OMEGA_FLT   : 'internal cells located over water'}
+	int_boundaries = {OMEGA_GND   : "internal cells located over bedrock",
+	                  OMEGA_FLT   : "internal cells located over water"}
 
 	# union :
-	boundaries = dict(ext_boundaries, **int_boundaries)
+	boundaries = {**ext_boundaries, **int_boundaries}
 
 	def __init__(self, mesh, out_dir='./results/', order=1, use_periodic=False):
 		"""

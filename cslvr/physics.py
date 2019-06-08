@@ -162,7 +162,7 @@ class Physics(object):
 		raiseNotDefined()
 
 	def get_velocity(self):
-		"""
+		r"""
 		Return the velocity :math:`\underline{u}`.
 		"""
 		raiseNotDefined()
@@ -338,10 +338,10 @@ class Physics(object):
 		if type(R_measure) != list:  R_measure = [R_measure]
 
 		# form a UFL expression for the norm and difference :
- 		J_log = self.form_cost_ftn(u, u_ob, J_measure, kind='log',   verbose=False)
- 		J_l1  = self.form_cost_ftn(u, u_ob, J_measure, kind='l1',    verbose=False)
- 		J_l2  = self.form_cost_ftn(u, u_ob, J_measure, kind='l2',    verbose=False)
- 		J_rat = self.form_cost_ftn(u, u_ob, J_measure, kind='ratio', verbose=False)
+		J_log = self.form_cost_ftn(u, u_ob, J_measure, kind='log',   verbose=False)
+		J_l1  = self.form_cost_ftn(u, u_ob, J_measure, kind='l1',    verbose=False)
+		J_l2  = self.form_cost_ftn(u, u_ob, J_measure, kind='l2',    verbose=False)
+		J_rat = self.form_cost_ftn(u, u_ob, J_measure, kind='ratio', verbose=False)
 
 		# assemble the tensors :
 		J_log_a = assemble(J_log, annotate=False)

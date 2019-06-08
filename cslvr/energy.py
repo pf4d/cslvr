@@ -911,7 +911,7 @@ class Enthalpy(Energy):
 			# initialize energy from W and T :
 			model.init_theta(theta_i_v)
 
-	def calc_Pe(self, avg=False, annotate=annotate):
+	def calc_Pe(self, avg=False, annotate=False):
 		r"""
 		calculates the grid P\'{e}clet number to self.model.Pe.
 

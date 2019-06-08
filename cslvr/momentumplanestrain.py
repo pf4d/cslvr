@@ -148,7 +148,7 @@ class MomentumPlaneStrainBase(Momentum):
 		                                         stabilized      = stabilized)
 
 	def get_velocity(self):
-		"""
+		r"""
 		Return the velocity :math:`\underline{u} = [u_x\ 0\ u_z]^{\intercal}`
 		extracted from unknown function returned by
 		:func:`~momentumstokes.MomentumStokesBase.get_unknown`.

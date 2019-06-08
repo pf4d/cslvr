@@ -241,7 +241,7 @@ class MomentumStokesBase(Momentum):
 		self.b_x_dofs = b_x_dofs
 
 	def get_velocity(self):
-		"""
+		r"""
 		Return the velocity :math:`\underline{u} = [u_x\ u_y\ u_z]^{\intercal}`
 		extracted from unknown function returned by
 		:func:`~momentumstokes.MomentumStokesBase.get_unknown`.
@@ -404,7 +404,7 @@ class MomentumDukowiczStokesReduced(MomentumBPBase):
 		self.set_residual(derivative(A, u_h, v_h))
 
 	def get_velocity(self):
-		"""
+		r"""
 		Return the velocity :math:`\underline{u} = [u_x\ u_y\ u_z]^{\intercal}`
 		with horizontal compoents taken from the unknown function returned by
 		:func:`~momentumbp.MomentumBPBase.get_unknown` and vertical component from

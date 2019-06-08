@@ -326,7 +326,7 @@ class Model(object):
 		self.dim   = self.mesh.ufl_cell().topological_dimension()
 
 	def calculate_boundaries(self):
-		"""
+		r"""
 		Determines the boundaries of the current ``self.mesh``.
 
 		External boundaries :
@@ -1992,7 +1992,7 @@ class Model(object):
 		return theta
 
 	def get_xz_velocity_angle(self):
-		"""
+		r"""
 		Calculates the angle in radians of the vertical velocity vector
 		:math:`\underline{u}_v = [u\ w]^\intercal` from the x-axis.
 
@@ -2069,7 +2069,7 @@ class Model(object):
 		return Mr
 
 	def get_norm(self, U, kind='l2'):
-		"""
+		r"""
 		Calculate and return the norm of and the normalized vector
 		:math:`\hat{\underline{u}}`, of the vector :math:`\underline{u}`
 		given by parameter ``U``.
@@ -2103,7 +2103,7 @@ class Model(object):
 		return norm_u
 
 	def normalize_vector(self, U):
-		"""
+		r"""
 		Create a normalized vector of the vector :math:`\underline{u}`
 		given by parameter ``U``.
 

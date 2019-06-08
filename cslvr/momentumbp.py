@@ -154,7 +154,7 @@ class MomentumBPBase(Momentum):
 		return 2 * eta * self.quasi_strain_rate_tensor(u)
 
 	def get_velocity(self):
-		"""
+		r"""
 		Return the velocity :math:`\underline{u} = [u_x\ u_y\ u_z]^{\intercal}`
 		with horizontal compoents taken from the unknown function returned by
 		:func:`~momentumbp.MomentumBPBase.get_unknown` and zero vertical component.

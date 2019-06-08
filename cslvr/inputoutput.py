@@ -9,7 +9,7 @@ from numpy             import array, linspace, ones, isnan, all, zeros, shape, \
                               meshgrid, arange
 from dolfin            import interpolate, Expression, Function, \
                               vertices, FunctionSpace, RectangleMesh, \
-                              MPI, mpi_comm_world, GenericVector, parameters, \
+                              MPI, GenericVector, parameters, \
                               File, Constant, FiniteElement
 from ufl               import indexed
 from pyproj            import Proj, transform
@@ -477,8 +477,8 @@ def print_min_max(u, title, color='97', cls=None):
 	:type color: string
 	"""
 	if isinstance(u, GenericVector):
-		uMin = MPI.min(mpi_comm_world(), u.min())
-		uMax = MPI.max(mpi_comm_world(), u.max())
+		uMin = MPI.min(MPI.comm_world, u.min())
+		uMax = MPI.max(MPI.comm_world, u.max())
 		s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
 		print_text(s, color, cls=cls)
 	elif isinstance(u, indexed.Indexed):
@@ -491,14 +491,14 @@ def print_min_max(u, title, color='97', cls=None):
 	elif isinstance(u, ndarray):
 		if u.dtype != float64:
 			u = u.astype(float64)
-		uMin = MPI.min(mpi_comm_world(), u.min())
-		uMax = MPI.max(mpi_comm_world(), u.max())
+		uMin = MPI.min(MPI.comm_world, u.min())
+		uMax = MPI.max(MPI.comm_world, u.max())
 		s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
 		print_text(s, color, cls=cls)
 	elif isinstance(u, Function):# \
 		#   or isinstance(u, dolfin.functions.function.Function):
-		uMin = MPI.min(mpi_comm_world(), u.vector().min())
-		uMax = MPI.max(mpi_comm_world(), u.vector().max())
+		uMin = MPI.min(MPI.comm_world, u.vector().min())
+		uMax = MPI.max(MPI.comm_world, u.vector().max())
 		s    = title + ' <min, max> : <%.3e, %.3e>' % (uMin, uMax)
 		print_text(s, color, cls=cls)
 	elif isinstance(u, int) or isinstance(u, float):
@@ -551,7 +551,7 @@ def print_text(text, color=None, atrb=0, cls=None):
 	:type atrb: int
 	:type cls: object
 	"""
-	if MPI.rank(mpi_comm_world())==0:
+	if MPI.rank(MPI.comm_world)==0:
 		print(get_text(text, color, atrb, cls))
 
 

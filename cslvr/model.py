@@ -8,8 +8,9 @@ from dolfin               import *
 from dolfin_adjoint       import *
 from copy                 import copy
 from scipy.io             import savemat
-from ufl                  import indexed
+from ufl                  import indexed, unit_vectors
 from cslvr.inputoutput    import print_text, get_text, print_min_max
+import dolfin             as dl
 import numpy              as np
 import matplotlib.pyplot  as plt
 import matplotlib         as mpl
@@ -56,7 +57,7 @@ class Model(object):
 
 		self.order        = order                        # order of basis
 		self.out_dir      = out_dir                      # base output dir.
-		self.MPI_rank     = MPI.rank(mpi_comm_world())   # rank of this process
+		self.MPI_rank     = MPI.rank(MPI.comm_world)   # rank of this process
 		self.use_periodic = use_periodic                 # periodic bcs?
 
 		# this will hold constrained domains if periodic :
@@ -316,11 +317,11 @@ class Model(object):
 		s = "::: setting mesh :::"
 		print_text(s, cls=self.this)
 
-		if isinstance(f, dolfin.cpp.io.HDF5File):
+		if isinstance(f, cpp.io.HDF5File):
 			self.mesh = Mesh()
 			f.read(self.mesh, 'mesh', False)
 
-		elif isinstance(f, dolfin.cpp.mesh.Mesh):
+		elif isinstance(f, cpp.mesh.Mesh):
 			self.mesh = f
 
 		self.dim   = self.mesh.ufl_cell().topological_dimension()
@@ -1926,7 +1927,7 @@ class Model(object):
 		A.ident_zeros()              # Regularize the matrix
 
 		# solve the system for the normal vector at the nodes ``x`` :
-		solve(A, x.vector(), b, 'cg', 'hypre_amg')
+		solve(A, x.vector(), b, 'cg', 'hypre_amg', annotate=False)
 
 		# ensure the outward-normal is a unit vector :
 		n_sb = self.normalize_vector(x)
@@ -1944,8 +1945,8 @@ class Model(object):
 		print_min_max(self.n_b, 'n_b', cls=self)
 
 		# calculate the area and ensure the average value of the vector is 1 :
-		area = assemble(one*dGamma_sb)
-		nds  = assemble(inner(n_sb, n_sb)*dGamma_sb)
+		area = assemble(one*dGamma_sb, annotate=False)
+		nds  = assemble(inner(n_sb, n_sb)*dGamma_sb, annotate=False)
 		s    = "    - average value of normal on boundary: %.3f - " % (nds / area)
 		print_text(s, cls=self.this)
 
@@ -2159,7 +2160,7 @@ class Model(object):
 		"""
 		s   = "::: assigning submesh variable :::"
 		print_text(s, cls=self.this)
-		self.Lg.interpolate(u_to, u_from)
+		LagrangeInterpolator.interpolate(u_to, u_from)
 		print_min_max(u_from, 'u_from : ' + u_from.name(), cls=self)
 		print_min_max(u_to,   'u_to   : ' + u_to.name(),   cls=self)
 
@@ -2182,7 +2183,7 @@ class Model(object):
 		if cls is None: cls = self  # for printing
 		if isinstance(var, float) or isinstance(var, int):
 			if    isinstance(u, GenericVector) or isinstance(u, Function) \
-			   or isinstance(u, dolfin.functions.function.Function):
+			   or isinstance(u, dl.function.function.Function):
 				u.vector()[:] = var
 			elif  isinstance(u, Constant):
 				u.assign(var)
@@ -2196,10 +2197,11 @@ class Model(object):
 			u.vector().apply('insert')
 
 		elif isinstance(var, Expression) \
+		  or isinstance(var, dl.function.expression.Expression)  \
 		  or isinstance(var, Constant)  \
-		  or isinstance(var, dolfin.functions.constant.Constant) \
+		  or isinstance(var, dl.function.constant.Constant) \
 		  or isinstance(var, Function) \
-		  or isinstance(var, dolfin.functions.function.Function) \
+		  or isinstance(var, dl.function.function.Function) \
 		  or isinstance(var, GenericVector):
 			u.assign(var, annotate=annotate)
 			#u.interpolate(var, annotate=annotate)
@@ -2482,9 +2484,6 @@ class Model(object):
 		"""
 		s = "::: initializing basic variables :::"
 		print_text(s, cls=self.this)
-
-		# Lagrange interpoplator fot communication between meshes :
-		self.Lg            = LagrangeInterpolator()
 
 		# Coordinates of various types
 		self.x             = SpatialCoordinate(self.mesh)
@@ -2931,7 +2930,7 @@ class Model(object):
 				s    = '::: saving variables in list arg post_iter_save_vars :::'
 				print_text(s, cls=self.this)
 				out_file = self.out_dir + 'inverted.h5'
-				foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+				foutput  = HDF5File(MPI.comm_world, out_file, 'w')
 				for var in post_iter_save_vars:
 					self.save_hdf5(var, f=foutput)
 				foutput.close()
@@ -3037,7 +3036,7 @@ class Model(object):
 				s    = '::: saving variables in list arg itr_save_vars :::'
 				print_text(s, cls=self.this)
 				out_file = self.out_dir + 'lcurve.h5'
-				foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+				foutput  = HDF5File(MPI.comm_world, out_file, 'w')
 				for var in itr_save_vars:
 					self.save_hdf5(var, f=foutput)
 				foutput.close()
@@ -3257,7 +3256,7 @@ class Model(object):
 				s    = '::: saving variables in list arg iter_save_vars :::'
 				print_text(s, cls=self.this)
 				out_file = self.out_dir + 'tmc.h5'
-				foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+				foutput  = HDF5File(MPI.comm_world, out_file, 'w')
 				for var in iter_save_vars:
 					self.save_hdf5(var, f=foutput)
 				foutput.close()
@@ -3278,7 +3277,7 @@ class Model(object):
 			s    = '::: saving variables in list arg post_tmc_save_vars :::'
 			print_text(s, cls=self.this)
 			out_file = self.out_dir + 'tmc.h5'
-			foutput  = HDF5File(mpi_comm_world(), out_file, 'w')
+			foutput  = HDF5File(MPI.comm_world, out_file, 'w')
 			for var in post_tmc_save_vars:
 				self.save_hdf5(var, f=foutput)
 			foutput.close()

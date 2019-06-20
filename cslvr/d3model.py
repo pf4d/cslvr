@@ -66,10 +66,10 @@ class D3Model(Model):
 		s = "    - using 3D periodic boundaries -"
 		print_text(s, cls=self)
 
-		xmin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,0].min())
-		xmax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,0].max())
-		ymin = MPI.min(mpi_comm_world(), self.mesh.coordinates()[:,1].min())
-		ymax = MPI.max(mpi_comm_world(), self.mesh.coordinates()[:,1].max())
+		xmin = MPI.min(MPI.comm_world, self.mesh.coordinates()[:,0].min())
+		xmax = MPI.max(MPI.comm_world, self.mesh.coordinates()[:,0].max())
+		ymin = MPI.min(MPI.comm_world, self.mesh.coordinates()[:,1].min())
+		ymax = MPI.max(MPI.comm_world, self.mesh.coordinates()[:,1].max())
 
 		class PeriodicBoundary(SubDomain):
 
@@ -539,18 +539,18 @@ class D3Model(Model):
 		local_N_GAMMA_ACC   = sum(self.ff_acc.array() == self.GAMMA_ACC)
 
 		# find out if any are marked over all processes :
-		self.N_OMEGA_GND   = MPI.sum(mpi_comm_world(), local_N_OMEGA_GND)
-		self.N_OMEGA_FLT   = MPI.sum(mpi_comm_world(), local_N_OMEGA_FLT)
-		self.N_GAMMA_S_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_S_GND)
-		self.N_GAMMA_B_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_B_GND)
-		self.N_GAMMA_S_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_S_FLT)
-		self.N_GAMMA_B_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_B_FLT)
-		self.N_GAMMA_L_DVD = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_DVD)
-		self.N_GAMMA_L_OVR = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_OVR)
-		self.N_GAMMA_L_UDR = MPI.sum(mpi_comm_world(), local_N_GAMMA_L_UDR)
-		self.N_GAMMA_U_GND = MPI.sum(mpi_comm_world(), local_N_GAMMA_U_GND)
-		self.N_GAMMA_U_FLT = MPI.sum(mpi_comm_world(), local_N_GAMMA_U_FLT)
-		self.N_GAMMA_ACC   = MPI.sum(mpi_comm_world(), local_N_GAMMA_ACC)
+		self.N_OMEGA_GND   = MPI.sum(MPI.comm_world, local_N_OMEGA_GND)
+		self.N_OMEGA_FLT   = MPI.sum(MPI.comm_world, local_N_OMEGA_FLT)
+		self.N_GAMMA_S_GND = MPI.sum(MPI.comm_world, local_N_GAMMA_S_GND)
+		self.N_GAMMA_B_GND = MPI.sum(MPI.comm_world, local_N_GAMMA_B_GND)
+		self.N_GAMMA_S_FLT = MPI.sum(MPI.comm_world, local_N_GAMMA_S_FLT)
+		self.N_GAMMA_B_FLT = MPI.sum(MPI.comm_world, local_N_GAMMA_B_FLT)
+		self.N_GAMMA_L_DVD = MPI.sum(MPI.comm_world, local_N_GAMMA_L_DVD)
+		self.N_GAMMA_L_OVR = MPI.sum(MPI.comm_world, local_N_GAMMA_L_OVR)
+		self.N_GAMMA_L_UDR = MPI.sum(MPI.comm_world, local_N_GAMMA_L_UDR)
+		self.N_GAMMA_U_GND = MPI.sum(MPI.comm_world, local_N_GAMMA_U_GND)
+		self.N_GAMMA_U_FLT = MPI.sum(MPI.comm_world, local_N_GAMMA_U_FLT)
+		self.N_GAMMA_ACC   = MPI.sum(MPI.comm_world, local_N_GAMMA_ACC)
 
 		# create new measures of integration :
 		self.ds      = Measure('ds', subdomain_data=self.ff)
@@ -652,7 +652,8 @@ class D3Model(Model):
 		mesh_height = max_height - min_height
 
 		# sigma coordinate :
-		self.init_sigma( project((self.x[2] - min_height) / mesh_height, self.Q1) )
+		self.init_sigma( project((self.x[2] - min_height) / mesh_height, self.Q1, \
+		                         annotate=False) )
 
 		s = "    - iterating through %i vertices - " % self.num_vertices
 		print_text(s, cls=self)
@@ -855,7 +856,7 @@ class D3Model(Model):
 		print_text(s, cls=self)
 
 		# Depth below sea level :
-		class Depth(Expression):
+		class Depth(UserExpression):
 			def eval(self, values, x):
 				values[0] = -min(0, x[2])
 		self.D = Depth(element=self.Q.ufl_element())

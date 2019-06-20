@@ -7,6 +7,7 @@ from dolfin            import *
 from dolfin_adjoint    import *
 from cslvr.helper      import raiseNotDefined
 from cslvr.inputoutput import get_text, print_text, print_min_max
+from time              import time
 import numpy               as np
 import matplotlib.pyplot   as plt
 import os
